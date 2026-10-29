@@ -32,7 +32,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refuses, git, stateGit, statePath, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip,
+  ok, refuses, git, stateGit, statePath, layout, head, lastMessage, commitAll, fixtureFrom, cleanupFixture, lockAttempts, bareRepo, remoteTip,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -107,15 +107,13 @@ function inFolder(world) {
   return world(path.join(folder, 'project'));
 }
 
-const stateTip = () => stateGit(dir, ['rev-parse', 'HEAD']).trim();
-const lastMessage = () => stateGit(dir, ['log', '-1', '--format=%s']).trim();
 /** The files the state's last commit changed. */
 const lastFiles = () => stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n').sort();
-const projectManifest = () => JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8'));
+const projectManifest = () => JSON.parse(fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8'));
 
 /** The state branch's tip, the store, and what the state's tree holds uncommitted. */
 const written = () => ({
-  tip: stateTip(),
+  tip: head(dir),
   store: DRIVER.storeFiles().map((file) => (fs.existsSync(statePath(dir, file)) ? fs.readFileSync(statePath(dir, file), 'utf8') : null)),
   uncommitted: stateGit(dir, ['status', '--porcelain']),
 });
@@ -161,14 +159,14 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
       ok: true, phase: 1, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
 
-    assert.strictEqual(lastMessage(), 'task(pay): write phase 1');
-    assert.deepStrictEqual(lastFiles(), ['.gitignore', 'manifest.json', ...DRIVER.storeFiles()].sort());
+    assert.strictEqual(lastMessage(dir), 'task(pay): write phase 1');
+    assert.deepStrictEqual(lastFiles(), [layout.gitignore, layout.projectManifest, ...DRIVER.storeFiles()].sort());
     assert.strictEqual(projectManifest().drivers.task, DRIVER.name);
     const ignored = fs.readFileSync(statePath(dir, '.gitignore'), 'utf8').split('\n');
     for (const pattern of DRIVER.localFiles()) assert.ok(ignored.includes(pattern), `the state ignores ${pattern}`);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--ignored']).split('\n').filter((line) => line.startsWith('?? ')).length, 0, 'every file the tool keeps is committed or ignored');
     assert.deepStrictEqual([git(dir, ['rev-parse', 'HEAD']).trim(), git(dir, ['status', '--porcelain'])], [codeTip, ''], 'the code branch untouched');
-    assert.strictEqual(remoteTip(bare), stateTip());
+    assert.strictEqual(remoteTip(bare), head(dir));
     const setUp = { manifest: projectManifest(), ignored: fs.readFileSync(statePath(dir, '.gitignore'), 'utf8') };
     ok(dir, ['manifest', 'set', 'project.defaults.plan_format', 'kept-out']);
     fs.appendFileSync(statePath(dir, '.gitignore'), '/scratch/\n');
@@ -184,15 +182,15 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
   it('a verb the tracker refuses after it wrote commits what it wrote under a message saying it was refused, and the next verb carries none of it', () => {
     refuses(dir, ['task', 'phase', UNIT, '1', '--title', SIDE.REFUSED_TITLE]);
 
-    assert.strictEqual(lastMessage(), 'task(pay): write phase 1 refused — what it wrote kept');
-    assert.deepStrictEqual(lastFiles(), ['.gitignore', 'manifest.json', ...DRIVER.storeFiles()].sort());
+    assert.strictEqual(lastMessage(dir), 'task(pay): write phase 1 refused — what it wrote kept');
+    assert.deepStrictEqual(lastFiles(), [layout.gitignore, layout.projectManifest, ...DRIVER.storeFiles()].sort());
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']), '');
     createManifest(dir, 'tax', {});
     commitAll(dir, 'tax');
 
     refuses(dir, ['task', 'phase', 'tax', '1', '--title', SIDE.REFUSED_TITLE]);
 
-    assert.deepStrictEqual([lastMessage(), lastFiles()], ['task(tax): write phase 1 refused — what it wrote kept', DRIVER.storeFiles()], 'set up already committed, the store alone');
+    assert.deepStrictEqual([lastMessage(dir), lastFiles()], ['task(tax): write phase 1 refused — what it wrote kept', DRIVER.storeFiles()], 'set up already committed, the store alone');
   });
 
   for (const [first, args, message] of /** @type {const} */ ([
@@ -210,9 +208,9 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
       if (first === 'a refusal') refuses(dir, [...args]);
       else ok(dir, [...args]);
 
-      assert.deepStrictEqual([lastMessage(), lastFiles()], [message, ['.gitignore', 'manifest.json', ...DRIVER.storeFiles()].sort()]);
+      assert.deepStrictEqual([lastMessage(dir), lastFiles()], [message, [layout.gitignore, layout.projectManifest, ...DRIVER.storeFiles()].sort()]);
       const ignored = stateGit(dir, ['show', 'HEAD:.gitignore']).split('\n');
-      assert.strictEqual(stateGit(dir, ['show', 'HEAD:manifest.json']), fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8').replace('"FOREIGN"', '"held"'), 'the setting placed as the setup writes it');
+      assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.projectManifest}`]), fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8').replace('"FOREIGN"', '"held"'), 'the setting placed as the setup writes it');
       assert.deepStrictEqual([DRIVER.localFiles().every((pattern) => ignored.includes(pattern)), ignored.includes('/scratch-by-hand/')], [true, false]);
       assert.deepStrictEqual(stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort(), [' M .gitignore', ' M manifest.json']);
       assert.strictEqual(projectManifest().defaults.plan_format, 'FOREIGN');
@@ -225,7 +223,7 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
 
     ok(dir, ['task', 'ready', UNIT]);
 
-    assert.deepStrictEqual([lastMessage(), lastFiles()], ['task(pay): set up the tracker', ['.gitignore', 'manifest.json', ...DRIVER.storeFiles()].sort()]);
+    assert.deepStrictEqual([lastMessage(dir), lastFiles()], ['task(pay): set up the tracker', [layout.gitignore, layout.projectManifest, ...DRIVER.storeFiles()].sort()]);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']), '');
   });
 
@@ -239,26 +237,26 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
   });
 
   it('a setting the branch\'s manifest cannot take, or cannot be read to take, is committed nowhere, the verb warning of it, naming the file and the commit', () => {
-    fs.writeFileSync(statePath(dir, 'manifest.json'), '{oops\n');
+    fs.writeFileSync(statePath(dir, layout.projectManifest), '{oops\n');
     commitAll(dir, 'a project manifest that is not JSON');
-    const broken = stateTip();
-    fs.writeFileSync(statePath(dir, 'manifest.json'), '{}\n');
+    const broken = head(dir);
+    fs.writeFileSync(statePath(dir, layout.projectManifest), '{}\n');
 
     const taking = ok(dir, ['task', 'ready', UNIT]).warnings.join('\n');
 
     assert.match(taking, new RegExp(`^commit failed: manifest\\.json as ${STATE_BRANCH} holds it at ${broken} cannot take the change — nothing committed; commit manifest\\.json mended to go on: `));
-    assert.strictEqual(stateTip(), broken);
-    fs.writeFileSync(statePath(dir, 'manifest.json'), '{"defaults":{"plan_format":"held"}}\n');
-    stateGit(dir, ['add', 'manifest.json']);
+    assert.strictEqual(head(dir), broken);
+    fs.writeFileSync(statePath(dir, layout.projectManifest), '{"defaults":{"plan_format":"held"}}\n');
+    stateGit(dir, ['add', layout.projectManifest]);
     stateGit(dir, ['commit', '-q', '-m', 'a project manifest without the setting']);
-    const head = stateTip();
-    const object = stateGit(dir, ['rev-parse', 'HEAD:manifest.json']).trim();
+    const before = head(dir);
+    const object = stateGit(dir, ['rev-parse', `HEAD:${layout.projectManifest}`]).trim();
     fs.rmSync(path.join(dir, '.git', 'objects', object.slice(0, 2), object.slice(2)));
 
     const { warnings } = ok(dir, ['task', 'ready', UNIT]);
 
-    assert.match(warnings.join('\n'), new RegExp(`^commit failed: manifest\\.json could not be read from ${STATE_BRANCH} at ${head} — nothing committed: `));
-    assert.strictEqual(stateTip(), head);
+    assert.match(warnings.join('\n'), new RegExp(`^commit failed: manifest\\.json could not be read from ${STATE_BRANCH} at ${before} — nothing committed: `));
+    assert.strictEqual(head(dir), before);
   });
 
   it('a refusal whose commit is not pushed carries the warning in its words, the commit standing', () => {
@@ -267,7 +265,7 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
     const { error } = refuses(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'write', template('Write the ledger'))]);
 
     assert.match(error, new RegExp(`^phase 1 of pay is not written — and ${STATE_BRANCH} is committed here but was not pushed to origin`));
-    assert.strictEqual(lastMessage(), 'task(pay): set up the tracker');
+    assert.strictEqual(lastMessage(dir), 'task(pay): set up the tracker');
   });
 
   it('no verb reaches the tracker without the writer lock: a read waits on a live holder, the store made only once it is let go, and committed with the setting up (7.5.4)', (t) => {
@@ -283,7 +281,7 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT]), { ok: true, tasks: [], committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
 
     assert.deepStrictEqual([attempts, storeWhileHeld], [['taken', 'made'], [false]]);
-    assert.deepStrictEqual([lastMessage(), lastFiles()], ['task(pay): set up the tracker', ['.gitignore', 'manifest.json', ...DRIVER.storeFiles()].sort()]);
+    assert.deepStrictEqual([lastMessage(dir), lastFiles()], ['task(pay): set up the tracker', [layout.gitignore, layout.projectManifest, ...DRIVER.storeFiles()].sort()]);
   });
 });
 
@@ -297,7 +295,7 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
     const res = ok(dir, ['task', 'create', UNIT, '2', '--file', taskFile(dir, 'show', `\n${text}\n\n`)]);
 
     assert.deepStrictEqual(res, { ok: true, task: '2.1', id: 'pay-2-1', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
-    assert.strictEqual(lastMessage(), 'task(pay): create 2.1');
+    assert.strictEqual(lastMessage(dir), 'task(pay): create 2.1');
     assert.deepStrictEqual(lastFiles(), DRIVER.storeFiles());
     assert.strictEqual(create(dir, 'Page the ledger', '2').task, '2.2');
     const shown = ok(dir, ['task', 'show', UNIT, '2.1']);
@@ -373,7 +371,7 @@ describe('task add and task type (13.11.3, 21.5.21)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'add', UNIT, '1.2', '--file', taskFile(dir, 'fact', `\n${fact}\n`), '--by', 'orchestrator']), {
       ok: true, task: '1.2', id: 'pay-1-2', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
-    assert.strictEqual(lastMessage(), 'task(pay): add to 1.2');
+    assert.strictEqual(lastMessage(dir), 'task(pay): add to 1.2');
     assert.deepStrictEqual(lastFiles(), DRIVER.storeFiles());
     ok(dir, ['task', 'add', UNIT, '1.2', '--file', taskFile(dir, 'instruction', 'Keep the file format.'), '--by', 'person']);
     assert.deepStrictEqual(ok(dir, ['task', 'show', UNIT, '1.2']).additions, [{ by: 'orchestrator', text: fact }, { by: 'person', text: 'Keep the file format.' }]);
@@ -383,7 +381,7 @@ describe('task add and task type (13.11.3, 21.5.21)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'type', UNIT, '1.2', 'fix']), {
       ok: true, task: '1.2', id: 'pay-1-2', type: 'fix', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
-    assert.strictEqual(lastMessage(), 'task(pay): type 1.2 as fix');
+    assert.strictEqual(lastMessage(dir), 'task(pay): type 1.2 as fix');
     assert.deepStrictEqual(lastFiles(), DRIVER.storeFiles());
     assert.strictEqual(ok(dir, ['task', 'show', UNIT, '1.2']).type, 'fix');
   });
@@ -400,7 +398,7 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'link', UNIT, '2.1', '--after', '1.2']), {
       ok: true, task: '2.1', after: '1.2', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
-    assert.strictEqual(lastMessage(), 'task(pay): link 2.1 after 1.2');
+    assert.strictEqual(lastMessage(dir), 'task(pay): link 2.1 after 1.2');
     assert.deepStrictEqual(ok(dir, ['task', 'show', UNIT, '2.1']).after, ['1.2']);
   });
 
@@ -419,7 +417,7 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
   });
 
   it('the reads answer what the tracker holds, and commit nothing — a store a person changed by hand among it', () => {
-    const tip = stateTip();
+    const tip = head(dir);
 
     assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT, '1']), {
       ok: true, tasks: [{ task: '1.1', id: 'pay-1-1', title: 'Write the ledger' }, { task: '1.2', id: 'pay-1-2', title: 'Read the ledger' }],
@@ -431,7 +429,7 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
     });
     SIDE.makeTask(statePath(dir), 'Mine');
     ok(dir, ['task', 'ready', UNIT]);
-    assert.strictEqual(stateTip(), tip);
+    assert.strictEqual(head(dir), tip);
     assert.deepStrictEqual(stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean), DRIVER.storeFiles().map((file) => ` M ${file}`));
   });
 });
@@ -445,16 +443,16 @@ describe('task start, done and close: the task in flight (6.3.3, 7.1.12)', () =>
     assert.deepStrictEqual(ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION }), {
       ok: true, task: '1.1', id: 'pay-1-1', committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
     });
-    assert.strictEqual(lastMessage(), 'task(pay): start 1.1');
+    assert.strictEqual(lastMessage(dir), 'task(pay): start 1.1');
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT, task: '1.1' });
     ok(dir, ['task', 'start', UNIT, '1.2'], { env: SESSION });
-    const started = stateTip();
+    const started = head(dir);
     ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
-    assert.deepStrictEqual([stateTip(), position().task], [started, '1.1'], 'a task already started is put on the position again, nothing written');
+    assert.deepStrictEqual([head(dir), position().task], [started, '1.1'], 'a task already started is put on the position again, nothing written');
 
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION });
 
-    assert.strictEqual(lastMessage(), 'task(pay): done 1.1');
+    assert.strictEqual(lastMessage(dir), 'task(pay): done 1.1');
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
     assert.deepStrictEqual(ok(dir, ['task', 'ready', UNIT]).tasks.map((/** @type {any} */ row) => row.task), ['1.3'], '1.2 started, so not waiting');
   });
@@ -464,7 +462,7 @@ describe('task start, done and close: the task in flight (6.3.3, 7.1.12)', () =>
 
     ok(dir, ['task', 'close', UNIT, '1.1', '--reason', 'The old ledger already writes it.'], { env: SESSION });
 
-    assert.strictEqual(lastMessage(), 'task(pay): close 1.1');
+    assert.strictEqual(lastMessage(dir), 'task(pay): close 1.1');
     assert.deepStrictEqual(position(), { name: UNIT, phase: 'implementation', topic: UNIT });
     const closed = ok(dir, ['task', 'show', UNIT, '1.1']);
     assert.deepStrictEqual([closed.status, closed.reason], ['closed', 'The old ledger already writes it.']);

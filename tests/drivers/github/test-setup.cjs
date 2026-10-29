@@ -30,7 +30,7 @@ const { githubRuleOffered, githubSquashOffered } = require('../../../skills/work
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { GH_ENV, githubWorld, github, calls } = require('./world.cjs');
 
-const { git } = harness;
+const { git, layout } = harness;
 const project = useLandingWorld('github-setup-', (dir) => {
   setLandingDriver(dir, 'github');
   githubWorld(dir);
@@ -43,7 +43,7 @@ const ok = (dir, args, env = {}) => harness.ok(dir, args, { env: { ...GH_ENV, ..
 const refused = (dir, args) => harness.refuses(dir, args, { env: GH_ENV }).error;
 
 /** The project manifest as the state branch holds it. @param {string} dir */
-const committedManifest = (dir) => JSON.parse(git(dir, ['show', 'leeway-state:manifest.json']));
+const committedManifest = (dir) => JSON.parse(git(dir, ['show', `leeway-state:${layout.projectManifest}`]));
 
 const AUTH = 'auth status --hostname github.com';
 

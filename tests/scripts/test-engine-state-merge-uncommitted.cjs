@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -27,7 +27,7 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { catchUpState, stateMergeGateSurface } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, blobId, treeId, status, commitOn, commitUnpushed, twoMachines, ledger, projectManifest, appendOnly, pickShown } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, blobId, treeId, status, commitUnpushed, ledger, projectManifest, appendOnly, pickShown } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
 
@@ -35,10 +35,10 @@ useWorld();
 
 describe('the worktree\'s uncommitted state through a catch-up', () => {
   it('leaves an uncommitted file the update does not touch exactly as it was, uncommitted, through a fast-forward', () => {
-    const { here, there, bare } = twoMachines({ 'unit/topics/a/log.md': '# a\n', 'unit/topics/c/log.md': '# c\n' });
+    const { here, there, bare } = machinesSharing({ 'unit/topics/a/log.md': '# a\n', 'unit/topics/c/log.md': '# c\n' });
     createFile(here.root, 'unit/topics/a/log.md', '# a\n\n## a session not yet committed\n');
     createFile(here.root, 'unit/topics/b/log.md', '# b, new and uncommitted\n');
-    const theirs = commitOn(there, { 'unit/topics/c/log.md': '# c\n\n## elsewhere\n' }).commit;
+    const theirs = commitOnState(there.root, { 'unit/topics/c/log.md': '# c\n\n## elsewhere\n' }).commit;
 
     const out = catchUpState(here.root);
 
@@ -53,10 +53,10 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   });
 
   it('fast-forwards with no new commit where only the remote moved, merging an uncommitted file it changed in place, still uncommitted', () => {
-    const { here, there, bare } = twoMachines({ 'unit/topics/a/log.md': '# a\n\n## first\n' });
+    const { here, there, bare } = machinesSharing({ 'unit/topics/a/log.md': '# a\n\n## first\n' });
     createFile(here.root, 'unit/topics/a/log.md', '# a\n\n## first\n\n## here, uncommitted\n');
     const theirsText = '# a\n\n## first\n\n## elsewhere\n';
-    const theirs = commitOn(there, { 'unit/topics/a/log.md': theirsText }).commit;
+    const theirs = commitOnState(there.root, { 'unit/topics/a/log.md': theirsText }).commit;
 
     const out = catchUpState(here.root);
 
@@ -71,52 +71,52 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   });
 
   it('merges committed state alone into the merge commit where both moved, the uncommitted bytes merged into the working tree', () => {
-    const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), 'unit/topics/a/log.md': '# a\n' });
-    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
-    createFile(here.root, '.ledger.jsonl', ledger('base', 'a1', 'u1'));
+    const { here, there, bare } = machinesSharing({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n' });
+    commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
+    createFile(here.root, layout.ledger, ledger('base', 'a1', 'u1'));
     createFile(here.root, 'unit/topics/a/log.md', '# a\n\n## here, uncommitted\n');
-    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), 'unit/topics/a/log.md': '# a\n\n## elsewhere\n' });
+    commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), 'unit/topics/a/log.md': '# a\n\n## elsewhere\n' });
 
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
-    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'b1', 'a1'));
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.ledger}`]), ledger('base', 'b1', 'a1'));
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:unit/topics/a/log.md`]), '# a\n\n## elsewhere\n');
-    assert.strictEqual(spawnSync('git', ['grep', '-l', '-e', 'u1', '-e', 'uncommitted', STATE_BRANCH], { cwd: here.main, encoding: 'utf8' }).stdout, '',
+    assert.strictEqual(spawnSync('git', ['grep', '-l', '-e', 'u1', '-e', 'uncommitted', STATE_BRANCH, '--', layout.ledger, 'unit/topics/a/log.md'], { cwd: here.main, encoding: 'utf8' }).stdout, '',
       'uncommitted bytes reached the commit');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
-    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1', 'u1'));
+    assert.strictEqual(readFile(here.root, layout.ledger), ledger('base', 'b1', 'a1', 'u1'));
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## elsewhere\n## here, uncommitted\n');
-    assert.strictEqual(status(here.root), ' M .ledger.jsonl\n M unit/topics/a/log.md\n');
+    assert.strictEqual(status(here.root), ` M ${layout.ledger}\n M unit/topics/a/log.md\n`);
     assert.ok(appendOnly(here.root), 'the uncommitted ledger no longer starts with the committed one');
   });
 
   it('stops on a field the uncommitted copy and the update changed differently, its pick written into the working copy, never a commit', () => {
-    const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
-    createFile(here.root, 'manifest.json', projectManifest('next'));
-    const theirs = commitOn(there, { 'manifest.json': projectManifest('someday') }).commit;
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
+    createFile(here.root, layout.projectManifest, projectManifest('next'));
+    const theirs = commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') }).commit;
     const before = tip(here.main, STATE_BRANCH);
 
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.commit], ['stopped', before]);
     assert.deepStrictEqual(out.conflicts.map((c) => [c.uncommitted, c.local, c.remote]), [[true, { set: true, value: 'next' }, { set: true, value: 'someday' }]]);
-    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('next'));
+    assert.strictEqual(readFile(here.root, layout.projectManifest), projectManifest('next'));
 
     const picked = pickShown(here, '1');
 
     assert.deepStrictEqual([picked.action, picked.commit], ['fast-forwarded', theirs]);
-    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('someday'));
-    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
-    assert.strictEqual(status(here.root), ' M manifest.json\n');
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), projectManifest('someday'));
+    assert.strictEqual(JSON.parse(readFile(here.root, layout.projectManifest)).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(status(here.root), ` M ${layout.projectManifest}\n`);
   });
 
   /** A stop on the horizon both sides committed, with the working tree's copy changing it again. */
   function stoppedWithWork() {
-    const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
-    commitUnpushed(here, { 'manifest.json': projectManifest('next') });
-    createFile(here.root, 'manifest.json', projectManifest('never'));
-    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
+    commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
+    createFile(here.root, layout.projectManifest, projectManifest('never'));
+    commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     const out = catchUpState(here.root);
     assert.deepStrictEqual(out.conflicts.map((c) => [c.uncommitted, c.local.set && c.local.value]), [[false, 'next']]);
     return here;
@@ -125,8 +125,8 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   /** The horizon committed, and the working tree's. @param {Machine} here */
   function horizons(here) {
     return [
-      JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`])).roadmap.items['a-lifetime-tier'].horizon,
-      JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon,
+      JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`])).roadmap.items['a-lifetime-tier'].horizon,
+      JSON.parse(readFile(here.root, layout.projectManifest)).roadmap.items['a-lifetime-tier'].horizon,
     ];
   }
 
@@ -151,10 +151,10 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   });
 
   it('sets an uncommitted folder beside where the update writes a file at its path', () => {
-    const { here, there } = twoMachines({ 'unit/x': 'x was a file\n' });
+    const { here, there } = machinesSharing({ 'unit/x': 'x was a file\n' });
     fs.rmSync(path.join(here.root, 'unit/x'));
     createFile(here.root, 'unit/x/new.md', 'uncommitted, where x was\n');
-    const theirs = commitOn(there, { 'unit/x': 'x changed elsewhere\n' }).commit;
+    const theirs = commitOnState(there.root, { 'unit/x': 'x changed elsewhere\n' }).commit;
 
     const out = catchUpState(here.root);
 
@@ -171,9 +171,9 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   });
 
   it('sets an uncommitted file beside where the update writes a folder at its path', () => {
-    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
     createFile(here.root, 'unit/y', 'an uncommitted file\n');
-    commitOn(there, { 'unit/y/b.md': 'b, there\n' });
+    commitOnState(there.root, { 'unit/y/b.md': 'b, there\n' });
 
     const out = catchUpState(here.root);
 

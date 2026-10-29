@@ -23,14 +23,14 @@ const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { datedAt, createFile } = require('./discovery-test-utils.cjs');
-const { git, initRepo, tip, remoteTip } = harness;
+const { git, initRepo, tip, remoteTip, statePath, LAYOUT_GROUP } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
-const { useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, engine, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, OWN_SETTINGS, engine, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -42,7 +42,7 @@ const world = useWorld();
  * here or on its remote, the code dated in the past.
  * @param {{remote?: string|null, trace?: Record<string, string>}} [opts]
  */
-function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': WORKFLOW_HOOKS } } = {}) {
+function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': OWN_SETTINGS } } = {}) {
   const main = initRepo(path.join(world(), 'portal'));
   datedAt('2025-03-01T12:00:00Z', () => {
     createFile(main, 'src/app.js', 'export default 1;\n');
@@ -61,7 +61,7 @@ function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.cl
 
 /** Lose the state everywhere: its worktree and branch here, its branch on the remote. @param {string} main @param {string|null} [bare] */
 function loseState(main, bare = null) {
-  git(main, ['worktree', 'remove', '--force', '--force', path.join(main, '.leeway')]);
+  git(main, ['worktree', 'remove', '--force', '--force', statePath(main)]);
   git(main, ['branch', '-D', STATE_BRANCH]);
   if (bare !== null) git(bare, ['branch', '-D', STATE_BRANCH]);
 }
@@ -72,12 +72,12 @@ const WRAP = '\u00a0'.repeat(8);
 describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written — and the next boot stops again', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const main = lostProject({ remote: bare, trace: { '.claude/settings.json': WORKFLOW_HOOKS } });
+    const main = lostProject({ remote: bare, trace: { '.claude/settings.json': OWN_SETTINGS } });
     const before = untouched(main, bare);
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
     assert.deepStrictEqual(untouched(main, bare), before);
-    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+    assert.ok(!fs.existsSync(statePath(main)));
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
     assert.deepStrictEqual(untouched(main, bare), before);
@@ -88,7 +88,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const main = lostProject({ trace: { '.claude/settings.json': JSON.stringify(settings, null, 2) + '\n' } });
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
-    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+    assert.ok(!fs.existsSync(statePath(main)));
   });
 
   it('a boot that stops at the lost state still lands the trust log\'s events a conversation kept waiting: every boot does (16.13.3, 16.S74)', () => {
@@ -109,13 +109,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const main = lostProject({ trace: { '.gitignore': 'node_modules\n.leeway/\n' } });
 
     assert.strictEqual(boot(main).state, 'lost');
-    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+    assert.ok(!fs.existsSync(statePath(main)));
   });
 
   describe('the trace read across the repository, not one checkout (4.5.2)', () => {
     it('set up from a code worktree, its trace on that branch alone: a boot in the main checkout stops at the lost state, nothing written', () => {
-      const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-      const main = codeProject({ remote: bare });
+      const { main, bare } = remoteProject();
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
       assert.strictEqual(boot(code).state, 'ready');
@@ -142,7 +141,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     it('the trace on a remote-tracking branch alone: a clone whose own branches never carried it stops at the lost state, nothing written', () => {
       const bare = harness.bareRepo(path.join(world(), 'portal.git'));
       lostProject({ remote: bare });
-      const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
+      const fresh = cloneInWorld(bare, 'fresh', ['--branch', 'main']);
       git(fresh, ['checkout', '-q', '-b', 'before-setup', 'origin/main~1']);
       git(fresh, ['branch', '-q', '-D', 'main']);
       const before = untouched(fresh, bare);
@@ -153,7 +152,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the trace written in another worktree but never committed there: a boot in the main checkout stops at the lost state', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
       createFile(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
@@ -186,9 +185,8 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the trace pushed from another clone on a branch this one never fetched: the remote\'s branches are fetched first, and boot stops at the lost state', () => {
-      const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-      const main = codeProject({ remote: bare });
-      const old = cloneOf(bare, 'old', ['--branch', 'main']);
+      const { main, bare } = remoteProject();
+      const old = cloneInWorld(bare, 'old', ['--branch', 'main']);
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
       assert.strictEqual(boot(code).state, 'ready');
@@ -198,13 +196,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
       assert.deepStrictEqual(boot(old), { ok: true, state: 'lost', warnings: [] });
 
-      assert.ok(!fs.existsSync(path.join(old, '.leeway')));
+      assert.ok(!fs.existsSync(statePath(old)));
       assert.strictEqual(remoteTip(bare), '', 'no fresh state pushed for every other clone to restore');
     });
 
     it('a fetch of the remote\'s branches that fails is never read as a project being set up: boot stops, writing nothing', () => {
-      const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-      const main = codeProject({ remote: bare });
+      const { main, bare } = remoteProject();
       const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
       const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
       createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *" fetch "*) echo "fatal: the remote hung up" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
@@ -217,12 +214,11 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       ));
 
       assert.deepStrictEqual(untouched(main, bare), before);
-      assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+      assert.ok(!fs.existsSync(statePath(main)));
     });
 
     it('a project with no trace on any branch, local or remote-tracking, nor in any tree checked out, is being set up', () => {
-      const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-      const main = codeProject({ remote: bare });
+      const { main } = remoteProject();
       git(main, ['checkout', '-q', '-b', 'feature']);
       createFile(main, '.gitignore', 'node_modules\n');
       createFile(main, '.claude/settings.json', JSON.stringify({
@@ -238,7 +234,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       git(main, ['worktree', 'add', '-q', path.join(world(), 'portal-feature'), 'feature']);
 
       assert.strictEqual(boot(main).state, 'ready');
-      assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+      assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     });
   });
 
@@ -246,7 +242,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const main = lostProject({ trace: { '.worktreeinclude': 'node_modules\n.leeway/.knowledge/store.bin\n' } });
 
     assert.strictEqual(boot(main).state, 'ready');
-    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
   });
 
   it('gone with no remote at all, stops too', () => {
@@ -300,7 +296,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     assert.strictEqual(res.state, 'restarted');
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)]);
-    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
     assert.strictEqual(tip(main, 'main'), code, 'the code side gained nothing: its trace was already there');
     assert.strictEqual(res.baseline, 'none');
@@ -320,8 +316,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   });
 
   it('a state folder with no branch here or on the remote is refused, saying what happened and the ways on, nothing written', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root, bare } = setUp({ remote: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     git(bare, ['branch', '-D', STATE_BRANCH]);
 

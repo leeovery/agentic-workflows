@@ -22,12 +22,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
+const { ENGINE_COMMAND } = require(path.join(REAL_SCRIPTS, 'kernel/call.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { KNOWLEDGE_DIR, STORE_FILES, stubbed, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine } = require('./boot-world.cjs');
+const { STORE_FILES, stubbed, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
@@ -74,7 +75,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
     assert.deepStrictEqual(res.warnings, []);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge')), 'nothing set up');
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge())), 'nothing set up');
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
@@ -86,13 +87,13 @@ describe('engine boot', () => {
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.doc('payments', 'discussion', 'payments')]);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
     assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
   });
 
   it('buildable: a set-up checkout with no store has it built by the keyword side, then compacted', () => {
-    createFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
     completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -102,12 +103,12 @@ describe('engine boot', () => {
     assert.strictEqual(res.compacted, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.ok(!('system_config' in res), 'a store that stood needs no setup');
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.doc('payments', 'discussion', 'payments')]);
   });
 
   it('buildable: a build that did not stand is not-ready — no compact, the gate\'s report attached', () => {
-    createFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(fix.project, '.leeway/manifest.json', '{ not json');
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, layout.projectManifest, '{ not json');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -117,11 +118,11 @@ describe('engine boot', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: project manifest at .* is not valid JSON/);
     assert.ok('system_config' in res);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge/store.bin')));
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge('store.bin'))));
   });
 
   it('buildable: a store that stood with a file failing is ready, the failure a warning the next start retries', () => {
-    createFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, layout.knowledge('config.json'), '{ "knowledge": { "provider": null } }\n');
     completedDiscussion(fix.project, '');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -130,12 +131,12 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    const file = path.join(fix.project, '.leeway/payments/discussion/payments.md');
+    const file = statePath(fix.project, layout.doc('payments', 'discussion', 'payments'));
     assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
   it('a check that cannot read the knowledge config is not-ready — never a crash', () => {
-    fs.mkdirSync(path.join(fix.project, '.leeway/.knowledge/config.json'), { recursive: true });
+    fs.mkdirSync(statePath(fix.project, layout.knowledge('config.json')), { recursive: true });
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -149,22 +150,22 @@ describe('engine boot', () => {
     // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
     // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
     const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
-    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({
+    writeState(fix.project, layout.projectManifest, JSON.stringify({
       work_units: Object.fromEntries(completions.map(([name]) => [name, { work_type: 'feature' }])),
     }, null, 2) + '\n');
     for (const [name, completedAt] of completions) {
-      createFile(fix.project, `.leeway/${name}/manifest.json`, JSON.stringify({
+      writeState(fix.project, layout.manifest(name), JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
         phases: name === 'frontier' ? {} : { discussion: { items: { [name]: { status: 'completed' } } } },
       }, null, 2) + '\n');
-      if (name !== 'frontier') createFile(fix.project, `.leeway/${name}/discussion/${name}.md`, `# ${name}\n\nCards ship first.\n`);
+      if (name !== 'frontier') writeState(fix.project, layout.doc(name, 'discussion', name), `# ${name}\n\nCards ship first.\n`);
     }
     readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.05 });
     runEngine(stubbed, fix.project, ['boot']);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['buried/discussion/buried.md', 'recent/discussion/recent.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.doc('buried', 'discussion', 'buried'), layout.doc('recent', 'discussion', 'recent')]);
 
-    const configFile = path.join(fix.project, '.leeway/.knowledge/config.json');
-    createFile(fix.project, '.leeway/.knowledge/config.json', JSON.stringify({
+    const configFile = statePath(fix.project, layout.knowledge('config.json'));
+    writeState(fix.project, layout.knowledge('config.json'), JSON.stringify({
       knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.05, strategy: 'hybrid' },
     }) + '\n');
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -177,7 +178,7 @@ describe('engine boot', () => {
       `knowledge config: decay_prune_below in ${configFile} is ignored: 7 is not false or a number from 0 to 1`,
       `knowledge config: strategy in ${configFile} is ignored: not a knowledge setting`,
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['recent/discussion/recent.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.doc('recent', 'discussion', 'recent')]);
   });
 
   it('a file the index cannot take is its own warning — compact still runs', () => {
@@ -190,13 +191,13 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    const file = path.join(fix.project, '.leeway/payments/discussion/payments.md');
+    const file = statePath(fix.project, layout.doc('payments', 'discussion', 'payments'));
     assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
   it('a failing index and a failing compact are two warnings, never a block', () => {
     readyKnowledge(fix.project);
-    createFile(fix.project, '.leeway/manifest.json', '{ not json');
+    writeState(fix.project, layout.projectManifest, '{ not json');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -218,15 +219,15 @@ describe('engine boot: a set-up checkout with no store', () => {
     sysDir = path.join(fix.root, 'system-config');
     fs.mkdirSync(sysDir, { recursive: true });
     // A feature with one completed discussion — something for a build to index.
-    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-    createFile(fix.project, '.leeway/payments/manifest.json', JSON.stringify({
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeState(fix.project, layout.manifest('payments'), JSON.stringify({
       name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
       phases: { discussion: { items: { payments: { status: 'completed' } } } },
     }, null, 2) + '\n');
-    createFile(fix.project, '.leeway/payments/discussion/payments.md', '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
+    writeState(fix.project, layout.doc('payments', 'discussion', 'payments'), '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
     commitAll(fix.project, 'the project');
     // This checkout is set up — its local knowledge config — with no store.
-    createFile(fix.project, CONFIG, '{ "knowledge": {} }\n');
+    writeState(fix.project, CONFIG, '{ "knowledge": {} }\n');
   });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
@@ -235,8 +236,8 @@ describe('engine boot: a set-up checkout with no store', () => {
     return runEngine(stubbed, fix.project, ['boot'], { WORKFLOWS_CONFIG_DIR: sysDir, ...extra });
   };
   const CONFIG = STORE_FILES[2];
-  const storePath = () => path.join(fix.project, STORE_FILES[0]);
-  const metadata = () => JSON.parse(fs.readFileSync(path.join(fix.project, STORE_FILES[1]), 'utf8'));
+  const storePath = () => statePath(fix.project, STORE_FILES[0]);
+  const metadata = () => JSON.parse(fs.readFileSync(statePath(fix.project, STORE_FILES[1]), 'utf8'));
 
   it('a provider whose key resolves builds the store by keyword, out of git, and hands its vectors to the fill', (t) => {
     const launched = recordStubbedLaunches(t);
@@ -254,7 +255,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(meta.dimensions, 8);
     assert.ok(meta.last_indexed, 'the discussion was indexed into it');
     assert.strictEqual(store.chunksWithoutVector(store.loadStore(storePath())).length, 1, 'its vector awaits the fill');
-    assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway')]);
+    assert.deepStrictEqual(launched, [statePath(fix.project)]);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'the project', 'on either side');
     assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
@@ -274,7 +275,7 @@ describe('engine boot: a set-up checkout with no store', () => {
       assert.deepStrictEqual(res.warnings, []);
       assert.strictEqual(requests, 0);
       assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
-      assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway')]);
+      assert.deepStrictEqual(launched, [statePath(fix.project)]);
     } finally {
       silent.closeAllConnections();
       await new Promise((resolve) => silent.close(() => resolve(undefined)));
@@ -285,37 +286,37 @@ describe('engine boot: a set-up checkout with no store', () => {
     const launched = recordStubbedLaunches(t);
     const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
     store.saveStore(store.createStore(), storePath());
-    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...openai, last_indexed: null });
-    createFile(fix.project, CONFIG, JSON.stringify({ knowledge: openai }));
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...openai, last_indexed: null });
+    writeState(fix.project, CONFIG, JSON.stringify({ knowledge: openai }));
 
     const res = bootWith(null);
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
     assert.deepStrictEqual(res.warnings, [
-      'knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only',
+      `knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only`,
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md'], 'the keyword side still lands');
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), [layout.doc('payments', 'discussion', 'payments')], 'the keyword side still lands');
     assert.deepStrictEqual(launched, []);
   });
 
   it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
     const launched = recordStubbedLaunches(t);
     bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
-    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.doc('payments', 'discussion', 'payments')}: out of quota` });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
-    assert.deepStrictEqual(res.warnings, ['knowledge vector fill fell short: payments/discussion/payments.md: out of quota']);
-    assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway'), path.join(fix.project, '.leeway')]);
+    assert.deepStrictEqual(res.warnings, [`knowledge vector fill fell short: ${layout.doc('payments', 'discussion', 'payments')}: out of quota`]);
+    assert.deepStrictEqual(launched, [statePath(fix.project), statePath(fix.project)]);
   });
 
   it('a fill\'s shortfall stays quiet once nothing awaits a vector — its chunks since retired', (t) => {
     recordStubbedLaunches(t);
-    createFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
     bootWith(null);
-    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
-    const unit = path.join(fix.project, '.leeway/payments/manifest.json');
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.doc('payments', 'discussion', 'payments')}: out of quota` });
+    const unit = statePath(fix.project, layout.manifest('payments'));
     fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
 
     const res = bootWith(null);
@@ -325,9 +326,9 @@ describe('engine boot: a set-up checkout with no store', () => {
   });
 
   it('a metadata file that does not parse is a warning, never a block', () => {
-    createFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
     bootWith(null);
-    createFile(fix.project, STORE_FILES[1], '{ not json');
+    writeState(fix.project, STORE_FILES[1], '{ not json');
 
     const res = bootWith(null);
 
@@ -339,7 +340,7 @@ describe('engine boot: a set-up checkout with no store', () => {
 
   it('a keyword-only store launches no fill', (t) => {
     const launched = recordStubbedLaunches(t);
-    createFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
 
     const res = bootWith(null);
 
@@ -357,7 +358,7 @@ describe('engine boot: a set-up checkout with no store', () => {
   });
 
   it('keyword-only pinned by the project config builds keyword-only, whatever the machine lacks', () => {
-    createFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
+    writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
 
     const res = bootWith(null);
 
@@ -394,12 +395,12 @@ describe('engine boot: a set-up checkout with no store', () => {
   });
 
   it('a checkout never set up is not-ready whatever the machine says — boot sets nothing up', () => {
-    fs.rmSync(path.join(fix.project, KNOWLEDGE_DIR), { recursive: true, force: true });
+    fs.rmSync(statePath(fix.project, layout.knowledge()), { recursive: true, force: true });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.system_config.status, 'valid');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge')));
+    assert.ok(!fs.existsSync(statePath(fix.project, layout.knowledge())));
   });
 });

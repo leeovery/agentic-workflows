@@ -19,10 +19,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll } = harness;
+const { git, commitAll, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { hookHelpers, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, bootProject } = require('./boot-world.cjs');
+const { hookHelpers, FLAG, bootProject } = require('./boot-world.cjs');
 
 describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   let fix;

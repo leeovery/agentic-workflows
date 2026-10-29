@@ -1,11 +1,11 @@
 'use strict';
 
 // The world the state-merge suites share
-// (test-engine-state-merge-*.cjs): a temp folder per test (`useWorld`), a
-// project on a bare remote and a second clone of it on "another machine"
-// (`twoMachines`), commits made on either side, pushed or with the push
-// failing, and the reads their assertions make: parents, status, the
-// merge's kept stop and its leftovers. A `git` wrapper first on PATH
+// (test-engine-state-merge-*.cjs): a temp folder per test (`useWorld`), the
+// library's two machines on one remote with a base committed
+// (`machinesSharing`), commits made on either side with the push failing, and
+// the reads their assertions make: parents, status, the merge's kept stop
+// and its leftovers. A `git` wrapper first on PATH
 // (`gitWrapper`, `withPath`) stands in for another session's write, a
 // remote moving, or a kill (`killedAfter`).
 
@@ -15,17 +15,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { git, initRepo, testIdentity, bareRepo } = require('./engine-harness.cjs');
-const { useTempFolder, createFile } = require('./discovery-test-utils.cjs');
+const harness = require('./engine-harness.cjs');
+const { useTempFolder } = require('./discovery-test-utils.cjs');
+const { git, commitOnState, withEnv } = harness;
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
-const {
-  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, openWorktree,
-} = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { STATE_BRANCH, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 const { checkLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { LedgerChanged, checkLedgerCommit } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
-const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
 /** The running test's folder, once the calling file has taken `useWorld`. @type {() => string} */
@@ -37,7 +36,7 @@ function useWorld() {
   return world;
 }
 
-/** @typedef {{main: string, root: string}} Machine */
+/** @typedef {import('./engine-harness.cjs').Machine} Machine */
 
 /** The id git names a blob of `text` by. @param {string} text */
 function blobId(text) {
@@ -60,12 +59,6 @@ function status(dir) {
   return git(dir, ['status', '--porcelain', '--untracked-files=all']);
 }
 
-/** Write `files` in the machine's state worktree and commit them there, pushing. @param {Machine} machine @param {Record<string, string>} files */
-function commitOn(machine, files, message = 'state: a change') {
-  for (const [rel, content] of Object.entries(files)) createFile(machine.root, rel, content);
-  return withStateLock(machine.root, () => commitState(machine.root, Object.keys(files), message));
-}
-
 /** Run `fn` with the machine's pushes going nowhere, as a failed push leaves the state. @template T @param {Machine} machine @param {() => T} fn @returns {T} */
 function pushFailing(machine, fn) {
   git(machine.main, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
@@ -78,37 +71,27 @@ function pushFailing(machine, fn) {
 
 /** A commit made here whose push fails. @param {Machine} machine @param {Record<string, string>} files */
 function commitUnpushed(machine, files, message = 'state: unpushed') {
-  const out = pushFailing(machine, () => commitOn(machine, files, message));
+  const out = pushFailing(machine, () => commitOnState(machine.root, files, message));
   assert.strictEqual(out.pushed, false, 'the push was meant to fail');
   return out.commit;
 }
 
 /**
- * A project named Fumi with its state on a bare remote, `base` committed and
- * pushed there; and a second clone of it on "another machine", its state
- * worktree made from the remote's branch.
+ * The library's two machines on one remote, the project Fumi's, in the
+ * running test's folder, `base` committed here, pushed, and fetched there,
+ * both standing on it — there brought to it by the engine's own git, its
+ * bytes never converted.
  * @param {Record<string, string>} [base]
- * @returns {{here: Machine, there: Machine, bare: string}}
+ * @returns {ReturnType<typeof harness.twoMachines>}
  */
-function twoMachines(base = {}) {
-  const main = initRepo(path.join(world(), 'fumi'));
-  createFile(main, 'README.md', '# Fumi\n');
-  git(main, ['add', 'README.md']);
-  git(main, ['commit', '-q', '-m', 'code']);
-  const bare = bareRepo(path.join(world(), 'fumi-remote.git'));
-  git(main, ['remote', 'add', 'origin', bare]);
-  git(main, ['push', '-q', 'origin', 'main']);
-  const here = { main, root: path.join(main, '.leeway') };
-  createState(here.root);
-  if (Object.keys(base).length > 0) commitOn(here, base, 'state: base');
-
-  const other = path.join(world(), 'other-machine');
-  git(world(), ['clone', '-q', bare, other]);
-  testIdentity(other);
-  const there = { main: other, root: stateRoot(other) };
-  createStateBranchFromRemote(there.root);
-  addStateWorktree(there.root);
-  return { here, there, bare };
+function machinesSharing(base = {}) {
+  const machines = harness.twoMachines(world(), { name: 'fumi' });
+  if (Object.keys(base).length > 0) {
+    commitOnState(machines.here.root, base, 'state: base');
+    isolatedGit(machines.there.main).run(['fetch', '-q', 'origin']);
+    isolatedGit(machines.there.root).run(['merge', '-q', '--ff-only', `origin/${STATE_BRANCH}`]);
+  }
+  return machines;
 }
 
 /** @param {Record<string, unknown>} fields */
@@ -145,23 +128,6 @@ function appendOnly(root) {
   } catch (err) {
     if (err instanceof LedgerChanged) return false;
     throw err;
-  }
-}
-
-/**
- * Run `fn` with git tracing into a file, answering the git commands traced.
- * @template T @param {() => T} fn @returns {{result: T, traced: string[]}}
- */
-function traced(fn) {
-  const file = path.join(world(), 'git-trace.log');
-  fs.rmSync(file, { force: true });
-  process.env.GIT_TRACE = file;
-  try {
-    const result = fn();
-    const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    return { result, traced: [...log.matchAll(/trace: built-in: git (.*)$/gm)].map((m) => m[1]) };
-  } finally {
-    delete process.env.GIT_TRACE;
   }
 }
 
@@ -215,13 +181,7 @@ function gitWrapper(marker, after) {
 
 /** Run `fn` with `dir` first on PATH. @template T @param {string} dir @param {() => T} fn @returns {T} */
 function withPath(dir, fn) {
-  const was = process.env.PATH;
-  process.env.PATH = `${dir}:${was}`;
-  try {
-    return fn();
-  } finally {
-    process.env.PATH = was;
-  }
+  return withEnv({ PATH: `${dir}:${process.env.PATH}` }, fn);
 }
 
 /**
@@ -237,5 +197,5 @@ function killedAfter(root, call, marker) {
 }
 
 module.exports = {
-  useWorld, blobId, treeId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, entry, ledger, json, projectManifest, appendOnly, traced, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
+  useWorld, blobId, treeId, parents, status, pushFailing, commitUnpushed, machinesSharing, entry, ledger, json, projectManifest, appendOnly, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
 };

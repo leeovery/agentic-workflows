@@ -20,23 +20,22 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, tip, remoteTip } = harness;
+const { git, tip, remoteTip, statePath, layout, commitOnState } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
 
-const world = useWorld();
+useWorld();
 
 // --- a lost local branch --------------------------------------------------------
 
 describe('a lost local branch (4.S8)', () => {
   it('deleted with its worktree, is restored from the remote and checked out again, locked', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
-    commitOnState(root, { 'manifest.json': '{"kept":true}\n' });
+    const { main, root, bare } = setUp({ remote: true });
+    commitOnState(root, { [layout.projectManifest]: '{"kept":true}\n' });
     git(main, ['worktree', 'remove', '--force', '--force', root]);
     git(main, ['branch', '-D', STATE_BRANCH]);
 
@@ -44,13 +43,12 @@ describe('a lost local branch (4.S8)', () => {
 
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(readFile(root, 'manifest.json'), '{"kept":true}\n');
+    assert.strictEqual(readFile(root, layout.projectManifest), '{"kept":true}\n');
     bootsWithNothingToDo(main, bare);
   });
 
   it('deleted under its worktree, is restored and the folder linked to it again, what the folder holds kept', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root, bare } = setUp({ remote: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     createFile(root, 'notes.md', 'not yet committed\n');
 
@@ -63,12 +61,11 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree while the remote moved on, its folder is brought to the remote\'s tip: the next write undoes nothing the remote changed, and edits not yet committed survive', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root, bare } = setUp({ remote: true });
     commitOnState(root, { 'notes.md': 'one\ntwo\nthree\n' });
-    const other = cloneOf(bare, 'other');
+    const other = cloneInWorld(bare, 'other');
     boot(other);
-    commitOnState(path.join(other, '.leeway'), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
+    commitOnState(statePath(other), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
     createFile(root, 'notes.md', 'one, mine\ntwo\nthree\n');
     createFile(root, 'draft.md', 'not yet committed\n');
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
@@ -93,8 +90,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree holding a commit a failed push left behind, is restored with that commit, which the catch-up pushes', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root, bare } = setUp({ remote: true });
     const hook = path.join(bare, 'hooks', 'pre-receive');
     fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     const left = commitOnState(root, { 'mine.md': 'committed, never pushed\n' }).commit;
@@ -110,11 +106,10 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree in a repository whose config turns ref logs off, still reads where the folder stands — the engine logs the state\'s refs whatever the config says', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const main = codeProject({ remote: bare });
+    const { main } = remoteProject();
     git(main, ['config', 'core.logAllRefUpdates', 'false']);
     assert.strictEqual(boot(main).state, 'ready');
-    const root = path.join(main, '.leeway');
+    const root = statePath(main);
     const left = commitOnState(root, { 'mine.md': 'committed\n' }).commit;
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
@@ -125,8 +120,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under a folder with a code branch checked out, is refused: the commit the folder stands at holds code history — nothing written, no ref made', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root, bare } = setUp({ remote: true });
     git(root, ['checkout', '-q', '--ignore-other-worktrees', 'main']);
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     const before = untouched(main, bare);
@@ -141,8 +135,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree whose HEAD log is gone, is refused: boot cannot tell where the folder stands, and writes nothing', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
+    const { main, root } = setUp({ remote: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     const registration = readFile(root, '.git').replace(/^gitdir: /, '').trim();
     fs.rmSync(path.join(registration, 'logs'), { recursive: true, force: true });

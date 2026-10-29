@@ -18,13 +18,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
+const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot (real scripts)', () => {
   let root;
@@ -53,7 +53,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(first.migrations.ran, 0);
     const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrations'))
       .map((f) => (f.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
-    assert.deepStrictEqual(fs.readFileSync(path.join(project, '.leeway/.state/migrations'), 'utf8').trim().split('\n').sort(), fleet);
+    assert.deepStrictEqual(fs.readFileSync(statePath(project, layout.migrations), 'utf8').trim().split('\n').sort(), fleet);
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);
     // The migrations record, the only dirt, committed on the state branch — the code
@@ -65,14 +65,14 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.indexed, false);
     assert.strictEqual(first.compacted, false);
-    assert.ok(!fs.existsSync(path.join(project, '.leeway/.knowledge')));
+    assert.ok(!fs.existsSync(statePath(project, layout.knowledge())));
 
     // The user runs knowledge setup outside the session — simulated here by
     // writing what setup writes: a keyword-only config and a real store file
     // the readiness check loads.
-    createFile(project, '.leeway/.knowledge/config.json', '{"knowledge":{}}\n');
-    createFile(project, '.leeway/.knowledge/metadata.json', '{"provider":null}\n');
-    store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
+    writeState(project, layout.knowledge('config.json'), '{"knowledge":{}}\n');
+    writeState(project, layout.knowledge('metadata.json'), '{"provider":null}\n');
+    store.saveStore(store.createStore(), statePath(project, layout.knowledge('store.bin')));
 
     // …and the restart's boot finds the store ready and leaves the whole
     // directory out of git: the state's own ignore rule keeps it out.
@@ -96,7 +96,7 @@ describe('engine boot (real scripts)', () => {
 
   it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
     legacyLayout(project);
-    createFile(project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     createFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
     commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();

@@ -26,7 +26,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refuses, refusedPristine, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers, ledgerReadHelpers } = require('./ledger-world.cjs');
 
@@ -55,17 +55,9 @@ function write(verb, address, flags, content) {
   return ledger.write(verb, address, flags, content).id;
 }
 
-/** The ledger as it stands, and the state branch's tip. */
-function written() {
-  return [fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
-}
-
 /** One ledger write that must refuse, writing and committing nothing: its error. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function refused(verb, address, flags, content) {
-  const before = written();
-  const { error } = refuses(dir, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) });
-  assert.deepStrictEqual(written(), before, `ledger ${verb} refused, yet wrote or committed`);
-  return error;
+  return refusedPristine(dir, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).error;
 }
 
 /** @param {string} address @param {string} text @param {string[]} [flags] */
@@ -310,11 +302,11 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     const res = affected('mint');
     assert.deepStrictEqual([res.waiting, res.affected.map((/** @type {Record<string, unknown>} */ e) => [e.id, e.standing, e.waits])], [['mint'], [[relying, { unit: UNIT, topic: 'note-window' }, ['mint']]]]);
     assert.deepStrictEqual(listed('mint', 'mint').ids, [relying]);
-    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, UNIT, 'manifest.json'), 'utf8')).status, 'completed', 'the flag reopened the finished unit');
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, layout.manifest(UNIT)), 'utf8')).status, 'completed', 'the flag reopened the finished unit');
 
     hold(MINT, relying, replacement);
     assert.deepStrictEqual(listed('mint').ids, []);
-    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, UNIT, 'manifest.json'), 'utf8')).status, 'completed');
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, layout.manifest(UNIT)), 'utf8')).status, 'completed');
 
     change('mint.specification', replacement, 'A note is a card.');
     assert.deepStrictEqual([listed('mint'), listed('mint', 'mint').ids], [{ ids: [relying], waiting: [null] }, []]);

@@ -37,7 +37,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
-const { withFrozenClock } = require('./fake-clock.cjs');
+const { withFrozenClock } = require('../../scripts/frozen-clock.cjs');
 const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
 const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { MOD_DIR } = require('../../../skills/workflow-engine/scripts/domain/gate-surface.cjs');

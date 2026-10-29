@@ -33,7 +33,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  NO_SPACE, ok, refuses, stateGit, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture,
+  NO_SPACE, ok, refuses, refusedPristine, statePath, holdLock, lockAttempts, failingTrustAppends, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
@@ -87,17 +87,9 @@ function write(verb, address, flags, content) {
   return ok(dir, ...args(verb, address, flags, content)).id;
 }
 
-/** The ledger as it stands, and the state branch's tip. */
-function written() {
-  return [fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
-}
-
 /** One write that must refuse, writing and committing nothing: its error. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function refused(verb, address, flags, content) {
-  const before = written();
-  const { error } = refuses(dir, ...args(verb, address, flags, content));
-  assert.deepStrictEqual(written(), before, `ledger ${verb} refused, yet wrote or committed`);
-  return error;
+  return refusedPristine(dir, ...args(verb, address, flags, content)).error;
 }
 
 /** A decision answering the place's question, made and moved as `made` says. @param {string} text @param {Record<string, unknown>} made @param {string} [address] */

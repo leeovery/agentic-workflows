@@ -7,7 +7,13 @@
 // come after them. One template is made per process and copied for each
 // fixture, its state worktree relinked by the machinery's repair
 // (`copyWorld`) — as is every richer world the harness makes once per
-// process (`fixtureFrom`, engine-harness.cjs).
+// process (`fixtureFrom`, engine-harness.cjs). A world of several
+// repositories — a project and its remote, two machines — is made once in a
+// folder and copied whole, every repository in the copy moved onto the
+// copy's own paths (`copyFolder`).
+//
+// A path into the state is spelled in one place: `layout` names each place
+// state-relative, and `statePath` finds the state as the engine does.
 
 require('./hermetic-env.cjs');
 
@@ -18,7 +24,12 @@ const { execFileSync } = require('child_process');
 const { beforeEach, afterEach } = require('node:test');
 
 const { createState, repairStateWorktree } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
-const { STATE_DIR_NAME } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const stateRoot = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const { WRITER_LOCK } = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/ledger-events.cjs');
+const { KNOWLEDGE_DIR } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+
+const { STATE_DIR_NAME } = stateRoot;
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {
@@ -58,21 +69,32 @@ function bareRepo(dir, flags = []) {
 const TEMPLATE_DATE = '2026-01-01T00:00:00Z';
 
 /**
+ * Run `fn` in this process with `env` over its environment — `undefined`
+ * taking a key away — and the environment put back after.
+ * @template T @param {Record<string, string|undefined>} env @param {() => T} fn @returns {T}
+ */
+function withEnv(env, fn) {
+  const was = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
+  const put = (/** @type {Record<string, string|undefined>} */ values) => {
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+  put(env);
+  try {
+    return fn();
+  } finally {
+    put(was);
+  }
+}
+
+/**
  * Run `fn` with git dating every commit at `date`.
  * @template T @param {string} date @param {() => T} fn @returns {T}
  */
 function datedAt(date, fn) {
-  const before = { GIT_AUTHOR_DATE: process.env.GIT_AUTHOR_DATE, GIT_COMMITTER_DATE: process.env.GIT_COMMITTER_DATE };
-  process.env.GIT_AUTHOR_DATE = date;
-  process.env.GIT_COMMITTER_DATE = date;
-  try {
-    return fn();
-  } finally {
-    for (const [name, value] of Object.entries(before)) {
-      if (value === undefined) delete process.env[name];
-      else process.env[name] = value;
-    }
-  }
+  return withEnv({ GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, fn);
 }
 
 /** Every template this process made, removed as it exits. @type {string[]} */
@@ -125,6 +147,28 @@ function copyWorld(from, dir) {
 }
 
 /**
+ * A copy of the folder world at `from` at `dir`, the folder made where it is
+ * missing: each repository at its top moved onto the copy — the paths its
+ * config names in the template (a remote beside it) named in the copy, and
+ * its state worktree relinked.
+ * @param {string} from @param {string} dir
+ * @returns {string} dir, symbolic links resolved
+ */
+function copyFolder(from, dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  const at = fs.realpathSync(dir);
+  fs.cpSync(from, at, { recursive: true });
+  for (const name of fs.readdirSync(from)) {
+    const repo = path.join(at, name);
+    const config = path.join(repo, '.git', 'config');
+    if (!fs.existsSync(config)) continue;
+    fs.writeFileSync(config, fs.readFileSync(config, 'utf8').split(`${from}${path.sep}`).join(`${at}${path.sep}`));
+    if (fs.existsSync(path.join(repo, STATE_DIR_NAME, '.git'))) repairStateWorktree(path.join(repo, STATE_DIR_NAME));
+  }
+  return at;
+}
+
+/**
  * A fresh world at `dir`, the folder made where it is missing.
  * @param {string} dir
  * @returns {string} dir, symbolic links resolved — the path the engine names it by
@@ -149,12 +193,89 @@ function cleanupFixture(dir) {
 }
 
 /**
- * An absolute path in the world's state.
+ * An absolute path in the state of the repository `dir` is in, found as the
+ * engine finds it — from a code worktree, the main checkout's — whether or
+ * not the state worktree is there yet. Segments are state-relative, a
+ * `layout` place among them; none names the state root.
  * @param {string} dir @param {...string} segments
  * @returns {string}
  */
 function statePath(dir, ...segments) {
-  return path.join(dir, STATE_DIR_NAME, ...segments);
+  return stateRoot.statePath(dir, ...segments);
+}
+
+/**
+ * The state-relative path a path given in `dir` names, as the engine reads
+ * it: `.` for the state root, null where it lies outside the state.
+ * @param {string} dir @param {string} given
+ * @returns {string|null}
+ */
+function stateRelative(dir, given) {
+  return stateRoot.stateRelative(dir, given);
+}
+
+/**
+ * Where each thing lives in the state, state-relative: the one place a
+ * suite spells the layout on disk (4.11), so a change of layout changes
+ * this and no suite.
+ */
+const layout = Object.freeze({
+  projectManifest: 'manifest.json',
+  ledger: LEDGER,
+  lock: WRITER_LOCK,
+  gitignore: '.gitignore',
+  migrations: '.state/migrations',
+  /** The project's own analysis files. @param {string} name */
+  projectState: (name) => `.state/${name}`,
+  /** An inbox capture. @param {string} kind @param {string} name */
+  inbox: (kind, name) => `.inbox/${kind}/${name}`,
+  /** A declined capture. @param {string} kind @param {string} name */
+  archived: (kind, name) => `.inbox/.archived/${kind}/${name}`,
+  /** The knowledge directory, or a file in it. @param {...string} segments */
+  knowledge: (...segments) => [KNOWLEDGE_DIR, ...segments].join('/'),
+  /** The machine-local cache, or a path in it. @param {...string} segments */
+  cache: (...segments) => ['.cache', ...segments].join('/'),
+  /** A unit's folder, or a path in it. @param {string} unit @param {...string} segments */
+  unit: (unit, ...segments) => [unit, ...segments].join('/'),
+  /** @param {string} unit */
+  manifest: (unit) => `${unit}/manifest.json`,
+  /** A topic's research, discussion or investigation. @param {string} unit @param {string} phase @param {string} topic */
+  doc: (unit, phase, topic) => `${unit}/${phase}/${topic}.md`,
+  /** A topic's waiting messages, or one of them. @param {string} unit @param {string} phase @param {string} topic @param {string} [name] */
+  mailbox: (unit, phase, topic, name) => [unit, phase, '.mailbox', topic, ...(name === undefined ? [] : [name])].join('/'),
+  /** A topic's experiment record, or a path in it. @param {string} unit @param {string} topic @param {...string} segments */
+  experiment: (unit, topic, ...segments) => [unit, 'experiment', topic, ...segments].join('/'),
+  /** @param {string} unit @param {string} topic */
+  spec: (unit, topic) => `${unit}/specification/${topic}/specification.md`,
+  /** @param {string} unit @param {string} topic */
+  plan: (unit, topic) => `${unit}/planning/${topic}/planning.md`,
+  /** A discovery session's log. @param {string} unit @param {string} number zero-padded */
+  session: (unit, number) => `${unit}/discovery/sessions/session-${number}.md`,
+  /** @param {string} unit @param {string} topic */
+  brief: (unit, topic) => `${unit}/discovery/briefs/${topic}.md`,
+  /** A file the person shared. @param {string} unit @param {...string} segments */
+  imports: (unit, ...segments) => [unit, 'imports', ...segments].join('/'),
+  /** A unit's analysis file. @param {string} unit @param {string} name */
+  unitState: (unit, name) => `${unit}/.state/${name}`,
+});
+
+/**
+ * `content` written at the state-relative `rel`, its folders made.
+ * @param {string} dir @param {string} rel @param {string} [content]
+ * @returns {string} the file's absolute path
+ */
+function writeState(dir, rel, content) {
+  return createFile(statePath(dir), rel, content);
+}
+
+/** The text of the state file at the state-relative `rel`. @param {string} dir @param {string} rel */
+function readState(dir, rel) {
+  return fs.readFileSync(statePath(dir, rel), 'utf8');
+}
+
+/** A unit's manifest as it stands on disk. @param {string} dir @param {string} unit */
+function readManifest(dir, unit) {
+  return JSON.parse(readState(dir, layout.manifest(unit)));
 }
 
 function createManifest(dir, name, data) {
@@ -166,9 +287,7 @@ function createManifest(dir, name, data) {
     phases: {},
     ...data,
   };
-  const mdir = statePath(dir, name);
-  fs.mkdirSync(mdir, { recursive: true });
-  fs.writeFileSync(path.join(mdir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  writeState(dir, layout.manifest(name), JSON.stringify(manifest, null, 2));
   return manifest;
 }
 
@@ -203,6 +322,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
-  createManifest, createFile, readFile,
+  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
+  statePath, stateRelative, layout, writeState, readState, readManifest, createManifest, createFile, readFile,
 };

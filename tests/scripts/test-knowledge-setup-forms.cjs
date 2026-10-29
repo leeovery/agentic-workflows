@@ -22,7 +22,7 @@ const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/co
 const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
 
 refuseLaunches();
 
@@ -98,8 +98,8 @@ describe('summaryLines', () => {
     const lines = forms.summaryLines(null);
     assert.match(lines[0], /keyword-only \(BM25\)/);
     assert.strictEqual(lines[2],
-      'Upgrade anytime: `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider ...` '
-      + 'or the interactive `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup`.');
+      `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` `
+      + `or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`);
   });
 
   it('openai shows provider and model only', () => {

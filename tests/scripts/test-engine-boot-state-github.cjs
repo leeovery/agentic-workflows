@@ -26,14 +26,14 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { git, githubOffline, tip, remoteTip } = harness;
+const { git, githubOffline, tip, remoteTip, statePath, layout } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { hostDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { useWorld, engine, codeProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');
+const { useWorld, engine, projectInWorld, cloneInWorld, boot, setUp } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -83,7 +83,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('setup on a GitHub remote offers the rule and, landing through GitHub, the squash default — the state gone to GitHub first', () => {
-    const main = codeProject({ remote: github.url });
+    const main = projectInWorld({ remote: github.url });
 
     const res = boot(main);
 
@@ -92,9 +92,9 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('the rule is offered whatever the landing setting, and the squash default only where the project lands through GitHub', () => {
-    const main = codeProject({ remote: github.url });
+    const main = projectInWorld({ remote: github.url });
     boot(main);
-    const project = path.join(main, '.leeway', 'manifest.json');
+    const project = statePath(main, layout.projectManifest);
     fs.writeFileSync(project, JSON.stringify({ ...JSON.parse(fs.readFileSync(project, 'utf8')), drivers: { landing: 'local' } }, null, 2));
     harness.commitAll(main, 'land locally');
 
@@ -104,7 +104,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('fails closed: the remote reads as GitHub on a port ssh refuses, so a git call the stand-in misses never reaches github.com', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     git(main, ['remote', 'add', 'origin', github.url]);
 
     assert.strictEqual(git(main, ['remote', 'get-url', 'origin']).trim(), 'ssh://git@github.com:0/acme/portal.git');
@@ -117,7 +117,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('draws the offer: the rule and what it refuses, set on yes, left unset on no', () => {
-    const main = codeProject({ remote: github.url });
+    const main = projectInWorld({ remote: github.url });
     boot(main);
 
     const out = engine.output(main, ['render', 'github-rule-gate']);
@@ -139,7 +139,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('draws the squash default\'s offer: what it makes each task land under, set on yes, left on no', () => {
-    const main = codeProject({ remote: github.url });
+    const main = projectInWorld({ remote: github.url });
     boot(main);
 
     const out = engine.output(main, ['render', 'github-squash-gate']);
@@ -161,12 +161,12 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
   });
 
   it('a fresh clone of a project whose offers were answered is never offered them', () => {
-    const main = codeProject({ remote: github.url });
+    const main = projectInWorld({ remote: github.url });
     boot(main);
     engine.ok(main, ['github-rule', 'no']);
     engine.ok(main, ['github-squash', 'no']);
     git(main, ['push', '-q', 'origin', 'main']);
-    const fresh = cloneOf(github.url, 'fresh');
+    const fresh = cloneInWorld(github.url, 'fresh');
 
     const res = boot(fresh);
 
@@ -176,8 +176,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
 
 describe('beyond GitHub', () => {
   it('a remote that is not on GitHub is offered nothing, and a yes there is refused', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main } = setUp({ remote: true });
 
     const res = boot(main);
 

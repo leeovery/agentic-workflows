@@ -15,6 +15,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+const { layout } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const {
@@ -24,7 +25,7 @@ const {
 describe('the rules each file merges by', () => {
   it('reads the ledger, the migrations record, each manifest and any other JSON file by its path', () => {
     assert.deepStrictEqual(
-      ['.ledger.jsonl', '.state/migrations', 'manifest.json', 'auth-flow/manifest.json', '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/data.json', 'unit/events.jsonl', 'unit/topics/a/log.md'].map(ruleOf),
+      [layout.ledger, layout.migrations, layout.projectManifest, layout.manifest('auth-flow'), '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/data.json', 'unit/events.jsonl', 'unit/topics/a/log.md'].map(ruleOf),
       ['ledger', 'migrations', 'manifest', 'manifest', 'whole', 'whole', 'whole', 'whole', 'file'],
     );
   });
@@ -50,7 +51,7 @@ describe('the rules each file merges by', () => {
   });
 
   /** A unit's manifest merged. @param {unknown} base @param {any} local @param {any} remote @param {any} [pickOf] */
-  const merged = (base, local, remote, pickOf) => mergeManifest('pay/manifest.json', base, local, remote, pickOf);
+  const merged = (base, local, remote, pickOf) => mergeManifest(layout.manifest('pay'), base, local, remote, pickOf);
 
   it('recurses into nested objects, a field each side changed kept from that side', () => {
     const out = merged({ a: { x: 1, y: 1 }, b: 1 }, { a: { x: 2, y: 1 }, b: 1 }, { a: { x: 1, y: 3 }, b: 1 });
@@ -88,10 +89,10 @@ describe('the rules each file merges by', () => {
 
   it('keeps the remote\'s project_id where the project manifests hold two, with or without an ancestor, never a choice; elsewhere the field is one like any other (4.7.12)', () => {
     const [here, there] = [{ project_id: 'here-id', a: 1 }, { project_id: 'there-id', b: 1 }];
-    assert.deepStrictEqual(mergeManifest('manifest.json', undefined, here, there), { value: { project_id: 'there-id', b: 1, a: 1 }, conflicts: [] });
-    assert.deepStrictEqual(mergeManifest('manifest.json', { project_id: 'old' }, here, there).conflicts, []);
+    assert.deepStrictEqual(mergeManifest(layout.projectManifest, undefined, here, there), { value: { project_id: 'there-id', b: 1, a: 1 }, conflicts: [] });
+    assert.deepStrictEqual(mergeManifest(layout.projectManifest, { project_id: 'old' }, here, there).conflicts, []);
     assert.deepStrictEqual(merged(undefined, here, there).conflicts.map((c) => c.field), [['project_id']]);
-    assert.deepStrictEqual(mergeManifest('manifest.json', {}, { x: { project_id: 'a' } }, { x: { project_id: 'b' } }).conflicts.map((c) => c.field), [['x', 'project_id']]);
+    assert.deepStrictEqual(mergeManifest(layout.projectManifest, {}, { x: { project_id: 'a' } }, { x: { project_id: 'b' } }).conflicts.map((c) => c.field), [['x', 'project_id']]);
   });
 
   it('takes the picked side where a pick is given for the choice', () => {
@@ -102,12 +103,12 @@ describe('the rules each file merges by', () => {
   });
 
   it('names a choice by its manifest, its step, its field and both values, whatever the pick or the values\' key order', () => {
-    const choice = { manifest: 'manifest.json', uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
+    const choice = { manifest: layout.projectManifest, uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
     const id = choiceId(choice);
     assert.match(id, /^[0-9a-f]{12}$/);
     assert.strictEqual(choiceId({ ...choice, local: { set: true, value: { y: 2, x: [1] } }, pick: 'local' }), id);
     for (const other of [
-      { manifest: 'auth-flow/manifest.json' }, { uncommitted: true }, { field: ['a', 'c'] },
+      { manifest: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
       { local: { set: true, value: { x: [2], y: 2 } } }, { remote: { set: true, value: null } },
     ]) {
       assert.notStrictEqual(choiceId({ ...choice, ...other }), id, JSON.stringify(other));
@@ -124,13 +125,13 @@ describe('the rules each file merges by', () => {
   });
 
   it('labels a field by the entry it belongs to and its meaning, else by its path', () => {
-    assert.deepStrictEqual(conflictLabel('manifest.json', ['roadmap', 'items', 'a-lifetime-tier', 'horizon'], 'Fumi'), {
+    assert.deepStrictEqual(conflictLabel(layout.projectManifest, ['roadmap', 'items', 'a-lifetime-tier', 'horizon'], 'Fumi'), {
       owner: "Fumi's project manifest", subject: 'the roadmap item "A lifetime tier"', name: 'A lifetime tier', field: 'horizon', path: 'roadmap.items.a-lifetime-tier.horizon',
     });
-    assert.deepStrictEqual(conflictLabel('manifest.json', ['roadmap', 'items', 'a-lifetime-tier'], 'Fumi'), {
+    assert.deepStrictEqual(conflictLabel(layout.projectManifest, ['roadmap', 'items', 'a-lifetime-tier'], 'Fumi'), {
       owner: "Fumi's project manifest", subject: 'the roadmap item "A lifetime tier"', name: 'A lifetime tier', field: null, path: 'roadmap.items.a-lifetime-tier',
     });
-    assert.deepStrictEqual(conflictLabel('auth-flow/manifest.json', ['build', 'plan_format'], 'Fumi'), {
+    assert.deepStrictEqual(conflictLabel(layout.manifest('auth-flow'), ['build', 'plan_format'], 'Fumi'), {
       owner: "Auth Flow's manifest", subject: null, name: null, field: 'plan format', path: 'build.plan_format',
     });
   });

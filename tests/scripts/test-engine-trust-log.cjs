@@ -40,7 +40,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { NO_SPACE, contend, failingTrustAppends, lockAttempts } = require('./engine-harness.cjs');
+const { NO_SPACE, STATE_DIR_NAME, statePath, layout, contend, failingTrustAppends, lockAttempts } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -109,9 +109,9 @@ function logText() {
  */
 function project(name, manifest = { project_id: PROJECT_ID }) {
   const dir = path.join(folder(), name);
-  const root = path.join(dir, '.leeway');
+  const root = path.join(dir, STATE_DIR_NAME);
   fs.mkdirSync(root, { recursive: true });
-  if (manifest !== null) fs.writeFileSync(path.join(root, 'manifest.json'), JSON.stringify(manifest));
+  if (manifest !== null) fs.writeFileSync(path.join(root, layout.projectManifest), JSON.stringify(manifest));
   pinStateRoot(dir, root);
   return dir;
 }
@@ -241,7 +241,7 @@ describe('record (16.13.4)', () => {
 
   it('an event recorded before the project has state carries no project', () => {
     const dir = path.join(folder(), 'setting-up');
-    pinStateRoot(dir, path.join(dir, '.leeway'));
+    pinStateRoot(dir, path.join(dir, STATE_DIR_NAME));
 
     const event = record('gate', SAMPLES.gate, from(dir));
 
@@ -252,12 +252,12 @@ describe('record (16.13.4)', () => {
   it('refuses a project whose manifest holds no project_id, never filling one in: nothing recorded, the manifest as it was, and its verdicts unread (16.13.5)', () => {
     for (const [name, manifest] of /** @type {const} */ ([['before-ids', { work_units: {} }], ['no-manifest', null]])) {
       const dir = project(name, manifest);
-      const file = path.join(dir, '.leeway', 'manifest.json');
+      const file = statePath(dir, layout.projectManifest);
       const before = manifest === null ? null : fs.readFileSync(file, 'utf8');
 
       const message = `the project manifest at ${file} holds no project_id — setup gives the project one as it creates the state, and the trust log knows the project by it`;
       assert.throws(() => record('call', SAMPLES.call, from(dir)), { message });
-      assert.throws(() => judgedDepartures(path.join(dir, '.leeway')), { message });
+      assert.throws(() => judgedDepartures(statePath(dir)), { message });
       assert.strictEqual(fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null, before, name);
     }
     assert.ok(!fs.existsSync(logPath()));
@@ -306,7 +306,7 @@ describe('appending', () => {
       'const ids = [];',
       `while (ids.length < 10 || (!fs.existsSync(met) && ids.length < 1000)) ids.push(record('call', ${JSON.stringify(SAMPLES.call)}, { cwd, warnings: [] }).id);`,
       'report({ taken, ids });',
-    ].join('\n'), [dir, path.join(dir, '.leeway'), lock, met]);
+    ].join('\n'), [dir, statePath(dir), lock, met]);
 
     assert.ok(reports[0].taken + reports[1].taken > 0, 'neither found the lock held: the two never met');
     const { events, unread } = readAll();
@@ -416,7 +416,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
   it('before the project has state, waits in a folder made for the conversation, which the engine has not marked, and lands with its next record (16.13.5)', (t) => {
     const dir = path.join(folder(), 'setting-up');
-    pinStateRoot(dir, path.join(dir, '.leeway'));
+    pinStateRoot(dir, path.join(dir, STATE_DIR_NAME));
     inConversation(dir, () => {
       const failing = failingTrustAppends(t);
       /** @type {string[]} */
@@ -496,7 +496,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
       /** @type {any[]} */
       let reports;
       try {
-        reports = await contend(2, race, (i) => [i === 0 ? role : 'keeper', dir, path.join(dir, '.leeway'), waitingPath(), tried, kept]);
+        reports = await contend(2, race, (i) => [i === 0 ? role : 'keeper', dir, statePath(dir), waitingPath(), tried, kept]);
       } finally {
         delete process.env.CLAUDE_CODE_SESSION_ID;
       }
@@ -561,7 +561,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
   it('keeps an event ahead of its entry until a landing judges it by the ledger it waits on: one from another state leaves it, one from its own lands it once the entry is there, and one holding that state\'s writer lock lets go of it where the entry never came', () => {
     const dir = project('fumi');
     const elsewhere = project('aircon', { project_id: idOf('Aircon') });
-    const [root, theirs] = [dir, elsewhere].map((at) => path.join(at, '.leeway'));
+    const [root, theirs] = [dir, elsewhere].map((at) => statePath(at));
     const [appended, never] = ['Appended', 'Never'].map(idOf);
     fs.writeFileSync(path.join(root, '.ledger.jsonl'), `${JSON.stringify({ id: appended })}\n`);
     /** @type {string[]} */
@@ -601,7 +601,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
   it('leaves waiting, never dropped, a kept line of a version it does not write — none, a later one — and one holding a newer release\'s event, though its entry is there and the writer lock held; a landing that changes nothing leaves the file as it was', () => {
     const dir = project('fumi');
-    const root = path.join(dir, '.leeway');
+    const root = statePath(dir);
     const entry = idOf('Appended');
     fs.writeFileSync(path.join(root, '.ledger.jsonl'), `${JSON.stringify({ id: entry })}\n`);
     const event = newEvent('call', { ...SAMPLES.call, entry }, dir);
@@ -660,8 +660,8 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
     give(elsewhere, theirs, 'nothing', 'close');
     record('call', { ...SAMPLES.call, entry: skipped }, from(dir));
 
-    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([judged, later]));
-    assert.deepStrictEqual(judgedDepartures(path.join(elsewhere, '.leeway')), new Set([theirs]));
+    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([judged, later]));
+    assert.deepStrictEqual(judgedDepartures(statePath(elsewhere)), new Set([theirs]));
   });
 
   it('takes an entry\'s latest verdict by when it was given, the log\'s order breaking a tie: a skip given after a fix stands, and a skip that waited, landing after a later fix, does not', () => {
@@ -676,7 +676,7 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
       given(tied, 'skip', '3'), given(tied, 'fix', '3'),
     ));
 
-    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([kept, tied]));
+    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([kept, tied]));
   });
 
   it('breaks a tie between the log and what a conversation keeps waiting by the order read, the waiting read after: a skip waiting after a logged loss leaves the departure waiting, a fix waiting after a logged skip judges it', () => {
@@ -689,7 +689,7 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
     fs.writeFileSync(logPath(), lines(given(skipWaits, 'loss'), given(fixWaits, 'skip')));
     fs.writeFileSync(waiting, lines(given(skipWaits, 'skip'), given(fixWaits, 'fix')));
 
-    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([fixWaits]));
+    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([fixWaits]));
   });
 
   it('holds another project\'s verdict on an entry of the same id, logged or waiting in a conversation, as none of this project\'s', (t) => {
@@ -706,6 +706,6 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
       delete process.env.CLAUDE_CODE_SESSION_ID;
     }
 
-    assert.deepStrictEqual([judgedDepartures(path.join(dir, '.leeway')), judgedDepartures(path.join(elsewhere, '.leeway'))], [new Set(), new Set([ENTRY, waited])]);
+    assert.deepStrictEqual([judgedDepartures(statePath(dir)), judgedDepartures(statePath(elsewhere))], [new Set(), new Set([ENTRY, waited])]);
   });
 });

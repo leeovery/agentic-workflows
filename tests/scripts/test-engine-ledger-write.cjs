@@ -27,12 +27,12 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 const {
-  ENGINE, git, lockAttempts, ok, output, refuses, stateGit, statePath, ledgerEntries, cleanupFixture,
+  ENGINE, git, lockAttempts, ok, output, refuses, head, stateGit, statePath, stateRelative, layout, ledgerEntries, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -53,7 +53,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { write, ledgerText, rawLines, entries, stateTip, full, assertLast, assertAnswered, refused, ask, find, decide, change, oneOfEach } = ledgerWriteHelpers(() => dir);
+const { write, ledgerText, rawLines, entries, full, assertLast, assertAnswered, refused, ask, find, decide, change, oneOfEach } = ledgerWriteHelpers(() => dir);
 
 describe('the write verbs (6.1.4)', () => {
   it('ask: a question on a topic\'s map, part of another and relying on what it names, the line written field by field', () => {
@@ -97,9 +97,9 @@ describe('the write verbs (6.1.4)', () => {
     const files = (at) => fs.readdirSync(at, { withFileTypes: true }).flatMap((e) => {
       const rel = path.join(at, e.name);
       if (e.isDirectory()) return files(rel);
-      return [path.relative(statePath(dir), rel)];
+      return [stateRelative(dir, rel)];
     });
-    assert.deepStrictEqual(files(statePath(dir)).filter((file) => /ledger/i.test(file)), [LEDGER], 'the project has one ledger, and no other per unit or elsewhere');
+    assert.deepStrictEqual(files(statePath(dir)).filter((file) => /ledger/i.test(file)), [layout.ledger], 'the project has one ledger, and no other per unit or elsewhere');
   });
 
   it('decide: Claude\'s own call with its alternatives and evidence, the content it leaves out taking its defaults', () => {
@@ -304,8 +304,8 @@ describe('content and links', () => {
       v: 1, id, event: 'found', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
       ...MADE, text: `Found ${id}.`, how: 'by hand', relies_on: [], product_wide: false,
     })));
-    fs.writeFileSync(statePath(dir, LEDGER), `${lines.join('\n')}\n`);
-    withStateLock(statePath(dir), () => commitState(statePath(dir), [LEDGER], 'state: two findings'));
+    fs.writeFileSync(statePath(dir, layout.ledger), `${lines.join('\n')}\n`);
+    withStateLock(statePath(dir), () => commitState(statePath(dir), [layout.ledger], 'state: two findings'));
     const content = { ...MADE, text: 'Floating.', why: 'Furniture.' };
 
     refused('decide', NOTE, ['--answers', 'Zz9Zz9'], content, /^ledger decide --answers: no ledger entry's id begins "Zz9Zz9"$/);
@@ -448,12 +448,12 @@ describe('scenarios', () => {
     const question = ask().id;
     decide(question, { text: 'Floats above every Space.' });
     decide(question, { text: 'Its controls appear on hover.' });
-    execFileSync('sh', ['-c', 'sed \'2s/"text":"[^"]*"/"text":"Changed by hand."/\' .ledger.jsonl > .ledger.edit && mv .ledger.edit .ledger.jsonl'], { cwd: statePath(dir) });
+    execFileSync('sh', ['-c', `sed '2s/"text":"[^"]*"/"text":"Changed by hand."/' ${layout.ledger} > .ledger.edit && mv .ledger.edit ${layout.ledger}`], { cwd: statePath(dir) });
     const tampered = ledgerText();
 
     const res = refuses(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'After the edit?' }) });
 
-    assert.deepStrictEqual([res.stop, res.error], ['ledger', '.ledger.jsonl changed outside the engine: line 2 is not the line committed there — the engine stops here']);
+    assert.deepStrictEqual([res.stop, res.error], ['ledger', `${layout.ledger} changed outside the engine: line 2 is not the line committed there — the engine stops here`]);
     assert.strictEqual(ledgerText(), tampered, 'the stop appended');
     const screen = output(dir, ['render', 'ledger-stop']);
     assert.match(screen, /line 2 isn't the line the state branch last committed there\. The line it found:\n> \s+\{"v":1,"id":"/);
@@ -463,7 +463,7 @@ describe('scenarios', () => {
 
 describe('the writer lock and the commit', () => {
   it('commits the ledger alone to the state branch in the same verb, leaving the state\'s other changes uncommitted', () => {
-    fs.writeFileSync(statePath(dir, UNIT, 'notes.md'), 'a session\'s own file\n');
+    fs.writeFileSync(statePath(dir, layout.unit(UNIT, 'notes.md')), 'a session\'s own file\n');
     const before = stateGit(dir, ['status', '--porcelain']);
 
     const res = ask();
@@ -480,14 +480,14 @@ describe('the writer lock and the commit', () => {
 
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
+    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
   });
 
   it('answers a commit git refuses as a warning, the entry standing in the ledger, pending; the next write commits it with its own', () => {
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(dir, 'git-'));
     fs.writeFileSync(path.join(wrapper, 'git'), `#!/bin/sh\ncase "$*" in *commit-tree*) echo "fatal: refused here" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`, { mode: 0o755 });
-    const tip = stateTip();
+    const tip = head(dir);
 
     const res = write('ask', NOTE, [], { ...MADE, text: 'Committed later?' }, { ...SESSION, PATH: `${wrapper}:${process.env.PATH}` });
 
@@ -495,17 +495,17 @@ describe('the writer lock and the commit', () => {
     assert.strictEqual(res.committed, null);
     assert.strictEqual(res.note, 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it');
     assert.match(res.warnings[0], /^commit failed: git commit-tree failed: fatal: refused here$/);
-    assert.strictEqual(stateTip(), tip);
+    assert.strictEqual(head(dir), tip);
     assert.strictEqual(entries().at(-1).text, 'Committed later?');
 
     ask('Committed with it?');
 
-    assert.deepStrictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]).split('\n').slice(0, -1).map((line) => JSON.parse(line).text), ['Committed later?', 'Committed with it?']);
+    assert.deepStrictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]).split('\n').slice(0, -1).map((line) => JSON.parse(line).text), ['Committed later?', 'Committed with it?']);
   });
 
   it('answers what it refuses without the lock — its argv, its place, its content in the shape of the kind it writes — at once, while a live peer holds it', (t) => {
     const question = ask().id;
-    const lock = statePath(dir, '.lock');
+    const lock = statePath(dir, layout.lock);
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
     const stdin = JSON.stringify({ ...MADE, text: 'Answered at once?' });
     const attempts = lockAttempts(t, lock, () => { throw new Error('a refusal waited on the lock'); });
@@ -527,7 +527,7 @@ describe('the writer lock and the commit', () => {
 
   it('reads the place a write is made, and a move\'s destination, live again under the lock: a topic cancelled while the write waited takes nothing', (t) => {
     const question = ask().id;
-    const lock = statePath(dir, '.lock');
+    const lock = statePath(dir, layout.lock);
     const peer = JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
     let taken = 0;
     // The peer cancels space-homing and lets go once the write has found the lock held and tried again.
@@ -572,7 +572,7 @@ describe('the writer lock and the commit', () => {
     });
     let done = false;
     const landed = Promise.all(writers).finally(() => { done = true; });
-    const file = statePath(dir, LEDGER);
+    const file = statePath(dir, layout.ledger);
     let meanwhile = 0;
     let read = 0;
 
@@ -600,7 +600,7 @@ describe('the writer lock and the commit', () => {
     for (const session of ['session-a', 'session-b']) {
       assert.deepStrictEqual(all.filter((e) => e.session === session).map((e) => e.text), [...Array(EACH).keys()].map((i) => `${session} asks ${i}`));
     }
-    assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
+    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
     assert.strictEqual(stateGit(dir, ['rev-list', '--merges', 'HEAD']), '');
   });
 });

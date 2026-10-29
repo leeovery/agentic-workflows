@@ -35,7 +35,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, holdLock, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
+const { git, codeProject, tip, traced, withFrozenClock, FROZEN_MS, holdLock, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, layout, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
@@ -47,7 +47,7 @@ const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent
 const { ID_LENGTH, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { convertLedger } = require(CONVERSION_MODULE);
-const { STATE_BRANCH, createState, withStateLock, commitState, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { STATE_BRANCH, withStateLock, commitState, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { ledgerStop } = require(path.join(SCRIPTS, 'domain/projections/ledger.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 
@@ -64,28 +64,8 @@ afterEach(() => {
 
 const TAGS = Object.freeze({ unit: 'fumi', topic: 'note-window', phase: 'discussion', session: 'session-1' });
 const AT = '2026-10-27T09:00:00Z';
-
-/**
- * A project named Fumi with one code commit, and its state.
- * @param {{objectFormat?: 'sha1'|'sha256'}} [opts]
- * @returns {{main: string, root: string}}
- */
-function project({ objectFormat = 'sha1' } = {}) {
-  const main = path.join(world, 'fumi');
-  if (objectFormat === 'sha1') {
-    initRepo(main);
-  } else {
-    fs.mkdirSync(main);
-    git(main, ['init', '-q', '-b', 'main', `--object-format=${objectFormat}`]);
-    testIdentity(main);
-  }
-  fs.writeFileSync(path.join(main, 'README.md'), '# Fumi\n');
-  git(main, ['add', 'README.md']);
-  git(main, ['commit', '-q', '-m', 'code']);
-  const root = path.join(main, '.leeway');
-  createState(root);
-  return { main, root };
-}
+// A project named Fumi with one code commit, and its state.
+const FUMI = Object.freeze({ name: 'fumi', state: true });
 
 /** A question's fields. @param {Record<string, unknown>} [fields] */
 function question(fields = {}) {
@@ -115,11 +95,6 @@ function commitLedger(root, message = 'state: the ledger') {
   return withStateLock(root, () => commitState(root, [LEDGER], message));
 }
 
-/** @param {string} dir @param {string} ref */
-function tip(dir, ref) {
-  return git(dir, ['rev-parse', ref]).trim();
-}
-
 /** A question and two decisions on it appended and committed: the ledger's three lines. @param {string} root @returns {string[]} */
 function threeCommitted(root) {
   const q = appendEntry(root, question(), []);
@@ -146,23 +121,6 @@ function stopped(root) {
   return change;
 }
 
-/**
- * Run `fn` with git tracing into a file, answering the git commands traced.
- * @template T @param {() => T} fn @returns {{result: T, traced: string[]}}
- */
-function traced(fn) {
-  const file = path.join(world, 'git-trace.log');
-  fs.rmSync(file, { force: true });
-  process.env.GIT_TRACE = file;
-  try {
-    const result = fn();
-    const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    return { result, traced: [...log.matchAll(/trace: built-in: git (.*)$/gm)].map((m) => m[1]) };
-  } finally {
-    delete process.env.GIT_TRACE;
-  }
-}
-
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
   const BY = ['by', 'who_moved_whom'];
@@ -171,7 +129,7 @@ describe('the events and their schemas', () => {
   const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked'];
 
   it('writes every event §5 names, and merged and checked, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const q = /** @type {string} */ (appendEntry(root, question(), []).id);
     const f = /** @type {string} */ (appendEntry(root, { event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'documented', relies_on: [], product_wide: false }, []).id);
     const d = /** @type {string} */ (appendEntry(root, decision(q, { relies_on: [f] }), []).id);
@@ -240,14 +198,13 @@ describe('the events and their schemas', () => {
   });
 
   it('gives an entry its version, id and time, and refuses a caller naming any of them, appending nothing', () => {
-    const { root } = project();
-    const before = Date.now() - 1000;
+    const { root } = codeProject(world, FUMI);
 
-    const entry = appendEntry(root, question(), []);
+    const entry = withFrozenClock(() => appendEntry(root, question(), []));
 
     assert.strictEqual(entry.v, LEDGER_VERSION);
     assert.match(/** @type {string} */ (entry.id), new RegExp(`^[0-9A-Za-z]{${ID_LENGTH}}$`));
-    assert.ok(Date.parse(/** @type {string} */ (entry.at)) >= before && Date.parse(/** @type {string} */ (entry.at)) <= Date.now());
+    assert.strictEqual(Date.parse(/** @type {string} */ (entry.at)), FROZEN_MS);
     assert.deepStrictEqual(JSON.parse(ledgerText(root)), entry);
     for (const assigned of [{ id: newId() }, { v: 1 }, { at: AT }]) {
       assert.throws(() => appendEntry(root, question(assigned), []), /is the engine's to give — nothing appended/);
@@ -289,7 +246,7 @@ describe('ids', () => {
 
 describe('the streamed reader', () => {
   it('reads every entry in order, each line read as an event of the current shape; no ledger reads as none', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     assert.deepStrictEqual(ledgerEntries(root), []);
     const written = [appendEntry(root, question(), [])];
     written.push(appendEntry(root, decision(/** @type {string} */ (written[0].id)), []));
@@ -300,7 +257,7 @@ describe('the streamed reader', () => {
   });
 
   it('refuses a line that is no entry, naming its number: one that is not JSON, one of another shape, and an unfinished last line', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     commitLedger(root);
     const committed = ledgerText(root);
@@ -317,7 +274,7 @@ describe('the streamed reader', () => {
   });
 
   it('reads a line written before a later version added a field as valid, the field taking its stated default; a line of that version must carry it (5.S24)', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     const line = ledgerText(root).trim();
     const flag = { is: 'true or false', test: (/** @type {unknown} */ v) => typeof v === 'boolean' };
@@ -341,7 +298,7 @@ describe('the streamed reader', () => {
   });
 
   it('stops on a line a newer release wrote, keeping its stop, and never reads it; a line of a version it knows with a field or an event it does not is a broken line', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     commitLedger(root);
     const newer = JSON.stringify({ ...q, v: 2, id: newId(), raised: true });
@@ -372,7 +329,7 @@ describe('the streamed reader', () => {
   });
 
   it('reads a ledger past the 64 MiB a pipe holds a line at a time: the check hashes it, extracting nothing, and only finding a changed line writes the blob out', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     git(main, ['config', 'core.looseCompression', '0']);
     const file = path.join(root, LEDGER);
     const fd = fs.openSync(file, 'w');
@@ -400,7 +357,7 @@ describe('the streamed reader', () => {
       return read;
     }));
     assert.strictEqual(clean.result, count);
-    assert.ok(clean.traced.every((call) => !/^(cat-file blob|show)\b/.test(call)), `the clean read wrote a blob out: ${clean.traced}`);
+    assert.ok(clean.commands.every((call) => !/^(cat-file blob|show)\b/.test(call)), `the clean read wrote a blob out: ${clean.commands}`);
 
     appendEntry(root, question(), []);
     assert.notStrictEqual(commitLedger(root, 'state: one more').commit, null);
@@ -412,14 +369,14 @@ describe('the streamed reader', () => {
     }
     const changed = traced(() => stopped(root));
     assert.deepStrictEqual(changed.result, { line: count, found: `${last.slice(0, -10)}X${last.slice(-9, -1)}` });
-    assert.ok(changed.traced.some((call) => call.startsWith('cat-file blob')), `finding the line wrote no blob out: ${changed.traced}`);
+    assert.ok(changed.commands.some((call) => call.startsWith('cat-file blob')), `finding the line wrote no blob out: ${changed.commands}`);
     assert.throws(() => commitLedger(root), LedgerChanged);
   });
 });
 
 describe('the append', () => {
   it('appends each entry as a whole line after the last, never editing a line before it', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const texts = [];
     const q = appendEntry(root, question(), []);
     texts.push(ledgerText(root));
@@ -435,7 +392,7 @@ describe('the append', () => {
   });
 
   it('replaces the file whole: killed before the rename, the ledger stands as it was with no half line, and the next append clears the copy left', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     const before = ledgerText(root);
     const file = path.join(root, LEDGER);
@@ -461,10 +418,10 @@ describe('the append', () => {
   });
 
   it('appends under the writer lock, timed under it: a live peer holding it, the append waits, then lands with the time it took the lock', (t) => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     appendEntry(root, question(), []);
     const before = ledgerText(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     /** @type {string[]} */
     const whileHeld = [];
     let released = 0;
@@ -486,7 +443,7 @@ describe('the append', () => {
   });
 
   it('refuses to append to a ledger the check stops on, or one ending in an unfinished line, appending nothing', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const lines = threeCommitted(root);
     writeLedger(root, `${lines[0]}\n${lines[2]}\n`);
     assert.throws(() => appendEntry(root, question(), []), LedgerChanged);
@@ -499,7 +456,7 @@ describe('the append', () => {
   });
 
   it('counts the entries appends left uncommitted past the committed ledger, every line where none is committed and none where the ledger changed other than at its end, and commits them pushing nothing (4.7.8)', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
     appendEntry(root, question({ text: 'Never committed?' }), []);
     assert.deepStrictEqual(tail(), { entries: 1, warnings: [] });
@@ -523,7 +480,7 @@ describe('the append', () => {
   });
 
   it('commits nothing of a tail holding a line no read takes — not JSON, JSON that is no entry, an id an earlier line holds, named with the line holding it — or a last line with no newline, refused, naming the line; a tail of entries alone commits (4.7.8, 5.4.4)', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const [first] = threeCommitted(root);
     const committed = [ledgerText(root), tip(main, STATE_BRANCH)];
     const kept = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Left by a kill?' }) }));
@@ -548,7 +505,7 @@ describe('the append', () => {
 
 describe('the append-only check on a read', () => {
   it('passes a ledger as committed, and one grown only at its end', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     checkLedger(root, []);
     threeCommitted(root);
     checkLedger(root, []);
@@ -557,7 +514,7 @@ describe('the append-only check on a read', () => {
   });
 
   it('stops on a rewritten line, a removed one, two swapped, a truncated last line, a blank line put in, a file shorter than the committed one, and none: showing the first line not as committed', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const [a, b, c] = threeCommitted(root);
     const rewritten = b.replace('A near-frameless floating note.', 'A floating note.');
     const cases = [
@@ -578,7 +535,7 @@ describe('the append-only check on a read', () => {
   });
 
   it('hashes the file against the blob in a repository whose objects are named by sha256 too', () => {
-    const { main, root } = project({ objectFormat: 'sha256' });
+    const { main, root } = codeProject(world, { ...FUMI, objectFormat: 'sha256' });
     const [a, b, c] = threeCommitted(root);
     assert.strictEqual(git(main, ['rev-parse', `${STATE_BRANCH}:${LEDGER}`]).trim().length, 64);
     checkLedger(root, []);
@@ -590,7 +547,7 @@ describe('the append-only check on a read', () => {
   });
 
   it('reads the branch before the file: an append committed between the two reads never reads as a change, and the check waits on no lock', (t) => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     threeCommitted(root);
     const later = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Landed between the reads?' }) }));
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
@@ -610,7 +567,7 @@ describe('the append-only check on a read', () => {
       'exec "$real" "$@"',
       '',
     ].join('\n'), { mode: 0o755 });
-    const attempts = lockAttempts(t, holdLock(path.join(root, '.lock')), () => {
+    const attempts = lockAttempts(t, holdLock(path.join(root, layout.lock)), () => {
       throw new Error('the check tried the writer lock');
     });
     const { PATH } = process.env;
@@ -627,9 +584,9 @@ describe('the append-only check on a read', () => {
   });
 
   it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', (t) => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     writeLedger(root, `${b}\n${a}\n`);
     // The landing, holding the lock, moves the branch and lets go once the check has found the lock held.
     const attempts = lockAttempts(t, lock, () => {
@@ -643,7 +600,7 @@ describe('the append-only check on a read', () => {
   });
 
   it('clears the blobs a killed check left written out in the git dir, never a running process\'s', () => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
     const gitDir = gitDirOf(root);
     const gone = spawnSync('node', ['-e', '0']).pid;
@@ -662,14 +619,14 @@ describe('the append-only check on a read', () => {
   });
 
   it('stops once it holds the lock where the ledger is still not as committed', (t) => {
-    const { root } = project();
+    const { root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     writeLedger(root, `${b}\n${a}\n`);
     const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
 
     assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged
-      && err.message === '.ledger.jsonl changed outside the engine: line 1 is not the line committed there — the engine stops here');
+      && err.message === `${layout.ledger} changed outside the engine: line 1 is not the line committed there — the engine stops here`);
 
     assert.deepStrictEqual(attempts, ['taken', 'made']);
   });
@@ -677,18 +634,18 @@ describe('the append-only check on a read', () => {
 
 describe('the append-only check on a state commit (5.S6)', () => {
   it('commits a ledger that only grew, and a commit that leaves the ledger alone', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     threeCommitted(root);
     appendEntry(root, question(), []);
     assert.notStrictEqual(commitLedger(root).commit, null);
-    fs.writeFileSync(path.join(root, 'manifest.json'), '{}\n');
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
     writeLedger(root, 'not the ledger committed\n');
-    assert.notStrictEqual(withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest')).commit, null);
+    assert.notStrictEqual(withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest')).commit, null);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]).split('\n').length, 5);
   });
 
   it('refuses a commit whose ledger does not start, byte for byte, with its parent\'s: a rewritten line, a removed one, a truncated last line, a shorter file, none — nothing committed', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const [a, b, c] = threeCommitted(root);
     const before = tip(main, STATE_BRANCH);
     const rewritten = c.replace('Its controls appear on hover.', 'Its controls are always shown.');
@@ -711,7 +668,7 @@ describe('the append-only check on a state commit (5.S6)', () => {
   });
 
   it('judges the ledger the commit holds, not the file, where the two differ', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
     const worktree = /** @type {import('../../skills/workflow-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root));
     /** @param {string} text */
@@ -778,7 +735,7 @@ describe('the stop\'s screen (5.4.4)', () => {
   });
 
   it('draws the stop the engine kept, the id in its shortest form among the ledger\'s ids, and refuses where none is kept', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const twin = `${newId().slice(0, 7)}`;
     const [a, b] = [`${twin}${newId().slice(0, 14)}`, `${twin}${newId().slice(0, 14)}`];
     const lines = [a, b].map((id) => JSON.stringify(validEvent({ v: 1, id, at: AT, ...question() })));
@@ -792,8 +749,8 @@ describe('the stop\'s screen (5.4.4)', () => {
     const shared = [...a].findIndex((ch, i) => ch !== b[i]);
     assert.ok(ledgerStopSurface(main, {}).includes(`{"v":1,"id":"${b.slice(0, Math.max(6, shared + 1))}…"`));
     writeLedger(root, `${lines.join('\n')}\n`);
-    fs.writeFileSync(path.join(root, 'manifest.json'), '{}\n');
-    withStateLock(root, () => commitState(root, ['manifest.json'], 'state: a commit lands'));
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
+    withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: a commit lands'));
     assert.throws(() => ledgerStopSurface(main, {}), /no stop on the ledger is kept/);
   });
 });
@@ -836,7 +793,7 @@ function passFile(root) {
 
 describe('the conversion door (5.S25)', () => {
   it('converts the stream, every event through with its id in its order; the commit carrying the copy passes the check, that commit alone, and git keeps the original byte for byte', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
 
     assert.deepStrictEqual(migrationAt('migrations/900-ledger-event-field.cjs', TO_CURRENT).run({ projectDir: main }), { events: 2, warnings: [] });
@@ -844,8 +801,8 @@ describe('the conversion door (5.S25)', () => {
     const converted = ledgerEntries(root);
     assert.deepStrictEqual(converted.map((e) => e.event), ['asked', 'decided']);
     assert.deepStrictEqual(converted.map((e) => e.id), original.trim().split('\n').map((line) => JSON.parse(line).id));
-    fs.writeFileSync(path.join(root, 'manifest.json'), '{}\n');
-    withStateLock(root, () => commitState(root, ['manifest.json'], 'state: not the ledger'));
+    fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
+    withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: not the ledger'));
     assert.ok(fs.existsSync(passFile(root)), 'a commit without the copy spent the pass');
 
     assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
@@ -860,7 +817,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('refuses a copy that drops an event, adds one, repeats one, changes an id, reorders them or is no entry, changing nothing', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const [first, second] = original.trim().split('\n').map((line) => JSON.parse(line).id);
     const converters = [
@@ -881,7 +838,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('is passed only by a migration: from anywhere else it refuses, converting nothing', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const identity = 'function* (events) { yield* events; }';
 
@@ -894,7 +851,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('refuses a ledger the check stops on, converting nothing', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const swapped = original.trim().split('\n').reverse().map((line) => `${line}\n`).join('');
     writeLedger(root, swapped);
@@ -905,7 +862,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('killed between leaving the pass and renaming the copy in, leaves the original standing, which the check passes and a commit leaves as it was', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const file = path.join(root, LEDGER);
     const rename = fs.renameSync;
@@ -929,7 +886,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('commits first the lines an earlier write left uncommitted, never stopping on them, so every line it rewrites is in git as written', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const { v, event, ...rest } = validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Left uncommitted?' }) });
     const tail = `${JSON.stringify({ v: 0, type: event, ...rest })}\n`;
@@ -947,7 +904,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('commits and converts nothing where a line left uncommitted is no entry with an id, or holds an id an earlier line holds', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
     const [first] = original.split('\n');
     const before = tip(main, STATE_BRANCH);
@@ -963,7 +920,7 @@ describe('the conversion door (5.S25)', () => {
   });
 
   it('honours a pass only where its copy, stored in git, keeps the door\'s rule: a pass written by hand lifts no removed line from a read or a commit', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world, FUMI);
     const lines = threeCommitted(root);
     const before = tip(main, STATE_BRANCH);
     const from = { oid: tip(main, `${STATE_BRANCH}:${LEDGER}`), size: Buffer.byteLength(ledgerText(root)) };

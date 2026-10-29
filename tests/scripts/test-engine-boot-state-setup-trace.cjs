@@ -21,7 +21,7 @@ const harness = require('./engine-harness.cjs');
 const { git, tip } = harness;
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, codeProject, boot } = require('./boot-state-world.cjs');
+const { useWorld, projectInWorld, boot } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -36,7 +36,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     }
 
     it('a commit git refused is made by the next boot — the line and the hooks both — and leaves the index as it found it, the person\'s own staged edit still staged', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       const allow = refusingCommits(main);
       const head = tip(main, 'main');
       createFile(main, 'README.md', '# portal, staged\n');
@@ -62,7 +62,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     });
 
     it('a settings file holding the person\'s own uncommitted edit beside the hooks is left as it is, with a warning — their edit is never committed under the workflows\' name', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       const allow = refusingCommits(main);
       boot(main);
       allow();
@@ -82,7 +82,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     });
 
     it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       createFile(main, '.gitignore', 'node_modules\n');
       const head = tip(main, 'main');
 
@@ -97,7 +97,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     });
 
     it('a settings file git ignores is owed nothing: the hooks stay on disk, uncommitted, with no warning — the line still commits', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       createFile(main, '.gitignore', '.claude/\n');
       git(main, ['add', '.gitignore']);
       git(main, ['commit', '-q', '-m', 'keep .claude out']);
@@ -111,7 +111,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     });
 
     it('a .gitignore checked out with CRLF line endings under core.autocrlf is compared as git stages it: the line commits, with no warning', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       git(main, ['config', 'core.autocrlf', 'true']);
       createFile(main, '.gitignore', 'node_modules\n');
       git(main, ['add', '.gitignore']);
@@ -130,7 +130,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   describe('while git is in the middle of a bisect', () => {
     /** A project with three commits and a bisect started across them in the main checkout. */
     function midBisect() {
-      const main = codeProject();
+      const main = projectInWorld();
       for (const n of ['two', 'three']) {
         createFile(main, 'README.md', `# ${n}\n`);
         git(main, ['commit', '-q', '-am', n]);
@@ -170,7 +170,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   describe('while git is in the middle of a rebase', () => {
     /** A project set up, its ignore line and hooks dropped on a later commit, then a rebase stopped part-way in the main checkout. */
     function midRebase() {
-      const main = codeProject();
+      const main = projectInWorld();
       boot(main);
       fs.writeFileSync(path.join(main, '.gitignore'), '');
       fs.rmSync(path.join(main, '.claude'), { recursive: true });

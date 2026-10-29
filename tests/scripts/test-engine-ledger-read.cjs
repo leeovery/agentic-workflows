@@ -23,11 +23,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
@@ -204,7 +204,7 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
   it('reads a ledger past the 64 MiB a pipe holds without holding it: each read answers under a heap that a reader holding its lines cannot fit in', () => {
     const question = ask(NOTE, 'Is a note a window?');
     const decided = decide(NOTE, question, 'A panel.', [], { product_wide: true });
-    const file = statePath(dir, LEDGER);
+    const file = statePath(dir, layout.ledger);
     const fd = fs.openSync(file, 'a');
     let size = fs.statSync(file).size;
     try {
@@ -219,7 +219,7 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
     } finally {
       fs.closeSync(fd);
     }
-    stateGit(dir, ['add', LEDGER]);
+    stateGit(dir, ['add', layout.ledger]);
     stateGit(dir, ['commit', '-q', '-m', 'state: a long ledger']);
 
     const record = underHeap([ENGINE, 'ledger', 'record', UNIT, 'note-window']);
@@ -253,7 +253,7 @@ describe('refusals', () => {
     const question = ask(NOTE, 'Is a note a window?');
     decide(NOTE, question, 'A panel.');
     const id = full(question);
-    const file = statePath(dir, LEDGER);
+    const file = statePath(dir, layout.ledger);
     fs.appendFileSync(file, `${rawLines()[0]}\n`);
     const before = [fs.readFileSync(file, 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
     const refusal = `line 3 of the ledger repeats the id ${id}, which line 1 holds`;

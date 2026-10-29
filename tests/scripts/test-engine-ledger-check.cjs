@@ -26,11 +26,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { holdLock, lockAttempts, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { holdLock, lockAttempts, ok, refuses, refusedPristine, head, stateGit, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
@@ -113,11 +112,6 @@ function calls() {
   return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
 }
 
-/** The state branch's tip. */
-function stateTip() {
-  return stateGit(dir, ['rev-parse', 'HEAD']).trim();
-}
-
 /** `ledger late-check`, the stub armed with `answers`, run by `session`. @param {Record<string, unknown>} [answers] @param {string} [session] */
 function lateCheck(answers, session = 'session-2') {
   return ok(dir, ['ledger', 'late-check'], { env: armed(answers, session) });
@@ -188,13 +182,10 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
 
   it('refuses a decision holding several rules, appending and committing nothing, naming the rules; split, each part answers the question the whole answered, and both land checked as its siblings (5.S4, 5.S31)', () => {
     const question = ask();
-    const before = { ledger: ledgerText(), tip: stateTip() };
-
-    const res = refuses(dir, ['ledger', 'decide', NOTE, '--answers', question], { env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things at once.' }) });
+    const res = refusedPristine(dir, ['ledger', 'decide', NOTE, '--answers', question], { env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things at once.' }) });
 
     assert.strictEqual(res.error, `ledger decide: the decision holds 2 rules, and an entry holds one — nothing appended. Split it: decide each as its own entry answering ${question}:\n  1. ${PANEL}\n  2. ${SYNC}`);
     assert.deepStrictEqual(res.rules, [PANEL, SYNC]);
-    assert.deepStrictEqual({ ledger: ledgerText(), tip: stateTip() }, before, 'a refusal appended or committed');
 
     const parts = [PANEL, SYNC].map((text) => decide(question, text, { [text]: rules(text) }));
 
@@ -207,14 +198,11 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
   it('refuses a replacement holding several rules the same way: one rule replaces the old, and each other is decided answering the question it answers', () => {
     const question = ask();
     const decision = decide(question, PANEL, { '': rules(PANEL) });
-    const before = { ledger: ledgerText(), tip: stateTip() };
-
-    const res = refuses(dir, ['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], {
+    const res = refusedPristine(dir, ['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], {
       env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, drops: [], text: BOTH, why: 'Two things at once.' }),
     });
 
     assert.strictEqual(res.error, `ledger replace: the decision holds 2 rules, and an entry holds one — nothing appended. Split it: replace ${decision} with one of them, and decide each other as its own entry answering ${question}:\n  1. ${PANEL}\n  2. ${SYNC}`);
-    assert.deepStrictEqual({ ledger: ledgerText(), tip: stateTip() }, before, 'a refusal appended or committed');
   });
 
   it('spends no call on a decision its links refuse: an answer to no question, to a prefix naming nothing, a replacement caused by what it replaces — each refused as under the lock, no call made, nothing appended', () => {
@@ -239,7 +227,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     const open = fs.openSync;
     let reads = 0;
     t.mock.method(fs, 'openSync', (/** @type {fs.PathLike} */ file, /** @type {fs.OpenMode} */ flags, /** @type {any[]} */ ...rest) => {
-      if (flags === 'r' && String(file).endsWith(LEDGER)) reads += 1;
+      if (flags === 'r' && String(file).endsWith(layout.ledger)) reads += 1;
       return open(file, flags, ...rest);
     });
     /** The ledger's reads a write makes. @param {() => void} written */
@@ -269,7 +257,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
       });
       assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed'], JSON.stringify(answer));
       assert.strictEqual(eventOf(res.id).unchecked, true, JSON.stringify(answer));
-      assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
+      assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
     }
     assert.strictEqual(calls().length, 6, 'a call ran with no temp folder to run it from');
   });
@@ -287,7 +275,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
 
   it('runs before the writer lock: a peer holding the lock never holds the call up — a decision holding several rules is refused without trying the lock, and one holding one is judged before the write waits its turn', (t) => {
     const question = ask();
-    const lock = holdLock(statePath(dir, '.lock'));
+    const lock = holdLock(statePath(dir, layout.lock));
     const env = armed({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) });
     /** @type {{calls: number, entries: number}[]} */
     const whileHeld = [];
@@ -335,7 +323,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
     const onTopic = decide(ask(), PANEL);
     const atUnit = decide(ask(SPEC, 'Does the spec cover a second display?'), BOTH, undefined, { address: SPEC });
     const before = ledgerText();
-    const tip = stateTip();
+    const tip = head(dir);
 
     const res = lateCheck({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) });
 
@@ -350,8 +338,8 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.deepStrictEqual([eventOf(onTopic).unchecked, eventOf(atUnit).unchecked], [true, true]);
     const commits = stateGit(dir, ['rev-list', `${tip}..HEAD`]).trim().split('\n');
     assert.strictEqual(commits.length, 2, 'each result is a commit of its own');
-    for (const commit of commits) assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', commit]).trim(), LEDGER);
-    assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), after);
+    for (const commit of commits) assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', commit]).trim(), layout.ledger);
+    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), after);
 
     assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: true, checked: 0, several: 0, owed: 0 });
     assert.strictEqual(ledgerText(), after, 'a decision was checked twice');
@@ -378,7 +366,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
   it('works one at a time: a second check finds the first\'s claim and ends at once, appending nothing; a claim whose owner is gone stands for no one', () => {
     const decision = decide(ask(), PANEL);
-    const claim = holdLock(statePath(dir, '.cache', '.late-check'));
+    const claim = holdLock(statePath(dir, layout.cache('.late-check')));
     const before = { ledger: ledgerText(), calls: calls().length };
 
     assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: false });
@@ -398,15 +386,15 @@ describe('the late check (16.19.8, 5.S34)', () => {
     it(`commits no result over a line ${what} written outside the engine while the call judged: the ledger is read again under the lock before each append (5.4.4)`, (t) => {
       decide(ask(), PANEL);
       const [, decided] = ledgerText().split(/(?<=\n)/);
-      const tip = stateTip();
+      const tip = head(dir);
       t.mock.method(claudeCall, 'askClaude', () => {
-        fs.appendFileSync(statePath(dir, LEDGER), written(decided));
+        fs.appendFileSync(statePath(dir, layout.ledger), written(decided));
         return { answer: rules(PANEL), cost: 0 };
       });
 
       assert.match(refuses(dir, ['ledger', 'late-check'], { env: armed() }).error, refusal);
 
-      assert.strictEqual(stateTip(), tip, 'the check committed over the line');
+      assert.strictEqual(head(dir), tip, 'the check committed over the line');
       assert.ok(!ledgerText().includes('"checked"'), 'the check appended its result');
     });
   }
@@ -437,7 +425,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
   it('runs detached: the launch hands the check a process of its own, which records its result and lets its claim go after the launch has answered', async () => {
     const decision = decide(ask(), PANEL);
     // A peer holds the writer lock until the launch has answered: a check the launch waited on would wait on the lock with it, and never record.
-    const lock = holdLock(statePath(dir, '.lock'));
+    const lock = holdLock(statePath(dir, layout.lock));
     const saved = { ...process.env };
     Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }));
     try {
@@ -448,13 +436,13 @@ describe('the late check (16.19.8, 5.S34)', () => {
       fs.unlinkSync(lock);
     }
 
-    const claim = statePath(dir, '.cache', '.late-check');
+    const claim = statePath(dir, layout.cache('.late-check'));
     const deadline = Date.now() + DETACHED_MS;
     const done = () => entries().some((e) => e.event === 'checked') && !fs.existsSync(claim);
     while (!done() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(done(), 'the detached check recorded nothing');
     assert.deepStrictEqual([entries().at(-1).entry, entries().at(-1).rules], [full(decision), 'several']);
-    assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
+    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
   });
 });
