@@ -32,7 +32,7 @@ is to run them before every commit rather than at the end of a branch.
 | Command | What it covers | Layers |
 | --- | --- | --- |
 | `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter | unit, verb, git, process, simulation, migration (047 on), prose |
-| `npm run test:cli` | Shell contract suites: the manifest field surface and the `engine knowledge` surface | shell, closing into verb |
+| `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
 | `npm run test:mod` | Both gate mods' suites (`workflow-gates` and `workflow-gates-rows`) under `claude plugin test` — owed for any change under `skills/workflow-gates*/` | the mods' own |

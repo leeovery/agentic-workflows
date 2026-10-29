@@ -4,7 +4,7 @@
 // constants, the active-settings summary, the initial index every form ends
 // with, and the --key-only flow and the interactive wizard against injected
 // prompt deps. Behaviour of the full forms through `engine knowledge setup`
-// is covered end-to-end in test-knowledge-cli.sh.
+// is covered end to end in test-engine-knowledge-setup.cjs.
 
 require('./hermetic-env.cjs');
 
@@ -439,6 +439,20 @@ describe('the interactive wizard', () => {
       provider: 'openai', model: provider.model(), dimensions: provider.dimensions(), last_indexed: store.readMetadata(files.metadata).last_indexed, fill_failure: null,
     });
     assert.doesNotMatch(held.output.stderr, /Initial indexing hit an error/);
+  });
+
+  it('refuses a project store left without its metadata, pointing at the rebuild — never writing metadata over a store it cannot read', async () => {
+    const system = config.systemConfigPath();
+    fs.mkdirSync(path.dirname(system), { recursive: true });
+    fs.writeFileSync(system, '{ "knowledge": {} }');
+    const files = knowledgeFiles(state);
+    fs.mkdirSync(files.dir, { recursive: true });
+    store.saveStore(store.createStore(), files.store);
+
+    const held = heldCall(state);
+    await assert.rejects(runWizard(held.call, state, { requireTTY: () => {}, createPrompter: prompter(['n']) }), (err) => err.code === 1);
+    assert.match(held.output.stderr, /^\nProject knowledge base at .* is in an inconsistent state:\n  store\.bin is present but metadata\.json is missing\.\n  Setup cannot recover this safely — run\n  `.* knowledge rebuild`\n/);
+    assert.ok(!fs.existsSync(files.metadata));
   });
 
   it('refuses without a terminal, before it asks anything', async () => {
