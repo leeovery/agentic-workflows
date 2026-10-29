@@ -520,8 +520,7 @@ function replayed(stack) {
 function pointersOf(ctx, commits, intoTip) {
   const paths = ctx.gitlinks;
   if (paths.length === 0) return null;
-  const subs = new Map(ctx.submodules.map(({ path, ctx: sub }) => [path, { root: sub.root, unit: sub.unit, tip: () => sub.into }]));
-  const moves = lg.stackMoves(ctx.root, commits.map(({ sha, tasks }) => ({ sha, parents: [`${sha}^`], tasks })), paths, subs, intoTip);
+  const moves = lg.stackMoves(ctx, commits.map(({ sha, tasks }) => ({ sha, parents: [`${sha}^`], tasks })), intoTip, (sub) => sub.into);
   const held = lg.pointersAt(ctx.root, commits.map(({ sha }) => sha), paths);
   const kept = moves.every((moved, i) => [...moved].every(([at, sha]) => sha === (held[i].get(at) ?? null)));
   return { paths, moves, kept };

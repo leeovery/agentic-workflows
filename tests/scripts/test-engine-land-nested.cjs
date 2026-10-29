@@ -7,8 +7,9 @@
 // repository holding a submodule points it at the submodule's landing of
 // that task, a landing leaving the pointer carrying the one before it, and
 // one moving it to a commit the submodule landed nothing for keeping that
-// commit; phases side by side, each moving the pointer, land in either
-// order, the later replayed onto the earlier; the project's default branch
+// commit; phases side by side, each moving the pointer — one at its second
+// task, cut from the default branch's tip — land in either order, the later
+// replayed onto the earlier; the project's default branch
 // moved where its checkout has it out, the submodule's checkout kept on its
 // default branch though the person's git recurses into submodules; a clone
 // with no default branch, the unit's branches in it holding nothing, passed
@@ -56,19 +57,21 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.deepStrictEqual(landedOn(at.dir, 'main').map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates', 'feat(pay): Bump rates', 'feat(pay): Pin ext']);
   });
 
-  it('merges phases side by side, each moving the pointer, in either order — the later replayed onto the earlier, pointing at the submodule\'s landing of its own task', () => {
+  it('merges phases side by side, each moving the pointer — one at its second task, cut from the default branch\'s tip — in either order: each landing pointing at the submodule\'s landing of its own task, never the commit its branch points at, the later replayed onto the earlier', () => {
     const at = project();
-    const fix = track(at.dir, '2.2', 'fix', 'Fix ext');
+    const page = cutTask(at.dir, '2.2', 'fix', 'Fix the page', 'main', { 'page.txt': 'page\n' });
+    const fix = track(at.dir, '2.3', 'fix', 'Fix ext');
     const fixed = commitFiles(at.ext, fix.branch, 'main', { 'ext-fix.txt': 'fix\n' });
-    commitFiles(at.dir, fix.branch, 'main', { 'fix.txt': 'fix\n' }, { gitlinks: { [NESTED.ext.folder]: fixed } });
-    ok(at.dir, openArgs(rates));
-    ok(at.dir, openArgs(fix));
+    commitFiles(at.dir, fix.branch, page.branch, { 'fix.txt': 'fix\n' }, { gitlinks: { [NESTED.ext.folder]: fixed } });
+    const was = git(at.dir, ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
+    for (const task of [rates, page, fix]) ok(at.dir, openArgs(task));
+    ok(at.dir, ['land', 'chain', 'pay', '2.3']);
 
     ok(at.dir, ['land', 'phase', 'pay', '2']);
     ok(at.dir, ['land', 'phase', 'pay', '1']);
     const landed = Object.fromEntries(landings(at.ext));
-    assert.deepStrictEqual(Object.keys(landed), ['pay-2-2', 'pay-1-1']);
-    assert.deepStrictEqual(pointers(at.dir), [['pay-2-2', landed['pay-2-2']], ['pay-1-1', landed['pay-1-1']]]);
+    assert.deepStrictEqual(Object.keys(landed), ['pay-2-3', 'pay-1-1']);
+    assert.deepStrictEqual(pointers(at.dir), [['pay-2-2', was], ['pay-2-3', landed['pay-2-3']], ['pay-1-1', landed['pay-1-1']]]);
     assert.strictEqual(landed['pay-1-1'], tip(at.ext, 'main'));
   });
 

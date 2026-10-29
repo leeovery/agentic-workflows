@@ -115,17 +115,18 @@ function squashed(bare, state, pull, from, head) {
 }
 
 /**
- * A pull request merged into its base by a method, as GitHub merges it:
- * squashed into one commit, its own change onto the branch it merges into,
- * or merged by a merge commit; under `subject` and `body` where given, else
- * as the squash default makes them.
- * @param {string} at @param {Github} state @param {Pull} pull @param {string} method @param {{into?: string, subject?: string, body?: string}} [opts]
+ * The commit GitHub makes merging a pull request onto `onto`, a commit of
+ * the branch `into` it merges into, by a method: squashed into one commit,
+ * its own change onto that branch, or a merge commit; under `subject` and
+ * `body` where given, else as the squash default makes them. Nothing moves.
+ * @param {string} bare @param {Github} state @param {Pull} pull @param {string} method @param {string} onto
+ * @param {{into: string, subject?: string, body?: string}} opts
+ * @returns {string}
  */
-function mergePull(at, state, pull, method, { into = pull.base, subject, body } = {}) {
+function mergeOf(bare, state, pull, method, onto, { into, subject, body }) {
   if (pull.state !== 'OPEN') throw new Refused(`Pull request #${pull.number} is not open`);
-  const bare = bareOf(at, state);
-  const [onto, head] = [tipOf(bare, into), tipOf(bare, pull.head)];
-  if (onto === null || head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
+  const head = tipOf(bare, pull.head);
+  if (head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
   const squash = method === 'squash';
   const below = squash && pull.base !== into ? tipOf(bare, pull.base) : null;
   const merged = spawnSync('git', ['merge-tree', '--write-tree', ...(below === null ? [] : [`--merge-base=${below}`]), onto, head], { cwd: bare, encoding: 'utf8' });
@@ -133,9 +134,22 @@ function mergePull(at, state, pull, method, { into = pull.base, subject, body } 
   const tree = merged.stdout.split('\n')[0];
   const made = squash ? squashed(bare, state, pull, below ?? onto, head) : null;
   const message = made === null ? `Merge pull request #${pull.number} from ${pull.head}\n\n${pull.title}\n` : `${subject ?? made.subject}\n\n${body ?? made.body}\n`;
-  const merge = inBare(bare, ['commit-tree', tree, '-p', onto, ...(squash ? [] : ['-p', head]), '-F', '-'], { env: IDENTITY, input: message });
-  inBare(bare, ['update-ref', `refs/heads/${into}`, merge, onto]);
-  pull.state = 'MERGED';
+  return inBare(bare, ['commit-tree', tree, '-p', onto, ...(squash ? [] : ['-p', head]), '-F', '-'], { env: IDENTITY, input: message });
+}
+
+/**
+ * Pull requests merged into the branch `into` by a method, as GitHub merges
+ * them (`mergeOf`), each onto the merge of the one before, all or none: the
+ * branch moved once every merge is made.
+ * @param {string} at @param {Github} state @param {Pull[]} pulls @param {string} method @param {{into: string, subject?: string, body?: string}} opts
+ */
+function mergePulls(at, state, pulls, method, opts) {
+  const bare = bareOf(at, state);
+  const from = tipOf(bare, opts.into);
+  if (from === null) throw new Refused(`Pull request #${pulls[0]?.number} has no branch to merge`);
+  const merged = pulls.reduce((onto, pull) => mergeOf(bare, state, pull, method, onto, opts), from);
+  inBare(bare, ['update-ref', `refs/heads/${opts.into}`, merged, from]);
+  for (const pull of pulls) pull.state = 'MERGED';
 }
 
 /** The value of a flag, and the arguments without it. @param {string[]} args @param {string} flag */
@@ -193,7 +207,8 @@ function prEdit(at, state, args) {
 function prMerge(at, state, args) {
   const method = methodIn(args);
   if (method === undefined) throw new Refused('--merge, --rebase, or --squash required when not running interactively');
-  mergePull(at, state, pullOf(state, args[0]), method, { subject: take(args, '--subject').value, body: take(args, '--body').value });
+  const pull = pullOf(state, args[0]);
+  mergePulls(at, state, [pull], method, { into: pull.base, subject: take(args, '--subject').value, body: take(args, '--body').value });
   return '';
 }
 
@@ -249,7 +264,7 @@ function stackMerge(at, state, args) {
   if (shut !== undefined) throw new Refused(`cannot merge the stack: pull request #${shut.number} is closed`);
   const method = methodIn(args) ?? state.method;
   state.method = method;
-  for (const pull of merging) mergePull(at, state, pull, method, { into: stack.base });
+  mergePulls(at, state, merging, method, { into: stack.base });
   return `Merged ${merging.length} pull requests\n`;
 }
 
@@ -328,4 +343,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePull };
+module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePulls };

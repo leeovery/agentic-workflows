@@ -11,14 +11,12 @@
 // on the project's top task branch — a task merged back onto the one below
 // moving nothing — pushed before the project's stack merges, which squashes
 // it into the top task's landing under that task's own subject (7.2.17,
-// 7.2.18); a stack whose squash would meet a pointer both sides moved
-// brought up to date with the default branch on GitHub first, one merge per
-// branch, and refused before anything is pushed where a merge conflicts in
-// a file; the pointer's commit refused before it is pushed where the branch
-// is checked out with changes; and a merge refused in one repository
-// carrying the warnings of those landed before it. Git layer: the nested
-// world (landing-world.cjs), each repository on a fake GitHub of its own
-// (world.cjs), built once and copied for each test.
+// 7.2.18); the pointer's commit refused before it is pushed where the
+// branch is checked out with changes; and a merge refused in one repository
+// carrying the warnings of those landed before it. A stack brought up to
+// date with the default branch is test-landing-nested-merge-up.cjs's. Git
+// layer: the nested world (landing-world.cjs), each repository on a fake
+// GitHub of its own (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -93,33 +91,6 @@ describe('GitHub\'s landing driver across nested repositories (7.2.17)', () => {
     assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates']);
     assert.strictEqual(git(top, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), merged);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
-  });
-
-  it('brings a stack up to date with the default branch on GitHub where a squash would meet a pointer both sides moved — the default branch merged into the bottom, each branch into the one above — and refuses one conflicting in a file before anything is pushed', () => {
-    const at = project();
-    const fix = cutTask(at.dir, '3.1', 'fix', 'Fix the app', show.branch, { 'fix.txt': 'fix\n' });
-    const lower = cutTask(at.dir, '4.1', 'fix', 'Fix the rest', show.branch, { 'rest.txt': 'rest\n' });
-    const upper = cutTask(at.dir, '4.2', 'fix', 'Fix it again', lower.branch, { 'fix.txt': 'again\n' });
-    for (const task of [rates, show, fix, lower, upper]) ok(at.dir, openArgs(task));
-    ok(at.dir, ['land', 'chain', 'pay', '4.2']);
-    ok(at.dir, ['land', 'phase', 'pay', '1']);
-    const [head, main] = [tipOnGithub(at.dir, fix.branch), tipOnGithub(at.dir, 'main')];
-
-    ok(at.dir, ['land', 'phase', 'pay', '3']);
-    const top = bareOf(at.dir);
-    const brought = tipOnGithub(at.dir, fix.branch);
-    assert.deepStrictEqual(git(top, ['log', '-1', '--format=%s%n%P', brought]).trim().split('\n'), [`chore(pay): merge main into ${fix.branch}`, `${head} ${main}`]);
-    assert.strictEqual(tip(at.dir, fix.branch), brought, 'the branch here is not at the commit pushed');
-    assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates', 'fix(pay): Fix the app']);
-    assert.strictEqual(git(top, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), tipOnGithub(at.ext, NESTED.ext.into));
-
-    const heads = [lower, upper].map((task) => tipOnGithub(at.dir, task.branch));
-    assert.strictEqual(
-      refused(at.dir, ['land', 'phase', 'pay', '4']),
-      `land: ${upper.branch} conflicts with origin/main at fix.txt, so nothing was pushed and nothing merged — merge origin/main into ${upper.branch}, settling the conflict, push it, and land again`,
-    );
-    assert.deepStrictEqual([[lower, upper].map((task) => tipOnGithub(at.dir, task.branch)), [lower, upper].map((task) => tip(at.dir, task.branch))], [heads, heads]);
-    assert.deepStrictEqual(pullStates([at.dir]), [['MERGED', 'MERGED', 'MERGED', 'OPEN', 'OPEN']]);
   });
 
   it('passes over a submodule the phase lands nothing in — its remote not on GitHub, and a task pinning it off its default branch keeping its pin', () => {

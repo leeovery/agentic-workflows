@@ -260,26 +260,22 @@ function pointedLike(root, commit, like, paths) {
 }
 
 /**
- * A submodule whose landings a stack's moves of its pointer are read
- * against: its repository's folder, the unit, and its default branch's tip,
- * read when first needed.
- * @typedef {{root: string, unit: string, tip: () => string}} Landed
- */
-
-/**
- * Each of a stack's own commits' moves of the pointers at `paths`, in the
- * commits' order: where a commit points a submodule other than every parent
- * of it does — so a merge taking one side's pointer moves nothing, and a
- * pointer the stack inherited from below it is no move of its — the
- * submodule's landing of the latest of the commit's tasks it landed, read
- * off its default branch's first-parent line from where `since` points it
- * to its tip, for a submodule of `subs`; else the commit's own pointer. One
- * taken out stays out.
- * @param {string} root @param {{sha: string, parents: string[], tasks: string[]}[]} commits
- * @param {string[]} paths @param {Map<string, Landed>} subs @param {string} since the default branch's tip
+ * Each of a stack's own commits' moves of its repository's submodules'
+ * pointers, in the commits' order: where a commit points a submodule other
+ * than every parent of it does — so a merge taking one side's pointer moves
+ * nothing, and a pointer the stack inherited from below it is no move of
+ * its — the submodule's landing of the latest of the commit's tasks it
+ * landed, read off its default branch's first-parent line from where
+ * `since` points it to its tip (`tipOf`, read when first needed), for a
+ * submodule the walk lands in; else the commit's own pointer. One taken
+ * out stays out.
+ * @template {{root: string, unit: string}} Sub
+ * @param {{root: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
+ * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
  * @returns {Map<string, string|null>[]}
  */
-function stackMoves(root, commits, paths, subs, since) {
+function stackMoves(repo, commits, since, tipOf) {
+  const { root, gitlinks: paths } = repo;
   if (commits.length === 0 || paths.length === 0) return commits.map(() => new Map());
   const asked = [since, ...commits.flatMap(({ sha, parents }) => [sha, ...parents])];
   const read = new Map(pointersAt(root, asked, paths).map((pointers, i) => [asked[i], pointers]));
@@ -288,10 +284,10 @@ function stackMoves(root, commits, paths, subs, since) {
   const landings = new Map();
   /** The submodule's landing of the latest of `tasks` it landed, if any. @param {string} at @param {string[]} tasks */
   const landing = (at, tasks) => {
-    const sub = subs.get(at);
+    const sub = repo.submodules.find((walked) => walked.path === at)?.ctx;
     const start = from.get(at) ?? null;
     if (sub === undefined || start === null) return undefined;
-    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, sub.tip())));
+    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, tipOf(sub))));
     return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
   };
   return commits.map(({ sha, parents, tasks }) => {
@@ -861,12 +857,12 @@ function remoteUrlOf(root, remote) {
 }
 
 /**
- * A branch pushed to the remote under its own name — at its tip here, or at
- * `commit` — as `pushBranches` pushes it.
- * @param {string} root @param {string} remote @param {string} branch @param {string} then @param {string} [commit]
+ * A branch pushed to the remote under its own name, at its tip here, as
+ * `pushBranches` pushes it.
+ * @param {string} root @param {string} remote @param {string} branch @param {string} then
  */
-function pushBranch(root, remote, branch, then, commit) {
-  pushBranches(root, remote, [{ branch, commit: commit ?? `${HEADS}${branch}` }], then);
+function pushBranch(root, remote, branch, then) {
+  pushBranches(root, remote, [{ branch, commit: `${HEADS}${branch}` }], then);
 }
 
 /**

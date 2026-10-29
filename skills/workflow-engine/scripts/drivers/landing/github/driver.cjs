@@ -37,14 +37,16 @@
 //   subject with GitHub's " (#N)", and its id in the body (7.2.18); setup
 //   offers to set it (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
-//   first where it stood on another phase's task. A task's branch here that
-//   is not where its pull request's head is stops the phase, with the local
-//   driver's way back (landing-git.cjs). Once merged, the default branch is
-//   fetched and moved here to the merge, as the local driver leaves it,
-//   where git would fast-forward it; where it cannot be, the answer warns
-//   why, and the merge stands. A phase found merged already is refused, the
-//   default branch here brought to it all the same, so landing again
-//   recovers one a merge left behind, or one merged on GitHub by hand.
+//   first where it stood on another phase's task. A task's branch here
+//   behind its pull request's head — a push of the driver's that went before
+//   the branch here moved — is brought to it first, refused where it is
+//   checked out and cannot move; one anywhere else stops the phase, with the
+//   local driver's way back (landing-git.cjs). Once merged, the default
+//   branch is fetched and moved here to the merge, as the local driver
+//   leaves it, where git would fast-forward it; where it cannot be, the
+//   answer warns why, and the merge stands. A phase found merged already is
+//   refused, the default branch here brought to it all the same, so landing
+//   again recovers one a merge left behind, or one merged on GitHub by hand.
 // - Finish: every phase not yet merged, each after the one it stacks on,
 //   each warning given once.
 // - Nested repositories: each repository a task touches lands on its own
@@ -301,22 +303,45 @@ function chain(ctx, ref) {
 }
 
 /**
- * Refuse a stack a task's branch here has moved from its pull request's
- * head on, keeping the branch as it stands and putting it back. A branch
- * not here is passed over: what merges is what GitHub holds.
+ * Refuse, before any of them moves, where a branch here is checked out and
+ * cannot move as `moves` would move it (`checkoutBlock`).
+ * @param {LandingContext} ctx @param {{branch: string, from: string, to: string}[]} moves
+ */
+function refuseBlocked(ctx, moves) {
+  for (const { branch, from, to } of moves) {
+    const block = lg.checkoutBlock(ctx.root, branch, { from, to });
+    if (block !== null) throw new Error(`land: ${block}`);
+  }
+}
+
+/**
+ * Each task's branch here brought to its pull request's head where it is
+ * behind it, as a push that went before the branch here moved leaves it;
+ * refused, before any moves, where one is checked out and cannot. A stack
+ * a task's branch here has moved on from its head is refused, keeping the
+ * branch as it stands and putting it back. A branch not here is passed
+ * over: what merges is what GitHub holds.
  * @param {LandingContext} ctx @param {Stack} stack
  */
-function refuseMoved(ctx, stack) {
+function catchUpBranches(ctx, stack) {
   const refs = lg.branches(ctx.root);
+  /** @type {{branch: string, from: string, to: string}[]} */
+  const behind = [];
   for (const pull of stack.pulls) {
     const at = refs.get(pull.head);
     if (at === undefined || at === pull.oid) continue;
+    if (lg.isAncestor(ctx.root, at, pull.oid)) {
+      behind.push({ branch: pull.head, from: at, to: pull.oid });
+      continue;
+    }
     const [was, now] = [lg.short(pull.oid), lg.short(at)];
     const way = lg.remedy(ctx.root, pull.head, lg.moveTo(pull.head, was, `put ${pull.head} back`), {
       note: (kept) => `the change from ${was} to ${now}, on ${kept}, is a task of its own`,
     });
     throw new Error(`land: task ${shownTask(pull.ref)}'s branch ${pull.head} has moved since it was opened at ${was}, to ${now} — ${way}`);
   }
+  refuseBlocked(ctx, behind);
+  for (const { branch, from, to } of behind) lg.moveBranch(ctx.root, branch, from, to);
 }
 
 /**
@@ -392,8 +417,7 @@ function movesOf(ctx, stacks, stack, into) {
     .filter((oid) => !lg.isAncestor(ctx.root, bottom, oid));
   const owned = stack.pulls.map((pull, i) => lg.commitsPast(ctx.root, pull.oid, [into, ...others, ...stack.pulls.slice(0, i).map(({ oid }) => oid)])
     .map((commit) => ({ ...commit, tasks: [shownTask(pull.ref)] })));
-  const subs = new Map(ctx.submodules.map(({ path, ctx: sub }) => [path, { root: sub.root, unit: sub.unit, tip: () => fetchedDefault(sub) }]));
-  const moves = lg.stackMoves(ctx.root, owned.flat(), ctx.gitlinks, subs, into);
+  const moves = lg.stackMoves(ctx, owned.flat(), into, fetchedDefault);
   let at = 0;
   return owned.map((commits) => {
     const own = moves.slice(at, at + commits.length);
@@ -486,10 +510,7 @@ function bringUp(ctx, host, stack, into, moves) {
  * @param {LandingContext} ctx @param {Host} host @param {{pull: Pull, commit: string}[]} made @param {string} then what did not happen, where the push fails
  */
 function pushUp(ctx, host, made, then) {
-  for (const { pull, commit } of made) {
-    const block = lg.checkoutBlock(ctx.root, pull.head, { from: pull.oid, to: commit });
-    if (block !== null) throw new Error(`land: ${block}`);
-  }
+  refuseBlocked(ctx, made.map(({ pull, commit }) => ({ branch: pull.head, from: pull.oid, to: commit })));
   lg.pushBranches(ctx.root, host.remote, made.map(({ pull, commit }) => ({ branch: pull.head, commit })), `${then} and nothing merged — clear what git names, and land again`);
   const here = lg.branches(ctx.root);
   for (const { pull, commit } of made) if (here.has(pull.head)) lg.moveBranch(ctx.root, pull.head, pull.oid, commit);
@@ -509,7 +530,7 @@ function mergeStack(ctx, host, stacks, stack) {
   if (below !== undefined) {
     throw new Error(`land: phase ${stack.phase} stacks on phase ${below.phase}, which has not merged — merge it first with \`land phase ${ctx.unit} ${below.phase}\`, then land again`);
   }
-  refuseMoved(ctx, stack);
+  catchUpBranches(ctx, stack);
   const merging = `merge phase ${stack.phase}'s stack`;
   const [lone, ...more] = stack.pulls;
   if (more.length > 0) {

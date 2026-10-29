@@ -12,8 +12,9 @@
 // push refused; the push naming its branch, with no tag and no prompt; the
 // default branch here left where the person's work, a failed fetch or git
 // itself stops it, warned once with the way to bring it up, the merge
-// standing; the stand-in gh at the driver's floors, failing closed; and
-// the live run refusing without the person's word (7.3.7, 7.S15). The
+// standing; the stand-in gh at the driver's floors, failing closed,
+// merging a stack all or none; and the live run refusing without the
+// person's word (7.3.7, 7.S15). The
 // driver's calls and stacks are test-landing.cjs's. Git layer: the landing
 // world on a fake GitHub (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -28,7 +29,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, ghEnv, github, bareOf, closeByHand, mergeByHand, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
@@ -253,6 +254,16 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
     } finally {
       process.env.PATH = was;
     }
+  });
+
+  it('the stand-in merges a stack all or none, as GitHub does: a pull request it cannot merge leaves those below it unmerged and the default branch where it was', () => {
+    const dir = project();
+    stackOfTwo(dir);
+    const main = commitFiles(dir, 'theirs', 'main', { 'total.txt': 'theirs\n' });
+    git(bareOf(dir), ['fetch', '-q', dir, 'theirs:refs/heads/main']);
+    const merged = spawnSync(path.join(__dirname, 'bin', 'gh'), ['stack', 'merge', '2', '--yes', '--squash'], { cwd: dir, encoding: 'utf8', env: ghEnv() });
+    assert.deepStrictEqual([merged.status, merged.stderr], [1, 'Pull request #2 is not mergeable: the merge commit cannot be cleanly created.\n']);
+    assert.deepStrictEqual([tipOnGithub(dir, 'main'), pulls(dir).map(({ state }) => state)], [main, ['OPEN', 'OPEN']]);
   });
 
   it('the stand-in refuses a pull request whose head holds nothing past its base, as GitHub does', () => {

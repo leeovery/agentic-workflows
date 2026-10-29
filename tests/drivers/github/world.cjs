@@ -95,7 +95,7 @@ function mergeByHand(dir, number, into) {
   onGithub(dir, (state) => {
     const pull = state.pulls.find((held) => held.number === number);
     if (pull === undefined) throw new Error(`no pull request #${number}`);
-    stub.mergePull(githubOf(dir), state, pull, 'squash', { into, subject: pull.title });
+    stub.mergePulls(githubOf(dir), state, [pull], 'squash', { into: into ?? pull.base, subject: pull.title });
   });
 }
 
