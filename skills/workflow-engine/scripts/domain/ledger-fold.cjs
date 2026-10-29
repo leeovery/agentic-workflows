@@ -14,12 +14,13 @@
 // sealed answer (ledger-verdicts.cjs); the unit and topic it was written
 // on; the first entry of its chain; its links; every entry linking back to
 // it — the replacements naming it, the merges that took it as a duplicate,
-// the confirmations that it still holds, and on the first entry of a
-// question's chain, the answers to, the parts of (5.3.11), the merges of and
-// the moves of any wording; and where its line sits, so a read shows an
-// entry by reading that one line again. It keeps one thing a read shows that
-// the entry's line never holds: what the late one-decision check last found
-// of a decision that landed unchecked (16.19.8).
+// the confirmations that it still holds, the person's keeps of it against
+// Claude's proposed replacement, which change nothing current, and on the
+// first entry of a question's chain, the answers to, the parts of (5.3.11),
+// the merges of and the moves of any wording; and where its line sits, so a
+// read shows an entry by reading that one line again. It keeps one thing a
+// read shows that the entry's line never holds: what the late one-decision
+// check last found of a decision that landed unchecked (16.19.8).
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -107,9 +108,9 @@
 //   and merges made there while live, and the current entries standing
 //   elsewhere that were made there, that its entries rely on, that its
 //   merges that hold went into, or that answer its questions (5.8.4); of an
-//   entry's confirmations, the live ones. Its moves are history, each as it
-//   was made, so they can differ from what its map shows: the question may
-//   stand elsewhere now, or not be current.
+//   entry's confirmations and keeps, the live ones. Its moves are history,
+//   each as it was made, so they can differ from what its map shows: the
+//   question may stand elsewhere now, or not be current.
 //   A unit's own level has a record of its own: the entries standing in the
 //   unit on no topic. Every place's record is built in one pass, each id's
 //   places worked out once.
@@ -161,11 +162,12 @@ const { entryKind } = require('./ledger-events.cjs');
  *   moves: readonly string[],
  *   parts: readonly string[],
  *   holds: readonly string[],
+ *   kept: readonly string[],
  *   late_check: 'one'|'several'|null,
  * }} IdFacts
  */
 
-/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'} BackLinks */
+/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'|'kept'} BackLinks */
 
 /** Why an entry of a unit and topic is not live, null where it is (ledger-units.cjs). @typedef {(unit: string, topic: string|null) => string|null} Liveness */
 
@@ -249,12 +251,14 @@ const ID_FACTS = {
       moves: NONE,
       parts: NONE,
       holds: NONE,
+      kept: NONE,
       late_check: null,
     });
     if (kind === 'decision') linkBack(facts, chainRoot(facts, event.answers), 'answered_by', id);
     if (kind === 'question' && event.part_of !== null) linkBack(facts, chainRoot(facts, event.part_of), 'parts', id);
     if (event.event === 'replaced') linkBack(facts, event.replaces, 'replaced_by', id);
     if (event.event === 'still-holds') linkBack(facts, event.entry, 'holds', id);
+    if (event.event === 'kept') linkBack(facts, event.entry, 'kept', id);
     if (event.event === 'moved') linkBack(facts, chainRoot(facts, event.question), 'moves', id);
     if (event.event === 'merged') {
       linkBack(facts, chainRoot(facts, event.question), 'merges', id);
@@ -627,6 +631,11 @@ function holdsOf(folded, id) {
   return factsOf(folded, id).holds.filter((hold) => isLive(folded, hold));
 }
 
+/** The person's keeps of `id` against Claude's proposed replacement, made where it is live. @param {Folded} folded @param {string} id */
+function keptOf(folded, id) {
+  return factsOf(folded, id).kept.filter((keep) => isLive(folded, keep));
+}
+
 /**
  * The chain folded beneath a current entry (5.6.5): the entries it
  * replaced, newest first, down to the first that is not live, as though
@@ -978,5 +987,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  foldedBeneath, wordingOf, answersOf, questionStands, showsIn, mapOf, recordOf, placeRecords, productOf,
+  keptOf, foldedBeneath, wordingOf, answersOf, questionStands, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

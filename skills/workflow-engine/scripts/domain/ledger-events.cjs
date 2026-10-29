@@ -32,6 +32,13 @@
 //   one had landed.
 // - checked: the one-decision check's late result on an entry that landed
 //   unchecked (16.19.8).
+// - kept: the person keeping a decision as it stands, where Claude proposed
+//   to replace it (raise.cjs, 5.3.10): the person's alone; the entry kept;
+//   the reason and the cause the replacement was proposed for; and Claude's
+//   proposal, the answer the person's stood over, as its sealed answer. It
+//   is no entry and changes nothing current — no replacement, so nothing
+//   relying on the entry is affected (5.6.10) — and a departure owed a
+//   verdict (16.10.1).
 //
 // The engine assigns every link; it constrains links and identity, never
 // content (5.1.8). Lines are written with their fields in the schema's
@@ -126,6 +133,7 @@ const SCHEMA = {
     moved: event([...made(PEOPLE), field('question', ID), field('to', TEXT)]),
     merged: event([...made(PEOPLE), field('question', ID), field('into', ID), field('duplicate', nullable(ID))]),
     checked: event([field('entry', ID), field('rules', oneOf('one', 'several'))]),
+    kept: event([...made(['person']), field('entry', ID), field('reason', oneOf(...REASONS)), field('cause', nullable(ID)), field('sealed', TEXT)]),
   },
 };
 
@@ -136,7 +144,7 @@ const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decide
 
 /**
  * The kind of entry an event is, or null for an event that is no entry: a
- * confirmation, a move, a merge or a check.
+ * confirmation, a move, a merge, a check or a keep.
  * @param {Record<string, unknown>} event
  * @returns {EntryKind|null}
  */

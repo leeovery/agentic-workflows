@@ -128,7 +128,7 @@ describe('the events and their schemas', () => {
   const FINDING = ['text', 'how', 'relies_on', 'product_wide'];
   const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked'];
 
-  it('writes every event §5 names, and merged and checked, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
+  it('writes every event §5 names, and merged, checked and kept, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
     const { root } = codeProject(world, FUMI);
     const q = /** @type {string} */ (appendEntry(root, question(), []).id);
     const f = /** @type {string} */ (appendEntry(root, { event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'documented', relies_on: [], product_wide: false }, []).id);
@@ -140,6 +140,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'moved', ...TAGS, ...MADE, question: q, to: 'space-homing' }, []);
     appendEntry(root, { event: 'merged', ...TAGS, ...MADE, question: q, into: d, duplicate: null }, []);
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
+    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, sealed: 'A floating panel.' }, []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -153,8 +154,17 @@ describe('the events and their schemas', () => {
       [...HEADER, ...BY, 'question', 'to'],
       [...HEADER, ...BY, 'question', 'into', 'duplicate'],
       [...HEADER, 'entry', 'rules'],
+      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'sealed'],
     ]);
-    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'checked', 'decided', 'found', 'merged', 'moved', 'replaced', 'still-holds']);
+    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
+  });
+
+  it('holds a keep to its shape: the person\'s alone, a reason of the four, and Claude\'s proposal sealed in it, never none', () => {
+    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, sealed: 'A floating panel.' };
+    assert.deepStrictEqual(validEvent(keep), keep);
+    assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
+    assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
+    assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
   });
 
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {

@@ -260,6 +260,7 @@ describe('the seal (P1, P6)', () => {
       place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' },
       answers: full(asked.where),
       relies_on: [full(asked.size)],
+      replaces: null,
       call: CALL,
       rows_judged: [],
       reason: EVERY_CALL_ASKS,

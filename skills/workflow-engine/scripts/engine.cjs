@@ -1816,11 +1816,13 @@ function runGate(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// raise — a call Claude has a lean on, put through the decision point and,
-// where it asks, sealed in the conversation and drawn (domain/raise.cjs, its
-// screen domain/projections/raise.cjs), or, where it proceeds, landed as
-// Claude's — answering once its rows' one-decision checks have; `show` draws
-// a sealed raise again; `answer` records the person's answer to it.
+// raise — a call Claude has a lean on, answering a question or replacing a
+// decision, put through the decision point and, where it asks, sealed in the
+// conversation and drawn (domain/raise.cjs, its screen
+// domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
+// answering once its rows' one-decision checks have; `show` draws a sealed
+// raise again; `answer` records the person's answer to it, a keep of the
+// decision among them.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

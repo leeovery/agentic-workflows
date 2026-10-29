@@ -389,6 +389,7 @@ function auditLedger(dir, ctx) {
   const replacements = liveEvents('replaced');
   const merges = liveEvents('merged');
   const confirmations = liveEvents('still-holds');
+  const keeps = liveEvents('kept');
   /** What the late check last found of each entry it judged. @type {Map<string, string>} */
   const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [e.entry, e.rules]));
 
@@ -478,6 +479,8 @@ function auditLedger(dir, ctx) {
       for (const shownEntry of [e, ...e.replaced]) {
         assert.deepStrictEqual(shownEntry.holds.map((/** @type {{id: string}} */ h) => full(h.id)), confirmations.filter((c) => c.entry === full(shownEntry.id)).map((c) => c.id),
           ctx(`${place} does not show ${shownEntry.id}'s live confirmations alone`));
+        assert.deepStrictEqual(shownEntry.kept.map((/** @type {{id: string}} */ k) => full(k.id)), keeps.filter((k) => k.entry === full(shownEntry.id)).map((k) => k.id),
+          ctx(`${place} does not show the person's live keeps of ${shownEntry.id} alone`));
         assert.strictEqual(shownEntry.late_check, lateChecks.get(full(shownEntry.id)), ctx(`${place} does not show what the late check last found of ${shownEntry.id}`));
       }
     }
@@ -630,15 +633,15 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // replacements of a decision that held Claude's lean — Claude leaned down
 // its chain, its own call or a sealed answer, and it did not stand over
 // the lean — made for a changed mind or a mistake and carrying no sealed
-// answer of Claude's; a raise,
-// naming the entry, for each of the person's answers to the lean a raise
-// sealed, beside the raises the person did not follow; none of them for
-// anything else; and nothing left waiting in a conversation, as no append
-// fails. Every verdict names a departure the trust log holds — a raise
-// answered against the lean, or a reversal — that the ledger holds as a
-// decision whose answer stood over the lean (16.13.6), and none follows one
-// that is no skip (16.10.1); the verdict a command that `ran` gave has its
-// line, the latest.
+// answer of Claude's; a raise, naming the line, for each of the person's
+// answers to the lean a raise sealed — an entry, or a keep of the decision
+// Claude proposed to replace — beside the raises the person did not follow;
+// none of them for anything else; and nothing left waiting in a
+// conversation, as no append fails. Every verdict names a departure the
+// trust log holds — a raise answered against the lean, a keep among them,
+// or a reversal — that the ledger holds as a decision whose answer stood
+// over the lean, or a keep (16.13.6), and none follows one that is no skip
+// (16.10.1); the verdict a command that `ran` gave has its line, the latest.
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -654,6 +657,7 @@ function auditTrust(sim, label, ran = []) {
   const events = [...new Map(lines.map((e) => [e.id, e])).values()].filter((e) => e.project === project);
   const ofType = (/** @type {string} */ type) => events.filter((e) => e.type === type);
   const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
+  const isKeep = (/** @type {Record<string, any>} */ e) => e.event === 'kept';
 
   assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && e.by === 'claude').map((e) => e.id).sort(),
     ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
@@ -664,7 +668,7 @@ function auditTrust(sim, label, ran = []) {
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
     ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
-    entries.filter((e) => isDecision(e) && e.by === 'person' && e.sealed !== null).map((e) => e.id).sort(),
+    entries.filter((e) => (isDecision(e) && e.by === 'person' && e.sealed !== null) || isKeep(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
   const conversations = path.join(sim.configDir, 'conversations');
   const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
@@ -674,7 +678,8 @@ function auditTrust(sim, label, ran = []) {
   const given = new Map();
   for (const v of ofType('verdict')) {
     assert.ok(departures.has(v.entry), ctx(`the verdict ${v.id} names ${v.entry}, which is no departure the trust log holds`));
-    assert.ok(isDecision(byId.get(v.entry) ?? {}) && byId.get(v.entry).who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure in the ledger`));
+    const judged = byId.get(v.entry) ?? {};
+    assert.ok((isDecision(judged) || isKeep(judged)) && judged.who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure in the ledger`));
     given.set(v.entry, [...(given.get(v.entry) ?? []), v]);
   }
   for (const [entry, verdicts] of given) {
