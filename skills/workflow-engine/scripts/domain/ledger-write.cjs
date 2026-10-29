@@ -51,9 +51,10 @@
 //   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
 //   lean on an entry Claude made, and on the person's replacement of a
 //   decision, what its reason and the entry it replaces allow. The person's
-//   entry carries no sealed answer of Claude's, and their decision moves no
-//   one: their answer to Claude's lean is a raise's, which sealed the lean
-//   before they answered.
+//   entry carries no sealed answer of Claude's, and their decision on a
+//   chain Claude never leaned on, written or replaced, moves no one: their
+//   answer to Claude's lean is a raise's, which sealed the lean before they
+//   answered.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it

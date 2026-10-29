@@ -227,7 +227,7 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
   });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, and the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, each land as a line of the trust log in the command that writes it', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, and the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none', async () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -252,5 +252,12 @@ describe('pipeline simulation: ledger', () => {
     };
     await raised('Does a note float?', '1');
     await raised('Does a note take focus?', '2');
+
+    // The person deciding unprompted, then changing their mind: Claude put
+    // no lean on it, so it is no departure.
+    const titled = ledger(['ask', note], { ...made, text: 'Does a note have a title?' });
+    const untitled = ledger(['decide', note, '--answers', titled], { by: 'person', text: 'A note has no title.', why: 'Its first line is enough.' });
+    const retitled = ledger(['replace', note, '--replaces', untitled, '--reason', 'changed-mind'], { by: 'person', drops: ['no title'], text: 'A note has a title.', why: 'Titles help search.' });
+    assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
   });
 });

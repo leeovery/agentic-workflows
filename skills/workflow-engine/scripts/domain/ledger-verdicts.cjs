@@ -12,22 +12,28 @@
 //   an overrule, a blind answer differing from the sealed one (16.10.10), a
 //   call overruled when shown.
 // - A departure is an answer that amends or overrules Claude's lean
-//   (16.10.1): a decision the person made whose answer stood over the lean.
-//   An entry Claude made never stands over its own lean. The person's
-//   answer to Claude's lean is a raise's, which says who moved whom against
-//   the lean it sealed (raise.cjs); the write verbs take no sealed answer on
-//   the person's entry (5.3.10), and the person's decision they write holds
-//   no lean to move, so moves no one. The person's replacement of a
-//   decision, for a changed mind or a mistake, stands over the lean where
-//   the entry it replaces held it — Claude's own call, or the person's
-//   answer that was the lean or came round to it: a later reversal, or a
-//   call overruled when shown — and the engine says so where the writer
-//   leaves it out. Where that entry stood over the lean, it comes back round
-//   to the lean or gives a third answer still against it: only its writer
-//   can tell, so the writer says which, and never that it was the lean from
-//   the start. For a new fact or another topic's decision it is new
-//   information, never a departure. The write verbs hold every entry to
-//   this as it is written (ledger-write.cjs), so the ledger's line says it.
+//   (16.10.1): a decision the person made whose answer stood over the lean,
+//   so where there was no lean there is no departure. Claude leaned on an
+//   entry's chain where it, or an entry down its chain, is Claude's own or
+//   carries Claude's sealed answer (ledger-fold.cjs). An entry Claude made
+//   never stands over its own lean. The person's answer to Claude's lean is
+//   a raise's, which says who moved whom against the lean it sealed
+//   (raise.cjs); the write verbs take no sealed answer on the person's
+//   entry (5.3.10). The person's decision on a chain Claude never leaned on
+//   — written, or replaced for any reason — holds no lean to move, so moves
+//   no one: the person deciding unprompted, then changing their mind, is no
+//   departure. The person's replacement of a decision, for a changed mind
+//   or a mistake, stands over the lean where the entry it replaces held it
+//   — its chain leaned and it did not stand over the lean: Claude's own
+//   call, or the person's answer that was the lean or came round to it: a
+//   later reversal, or a call overruled when shown — and the engine says so
+//   where the writer leaves it out. Where that entry stood over the lean,
+//   it comes back round to the lean or gives a third answer still against
+//   it: only its writer can tell, so the writer says which, and never that
+//   it was the lean from the start. For a new fact or another topic's
+//   decision it is new information, never a departure. The write verbs
+//   hold every entry to this as it is written (ledger-write.cjs), so the
+//   ledger's line says it.
 // - A reversal (16.12.1) is the person's replacement this rule holds
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
@@ -58,11 +64,22 @@ const NOT_OVER = Object.freeze(['none', BACK_TO_THE_LEAN]);
 /** Who moved whom on the person's replacement of their own departure: a return to the lean, or a third answer still against it. */
 const AFTER_A_DEPARTURE = Object.freeze([BACK_TO_THE_LEAN, OVER_THE_LEAN]);
 
+/** The rule on the person's decision on a chain Claude never leaned on, written or replaced. */
+const NO_LEAN = Object.freeze({
+  moves: Object.freeze(['none']),
+  why: 'the person\'s decision holds no lean of Claude\'s to move, no entry down its chain being Claude\'s own or carrying its sealed answer; their answer to Claude\'s lean is recorded by raise answer',
+});
+
 /** The reasons a replacement disagrees with what it replaces, and what each of the others brings instead. */
 const DISAGREEING = Object.freeze(['changed-mind', 'was-wrong']);
 const NEW_INFORMATION = Object.freeze({ 'new-fact': 'a new fact', 'other-topic': 'another topic\'s decision' });
 
-/** Whether an entry held Claude's lean: Claude's own call, which never stands over it, or the person's answer that was the lean or came round to it. @param {IdFacts} facts */
+/**
+ * Whether an entry on a chain Claude leaned on held its lean: Claude's own
+ * call, which never stands over it, or the person's answer that was the
+ * lean or came round to it.
+ * @param {IdFacts} facts
+ */
 function heldTheLean({ who_moved_whom: moved }) {
   return moved !== OVER_THE_LEAN;
 }
@@ -79,7 +96,7 @@ function heldTheLean({ who_moved_whom: moved }) {
 function ruleFor({ by }, kind, reason, replaced) {
   if (by === 'claude') return { moves: NOT_OVER, why: 'an entry Claude made never stands over its own lean' };
   if (kind !== 'decision') return null;
-  if (replaced === null) return { moves: ['none'], why: 'the person\'s decision written here holds no lean of Claude\'s to move, their answer to Claude\'s lean being recorded by raise answer' };
+  if (replaced === null || !replaced.leaned) return NO_LEAN;
   if (!DISAGREEING.includes(/** @type {string} */ (reason))) {
     const brings = NEW_INFORMATION[/** @type {keyof typeof NEW_INFORMATION} */ (reason)];
     return { moves: NOT_OVER, why: `a replacement for ${brings} brings new information, never the person standing over Claude's lean` };

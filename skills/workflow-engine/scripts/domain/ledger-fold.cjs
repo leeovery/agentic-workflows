@@ -9,7 +9,9 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; who made it, and who moved whom; the unit and topic it was written
+// entry; who made it, and who moved whom; whether Claude leaned on its
+// chain — it, or an entry down its chain, Claude's own or carrying Claude's
+// sealed answer (ledger-verdicts.cjs); the unit and topic it was written
 // on; the first entry of its chain; its links; every entry linking back to
 // it — the replacements naming it, the merges that took it as a duplicate,
 // the confirmations that it still holds, and on the first entry of a
@@ -136,6 +138,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   kind: EntryKind|null,
  *   by: string|null,
  *   who_moved_whom: string|null,
+ *   leaned: boolean,
  *   unit: string,
  *   topic: string|null,
  *   root: string,
@@ -223,6 +226,7 @@ const ID_FACTS = {
       kind,
       by: typeof event.by === 'string' ? event.by : null,
       who_moved_whom: typeof event.who_moved_whom === 'string' ? event.who_moved_whom : null,
+      leaned: event.by === 'claude' || typeof event.sealed === 'string' || (event.event === 'replaced' && named(facts, event.replaces).leaned),
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,

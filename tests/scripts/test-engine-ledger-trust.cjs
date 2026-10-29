@@ -128,7 +128,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.notStrictEqual(head(dir), tip);
   });
 
-  it('logs a call for Claude\'s replacement of a decision that held the lean, its own or the person\'s, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
+  it('logs a call for Claude\'s replacement of a decision, its own or the person\'s, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
     const question = ask().id;
     const call = decide(question).id;
     const agreed = decide(question, { by: 'person', who_moved_whom: 'none' }).id;
@@ -183,7 +183,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     for (const moved of ['person-moved-claude', 'claude-moved-person']) {
       const { sealed: _sealed, ...unsealed } = person;
       refused('decide', NOTE, ['--answers', question], { ...unsealed, who_moved_whom: moved },
-        new RegExp(`^ledger decide: who_moved_whom is ${moved} — the person's decision written here holds no lean of Claude's to move, their answer to Claude's lean being recorded by raise answer: none$`));
+        new RegExp(`^ledger decide: who_moved_whom is ${moved} — the person's decision holds no lean of Claude's to move, no entry down its chain being Claude's own or carrying its sealed answer; their answer to Claude's lean is recorded by raise answer: none$`));
     }
     write('decide', NOTE, ['--answers', question], { by: 'person', text: 'A sheet.', why: 'Sheets stay put.' });
 

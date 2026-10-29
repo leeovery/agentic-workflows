@@ -626,8 +626,10 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // the sim's own config folder, the project's events alone, each once by its
 // id: a call for each of Claude's answers, a decision or its replacement of
 // one; a reversal, naming the entry it reverses, for each of the person's
-// replacements of a decision that held Claude's lean, made for a changed
-// mind or a mistake and carrying no sealed answer of Claude's; a raise,
+// replacements of a decision that held Claude's lean — Claude leaned down
+// its chain, its own call or a sealed answer, and it did not stand over
+// the lean — made for a changed mind or a mistake and carrying no sealed
+// answer of Claude's; a raise,
 // naming the entry, for each of the person's answers to the lean a raise
 // sealed, beside the raises the person did not follow; none of them for
 // anything else; and nothing left waiting in a conversation, as no append
@@ -652,8 +654,10 @@ function auditTrust(sim, label, ran = []) {
 
   assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && e.by === 'claude').map((e) => e.id).sort(),
     ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
+  /** @type {(e: Record<string, any>) => boolean} */
+  const leaned = (e) => e.by === 'claude' || typeof e.sealed === 'string' || (e.event === 'replaced' && leaned(byId.get(e.replaces)));
   const reversing = entries.filter((e) => e.event === 'replaced' && e.of === 'decision' && e.by === 'person' && e.sealed === null
-    && ['changed-mind', 'was-wrong'].includes(e.reason) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
+    && ['changed-mind', 'was-wrong'].includes(e.reason) && leaned(byId.get(e.replaces)) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
     ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
   assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),

@@ -84,7 +84,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { full } = ledgerHelpers(() => dir);
+const { full, entries } = ledgerHelpers(() => dir);
 
 /** @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function args(verb, address, flags, content) {
@@ -139,9 +139,14 @@ function logText() {
   return fs.existsSync(trustLogPath()) ? fs.readFileSync(trustLogPath(), 'utf8') : '';
 }
 
+/** The trust log's events of `type`. @param {string} type @returns {Record<string, any>[]} */
+function logged(type) {
+  return logText().split('\n').slice(0, -1).map((line) => JSON.parse(line)).filter((event) => event.type === type);
+}
+
 /** The verdict lines the trust log holds, each by its entry, verdict and point. */
 function verdicts() {
-  return logText().split('\n').slice(0, -1).map((line) => JSON.parse(line)).filter((event) => event.type === 'verdict').map(({ entry, verdict, point }) => [entry, verdict, point]);
+  return logged('verdict').map(({ entry, verdict, point }) => [entry, verdict, point]);
 }
 
 /** A verdict that must be refused, logging nothing: its error. @param {string[]} argv */
@@ -219,6 +224,32 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     write(...replacing(changed, 'other-topic', persons('claude-moved-person'), ['--cause', theirs]));
 
     assert.deepStrictEqual(waiting(), []);
+  });
+
+  it('never takes the person\'s replacement of their own decision, on a chain Claude never leaned on, as a departure, for a changed mind or a mistake: it moves no one — set where it is left out, any other value refused — waits on no verdict and logs no reversal (16.10.1)', () => {
+    const own = decide('A sheet.', { by: 'person' });
+    const noLean = 'the person\'s decision holds no lean of Claude\'s to move, no entry down its chain being Claude\'s own or carrying its sealed answer; their answer to Claude\'s lean is recorded by raise answer: none';
+    for (const reason of ['changed-mind', 'was-wrong']) {
+      assert.strictEqual(refused(...replacing(own, reason, persons('person-moved-claude'))), `ledger replace: who_moved_whom is person-moved-claude — ${noLean}`);
+    }
+
+    const changed = write(...replacing(own, 'changed-mind', { by: 'person' }));
+    const corrected = write(...replacing(changed, 'was-wrong', { by: 'person' }));
+
+    assert.deepStrictEqual([own, changed, corrected].map((id) => entries().find((entry) => entry.id === full(id))?.who_moved_whom), ['none', 'none', 'none']);
+    assert.deepStrictEqual(waiting(), []);
+    assert.deepStrictEqual(logged('reversal'), []);
+  });
+
+  it('takes the person\'s replacement for a changed mind as a reversal where Claude leaned down its chain: Claude\'s call, replaced by the person for a new fact, then changed, the new fact\'s answer as the lean', () => {
+    const call = decide('A panel.', MADE);
+    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike' });
+    const updated = write(...replacing(call, 'new-fact', persons('none'), ['--cause', fact]));
+
+    const reversed = write(...replacing(updated, 'changed-mind', { by: 'person' }));
+
+    assert.deepStrictEqual(waiting(), [[reversed, `Not ${call}.`]]);
+    assert.deepStrictEqual(logged('reversal').map(({ entry, reverses }) => [entry, reverses]), [[full(reversed), full(updated)]]);
   });
 
   it('refuses an entry Claude made standing over its own lean', () => {
