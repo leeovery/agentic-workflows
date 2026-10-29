@@ -111,5 +111,5 @@ function endedInTracker(whats, unit) {
 }
 
 module.exports = {
-  taskId, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
+  assertUnit, taskId, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
 };

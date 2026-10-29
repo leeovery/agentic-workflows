@@ -46,7 +46,7 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'open', 'chain', 'mergePhase', 'finish']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'finish']),
     optional: /** @type {const} */ ([]),
   },
 });
@@ -126,10 +126,24 @@ const METHODS = Object.freeze({
  *   show: (root: string, ref: TaskRef) => TaskDetail|null,
  * }} TaskDriver
  */
+/** @typedef {import('./landing.cjs').LandingContext} LandingContext */
+/** @typedef {import('./landing.cjs').LandingTask} LandingTask */
+/** @typedef {import('./landing.cjs').ChainTip} ChainTip */
 /**
- * A landing driver; `serves` answers whether it serves a remote's URL.
- * @typedef {DriverDeclaration & MethodsOf<typeof METHODS.landing> & {serves: (url: string) => boolean}} LandingDriver
+ * A landing driver's methods, and the least each answers — what the landing
+ * conformance suite reads. `serves` answers whether it serves a remote's
+ * URL; `chainTip` the branch a task's branch must descend from, at a commit
+ * the repository has locally, which the seam checks before `open`.
+ * @typedef {{
+ *   serves: (url: string) => boolean,
+ *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip,
+ *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {task: string, branch: string, base: string},
+ *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]},
+ *   mergePhase: (ctx: LandingContext, phase: number) => {merged: string[]},
+ *   finish: (ctx: LandingContext) => {phases: {phase: number, merged: string[]}[]},
+ * }} LandingMethods
  */
+/** @typedef {DriverDeclaration & Omit<MethodsOf<typeof METHODS.landing>, keyof LandingMethods> & LandingMethods} LandingDriver */
 /** @typedef {TaskDriver | LandingDriver} Driver */
 
 /** @param {unknown} kind @returns {asserts kind is DriverKind} */

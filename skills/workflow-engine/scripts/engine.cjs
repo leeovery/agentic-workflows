@@ -56,6 +56,7 @@ const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
+const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -255,6 +256,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   task complete <work-unit> <topic> (<internal-id> | --external <id>) [--skipped]
                 [--next-task <id|~>] [--phase <N>] [--phase-complete]
   task analysis-cycle <work-unit> <topic>
+${LAND_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1404,6 +1406,37 @@ function runTask(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// land — a task's change landed through the project's landing driver
+// (domain/landing.cjs): a task's pull request opened and chained into its
+// phase's stack, a phase merged whole, and the phases still standing merged
+// at finish.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runLand(call, argv) {
+  const [command, ...rest] = argv;
+  const { cwd } = call;
+  try {
+    const { opts, positional } = parseArgs(rest);
+    const flagless = Object.keys(opts).length === 0;
+    const [unit, which] = positional;
+    if (command === 'open' && positional.length === 2 && flagless) {
+      respond(call, landOpen(cwd, unit, which));
+    } else if (command === 'chain' && positional.length === 2 && flagless) {
+      respond(call, landChain(cwd, unit, which));
+    } else if (command === 'phase' && positional.length === 2 && flagless) {
+      respond(call, landPhase(cwd, unit, which));
+    } else if (command === 'finish' && positional.length === 1 && flagless) {
+      respond(call, landFinish(cwd, unit));
+    } else {
+      throw new Error(`Usage: ${LAND_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
+    }
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
 // commit for the whole set.
@@ -2315,6 +2348,7 @@ const COMMANDS = Object.freeze({
   conversation: runConversation,
   layout: runLayout,
   task: runTask,
+  land: runLand,
   inbox: runInbox,
   roadmap: runRoadmap,
   baseline: runBaseline,

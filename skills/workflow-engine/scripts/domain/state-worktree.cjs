@@ -581,6 +581,15 @@ function refuseCodeHistory(root, ref, named, after) {
 }
 
 /**
+ * The name of the state's remote, or null where none is chosen.
+ * @param {string} root
+ * @returns {string|null}
+ */
+function stateRemoteName(root) {
+  return stateRemote(isolatedGit(mainOf(root))).remote;
+}
+
+/**
  * The URL the state's remote fetches from, any `insteadOf` applied, or null
  * where no remote is chosen.
  * @param {string} root
@@ -848,6 +857,7 @@ module.exports = {
   fetchRemoteBranches,
   codeBranchSharing,
   refuseCodeHistory,
+  stateRemoteName,
   stateRemoteUrl,
   withStateLock,
   withBootLock,
