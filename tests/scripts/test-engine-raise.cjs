@@ -31,6 +31,7 @@ const path = require('path');
 const { ok, okSectionsAsync, refuses, refusesAsync, output, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { SESSION: WRITER, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
+const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate, auditMarkers } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -38,10 +39,10 @@ const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 
-// A Claude Code session's id.
-const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const NO_GATE = 'gate: no gate has been shown in this conversation — render the gate, then answer it';
+// The way on from a raise the conversation never drew.
+const ELSEWHERE = 'a raise is answered in the conversation that drew it, so after a /clear, or a resume under a new session, raise the question again';
 
 const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
 const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
@@ -123,20 +124,10 @@ before(() => {
 
 after(() => cleanupFixture(dir));
 
-/** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, WORKFLOWS_CONFIG_DIR: config(), ...env });
+const { conversation, inFolder, seals } = raiseHelpers(() => dir, config, CALL);
 
-/** A file in the conversation's folder. @param {string} name */
-const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);
-
-/** A JSON file of the conversation's folder; null where it is not there. @param {string} name @returns {any} */
-function folderJson(name) {
-  const file = inFolder(name);
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
-}
-
-/** The conversation's sealed raises; null where none was sealed. */
-const seals = () => folderJson('raise-shown.json');
+/** The gate the conversation was last shown, as the gate mod reads it; null where none was. @returns {any} */
+const gateShownFile = () => (fs.existsSync(inFolder('gate-shown.json')) ? JSON.parse(fs.readFileSync(inFolder('gate-shown.json'), 'utf8')) : null);
 
 /**
  * A raise drawn: its response and its screen.
@@ -319,7 +310,7 @@ describe('the seal (P1, P6)', () => {
     /** @param {string[]} args @param {Record<string, string|undefined>} [env] */
     const refused = (args, env) => refuses(dir, ['raise', 'show', ...args], { env: conversation(env) }).error;
 
-    assert.strictEqual(refused(['0000000000']), 'raise show: this conversation has drawn no raise 0000000000');
+    assert.strictEqual(refused(['0000000000']), `raise show: this conversation has drawn no raise 0000000000 — ${ELSEWHERE}`);
     const twin = `${res.raise.slice(0, 20)}${res.raise.endsWith('Z') ? 'Y' : 'Z'}`;
     fs.writeFileSync(inFolder('raise-shown.json'), JSON.stringify({ ...seals(), [twin]: { ...seals()[res.raise], id: twin } }));
     assert.strictEqual(refused([res.raise.slice(0, 8)]), `raise show: "${res.raise.slice(0, 8)}" begins the ids of 2 raises this conversation drew — give more of the id`);
@@ -383,7 +374,7 @@ describe('a raise is no gate (6.6.10, E6)', () => {
     const answer = () => refuses(dir, ['gate', 'migration gate', '--pick', 'y'], { env: conversation() }).error;
     const gateOnScreen = () => {
       output(dir, ['render', 'migration-gate'], { env: conversation() });
-      assert.strictEqual(folderJson('gate-shown.json')?.gate, 'migration gate');
+      assert.strictEqual(gateShownFile()?.gate, 'migration gate');
     };
 
     gateOnScreen();
@@ -480,9 +471,9 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key: 'main screen' }] }), 'raise: the call\'s rows[1]\'s key is not a key: letters, digits, - and _, up to 24 of them');
   });
 
-  it('a row\'s key that is the screen\'s own word, in any case', async () => {
-    for (const key of ['t', 'E', 'technical', 'Explain', 'COMMENT']) {
-      assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key }] }), `raise: the call's rows[1] takes the key ${key}, which the screen keeps for itself — t, e, technical, explain, comment are its own, in any case`);
+  it('a row\'s key that is the screen\'s own word, in any case — keep among them, so a raise event\'s keep always means a keep', async () => {
+    for (const key of ['t', 'E', 'technical', 'Explain', 'COMMENT', 'keep', 'Keep']) {
+      assert.strictEqual(await refusedCall({ ...CALL, rows: [CURSOR, { ...MAIN, key }] }), `raise: the call's rows[1] takes the key ${key}, which the screen keeps for itself — t, e, technical, explain, comment, keep are its own, in any case`);
     }
   });
 

@@ -75,9 +75,8 @@
 //   ahead of its entry where the project's ledger holds the entry, from
 //   whichever of its clones on the machine kept it, its landing failed or
 //   never run — so evidence whose append failed counts all the same,
-//   wherever it waits
-//   (trust-evidence.cjs); an event under another project's id is that
-//   project's.
+//   wherever it waits (trust-evidence.cjs); an event under another
+//   project's id is that project's.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

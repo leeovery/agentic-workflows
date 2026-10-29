@@ -2,13 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: one engine invocation — the command a person types to start one,
-// what it acts on, where its answers go, how a command ends it with an exit
-// code without ending its caller, what a failure says, and how a command
-// starts one detached, to outlive it.
+// what it acts on, where its answers go, the one JSON object a command takes
+// on stdin, how a command ends it with an exit code without ending its
+// caller, what a failure says, and how a command starts one detached, to
+// outlive it.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
 const childProcess = require('child_process');
+const { isObject } = require('./manifest-io.cjs');
 
 /** The command a person types at the project root to run the engine. */
 const ENGINE_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
@@ -67,4 +69,21 @@ function messageOf(err) {
   return err instanceof Error ? err.message : String(err);
 }
 
-module.exports = { ENGINE_COMMAND, ExitSignal, messageOf, launcher };
+/**
+ * Stdin's one JSON object, `what` it holds, refused in the words of `said`,
+ * the command asking.
+ * @param {string} stdin @param {string} said @param {string} what
+ * @returns {Record<string, unknown>}
+ */
+function stdinObject(stdin, said, what) {
+  let value;
+  try {
+    value = JSON.parse(stdin);
+  } catch (err) {
+    throw new Error(`${said}: ${what} comes on stdin as a JSON object, and stdin holds no JSON — ${messageOf(err)}`);
+  }
+  if (!isObject(value)) throw new Error(`${said}: ${what} comes on stdin as a JSON object, not ${JSON.stringify(value)}`);
+  return value;
+}
+
+module.exports = { ENGINE_COMMAND, ExitSignal, messageOf, stdinObject, launcher };

@@ -29,19 +29,17 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, okSectionsAsync, output, refusedPristine, killedAt, stateGit, readState, layout, cleanupFixture,
+  ENGINE, ok, okSectionsAsync, output, refusedPristine, killedAt, contend, stateGit, layout, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, askedWorld, ledgerHelpers } = require('./ledger-world.cjs');
+const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
-
-// A Claude Code session's id.
-const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 
 const CURSOR = Object.freeze({ key: '1', name: 'Cursor', text: 'On the screen the cursor is on', notice: 'the note opens where you are looking' });
 const MAIN = Object.freeze({ key: '2', name: 'Main', text: 'On the main screen', notice: 'every note opens on the same screen' });
@@ -57,9 +55,6 @@ const CALL = Object.freeze({
   mechanism: 'The screen under the pointer when the note is made.',
   product_wide: false,
 });
-
-/** Claude's account of the person's reason. */
-const WHY = 'They keep their notes together on the main screen.';
 
 const { world, asked } = askedWorld('raise-answer-', PHASES, {
   where: 'Where does a new note open?',
@@ -80,38 +75,16 @@ afterEach(() => {
 });
 
 const { write, ledgerText, entries, full } = ledgerHelpers(() => dir);
+const { conversation, inFolder, seals: sealed, logText, logged, project, answer, lastEntry, raiseEvent } = raiseHelpers(() => dir, config, CALL);
 
-/** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, WORKFLOWS_CONFIG_DIR: config(), ...env });
-
-/** A file in the conversation's folder. @param {string} name */
-const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);
-
-/** The conversation's sealed raises. @returns {Record<string, any>} */
-const seals = () => JSON.parse(fs.readFileSync(inFolder(RAISE_SHOWN), 'utf8'));
-
-/** The trust log's text, '' where there is none. */
-function logText() {
-  const file = path.join(config(), TRUST_LOG);
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-}
-
-/** The trust log's events, each but its id, its time and the project's name. */
-function logged() {
-  return logText().split('\n').slice(0, -1).map((line) => {
-    const { id: _id, at: _at, project_name: _name, ...event } = JSON.parse(line);
-    return event;
-  });
-}
+/** The conversation's sealed raises, each test's drawn first. */
+const seals = () => /** @type {Record<string, any>} */ (sealed());
 
 /** What an answer writes beside the ledger, as it stands: the seals, the events waiting in the conversation, and the trust log. */
 function conversationState() {
   const read = (/** @type {string} */ file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null);
   return { seals: read(inFolder(RAISE_SHOWN)), waiting: read(inFolder(PENDING)), log: logText() };
 }
-
-/** The id setup minted the project. */
-const project = () => JSON.parse(readState(dir, layout.projectManifest)).project_id;
 
 /**
  * A raise of `call` drawn on `question`: its id.
@@ -120,14 +93,6 @@ const project = () => JSON.parse(readState(dir, layout.projectManifest)).project
 async function draw(question = asked.where, { call = CALL, flags = [] } = {}) {
   const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', question, ...flags], { env: conversation(), stdin: JSON.stringify(call) });
   return /** @type {string} */ (res.raise);
-}
-
-/**
- * The person's answer, which must land: its response.
- * @param {string} id @param {string[]} how @param {Record<string, unknown>|null} [given] @param {Record<string, string|undefined>} [env]
- */
-function answer(id, how, given = { why: WHY }, env = {}) {
-  return ok(dir, ['raise', 'answer', id, ...how], { env: conversation(env), stdin: given === null ? '' : JSON.stringify(given) });
 }
 
 /**
@@ -152,24 +117,6 @@ function entryOf(id, question, own = {}) {
     v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: CURSOR.text, why: WHY, rules_out: [MAIN.text, LAST.text],
     relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, unchecked: true, ...own,
-  };
-}
-
-/** The ledger's last line but its time. */
-function lastEntry() {
-  const { at: _at, ...line } = /** @type {Record<string, unknown>} */ (entries().at(-1));
-  return line;
-}
-
-/**
- * A raise event as the trust log holds it, but its id and time: `own` over
- * the pick of the lean, typed.
- * @param {string|null} entry @param {Record<string, unknown>} [own]
- */
-function raiseEvent(entry, own = {}) {
-  return {
-    v: 1, type: 'raise', project: project(), model: null, session: SESSION,
-    entry, kind: null, label: null, sort: 'several', sealed: '1', answer: '1', via: 'typed', with_text: false, reading: null, didnt_follow: false, blocked_build: null, ...own,
   };
 }
 
@@ -376,6 +323,72 @@ describe('once (E3)', () => {
     assert.deepStrictEqual([ownAgain.already, ownAgain.answer], [true, null]);
     assert.deepStrictEqual([entries().length, logged(), seals()], [lines, events, sealed]);
   });
+
+  it('"I don\'t follow" on a raise the ledger holds the answer to — an old screen\'s press — logs and counts nothing, says the raise was answered already with the row the line holds, and marks the seal a kill left unmarked', async () => {
+    const id = await draw();
+    killedPick(COMMITTED, id, '2');
+    const [lines, events] = [entries().length, logged()];
+
+    const res = answer(id, ['--didnt-follow'], null);
+
+    assert.deepStrictEqual(res, { ok: true, raise: id, already: true, answer: '2' });
+    assert.deepStrictEqual([entries().length, logged(), seals()[id].didnt_follow, seals()[id].answered.answer], [lines, events, 0, '2']);
+  });
+});
+
+/**
+ * Raises drawn at once, each in a process of its own, its separate calls
+ * held at the stub's barrier until `meet` holds `count` marks: each draw's
+ * answer, by the question it answers.
+ * @param {string[]} questions @param {string} meet @param {number} count
+ */
+function drawnAtOnce(questions, meet, count) {
+  const body = [
+    'const [engine, cwd, env, stdin, ...args] = process.argv.slice(1);',
+    'atBarrier();',
+    'require(engine).runAsync(args, { cwd, env: JSON.parse(env), stdin }).then(report);',
+  ].join('\n');
+  const env = JSON.stringify(conversation({ CLAUDE_STUB_MEET: `${count}:${meet}` }));
+  return contend(questions.length, body, (i) => [ENGINE, dir, env, JSON.stringify(CALL), 'raise', NOTE, '--answers', questions[i]]);
+}
+
+/** Until the folder `meet` holds `count` marks, five seconds at most. @param {string} meet @param {number} count */
+async function marked(meet, count) {
+  for (let waited = 0; fs.readdirSync(meet).length < count; waited += 20) {
+    assert.ok(waited < 5000, `the stub's barrier at ${meet} never held ${count} marks`);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+/** The raise a child's draw drew, by its answer. @param {{stdout: string}} drawn */
+const raiseOf = (drawn) => JSON.parse(drawn.stdout.split('\n')[0]).raise;
+
+describe('raise commands at once in one conversation, each its own process: every seal and every mark kept', () => {
+  it('two draws, each waiting on its rows\' checks while the other does, seal both raises, and each is answered', async () => {
+    const meet = path.join(config(), 'meet');
+    fs.mkdirSync(meet);
+
+    const drawn = await drawnAtOnce([asked.where, asked.size], meet, CALL.rows.length * 2);
+
+    const ids = drawn.map(raiseOf);
+    assert.deepStrictEqual(ids.map((id) => seals()[id]?.answered), [null, null]);
+    for (const id of ids) answer(id, ['--pick', '1']);
+    assert.deepStrictEqual(ids.map((id) => seals()[id].answered.answer), ['1', '1']);
+  });
+
+  it('an answer landed while another draw waits on its rows\' checks keeps its mark, and the draw its seal', async () => {
+    const id = await draw();
+    const meet = path.join(config(), 'meet');
+    fs.mkdirSync(meet);
+    const waiting = drawnAtOnce([asked.size], meet, CALL.rows.length + 1);
+    await marked(meet, CALL.rows.length);
+
+    answer(id, ['--pick', '2']);
+    fs.writeFileSync(path.join(meet, 'answered'), '');
+
+    const [drawn] = await waiting;
+    assert.deepStrictEqual([seals()[id].answered.answer, seals()[raiseOf(drawn)].answered], ['2', null]);
+  });
 });
 
 describe('proceed (E7, 16.3.7)', () => {
@@ -395,13 +408,13 @@ describe('proceed (E7, 16.3.7)', () => {
 
 describe('the answer\'s refusals, writing nothing', () => {
   it('a raise this conversation never drew, by an id no raise of it begins or one several begin; no session; and argv of another shape', async () => {
-    assert.strictEqual(refusedAnswer(['0000000000', '--pick', '1']), 'raise answer: this conversation has drawn no raise 0000000000');
+    assert.strictEqual(refusedAnswer(['0000000000', '--pick', '1']), 'raise answer: this conversation has drawn no raise 0000000000 — a raise is answered in the conversation that drew it, so after a /clear, or a resume under a new session, raise the question again');
     const id = await draw();
     const twin = `${id.slice(0, 20)}${id.endsWith('Z') ? 'Y' : 'Z'}`;
     fs.writeFileSync(inFolder(RAISE_SHOWN), JSON.stringify({ ...seals(), [twin]: { ...seals()[id], id: twin } }));
     assert.strictEqual(refusedAnswer([id.slice(0, 8), '--pick', '1']), `raise answer: "${id.slice(0, 8)}" begins the ids of 2 raises this conversation drew — give more of the id`);
     assert.match(refusedAnswer([id, '--pick', '1'], { why: WHY }, { CLAUDE_CODE_SESSION_ID: undefined }), /^raise answer: no conversation to raise it in/);
-    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin, none for keep)';
+    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
     for (const args of [[], [id], ['--pick', '1'], [id, '--pick'], [id, '--pick', '--own'], [id, '--pick', '1', '--own'], [id, '--own', '1'], [id, '--choose', '1']]) {
       assert.strictEqual(refusedAnswer(args), usage, args.join(' '));
     }

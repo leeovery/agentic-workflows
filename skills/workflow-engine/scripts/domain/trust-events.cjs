@@ -56,8 +56,9 @@
 // keeps a decision's content out (16.13.3). A label is the labeller's twelve
 // answers, true or false in 16.11.2's order, with the labeller that wrote
 // them, by the id of the model its call ran on (16.11.5, 16.19.6,
-// 16.19.11). The kind, the label and the sort are null until the labeller
-// and the decision point fill them (29.5, 29.19). An event whose fields
+// 16.19.11). The kind and the label are null until the labeller fills them
+// (29.19); the sort is Claude's, carried by its raise or its call
+// (raise.cjs), null on a call no raise made. An event whose fields
 // contradict each other is no event: free text pressed or naming a row,
 // read as a row though it is no free text, or a row's key answer naming
 // none; a raise followed with no entry, or not followed with an answer, a
