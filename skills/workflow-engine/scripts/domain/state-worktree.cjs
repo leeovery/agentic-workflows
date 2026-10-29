@@ -171,7 +171,8 @@ function trackingRef(remote) {
  * The project's remotes, and the one the state goes to: `origin`, else the
  * remote the main checkout's branch tracks, else the project's one remote.
  * `remote` is null where the project has none, or several and none of
- * these chooses one.
+ * these chooses one. A nested repository's remote is chosen by the same
+ * rule, bound to its own checkout (remote.cjs).
  * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the main checkout
  * @returns {{remote: string|null, remotes: string[]}}
  */
@@ -843,6 +844,7 @@ module.exports = {
   NETWORK_ENV,
   trackingRef,
   noRemoteChosen,
+  stateRemote,
   openWorktree,
   inspectState,
   createState,

@@ -10,12 +10,12 @@
 // from the tracker once there is a default branch, a task it lacks or holds
 // with no type refused — one ended in words of its own — what the read
 // commits and is warned of answered, a refusal after a commit carrying its
-// warnings, and its branch named from them and judged by its own change; a
-// change reaching a nested repository refused; and a project inside a
-// larger repository reading the change from its own folder alone, but for
-// the state, at the repository's top (7.2.17), and naming the person's own
-// checkout as theirs. What every driver does is
-// the landing conformance suite's; the local driver's stacks,
+// warnings, and its branch named from them and judged by its own change;
+// and a project inside a larger repository reading the change from its own
+// folder alone, but for the state, at the repository's top (7.2.17),
+// naming a nested repository from its own folder and the person's own
+// checkout as theirs. What every driver does is the landing conformance
+// suites'; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb
 // layer: the landing world (landing-world.cjs), built once and copied for
@@ -31,7 +31,7 @@ const path = require('path');
 
 const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, commitAll } = require('./engine-harness.cjs');
 const {
-  TASKS, TRACKER, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
+  TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
 } = require('./landing-world.cjs');
 const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
@@ -189,14 +189,14 @@ describe('land: the default branch everything lands on', () => {
     const { error } = refuses(dir, openArgs(card));
     assert.strictEqual(error, 'land: the default branch is trunk, and the repository has no local branch of that name — make one with `git branch trunk origin/trunk`');
     followRemedy(dir, error);
-    assert.strictEqual(ok(dir, openArgs(card)).base, 'trunk');
+    assert.strictEqual(own(ok(dir, openArgs(card))).base, 'trunk');
   });
 
   it('is the branch init.defaultBranch names where there is no remote, ahead of main', () => {
     const dir = project();
     git(dir, ['branch', 'trunk', 'main']);
     git(dir, ['config', 'init.defaultBranch', 'trunk']);
-    assert.strictEqual(ok(dir, openArgs(card)).base, 'trunk');
+    assert.strictEqual(own(ok(dir, openArgs(card))).base, 'trunk');
   });
 
   it('is never the branch the main checkout is on: with nothing naming one, the verb refuses, saying how to name it, and lands there once named', () => {
@@ -210,7 +210,7 @@ describe('land: the default branch everything lands on', () => {
     );
     assert.deepStrictEqual(stateAt(dir), before);
     git(dir, ['config', 'init.defaultBranch', 'trunk']);
-    assert.strictEqual(ok(dir, openArgs(card)).base, 'trunk');
+    assert.strictEqual(own(ok(dir, openArgs(card))).base, 'trunk');
   });
 
   it('is never the state branch: the verb refuses, writing nothing (4.9.4)', () => {
@@ -226,26 +226,6 @@ describe('land: the default branch everything lands on', () => {
 });
 
 describe('land open: a task judged by its own change', () => {
-  it('refuses a task whose change moves a nested repository\'s pointer', () => {
-    const dir = project();
-    const bump = cutTask(dir, '1.4', 'feat', 'Bump lib', 'main', { 'bump.txt': 'bump\n' }, { gitlinks: { 'vendor/lib': tip(dir, 'main') } });
-    assert.strictEqual(
-      refuses(dir, openArgs(bump)).error,
-      'land: task 1.4\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
-    );
-  });
-
-  it('refuses a task with a branch of its own in a nested clone', () => {
-    const dir = project();
-    const lib = initRepo(path.join(dir, 'vendor', 'lib'));
-    git(lib, ['commit', '-q', '--allow-empty', '-m', 'lib']);
-    git(lib, ['branch', card.branch]);
-    assert.strictEqual(
-      refuses(dir, openArgs(card)).error,
-      'land: task 1.1\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
-    );
-  });
-
   it('takes nothing the default branch gained since the task was cut for the task\'s own change', () => {
     const dir = project();
     git(dir, ['update-index', '--add', '--cacheinfo', `160000,${tip(dir, 'main')},vendor/lib`]);
@@ -282,15 +262,17 @@ describe('land open: a task judged by its own change', () => {
       assert.deepStrictEqual(landedOn(dir, 'feat/pay-phase-1').map(({ paths }) => paths), [['app/app.txt', 'other/lib', 'other/o.txt']]);
     });
 
-    it('names a nested repository the task reaches in the project from the project\'s folder, once', () => {
-      const [dir, app] = nested();
+    it('names a nested repository holding work on the task\'s branch from the project\'s folder, its refusal given there', () => {
+      const [, app] = nested();
       const lib = initRepo(path.join(app, 'vendor', 'lib'));
       git(lib, ['commit', '-q', '--allow-empty', '-m', 'lib']);
-      const bump = cutTask(dir, '1.4', 'feat', 'Bump lib', 'main', { 'app/bump.txt': 'bump\n' }, { gitlinks: { 'app/vendor/lib': tip(lib, 'HEAD') } });
-      git(lib, ['branch', bump.branch]);
+      git(lib, ['branch', '-m', 'main', 'trunk']);
+      git(lib, ['checkout', '-q', '-b', card.branch]);
+      git(lib, ['commit', '-q', '--allow-empty', '-m', 'card']);
       assert.strictEqual(
-        refuses(app, openArgs(bump)).error,
-        'land: task 1.4\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
+        refuses(app, openArgs(card)).error,
+        'land: in vendor/lib, no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '
+        + 'name it with `git config init.defaultBranch <branch>` there',
       );
     });
 
@@ -303,7 +285,7 @@ describe('land open: a task judged by its own change', () => {
       const refusal = refuses(app, ['land', 'chain', 'pay', '1.1']).error;
       assert.strictEqual(refusal, stray(phase, 1, top, 'my tidy', way(dir, { path: dir, here: true }, phase, moveStep(phase, `${short(top)}^`, `take ${short(top)} off ${phase}`))));
       followRemedy(app, refusal);
-      assert.deepStrictEqual(ok(app, ['land', 'chain', 'pay', '1.1']).stack, ['1.1']);
+      assert.deepStrictEqual(own(ok(app, ['land', 'chain', 'pay', '1.1'])).stack, ['1.1']);
     });
   });
 });

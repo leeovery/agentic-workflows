@@ -41,6 +41,9 @@ function taskId({ unit, phase, n }) {
   return `${unit}-${phase}-${n}`;
 }
 
+/** Whether two refs name the same task. @param {TaskRef} a @param {TaskRef} b @returns {boolean} */
+const sameTask = (a, b) => a.unit === b.unit && a.phase === b.phase && a.n === b.n;
+
 /**
  * The phase and task an id ends in, whatever names them before; null where
  * it ends otherwise.
@@ -111,5 +114,5 @@ function endedInTracker(whats, unit) {
 }
 
 module.exports = {
-  assertUnit, taskId, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
+  assertUnit, taskId, sameTask, stepOfId, parseTaskId, parsePhase, shownTask, parseShownTask, taskName, phaseName, unitName, FOREIGN_TASK, endedInTracker,
 };

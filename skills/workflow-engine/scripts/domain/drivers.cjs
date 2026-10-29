@@ -50,7 +50,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'finish']),
-    optional: /** @type {const} */ (['protectBranch', 'setSquashDefault']),
+    optional: /** @type {const} */ (['assertServes', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -134,25 +134,33 @@ const METHODS = Object.freeze({
 /** @typedef {import('./landing.cjs').ChainTip} ChainTip */
 /**
  * A landing driver's methods, and the least each answers — what the landing
- * conformance suite reads. `serves` answers whether it serves a remote's
- * URL; `chainTip` the branch a task's branch must descend from, at a commit
- * the repository has locally, which the seam checks before `open`; a merge,
- * what it was warned of. Where the host can, run from the code root
- * against the remote's repository: `protectBranch` sets a rule refusing a
- * branch's deletion and any push to it that is not a fast-forward (4.4.6),
- * and `setSquashDefault` makes a squash merge's commit the pull request's
- * title and description (7.2.18) — each answering the repository as its
- * host names it, and why the setting is not made, null where it is.
+ * conformance suite reads. Each verb acts in one repository of the
+ * project, its context's, and answers what it did there. `serves` answers
+ * whether it serves a remote's URL; a driver that lands through a host
+ * refuses a repository whose remote it does not serve (`assertServes`),
+ * which the seam asks of every repository it walks before any acts.
+ * `chainTip` answers the branch a task's branch must descend from, at a
+ * commit the repository has locally, which the seam checks before `open` —
+ * null where the task's phase's stack holds it already; `chain`, null where
+ * the task is not open there; `mergePhase`, null where no task of the
+ * phase is open there, and `already` where it is merged; a merge, what it
+ * was warned of. Where the host can, run from the code root against the
+ * remote's repository: `protectBranch` sets a rule refusing a branch's
+ * deletion and any push to it that is not a fast-forward (4.4.6), and
+ * `setSquashDefault` makes a squash merge's commit the pull request's title
+ * and description (7.2.18) — each answering the repository as its host
+ * names it, and why the setting is not made, null where it is.
  * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
  *   serves: (url: string) => boolean,
+ *   assertServes?: (ctx: LandingContext) => void,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
- *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip,
- *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {task: string, branch: string, base: string},
- *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]},
- *   mergePhase: (ctx: LandingContext, phase: number) => {merged: string[], warnings?: string[]},
- *   finish: (ctx: LandingContext) => {phases: {phase: number, merged: string[]}[], warnings?: string[]},
+ *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
+ *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {base: string},
+ *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
+ *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
+ *   finish: (ctx: LandingContext) => {into: string, phases: {phase: number, merged: string[]}[], warnings?: string[]},
  * }} LandingMethods
  */
 /** @typedef {DriverDeclaration & Omit<MethodsOf<typeof METHODS.landing>, keyof LandingMethods> & LandingMethods} LandingDriver */

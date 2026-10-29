@@ -21,15 +21,18 @@
 // default branch, each other on the one before, a stack's members only ever
 // added; and `stack merge`, every unmerged pull request up to the one named,
 // or the stack's whole, all or none, each merged by the method named or the
-// last one used. A squash commits the merge of the pull request's head onto
-// its base as one commit under the subject and body given, else as the
-// repository's squash default makes them — GitHub's own, unless changed:
-// a lone commit's message, or the title over the commits' — the subject
-// ending " (#N)". GH_STUB_FAULT makes calls fail as gh does: `signed-out`,
-// `rate-limit`, `offline`, `refused` or `unmergeable`, every call or,
-// after an `@`, only the one whose words begin so (`rate-limit@pr
-// create`), the extension's calls exiting 4 as it does on any failure of
-// GitHub's API; GH_STUB_NO_STACK makes the extension missing.
+// last one used. A squash commits the pull request's own change — its head
+// past its base, the pull request below's branch where it is stacked on one
+// — onto the branch it merges into, as one commit under the subject and
+// body given, else as the repository's squash default makes them — GitHub's
+// own, unless changed: a lone commit's message, or the title over the
+// commits' — the subject ending " (#N)". GH_STUB_FAULT makes calls fail as
+// gh does: `signed-out`, `rate-limit`, `offline`, `refused` or
+// `unmergeable`, every call or, after an `@`, only the one whose words
+// begin so (`rate-limit@pr create`), the extension's calls exiting 4 as it
+// does on any failure of GitHub's API — against every repository, or the
+// one GH_STUB_FAULT_REPO names, `{owner}/{repo}`; GH_STUB_NO_STACK makes the
+// extension missing.
 
 const fs = require('fs');
 const os = require('os');
@@ -99,11 +102,11 @@ function pullOf(state, number) {
 /**
  * The squash commit's subject and body as the repository's squash default
  * makes them, the subject ending " (#N)".
- * @param {string} bare @param {Github} state @param {Pull} pull @param {string} onto @param {string} head
+ * @param {string} bare @param {Github} state @param {Pull} pull @param {string} from where the pull request's own commits start @param {string} head
  * @returns {{subject: string, body: string}}
  */
-function squashed(bare, state, pull, onto, head) {
-  const messages = inBare(bare, ['log', '-z', '--format=%B', `${onto}..${head}`]).split('\0').filter(Boolean).map((message) => message.trim());
+function squashed(bare, state, pull, from, head) {
+  const messages = inBare(bare, ['log', '-z', '--format=%B', `${from}..${head}`]).split('\0').filter(Boolean).map((message) => message.trim());
   const lone = messages.length === 1 ? messages[0].split('\n') : null;
   const { squash_merge_commit_title: title, squash_merge_commit_message: message } = state.squash;
   const subject = title === 'COMMIT_OR_PR_TITLE' && lone !== null ? lone[0] : pull.title;
@@ -112,25 +115,41 @@ function squashed(bare, state, pull, onto, head) {
 }
 
 /**
- * A pull request merged into its base by a method, as GitHub merges it:
- * squashed into one commit, or merged by a merge commit; under `subject`
- * and `body` where given, else as the squash default makes them.
- * @param {string} at @param {Github} state @param {Pull} pull @param {string} method @param {{into?: string, subject?: string, body?: string}} [opts]
+ * The commit GitHub makes merging a pull request onto `onto`, a commit of
+ * the branch `into` it merges into, by a method: squashed into one commit,
+ * its own change onto that branch, or a merge commit; under `subject` and
+ * `body` where given, else as the squash default makes them. Nothing moves.
+ * @param {string} bare @param {Github} state @param {Pull} pull @param {string} method @param {string} onto
+ * @param {{into: string, subject?: string, body?: string}} opts
+ * @returns {string}
  */
-function mergePull(at, state, pull, method, { into = pull.base, subject, body } = {}) {
+function mergeOf(bare, state, pull, method, onto, { into, subject, body }) {
   if (pull.state !== 'OPEN') throw new Refused(`Pull request #${pull.number} is not open`);
-  const bare = bareOf(at, state);
-  const [onto, head] = [tipOf(bare, into), tipOf(bare, pull.head)];
-  if (onto === null || head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
-  const merged = spawnSync('git', ['merge-tree', '--write-tree', onto, head], { cwd: bare, encoding: 'utf8' });
+  const head = tipOf(bare, pull.head);
+  if (head === null) throw new Refused(`Pull request #${pull.number} has no branch to merge`);
+  const squash = method === 'squash';
+  const below = squash && pull.base !== into ? tipOf(bare, pull.base) : null;
+  const merged = spawnSync('git', ['merge-tree', '--write-tree', ...(below === null ? [] : [`--merge-base=${below}`]), onto, head], { cwd: bare, encoding: 'utf8' });
   if (merged.status !== 0) throw new Refused(`Pull request #${pull.number} is not mergeable: the merge commit cannot be cleanly created.`);
   const tree = merged.stdout.split('\n')[0];
-  const squash = method === 'squash';
-  const made = squash ? squashed(bare, state, pull, onto, head) : null;
+  const made = squash ? squashed(bare, state, pull, below ?? onto, head) : null;
   const message = made === null ? `Merge pull request #${pull.number} from ${pull.head}\n\n${pull.title}\n` : `${subject ?? made.subject}\n\n${body ?? made.body}\n`;
-  const merge = inBare(bare, ['commit-tree', tree, '-p', onto, ...(squash ? [] : ['-p', head]), '-F', '-'], { env: IDENTITY, input: message });
-  inBare(bare, ['update-ref', `refs/heads/${into}`, merge, onto]);
-  pull.state = 'MERGED';
+  return inBare(bare, ['commit-tree', tree, '-p', onto, ...(squash ? [] : ['-p', head]), '-F', '-'], { env: IDENTITY, input: message });
+}
+
+/**
+ * Pull requests merged into the branch `into` by a method, as GitHub merges
+ * them (`mergeOf`), each onto the merge of the one before, all or none: the
+ * branch moved once every merge is made.
+ * @param {string} at @param {Github} state @param {Pull[]} pulls @param {string} method @param {{into: string, subject?: string, body?: string}} opts
+ */
+function mergePulls(at, state, pulls, method, opts) {
+  const bare = bareOf(at, state);
+  const from = tipOf(bare, opts.into);
+  if (from === null) throw new Refused(`Pull request #${pulls[0]?.number} has no branch to merge`);
+  const merged = pulls.reduce((onto, pull) => mergeOf(bare, state, pull, method, onto, opts), from);
+  inBare(bare, ['update-ref', `refs/heads/${opts.into}`, merged, from]);
+  for (const pull of pulls) pull.state = 'MERGED';
 }
 
 /** The value of a flag, and the arguments without it. @param {string[]} args @param {string} flag */
@@ -188,7 +207,8 @@ function prEdit(at, state, args) {
 function prMerge(at, state, args) {
   const method = methodIn(args);
   if (method === undefined) throw new Refused('--merge, --rebase, or --squash required when not running interactively');
-  mergePull(at, state, pullOf(state, args[0]), method, { subject: take(args, '--subject').value, body: take(args, '--body').value });
+  const pull = pullOf(state, args[0]);
+  mergePulls(at, state, [pull], method, { into: pull.base, subject: take(args, '--subject').value, body: take(args, '--body').value });
   return '';
 }
 
@@ -244,7 +264,7 @@ function stackMerge(at, state, args) {
   if (shut !== undefined) throw new Refused(`cannot merge the stack: pull request #${shut.number} is closed`);
   const method = methodIn(args) ?? state.method;
   state.method = method;
-  for (const pull of merging) mergePull(at, state, pull, method, { into: stack.base });
+  mergePulls(at, state, merging, method, { into: stack.base });
   return `Merged ${merging.length} pull requests\n`;
 }
 
@@ -277,10 +297,11 @@ const COMMANDS = Object.freeze({
   'stack link': stackLink, 'stack merge': stackMerge, api,
 });
 
-/** The fault GH_STUB_FAULT sets for a call, if any. @param {string[]} args */
-function faultFor(args) {
+/** The fault GH_STUB_FAULT sets for a call against a repository, if any. @param {string[]} args @param {string} repo */
+function faultFor(args, repo) {
   const [kind, only] = (process.env.GH_STUB_FAULT ?? '').split('@');
   if (kind === '' || (only !== undefined && !args.join(' ').startsWith(only))) return null;
+  if ((process.env.GH_STUB_FAULT_REPO ?? repo) !== repo) return null;
   return FAULTS[/** @type {keyof typeof FAULTS} */ (kind)] ?? null;
 }
 
@@ -300,7 +321,7 @@ function answer(args, cwd) {
   const at = githubAt(cwd);
   if (!fs.existsSync(path.join(at, 'state.json'))) throw new Refused(`the stub has no fake GitHub at ${at}`, 98);
   fs.appendFileSync(path.join(at, 'calls'), `${args.join(' ')}\n`);
-  const fault = faultFor(args);
+  const fault = faultFor(args, readState(at).repo);
   if (fault !== null && args[0] === 'auth') throw new Refused(fault === FAULTS['signed-out'] ? SIGNED_OUT_STATUS : fault.said, 1);
   if (fault !== null) throw new Refused(fault.said, args[0] === 'stack' ? 4 : fault.code);
   const [named, cut] = args[0] === 'api' ? ['api', 1] : [args.slice(0, 2).join(' '), 2];
@@ -322,4 +343,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePull };
+module.exports = { GITHUB_SQUASH, githubAt, readState, writeState, bareOf, mergePulls };

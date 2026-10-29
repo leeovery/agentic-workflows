@@ -14,6 +14,8 @@
 // (tests/drivers/{name}/landing.cjs) readies the world for it, names the
 // environment every call runs under, and reads what the default branch it
 // lands on gained, holds and is at; this file names no driver and no tool.
+// Across nested repositories, the contract is
+// test-engine-landing-conformance-nested.cjs's.
 // Conformance layer: the landing world (landing-world.cjs), built once per
 // driver and copied for each test.
 // ---------------------------------------------------------------------------
@@ -27,7 +29,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { git, tip, fixtureFrom, cleanupFixture } = harness;
-const { TASKS, openArgs, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 
 const { card, total, notes, loudNotes, rounding, currency } = TASKS;
@@ -75,10 +77,10 @@ for (const { name } of listDrivers('landing')) {
     it('a task\'s pull request: opened from the default branch, and the first of its phase\'s stack', () => {
       const at = project();
       const opened = ok(at, openArgs(card));
-      assert.deepStrictEqual({ task: opened.task, branch: opened.branch, base: opened.base, driver: opened.driver }, {
+      assert.deepStrictEqual({ task: opened.task, branch: opened.branch, base: own(opened).base, driver: opened.driver }, {
         task: '1.1', branch: card.branch, base: 'main', driver: name,
       });
-      assert.deepStrictEqual(ok(at, ['land', 'chain', 'pay', '1.1']).stack, ['1.1']);
+      assert.deepStrictEqual(own(ok(at, ['land', 'chain', 'pay', '1.1'])).stack, ['1.1']);
     });
 
     it('a stack, in the order its tasks were merged back: a parallel task refused until it is on the chain\'s tip, named', () => {
@@ -86,8 +88,8 @@ for (const { name } of listDrivers('landing')) {
       ok(at, openArgs(total));
       assert.match(refuses(at, openArgs(card)).error, new RegExp(`^land: task 1\\.1's branch ${card.branch} does not descend from the chain's tip, ${total.branch} \\([0-9a-f]{7}\\) — merge it back onto ${total.branch} first$`));
       mergeBack(at, card.branch, total.branch);
-      assert.strictEqual(ok(at, openArgs(card)).base, total.branch);
-      assert.deepStrictEqual(ok(at, ['land', 'chain', 'pay', '1.1']).stack, ['1.2', '1.1']);
+      assert.strictEqual(own(ok(at, openArgs(card))).base, total.branch);
+      assert.deepStrictEqual(own(ok(at, ['land', 'chain', 'pay', '1.1'])).stack, ['1.2', '1.1']);
     });
 
     it('a phase merged: the default branch gains one commit per task, in the stack\'s order, each its own change under its title and id', () => {
@@ -95,7 +97,7 @@ for (const { name } of listDrivers('landing')) {
       ok(at, openArgs(total));
       mergeBack(at, card.branch, total.branch);
       ok(at, openArgs(card));
-      assert.deepStrictEqual(ok(at, ['land', 'phase', 'pay', '1']).merged, ['1.2', '1.1']);
+      assert.deepStrictEqual(own(ok(at, ['land', 'phase', 'pay', '1'])).merged, ['1.2', '1.1']);
       assert.deepStrictEqual(side.landed(at), [
         { subject: 'feat(pay): Show total', task: 'pay-1-2', paths: ['total.txt'] },
         { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
@@ -122,7 +124,7 @@ for (const { name } of listDrivers('landing')) {
       ok(at, openArgs(currency));
       ok(at, openArgs(card));
       ok(at, ['land', 'phase', 'pay', '1']);
-      assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3]);
+      assert.deepStrictEqual(own(ok(at, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3]);
       assert.deepStrictEqual(side.landed(at), [
         { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
         { subject: 'fix(pay): Round totals', task: 'pay-2-1', paths: ['round.txt'] },
@@ -149,7 +151,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
       assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEEWAY/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
-      assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).phases, []);
+      assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).repos, []);
       assert.deepStrictEqual(side.landed(at), []);
     });
   });

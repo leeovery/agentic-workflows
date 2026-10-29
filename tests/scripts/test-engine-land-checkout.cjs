@@ -27,7 +27,7 @@ const path = require('path');
 const { ok, git, tip } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const {
-  TASKS, openArgs, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  TASKS, openArgs, own, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
   stoppedRebase,
 } = require('./landing-world.cjs');
 const { checkoutBlock } = require('../../skills/workflow-engine/scripts/domain/landing-git.cjs');
@@ -62,7 +62,7 @@ describe('land phase: the main checkout', () => {
     // Opened in the past, so a replay now could not make the same commit.
     datedAt('2001-01-01T00:00:00Z', () => ok(dir, openArgs(card)));
     const opened = tip(dir, 'feat/pay-phase-1');
-    const merged = ok(dir, MERGE_ONE);
+    const merged = own(ok(dir, MERGE_ONE));
     assert.deepStrictEqual(
       { main: tip(dir, 'main'), checkout: checkout(dir), card: fs.readFileSync(path.join(dir, 'card.txt'), 'utf8'), hook: fs.existsSync(path.join(dir, '.git', 'post-merge-ran')) },
       { main: opened, checkout: { head: 'main', status: '' }, card: 'card\n', hook: true },
@@ -84,7 +84,7 @@ describe('land phase: the main checkout', () => {
         + 'switching your checkout back to main is yours, when you\'re ready',
     ));
     followRemedy(dir, dirty);
-    const merged = ok(dir, MERGE_ONE);
+    const merged = own(ok(dir, MERGE_ONE));
     assert.deepStrictEqual(
       { main: tip(dir, 'main'), head: tip(dir, 'HEAD'), status: git(dir, ['status', '--porcelain', '--branch']), app: fs.readFileSync(path.join(dir, 'app.txt'), 'utf8') },
       { main: merged.commit, head: was, status: '## HEAD (no branch)\n M app.txt\nA  note`s.txt\n', app: 'edited\n' },
@@ -146,7 +146,7 @@ describe('land phase: the main checkout', () => {
     git(dir, ['checkout', '-q', '-b', 'wip']);
     fs.writeFileSync(path.join(dir, 'app.txt'), 'edited\n');
     ok(dir, openArgs(card));
-    const merged = ok(dir, MERGE_ONE);
+    const merged = own(ok(dir, MERGE_ONE));
     assert.deepStrictEqual(
       { main: tip(dir, 'main'), checkout: checkout(dir), app: fs.readFileSync(path.join(dir, 'app.txt'), 'utf8'), card: fs.existsSync(path.join(dir, 'card.txt')) },
       { main: merged.commit, checkout: { head: 'wip', status: ' M app.txt\n' }, app: 'edited\n', card: false },

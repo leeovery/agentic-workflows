@@ -33,7 +33,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, track, commitFiles, mergeBack, landedOn, followRemedy, short: s, scratchOf, way, moveStep, rebaseSteps, strayRefusal: stray,
+  TASKS, openArgs, own, track, commitFiles, mergeBack, landedOn, followRemedy, short: s, scratchOf, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 
 /** @typedef {import('./landing-world.cjs').Row} Row */
@@ -180,7 +180,7 @@ const BRANCH_ROWS = [
       return {
         args: openArgs(keep),
         refusal: (held) => stray(PHASE_ONE, 1, reworded, 'feat(pay): Add a card', way(dir, held, PHASE_ONE, offTop(PHASE_ONE, reworded))),
-        check: (at, answer) => assert.strictEqual(answer.base, 'main'),
+        check: (at, answer) => assert.strictEqual(own(answer).base, 'main'),
       };
     },
   },
