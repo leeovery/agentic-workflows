@@ -2,9 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The GitHub rule (workflow-engine/scripts/domain/github-rule.cjs): offered
-// at setup on a GitHub remote and set through gh on yes, recorded once;
-// failing closed; nothing offered beyond GitHub; and a GitHub repository
-// read off every form of a remote URL.
+// at setup on a GitHub remote, whatever the landing setting, and set on yes
+// through the code host's driver, which runs gh, recorded once; failing
+// closed; and nothing offered beyond GitHub.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -28,8 +28,7 @@ const { git, githubOffline, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { RULESET } = require(path.join(SCRIPTS, 'domain/github-rule.cjs'));
-const { githubRepository } = require(path.join(SCRIPTS, 'domain/remote.cjs'));
+const { hostDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, engine, codeProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');
@@ -131,7 +130,6 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
       conditions: { ref_name: { include: ['refs/heads/leeway-state'], exclude: [] } },
       rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
     });
-    assert.deepStrictEqual(gh.input(), RULESET);
     assert.deepStrictEqual([out.github_rule, out.reason, out.warnings], ['set', undefined, undefined]);
     assert.strictEqual(out.committed, git(main, ['rev-parse', '--short', STATE_BRANCH]).trim());
     assert.strictEqual(git(main, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'chore: the GitHub rule on leeway-state set');
@@ -139,12 +137,25 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
     assert.strictEqual(boot(main, { PATH: gh.PATH }).github_rule_offer, false);
   });
 
+  it('is offered whatever the landing setting: a project on GitHub that lands locally is offered it still, and a yes sets it through gh', () => {
+    const gh = ghStub();
+    const main = codeProject({ remote: github.url });
+    boot(main, { PATH: gh.PATH });
+    const project = path.join(main, '.leeway', 'manifest.json');
+    fs.writeFileSync(project, JSON.stringify({ ...JSON.parse(fs.readFileSync(project, 'utf8')), drivers: { landing: 'local' } }, null, 2));
+    harness.commitAll(main, 'land locally');
+
+    assert.strictEqual(boot(main, { PATH: gh.PATH }).github_rule_offer, true);
+    assert.strictEqual(engine.ok(main, ['github-rule', 'yes'], { env: { PATH: gh.PATH } }).github_rule, 'set');
+    assert.deepStrictEqual(gh.calls(), ['auth status --hostname github.com', 'api --method POST repos/acme/portal/rulesets --input -']);
+  });
+
   it('fails closed: the remote reads as GitHub on a port ssh refuses, so a git call the stand-in misses never reaches github.com', () => {
     const main = codeProject();
     git(main, ['remote', 'add', 'origin', github.url]);
 
     assert.strictEqual(git(main, ['remote', 'get-url', 'origin']).trim(), 'ssh://git@github.com:0/acme/portal.git');
-    assert.deepStrictEqual(githubRepository(git(main, ['remote', 'get-url', 'origin'])), { owner: 'acme', repo: 'portal' });
+    assert.notStrictEqual(hostDriver(git(main, ['remote', 'get-url', 'origin'])), null, 'the code host\'s driver serves it');
 
     const { GIT_SSH_COMMAND, GIT_SSH_VARIANT, ...unstubbed } = process.env;
     const missed = spawnSync('git', ['ls-remote', 'origin'], { cwd: main, encoding: 'utf8', env: unstubbed, timeout: 10000 });
@@ -246,18 +257,5 @@ describe('the GitHub rule beyond GitHub', () => {
 
     assert.strictEqual(boot(main).github_rule_offer, false);
     assert.match(engine.refuses(main, ['github-rule', 'yes']).error, /the state's remote is not on GitHub — there is no repository to set the rule on/);
-  });
-
-  it('reads a GitHub repository off every form a remote URL takes, and nothing else', () => {
-    for (const url of [
-      'git@github.com:acme/portal.git', 'git@github.com:acme/portal', 'https://github.com/acme/portal.git',
-      'https://github.com/acme/portal/', 'https://token@github.com/acme/portal', 'ssh://git@github.com/acme/portal.git',
-      'ssh://git@github.com:22/acme/portal.git', 'git://github.com/acme/portal.git', 'https://GitHub.com/acme/portal',
-    ]) {
-      assert.deepStrictEqual(githubRepository(url), { owner: 'acme', repo: 'portal' }, url);
-    }
-    for (const url of ['https://gitlab.com/acme/portal.git', 'git@github.com.evil.io:acme/portal.git', 'https://github.com/acme', '/srv/git/portal.git']) {
-      assert.strictEqual(githubRepository(url), null, url);
-    }
   });
 });

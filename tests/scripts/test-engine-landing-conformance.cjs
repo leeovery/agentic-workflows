@@ -8,10 +8,11 @@
 // opened refused at its phase's merge with the way back, its commits kept
 // on a branch, and nothing under `.leeway/` landed (4.S2). After every
 // test, the default branch holds nothing under `.leeway/`. The local driver
-// runs fully here (7.3.6, 7.S11). A driver's own side
-// (tests/drivers/{name}/landing.cjs) readies the world for it and reads
-// what the default branch gained and holds; this file names no driver and
-// no tool. Conformance layer: the landing world (landing-world.cjs), built
+// runs fully here (7.3.6, 7.S11), and the host's driver against its
+// stand-in tool (7.3.7). A driver's own side
+// (tests/drivers/{name}/landing.cjs) readies the world for it, names the
+// environment every call runs under, and reads what the default branch
+// gained and holds; this file names no driver and no tool. Conformance layer: the landing world (landing-world.cjs), built
 // once per driver and copied for each test.
 // ---------------------------------------------------------------------------
 
@@ -21,7 +22,9 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { ok, refuses, git, tip, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const harness = require('./engine-harness.cjs');
+
+const { git, tip, fixtureFrom, cleanupFixture } = harness;
 const { TASKS, openArgs, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 
@@ -31,8 +34,10 @@ const { card, total, notes, loudNotes, rounding, currency } = TASKS;
 const isState = (file) => /^\.leeway(\/|$)/i.test(file);
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{prepare: (dir: string) => void, landed: (dir: string) => {subject: string, task: string|null, paths: string[]}[], holds: (dir: string) => string[]}} */
+  /** @type {{env: Record<string, string|undefined>, prepare: (dir: string) => void, landed: (dir: string) => {subject: string, task: string|null, paths: string[]}[], holds: (dir: string) => string[]}} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
+  const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, { env: side.env });
+  const refuses = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.refuses(at, args, { env: side.env });
   const world = fixtureFrom(`engine-landing-${name}-`, (dir) => {
     buildLanding(dir);
     side.prepare(dir);

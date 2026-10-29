@@ -36,7 +36,7 @@
 // warnings.
 // ---------------------------------------------------------------------------
 
-const { resolveDriver } = require('./drivers.cjs');
+const { resolveDriver, needsRefusal } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, shownTask } = require('./task-id.cjs');
@@ -52,8 +52,9 @@ const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
 /**
  * What a landing driver is called with: the code root its git runs in, the
- * unit, and the default branch everything lands on.
- * @typedef {{root: string, unit: string, into: string}} LandingContext
+ * unit, the default branch everything lands on, and the name of the
+ * project's remote, null where it has none chosen.
+ * @typedef {{root: string, unit: string, into: string, remote: string|null}} LandingContext
  */
 
 /**
@@ -85,13 +86,15 @@ function contextOf(cwd, unit) {
   const root = codeRoot(cwd);
   const stopped = lg.scratchBlock(root);
   if (stopped !== null) throw new Error(`land: ${stopped}`);
-  return { root, unit, into: lg.defaultBranch(root, remoteName(cwd)) };
+  const remote = remoteName(cwd);
+  return { root, unit, into: lg.defaultBranch(root, remote), remote };
 }
 
 /**
  * Run a driver's verb with the project's landing driver, committing the
- * setting where this call settled it, whether or not the driver refused.
- * The answer carries the verb's last state commit, null where it failed,
+ * setting where this call settled it, whether or not the driver refused. A
+ * verb that fails where a tool the driver needs is not installed, or fails
+ * to run, is refused for that (`needsRefusal`). The answer carries the verb's last state commit, null where it failed,
  * and every warning: `before`'s — what the verb committed and was warned of
  * before — and the setting's own.
  * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown>} act
@@ -104,6 +107,9 @@ function withDriver(cwd, act, before = {}) {
   const answer = carrying(warnings, () => {
     try {
       return act(/** @type {LandingDriver} */ (driver));
+    } catch (err) {
+      const missing = needsRefusal(driver);
+      throw missing === null ? err : new Error(`land: ${missing}`);
     } finally {
       if (written) committed = commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `chore: the landing driver is ${driver.name}`, warnings).committed;
     }

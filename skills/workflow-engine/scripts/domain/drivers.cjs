@@ -19,7 +19,9 @@
 // (7.1.4): the task driver flagged default (22.4.2); for landing, the driver
 // that serves the project's remote, else the one flagged default, the local
 // driver (22.4.3, 7.2.16). A setting naming a driver the workflows don't ship
-// is refused, naming those they do. The loader names no host: a driver for
+// is refused, naming those they do. The code host's driver, which acts on
+// the remote's host for setup, is the landing driver that serves the
+// remote, whatever the setting. The loader names no host: a driver for
 // another one is a folder of its own and nothing else.
 // ---------------------------------------------------------------------------
 
@@ -47,7 +49,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'finish']),
-    optional: /** @type {const} */ ([]),
+    optional: /** @type {const} */ (['protectBranch']),
   },
 });
 
@@ -134,8 +136,13 @@ const METHODS = Object.freeze({
  * conformance suite reads. `serves` answers whether it serves a remote's
  * URL; `chainTip` the branch a task's branch must descend from, at a commit
  * the repository has locally, which the seam checks before `open`.
+ * `protectBranch`, where the host can, sets a rule on the remote's
+ * repository refusing a branch's deletion and any push to it that is not a
+ * fast-forward (4.4.6), answering the repository as its host names it, and
+ * why the rule is not set, null where it is.
  * @typedef {{
  *   serves: (url: string) => boolean,
+ *   protectBranch?: (url: string, branch: string) => {repository: string, unset: string|null},
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {task: string, branch: string, base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]},
@@ -232,17 +239,37 @@ function namesOf(drivers) {
 }
 
 /**
+ * The one landing driver of `drivers` that serves a remote's URL, or null
+ * where none does. Refuses a URL several serve.
+ * @param {LandingDriver[]} drivers @param {string} url
+ * @returns {LandingDriver|null}
+ */
+function servingOf(drivers, url) {
+  const serving = drivers.filter((driver) => driver.serves(url));
+  if (serving.length > 1) throw new Error(`drivers: several landing drivers serve ${url} — ${namesOf(serving)}`);
+  return serving[0] ?? null;
+}
+
+/**
+ * The code host's driver: the shipped landing driver that serves the
+ * remote's URL, whatever the project's landing setting, or null where none
+ * does.
+ * @param {string} url @param {string} [root] as `loadDriver`'s
+ * @returns {LandingDriver|null}
+ */
+function hostDriver(url, root = DRIVERS_ROOT) {
+  return servingOf(/** @type {LandingDriver[]} */ (listDrivers('landing', root)), url);
+}
+
+/**
  * A kind's default among its drivers: for landing, the one driver that
  * serves the remote's URL where there is one; else the one flagged default.
  * @param {DriverKind} kind @param {Driver[]} drivers @param {string|null} url the remote's
  * @returns {Driver}
  */
 function defaultDriver(kind, drivers, url) {
-  if (kind === 'landing' && url !== null) {
-    const serving = /** @type {LandingDriver[]} */ (drivers).filter((driver) => driver.serves(url));
-    if (serving.length > 1) throw new Error(`drivers: several landing drivers serve ${url} — ${namesOf(serving)}`);
-    if (serving.length === 1) return serving[0];
-  }
+  const serving = kind === 'landing' && url !== null ? servingOf(/** @type {LandingDriver[]} */ (drivers), url) : null;
+  if (serving !== null) return serving;
   const flagged = drivers.filter((driver) => driver.isDefault);
   if (flagged.length !== 1) throw new Error(`drivers: one ${kind} driver is flagged default — flagged: ${namesOf(flagged)}`);
   return flagged[0];
@@ -309,4 +336,4 @@ function needsRefusal(driver) {
   return faults.length === 0 ? null : `the ${driver.kind} driver ${faults.join('; and ')}`;
 }
 
-module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, resolveDriver, settingOf, needsRefusal };
+module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, resolveDriver, settingOf, needsRefusal };

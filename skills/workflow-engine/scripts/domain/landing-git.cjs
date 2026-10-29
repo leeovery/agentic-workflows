@@ -12,6 +12,9 @@
 // (`MERGE_PINS`), its backend and strategy, and every other branch left
 // where it is.
 //
+// - A push names its refspec, the branch to the branch of its name, and takes
+//   nothing with it — no tag, no signature, no nested repository — so no
+//   `push.*` setting changes what goes where.
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
@@ -678,6 +681,30 @@ function moveBranch(root, branch, from, to) {
   else git(holder.path, ['-c', `branch.${branch}.mergeOptions=`, 'merge', '-s', 'ort', '--ff-only', '--no-verify-signatures', '--no-overwrite-ignore', '-q', to]);
 }
 
+/** The URL a remote fetches from, any `insteadOf` applied. @param {string} root @param {string} remote @returns {string} */
+function remoteUrlOf(root, remote) {
+  return git(root, ['remote', 'get-url', remote]).trim();
+}
+
+/**
+ * A branch pushed to the remote under its own name: the refspec named, no
+ * tag following it, nothing signed, and no nested repository pushed with
+ * it, so no `push.*` setting changes what goes where. Refused in git's
+ * words, hints aside, where the remote refuses it or cannot be reached,
+ * saying what `then` did not happen.
+ * @param {string} root @param {string} remote @param {string} branch @param {string} then
+ */
+function pushBranch(root, remote, branch, then) {
+  const ref = `${HEADS}${branch}`;
+  try {
+    git(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${ref}:${ref}`]);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    const said = err.message.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('hint:')).join(' ');
+    throw new Error(`land: ${branch} could not be pushed to ${remote} (${plain(said)}), so ${then}`);
+  }
+}
+
 /** The branch the remote names its HEAD, or null. @param {string} root @param {string|null} remote @returns {string|null} */
 function remoteHead(root, remote) {
   if (remote === null) return null;
@@ -715,5 +742,5 @@ function defaultBranch(root, remote) {
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
   pointersMoved, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
-  defaultBranch,
+  defaultBranch, remoteUrlOf, pushBranch,
 };

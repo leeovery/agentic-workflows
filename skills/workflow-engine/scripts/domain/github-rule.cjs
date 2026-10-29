@@ -1,25 +1,26 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the GitHub rule (4.4.6). Where the state's remote is on
-// GitHub, setup offers a repository ruleset on `leeway-state` refusing its
-// deletion and any push that is not a fast-forward, for anything run outside
-// Claude Code. The offer stands until it is answered, and the answer is
-// recorded on the project manifest either way, as the walkthrough's is, so
-// it is never made again — and, on the state branch, never made to another
-// clone of the project. A yes sets the rule through `gh`; a `gh` that is
-// missing, signed out or refused is said, and setup carries on without it.
-// What is recorded is what happened: the rule `set`, the offer `declined`,
-// or the yes `failed`, with why — so the manifest never says the rule is
-// there when it is not.
+// Domain ring: the GitHub rule (4.4.6). Where the state's remote is served by
+// a code host's driver that can set it — the landing driver serving the
+// remote, whatever the project's landing setting (drivers.cjs, `hostDriver`)
+// — setup offers a rule on `leeway-state` refusing its deletion and any push
+// that is not a fast-forward, for anything run outside Claude Code. The
+// offer stands until it is answered, and the answer is recorded on the
+// project manifest either way, as the walkthrough's is, so it is never made
+// again — and, on the state branch, never made to another clone of the
+// project. A yes sets the rule through that driver; a rule it could not set
+// is said, with why, and setup carries on without it. What is recorded is
+// what happened: the rule `set`, the offer `declined`, or the yes `failed`,
+// with why — so the manifest never says the rule is there when it is not.
 // ---------------------------------------------------------------------------
 
-const { spawnSync } = require('child_process');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { STATE_BRANCH } = require('./state-worktree.cjs');
-const { remoteUrl, githubRepository } = require('./remote.cjs');
+const { remoteUrl } = require('./remote.cjs');
+const { hostDriver } = require('./drivers.cjs');
 
 /** What the project manifest records once the offer is answered. */
 const STATUSES = /** @type {const} */ (['set', 'declined', 'failed']);
@@ -27,22 +28,16 @@ const STATUSES = /** @type {const} */ (['set', 'declined', 'failed']);
 /** @typedef {typeof STATUSES[number]} GithubRuleStatus */
 /** @typedef {{status: GithubRuleStatus, reason?: string}} GithubRuleRecord */
 
-const GITHUB_HOST = 'github.com';
-const GH_TIMEOUT_MS = 30000;
-
-/** The ruleset the yes sets: `leeway-state` never deleted, never pushed but by a fast-forward. */
-const RULESET = Object.freeze({
-  name: STATE_BRANCH,
-  target: 'branch',
-  enforcement: 'active',
-  conditions: { ref_name: { include: [`refs/heads/${STATE_BRANCH}`], exclude: [] } },
-  rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
-});
-
-/** The state's remote's GitHub repository, or null. @param {string} cwd @returns {import('./remote.cjs').GithubRepository|null} */
-function stateRepository(cwd) {
+/**
+ * The state's remote's URL and the code host's driver that sets the rule
+ * there, or null where none can.
+ * @param {string} cwd
+ * @returns {{url: string, protectBranch: NonNullable<import('./drivers.cjs').LandingDriver['protectBranch']>}|null}
+ */
+function codeHost(cwd) {
   const url = remoteUrl(cwd);
-  return url === null ? null : githubRepository(url);
+  const host = url === null ? null : hostDriver(url);
+  return host === null || host.protectBranch === undefined ? null : { url: /** @type {string} */ (url), protectBranch: host.protectBranch };
 }
 
 /**
@@ -65,58 +60,38 @@ function recordedAnswer(cwd) {
 }
 
 /**
- * Whether boot offers the rule: the state's remote is on GitHub, and the
- * offer was never answered.
+ * Whether boot offers the rule: the state's remote is served by a code
+ * host's driver that sets it, and the offer was never answered.
  * @param {string} cwd
  * @returns {boolean}
  */
 function githubRuleOffered(cwd) {
-  return recordedAnswer(cwd) === null && stateRepository(cwd) !== null;
-}
-
-/**
- * Set the rule on the repository through `gh`: null where it is set, else
- * why it is not.
- * @param {import('./remote.cjs').GithubRepository} repository
- * @returns {string|null}
- */
-function setRule({ owner, repo }) {
-  const signedIn = spawnSync('gh', ['auth', 'status', '--hostname', GITHUB_HOST], { encoding: 'utf8', timeout: GH_TIMEOUT_MS });
-  if (signedIn.error) {
-    const missing = /** @type {NodeJS.ErrnoException} */ (signedIn.error).code === 'ENOENT';
-    return missing ? 'gh is not installed' : `gh could not run: ${signedIn.error.message}`;
-  }
-  if (signedIn.status !== 0) return `gh is not signed in to ${GITHUB_HOST}`;
-  const made = spawnSync('gh', ['api', '--method', 'POST', `repos/${owner}/${repo}/rulesets`, '--input', '-'], {
-    encoding: 'utf8', input: JSON.stringify(RULESET), timeout: GH_TIMEOUT_MS,
-  });
-  if (made.error) return `gh could not run: ${made.error.message}`;
-  if (made.status !== 0) return `gh refused it: ${(made.stderr || made.stdout || `exit ${made.status}`).trim()}`;
-  return null;
+  return recordedAnswer(cwd) === null && codeHost(cwd) !== null;
 }
 
 /**
  * What a yes did: the rule set, or why it was not — said as a warning too,
- * with where to set it by hand. Refuses where the state's remote is not on
- * GitHub.
+ * with where to set it by hand. Refuses where no code host's driver serves
+ * the state's remote.
  * @param {string} cwd @param {string[]} warnings
  * @returns {GithubRuleRecord}
  */
 function setOnYes(cwd, warnings) {
-  const repository = stateRepository(cwd);
-  if (repository === null) throw new Error('github-rule: the state\'s remote is not on GitHub — there is no repository to set the rule on');
-  const unset = setRule(repository);
+  const host = codeHost(cwd);
+  if (host === null) throw new Error('github-rule: the state\'s remote is not on GitHub — there is no repository to set the rule on');
+  const { repository, unset } = host.protectBranch(host.url, STATE_BRANCH);
   if (unset === null) return { status: 'set' };
-  warnings.push(`the rule against deleting or force-pushing ${STATE_BRANCH} was not set on ${repository.owner}/${repository.repo}: ${unset} — set it by hand under the repository's Settings → Rules`);
+  warnings.push(`the rule against deleting or force-pushing ${STATE_BRANCH} was not set on ${repository}: ${unset} — set it by hand under the repository's Settings → Rules`);
   return { status: 'failed', reason: unset };
 }
 
 /**
- * Answer the offer — `yes` sets the rule through `gh`, `no` sets nothing —
- * and record what happened on the project manifest, committed confined to
- * it: `set`, `declined`, or `failed` with why. The offer is never made
- * again, whichever is recorded. Refuses another answer, a yes where the
- * state's remote is not on GitHub, and an offer already answered.
+ * Answer the offer — `yes` sets the rule through the code host's driver,
+ * `no` sets nothing — and record what happened on the project manifest,
+ * committed confined to it: `set`, `declined`, or `failed` with why. The
+ * offer is never made again, whichever is recorded. Refuses another answer,
+ * a yes where no code host's driver serves the state's remote, and an
+ * offer already answered.
  * @param {string} cwd @param {string} answer
  * @returns {{github_rule: GithubRuleStatus, reason?: string, committed: string|null, note?: string, warnings?: string[]}}
  */
@@ -142,4 +117,4 @@ function answerGithubRule(cwd, answer) {
   return result;
 }
 
-module.exports = { RULESET, githubRuleOffered, answerGithubRule };
+module.exports = { githubRuleOffered, answerGithubRule };
