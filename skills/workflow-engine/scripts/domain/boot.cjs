@@ -68,6 +68,7 @@ const { spawnSync } = require('child_process');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitStateScoped } = require('./commit.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -252,7 +253,7 @@ function trimReport(stdout) {
  * @returns {BootResult|BootStop}
  */
 function boot(cwd, { startAgain = false } = {}) {
-  dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
+  dropPosition(handedSession());
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);

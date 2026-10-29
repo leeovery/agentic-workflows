@@ -12,8 +12,8 @@
 // pressed only where the mod's record of its last press names this gate and
 // row after it was shown — whatever the rows mod did with the send's own
 // record — typed otherwise and always with the mod off (6.6.3, 6.6.4); what
-// the row leads to returned and never performed (6.6.2); each refusal
-// logging nothing; and the mod's record of a press read as the mod writes
+// the row leads to returned and never performed (6.6.2); a rerun after a
+// kill read once; each refusal logging nothing; and the mod's record of a press read as the mod writes
 // it, each literal read off its source.
 //
 // Layer: verb, the gateway's record and the source guard beside it. World:
@@ -42,6 +42,7 @@ const {
   openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, rangeOption, MENU_INSTRUCTION,
 } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
+const { readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const { announced } = require('./gate-audit.cjs');
 
@@ -365,6 +366,21 @@ describe('gate (6.6, 6.S18)', () => {
     render(CODE_GATE);
     assert.strictEqual(answer(['code gate', '--pick', 'b']).picked, 'b');
     assert.strictEqual(events().length, 2);
+  });
+
+  it('a rerun after a kill between the log and the mark logs the same event again under the same id, read once (16.13.3); the gate shown again is a new event', () => {
+    render(CODE_GATE);
+    answer(['code gate', '--pick', 'y']);
+    fs.writeFileSync(inFolder('gate-shown.json'), JSON.stringify({ ...shown(), answered: null }));
+    answer(['code gate', '--pick', 'y']);
+    render(CODE_GATE);
+    answer(['code gate', '--pick', 'b']);
+
+    const [first, again, next] = events().map((event) => event.id);
+    /** @type {unknown[]} */
+    const read = [];
+    inConversation(() => readTrustLog((event) => read.push(event.picked)));
+    assert.deepStrictEqual([again === first, next === first, read], [true, false, ['y', 'b']]);
   });
 
   it('a gate before the project has state is answered like any other, its event naming no project (16.13.5)', () => {

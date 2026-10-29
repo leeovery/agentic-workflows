@@ -61,7 +61,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
@@ -475,7 +475,7 @@ function applySessionLabel(cwd, name, phase, topic) {
     socket: ctx.socket,
     original,
     applied,
-    session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
+    session_id: handedSession(),
     pid,
     pid_start: pid ? processStartTime(pid) : null,
   };
@@ -617,7 +617,7 @@ function restoreSessionLabel(cwd, sessionId) {
  * @returns {{repaired: boolean}}
  */
 function repairSessionLabels(cwd) {
-  dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
+  dropPosition(handedSession());
   if (resolveEnabled(cwd) !== true) return { repaired: false };
   /** @type {ReturnType<typeof tmuxContext>} */
   let ctx = null;

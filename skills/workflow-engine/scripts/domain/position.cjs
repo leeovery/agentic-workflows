@@ -36,6 +36,7 @@ const fs = require('fs');
 const path = require('path');
 const { PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir, isMarked, markConversation } = require('./conversation.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
@@ -106,8 +107,8 @@ function readPosition(sessionId) {
 
 /** The calling conversation where the engine has marked it, else null. @returns {string|null} */
 function ownConversation() {
-  const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  return sessionId && isMarked(sessionId) ? sessionId : null;
+  const sessionId = handedSession();
+  return sessionId !== null && isMarked(sessionId) ? sessionId : null;
 }
 
 /**

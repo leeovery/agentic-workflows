@@ -99,6 +99,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
@@ -717,8 +718,8 @@ function requestOf(cwd, verb, args, stdin, warnings) {
       ? `ledger ${verb}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
       : `ledger ${verb}: a question moves from a topic, and ${at.phase} has none — a topic exists only before the spec`);
   }
-  const session = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!session) throw new Error(`ledger ${verb}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
+  const session = handedSession();
+  if (session === null) throw new Error(`ledger ${verb}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
   checkValues(verb, given);
   write.checkGiven(at, given);
   const content = stdinContent(verb, stdin());

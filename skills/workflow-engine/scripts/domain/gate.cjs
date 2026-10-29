@@ -18,7 +18,9 @@
 //   Code handed no session id; a record that cannot be written costs the
 //   command nothing. It is kept for a conversation not yet marked as
 //   running the workflows too, its folder made for it, so a gate before the
-//   project has state is answered like any other.
+//   project has state is answered like any other. The layout hook refuses
+//   Claude's own writes to it and to the mod's `pressed.json`
+//   (layout-hook.cjs).
 // - A gate's name is the one its MENU declares, up to its first ` — `: one
 //   gate is one name, however many entries share it (`in-session gate — 3`
 //   is `in-session gate`), and `gate` takes either. The name is never made
@@ -40,13 +42,18 @@
 // - `gate` refuses, logging nothing, with no session, no gate shown,
 //   another gate's name, a key the gate lacks, and a gate already
 //   answered. It writes no state: the trust log under the trust log's lock
-//   (trust-log.cjs), and the record, marked answered.
+//   (trust-log.cjs), and the record, marked answered. The event's id is
+//   drawn from the conversation, the gate and when it was shown, so a
+//   rerun after a kill between the two logs the same event again, read
+//   once (16.13.3).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { conversationDir } = require('./conversation.cjs');
+const { idFrom } = require('./ledger-ids.cjs');
 const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
 
@@ -70,11 +77,6 @@ const SHOWN = 'gate-shown.json';
 const PRESSED = 'pressed.json';
 const ENTRY_SEPARATOR = ' — ';
 
-/** The session id Claude Code handed the command; null where it handed none. */
-function sessionId() {
-  return process.env.CLAUDE_CODE_SESSION_ID || null;
-}
-
 /** The gate a MENU declares, by its name: what comes before its first ` — `. @param {string} declared */
 function nameOf(declared) {
   return declared.split(ENTRY_SEPARATOR)[0];
@@ -96,7 +98,7 @@ function shownFile(session) {
  */
 function recordGateShown() {
   const shown = gateShown();
-  const session = sessionId();
+  const session = handedSession();
   if (shown === null || session === null) return;
   /** @type {ShownRecord} */
   const kept = {
@@ -163,7 +165,7 @@ function isPressed(session, shown, row) {
  */
 function answerGate(cwd, named, answer) {
   const name = nameOf(named);
-  const session = sessionId();
+  const session = handedSession();
   if (session === null) throw new Error('gate: no conversation to answer in — Claude Code hands every command it runs a session id, and this one has none');
   const file = shownFile(session);
   const read = readJson(file);
@@ -177,9 +179,10 @@ function answerGate(cwd, named, answer) {
   const picked = row?.key ?? null;
   /** @type {string[]} */
   const warnings = [];
-  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading: null }, { cwd, warnings });
+  const id = idFrom(session, name, shown.at);
+  record('gate', { gate: name, recommended, picked, via, with_text: row === null, reading: null }, { cwd, warnings, id });
   writeJsonAtomic(file, { ...shown, answered: { at: new Date().toISOString(), picked, via } });
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, recordGateShown, answerGate };
+module.exports = { SHOWN, PRESSED, recordGateShown, answerGate };

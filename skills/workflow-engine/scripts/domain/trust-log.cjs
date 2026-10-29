@@ -34,12 +34,16 @@
 //   (conversation.cjs), by its id: null where none can be read, or what is
 //   read is no model's id. The session is the id Claude Code handed the
 //   command, null where it handed none, or what it handed is no session's
-//   id. An event's time is to the millisecond.
+//   id. An event's time is to the millisecond. Its id is drawn afresh, or
+//   given by a caller whose rerun logs the same event again, so the read
+//   counts it once (gate.cjs).
 // - An append holds a lock of its own beside the log, one for the machine,
 //   never the project's writer lock. Where both are held the writer lock is
-//   taken first, and the trust lock is held for the append alone, so never
-//   the other way round. Under it, a last line a writer that died mid-append
-//   left unterminated is cut away before the line is added.
+//   taken first, never the other way round: a record or a landing holds the
+//   trust lock for its append, and boot's pass across every conversation's
+//   file it lands, the ledger's ids read under it. Under it, a last line a
+//   writer that died mid-append left unterminated is cut away before the
+//   line is added.
 // - An append that fails is a warning, and the event waits in the
 //   conversation's folder, `trust-pending.jsonl` — the folder made for it
 //   where the conversation has none yet, as before the project has state —
@@ -52,10 +56,11 @@
 //   lost. What waits leaves only under the trust lock. A command Claude
 //   Code handed no session id has nowhere to keep it: the warning says the
 //   event is lost. The layout hook refuses Claude's writes to every file
-//   whose bytes reach the log. Of what waits, an event this engine reads
-//   lands as it was parsed, its JSON written again; a newer release's line
-//   waits on, for an engine that reads it; and any other line is dropped, a
-//   warning saying why.
+//   whose bytes reach the log, and to the gate's record a gate event is
+//   built from: the gate shown and the mod's last press (gate.cjs). Of
+//   what waits, an event this engine reads lands as it was parsed, its JSON
+//   written again; a newer release's line waits on, for an engine that
+//   reads it; and any other line is dropped, a warning saying why.
 // - A read streams the file a line at a time and never waits on the lock.
 //   A line it cannot read — an unterminated last line, which an append may
 //   still be writing, or a line no event of this engine's schema — is
@@ -72,11 +77,12 @@ const path = require('path');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { fileLineBytes, fdLinesBackward, endsWithNewline } = require('../kernel/file-stream.cjs');
-const { LOCK_TIMEOUT_MS, isObject, projectManifestPath, readProjectManifest, holdsWriterLock, withStateLockFile, withWriterLock } = require('../kernel/manifest-io.cjs');
+const { LOCK_TIMEOUT_MS, isObject, projectManifestPath, readProjectManifest, writeTextAtomic, holdsWriterLock, withStateLockFile, withWriterLock } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { isId, newId } = require('./ledger-ids.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { idsOf } = require('./ledger-check.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { MODEL, SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
 
@@ -265,13 +271,6 @@ function sortWaiting(text, landing) {
   return isObject(value) && Object.hasOwn(value, 'event') ? sortKept(/** @type {KeptAhead} */ (value), text, landing) : sortEvent(value, text);
 }
 
-/** Write `text` over `file` whole, renamed over it from a file beside it. @param {string} file @param {string} text */
-function replaceFile(file, text) {
-  const temp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
-  fs.writeFileSync(temp, text);
-  fs.renameSync(temp, file);
-}
-
 /**
  * Append to the trust log `file` the events waiting at `pending`, sorted by
  * `landing`, then `line`. What landed, or is gone, waits no more; what
@@ -295,7 +294,7 @@ function appendAfterWaiting(file, pending, warnings, landing, line) {
   const appended = landed.join('') + line;
   if (appended !== '') fs.appendFileSync(file, appended);
   if (later.length === 0) fs.rmSync(pending, { force: true });
-  else if (later.length < waiting.length) replaceFile(pending, later.join(''));
+  else if (later.length < waiting.length) writeTextAtomic(pending, later.join(''));
 }
 
 /**
@@ -367,25 +366,20 @@ function keep(line, pending, err) {
   return `${failed} — the event waits in the conversation, appended first by its next record`;
 }
 
-/** The session id Claude Code handed the command, null where it handed none. @returns {string|null} */
-function handedSession() {
-  return process.env.CLAUDE_CODE_SESSION_ID || null;
-}
-
 /**
  * Event `type` as the trust log records it, built and checked, nothing
- * written: its own `fields` under the fields the engine sets — its id, the
- * time, the project `cwd` is in, and the model's and the session's ids.
- * Refuses an event its schema does not hold, and a project whose manifest
- * holds no project_id.
- * @param {string} type @param {Record<string, unknown>} fields @param {string} cwd
+ * written: its own `fields` under the fields the engine sets — its id,
+ * `id` or one drawn afresh, the time, the project `cwd` is in, and the
+ * model's and the session's ids. Refuses an event its schema does not hold,
+ * and a project whose manifest holds no project_id.
+ * @param {string} type @param {Record<string, unknown>} fields @param {string} cwd @param {string} [id]
  * @returns {Record<string, unknown>}
  */
-function newEvent(type, fields, cwd) {
+function newEvent(type, fields, cwd, id = newId()) {
   const session = handedSession();
   const model = session === null ? null : callerModel(session, cwd);
   const ids = { model: MODEL.test(model) ? model : null, session: SESSION.test(session) ? session : null };
-  return trustEvent(type, { id: newId(), at: new Date().toISOString(), ...projectOf(cwd), ...ids }, fields);
+  return trustEvent(type, { id, at: new Date().toISOString(), ...projectOf(cwd), ...ids }, fields);
 }
 
 /**
@@ -428,11 +422,12 @@ function landKept(cwd, warnings) {
  * recording nothing, what it cannot build, then appended as one line after
  * any the conversation could not append before. An append that fails is a
  * warning in `warnings`, the event kept for the conversation's next record.
- * @param {string} type @param {Record<string, unknown>} fields @param {{cwd: string, warnings: string[]}} ctx
+ * An `id` given is the event's, so a rerun that records it again is read once.
+ * @param {string} type @param {Record<string, unknown>} fields @param {{cwd: string, warnings: string[], id?: string}} ctx
  * @returns {Record<string, unknown>} the event recorded
  */
-function record(type, fields, { cwd, warnings }) {
-  const event = newEvent(type, fields, cwd);
+function record(type, fields, { cwd, warnings, id }) {
+  const event = newEvent(type, fields, cwd, id);
   const line = `${JSON.stringify(event)}\n`;
   const pending = pendingFile(handedSession());
   try {

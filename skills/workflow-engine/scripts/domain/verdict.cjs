@@ -14,8 +14,9 @@
 //   skip; the point a topic's decided screen, ready to build, an
 //   investigation's conclusion, the finish gate, a quick-fix's close
 //   (16.10.10, 16.10.11), or the queue (16.10.7). It refuses an entry that
-//   is no departure (16.10.1), and a departure whose latest verdict is no
-//   skip: a skip waits in the queue for the verdict that follows it, and a
+//   is no departure (16.10.1), a departure made in a place no longer live,
+//   which the queue leaves out (ledger-verdicts.cjs), and a departure whose
+//   latest verdict is no skip: a skip waits in the queue for the verdict that follows it, and a
 //   verdict given is corrected as a correction (16.15.4), never given again
 //   — a verdict waiting in any conversation for the trust log among them,
 //   which the queue leaves out too (trust-log.cjs).
@@ -29,11 +30,11 @@ const { messageOf } = require('../kernel/call.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { resolveId, shortId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, whyDead } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 const { readShown } = require('./ledger-read.cjs');
-const { trustLog, isDeparture, answerQueue } = require('./ledger-verdicts.cjs');
-const { record } = require('./trust-log.cjs');
+const { isDeparture, answerQueue } = require('./ledger-verdicts.cjs');
+const { record, judgedDepartures } = require('./trust-log.cjs');
 const { VERDICTS, VERDICT_POINTS } = require('./trust-events.cjs');
 
 const QUEUE_USAGE = 'verdict queue';
@@ -109,7 +110,9 @@ function giveVerdict(cwd, args) {
     }
     const entry = shortId(id, folded.facts.keys());
     if (!isDeparture(folded, id)) throw new Error(`verdict give: ${entry} is no departure — a verdict is given on the person's answer that stood over Claude's lean`);
-    if (trustLog.verdicts(root).has(id)) throw new Error(`verdict give: ${entry} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
+    const dead = whyDead(folded, id);
+    if (dead !== null) throw new Error(`verdict give: ${entry} is owed no verdict — ${dead}, so the departure is no longer live`);
+    if (judgedDepartures(root).has(id)) throw new Error(`verdict give: ${entry} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
     record('verdict', { entry: id, verdict, point }, { cwd, warnings });
     return { entry, verdict, point };
   });

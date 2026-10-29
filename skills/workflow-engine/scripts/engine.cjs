@@ -79,6 +79,7 @@ const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cj
 const { ExitSignal, messageOf } = require('./kernel/call.cjs');
 const { findStateRoot, stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
 const { codeRoot } = require('./kernel/code-root.cjs');
+const { handedSession } = require('./kernel/process.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
 
@@ -1111,7 +1112,7 @@ function runConversation(call, argv) {
       return;
     }
     if (command === 'position') {
-      const sessionId = rest[0] || process.env.CLAUDE_CODE_SESSION_ID;
+      const sessionId = rest[0] || handedSession();
       if (rest.length > 1 || !sessionId) {
         throw new Error('Usage: engine conversation position [session-id] — the calling conversation\'s CLAUDE_CODE_SESSION_ID when no id is given');
       }

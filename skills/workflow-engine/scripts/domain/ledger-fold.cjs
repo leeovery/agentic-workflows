@@ -962,6 +962,6 @@ function productOf(folded) {
 }
 
 module.exports = {
-  ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
+  ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
   foldedBeneath, wordingOf, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

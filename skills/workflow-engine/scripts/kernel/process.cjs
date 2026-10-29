@@ -5,7 +5,9 @@
 // identify a process (a recycled pid carries a different start time). The
 // domains that record an owning Claude process (presence heartbeats, session-
 // label stashes) share these to answer "does that process still run" and
-// "is that record the calling session's own".
+// "is that record the calling session's own". The calling session is the id
+// Claude Code hands every command it runs, `CLAUDE_CODE_SESSION_ID`, read
+// here alone (`handedSession`).
 // ---------------------------------------------------------------------------
 
 const { execFileSync } = require('child_process');
@@ -75,6 +77,11 @@ function ownerAlive(record, startOf = processStartTime) {
   return start == null || start === record.pid_start;
 }
 
+/** The session id Claude Code handed the command, null where it handed none. @returns {string|null} */
+function handedSession() {
+  return process.env.CLAUDE_CODE_SESSION_ID || null;
+}
+
 /**
  * Does the calling session own this record? Its own session id, or its own
  * pid where the record predates a session id — so a later conversation in
@@ -87,9 +94,9 @@ function ownerAlive(record, startOf = processStartTime) {
  * @returns {boolean}
  */
 function ownsRow(record) {
-  const mySession = process.env.CLAUDE_CODE_SESSION_ID || null;
+  const mySession = handedSession();
   const myPid = Number(process.env.CLAUDE_PID) || null;
   return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
 }
 
-module.exports = { sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };
+module.exports = { handedSession, sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };
