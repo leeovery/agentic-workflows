@@ -13,6 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const { GIT_FLOOR, gitShortfall, gitFloorStopSurface } = require('../../skills/workflow-engine/scripts/domain/git-floor.cjs');
+const { withEnv } = require('./discovery-test-utils.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -22,18 +23,18 @@ describe('the git floor', () => {
   it("is the one value boot's check and its stop read: raised, a git at the old floor falls short of it, and the stop names the new one wherever it names the floor", () => {
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'git-floor-'));
     fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\necho 'git version ${floor}'\n`, { mode: 0o755 });
-    const [saved, PATH] = [[...GIT_FLOOR], process.env.PATH];
+    const saved = [...GIT_FLOOR];
     try {
-      process.env.PATH = bin;
-      GIT_FLOOR[1] += 1;
-      assert.deepStrictEqual(gitShortfall(), { found: floor });
-      const [raised, old] = [GIT_FLOOR.join('\\.'), floor.replace(/\./g, '\\.')];
-      const shown = gitFloorStopSurface();
-      assert.match(shown, new RegExp(`Leeway runs on git ${raised} or newer, and the git on this machine is ${old}\\.`));
-      assert.match(shown, new RegExp(`Install git ${raised} or newer, then`));
+      withEnv({ PATH: bin }, () => {
+        GIT_FLOOR[1] += 1;
+        assert.deepStrictEqual(gitShortfall(), { found: floor });
+        const [raised, old] = [GIT_FLOOR.join('\\.'), floor.replace(/\./g, '\\.')];
+        const shown = gitFloorStopSurface();
+        assert.match(shown, new RegExp(`Leeway runs on git ${raised} or newer, and the git on this machine is ${old}\\.`));
+        assert.match(shown, new RegExp(`Install git ${raised} or newer, then`));
+      });
     } finally {
       GIT_FLOOR.splice(0, GIT_FLOOR.length, ...saved);
-      process.env.PATH = PATH;
       fs.rmSync(bin, { recursive: true, force: true });
     }
   });

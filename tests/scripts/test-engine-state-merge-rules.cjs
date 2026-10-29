@@ -108,7 +108,7 @@ describe('the rules each file merges by', () => {
     assert.match(id, /^[0-9a-f]{12}$/);
     assert.strictEqual(choiceId({ ...choice, local: { set: true, value: { y: 2, x: [1] } }, pick: 'local' }), id);
     for (const other of [
-      { manifest: 'auth-flow/manifest.json' }, { uncommitted: true }, { field: ['a', 'c'] },
+      { manifest: layout.manifest('auth-flow') }, { uncommitted: true }, { field: ['a', 'c'] },
       { local: { set: true, value: { x: [2], y: 2 } } }, { remote: { set: true, value: null } },
     ]) {
       assert.notStrictEqual(choiceId({ ...choice, ...other }), id, JSON.stringify(other));

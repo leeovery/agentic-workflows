@@ -29,7 +29,7 @@ const { catchUpState, pickStateMerge } = require(MERGE);
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 
 const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, twoMachines, blobId, treeId, status, pushFailing, commitUnpushed, ledger, projectManifest, shownChoice } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, blobId, treeId, status, pushFailing, commitUnpushed, ledger, projectManifest, shownChoice } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
 
@@ -37,7 +37,7 @@ const world = useWorld();
 
 describe('any other file both sides changed', () => {
   it('merges changes to different places in a text file, with no warning', () => {
-    const { here, there } = twoMachines({ 'unit/spec.md': '# Spec\n\none\n\ntwo\n\nthree\n' });
+    const { here, there } = machinesSharing({ 'unit/spec.md': '# Spec\n\none\n\ntwo\n\nthree\n' });
     commitUnpushed(here, { 'unit/spec.md': '# Spec\n\nONE\n\ntwo\n\nthree\n' });
     commitOnState(there.root, { 'unit/spec.md': '# Spec\n\none\n\ntwo\n\nTHREE\n' });
 
@@ -48,7 +48,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps both sides\' lines where both changed the same place, the remote\'s first, and says so', () => {
-    const { here, there } = twoMachines({ 'unit/topics/a/log.md': '# a\n' });
+    const { here, there } = machinesSharing({ 'unit/topics/a/log.md': '# a\n' });
     commitUnpushed(here, { 'unit/topics/a/log.md': '# a\n\n## here\n' });
     commitOnState(there.root, { 'unit/topics/a/log.md': '# a\n\n## there\n' });
 
@@ -61,7 +61,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps the remote\'s copy of a file that is not text at its path, and this machine\'s beside it', () => {
-    const { here, there } = twoMachines({ 'unit/assets/chart.png': 'png\0base' });
+    const { here, there } = machinesSharing({ 'unit/assets/chart.png': 'png\0base' });
     commitUnpushed(here, { 'unit/assets/chart.png': 'png\0here' });
     commitOnState(there.root, { 'unit/assets/chart.png': 'png\0there' });
     const mine = git(here.main, ['rev-parse', `${STATE_BRANCH}:unit/assets/chart.png`]).trim();
@@ -80,7 +80,7 @@ describe('any other file both sides changed', () => {
   it('reads in one batch an empty file and a file of any bytes, LFs and lines like the batch\'s own headers in it, beside text files', () => {
     const header = `${'e'.repeat(40)} 7\n`;
     const binary = (/** @type {string} */ side) => Buffer.from(`\0\n${header}${side}\n\n${header}`);
-    const { here, there } = twoMachines({ 'unit/empty.md': '', 'unit/blob.bin': binary('base'), 'unit/spec.md': 'one\n\ntwo\n' });
+    const { here, there } = machinesSharing({ 'unit/empty.md': '', 'unit/blob.bin': binary('base'), 'unit/spec.md': 'one\n\ntwo\n' });
     commitUnpushed(here, { 'unit/empty.md': 'here\n', 'unit/blob.bin': binary('here'), 'unit/spec.md': 'ONE\n\ntwo\n' });
     commitOnState(there.root, { 'unit/empty.md': 'there\n', 'unit/blob.bin': binary('there'), 'unit/spec.md': 'one\n\nTWO\n' });
 
@@ -96,7 +96,7 @@ describe('any other file both sides changed', () => {
 
   it('keeps whole a file whose bytes are not UTF-8, though it holds no NUL', () => {
     const latin = (/** @type {string} */ text) => Buffer.from(text, 'latin1');
-    const { here, there } = twoMachines({ 'unit/notes.txt': latin('café\n\none\n\ntwo\n') });
+    const { here, there } = machinesSharing({ 'unit/notes.txt': latin('café\n\none\n\ntwo\n') });
     commitUnpushed(here, { 'unit/notes.txt': latin('café\n\nONE\n\ntwo\n') });
     commitOnState(there.root, { 'unit/notes.txt': latin('café\n\none\n\nTWO\n') });
 
@@ -109,7 +109,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps a JSON file both sides changed whole, the remote\'s at its path and this machine\'s beside it, never merged line by line', () => {
-    const { here, there } = twoMachines({ 'unit/data.json': '{\n  "a": 1,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n' });
+    const { here, there } = machinesSharing({ 'unit/data.json': '{\n  "a": 1,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n' });
     commitUnpushed(here, { 'unit/data.json': '{\n  "a": 2,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":2}\n' });
     commitOnState(there.root, { 'unit/data.json': '{\n  "a": 1,\n  "b": 3\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":3}\n' });
 
@@ -126,7 +126,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps a file on the remote and a folder here apart, the remote\'s file at the path and this machine\'s folder beside it', () => {
-    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
     commitUnpushed(here, { 'unit/z/inside.md': 'inside, here\n' });
     commitOnState(there.root, { 'unit/z': 'z, a file there\n' });
 
@@ -144,7 +144,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps a folder on the remote and a file here apart, the remote\'s folder at the path and this machine\'s file beside it', () => {
-    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
     commitUnpushed(here, { 'unit/w': 'w, a file here\n' });
     commitOnState(there.root, { 'unit/w/inside.md': 'inside, there\n' });
 
@@ -161,7 +161,7 @@ describe('any other file both sides changed', () => {
   });
 
   it('keeps the changed copy of a file deleted on one side and changed on the other', () => {
-    const { here, there } = twoMachines({ 'unit/notes.md': 'n\n', 'unit/brief.md': 'b\n' });
+    const { here, there } = machinesSharing({ 'unit/notes.md': 'n\n', 'unit/brief.md': 'b\n' });
     fs.rmSync(path.join(here.root, 'unit/notes.md'));
     pushFailing(here, () => withStateLock(here.root, () => commitState(here.root, ['unit/notes.md'], 'state: drop')));
     commitUnpushed(here, { 'unit/brief.md': 'b, changed here\n' });
@@ -183,7 +183,7 @@ describe('any other file both sides changed', () => {
 describe('the person\'s line-ending config', () => {
   it('leaves the state byte for byte through a checkout, a state commit and a merge, its status clean, under a global config converting line endings and a global attributes file naming CRLF', () => {
     const SPEC = 'unit/spec.md';
-    const IMPORT = 'unit/imports/notes.txt';
+    const IMPORT = layout.imports('unit', 'notes.txt');
     const attributes = path.join(world(), 'attributes');
     const config = path.join(world(), 'gitconfig');
     fs.writeFileSync(attributes, '* text eol=crlf\n');
@@ -192,7 +192,7 @@ describe('the person\'s line-ending config', () => {
     process.env.GIT_CONFIG_GLOBAL = config;
     try {
       const base = { [layout.ledger]: ledger('base'), [SPEC]: 'ONE\n\nTWO\n', [IMPORT]: 'ONE\r\nTWO\r\n' };
-      const { here, there } = twoMachines(base);
+      const { here, there } = machinesSharing(base);
       const exact = (/** @type {Machine} */ machine, /** @type {Record<string, string>} */ files) => {
         const isolated = isolatedGit(machine.root);
         assert.deepStrictEqual(Object.keys(files).map((file) => [readFile(machine.root, file), isolated.run(['cat-file', 'blob', `HEAD:${file}`])]), Object.values(files).map((text) => [text, text]));
@@ -227,7 +227,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
   }
 
   it('lists each tree and reads the working tree once, reads the blobs in two calls, and spends two more on each text file both sides changed', () => {
-    const { here, there } = twoMachines(each('one\n\ntwo\n\nthree\n'));
+    const { here, there } = machinesSharing(each('one\n\ntwo\n\nthree\n'));
     commitUnpushed(here, each('ONE\n\ntwo\n\nthree\n'));
     commitOnState(there.root, each('one\n\ntwo\n\nTHREE\n'));
 
@@ -243,7 +243,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
   });
 
   it('works the whole merge out once, at the pick that finishes it, listing each tree once; the stop and its screen read the manifests alone', () => {
-    const { here, there } = twoMachines({ ...each('one\n\ntwo\n\nthree\n'), [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ ...each('one\n\ntwo\n\nthree\n'), [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { ...each('ONE\n\ntwo\n\nthree\n'), [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { ...each('one\n\ntwo\n\nTHREE\n'), [layout.projectManifest]: projectManifest('someday') });
 
@@ -258,7 +258,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
 
   it('reads no file in the working tree whole as it lands, the ledger included', () => {
     const LOG = 'unit/topics/a/log.md';
-    const { here, there } = twoMachines({ [layout.ledger]: ledger('base'), [LOG]: '# a\n' });
+    const { here, there } = machinesSharing({ [layout.ledger]: ledger('base'), [LOG]: '# a\n' });
     commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
     commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), [LOG]: '# a\n\n## there\n' });
     const readWhole = fs.readFileSync;
@@ -281,7 +281,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
   });
 
   it('leaves no file open where writing the ledger\'s union fails part-way', () => {
-    const { here, there } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, there } = machinesSharing({ [layout.ledger]: ledger('base') });
     commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1', 'a2') });
     commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     const writeSync = fs.writeSync;

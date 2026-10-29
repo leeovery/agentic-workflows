@@ -20,12 +20,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { WORKFLOW_HOOKS, hooked, LABELS_ON, stubbed, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
+const { LABELS_ON, stubbed, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
@@ -267,7 +267,7 @@ describe('engine boot', () => {
     const files = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
     assert.deepStrictEqual(files, [layout.migrations], 'boot swept nothing of a peer session\'s staged state');
     assert.strictEqual(stateGit(fix.project, ['diff', '--cached', '--name-only']).trim(),
-      'payments/discussion/topic-a.md', 'and left it staged exactly as it was');
+      layout.doc('payments', 'discussion', 'topic-a'), 'and left it staged exactly as it was');
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {

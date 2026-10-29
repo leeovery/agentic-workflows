@@ -303,11 +303,11 @@ describe('engine boot: a set-up checkout with no store', () => {
   it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
     const launched = recordStubbedLaunches(t);
     bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
-    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.doc('payments', 'discussion', 'payments')}: out of quota` });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
-    assert.deepStrictEqual(res.warnings, ['knowledge vector fill fell short: payments/discussion/payments.md: out of quota']);
+    assert.deepStrictEqual(res.warnings, [`knowledge vector fill fell short: ${layout.doc('payments', 'discussion', 'payments')}: out of quota`]);
     assert.deepStrictEqual(launched, [statePath(fix.project), statePath(fix.project)]);
   });
 
@@ -315,7 +315,7 @@ describe('engine boot: a set-up checkout with no store', () => {
     recordStubbedLaunches(t);
     writeState(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
     bootWith(null);
-    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
+    store.writeMetadata(statePath(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: `${layout.doc('payments', 'discussion', 'payments')}: out of quota` });
     const unit = statePath(fix.project, layout.manifest('payments'));
     fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
 

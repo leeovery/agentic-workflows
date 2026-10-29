@@ -25,7 +25,7 @@ const { git, initRepo, tip, remoteTip, statePath, layout, readState, commitOnSta
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_LOCK_REASON, createState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, remoteProject, cloneOf, boot, bootRefused, setUp } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -45,7 +45,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   it('on the remote, is refused: no local branch is made from it', () => {
     const { main, bare } = remoteProject();
     git(main, ['push', '-q', 'origin', `main:${STATE_BRANCH}`]);
-    const fresh = cloneOf(bare, 'fresh');
+    const fresh = cloneInWorld(bare, 'fresh');
 
     assert.match(bootRefused(fresh), /^origin's leeway-state holds code history — it shares commits with (origin\/)?(main|HEAD)/);
 

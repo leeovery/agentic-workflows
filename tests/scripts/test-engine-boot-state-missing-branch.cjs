@@ -23,7 +23,7 @@ const { git, tip, remoteTip, statePath, layout, readState, commitOnState, traced
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, cloneOf, boot, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
+const { useWorld, cloneInWorld, boot, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
 useWorld();
 
@@ -55,7 +55,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
 
   it('gone here and on the remote but held by another clone: this clone stops, the other pushes it back, and this one restores it with nothing lost', () => {
     const { main: other, root: otherRoot, bare } = setUp({ remote: true });
-    const here = cloneOf(bare, 'here');
+    const here = cloneInWorld(bare, 'here');
     boot(here);
     const kept = commitOnState(otherRoot, { [layout.projectManifest]: '{"kept":true}\n' }).commit;
     git(bare, ['branch', '-D', STATE_BRANCH]);

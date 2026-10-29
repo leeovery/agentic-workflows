@@ -16,28 +16,15 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom, layout, statePath, writeState } = harness;
+const { git, commitAll, fixtureFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
-// The session hooks boot keeps in every project's `.claude/settings.json`,
-// and the function-hooks flag migration 065 takes out of it.
+// The function-hooks flag migration 065 takes out of a project's settings,
+// and the session-label hooks boot adds where labels are on.
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
-const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
-const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
-const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
-const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
-const END_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation end` };
-/** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
-const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
-/** The layout hook's group, before every write, in every project whatever the label choice. */
-const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: `${HOOK_ENGINE} layout guard` }] };
-/** The workflows' own hooks by event, as boot installs them. */
-const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [LAYOUT_GROUP] };
-/** Settings as boot leaves a project the mod cannot run in: `rest`, then `hooks` in boot's one SessionEnd group, and the layout hook. */
-function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: [LAYOUT_GROUP] } }, null, 2) + '\n';
-}
+const SESSION_HOOK = engineHook('session cleanup');
+const RESUME_HOOK = engineHook('session resume');
 /** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the layout hook. */
 const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: [LAYOUT_GROUP] },
@@ -170,5 +157,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, WORKFLOW_HOOKS, LAYOUT_GROUP, OWN_HOOKS, hooked, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
 };

@@ -233,20 +233,20 @@ describe('creating the state', () => {
     assert.deepStrictEqual(git(main, ['rev-list', '--parents', STATE_BRANCH]).trim().split(' '), [created.commit]);
     assert.deepStrictEqual(git(main, ['ls-tree', '--name-only', STATE_BRANCH]).trim().split('\n'), ['.gitignore', layout.projectManifest]);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
-    const manifest = JSON.parse(git(main, ['show', `${STATE_BRANCH}:manifest.json`]));
+    const manifest = JSON.parse(git(main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]));
     assert.deepStrictEqual(Object.keys(manifest), ['project_id']);
     assert.ok(isId(manifest.project_id), manifest.project_id);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(root, layout.projectManifest), 'utf8')), manifest, 'checked out at the state root');
 
     const other = codeProject(world, { name: 'other' });
     createState(other.root);
-    assert.notStrictEqual(JSON.parse(git(other.main, ['show', `${STATE_BRANCH}:manifest.json`])).project_id, manifest.project_id, 'each project its own');
+    assert.notStrictEqual(JSON.parse(git(other.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`])).project_id, manifest.project_id, 'each project its own');
   });
 
   it('ignores the knowledge base, the cache and the writer lock in the state worktree, and nothing else', () => {
     const { root } = codeProject(world, { state: true });
 
-    for (const rel of ['.knowledge/store.bin', '.cache/unit/state.json', '.lock']) assert.ok(ignored(root, rel), rel);
+    for (const rel of [layout.knowledge('store.bin'), layout.cache('unit', 'state.json'), layout.lock]) assert.ok(ignored(root, rel), rel);
     for (const rel of [layout.projectManifest, layout.ledger, 'unit/.cache/x', 'unit/.lock']) assert.ok(!ignored(root, rel), rel);
   });
 
@@ -498,7 +498,7 @@ describe('the repairs, each on its own', () => {
     assert.strictEqual(fs.readFileSync(path.join(movedRoot, layout.projectManifest), 'utf8'), '{"kept":true}\n');
     const out = withStateLock(movedRoot, () => commitState(movedRoot, [layout.projectManifest], 'state: after the move'));
     assert.strictEqual(tip(moved, STATE_BRANCH), out.commit);
-    assert.strictEqual(git(moved, ['show', `${STATE_BRANCH}:manifest.json`]), '{"kept":true}\n');
+    assert.strictEqual(git(moved, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), '{"kept":true}\n');
   });
 
   it('never writes through a copied project\'s state worktree, which git reads as the original\'s', () => {
@@ -651,7 +651,7 @@ describe('a leeway-state holding code history', () => {
 describe('the writer lock', () => {
   it('is .leeway/.lock, held while the verb runs and released after, whatever it throws', () => {
     const { root } = codeProject(world, { state: true });
-    const lock = path.join(root, '.lock');
+    const lock = path.join(root, layout.lock);
 
     const held = withStateLock(root, () => JSON.parse(fs.readFileSync(lock, 'utf8')));
     assert.deepStrictEqual(held, { pid: process.pid, pid_start: processStartTime(process.pid) });
@@ -663,7 +663,7 @@ describe('the writer lock', () => {
 
   it('takes over at once a lock whose holder is gone, however fresh the lock', () => {
     const { root } = codeProject(world, { state: true });
-    const lock = path.join(root, '.lock');
+    const lock = path.join(root, layout.lock);
     const ended = spawnSync('node', ['-e', '']).pid;
 
     for (const left of [{ pid: ended, pid_start: 'gone' }, { pid: process.pid, pid_start: 'a process before this one' }]) {
@@ -687,7 +687,7 @@ describe('the writer lock', () => {
     'const { withStateLock } = require(mod);',
     'withStateLock(root, () => {',
     '  const past = (Date.now() - 600000) / 1000;',
-    "  fs.utimesSync(path.join(root, '.lock'), past, past);",
+    `  fs.utimesSync(path.join(root, ${JSON.stringify(layout.lock)}), past, past);`,
     "  fs.writeFileSync(path.join(signals, 'held'), '');",
     "  while (!fs.existsSync(path.join(signals, 'go'))) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);",
     '});',
@@ -704,7 +704,7 @@ describe('the writer lock', () => {
 
   it('never breaks a live holder, however long it has held: the contender gives up, naming it', async () => {
     const { root } = codeProject(world, { state: true });
-    const lock = path.join(root, '.lock');
+    const lock = path.join(root, layout.lock);
     const holder = spawn('node', ['-e', HOLDER, STATE, root, world]);
     let stderr = '';
     holder.stderr.on('data', (chunk) => { stderr += chunk; });
@@ -724,7 +724,7 @@ describe('the writer lock', () => {
 
   it('is taken again at once by the process holding it, and let go when the outermost hold ends', () => {
     const { root } = codeProject(world, { state: true });
-    const lock = path.join(root, '.lock');
+    const lock = path.join(root, layout.lock);
     const started = Date.now();
 
     const seen = withStateLock(root, () => {
@@ -740,7 +740,7 @@ describe('the writer lock', () => {
 
   it('leaves the lock alone at release where another holder has taken it', () => {
     const { root } = codeProject(world, { state: true });
-    const lock = path.join(root, '.lock');
+    const lock = path.join(root, layout.lock);
     const other = JSON.stringify({ pid: 1, pid_start: 'another holder' });
 
     withStateLock(root, () => fs.writeFileSync(lock, other));
@@ -793,7 +793,7 @@ describe('committing state', () => {
 
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.strictEqual(git(root, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the manifest');
-    assert.deepStrictEqual(touched(root, out.commit), ['A\tpay/manifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit), [`A\t${layout.manifest('pay')}`]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  unit/topics/a/brief.md\n?? unit/topics/a/log.md\n');
   });
 
@@ -995,9 +995,9 @@ describe('committing state', () => {
   it('refuses a path the state ignores, committing nothing', () => {
     const { root } = codeProject(world, { state: true });
     const before = tip(root, STATE_BRANCH);
-    createFile(root, '.cache/unit/state.json', '{}\n');
+    createFile(root, layout.cache('unit', 'state.json'), '{}\n');
 
-    assert.throws(() => commitState(root, ['.cache/unit/state.json'], 'state: x'), /ignored/);
+    assert.throws(() => commitState(root, [layout.cache('unit', 'state.json')], 'state: x'), /ignored/);
     assert.strictEqual(tip(root, STATE_BRANCH), before);
   });
 
@@ -1010,7 +1010,7 @@ describe('committing state', () => {
 
     const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
-    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit || ''), [`A\t${layout.manifest('pay')}`]);
     assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`));
   });
 
@@ -1022,7 +1022,7 @@ describe('committing state', () => {
 
     const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
-    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit || ''), [`A\t${layout.manifest('pay')}`]);
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^the state worktree's index was not brought into line with leeway-state: .*index\.lock/s);
 
@@ -1115,7 +1115,7 @@ describe('committing state', () => {
 
     assert.match(out.commit || '', /^[0-9a-f]{40}$/);
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
-    assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:manifest.json`]), '{}\n');
+    assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), '{}\n');
     assert.strictEqual(out.pushed, false);
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
@@ -1320,7 +1320,7 @@ describe('a state commit beside the person\'s repository (4.S18)', () => {
     assert.deepStrictEqual([created.pushed, out.pushed, out.warnings], [true, true, []]);
     assert.strictEqual(tip(root, 'HEAD'), out.commit);
     assert.strictEqual(tip(main, STATE_BRANCH), out.commit);
-    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:manifest.json`]), '{}\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), '{}\n');
     assert.strictEqual(remoteTip(bare), out.commit);
     assert.deepStrictEqual(snapshot(elsewhere), elsewhereBefore);
   });
@@ -1361,7 +1361,7 @@ describe('two sessions writing state at once (4.S3)', () => {
     const results = await Promise.all([session(root, 'a', turns), session(root, 'b', turns)]);
 
     for (const r of results) assert.strictEqual(r.code, 0, `a session failed: ${r.stderr}`);
-    const lines = git(root, ['show', `${STATE_BRANCH}:.ledger.jsonl`]).trim().split('\n').map((line) => JSON.parse(line));
+    const lines = git(root, ['show', `${STATE_BRANCH}:${layout.ledger}`]).trim().split('\n').map((line) => JSON.parse(line));
     for (const who of ['a', 'b']) {
       assert.deepStrictEqual(lines.filter((l) => l.who === who).map((l) => l.i), [1, 2, 3, 4, 5, 6], who);
     }
@@ -1370,7 +1370,7 @@ describe('two sessions writing state at once (4.S3)', () => {
     assert.ok(commits.every((c) => c.length <= 2), 'a commit with more than one parent');
     assert.strictEqual(git(root, ['rev-list', '--merges', STATE_BRANCH]), '');
     for (const [sha, parent] of commits.slice(0, -1)) {
-      assert.strictEqual(git(root, ['diff', '--numstat', parent, sha]), '1\t0\t.ledger.jsonl\n', sha);
+      assert.strictEqual(git(root, ['diff', '--numstat', parent, sha]), `1\t0\t${layout.ledger}\n`, sha);
     }
     assert.strictEqual(remoteTip(bare), tip(root, STATE_BRANCH));
   });

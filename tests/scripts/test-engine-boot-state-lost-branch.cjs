@@ -26,7 +26,7 @@ const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, remoteProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
 
 useWorld();
 
@@ -63,7 +63,7 @@ describe('a lost local branch (4.S8)', () => {
   it('deleted under its worktree while the remote moved on, its folder is brought to the remote\'s tip: the next write undoes nothing the remote changed, and edits not yet committed survive', () => {
     const { main, root, bare } = setUp({ remote: true });
     commitOnState(root, { 'notes.md': 'one\ntwo\nthree\n' });
-    const other = cloneOf(bare, 'other');
+    const other = cloneInWorld(bare, 'other');
     boot(other);
     commitOnState(statePath(other), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
     createFile(root, 'notes.md', 'one, mine\ntwo\nthree\n');

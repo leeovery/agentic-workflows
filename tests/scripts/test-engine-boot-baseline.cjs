@@ -20,12 +20,12 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, statePath, layout } = harness;
+const { git, statePath, layout, WORKFLOW_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
 const { datedAt, createFile } = require('./discovery-test-utils.cjs');
 
-const { WORKFLOW_HOOKS, hooked, stubbed, bootProject, runEngine } = require('./boot-world.cjs');
+const { stubbed, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;

@@ -100,12 +100,12 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   });
 
   it('writes with the one shared serialisation: two-space indent plus trailing newline', () => {
-    fs.mkdirSync(path.join(dir, 'unit'));
+    fs.mkdirSync(path.join(dir, layout.unit('unit')));
     io.writeWorkUnitManifestAtomic(dir, 'unit', { name: 'unit', phases: {} });
     const raw = fs.readFileSync(path.join(dir, layout.manifest('unit')), 'utf8');
     assert.strictEqual(raw, JSON.stringify({ name: 'unit', phases: {} }, null, 2) + '\n');
     // No temp file left behind.
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'unit')), [layout.projectManifest]);
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, layout.unit('unit'))), [path.basename(layout.manifest('unit'))]);
   });
 
   it('a mode given is the written file\'s exactly, the umask notwithstanding; none given is the umask\'s default', () => {
@@ -130,7 +130,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 
   it('withWorkUnitLock and withProjectLock hold the one writer lock at the state root, gone after — including on throw', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     const holder = { pid: process.pid, pid_start: processStartTime(process.pid) };
     const held = [
       io.withWorkUnitLock(dir, 'unit', () => JSON.parse(fs.readFileSync(lock, 'utf8'))),
@@ -153,11 +153,11 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 
   it('the manifest locks run inside a verb\'s writer lock without claiming it again', (t) => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const attempts = lockAttempts(t, path.join(dir, '.lock'), () => { throw new Error('a nested hold claimed the lock again'); });
+    const attempts = lockAttempts(t, path.join(dir, layout.lock), () => { throw new Error('a nested hold claimed the lock again'); });
     const ran = io.withWriterLock(dir, () => io.withWorkUnitLock(dir, 'unit', () => io.withProjectLock(dir, () => 'ran')));
     assert.strictEqual(ran, 'ran');
     assert.deepStrictEqual(attempts, ['made'], 'one claim, the outer hold\'s');
-    assert.ok(!fs.existsSync(path.join(dir, '.lock')));
+    assert.ok(!fs.existsSync(path.join(dir, layout.lock)));
   });
 
   it('holdsWriterLock answers whether this process holds the writer lock: under it, nested, and after the inner hold lets go; never before it, after the outer hold lets go, or after a throw let it go', () => {
@@ -177,7 +177,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 
   it('withWorkUnitLock takes over a dead holder\'s claim and proceeds', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, DEAD);
     const result = io.withWorkUnitLock(dir, 'unit', () => 'ran');
     assert.strictEqual(result, 'ran');
@@ -185,7 +185,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   });
 
   it('a live holder\'s claim is never broken by age: the wait times out naming it', () => {
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, live());
     makeStale(lock);
     assert.throws(() => io.withWriterLock(dir, () => 'never', { timeoutMs: 250 }), (/** @type {Error} */ err) => {
@@ -203,7 +203,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 
   it('lock timeout carries the remedy: lock path, 30s stale self-clear, manual delete', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, 'unit', '.lock');
+    const lock = path.join(dir, layout.unit('unit', layout.lock));
     fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
     assert.throws(
       () => io.acquireLockFile(lock, 'Timed out waiting for lock on "unit"', 250),
@@ -219,7 +219,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   });
 
   it('a contended wait sleeps between attempts instead of spinning: no more than one attempt a retry interval', (t) => {
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
     const attempts = lockAttempts(t, lock);
     const timeoutMs = 250;
@@ -229,7 +229,7 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   });
 
   it('a contended wait tries until its deadline and never past it: one attempt a retry interval, the whole timeout through', (t) => {
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
     let now = Date.now();
     t.mock.method(Date, 'now', () => now);
@@ -264,7 +264,7 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('a lock broken and taken again after a contender judged it stale is never broken by that contender: inside the guard it asks again', (t) => {
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, '99999');
     makeStale(lock);
     const theirs = String(process.ppid);
@@ -282,11 +282,11 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
     assert.throws(() => io.acquireLockFile(lock, 'Timed out', 4 * io.LOCK_RETRY_MS), /Timed out/);
     assert.strictEqual(guarded, 1, 'the contender went on to break the lock it judged stale, once');
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), theirs, 'the peer\'s fresh lock broken');
-    assert.deepStrictEqual(fs.readdirSync(dir), ['.lock'], 'a breaker\'s guard left beside the lock');
+    assert.deepStrictEqual(fs.readdirSync(dir), [layout.lock], 'a breaker\'s guard left beside the lock');
   });
 
   it('contenders racing a dead holder\'s claim through withProjectLock: each holds it in turn while the rest wait, never two at once', async () => {
-    const lock = path.join(dir, '.lock');
+    const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, DEAD);
     const reports = await contend(5, [
       IO,
@@ -695,7 +695,7 @@ describe('engine project-manifest writes take the writer lock', () => {
 
     const res = ok(dir, [
       'workunit', 'create', 'payments', 'feature',
-      '--description', 'Payments', '--session-log-file', statePath(dir, layout.cache('payments', 'discovery', 'session-001.md')),
+      '--description', 'Payments', '--session-log-file', path.join(STATE_DIR_NAME, layout.cache('payments', 'discovery', 'session-001.md')),
     ]);
     assert.strictEqual(res.ok, true);
     const project = JSON.parse(fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8'));
@@ -716,7 +716,7 @@ describe('engine project-manifest writes take the writer lock', () => {
 
     const res = ok(dir, [
       'workunit', 'create', 'payments', 'feature',
-      '--description', 'Payments', '--session-log-file', statePath(dir, layout.cache('payments', 'discovery', 'session-001.md')),
+      '--description', 'Payments', '--session-log-file', path.join(STATE_DIR_NAME, layout.cache('payments', 'discovery', 'session-001.md')),
     ]);
 
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);

@@ -30,7 +30,7 @@ const { choiceId, conflictLabel } = require(path.join(SCRIPTS, 'domain/state-mer
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
 
 const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, twoMachines, commitUnpushed, projectManifest, keptStopFile, shownChoice } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, commitUnpushed, projectManifest, keptStopFile, shownChoice } = require('./state-merge-world.cjs');
 
 useWorld();
 
@@ -146,7 +146,7 @@ describe('the stop\'s screen (4.7.6)', () => {
   });
 
   it('renders through its surface, and refuses where no stop waits', () => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     assert.throws(() => stateMergeGateSurface(here.main, {}), /render state-merge-gate: no state merge is waiting on a pick/);
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
@@ -158,7 +158,7 @@ describe('the stop\'s screen (4.7.6)', () => {
 
 describe('the pick\'s command', () => {
   it('takes `pick <1|2> <choice>`; a pick leaving nothing of this clone\'s lands on the remote\'s tip with no commit', () => {
-    const { here, there, bare } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there, bare } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     catchUpState(here.root);
@@ -173,7 +173,7 @@ describe('the pick\'s command', () => {
   });
 
   it('answers `engine state-merge pick` and `engine render state-merge-gate`, refusing where no stop waits and a pick that is none', () => {
-    const { here, there, bare } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there, bare } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     assert.match(refuses(here.main, ['render', 'state-merge-gate']).error, /no state merge is waiting on a pick/);
     assert.strictEqual(refuses(here.main, ['state-merge', 'pick', '1', 'a-choice']).error, 'no state merge is waiting on a pick');
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
@@ -190,13 +190,13 @@ describe('the pick\'s command', () => {
   });
 
   it('renders the stop\'s screen at once while a peer holds the writer lock, never touching the peer\'s merge files; the pick waits for the peer, then lands', (t) => {
-    const { here, there, bare } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there, bare } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     catchUpState(here.root);
     const screen = stateMergeGateSurface(here.main, {});
     const choice = shownChoice(here);
-    const lock = holdLock(path.join(here.root, '.lock'));
+    const lock = holdLock(path.join(here.root, layout.lock));
     const gitDir = path.dirname(keptStopFile(here.root));
     const peers = [path.join(gitDir, 'leeway-merge-files', 'blobs'), path.join(gitDir, 'leeway-merge.index')];
     fs.mkdirSync(path.dirname(peers[0]));
@@ -221,13 +221,13 @@ describe('the pick\'s command', () => {
   });
 
   it('reads the waiting merge again under the lock: one a peer finished while the pick waited takes no pick', (t) => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     catchUpState(here.root);
     const choice = shownChoice(here);
     const stop = keptStopFile(here.root);
-    const lock = holdLock(path.join(here.root, '.lock'));
+    const lock = holdLock(path.join(here.root, layout.lock));
     // The peer finishes the merge, its stop gone, and lets go once the pick has found the lock held and tried again.
     const attempts = lockAttempts(t, lock, (taken) => {
       if (taken < 2) return;

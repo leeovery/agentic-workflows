@@ -29,13 +29,13 @@ const {
 const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, twoMachines, blobId, parents, status, commitUnpushed, ledger, gitWrapper, withPath } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, blobId, parents, status, commitUnpushed, ledger, gitWrapper, withPath } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
 describe('catching up when one side moved (4.S36)', () => {
   it('fast-forwards the branch and the worktree to the remote\'s tip, with no merge commit, where only the remote moved', () => {
-    const { here, there, bare } = twoMachines({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
+    const { here, there, bare } = machinesSharing({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
     createFile(there.root, 'unit/topics/a/log.md', '# a\n\n## a session elsewhere\n');
     fs.rmSync(path.join(there.root, 'unit/old.md'));
     const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
@@ -59,7 +59,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('pushes what a failed push left behind where only this clone moved', () => {
-    const { here, bare } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, bare } = machinesSharing({ [layout.ledger]: ledger('base') });
     commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
     const left = commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1', 'a2') });
 
@@ -70,7 +70,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('answers a push that fails again as a warning, keeping what this clone holds', () => {
-    const { here, bare } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, bare } = machinesSharing({ [layout.ledger]: ledger('base') });
     const before = remoteTip(bare);
     const left = commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
@@ -84,7 +84,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('does nothing where both sides are at one tip, asking the remote once and fetching nothing', () => {
-    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here } = machinesSharing({ [layout.ledger]: ledger('base') });
     const before = tip(here.main, STATE_BRANCH);
 
     const { result: out, commands } = traced(() => catchUpState(here.root));
@@ -94,7 +94,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('starts from the remote\'s answer boot gives it, asking the remote nothing again', () => {
-    const { here, there } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, there } = machinesSharing({ [layout.ledger]: ledger('base') });
     const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') }).commit;
     const listing = askStateRemote(here.root);
 
@@ -105,7 +105,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('takes an answer saying the remote was out of reach as its warning, asking nothing', () => {
-    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here } = machinesSharing({ [layout.ledger]: ledger('base') });
     const before = tip(here.main, STATE_BRANCH);
     const listing = { remote: 'origin', remotes: ['origin'], unreachable: 'git ls-remote failed: no route' };
 
@@ -140,7 +140,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('answers a remote it cannot reach with a warning, asking it once, and leaves the state as it was', () => {
-    const { here, there, bare } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, there, bare } = machinesSharing({ [layout.ledger]: ledger('base') });
     commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     const before = tip(here.main, STATE_BRANCH);
     fs.renameSync(bare, path.join(world(), 'moved-away.git'));
@@ -156,7 +156,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('gives up on a remote that never answers within one timeout, as a warning', () => {
-    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here } = machinesSharing({ [layout.ledger]: ledger('base') });
     const silent = path.join(world(), 'silent-ssh');
     fs.writeFileSync(silent, '#!/bin/sh\nexec sleep 5\n', { mode: 0o755 });
     git(here.main, ['remote', 'set-url', 'origin', 'ssh://state.invalid/fumi.git']);
@@ -172,7 +172,7 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('refuses a state worktree with another branch checked out, moving nothing', () => {
-    const { here, there } = twoMachines({ [layout.ledger]: ledger('base') });
+    const { here, there } = machinesSharing({ [layout.ledger]: ledger('base') });
     commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     git(here.root, ['checkout', '-q', '-b', 'elsewhere']);
 
@@ -186,7 +186,7 @@ describe('another session writing while the catch-up runs', () => {
 
   /** An uncommitted change here and a remote change to the same file. */
   function racing() {
-    const machines = twoMachines({ [LOG]: '# a\n\n## first\n' });
+    const machines = machinesSharing({ [LOG]: '# a\n\n## first\n' });
     createFile(machines.here.root, LOG, '# a\n\n## first\n\n## here\n');
     commitOnState(machines.there.root, { [LOG]: '# a\n\n## first\n\n## elsewhere\n' });
     return machines;
@@ -209,7 +209,7 @@ describe('another session writing while the catch-up runs', () => {
   });
 
   it('keeps a file the update removes where the other session wrote it meanwhile', () => {
-    const { here, there } = twoMachines({ 'unit/gone.md': 'gone\n', 'unit/a.md': 'a\n' });
+    const { here, there } = machinesSharing({ 'unit/gone.md': 'gone\n', 'unit/a.md': 'a\n' });
     fs.rmSync(path.join(there.root, 'unit/gone.md'));
     withStateLock(there.root, () => commitState(there.root, ['unit/gone.md'], 'state: drop'));
     const writer = gitWrapper('write-tree', `echo "written meanwhile" >> "${path.join(here.root, 'unit/gone.md')}"`);

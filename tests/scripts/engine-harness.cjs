@@ -249,14 +249,9 @@ function head(dir) {
   return stateGit(dir, ['rev-parse', 'HEAD']).trim();
 }
 
-/** The subjects of the state commits made since `from`, oldest first. @param {string} dir @param {string} from */
-function commitsSince(dir, from) {
-  return stateGit(dir, ['log', '--reverse', '--format=%s', `${from}..HEAD`]).split('\n').slice(0, -1);
-}
-
-/** The last state commit's subject. @param {string} dir */
+/** The last state commit's subject, exactly as written: only git's closing newline taken off. @param {string} dir */
 function lastMessage(dir) {
-  return stateGit(dir, ['log', '-1', '--format=%s']).trim();
+  return stateGit(dir, ['log', '-1', '--format=%s']).replace(/\n$/, '');
 }
 
 /**
@@ -746,6 +741,27 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 }
 `;
 
+// The workflows' own hooks, as boot installs them in a project's
+// `.claude/settings.json`.
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+/** A hook running an engine verb. @param {string} verb */
+const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
+/** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
+const WORKFLOW_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
+/** The layout hook's group, before every write, in every project whatever the label choice. */
+const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
+/** The workflows' own hooks by event, as boot installs them. */
+const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [LAYOUT_GROUP] };
+
+/**
+ * Settings as boot leaves a project the mod cannot run in: `rest`, then
+ * `hooks` in boot's one SessionEnd group, and the layout hook.
+ * @param {object[]} hooks @param {Record<string, unknown>} [rest]
+ */
+function hooked(hooks, rest = {}) {
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: [LAYOUT_GROUP] } }, null, 2) + '\n';
+}
+
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
 let stub = null;
 
@@ -769,12 +785,12 @@ function stubEngine() {
 const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
 
 module.exports = {
-  ENGINE, harness, stubEngine,
+  ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
-  git, stateGit, commitOnState, head, commitsSince, lastMessage, treeSnapshot, traced, ledgerEntries, tip, remoteTip,
+  git, stateGit, commitOnState, head, lastMessage, treeSnapshot, traced, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,

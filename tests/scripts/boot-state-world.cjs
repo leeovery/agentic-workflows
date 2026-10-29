@@ -15,8 +15,7 @@ const assert = require('node:assert');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { hooked, WORKFLOW_HOOKS: OWN_SESSION_END, LAYOUT_GROUP } = require('./boot-world.cjs');
-const { git, readState, statePath, traced, folderFrom } = harness;
+const { git, readState, statePath, traced, folderFrom, WORKFLOW_HOOKS, hooked } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_LOCK_REASON, inspectState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -31,7 +30,7 @@ function useWorld() {
 }
 
 /** The project settings boot installs: the workflows' own hooks. */
-const WORKFLOW_HOOKS = hooked(OWN_SESSION_END);
+const OWN_SETTINGS = hooked(WORKFLOW_HOOKS);
 
 const engine = harness.stubEngine();
 const STUB_ENGINE = engine.path;
@@ -44,7 +43,7 @@ const STUB_ENGINE = engine.path;
  * pushed there: its main checkout.
  * @param {{name?: string, remote?: string|null}} [opts]
  */
-function codeProject({ name = 'portal', remote = null } = {}) {
+function projectInWorld({ name = 'portal', remote = null } = {}) {
   const { main } = harness.codeProject(world(), { name });
   if (remote !== null) {
     git(main, ['remote', 'add', 'origin', remote]);
@@ -65,7 +64,7 @@ function remoteProject({ name = 'portal' } = {}) {
 }
 
 /** A clone of the remote in the running test's folder. @param {string} remote @param {string} name @param {string[]} [args] */
-function cloneOf(remote, name, args = []) {
+function cloneInWorld(remote, name, args = []) {
   return harness.cloneOf(remote, path.join(world(), name), args);
 }
 
@@ -153,5 +152,5 @@ function untouched(main, bare) {
 }
 
 module.exports = {
-  useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, STUB_ENGINE, engine, codeProject, remoteProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach, untouched,
+  useWorld, OWN_SETTINGS, STUB_ENGINE, engine, projectInWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach, untouched,
 };

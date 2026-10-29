@@ -18,13 +18,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
+const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot (real scripts)', () => {
   let root;

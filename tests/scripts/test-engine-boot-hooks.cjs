@@ -22,12 +22,12 @@ const os = require('os');
 const path = require('path');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { hookHelpers, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, stubbed, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
+const { hookHelpers, LABELS_ON, stubbed, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   let fix;

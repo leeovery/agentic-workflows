@@ -20,7 +20,7 @@ const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
 
-const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, statePath, layout, createFile, writeState } = harness;
+const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState } = harness;
 
 /** Files in the state branch's head commit, state-relative. */
 function headFiles(dir) {
@@ -107,7 +107,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(files.includes(layout.doc('payments', 'discussion', 'topic-a')), 'own topic committed');
     assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
     assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'peer topic not committed');
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'peer dirt untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'peer dirt untouched');
   });
 
   it('commits an experiment record tree whole — documents, data, nested sub-records — and leaves the tree clean', () => {
@@ -122,15 +122,15 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(res.ok, true);
     const files = headFiles(dir);
     for (const rel of [
-      'payments/experiment/topic-a/E1-x/problem.md',
-      'payments/experiment/topic-a/E1-x/design.md',
-      'payments/experiment/topic-a/E1-x/data/samples.csv',
-      'payments/experiment/topic-a/E1-x/E1.1-y/report.md',
-      'payments/manifest.json',
+      layout.experiment('payments', 'topic-a', 'E1-x', 'problem.md'),
+      layout.experiment('payments', 'topic-a', 'E1-x', 'design.md'),
+      layout.experiment('payments', 'topic-a', 'E1-x', 'data', 'samples.csv'),
+      layout.experiment('payments', 'topic-a', 'E1-x', 'E1.1-y', 'report.md'),
+      layout.manifest('payments'),
     ]) {
       assert.ok(files.includes(rel), `record tree committed whole: ${rel}`);
     }
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'],
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`],
       'the record tree is clean; only the peer dirt remains');
   });
 
@@ -149,7 +149,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(!fs.existsSync(statePath(dir, layout.mailbox('payments', 'discussion', 'topic-a', '001-first.md'))), 'message file deleted');
     const files = headFiles(dir);
     assert.ok(files.includes(layout.doc('payments', 'discussion', 'topic-a')), 'fold rides the commit');
-    assert.ok(files.includes('payments/discussion/.mailbox/topic-a/001-first.md'), 'the deletion rides the commit');
+    assert.ok(files.includes(layout.mailbox('payments', 'discussion', 'topic-a', '001-first.md')), 'the deletion rides the commit');
     assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'peer topic not swept');
 
     const last = ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
@@ -172,7 +172,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     const res = ok(dir, ['commit', 'payments', '-m', 'spec(payments): construct topic-a', '--topic', 'specification/topic-a']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.ok(headFiles(dir).includes('payments/specification/topic-a/specification.md'));
+    assert.ok(headFiles(dir).includes(layout.spec('payments', 'topic-a')));
   });
 
   it('reports nothing to commit on clean paths, and on paths that do not exist', () => {
@@ -191,7 +191,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     // directory must not poison later --topic commits.
     writeState(dir, layout.cache('scratch', 'c.md'), '### Q\n*From: x · discussion · d*\n\nBody.\n');
     ok(dir, ['topic', 'send', 'payments', 'discussion', 'topic-a',
-      '--content', statePath(dir, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/x): send message to topic-a']);
+      '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/x): send message to topic-a']);
     fs.unlinkSync(statePath(dir, layout.mailbox('payments', 'discussion', 'topic-a', '001-q.md')));
     const drain = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain mailbox', '--topic', 'discussion/topic-a']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
@@ -223,7 +223,7 @@ describe('engine commit --topic: pathspec isolation', () => {
       '--topic', 'investigation/crash-fix', '--sweep']);
 
     assert.match(landed.committed, /^[0-9a-f]+$/);
-    assert.ok(headFiles(dir).includes('crash-fix/investigation/.mailbox/crash-fix/001-q.md'),
+    assert.ok(headFiles(dir).includes(layout.mailbox('crash-fix', 'investigation', 'crash-fix', '001-q.md')),
       'the waiting message rides the investigation topic commit');
 
     // And the drain's deletion commits on the same scope.
@@ -260,11 +260,11 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('payments/discovery/sessions/session-001.md'), 'session log committed');
-    assert.ok(files.includes('payments/discovery/briefs/topic-a.md'), 'brief committed');
+    assert.ok(files.includes(layout.session('payments', '001')), 'session log committed');
+    assert.ok(files.includes(layout.brief('payments', 'topic-a')), 'brief committed');
     assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
     assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'peer dirt untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'peer dirt untouched');
   });
 
   it('reports nothing to commit on a work unit with no discovery content', () => {
@@ -293,10 +293,10 @@ describe('engine commit --imports: the landing\'s retry scope', () => {
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('payments/imports/dockset-05.jpeg'), 'the landed file committed');
+    assert.ok(files.includes(layout.imports('payments', 'dockset-05.jpeg')), 'the landed file committed');
     assert.ok(files.includes(layout.manifest('payments')), 'the manifest its entry lives on committed');
     assert.ok(!files.includes(layout.doc('payments', 'research', 'auth-flow')), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), ['?? payments/research/'], 'peer dirt untouched');
+    assert.deepStrictEqual(statusLines(dir), [`?? ${layout.unit('payments', 'research')}/`], 'peer dirt untouched');
   });
 
   it('refuses --imports beside another scope flag, and with no work unit', () => {
@@ -322,11 +322,11 @@ describe('engine commit --state: the analysis scopes', () => {
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
+    assert.ok(files.includes(layout.unitState('payments', 'discussion-consolidation-analysis.md')), 'the analysis rides');
     assert.ok(files.includes(layout.manifest('payments')), 'so does the manifest it wrote');
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [' M payments/discussion/topic-b.md', '?? payments/specification/'],
+      [` M ${layout.doc('payments', 'discussion', 'topic-b')}`, `?? ${layout.unit('payments', 'specification')}/`],
       'both live peers keep every byte they had not committed',
     );
   });
@@ -338,11 +338,11 @@ describe('engine commit --state: the analysis scopes', () => {
 
     const res = ok(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
 
-    assert.deepStrictEqual(headFiles(dir), ['.state/environment-setup.md']);
+    assert.deepStrictEqual(headFiles(dir), [layout.projectState('environment-setup.md')]);
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [' M payments/discussion/topic-b.md', ' M payments/manifest.json'],
+      [` M ${layout.doc('payments', 'discussion', 'topic-b')}`, ` M ${layout.manifest('payments')}`],
       'a work unit is none of the global state dir\'s business',
     );
   });
@@ -390,10 +390,10 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
 
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.deepStrictEqual(headFiles(dir), ['payments/planning/topic-a/planning.md'], 'the planning topic rides the state');
+    assert.deepStrictEqual(headFiles(dir), [layout.plan('payments', 'topic-a')], 'the planning topic rides the state');
     assert.deepStrictEqual(codeHeadFiles(dir), ['plans/topic-a/tasks.md'],
       'the declared storage rides the code tree — and code outside it never does');
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'],
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`],
       'a sibling topic inside the same work unit is not a planning session\'s to commit');
     assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'nor is code outside the plan\'s storage');
   });
@@ -414,8 +414,8 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
 
     ok(dir, ['commit', 'payments', '-m', 'planning(payments): draft phase structure', '--plan', 'topic-a']);
 
-    assert.ok(headFiles(dir).includes('payments/planning/topic-a/planning.md'));
-    assert.deepStrictEqual(statusLines(dir), [' M payments/planning/topic-b/planning.md'],
+    assert.ok(headFiles(dir).includes(layout.plan('payments', 'topic-a')));
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.plan('payments', 'topic-b')}`],
       'the peer planning session keeps its own dirt');
   });
 
@@ -437,7 +437,7 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
 
     const res = ok(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
-    assert.ok(headFiles(dir).includes('payments/planning/topic-a/planning.md'), 'the plan lands');
+    assert.ok(headFiles(dir).includes(layout.plan('payments', 'topic-a')), 'the plan lands');
     assert.strictEqual(res.code_committed, null, 'staged code is not swept into a plan commit');
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'and stays staged');
   });
@@ -1047,7 +1047,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
     assert.deepStrictEqual(headChanges(), ['D\t.worktreeinclude', 'M\t.claude/settings.json', 'M\t.gitignore']);
-    assert.deepStrictEqual(stateChanges(), ['A\t.state/migrations', 'M\tpayments/manifest.json']);
+    assert.deepStrictEqual(stateChanges(), [`A\t${layout.migrations}`, `M\t${layout.manifest('payments')}`]);
     assert.deepStrictEqual(codeStatusLines(dir).sort(), [' M src/app.js', '?? src/new.js'], 'code stays as it was');
     assert.deepStrictEqual(statusLines(dir), [], 'and the ignored store and cache stay out of the state');
     assert.strictEqual(stateGit(dir, ['ls-files', '--', '.knowledge', '.cache']).trim(), '');
@@ -1100,7 +1100,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     const res = migrate();
 
     assert.strictEqual(res.code_committed, null);
-    assert.deepStrictEqual(stateChanges(), ['M\tpayments/manifest.json']);
+    assert.deepStrictEqual(stateChanges(), [`M\t${layout.manifest('payments')}`]);
     assert.strictEqual(git(dir, ['ls-files', '--', '.claude']).trim(), '');
   });
 
@@ -1162,7 +1162,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
       ]);
       assert.deepStrictEqual(stateGit(repo, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
         'A\t.state/migrations',
-        'M\tpayments/manifest.json',
+        `M\t${layout.manifest('payments')}`,
       ]);
       assert.deepStrictEqual(codeStatusLines(repo), []);
       assert.deepStrictEqual(statusLines(repo), []);
@@ -1343,7 +1343,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // there would manufacture a hold on a topic no session is in.
     writeState(dir, layout.cache('scratch', 'c.md'), '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
     ok(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
-      '--content', statePath(dir, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'], { env: me });
+      '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'], { env: me });
     assert.ok(!beaten('discussion', 'topic-b'), 'send never beats the target');
   });
 
@@ -1359,7 +1359,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
     const ops = JSON.stringify([{ op: 'set', path: 'payments.discussion.topic-b', fields: { status: 'in-progress' } }]);
     writeState(dir, layout.cache('scratch', 'ops.json'), ops);
-    ok(dir, ['manifest', 'apply', 'payments', '--file', statePath(dir, layout.cache('scratch', 'ops.json'))]);
+    ok(dir, ['manifest', 'apply', 'payments', '--file', path.join(STATE_DIR_NAME, layout.cache('scratch', 'ops.json'))]);
     assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
   });
 
@@ -1589,11 +1589,11 @@ describe('commit door: transaction tails commit their own scope', () => {
     commitAll(dir, 'an archived idea');
     writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
 
-    const res = ok(dir, ['inbox', 'delete', statePath(dir, layout.archived('ideas', 'a-thought.md'))]);
+    const res = ok(dir, ['inbox', 'delete', path.join(STATE_DIR_NAME, layout.archived('ideas', 'a-thought.md'))]);
 
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
-    assert.ok(headFiles(dir).includes('.inbox/.archived/ideas/a-thought.md'), 'the deletion is in the commit');
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
+    assert.ok(headFiles(dir).includes(layout.archived('ideas', 'a-thought.md')), 'the deletion is in the commit');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('the inbox scope commits the inbox alone — dirt outside it that the state does not ignore stays out', () => {
@@ -1602,8 +1602,8 @@ describe('commit door: transaction tails commit their own scope', () => {
 
     ok(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
-    assert.deepStrictEqual(headFiles(dir), ['.inbox/ideas/a-thought.md']);
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
+    assert.deepStrictEqual(headFiles(dir), [layout.inbox('ideas', 'a-thought.md')]);
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
@@ -1614,7 +1614,7 @@ describe('commit door: transaction tails commit their own scope', () => {
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir), [layout.manifest('payments')],
       'a cancel from the epic menu takes nothing a session is holding');
-    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-a.md']);
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-a')}`]);
   });
 
   it('the discovery session close commits the discovery scope, not the work unit', () => {
@@ -1632,8 +1632,8 @@ describe('commit door: transaction tails commit their own scope', () => {
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('payments/discovery/sessions/session-001.md'));
-    assert.ok(files.includes('payments/discovery/briefs/topic-a.md'));
+    assert.ok(files.includes(layout.session('payments', '001')));
+    assert.ok(files.includes(layout.brief('payments', 'topic-a')));
     assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-a')), 'the peer\'s half-written document stays uncommitted');
   });
 });
@@ -1681,9 +1681,9 @@ describe('commit door: two live sessions on one checkout', () => {
       const mine = subject.slice('discussion(payments/'.length).split(')')[0];
       const foreign = mine === 'topic-a' ? 'topic-b' : 'topic-a';
       const files = stateGit(dir, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
-      assert.ok(!files.includes(`payments/discussion/${foreign}.md`),
+      assert.ok(!files.includes(layout.doc('payments', 'discussion', foreign)),
         `${subject} (${sha}) swept a foreign session's file:\n${files.join('\n')}\n${log}`);
-      assert.deepStrictEqual(files, [`payments/discussion/${mine}.md`],
+      assert.deepStrictEqual(files, [layout.doc('payments', 'discussion', mine)],
         `${subject} committed more than its own action`);
     }
 
@@ -1753,7 +1753,7 @@ describe('commit door: transaction-tail degrade', () => {
     writeState(dir, layout.cache('scratch', 'c.md'), '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
     holdStateRef(dir);
     const delivered = ok(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
-      '--content', statePath(dir, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b']);
+      '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b']);
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /--topic discussion\/topic-b --sweep -m/, 'the delivery\'s retry never beats the target');
 

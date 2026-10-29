@@ -448,12 +448,12 @@ describe('scenarios', () => {
     const question = ask().id;
     decide(question, { text: 'Floats above every Space.' });
     decide(question, { text: 'Its controls appear on hover.' });
-    execFileSync('sh', ['-c', 'sed \'2s/"text":"[^"]*"/"text":"Changed by hand."/\' .ledger.jsonl > .ledger.edit && mv .ledger.edit .ledger.jsonl'], { cwd: statePath(dir) });
+    execFileSync('sh', ['-c', `sed '2s/"text":"[^"]*"/"text":"Changed by hand."/' ${layout.ledger} > .ledger.edit && mv .ledger.edit ${layout.ledger}`], { cwd: statePath(dir) });
     const tampered = ledgerText();
 
     const res = refuses(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'After the edit?' }) });
 
-    assert.deepStrictEqual([res.stop, res.error], ['ledger', '.ledger.jsonl changed outside the engine: line 2 is not the line committed there — the engine stops here']);
+    assert.deepStrictEqual([res.stop, res.error], ['ledger', `${layout.ledger} changed outside the engine: line 2 is not the line committed there — the engine stops here`]);
     assert.strictEqual(ledgerText(), tampered, 'the stop appended');
     const screen = output(dir, ['render', 'ledger-stop']);
     assert.match(screen, /line 2 isn't the line the state branch last committed there\. The line it found:\n> \s+\{"v":1,"id":"/);

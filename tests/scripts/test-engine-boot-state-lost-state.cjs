@@ -23,14 +23,14 @@ const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { datedAt, createFile } = require('./discovery-test-utils.cjs');
-const { git, initRepo, tip, remoteTip, statePath } = harness;
+const { git, initRepo, tip, remoteTip, statePath, LAYOUT_GROUP } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
-const { useWorld, remoteProject, LAYOUT_GROUP, WORKFLOW_HOOKS, engine, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, OWN_SETTINGS, engine, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -42,7 +42,7 @@ const world = useWorld();
  * here or on its remote, the code dated in the past.
  * @param {{remote?: string|null, trace?: Record<string, string>}} [opts]
  */
-function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': WORKFLOW_HOOKS } } = {}) {
+function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': OWN_SETTINGS } } = {}) {
   const main = initRepo(path.join(world(), 'portal'));
   datedAt('2025-03-01T12:00:00Z', () => {
     createFile(main, 'src/app.js', 'export default 1;\n');
@@ -72,7 +72,7 @@ const WRAP = '\u00a0'.repeat(8);
 describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written — and the next boot stops again', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const main = lostProject({ remote: bare, trace: { '.claude/settings.json': WORKFLOW_HOOKS } });
+    const main = lostProject({ remote: bare, trace: { '.claude/settings.json': OWN_SETTINGS } });
     const before = untouched(main, bare);
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
@@ -141,7 +141,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     it('the trace on a remote-tracking branch alone: a clone whose own branches never carried it stops at the lost state, nothing written', () => {
       const bare = harness.bareRepo(path.join(world(), 'portal.git'));
       lostProject({ remote: bare });
-      const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
+      const fresh = cloneInWorld(bare, 'fresh', ['--branch', 'main']);
       git(fresh, ['checkout', '-q', '-b', 'before-setup', 'origin/main~1']);
       git(fresh, ['branch', '-q', '-D', 'main']);
       const before = untouched(fresh, bare);
@@ -152,7 +152,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the trace written in another worktree but never committed there: a boot in the main checkout stops at the lost state', () => {
-      const main = codeProject();
+      const main = projectInWorld();
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
       createFile(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
@@ -186,7 +186,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     it('the trace pushed from another clone on a branch this one never fetched: the remote\'s branches are fetched first, and boot stops at the lost state', () => {
       const { main, bare } = remoteProject();
-      const old = cloneOf(bare, 'old', ['--branch', 'main']);
+      const old = cloneInWorld(bare, 'old', ['--branch', 'main']);
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
       assert.strictEqual(boot(code).state, 'ready');

@@ -380,8 +380,8 @@ function ledgerWriteHelpers(dir) {
 // The copies suites (test-engine-ledger-copies.cjs, -boot, -race).
 // ---------------------------------------------------------------------------
 
-const NOTE_COPY = '.knowledge/records/fumi/note-window.md';
-const SPACE_COPY = '.knowledge/records/fumi/space-homing.md';
+const NOTE_COPY = layout.knowledge('records', 'fumi', 'note-window.md');
+const SPACE_COPY = layout.knowledge('records', 'fumi', 'space-homing.md');
 
 /**
  * The copies suites' helpers over the project `dir()` names, the suite's own

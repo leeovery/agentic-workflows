@@ -29,7 +29,7 @@ const { git, commitCode, initRepo, tip, remoteTip, STATE_DIR_NAME, statePath, la
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, remoteProject, WORKFLOW_HOOKS, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, OWN_SETTINGS, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -37,7 +37,7 @@ const world = useWorld();
 
 describe('a project being set up (4.S12, 4.5.2)', () => {
   it('gets the orphan leeway-state checked out at .leeway/ and locked, then the ignore line in .gitignore committed through the code door — and the next boot has nothing to do', () => {
-    const main = codeProject();
+    const main = projectInWorld();
 
     const res = boot(main);
 
@@ -65,7 +65,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('appends the ignore line to a .gitignore that holds others, and keeps one that names the state as it is', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     createFile(main, '.gitignore', 'node_modules');
     git(main, ['add', '.gitignore']);
     git(main, ['commit', '-q', '-m', 'ignore']);
@@ -82,7 +82,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a boot cut short after the branch is made leaves the state with no trace, and the next boot writes the line', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
     createFile(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
@@ -102,7 +102,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a boot whose branch cannot be checked out writes no trace', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
     createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *"worktree add"*) echo "fatal: refused" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
@@ -118,7 +118,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
-    const main = codeProject();
+    const main = projectInWorld();
 
     const { baseline_signal: signal } = boot(main);
 
@@ -145,7 +145,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('keeps the state folder in the repository\'s exclude file, once, on every boot — so no branch takes it in', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     const exclude = path.join(main, '.git/info/exclude');
 
     boot(main);
@@ -157,7 +157,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a code branch cut before setup, checked out in the main checkout, takes nothing of the state in — `git add -A` stages none of it (4.1.2, 4.1.3)', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     git(main, ['branch', 'before-setup']);
     boot(main);
     git(main, ['checkout', '-q', 'before-setup']);
@@ -172,7 +172,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   it('a fresh clone ignores the state at once, before any commit — even a boot killed as the worktree is locked', () => {
     const { main, bare } = setUp({ remote: true });
     git(bare, ['update-ref', 'refs/heads/main', git(main, ['rev-parse', 'main~2']).trim()]);
-    const fresh = cloneOf(bare, 'fresh');
+    const fresh = cloneInWorld(bare, 'fresh');
     assert.ok(!fs.existsSync(path.join(fresh, '.gitignore')), 'the clone\'s branch holds no ignore line');
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
@@ -190,7 +190,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('a boot from a code worktree commits the line and the hooks on that worktree\'s branch, never on the main checkout\'s', () => {
     const { main, bare } = remoteProject();
-    const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
+    const fresh = cloneInWorld(bare, 'fresh', ['--branch', 'main']);
     boot(main);
     const code = path.join(world(), 'fresh-feature');
     git(fresh, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -207,9 +207,9 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
-    const main = codeProject();
+    const main = projectInWorld();
     createFile(main, '.workflows/payments/manifest.json', '{}\n');
-    createFile(main, '.claude/settings.json', WORKFLOW_HOOKS);
+    createFile(main, '.claude/settings.json', OWN_SETTINGS);
     commitCode(main, 'the old layout');
     const before = git(main, ['for-each-ref']);
 
@@ -223,7 +223,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {
     const { main, bare } = setUp({ remote: true });
-    const other = cloneOf(bare, 'other');
+    const other = cloneInWorld(bare, 'other');
     createFile(other, '.workflows/payments/manifest.json', '{}\n');
     commitCode(other, 'the old layout');
 

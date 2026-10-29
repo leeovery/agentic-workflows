@@ -27,14 +27,14 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, twoMachines, status, commitUnpushed, projectManifest, keptStopFile, shownChoice, pickShown, mergeLeftovers, killedAfter } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, status, commitUnpushed, projectManifest, keptStopFile, shownChoice, pickShown, mergeLeftovers, killedAfter } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
 describe('a kept stop', () => {
   /** Two machines stopped on the roadmap item's horizon. */
   function stopped() {
-    const machines = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const machines = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(machines.here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(machines.there.root, { [layout.projectManifest]: projectManifest('someday') });
     assert.strictEqual(catchUpState(machines.here.root).action, 'stopped');
@@ -72,7 +72,7 @@ describe('a kept stop', () => {
   });
 
   it('keeps the picks made so far through a catch-up that finds the same sides', () => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next', { defaults: { plan_format: 'tick' } }) });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday', { defaults: { plan_format: 'linear' } }) });
     catchUpState(here.root);
@@ -141,7 +141,7 @@ describe('a kept stop', () => {
   });
 
   it('asks with the uncommitted value as the working tree now holds it', () => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     createFile(here.root, layout.projectManifest, projectManifest('next'));
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     assert.strictEqual(catchUpState(here.root).action, 'stopped');

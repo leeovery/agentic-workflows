@@ -30,7 +30,7 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { record, judgedDepartures } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const { readFile, createFile } = require('./discovery-test-utils.cjs');
-const { useWorld, STUB_ENGINE, engine, remoteProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');
+const { useWorld, STUB_ENGINE, engine, remoteProject, cloneInWorld, boot, setUp } = require('./boot-state-world.cjs');
 const { SESSION, MADE, NOTE } = require('./ledger-world.cjs');
 
 const world = useWorld();
@@ -41,7 +41,7 @@ const world = useWorld();
 function twoClones() {
   const { bare, ...there } = setUp({ name: 'there', remote: true });
   commitOnState(there.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'local' } }, null, 2) + '\n' });
-  const main = cloneOf(/** @type {string} */ (bare), 'here');
+  const main = cloneInWorld(/** @type {string} */ (bare), 'here');
   boot(main);
   return { bare: /** @type {string} */ (bare), there, here: { main, root: statePath(main) } };
 }
@@ -144,7 +144,7 @@ describe('the catch-up at boot (4.7.8)', () => {
 
   it('keeps the first clone\'s project_id where two clones set the state up before either pushed, never stopping on it; what the second logged under its own id is another project\'s (4.S39)', () => {
     const { main: first, bare } = remoteProject();
-    const second = cloneOf(bare, 'second');
+    const second = cloneInWorld(bare, 'second');
     git(second, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
     boot(second);
     git(second, ['config', '--unset', 'remote.origin.pushurl']);

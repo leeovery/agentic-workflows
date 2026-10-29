@@ -421,7 +421,7 @@ describe('the append', () => {
     const { root } = codeProject(world, FUMI);
     appendEntry(root, question(), []);
     const before = ledgerText(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     /** @type {string[]} */
     const whileHeld = [];
     let released = 0;
@@ -567,7 +567,7 @@ describe('the append-only check on a read', () => {
       'exec "$real" "$@"',
       '',
     ].join('\n'), { mode: 0o755 });
-    const attempts = lockAttempts(t, holdLock(path.join(root, '.lock')), () => {
+    const attempts = lockAttempts(t, holdLock(path.join(root, layout.lock)), () => {
       throw new Error('the check tried the writer lock');
     });
     const { PATH } = process.env;
@@ -586,7 +586,7 @@ describe('the append-only check on a read', () => {
   it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', (t) => {
     const { root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     writeLedger(root, `${b}\n${a}\n`);
     // The landing, holding the lock, moves the branch and lets go once the check has found the lock held.
     const attempts = lockAttempts(t, lock, () => {
@@ -621,12 +621,12 @@ describe('the append-only check on a read', () => {
   it('stops once it holds the lock where the ledger is still not as committed', (t) => {
     const { root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(path.join(root, '.lock'));
+    const lock = holdLock(path.join(root, layout.lock));
     writeLedger(root, `${b}\n${a}\n`);
     const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
 
     assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged
-      && err.message === '.ledger.jsonl changed outside the engine: line 1 is not the line committed there — the engine stops here');
+      && err.message === `${layout.ledger} changed outside the engine: line 1 is not the line committed there — the engine stops here`);
 
     assert.deepStrictEqual(attempts, ['taken', 'made']);
   });

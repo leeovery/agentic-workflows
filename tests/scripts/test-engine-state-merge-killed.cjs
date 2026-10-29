@@ -26,7 +26,7 @@ const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
 const {
-  useWorld, blobId, parents, status, pushFailing, commitUnpushed, twoMachines, ledger, json, projectManifest, mergeLeftovers, killedAfter,
+  useWorld, blobId, parents, status, pushFailing, commitUnpushed, machinesSharing, ledger, json, projectManifest, mergeLeftovers, killedAfter,
 } = require('./state-merge-world.cjs');
 
 useWorld();
@@ -43,7 +43,7 @@ describe('a catch-up killed between its steps', () => {
   // reads nothing that landing wrote as this machine's change.
   for (const marker of ['commit-tree', '--prefix=', 'reset --quiet', 'update-ref -m', '--force-with-lease']) {
     it(`loses nothing, and reads nothing it wrote as this machine's, when killed after ${marker} with the remote moving on`, () => {
-      const { here, there, bare } = twoMachines({
+      const { here, there, bare } = machinesSharing({
         [layout.ledger]: ledger('base'), [CHART]: 'png\0base', [LOG]: '# a\n', [layout.projectManifest]: projectManifest('now'),
       });
       commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1'), [CHART]: 'png\0here' });
@@ -62,9 +62,9 @@ describe('a catch-up killed between its steps', () => {
       assert.ok(['merged', 'fast-forwarded'].includes(out.action), `the catch-up ${out.action}: ${JSON.stringify(out.conflicts)}`);
       assert.strictEqual(remoteTip(bare), landed);
       assert.ok(landed === onward || parents(here.main, landed)[0] === onward, 'the landing is not on the remote\'s new tip');
-      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), projectManifest('later'));
       assert.strictEqual(readFile(here.root, layout.projectManifest), projectManifest('later'), 'a field the killed landing wrote came back');
-      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'b1', 'a1'));
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.ledger}`]), ledger('base', 'b1', 'a1'));
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${CHART}`]), 'png\0there');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${LOG}`]), '# a\n\n## elsewhere\n');
@@ -76,7 +76,7 @@ describe('a catch-up killed between its steps', () => {
   }
 
   it('is finished by a state commit before it moves the branch, its notes first, so the next catch-up reads nothing it wrote as this machine\'s', () => {
-    const { here, there } = twoMachines({ [layout.ledger]: ledger('base'), [layout.projectManifest]: projectManifest('now'), [CHART]: 'png\0base' });
+    const { here, there } = machinesSharing({ [layout.ledger]: ledger('base'), [layout.projectManifest]: projectManifest('now'), [CHART]: 'png\0base' });
     commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1'), [CHART]: 'png\0here' });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday'), [CHART]: 'png\0there' });
     killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
@@ -90,16 +90,16 @@ describe('a catch-up killed between its steps', () => {
     assert.strictEqual(live.warnings.length, 2, live.warnings.join('\n'));
     assert.strictEqual(live.warnings[0], `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`);
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
-    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]), projectManifest('later'));
     assert.strictEqual(readFile(here.root, layout.projectManifest), projectManifest('later'), 'a field the killed landing wrote came back');
-    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'a1', 'a2'));
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${layout.ledger}`]), ledger('base', 'a1', 'a2'));
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
     assert.strictEqual(status(here.root), '');
     assert.deepStrictEqual(mergeLeftovers(here.root), []);
   });
 
   it('is finished by a task verb\'s setting up, its setting put onto the manifest the landing brought, so the remote\'s change is kept and goes on to the other machine', () => {
-    const { here, there } = twoMachines({
+    const { here, there } = machinesSharing({
       [layout.projectManifest]: projectManifest('now'), [layout.manifest('pay')]: json({ name: 'pay', work_type: 'feature', status: 'in-progress', description: 'x', phases: {} }),
     });
     commitUnpushed(here, { 'unit/notes.md': 'here\n' });
@@ -108,7 +108,7 @@ describe('a catch-up killed between its steps', () => {
 
     ok(here.main, ['task', 'ready', 'pay']);
 
-    const held = JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]));
+    const held = JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]));
     assert.deepStrictEqual([held.roadmap.items['a-lifetime-tier'].horizon, held.drivers.task], ['someday', 'tick']);
     assert.strictEqual(status(here.root), '');
     assert.strictEqual(catchUpState(there.root).action, 'fast-forwarded');
@@ -117,7 +117,7 @@ describe('a catch-up killed between its steps', () => {
 
   it('says, finishing the landing, that a file a session changed since may already hold the merged copy it sets beside', () => {
     const DATA = 'unit/data.json';
-    const { here, there } = twoMachines({ [DATA]: '{"a":1}\n' });
+    const { here, there } = machinesSharing({ [DATA]: '{"a":1}\n' });
     commitUnpushed(here, { [DATA]: '{"a":2}\n' });
     commitOnState(there.root, { [DATA]: '{"a":3}\n' });
     killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');

@@ -25,7 +25,7 @@ const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
+const { useWorld, STUB_ENGINE, projectInWorld, cloneInWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
 useWorld();
 
@@ -35,7 +35,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
   it('makes the remote\'s leeway-state its own, checked out at .leeway/ and locked — and the next boot has nothing to do', () => {
     const { root, bare } = setUp({ remote: true });
     commitOnState(root, { [layout.projectManifest]: '{"kept":true}\n' });
-    const fresh = cloneOf(bare, 'fresh');
+    const fresh = cloneInWorld(bare, 'fresh');
 
     const res = boot(fresh);
 
@@ -48,7 +48,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
 
   it('with the remote out of reach, checks out its branch as the clone fetched it, and says the remote could not be reached', () => {
     const { bare } = setUp({ remote: true });
-    const fresh = cloneOf(bare, 'fresh');
+    const fresh = cloneInWorld(bare, 'fresh');
     outOfReach(fresh);
 
     const { result: res, commands } = traced(() => boot(fresh));
@@ -63,7 +63,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
 
   it('with the remote out of reach and nothing fetched, stops saying so — never as lost state — and writes nothing', () => {
     const { bare } = setUp({ remote: true });
-    const fresh = cloneOf(bare, 'fresh', ['--single-branch', '--branch', 'main']);
+    const fresh = cloneInWorld(bare, 'fresh', ['--single-branch', '--branch', 'main']);
     outOfReach(fresh);
     const before = git(fresh, ['for-each-ref']);
 
@@ -107,7 +107,7 @@ function madeOnce(main) {
 
 describe('two boots at once (4.S3)', () => {
   it('on a project being set up, both answer ready, and everything is made once', async () => {
-    const main = codeProject();
+    const main = projectInWorld();
 
     const answers = await twoBootsAtOnce(main);
 
@@ -122,7 +122,7 @@ describe('two boots at once (4.S3)', () => {
 
   it('on a fresh clone, both answer ready, and the remote\'s branch is checked out once', async () => {
     const { bare } = setUp({ remote: true });
-    const fresh = cloneOf(bare, 'fresh');
+    const fresh = cloneInWorld(bare, 'fresh');
 
     const answers = await twoBootsAtOnce(fresh);
 

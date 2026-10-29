@@ -3,7 +3,7 @@
 // The world the state-merge suites share
 // (test-engine-state-merge-*.cjs): a temp folder per test (`useWorld`), the
 // library's two machines on one remote with a base committed
-// (`twoMachines`), commits made on either side with the push failing, and
+// (`machinesSharing`), commits made on either side with the push failing, and
 // the reads their assertions make: parents, status, the merge's kept stop
 // and its leftovers. A `git` wrapper first on PATH
 // (`gitWrapper`, `withPath`) stands in for another session's write, a
@@ -84,7 +84,7 @@ function commitUnpushed(machine, files, message = 'state: unpushed') {
  * @param {Record<string, string>} [base]
  * @returns {ReturnType<typeof harness.twoMachines>}
  */
-function twoMachines(base = {}) {
+function machinesSharing(base = {}) {
   const machines = harness.twoMachines(world(), { name: 'fumi' });
   if (Object.keys(base).length > 0) {
     commitOnState(machines.here.root, base, 'state: base');
@@ -197,5 +197,5 @@ function killedAfter(root, call, marker) {
 }
 
 module.exports = {
-  useWorld, blobId, treeId, parents, status, pushFailing, commitUnpushed, twoMachines, entry, ledger, json, projectManifest, appendOnly, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
+  useWorld, blobId, treeId, parents, status, pushFailing, commitUnpushed, machinesSharing, entry, ledger, json, projectManifest, appendOnly, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
 };

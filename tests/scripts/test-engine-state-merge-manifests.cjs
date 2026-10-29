@@ -26,13 +26,13 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
 const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, twoMachines, parents, status, commitUnpushed, ledger, projectManifest, keptStopFile, pickShown } = require('./state-merge-world.cjs');
+const { useWorld, machinesSharing, parents, status, commitUnpushed, ledger, projectManifest, keptStopFile, pickShown } = require('./state-merge-world.cjs');
 
 useWorld();
 
 describe('the migrations record (4.S16)', () => {
   it('keeps one line for a migration both clones applied', () => {
-    const { here, there } = twoMachines({ [layout.migrations]: '001\n002\n' });
+    const { here, there } = machinesSharing({ [layout.migrations]: '001\n002\n' });
     commitUnpushed(here, { [layout.migrations]: '001\n002\n073\n075\n' });
     commitOnState(there.root, { [layout.migrations]: '001\n002\n073\n074\n' });
 
@@ -45,7 +45,7 @@ describe('the migrations record (4.S16)', () => {
 
 describe('the manifests (4.S17)', () => {
   it('keeps both changes where each side changed a different field', () => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('now', { defaults: { plan_format: 'tick' } }) });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('next') });
 
@@ -58,7 +58,7 @@ describe('the manifests (4.S17)', () => {
   });
 
   it('stops on a field both sides changed to different values, with both values and nothing written; the pick finishes the merge', () => {
-    const { here, there, bare } = twoMachines({ [layout.projectManifest]: projectManifest('now'), [layout.ledger]: ledger('base') });
+    const { here, there, bare } = machinesSharing({ [layout.projectManifest]: projectManifest('now'), [layout.ledger]: ledger('base') });
     const mine = commitUnpushed(here, { [layout.projectManifest]: projectManifest('next'), [layout.ledger]: ledger('base', 'a1') });
     const theirs = commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday'), [layout.ledger]: ledger('base', 'b1') }).commit;
 
@@ -99,7 +99,7 @@ describe('the manifests (4.S17)', () => {
   });
 
   it('writes this machine\'s value where the person picks it', () => {
-    const { here, there } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next') });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     catchUpState(here.root);
@@ -107,12 +107,12 @@ describe('the manifests (4.S17)', () => {
     const picked = pickShown(here, '1');
 
     assert.strictEqual(picked.action, 'merged');
-    assert.strictEqual(JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`])).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`])).roadmap.items['a-lifetime-tier'].horizon, 'next');
   });
 
   it('asks each conflict in turn, and finishes once every one is picked', () => {
     const base = projectManifest('now');
-    const { here, there } = twoMachines({ [layout.projectManifest]: base });
+    const { here, there } = machinesSharing({ [layout.projectManifest]: base });
     commitUnpushed(here, { [layout.projectManifest]: projectManifest('next', { defaults: { plan_format: 'tick' } }) });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday', { defaults: { plan_format: 'linear' } }) });
 
@@ -132,7 +132,7 @@ describe('the manifests (4.S17)', () => {
   });
 
   it('refuses a pick that is neither side, and a pick with nothing waiting', () => {
-    const { here } = twoMachines({ [layout.projectManifest]: projectManifest('now') });
+    const { here } = machinesSharing({ [layout.projectManifest]: projectManifest('now') });
 
     assert.throws(() => pickStateMerge(here.root, '3', 'a1b2c3d4e5f6'), /a state merge pick is 1 \(this machine's value\) or 2 \(the remote's\), got "3"/);
     assert.throws(() => pickStateMerge(here.root, '1', 'a1b2c3d4e5f6'), /^Error: no state merge is waiting on a pick$/);
