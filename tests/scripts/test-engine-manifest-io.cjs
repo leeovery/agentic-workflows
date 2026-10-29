@@ -650,22 +650,28 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', (t) => {
+  it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'raise'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside, and a raise after them');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
     manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    const env = { CLAUDE_CODE_SESSION_ID: 'sess-1' };
+    const asked = harness.ok(dir, ['ledger', 'ask', 'payments.research.auth-flow'], { env, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Who signs a user in?' }) }).id;
     fs.writeFileSync(lock, live());
     const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
 
     for (const args of EXEMPT_CALLS) {
-      const res = harness.call(dir, args, { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } });
+      const res = harness.call(dir, args, { env });
       assert.strictEqual(res.code, 0, `engine ${args.join(' ')}: ${res.stderr}`);
     }
+    const row = (/** @type {string} */ key) => ({ key, name: `Row ${key}`, text: `Answer ${key}`, notice: `What ${key} changes` });
+    const call = { question: 'Who signs a user in?', rows: [row('1'), row('2')], lean: '1', why: 'One.', sort: 'several', mechanism: 'A provider.', product_wide: false };
+    const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.research.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
+    harness.output(dir, ['raise', 'show', raise], { env });
     assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });

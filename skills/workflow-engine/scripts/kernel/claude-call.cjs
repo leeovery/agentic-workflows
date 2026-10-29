@@ -29,12 +29,15 @@
 //   refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
+// - Two forms, one call: `askClaude` waits on it, and `askClaudeAsync`
+//   answers later, so a caller with several questions puts them at once and
+//   waits about one call's time (raise.cjs, a raise's rows).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { isObject } = require('./manifest-io.cjs');
 const { messageOf } = require('./call.cjs');
 
@@ -257,9 +260,16 @@ function answerOfResult(result, schema) {
 }
 
 /**
+ * A finished run of the binary, however it ran: what it printed, how it
+ * exited, and the error that stopped it — `ETIMEDOUT` where it outlived its
+ * time and was killed.
+ * @typedef {{error?: Error, stdout: string, stderr: string, status: number|null, signal: NodeJS.Signals|null}} Run
+ */
+
+/**
  * The answer a run gives: a timeout, a binary that would not start, output
  * that is no result — its stderr read for what it says — or the result's.
- * @param {import('child_process').SpawnSyncReturns<string>} run @param {Ask} ask
+ * @param {Run} run @param {Ask} ask
  * @returns {Answer}
  */
 function answerOf(run, ask) {
@@ -273,6 +283,29 @@ function answerOf(run, ask) {
 }
 
 /**
+ * The call's own empty folder, fresh in the temp folder; or, where none can
+ * be made, why the call cannot run. Refuses a schema an answer cannot be
+ * checked against first.
+ * @param {Ask} ask
+ * @returns {string|Answer}
+ */
+function freshFolder(ask) {
+  assertCheckable(ask.schema);
+  try {
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-'));
+  } catch (err) {
+    return cannot('failed', `no empty folder to run the call from: ${messageOf(err)}`);
+  }
+}
+
+/** @param {string} folder */
+function removeFolder(folder) {
+  try {
+    fs.rmSync(folder, { recursive: true, force: true });
+  } catch { /* a folder that will not go stays in the temp folder, and the answer stands */ }
+}
+
+/**
  * Put one question to the separate Claude call, from a fresh empty folder.
  * Refuses a schema an answer cannot be checked against, before any call;
  * every other failure is an answer, never a throw.
@@ -280,21 +313,58 @@ function answerOf(run, ask) {
  * @returns {Answer}
  */
 function askClaude(ask) {
-  assertCheckable(ask.schema);
-  let folder;
+  const folder = freshFolder(ask);
+  if (typeof folder !== 'string') return folder;
   try {
-    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-'));
-  } catch (err) {
-    return cannot('failed', `no empty folder to run the call from: ${messageOf(err)}`);
-  }
-  try {
-    const run = spawnSync(binary(), argsOf(ask), { cwd: folder, env: envOf(), input: ask.input, encoding: 'utf8', timeout: ask.timeoutMs, killSignal: 'SIGKILL' });
-    return answerOf(run, ask);
+    return answerOf(spawnSync(binary(), argsOf(ask), { cwd: folder, env: envOf(), input: ask.input, encoding: 'utf8', timeout: ask.timeoutMs, killSignal: 'SIGKILL' }), ask);
   } finally {
-    try {
-      fs.rmSync(folder, { recursive: true, force: true });
-    } catch { /* a folder that will not go stays in the temp folder, and the answer stands */ }
+    removeFolder(folder);
   }
 }
 
-module.exports = { askClaude };
+/**
+ * Run the binary from `folder` without waiting on it, `input` on its stdin,
+ * killed outright once `timeoutMs` passes: answers as `spawnSync` would.
+ * @param {string[]} args @param {string} folder @param {string} input @param {number} timeoutMs
+ * @returns {Promise<Run>}
+ */
+function spawned(args, folder, input, timeoutMs) {
+  return new Promise((resolve) => {
+    const child = spawn(binary(), args, { cwd: folder, env: envOf() });
+    /** @type {string[]} */ const stdout = [];
+    /** @type {string[]} */ const stderr = [];
+    /** @type {Error|undefined} */
+    let error;
+    const timer = setTimeout(() => {
+      error = Object.assign(new Error(`${binary()} ETIMEDOUT`), { code: 'ETIMEDOUT' });
+      child.kill('SIGKILL');
+    }, timeoutMs);
+    child.stdout.setEncoding('utf8').on('data', (chunk) => stdout.push(chunk));
+    child.stderr.setEncoding('utf8').on('data', (chunk) => stderr.push(chunk));
+    child.stdin.on('error', () => { /* a binary that never read its stdin answers all the same */ });
+    child.on('error', (err) => { error ??= err; });
+    child.on('close', (status, signal) => {
+      clearTimeout(timer);
+      resolve({ error, stdout: stdout.join(''), stderr: stderr.join(''), status, signal });
+    });
+    child.stdin.end(input);
+  });
+}
+
+/**
+ * `askClaude` without blocking, so several calls run at once: the same
+ * call, the same answers, the same refusal.
+ * @param {Ask} ask
+ * @returns {Promise<Answer>}
+ */
+async function askClaudeAsync(ask) {
+  const folder = freshFolder(ask);
+  if (typeof folder !== 'string') return folder;
+  try {
+    return answerOf(await spawned(argsOf(ask), folder, ask.input, ask.timeoutMs), ask);
+  } finally {
+    removeFolder(folder);
+  }
+}
+
+module.exports = { askClaude, askClaudeAsync };

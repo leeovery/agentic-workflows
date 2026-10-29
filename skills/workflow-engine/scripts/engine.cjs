@@ -18,7 +18,8 @@
 // Two doors, one dispatch: `main` binds the process (argv, cwd, the real
 // streams) and the exported in-process entry binds a caller's, for a test
 // harness that wants the CLI's answers without the CLI's start-up — `run`,
-// or `runAsync` for the knowledge verbs that wait on the embedding provider,
+// or `runAsync` for the commands that answer later — the knowledge verbs that
+// wait on the embedding provider, and a raise's draw, on its rows' checks —
 // which `run` refuses before running.
 // Nothing below either door reads process state: the directory, the output
 // streams and the stdin text all arrive on the call.
@@ -55,6 +56,8 @@ const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
+const { RAISE_USAGE, drawRaise, showRaise, raiseWaits } = require('./domain/raise.cjs');
+const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
@@ -161,6 +164,7 @@ Commands:
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
   gate <name> (--pick <key> | --typed [<key>])
+${RAISE_USAGE.replace(/^/gm, '  ')}
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
   manifest set    <dotpath> <field> <value>
@@ -1799,6 +1803,38 @@ function runGate(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// raise — a call Claude has a lean on, put through the decision point and,
+// where it asks, sealed in the conversation and drawn (domain/raise.cjs, its
+// screen domain/projections/raise.cjs), answering once its rows' one-decision
+// checks have; `show` draws a sealed raise again.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+async function runRaiseDraw(call, argv) {
+  try {
+    const { decision, reason, seal, warnings } = await drawRaise(call.cwd, argv, call.stdin);
+    const screen = raiseScreen(seal);
+    respond(call, { decision, reason, raise: seal.id, ...(warnings.length > 0 ? { warnings } : {}) });
+    respondSections(call, screen);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+/** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
+function runRaise(call, argv) {
+  if (raiseWaits(argv)) return runRaiseDraw(call, argv);
+  try {
+    const { seal, technical } = showRaise(argv.slice(1));
+    const screen = raiseScreen(seal, { technical });
+    respond(call, { raise: seal.id });
+    respondSections(call, screen);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // state-merge — the person's pick at the state merge's stop, which boot's
 // catch-up leaves where both clones changed a manifest field
 // (domain/state-merge.cjs).
@@ -2360,6 +2396,7 @@ const COMMANDS = Object.freeze({
   render: runRender,
   handoff: runHandoff,
   gate: runGate,
+  raise: runRaise,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2379,7 +2416,8 @@ const COMMANDS = Object.freeze({
 // trust log, under its own lock, and the conversation's folder; and the rest
 // read, `layout guard` among them, run before every file Claude writes.
 // `manifest` takes it to write alone, and `commit` but for a code commit
-// (`--paths`).
+// (`--paths`). A `raise` writes the conversation's folder alone: its seal,
+// and the gate shown it clears.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2395,6 +2433,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   roadmap: ['state'],
   session: ['label', 'repair', 'cleanup', 'resume'],
   gate: '*',
+  raise: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */
@@ -2406,8 +2445,8 @@ function takesWriterLock([command, sub, ...rest]) {
 }
 
 /**
- * The command argv names — answering later only where the command waits on
- * the embedding provider. One the engine does not dispatch answers the
+ * The command argv names — answering later only for the argv
+ * `ANSWERS_LATER` says waits. One the engine does not dispatch answers the
  * usage at once, with no state to find and no lock to wait on.
  * @param {Call} call @param {string[]} argv @returns {void|Promise<void>}
  */
@@ -2444,8 +2483,8 @@ function exitCode(call, err) {
 }
 
 /**
- * One command against a bound call, answering its exit code — later, for a
- * command that waits on the embedding provider. Whatever the exit, a command
+ * One command against a bound call, answering its exit code — later, for
+ * the argv `ANSWERS_LATER` says waits. Whatever the exit, a command
  * the conversation ran marks it as one that runs the workflows; one that
  * answered records the gate its MENU stated as the gate the conversation was
  * shown, where a failed one showed none. Both after the command, which may
@@ -2535,14 +2574,24 @@ function bufferedCall(cwd, stdin) {
   };
 }
 
+// The commands that answer later, each by whether its argv waits: a knowledge
+// verb on the embedding provider, a raise's draw on its rows' checks.
+/** @type {Readonly<Record<string, (args: string[]) => boolean>>} */
+const ANSWERS_LATER = Object.freeze({ knowledge: knowledgeWaits, raise: raiseWaits });
+
+/** @param {string[]} argv */
+function answersLater([command, ...rest]) {
+  return Object.hasOwn(ANSWERS_LATER, command) && ANSWERS_LATER[command](rest);
+}
+
 /**
  * The in-process entry: the CLI's argv contract with the invocation supplied
  * rather than taken from the process. Answers what the spawned CLI answered —
  * the same bytes on the same two streams, the same exit code — and never
  * exits, chdirs, or leaves the environment moved. Callers are test harnesses
  * that want the engine's answers without a process per answer; skills' own
- * scripts take the library (lib.cjs). A command that waits on the embedding
- * provider is runAsync's, refused here before it runs.
+ * scripts take the library (lib.cjs). A command that answers later is
+ * runAsync's, refused here before it runs.
  *
  * The cwd is a parameter rather than a chdir because `process.chdir` is
  * refused inside a worker thread, and the prose world builder runs in one.
@@ -2551,7 +2600,7 @@ function bufferedCall(cwd, stdin) {
  * @returns {Answer}
  */
 function run(argv, { cwd = process.cwd(), env = {}, stdin = '' } = {}) {
-  if (argv[0] === 'knowledge' && knowledgeWaits(argv.slice(1))) {
+  if (answersLater(argv)) {
     throw new TypeError(`engine ${argv.slice(0, 2).join(' ')} answers asynchronously — call runAsync`);
   }
   const { call, answer } = bufferedCall(cwd, stdin);
@@ -2563,7 +2612,7 @@ let held = null;
 
 /**
  * The in-process entry for any command, awaited — the one a command that
- * waits on the embedding provider needs. The environment is held until it
+ * answers later needs. The environment is held until it
  * answers, so overlapping calls take turns: each starts once the one before
  * it has answered and put the environment back.
  * @param {string[]} argv @param {InProcessOptions} [options]

@@ -1,13 +1,14 @@
 #!/bin/sh
 #
 # The `claude` binary hermetic-env.cjs pins LEEWAY_CLAUDE to. Armed — a test
-# set CLAUDE_STUB_ANSWERS or CLAUDE_STUB_LOG — it is claude-stub.cjs, which
-# answers by what the test set. Unarmed, it answers as claude-stub.cjs does
-# unarmed, byte for byte — a Claude with no login — without starting node,
-# so the decisions a suite records unchecked cost no node start each.
+# set CLAUDE_STUB_ANSWERS, CLAUDE_STUB_LOG or CLAUDE_STUB_MEET — it is
+# claude-stub.cjs, which answers by what the test set. Unarmed, it answers as
+# claude-stub.cjs does unarmed, byte for byte — a Claude with no login —
+# without starting node, so the decisions a suite records unchecked cost no
+# node start each.
 #
 
-if [ -n "${CLAUDE_STUB_ANSWERS}${CLAUDE_STUB_LOG}" ]; then
+if [ -n "${CLAUDE_STUB_ANSWERS}${CLAUDE_STUB_LOG}${CLAUDE_STUB_MEET}" ]; then
   exec node "${0%/*}/claude-stub.cjs" "$@"
 fi
 while IFS= read -r _; do :; done

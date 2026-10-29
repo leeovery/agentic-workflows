@@ -12,8 +12,10 @@
 //
 // Every shape takes the project directory first, then argv, then the call's
 // own environment and stdin. The environment is an overlay whose `undefined`
-// takes a key away. A command that waits on the embedding provider answers
-// through `callAsync`.
+// takes a key away. A command that answers later — a knowledge verb that
+// waits on the embedding provider, a raise's draw — answers through
+// `callAsync`, and its success and refusal through `okSectionsAsync` and
+// `refusesAsync`.
 //
 // A suite whose transactions index sets its fixture's knowledge up
 // keyword-only: the store they build is real, what it holds is the
@@ -79,7 +81,7 @@ function harness(enginePath = ENGINE) {
   const call = (dir, args, { env, stdin } = {}) => engine.run(args, { cwd: dir, env, stdin });
 
   /**
-   * The raw answer of a command that waits on the embedding provider.
+   * The raw answer of a command that answers later.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
   const callAsync = (dir, args, { env, stdin } = {}) => engine.runAsync(args, { cwd: dir, env, stdin });
@@ -88,25 +90,20 @@ function harness(enginePath = ENGINE) {
    * The raw answer of a call that must succeed.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function succeeded(dir, args, opts) {
-    const res = call(dir, args, opts);
-    assert.strictEqual(res.code, 0,
-      `engine ${args.join(' ')} failed\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    return res;
-  }
+  const succeeded = (dir, args, opts) => success(call(dir, args, opts), args);
 
   /**
    * A call that must succeed: the response line parsed, and everything after
    * it (the rendered sections a transaction appends, '' when none).
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function okSections(dir, args, opts) {
-    const res = succeeded(dir, args, opts);
-    const nl = res.stdout.indexOf('\n');
-    const parsed = JSON.parse((nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim());
-    assert.strictEqual(parsed.ok, true, `engine ${args.join(' ')} answered ok:false: ${res.stdout}`);
-    return { res: parsed, sections: nl === -1 ? '' : res.stdout.slice(nl + 1) };
-  }
+  const okSections = (dir, args, opts) => sectionsOf(succeeded(dir, args, opts), args);
+
+  /**
+   * `okSections` for a command that answers later.
+   * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+   */
+  const okSectionsAsync = async (dir, args, opts) => sectionsOf(success(await callAsync(dir, args, opts), args), args);
 
   /**
    * A call that must succeed: the parsed response line.
@@ -118,15 +115,13 @@ function harness(enginePath = ENGINE) {
    * A call that must refuse: exit 1, nothing on stdout, `{ok:false}` on stderr.
    * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
    */
-  function refuses(dir, args, opts) {
-    const res = call(dir, args, opts);
-    assert.strictEqual(res.code, 1,
-      `engine ${args.join(' ')} was expected to refuse\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
-    assert.strictEqual(res.stdout, '', `a refusal says nothing on stdout: ${res.stdout}`);
-    const parsed = JSON.parse(res.stderr.trim());
-    assert.strictEqual(parsed.ok, false, `refusal is not clean {ok:false} JSON: ${res.stderr}`);
-    return parsed;
-  }
+  const refuses = (dir, args, opts) => refusal(call(dir, args, opts), args);
+
+  /**
+   * `refuses` for a command that answers later.
+   * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+   */
+  const refusesAsync = async (dir, args, opts) => refusal(await callAsync(dir, args, opts), args);
 
   /**
    * The whole stdout of a call that must succeed — a render surface's
@@ -135,7 +130,34 @@ function harness(enginePath = ENGINE) {
    */
   const output = (dir, args, opts) => succeeded(dir, args, opts).stdout;
 
-  return { call, callAsync, ok, okSections, refuses, output };
+  return { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output };
+}
+
+/** @typedef {{stdout: string, stderr: string, code: number}} Answer */
+
+/** An answer that must be a success. @param {Answer} res @param {string[]} args */
+function success(res, args) {
+  assert.strictEqual(res.code, 0,
+    `engine ${args.join(' ')} failed\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+  return res;
+}
+
+/** A success's response line parsed, and the sections after it. @param {Answer} res @param {string[]} args */
+function sectionsOf(res, args) {
+  const nl = res.stdout.indexOf('\n');
+  const parsed = JSON.parse((nl === -1 ? res.stdout : res.stdout.slice(0, nl)).trim());
+  assert.strictEqual(parsed.ok, true, `engine ${args.join(' ')} answered ok:false: ${res.stdout}`);
+  return { res: parsed, sections: nl === -1 ? '' : res.stdout.slice(nl + 1) };
+}
+
+/** An answer that must be a refusal: its `{ok:false}` parsed. @param {Answer} res @param {string[]} args */
+function refusal(res, args) {
+  assert.strictEqual(res.code, 1,
+    `engine ${args.join(' ')} was expected to refuse\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
+  assert.strictEqual(res.stdout, '', `a refusal says nothing on stdout: ${res.stdout}`);
+  const parsed = JSON.parse(res.stderr.trim());
+  assert.strictEqual(parsed.ok, false, `refusal is not clean {ok:false} JSON: ${res.stderr}`);
+  return parsed;
 }
 
 /**
@@ -458,11 +480,11 @@ async function contend(n, body, args, env = process.env) {
   return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
-const { call, callAsync, ok, okSections, refuses, output } = harness();
+const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
 
 module.exports = {
   ENGINE, harness,
-  call, callAsync, ok, okSections, refuses, output, holdLock, lockAttempts, contend,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output, holdLock, lockAttempts, contend,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,

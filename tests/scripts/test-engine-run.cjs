@@ -253,8 +253,9 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     assert.match(res.stderr, /^Unknown --boost field: "bogus"/);
   });
 
-  it('run refuses a command it cannot wait for, naming runAsync', () => {
+  it('run refuses a command it cannot wait for, naming runAsync — a raise\'s draw, which waits on its rows\' checks, among them', () => {
     assert.throws(() => engine.run(['knowledge', 'query', 'cards'], { cwd: dir }), /engine knowledge query answers asynchronously — call runAsync/);
+    assert.throws(() => engine.run(['raise', 'payments.research.payments', '--answers', 'abcd'], { cwd: dir }), /engine raise payments\.research\.payments answers asynchronously — call runAsync/);
   });
 
   it('run refuses a waiting command before it acts — nothing written, the environment untouched', () => {
