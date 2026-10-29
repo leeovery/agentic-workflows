@@ -3,7 +3,13 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the code-side git a landing runs, for every landing driver.
 // What lands is code, so this is the person's own git, with their config,
-// identity and hooks (kernel/git.cjs), never the state's isolated runner.
+// identity, signing and hooks (kernel/git.cjs), never the state's isolated
+// runner — but for the settings that change what a command makes of refs
+// and commits, or what a read prints that the landing parses: each pinned
+// to git's own default on every call (`PINNED`), the options a fast-forward
+// takes from the branch's own config and a signature check besides; and on
+// every rebase a remedy prints, its backend, and every other branch left
+// where it is.
 //
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
@@ -27,21 +33,39 @@
 //   `git branch -f`, or is rebased in a worktree the remedy makes under the
 //   repository's `leeway/` folder and removes after. A rebase stopped there
 //   stops every verb until it is settled or ended. Every path and word a
-//   remedy names is quoted for the shell.
+//   remedy names is quoted for the shell, and what the person wrote that a
+//   refusal names — a subject, a title, a path — never opens a command.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git, tryGit, operationInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
+const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError } = require('../kernel/git.cjs');
 const { STATE_BRANCH } = require('./state-worktree.cjs');
 
 /**
  * A worktree of the repository: where it is, the branch it has checked out,
- * if any, the branches a rebase stopped there is rewriting, and whether a
- * remedy made it.
- * @typedef {{path: string, branch: string|null, rebasing: string[], scratch: boolean}} Worktree
+ * if any, the branches a rebase stopped there is rewriting, whether a remedy
+ * made it, and whether it is locked.
+ * @typedef {{path: string, branch: string|null, rebasing: string[], scratch: boolean, locked: boolean}} Worktree
  */
+
+/** Every call's settings, at git's own defaults, each against what the person's could make of it. */
+const PINNED = [
+  'log.showSignature=false', // a signed commit's check printed ahead of the format a read parses
+  'i18n.logOutputEncoding=UTF-8', // a message read re-encoded, and replayed so
+  'i18n.commitEncoding=UTF-8', // a replayed message labelled another encoding
+  'merge.renames=true', // a replay stopping on a rename it never looked for,
+  'merge.renameLimit=7000', // or on renames past a lower limit
+  'merge.directoryRenames=conflict', // a file moved, or left behind, without a word where its folder moved
+  'merge.renormalize=false', // a replay landing where git's own merge stops on line endings alone
+].flatMap((setting) => ['-c', setting]);
+
+/** The landing's git: the person's, its settings pinned. @param {string} cwd @param {string[]} args @param {string} [input] */
+const git = (cwd, args, input) => personGit(cwd, [...PINNED, ...args], undefined, input);
+
+/** The landing's git, null where it fails. @param {string} cwd @param {string[]} args */
+const tryGit = (cwd, args) => personTryGit(cwd, [...PINNED, ...args]);
 
 const HEADS = 'refs/heads/';
 
@@ -97,7 +121,7 @@ function refsUnder(root, prefix) {
  */
 function updateRefs(root, { set = [], drop = [] }) {
   const lines = [...set.map(([ref, sha]) => `update ${ref} ${sha}`), ...drop.map((ref) => `delete ${ref}`)];
-  if (lines.length > 0) git(root, ['update-ref', '--stdin'], undefined, `${lines.join('\n')}\n`);
+  if (lines.length > 0) git(root, ['update-ref', '--stdin'], `${lines.join('\n')}\n`);
 }
 
 /**
@@ -158,7 +182,7 @@ function changeOf(root, base, tip) {
 
 /** A tree committed onto a parent under a message. @param {string} root @param {string} tree @param {string} parent @param {string} message @returns {string} */
 function commitTree(root, tree, parent, message) {
-  return git(root, ['commit-tree', tree, '-p', parent, '-F', '-'], undefined, message).trim();
+  return git(root, ['commit-tree', tree, '-p', parent, '-F', '-'], message).trim();
 }
 
 /** A change that conflicts where it is replayed: its message names it, and where. */
@@ -181,14 +205,14 @@ function replay(root, commits, onto, ontoName) {
   /** @type {C[]} */
   const empty = [];
   commits.forEach((commit, i) => {
-    const args = ['merge-tree', '--write-tree', '--name-only', '--no-messages', `--merge-base=${commit.sha}^`, at, commit.sha];
+    const args = [...PINNED, 'merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', `--merge-base=${commit.sha}^`, at, commit.sha];
     const res = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
     if (res.status === 1) {
-      const paths = res.stdout.split('\n').slice(1).filter(Boolean);
-      throw new Conflict(`land: ${commit.name} conflicts with ${ontoName} at ${paths.join(', ')}`);
+      const paths = res.stdout.split('\0').slice(1).filter(Boolean);
+      throw new Conflict(`land: ${commit.name} conflicts with ${ontoName} at ${paths.map(plain).join(', ')}`);
     }
     if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
-    const tree = res.stdout.split('\n')[0];
+    const [tree] = res.stdout.split('\0');
     if (tree === atTree && own[2 * i] !== own[2 * i + 1]) empty.push(commit);
     at = commitTree(root, tree, at, commit.message);
     atTree = tree;
@@ -204,7 +228,9 @@ function replay(root, commits, onto, ontoName) {
  */
 function ownChangeEmpty(root, from, to) {
   const own = git(root, ['rev-list', '--no-merges', `${from}..${to}`]).split('\n').filter(Boolean);
-  return own.length === 0 || tryGit(root, ['diff', '--quiet', `${own[own.length - 1]}^`, own[0]]) !== null;
+  if (own.length === 0) return true;
+  const [before, after] = treesOf(root, [`${own[own.length - 1]}^`, own[0]]);
+  return before === after;
 }
 
 /** A worktree's own git directory. @param {string} tree @returns {string} */
@@ -232,11 +258,10 @@ function rebasing(gitDir) {
  * The repository's worktrees, the main checkout first, each with the branch
  * it has checked out and those a rebase stopped there is rewriting — which
  * leaves the worktree detached, though the rebase holds them.
- * @param {string} root
+ * @param {string} root @param {string} [made] where a remedy makes its worktrees
  * @returns {Worktree[]}
  */
-function worktrees(root) {
-  const made = scratchRoot(root);
+function worktrees(root, made = scratchRoot(root)) {
   return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block) => {
     const lines = block.split('\n');
     const tree = lines[0].slice('worktree '.length);
@@ -246,6 +271,7 @@ function worktrees(root) {
       branch: branch === undefined ? null : branch.slice(`branch ${HEADS}`.length),
       rebasing: lines.includes('detached') && fs.existsSync(tree) ? rebasing(gitDirOf(tree)) : [],
       scratch: samePlace(path.dirname(tree), made),
+      locked: lines.some((line) => line === 'locked' || line.startsWith('locked ')),
     };
   });
 }
@@ -255,9 +281,9 @@ function scratchRoot(root) {
   return path.join(git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), 'leeway');
 }
 
-/** The worktree a remedy makes to rebase a branch. @param {string} root @param {string} branch */
-function scratchTree(root, branch) {
-  return path.join(scratchRoot(root), branch.replace(/\//g, '-'));
+/** The worktree a remedy makes to rebase a branch, where it makes them. @param {string} made @param {string} branch */
+function scratchTree(made, branch) {
+  return path.join(made, branch.replace(/\//g, '-'));
 }
 
 /**
@@ -311,6 +337,11 @@ function samePlace(a, b) {
   return real(a) === real(b);
 }
 
+/** What the person wrote, as a refusal names it: each backquote a quote, so no command opens in it. @param {string} text */
+function plain(text) {
+  return text.replace(/`/g, "'");
+}
+
 /** A word as the shell takes it whole: bare where nothing in it is special, else single-quoted. @param {string} word */
 function quoted(word) {
   return /^[\w@%+=:,./^-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`;
@@ -337,6 +368,22 @@ const ABORTS = Object.freeze({
 });
 
 /**
+ * A cherry-pick or revert of several commits stopped in a worktree with
+ * nothing but its sequence to say so — its stop committed by hand — as a
+ * refusal names it, and the command that ends it there, keeping what it
+ * made; or null where none is.
+ * @param {string} root @param {string} tree
+ * @returns {{operation: string, end: string}|null}
+ */
+function sequenceAt(root, tree) {
+  const sequence = path.join(gitDirOf(tree), 'sequencer');
+  if (!fs.existsSync(sequence)) return null;
+  const todo = path.join(sequence, 'todo');
+  const verb = fs.existsSync(todo) && /^revert\b/.test(fs.readFileSync(todo, 'utf8')) ? 'revert' : 'cherry-pick';
+  return { operation: `a ${verb}`, end: `\`${gitIn(root, tree)} ${verb} --quit\`` };
+}
+
+/**
  * The operation stopped in a worktree, as a refusal names it, and the
  * command that ends it there, or null where none is.
  * @param {string} root @param {string} tree
@@ -344,7 +391,7 @@ const ABORTS = Object.freeze({
  */
 function stoppedAt(root, tree) {
   const open = operationInProgress(tree);
-  if (open === null) return null;
+  if (open === null) return sequenceAt(root, tree);
   const applying = open.marker === 'rebase-apply' && fs.existsSync(path.join(gitDirOf(tree), 'rebase-apply', 'applying'));
   const [operation, abort] = applying ? ['git am', 'am --abort'] : [open.operation, ABORTS[/** @type {keyof typeof ABORTS} */ (open.marker)]];
   return { operation, end: `\`${gitIn(root, tree)} ${abort}\`` };
@@ -364,11 +411,17 @@ function detaching(root, holder, branch, tip) {
   };
 }
 
-/** The way a worktree an earlier remedy left is cleared: removed, or pruned where deleted. @param {Worktree} tree */
+/**
+ * The way a worktree an earlier remedy left is cleared: unlocked where it is
+ * locked, and removed — which git does where its folder is gone too.
+ * @param {Worktree} tree
+ */
 function clearing(tree) {
-  return fs.existsSync(tree.path)
-    ? `remove the worktree an earlier remedy left with \`git worktree remove ${quoted(tree.path)}\``
-    : 'clear the worktree an earlier remedy left with `git worktree prune`';
+  const at = quoted(tree.path);
+  const remove = `\`git worktree remove ${at}\``;
+  return tree.locked
+    ? `unlock the worktree an earlier remedy left with \`git worktree unlock ${at}\`, then remove it with ${remove}`
+    : `remove the worktree an earlier remedy left with ${remove}`;
 }
 
 /**
@@ -408,20 +461,22 @@ function heldFirst(root, branch, trees) {
 /**
  * A remedy's way on for a branch it moves or rewrites (see the header): an
  * operation that holds the branch, ended first and alone; else a worktree an
- * earlier remedy left with it out cleared, the branch kept as it stands, the
- * worktree that has it out pruned where deleted or else detached, and the
- * steps `act` gives for the worktree a rebase is made in. `note` says what
- * the keep leaves, given the branch it keeps on.
+ * earlier remedy left with it out, or at its path, cleared, the branch kept
+ * as it stands, the worktree that has it out pruned where deleted or else
+ * detached, and the steps `act` gives for the worktree a rebase is made in,
+ * told whether a folder no worktree holds is left at its path. `note` says
+ * what the keep leaves, given the branch it keeps on.
  * @param {string} root @param {string} branch
- * @param {(scratch: string) => string[]} act
+ * @param {(scratch: string, folderLeft: boolean) => string[]} act
  * @param {{then?: string, note?: (kept: string) => string}} [opts]
  * @returns {string} the steps, and what follows them
  */
 function remedy(root, branch, act, { then = 'land again', note } = {}) {
-  const trees = worktrees(root);
+  const made = scratchRoot(root);
+  const trees = worktrees(root, made);
   const first = heldFirst(root, branch, trees);
   if (first !== null) return `${first}, and ${then}`;
-  const scratch = scratchTree(root, branch);
+  const scratch = scratchTree(made, branch);
   const tip = /** @type {string} */ (branches(root).get(branch));
   const { kept, step } = keepStep(root, branch, tip);
   const steps = [...trees.filter((tree) => tree.scratch && (tree.branch === branch || samePlace(tree.path, scratch))).map(clearing), step];
@@ -433,31 +488,35 @@ function remedy(root, branch, act, { then = 'land again', note } = {}) {
     steps.push(freed.step);
     notes.push(freed.note);
   }
-  steps.push(...act(scratch));
+  steps.push(...act(scratch, fs.existsSync(scratch) && !trees.some((tree) => samePlace(tree.path, scratch))));
   return `${steps.join(', then ')}, and ${then}${notes.map((line) => `; ${line}`).join('')}`;
 }
 
 /**
  * A remedy's step moving a branch, once free, to a commit.
  * @param {string} branch @param {string} to @param {string} how what the move does
- * @returns {(scratch: string) => string[]}
+ * @returns {(scratch: string, folderLeft: boolean) => string[]}
  */
 function moveTo(branch, to, how) {
   return () => [`${how} with \`git branch -f ${quoted(branch)} ${quoted(to)}\``];
 }
 
 /**
- * A remedy's steps rebasing a branch, once free, in a worktree made for it
- * and removed after, settling each conflict there as the rebase stops.
+ * A remedy's steps rebasing a branch, once free, in a worktree made for it —
+ * a folder left at its path cleared first — and removed after, settling each
+ * conflict there as the rebase stops. The rebase is the merge backend's,
+ * which keeps a landing that changes nothing, and moves no branch but its
+ * own.
  * @param {string} branch @param {string} args the rebase's own, quoted @param {string} how what the rebase does
- * @returns {(scratch: string) => string[]}
+ * @returns {(scratch: string, folderLeft: boolean) => string[]}
  */
 function rewrite(branch, args, how) {
-  return (scratch) => {
+  return (scratch, folderLeft) => {
     const there = `git -C ${quoted(scratch)}`;
     return [
+      ...(folderLeft ? [`clear the folder left at ${scratch}, which no worktree holds, with \`rm -rf ${quoted(scratch)}\``] : []),
       `${how} in a worktree of its own with \`git worktree add ${quoted(scratch)} ${quoted(branch)}\``,
-      `\`${there} rebase ${args}\`, settling each conflict at ${scratch} as it stops and going on with \`${there} rebase --continue\``,
+      `\`${there} rebase --merge --no-update-refs ${args}\`, settling each conflict at ${scratch} as it stops and going on with \`${there} rebase --continue\``,
       `\`git worktree remove ${quoted(scratch)}\``,
     ];
   };
@@ -499,11 +558,10 @@ function rebaseBlock(root, branch, trees = worktrees(root)) {
  * would overwrite a file — or null where nothing does, or no worktree holds
  * it.
  * @param {string} root @param {string} branch
- * @param {{from: string, to: string}} [move]
+ * @param {{from: string, to: string}} [move] @param {Worktree[]} [trees]
  * @returns {string|null}
  */
-function checkoutBlock(root, branch, move) {
-  const trees = worktrees(root);
+function checkoutBlock(root, branch, move, trees = worktrees(root)) {
   const rebased = rebaseBlock(root, branch, trees);
   if (rebased !== null) return rebased;
   const left = trees.find((tree) => tree.scratch && tree.branch === branch);
@@ -515,7 +573,7 @@ function checkoutBlock(root, branch, move) {
   const there = gitIn(root, holder.path);
   const stopped = stoppedAt(root, holder.path);
   if (stopped !== null) return `${at}, where ${stopped.operation} is in progress, so nothing moved — finish it, or end it with ${stopped.end}, and land again`;
-  const dirt = dirtyEntries(holder.path).filter((entry) => entry.status !== '??').map((entry) => entry.path);
+  const dirt = dirtyEntries(holder.path).filter((entry) => entry.status !== '??').map((entry) => plain(entry.path));
   if (dirt.length > 0) {
     const freed = detaching(root, holder, branch, git(root, ['rev-parse', `${HEADS}${branch}`]).trim());
     return `${at}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or ${freed.step}, and land again; ${freed.note}`;
@@ -525,7 +583,7 @@ function checkoutBlock(root, branch, move) {
     return `${at}, and the landing would move it to a commit it does not lead to, so nothing moved — check out another branch there, as \`${there} switch --detach\` does, and land again`;
   }
   const files = inTheWay(holder.path, move.from, move.to);
-  if (files.length > 0) return `${at}, where files not tracked are in the way: ${files.join(', ')}, so nothing moved — move them out of the way and land again`;
+  if (files.length > 0) return `${at}, where files not tracked are in the way: ${files.map(plain).join(', ')}, so nothing moved — move them out of the way and land again`;
   return null;
 }
 
@@ -536,11 +594,12 @@ function checkoutBlock(root, branch, move) {
  * @param {string} root @param {string} branch @param {string|null} from @param {string} to
  */
 function moveBranch(root, branch, from, to) {
-  const block = from === null ? null : checkoutBlock(root, branch, { from, to });
+  const trees = worktrees(root);
+  const block = from === null ? null : checkoutBlock(root, branch, { from, to }, trees);
   if (block !== null) throw new Error(`land: ${block}`);
-  const holder = holderOf(root, branch);
+  const holder = holderOf(root, branch, trees);
   if (holder === undefined) git(root, ['update-ref', '-m', `land: ${branch}`, `${HEADS}${branch}`, to, from ?? '']);
-  else git(holder.path, ['merge', '--ff-only', '--no-overwrite-ignore', '-q', to]);
+  else git(holder.path, ['-c', `branch.${branch}.mergeOptions=`, 'merge', '--ff-only', '--no-verify-signatures', '--no-overwrite-ignore', '-q', to]);
 }
 
 /** The branch the remote names its HEAD, or null. @param {string} root @param {string|null} remote @returns {string|null} */
@@ -579,6 +638,6 @@ function defaultBranch(root, remote) {
 
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  changeOf, commitTree, Conflict, replay, ownChangeEmpty, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  changeOf, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
   defaultBranch,
 };

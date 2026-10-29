@@ -27,14 +27,16 @@
 // absent and commits to the state branch, whatever the driver then does;
 // the tracker's setting up, which `open`'s read commits where the state
 // branch lacks it, as every read of the tracker does; and what a driver
-// keeps in the repository's own refs.
+// keeps in the repository's own refs. A verb answers what it committed and
+// was warned of, and a refusal after a commit carries that commit's
+// warnings.
 // ---------------------------------------------------------------------------
 
 const { resolveDriver } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, shownTask } = require('./task-id.cjs');
-const { trackedTask } = require('./task-verbs.cjs');
+const { trackedTask, ENDED } = require('./task-verbs.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -95,14 +97,28 @@ function withDriver(cwd, act, before = {}) {
   const { driver, written } = resolveDriver(cwd, 'landing');
   const warnings = [...(before.warnings ?? [])];
   let { committed } = before;
-  /** @type {Record<string, unknown>} */
-  let answer;
-  try {
-    answer = act(/** @type {LandingDriver} */ (driver));
-  } finally {
-    if (written) committed = commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `chore: the landing driver is ${driver.name}`, warnings).committed;
-  }
+  const answer = carrying(warnings, () => {
+    try {
+      return act(/** @type {LandingDriver} */ (driver));
+    } finally {
+      if (written) committed = commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `chore: the landing driver is ${driver.name}`, warnings).committed;
+    }
+  });
   return { ...answer, driver: driver.name, ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * `act`, a refusal it throws carrying `warnings` — what the verb was warned
+ * of by then — as the task verbs' refusals carry their commit's.
+ * @template T @param {string[]} warnings @param {() => T} act @returns {T}
+ */
+function carrying(warnings, act) {
+  try {
+    return act();
+  } catch (err) {
+    if (warnings.length > 0 && err instanceof Error) err.message = `${err.message} — and ${warnings.join('; ')}`;
+    throw err;
+  }
 }
 
 /**
@@ -117,42 +133,68 @@ function refuseChange(ctx, shown, branch) {
     return folded === STATE_DIR_NAME || folded.startsWith(`${STATE_DIR_NAME}/`);
   });
   if (state.length > 0) {
-    throw new Error(`land: task ${shown}'s change carries ${state.join(', ')} — the workflows' state never lands on a code branch, so take it off the task's branch and open the task again`);
+    throw new Error(`land: task ${shown}'s change carries ${state.map(lg.plain).join(', ')} — the workflows' state never lands on a code branch, so take it off the task's branch and open the task again`);
   }
   const moved = change.filter(({ gitlink }) => gitlink).map(({ path }) => path);
   const nested = projectRepos(ctx.root).slice(1).filter((repo) => lg.branches(repo.path).has(branch)).map((repo) => repo.dir);
-  const reached = [...new Set([...moved, ...nested])];
+  const reached = [...new Set([...moved, ...nested])].map(lg.plain);
   if (reached.length > 0) {
     throw new Error(`land: task ${shown}'s change reaches the nested ${reached.length === 1 ? 'repository' : 'repositories'} ${reached.join(', ')} — nested repositories are not supported yet, so take that change off the task's branch and open the task again`);
   }
 }
 
 /**
+ * The refusal of a task the tracker holds with no type: given one by `task
+ * type`, or, for a task ended, which that verb refuses, its change landed
+ * as a task of its own.
+ * @param {TaskRef} ref @param {string} status the tracker's
+ */
+function untyped(ref, status) {
+  const shown = shownTask(ref);
+  if (!ENDED.includes(status)) {
+    return `land: task ${shown} has no type in the tracker, and its branch and landing are named from it — give it one with \`task type ${ref.unit} ${shown} <type>\` and open it again`;
+  }
+  return `land: task ${shown} is ${status} in the tracker with no type, and only a task not yet ended takes one — its branch and landing are named from its type, `
+    + `so land its change as a task of its own, made with \`task create ${ref.unit} ${ref.phase} --file <path>\``;
+}
+
+/**
+ * The landing a task opens under, from the type and title the tracker holds
+ * for it (7.2.18, 12.4.1): refused where it has no type, where its branch
+ * is not there, and where its change carries the state or reaches another
+ * repository.
+ * @param {LandingContext} ctx @param {TaskRef} ref @param {{type: string|null, title: string, status: string}} task
+ * @returns {LandingTask}
+ */
+function landingOf(ctx, ref, { type, title, status }) {
+  const shown = shownTask(ref);
+  if (type === null) throw new Error(untyped(ref, status));
+  const branch = names.taskBranch(ref, type, title);
+  if (!lg.branches(ctx.root).has(branch)) {
+    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
+  }
+  refuseChange(ctx, shown, branch);
+  return { ref, branch, message: names.landedMessage(ref, type, title) };
+}
+
+/**
  * The task's pull request opened — locally, its change squashed onto its
- * phase's branch — under the type and title the tracker holds for it
- * (7.2.18, 12.4.1).
+ * phase's branch — under the type and title the tracker holds for it. A
+ * task the tracker lacks is refused as the read finds it.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
   const ref = parseShownTask(unit, task);
   const shown = shownTask(ref);
   const ctx = contextOf(cwd, unit);
-  const { type, title, committed, warnings } = trackedTask(cwd, ref);
-  if (type === null) {
-    throw new Error(`land: task ${shown} has no type in the tracker, and its branch and landing are named from it — give it one with \`task type ${unit} ${shown} <type>\` and open it again`);
-  }
-  const branch = names.taskBranch(ref, type, title);
-  const message = names.landedMessage(ref, type, title);
-  if (!lg.branches(ctx.root).has(branch)) {
-    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
-  }
-  refuseChange(ctx, shown, branch);
-  const landing = { ref, branch, message };
+  const lacking = `land: task ${shown} of ${unit} is not in the tracker — open a task it holds, as \`task list ${unit} ${ref.phase}\` lists them`;
+  const { committed, warnings, ...held } = trackedTask(cwd, ref, lacking);
+  const landing = carrying(warnings ?? [], () => landingOf(ctx, ref, held));
   return withDriver(cwd, (driver) => {
     /** @type {ChainTip} */
     const tip = driver.chainTip(ctx, landing);
-    if (!lg.isAncestor(ctx.root, tip.commit, branch)) {
-      throw new Error(`land: task ${shown}'s branch ${branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
+    if (!lg.isAncestor(ctx.root, tip.commit, landing.branch)) {
+      throw new Error(`land: task ${shown}'s branch ${landing.branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
     }
     return driver.open(ctx, landing, tip);
   }, { committed, warnings });

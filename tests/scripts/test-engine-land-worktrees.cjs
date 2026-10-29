@@ -168,7 +168,7 @@ describe('land phase: a phase replayed onto a default branch that moved on', () 
 
     const lock = path.join(dir, '.git', 'index.lock');
     fs.writeFileSync(lock, '');
-    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(.*index\.lock.*\), so feat\/pay-phase-1 is put back and nothing moved — clear what git names and land again$/s);
+    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(git merge failed: .*index\.lock.*\), so feat\/pay-phase-1 is put back and nothing moved — clear what git names and land again$/s);
     fs.rmSync(lock);
 
     fs.writeFileSync(path.join(dir, 'scratch.txt'), 'mine\n');
@@ -189,13 +189,14 @@ describe('land phase: a phase replayed onto a default branch that moved on', () 
       '#!/bin/sh',
       '[ "$1" = prepared ] || exit 0',
       'while read old new ref; do',
-      `  case "$ref $new" in refs/heads/main\\ *|"refs/heads/feat/pay-phase-1 ${opened}") echo refused >&2; exit 1;; esac`,
+      `  case "$ref $new" in refs/heads/main\\ *|"refs/heads/feat/pay-phase-1 ${opened}") echo 'refused by \`policy\`' >&2; exit 1;; esac`,
       'done',
     ].join('\n'), { mode: 0o755 });
     const { error } = refuses(dir, MERGE_ONE);
     const replayed = tip(dir, 'feat/pay-phase-1');
+    const said = "git update-ref failed: [^`]*refused by 'policy'[^`]*";
     assert.match(error, new RegExp(
-      `^land: main could not move \\(.*refused.*\\), nor could feat/pay-phase-1 be put back \\(.*refused.*\\) — feat/pay-phase-1 stands at the replay, ${replayed.slice(0, 7)}; `
+      `^land: main could not move \\(${said}\\), nor could feat/pay-phase-1 be put back \\(${said}\\) — feat/pay-phase-1 stands at the replay, ${replayed.slice(0, 7)}; `
       + `\`git branch -f feat/pay-phase-1 ${opened.slice(0, 7)}\` puts it back$`, 's',
     ));
     assert.deepStrictEqual([tip(dir, 'main'), replayed === opened], [tip(dir, 'feat/pay-phase-2'), false]);

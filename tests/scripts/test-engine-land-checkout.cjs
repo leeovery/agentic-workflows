@@ -6,13 +6,14 @@
 // a fast-forward of the default branch it has out, made through the
 // person's own git and hooks, with its tracked files clean, nothing at a
 // path the move adds, or in its way, but what it tracks, ignored or not —
-// git's own refusal its last guard — and no operation in progress; changes
-// not committed there are kept by detaching the checkout, never set aside;
-// a rebase stopped there holds the branch it rebases and those it updates,
-// though it leaves the checkout detached. Each refusal's remedy is followed
-// as written, and the merge then goes through. Linked worktrees and the
-// replay's put-back are test-engine-land-worktrees.cjs's. Git layer: the
-// landing world (landing-world.cjs), built once and copied for each test.
+// git's own refusal its last guard — and no operation in progress, a pick
+// or revert sequence among them; changes not committed there are kept by
+// detaching the checkout, never set aside; a rebase stopped there holds the
+// branch it rebases and those it updates, though it leaves the checkout
+// detached. Each refusal's remedy is followed as written, and the merge
+// then goes through. Linked worktrees and the replay's put-back are
+// test-engine-land-worktrees.cjs's. Git layer: the landing world
+// (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -74,9 +75,11 @@ describe('land phase: the main checkout', () => {
     ok(dir, openArgs(card));
     const was = tip(dir, 'main');
     fs.writeFileSync(path.join(dir, 'app.txt'), 'edited\n');
+    fs.writeFileSync(path.join(dir, 'note`s.txt'), 'notes\n');
+    git(dir, ['add', 'note`s.txt']);
     const dirty = refusedMoving(dir, MERGE_ONE);
     assert.strictEqual(dirty, held(
-      'main', dir, ', with changes not committed: app.txt',
+      'main', dir, ', with changes not committed: app.txt, note\'s.txt',
       `commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${short(was)} with its edits, and land again; `
         + 'switching your checkout back to main is yours, when you\'re ready',
     ));
@@ -84,11 +87,11 @@ describe('land phase: the main checkout', () => {
     const merged = ok(dir, MERGE_ONE);
     assert.deepStrictEqual(
       { main: tip(dir, 'main'), head: tip(dir, 'HEAD'), status: git(dir, ['status', '--porcelain', '--branch']), app: fs.readFileSync(path.join(dir, 'app.txt'), 'utf8') },
-      { main: merged.commit, head: was, status: '## HEAD (no branch)\n M app.txt\n', app: 'edited\n' },
+      { main: merged.commit, head: was, status: '## HEAD (no branch)\n M app.txt\nA  note`s.txt\n', app: 'edited\n' },
     );
   });
 
-  it('stops where the default branch is out mid-merge, mid-am, or being rebased by either backend — a branch the rebase updates held too — and goes through once each remedy is followed', () => {
+  it('stops where the default branch is out mid-merge, mid-am, mid-sequence of picks or reverts with a stop committed by hand, or being rebased by either backend — a branch the rebase updates held too — and goes through once each remedy is followed', () => {
     const dir = project();
     ok(dir, openArgs(card));
     commitFiles(dir, 'theirs', 'main', { 'app.txt': 'theirs\n' });
@@ -108,6 +111,22 @@ describe('land phase: the main checkout', () => {
     const applying = refusedMoving(dir, MERGE_ONE);
     assert.strictEqual(applying, held('main', dir, ', where git am is in progress', 'finish it, or end it with `git am --abort`, and land again'));
     followRemedy(dir, applying);
+
+    const edits = ['one', 'two', 'three', 'four'].map((n) => {
+      fs.writeFileSync(path.join(dir, 'app.txt'), `mine, ${n}\n`);
+      git(dir, ['commit', '-q', '-am', `mine, ${n}`]);
+      return tip(dir, 'main');
+    });
+    commitFiles(dir, 'picks', edits[0], { 'app.txt': 'pick one\n' }, { message: 'pick one' });
+    commitFiles(dir, 'picks', 'picks', { 'app.txt': 'pick two\n' }, { message: 'pick two' });
+    for (const [verb, commits] of [['cherry-pick', [`${edits[0]}..picks`]], ['revert', [edits[1], edits[2]]]]) {
+      stops(dir, [verb, '--no-edit', ...commits]);
+      fs.writeFileSync(path.join(dir, 'app.txt'), `the ${verb} settled by hand\n`);
+      git(dir, ['commit', '-q', '-a', '--no-edit']);
+      const sequence = refusedMoving(dir, MERGE_ONE);
+      assert.strictEqual(sequence, held('main', dir, `, where a ${verb} is in progress`, `finish it, or end it with \`git ${verb} --quit\`, and land again`));
+      followRemedy(dir, sequence);
+    }
 
     stoppedRebase(dir, dir);
     const rebased = refusedMoving(dir, MERGE_ONE);
@@ -164,14 +183,15 @@ describe('land phase: the main checkout', () => {
     git(dir, ['commit', '-q', '-am', 'ignore local settings']);
     exclude(dir, 'secret.env');
     exclude(dir, 'a[b].txt');
+    exclude(dir, 'note`s.txt');
     commitFiles(dir, 'main', 'main', { 'ab.txt': 'tracked\n' });
     git(dir, ['reset', '-q', '--hard']);
-    const mine = { 'settings.local': 'my settings\n', 'secret.env': 'my secret\n', 'a[b].txt': 'mine\n' };
+    const mine = { 'settings.local': 'my settings\n', 'secret.env': 'my secret\n', 'a[b].txt': 'mine\n', 'note`s.txt': 'my notes\n' };
     for (const [file, text] of Object.entries(mine)) fs.writeFileSync(path.join(dir, file), text);
     const ignored = git(dir, ['show', 'main:.gitignore']).replace('settings.local\n', '');
-    const shared = { '.gitignore': ignored, 'settings.local': 'shared\n', 'secret.env': 'EXAMPLE=1\n', 'a[b].txt': 'shared\n' };
+    const shared = { '.gitignore': ignored, 'settings.local': 'shared\n', 'secret.env': 'EXAMPLE=1\n', 'a[b].txt': 'shared\n', 'note`s.txt': 'shared notes\n' };
     ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Share settings', 'main', shared)));
-    const refusal = held('main', dir, ', where files not tracked are in the way: a[b].txt, secret.env, settings.local', 'move them out of the way and land again');
+    const refusal = held('main', dir, ', where files not tracked are in the way: a[b].txt, note\'s.txt, secret.env, settings.local', 'move them out of the way and land again');
     assert.strictEqual(refusedMoving(dir, MERGE_ONE), refusal);
     commitFiles(dir, rounding.branch, 'main', rounding.files);
     ok(dir, openArgs(rounding));
@@ -214,12 +234,12 @@ describe('land phase: the main checkout', () => {
     fs.writeFileSync(path.join(dir, 'conf', 'local.cfg'), 'my config\n');
     ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Flatten', 'main', { conf: 'flat\n' }, { removed: ['conf/a.txt'] })));
     const local = () => fs.readFileSync(path.join(dir, 'conf', 'local.cfg'), 'utf8');
-    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(.*\), so nothing moved — clear what git names and land again$/s);
+    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(git merge failed: .*\), so nothing moved — clear what git names and land again$/s);
     assert.strictEqual(local(), 'my config\n');
     commitFiles(dir, rounding.branch, 'main', rounding.files);
     ok(dir, openArgs(rounding));
     ok(dir, ['land', 'phase', 'pay', '2']);
-    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(.*\), so feat\/pay-phase-1 is put back and nothing moved — clear what git names and land again$/s);
+    assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(git merge failed: .*\), so feat\/pay-phase-1 is put back and nothing moved — clear what git names and land again$/s);
     assert.strictEqual(local(), 'my config\n');
   });
 });

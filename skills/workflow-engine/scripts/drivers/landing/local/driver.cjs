@@ -15,7 +15,7 @@
 // the task's (`refs/leeway/opened/`), dropped only when its phase lands,
 // when its phase's stack begins again without it, or at finish.
 //
-// - Merged, by one rule (`onDefault`): the default branch holds the trailer
+// - Merged, by one rule (`defaultFrom`): the default branch holds the trailer
 //   of every task in question — on it already, or on any commit it gained
 //   since the commit they were read from left it, whatever its parent. A
 //   phase is merged once it holds every task the phase landed; a phase's
@@ -92,7 +92,7 @@ const OPENED = 'refs/leeway/opened/';
 const sameTask = (a, b) => a.unit === b.unit && a.phase === b.phase && a.n === b.n;
 
 /** A commit as a refusal names it. @param {Commit} commit */
-const named = (commit) => `${lg.short(commit.sha)} "${commit.message.split('\n')[0]}"`;
+const named = (commit) => `${lg.short(commit.sha)} "${lg.plain(commit.message.split('\n')[0])}"`;
 
 /** Tasks as a refusal names them. @param {TaskRef[]} refs */
 const tasksNamed = (refs) => `task${refs.length === 1 ? '' : 's'} ${refs.map(shownTask).join(', ')}`;
@@ -104,25 +104,26 @@ const openedUnder = (unit) => `${OPENED}${unit}/`;
 const openedAt = (ctx, ref) => lg.refsUnder(ctx.root, openedUnder(ctx.unit)).get(shownTask(ref)) ?? null;
 
 /**
- * Of `refs`, those the default branch lacks: none where `from` is on it
- * already; else those whose trailer no commit it gained since `from` names.
- * @param {LandingContext} ctx @param {string} from @param {TaskRef[]} refs
- * @returns {TaskRef[]}
+ * The default branch read off `from`: `lacks`, of tasks, those it lacks —
+ * none where `from` is on it already, else those whose trailer no commit it
+ * gained since `from` names; `holds`, the one rule for merged (see the
+ * header), that it holds every one of them, and nothing is merged that
+ * landed none. Each git read is made once, at the first question that needs
+ * it — whether `from` is on it, where the caller knows it, never.
+ * @param {LandingContext} ctx @param {string} from @param {boolean} [on] whether `from` is on the default branch
  */
-function missingFrom(ctx, from, refs) {
-  if (refs.length === 0 || lg.isAncestor(ctx.root, from, ctx.into)) return [];
-  const landed = new Set(lg.messagesPast(ctx.root, from, ctx.into).flatMap((message) => names.tasksOfMessage(ctx.unit, message).map(taskId)));
-  return refs.filter((ref) => !landed.has(taskId(ref)));
-}
-
-/**
- * The one rule for merged (see the header): the default branch holds every
- * task of `refs`, read off `from` — and nothing is merged that landed none.
- * @param {LandingContext} ctx @param {string} from @param {TaskRef[]} refs
- * @returns {boolean}
- */
-function onDefault(ctx, from, refs) {
-  return refs.length > 0 && missingFrom(ctx, from, refs).length === 0;
+function defaultFrom(ctx, from, on) {
+  /** @type {Set<string>|undefined} */
+  let gained;
+  /** @param {TaskRef[]} refs @returns {TaskRef[]} */
+  const lacks = (refs) => {
+    if (refs.length === 0) return [];
+    on ??= lg.isAncestor(ctx.root, from, ctx.into);
+    if (on) return [];
+    const landed = gained ??= new Set(lg.messagesPast(ctx.root, from, ctx.into).flatMap((message) => names.tasksOfMessage(ctx.unit, message).map(taskId)));
+    return refs.filter((ref) => !landed.has(taskId(ref)));
+  };
+  return { lacks, holds: (/** @type {TaskRef[]} */ refs) => refs.length > 0 && lacks(refs).length === 0 };
 }
 
 /** Each task a commit lands, newest first, as a stack holds them. @param {Line} commit @param {TaskRef[]} refs @returns {Landed[]} */
@@ -171,14 +172,15 @@ function stacksOf(ctx, refs) {
   for (const [branch, tip] of refs) {
     const phase = names.phaseOfBranch(ctx.unit, branch);
     if (phase === null) continue;
-    const onIt = lg.isAncestor(ctx.root, tip, into);
-    const line = onIt ? [] : lg.firstParentLine(ctx.root, into, tip).map((commit) => ({ ...commit, refs: names.tasksOfMessage(ctx.unit, commit.message) }));
+    const line = lg.firstParentLine(ctx.root, into, tip).map((commit) => ({ ...commit, refs: names.tasksOfMessage(ctx.unit, commit.message) }));
+    const onIt = line.length === 0;
     const stack = stackOf(phase, branch, tip, line);
     const landed = onIt ? names.tasksOfMessage(ctx.unit, lg.messageOf(ctx.root, tip)).filter((ref) => ref.phase === phase) : stack.tasks.map(({ ref }) => ref);
-    if (onDefault(ctx, tip, landed)) {
+    const reading = defaultFrom(ctx, tip, onIt);
+    if (reading.holds(landed)) {
       stacks.set(phase, { ...stack, merged: true, tasks: [], stackedOn: null, base: [], fault: null });
     } else if (stack.tasks.length > 0 || stack.fault !== null) {
-      const baseMerged = stack.stackedOn !== null && onDefault(ctx, tip, stack.base.map(({ ref }) => ref));
+      const baseMerged = stack.stackedOn !== null && reading.holds(stack.base.map(({ ref }) => ref));
       stacks.set(phase, baseMerged ? { ...stack, stackedOn: null } : stack);
     }
   }
@@ -348,7 +350,7 @@ function refuseStrays(ctx, task, tip) {
   const under = lg.branchesHeldBy(ctx.root, tip.commit);
   const off = tip.held
     .filter(({ ref, name }) => !under.has(name) && !(landedIn(tip.stacks, ref) && tip.chain.includes(ref.phase)))
-    .filter(({ ref, from }) => !onDefault(ctx, from, [ref]));
+    .filter(({ ref, from }) => !defaultFrom(ctx, from).holds([ref]));
   const elsewhere = off.filter(({ ref }) => landedIn(tip.stacks, ref));
   if (elsewhere.length > 0) {
     const merges = [...new Set(elsewhere.map(({ ref }) => ref.phase))].map((phase) => `\`land phase ${ctx.unit} ${phase}\``).join(', then ');
@@ -452,7 +454,7 @@ function chain(ctx, ref) {
  * @returns {string}
  */
 function waitingOn(ctx, refs, stacks, stack) {
-  const missing = new Set(missingFrom(ctx, stack.tip, stack.base.map(({ ref }) => ref)).map(taskId));
+  const missing = new Set(defaultFrom(ctx, stack.tip).lacks(stack.base.map(({ ref }) => ref)).map(taskId));
   const lacking = /** @type {Landed} */ (stack.base.filter(({ ref }) => missing.has(taskId(ref))).pop());
   const { phase } = lacking.ref;
   const shown = shownTask(lacking.ref);
@@ -470,7 +472,10 @@ function waitingOn(ctx, refs, stacks, stack) {
 }
 
 /** An error's message. @param {unknown} err */
-const messageOf = (err) => (err instanceof Error ? err.message : String(err));
+const errorText = (err) => (err instanceof Error ? err.message : String(err));
+
+/** What a failed git call said, as a refusal quotes it. @param {unknown} err */
+const gitSaid = (err) => lg.plain(errorText(err));
 
 /**
  * The commits a stack replays, each once, oldest first, with the tasks it
@@ -511,7 +516,7 @@ function mergeStack(ctx, refs, stacks, stack) {
       lg.moveBranch(root, into, intoTip, stack.tip);
     } catch (err) {
       if (!(err instanceof GitError)) throw err;
-      throw new Error(`land: ${into} could not move (${messageOf(err)}), so nothing moved — clear what git names and land again`);
+      throw new Error(`land: ${into} could not move (${gitSaid(err)}), so nothing moved — clear what git names and land again`);
     }
     landed();
     return { ...merged, commit: stack.tip };
@@ -535,11 +540,11 @@ function mergeStack(ctx, refs, stacks, stack) {
       lg.moveBranch(root, stack.branch, tip, stack.tip);
     } catch (back) {
       throw new Error(
-        `land: ${into} could not move (${messageOf(err)}), nor could ${stack.branch} be put back (${messageOf(back)}) — `
+        `land: ${into} could not move (${gitSaid(err)}), nor could ${stack.branch} be put back (${gitSaid(back)}) — `
         + `${stack.branch} stands at the replay, ${lg.short(tip)}; \`git branch -f ${stack.branch} ${lg.short(stack.tip)}\` puts it back`,
       );
     }
-    throw new Error(`land: ${into} could not move (${messageOf(err)}), so ${stack.branch} is put back and nothing moved — clear what git names and land again`);
+    throw new Error(`land: ${into} could not move (${gitSaid(err)}), so ${stack.branch} is put back and nothing moved — clear what git names and land again`);
   }
   landed();
   const why = `its change was on ${into} already`;
@@ -581,7 +586,7 @@ function finish(ctx) {
       merged.push(mergeStack(ctx, refs, stacks, next));
     } catch (err) {
       if (merged.length === 0) throw err;
-      throw new Error(`${messageOf(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
+      throw new Error(`${errorText(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
     }
   }
 }

@@ -51,6 +51,13 @@ const READ_BUDGET_BYTES = 64 * 1024 * 1024;
 /** A git run that failed — told apart from a bug in the code around it. */
 class GitError extends Error {}
 
+/** The command an argv runs, past the settings ahead of it. @param {string[]} args */
+function commandOf(args) {
+  let i = 0;
+  while (args[i] === '-c') i += 2;
+  return args[i];
+}
+
 /**
  * Run git and return stdout. Throws a GitError with git's stderr on a
  * non-zero exit.
@@ -64,10 +71,10 @@ function git(cwd, args, env, input) {
   const res = spawnSync('git', args, {
     cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES,
   });
-  if (res.error) throw new GitError(`git ${args[0]} failed: ${res.error.message}`);
+  if (res.error) throw new GitError(`git ${commandOf(args)} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();
-    throw new GitError(`git ${args[0]} failed: ${detail}`);
+    throw new GitError(`git ${commandOf(args)} failed: ${detail}`);
   }
   return res.stdout;
 }

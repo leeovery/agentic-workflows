@@ -11,10 +11,11 @@
 // a commit naming tasks of two phases no task of either; a phase merged on
 // a merge's second parent; a task whose commits change nothing past the tip
 // opening as a landing that changes nothing, and why; landings squashed
-// into one commit, each landing; and the oldest task a stacked phase's base
-// lacks named first. Its stacks are test-engine-land-local.cjs's. Git
-// layer: the landing world (landing-world.cjs), built once and copied for
-// each test.
+// into one commit, each landing; the oldest task a stacked phase's base
+// lacks named first; and a subject, title or path the person wrote named
+// with no backquote left to open a command. Its stacks are
+// test-engine-land-local.cjs's. Git layer: the landing world
+// (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,7 +24,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, followRemedy, short } = require('./landing-world.cjs');
+const {
+  TASKS, openArgs, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, followRemedy, commandsOf, short,
+} = require('./landing-world.cjs');
 
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
@@ -77,6 +80,39 @@ describe('land: what the local driver records, and the shapes of landing it read
       message: 'feat(pay): Show total\n\nTask: pay-1-2\n\nfix(pay): Round totals\n\nTask: pay-2-1\n',
     });
     assert.match(refusedMoving(dir, ['land', 'chain', 'pay', '1.1']), new RegExp(`^land: feat/pay-phase-1 holds ${short(both)} "feat\\(pay\\): Show total", which is no task of phase 1 — `));
+  });
+
+  it('names a subject, title or path the person wrote with each backquote a quote, so its refusal opens no command of theirs', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    const top = commitFiles(dir, 'feat/pay-phase-1', 'feat/pay-phase-1', { 'tidy.txt': 'tidy\n' }, { message: 'Rename `card` to `payment`' });
+    const stray = refusedMoving(dir, ['land', 'chain', 'pay', '1.1']);
+    assert.ok(stray.startsWith(`land: feat/pay-phase-1 holds ${short(top)} "Rename 'card' to 'payment'", which is no task of phase 1 — `), stray);
+    assert.deepStrictEqual(commandsOf(stray).map((command) => command.split(' ')[0]), ['git', 'git']);
+
+    for (const [shown, title] of [['1.4', 'Use `rm -rf build` in clean'], ['1.6', 'Bind the ` key']]) {
+      const world = project();
+      ok(world, openArgs(card));
+      const titled = cutTask(world, shown, 'feat', title, card.branch, { 'clean.txt': 'clean\n' });
+      ok(world, openArgs(titled));
+      const landing = git(world, ['log', '-1', '--format=%B', 'feat/pay-phase-1']);
+      const amended = commitFiles(world, 'feat/pay-phase-1', 'feat/pay-phase-1^', { 'clean.txt': 'clean, amended\n' }, { message: landing });
+      const changed = refusedMoving(world, openArgs(cutTask(world, '1.5', 'feat', 'Saved cards', titled.branch, { 'saved.txt': 'saved\n' })));
+      assert.ok(changed.startsWith(`land: feat/pay-phase-1's commit for task ${shown}, ${short(amended)} "feat(pay): ${title.replace(/`/g, "'")}", has changed since it was opened — `), changed);
+      assert.deepStrictEqual(commandsOf(changed).map((command) => command.split(' ')[0]), ['git', 'git'], title);
+    }
+
+    const paths = project();
+    const carried = cutTask(paths, '1.4', 'feat', 'Carry notes', 'main', { '.leeway/no`tes.md': 'state\n' });
+    const vendored = cutTask(paths, '1.5', 'feat', 'Vendor it', 'main', {}, { gitlinks: { 'vendor/li`b': tip(paths, 'main') } });
+    assert.deepStrictEqual([carried, vendored].map((task) => refusedMoving(paths, openArgs(task))), [
+      'land: task 1.4\'s change carries .leeway/no\'tes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+      'land: task 1.5\'s change reaches the nested repository vendor/li\'b — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
+    ]);
+    ok(paths, openArgs(cutTask(paths, '4.1', 'fix', 'Word the card', 'main', { 'card`s.txt': 'a card\n' })));
+    commitFiles(paths, 'main', 'main', { 'card`s.txt': 'main\'s card\n' });
+    const conflict = refusedMoving(paths, ['land', 'phase', 'pay', '4']);
+    assert.ok(conflict.startsWith('land: task 4.1 conflicts with main at card\'s.txt, so nothing moved — '), conflict);
   });
 
   it('refuses a task its phase holds already, and one with no commit past the chain\'s tip; a branch the tip holds counts for nothing, and a fault in another stack stops no other', () => {

@@ -16,8 +16,9 @@
 // phase off its chain; a task short of its chain's tip; a stacked phase
 // whose base the default branch lacks a task of — its phase not merged, its
 // branches deleted, landed by hand, or merged without it; a replay that
-// conflicts. The clean-stacks and clean-merges suites follow every row of
-// their half with the person's checkout clean; the held-here and
+// conflicts. The hostile-stacks and hostile-merges suites follow every row
+// of their half with the person's checkout clean and their config hostile
+// to the landing; the held-here and
 // held-linked suites each row whose remedy moves a branch, with the person
 // holding it, and the busy suite each whose remedy rewrites one, with the
 // person holding none (landing-world.cjs, `personState`) — all in the

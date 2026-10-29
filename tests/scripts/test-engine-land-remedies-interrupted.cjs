@@ -5,8 +5,10 @@
 // landing-git.cjs, `remedy`) taken again after it was cut short, or met with
 // what an earlier one left: the branch's keep reused where it is kept
 // already, and made under a fresh name where its name holds another commit;
-// a worktree a remedy made and left removed before anything else, and never
-// taken for the person's; and a rebase stopped there stopping every verb
+// a worktree a remedy made and left removed before anything else — unlocked
+// first where locked, detached or its folder deleted alike — and never
+// taken for the person's; a folder no worktree holds at its path cleared
+// before one is made there; and a rebase stopped there stopping every verb
 // until it is settled or ended there and the worktree removed. Git layer:
 // the landing world (landing-world.cjs) with tasks 1.1 and 2.1 opened,
 // built once and copied for each test.
@@ -21,7 +23,7 @@ const path = require('path');
 
 const { ok, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, moveStep, rebaseSteps,
+  TASKS, openArgs, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, way, moveStep, rebaseSteps,
   strayRefusal: stray,
 } = require('./landing-world.cjs');
 
@@ -77,6 +79,34 @@ describe('land: a remedy taken again, or meeting what an earlier one left', () =
     assert.strictEqual(left, stray(PHASE_ONE, 1, below, 'my tidy', `${rebaseKept(dir, below, kept, [remove])}, and land again`));
     followRemedy(dir, left);
     ok(dir, CHAIN_ONE);
+  });
+
+  it('clears what an earlier remedy left at its worktree\'s path however it was left — locked, detached, its folder deleted, a folder no worktree holds — before it makes its own', () => {
+    const remove = (/** @type {string} */ at) => `\`git worktree remove ${shellWord(at)}\``;
+    for (const [leave, cleared] of /** @type {[(dir: string, at: string) => void, (at: string) => string][]} */ ([
+      [(dir, at) => git(dir, ['worktree', 'add', '-q', '--lock', at, PHASE_ONE]),
+        (at) => `unlock the worktree an earlier remedy left with \`git worktree unlock ${shellWord(at)}\`, then remove it with ${remove(at)}, then `],
+      [(dir, at) => git(dir, ['worktree', 'add', '-q', '--detach', at, 'main']), (at) => `remove the worktree an earlier remedy left with ${remove(at)}, then `],
+      [(dir, at) => {
+        git(dir, ['worktree', 'add', '-q', at, PHASE_ONE]);
+        fs.rmSync(at, { recursive: true });
+      }, (at) => `remove the worktree an earlier remedy left with ${remove(at)}, then `],
+      [(dir, at) => {
+        fs.mkdirSync(at, { recursive: true });
+        fs.writeFileSync(path.join(at, 'left.txt'), 'left\n');
+      }, () => ''],
+    ])) {
+      const dir = project();
+      const below = strayBelow(dir, { 'tidy.txt': 'tidy\n' });
+      const scratch = scratchOf(dir, PHASE_ONE);
+      leave(dir, scratch);
+      const folder = cleared(scratch) === '' ? [`clear the folder left at ${scratch}, which no worktree holds, with \`rm -rf ${shellWord(scratch)}\``] : [];
+      const off = rebaseSteps(dir, PHASE_ONE, `--onto ${short(below)}^ ${short(below)}`, `take ${short(below)} off ${PHASE_ONE}`);
+      const left = refusedMoving(dir, CHAIN_ONE);
+      assert.strictEqual(left, stray(PHASE_ONE, 1, below, 'my tidy', `${cleared(scratch)}${way(dir, null, PHASE_ONE, [...folder, ...off])}`));
+      followRemedy(dir, left);
+      ok(dir, CHAIN_ONE);
+    }
   });
 
   it('refuses to move a branch a worktree an earlier remedy made has out, its rebase through, until that worktree is removed', () => {

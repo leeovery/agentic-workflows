@@ -9,14 +9,15 @@
 // tool, where a test puts any other task it opens (`track`), for `land
 // open` reads a task's type and title there. A branch is made, and
 // merged back onto another as Claude merges a parallel task back, with no
-// checkout touched — a scratch index over the commit it starts from — so
-// the main checkout stays as the test left it. What landed is read off the
-// default branch past the base. A suite takes a copy of the world per call
+// checkout touched — imported over the commit it starts from, under the
+// world's identity — so the main checkout stays as the test left it. What
+// landed is read off the default branch past the base, as no config of the
+// person's changes it. A suite takes a copy of the world per call
 // (`useLandingWorld`), checks a refusal moved nothing in the repository
 // (`refusedMoving`), and follows the remedy it names (`followRemedy`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
-// of the person's worktrees (`personState`, `followed`), against the way on
-// it should read there (`way`).
+// of the person's worktrees, or of their config (`personState`,
+// `followed`), against the way on it should read there (`way`).
 
 require('./hermetic-env.cjs');
 
@@ -33,6 +34,8 @@ const names = require('../../skills/workflow-engine/scripts/domain/landing-names
 
 const UNIT = 'pay';
 const BASE = 'landing-base';
+// Who commits in the world, as its config names them (discovery-test-utils.cjs, `testIdentity`).
+const IDENTITY = 'Test <test@example.com>';
 // The phases the world writes into the tracker, before any task of them.
 const PHASES = 5;
 // The tracker a project has unless it names another: the default task driver, its real tool.
@@ -96,13 +99,6 @@ function cutTask(dir, shown, type, title, from, files, opts) {
   return task;
 }
 
-/**
- * Git under a scratch index of its own.
- * @param {string} dir @param {string} index @param {string[]} args @param {string} [input]
- */
-function indexed(dir, index, args, input) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8', input, env: { ...process.env, GIT_INDEX_FILE: index } }).trim();
-}
 
 /**
  * `files` committed over `from`, less the paths `removed`, and each of
@@ -113,23 +109,15 @@ function indexed(dir, index, args, input) {
  * @returns {string} the commit
  */
 function commitFiles(dir, branch, from, files, { gitlinks = {}, removed = [], message = `work on ${branch}` } = {}) {
-  const index = path.join(dir, '.git', 'landing-world-index');
-  try {
-    indexed(dir, index, ['read-tree', from]);
-    if (removed.length > 0) indexed(dir, index, ['update-index', '--force-remove', '--', ...removed]);
-    const entries = Object.entries(files).flatMap(([file, text]) => {
-      const blob = indexed(dir, index, ['hash-object', '-w', '--stdin'], text);
-      return ['--cacheinfo', `100644,${blob},${file}`];
-    });
-    entries.push(...Object.entries(gitlinks).flatMap(([folder, commit]) => ['--cacheinfo', `160000,${commit},${folder}`]));
-    indexed(dir, index, ['update-index', '--add', ...entries]);
-    const tree = indexed(dir, index, ['write-tree']);
-    const commit = indexed(dir, index, ['commit-tree', tree, '-p', from, '-m', message]);
-    git(dir, ['update-ref', `refs/heads/${branch}`, commit]);
-    return commit;
-  } finally {
-    fs.rmSync(index, { force: true });
-  }
+  const data = (/** @type {string} */ text) => `data ${Buffer.byteLength(text)}\n${text}`;
+  const stream = [
+    `commit refs/heads/${branch}`, 'mark :1', `committer ${IDENTITY} now`, data(message), `from ${from}^0`,
+    ...removed.map((file) => `D ${file}`),
+    ...Object.entries(files).map(([file, text]) => `M 100644 inline ${file}\n${data(text)}`),
+    ...Object.entries(gitlinks).map(([folder, commit]) => `M 160000 ${commit} ${folder}`),
+    '', 'get-mark :1', 'done', '',
+  ].join('\n');
+  return execFileSync('git', ['-c', 'core.ignoreCase=false', 'fast-import', '--quiet', '--force', '--date-format=now', '--done'], { cwd: dir, encoding: 'utf8', input: stream }).trim();
 }
 
 /**
@@ -181,7 +169,7 @@ function setLandingDriver(dir, name) {
  * @returns {{subject: string, task: string|null, paths: string[]}[]}
  */
 function landedOn(dir, branch) {
-  return git(dir, ['log', '--reverse', '--name-only', '--format=%x1e%s%x1f%(trailers:key=Task,valueonly)', `${BASE}..${branch}`])
+  return git(dir, ['-c', 'i18n.logOutputEncoding=UTF-8', 'log', '--no-show-signature', '--reverse', '--name-only', '--format=%x1e%s%x1f%(trailers:key=Task,valueonly)', `${BASE}..${branch}`])
     .split('\x1e').slice(1).map((entry) => {
       const [head, ...paths] = entry.split('\n').filter(Boolean);
       const [subject, task] = head.split('\x1f');
@@ -224,7 +212,7 @@ function useLandingWorld(prefix, ready = () => {}) {
 const repositoryAt = (dir) => ({
   branches: git(dir, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/', 'refs/leeway/']).split('\n').filter((line) => !line.startsWith('refs/heads/leeway-state ')),
   head: git(dir, ['rev-parse', 'HEAD']),
-  status: git(dir, ['status', '--porcelain']),
+  status: git(dir, ['status', '--porcelain', '--untracked-files=all']),
 });
 
 /**
@@ -341,16 +329,58 @@ function busy(dir, tree) {
   }
 }
 
+/** Where the hostile state keeps the person's signing key: in the repository's own folder, so a copy carries it. @param {string} dir */
+const signingKeyOf = (dir) => path.join(dir, '.git', 'person-key');
+
 /**
- * What each state does to the repository, once a row has built it. Clean:
- * the main checkout clean on the default branch. Busy: the main checkout on
- * a branch of its own, busy (`busy`). Held here: the main checkout has the
- * branch the remedy frees out, busy. Held linked: a linked worktree at a
- * path with a space and a quote has it out, busy.
- * @type {Record<'clean'|'busy'|'heldHere'|'heldLinked', (dir: string, moves?: string) => Held>}
+ * The person's config in the hostile state (landing-git.cjs, `PINNED`): each
+ * setting the landing pins at a value that would change what it makes or
+ * reads — the person signing every commit with a key made in the world, no
+ * signer git can check, and every log showing signatures — and the printed
+ * rebase's at values that would move every branch it holds, or stop on a
+ * landing that changes nothing; and the settings the landing leaves the
+ * person's at values that would show, were they not harmless to it.
+ * @param {string} dir @returns {[string, string][]}
+ */
+const HOSTILE = (dir) => [
+  ['log.showSignature', 'true'], ['i18n.logOutputEncoding', 'ISO-8859-1'], ['i18n.commitEncoding', 'ISO-8859-1'],
+  ['merge.renames', 'false'], ['merge.renameLimit', '1'], ['merge.directoryRenames', 'true'], ['merge.renormalize', 'true'], ['core.autocrlf', 'input'],
+  ['merge.verifySignatures', 'true'], ['branch.main.mergeOptions', '--squash'], ['rebase.updateRefs', 'true'], ['rebase.backend', 'apply'],
+  ['gpg.format', 'ssh'], ['user.signingKey', signingKeyOf(dir)], ['commit.gpgSign', 'true'],
+  ['color.ui', 'always'], ['diff.noprefix', 'true'], ['diff.relative', 'true'], ['diff.external', 'false'], ['diff.ignoreSubmodules', 'all'],
+  ['status.showUntrackedFiles', 'no'], ['status.branch', 'true'], ['status.short', 'true'], ['format.pretty', 'oneline'], ['log.decorate', 'full'],
+  ['rebase.autoSquash', 'true'], ['rebase.autoStash', 'true'], ['rebase.rebaseMerges', 'true'], ['merge.autoStash', 'true'], ['merge.ff', 'false'],
+  ['merge.conflictStyle', 'diff3'], ['rerere.enabled', 'true'], ['branch.autoSetupMerge', 'always'], ['push.autoSetupRemote', 'true'],
+  ['worktree.guessRemote', 'true'], ['submodule.recurse', 'true'],
+];
+
+/**
+ * Settings as a git config file holds them, each value quoted.
+ * @param {[string, string][]} settings `section[.subsection].name` and value
+ */
+function configText(settings) {
+  return settings.map(([key, value]) => {
+    const [section, ...rest] = key.split('.');
+    const name = rest.pop();
+    const header = rest.length === 0 ? `[${section}]` : `[${section} "${rest.join('.')}"]`;
+    return `${header}\n\t${name} = "${value.replace(/[\\"]/g, '\\$&')}"\n`;
+  }).join('');
+}
+
+/**
+ * What each state does to the repository, once a row has built it. Hostile:
+ * the main checkout clean on the default branch, the person's config
+ * hostile to the landing (`HOSTILE`) written into the repository's own.
+ * Busy: the main checkout on a branch of its own, busy (`busy`). Held here:
+ * the main checkout has the branch the remedy frees out, busy. Held linked:
+ * a linked worktree at a path with a space and a quote has it out, busy.
+ * @type {Record<'hostile'|'busy'|'heldHere'|'heldLinked', (dir: string, moves?: string) => Held>}
  */
 const PERSON_STATES = {
-  clean: () => null,
+  hostile: (dir) => {
+    fs.appendFileSync(path.join(dir, '.git', 'config'), configText(HOSTILE(dir)));
+    return null;
+  },
   busy: (dir) => {
     git(dir, ['checkout', '-q', '-b', 'mine']);
     busy(dir, dir);
@@ -372,12 +402,17 @@ const PERSON_STATES = {
 /**
  * A state a remedy is followed in, its world built once per suite — for the
  * busy state, at a path holding a space and a quote, which every path a
- * remedy names must survive.
+ * remedy names must survive; for the hostile state, holding the person's
+ * signing key.
  * @param {keyof typeof PERSON_STATES} kind @param {string} prefix temp-directory prefix @param {(dir: string) => void} [ready]
  * @returns {PersonState}
  */
-function personState(kind, prefix, ready) {
-  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, ready);
+function personState(kind, prefix, ready = () => {}) {
+  const world = kind !== 'hostile' ? ready : (/** @type {string} */ dir) => {
+    ready(dir);
+    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'the person', '-f', signingKeyOf(dir)]);
+  };
+  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world);
   return { project, apply: PERSON_STATES[kind] };
 }
 
@@ -422,7 +457,8 @@ function checkoutsAt(dir) {
  * @returns {Map<string, string>} by commit
  */
 function patchIds(dir, args) {
-  const out = execFileSync('sh', ['-c', 'git log -p --diff-merges=first-parent --format="commit %H" "$@" | git patch-id --stable', 'sh', ...args], { cwd: dir, encoding: 'utf8' });
+  const log = 'git -c diff.noprefix=false log --no-show-signature --no-color --no-ext-diff -p --diff-merges=first-parent --format="commit %H" "$@"';
+  const out = execFileSync('sh', ['-c', `${log} | git patch-id --stable`, 'sh', ...args], { cwd: dir, encoding: 'utf8' });
   return new Map(out.split('\n').filter(Boolean).map((line) => {
     const [id, sha] = line.split(' ');
     return [sha, id];
@@ -443,12 +479,12 @@ function leftOnNoBranch(dir, before) {
   const now = onBranches(dir);
   const gone = [...before].filter((sha) => !now.has(sha));
   if (gone.length === 0) return [];
-  const changes = new Set(patchIds(dir, ['--branches']).values());
-  const trees = new Set(git(dir, ['log', '--format=%T', '--branches']).split('\n'));
-  const goneIds = patchIds(dir, ['--no-walk', ...gone]);
-  return gone
-    .filter((sha) => !changes.has(goneIds.get(sha) ?? '') && !trees.has(git(dir, ['rev-parse', `${sha}^{tree}`]).trim()))
-    .map((sha) => `${sha.slice(0, 7)} ${git(dir, ['log', '-1', '--format=%s', sha]).trim()}`);
+  const ids = patchIds(dir, ['--branches', ...gone]);
+  const trees = new Map(git(dir, ['log', '--no-show-signature', '--format=%H %T', '--branches', ...gone]).split('\n').filter(Boolean).map((line) => line.split(' ')));
+  const kept = (/** @type {Map<string, string>} */ of) => new Set([...of].filter(([sha]) => now.has(sha)).map(([, value]) => value));
+  const [changes, held] = [kept(ids), kept(trees)];
+  const lost = gone.filter((sha) => !changes.has(ids.get(sha) ?? '') && !held.has(trees.get(sha) ?? ''));
+  return lost.length === 0 ? [] : git(dir, ['-c', 'i18n.logOutputEncoding=UTF-8', 'log', '--no-show-signature', '--no-walk', '--format=%h %s', ...lost]).split('\n').filter(Boolean);
 }
 
 /**
@@ -518,7 +554,7 @@ function rebaseSteps(dir, branch, args, how) {
   const there = `git -C ${shellWord(tree)}`;
   return [
     `${how} in a worktree of its own with \`git worktree add ${shellWord(tree)} ${branch}\``,
-    `\`${there} rebase ${args}\`, settling each conflict at ${tree} as it stops and going on with \`${there} rebase --continue\``,
+    `\`${there} rebase --merge --no-update-refs ${args}\`, settling each conflict at ${tree} as it stops and going on with \`${there} rebase --continue\``,
     `\`git worktree remove ${shellWord(tree)}\``,
   ];
 }

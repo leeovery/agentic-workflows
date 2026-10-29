@@ -7,14 +7,16 @@
 // first verb where no setting names one, and kept once it does (7.S21); the
 // default branch read off the remote, `init.defaultBranch`, `main` or
 // `master`, never the state branch (4.9.4); a task's type and title read
-// from the tracker, a task it lacks or holds with no type refused, what the
-// read commits and is warned of answered, and its branch named from them
-// and judged by its own change; a change reaching a
-// nested repository refused. What every driver does is the landing conformance
-// suite's; the local driver's stacks, test-engine-land-local.cjs's; the
-// person's checkouts, test-engine-land-checkout.cjs's and
-// test-engine-land-worktrees.cjs's. Verb layer: the landing world
-// (landing-world.cjs), built once and copied for each test.
+// from the tracker once there is a default branch, a task it lacks or holds
+// with no type refused — one ended in words of its own — what the read
+// commits and is warned of answered, a refusal after a commit carrying its
+// warnings, and its branch named from them and judged by its own change; a
+// change reaching a nested repository refused. What every driver does is
+// the landing conformance suite's; the local driver's stacks,
+// test-engine-land-local.cjs's; the person's checkouts,
+// test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb
+// layer: the landing world (landing-world.cjs), built once and copied for
+// each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -73,13 +75,34 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
     SIDE.makeTask(statePath(dir), 'Card limits', { unit: 'pay', phase: 1, n: 6 });
     const untyped = refuses(dir, ['land', 'open', 'pay', '1.6']).error;
     assert.deepStrictEqual([refuses(dir, ['land', 'open', 'pay', '1.7']).error, untyped], [
-      'task 1.7 of pay is not in the tracker',
+      'land: task 1.7 of pay is not in the tracker — open a task it holds, as `task list pay 1` lists them',
       'land: task 1.6 has no type in the tracker, and its branch and landing are named from it — give it one with `task type pay 1.6 <type>` and open it again',
     ]);
     assert.deepStrictEqual(stateAt(dir), before);
     ok(dir, ['task', 'type', 'pay', '1.6', 'feat']);
     commitFiles(dir, 'feat/pay-1.6-card-limits', 'main', { 'limits.txt': 'limits\n' });
     assert.strictEqual(ok(dir, ['land', 'open', 'pay', '1.6']).branch, 'feat/pay-1.6-card-limits');
+  });
+
+  it('refuses a task ended with no type, which `task type` refuses too, naming a way that takes its change', () => {
+    const dir = project();
+    SIDE.makeTask(statePath(dir), 'Card limits', { unit: 'pay', phase: 1, n: 6 });
+    ok(dir, ['task', 'close', 'pay', '1.6', '--reason', 'not wanted']);
+    const before = stateAt(dir);
+    assert.strictEqual(
+      refuses(dir, ['land', 'open', 'pay', '1.6']).error,
+      'land: task 1.6 is closed in the tracker with no type, and only a task not yet ended takes one — its branch and landing are named from its type, '
+      + 'so land its change as a task of its own, made with `task create pay 1 --file <path>`',
+    );
+    assert.deepStrictEqual(stateAt(dir), before);
+  });
+
+  it('reads the tracker only once the repository has a default branch, so a task it lacks is refused for that first, writing nothing', () => {
+    const dir = project();
+    const before = stateAt(dir);
+    git(dir, ['branch', '-m', 'main', 'trunk']);
+    assert.match(refuses(dir, ['land', 'open', 'pay', '1.7']).error, /^land: no default branch to land on — /);
+    assert.deepStrictEqual(stateAt(dir), before);
   });
 
   it('refuses a task whose branch, named from its type and title, is not there', () => {
@@ -106,6 +129,27 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
 
     assert.deepStrictEqual([committed, stateGit(dir, ['log', '-1', '--format=%s'])], [tip(statePath(dir), 'HEAD').slice(0, committed.length), 'task(pay): set up the tracker\n']);
     assert.deepStrictEqual(warnings.map((warning) => warning.split(' — ')[0]), [`${STATE_BRANCH} is committed here but was not pushed to origin`]);
+  });
+
+  it('carries what a commit before its refusal was warned of in the refusal: the tracker\'s setting up, and the landing driver\'s setting', () => {
+    const unpushed = `— and ${STATE_BRANCH} is committed here but was not pushed to origin — `;
+    const tracker = project();
+    setLandingDriver(tracker, 'local');
+    const ignore = statePath(tracker, '.gitignore');
+    const local = new Set(TRACKER.localFiles());
+    fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').split('\n').filter((line) => !local.has(line)).join('\n'));
+    commitAll(tracker, 'the tracker\'s ignore lines gone');
+    git(tracker, ['remote', 'add', 'origin', path.join(tracker, '..', 'nowhere.git')]);
+    const lacking = track(tracker, '1.4', 'feat', 'Card limits');
+    const unbranched = refuses(tracker, openArgs(lacking)).error;
+    assert.ok(unbranched.startsWith(`land: task 1.4 has no branch ${lacking.branch}, the name its type and title in the tracker give it — name its branch so and open it again ${unpushed}`), unbranched);
+    assert.strictEqual(stateGit(tracker, ['log', '-1', '--format=%s']), 'task(pay): set up the tracker\n');
+
+    const driver = project();
+    git(driver, ['remote', 'add', 'origin', path.join(driver, '..', 'nowhere.git')]);
+    const unopened = refuses(driver, ['land', 'phase', 'pay', '3']).error;
+    assert.ok(unopened.startsWith(`land: phase 3 of pay has no task opened — open its tasks first ${unpushed}`), unopened);
+    assert.strictEqual(stateGit(driver, ['log', '-1', '--format=%s']), 'chore: the landing driver is local\n');
   });
 });
 

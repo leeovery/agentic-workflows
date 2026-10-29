@@ -80,13 +80,14 @@ function unwritten(unit, phase) {
 }
 
 /**
- * The task as the tracker holds it, refused where it holds none.
- * @param {TaskDriver} driver @param {string} root @param {TaskRef} ref
+ * The task as the tracker holds it, refused where it holds none — in the
+ * words `lacking` gives, where given.
+ * @param {TaskDriver} driver @param {string} root @param {TaskRef} ref @param {string} [lacking]
  * @returns {TaskDetail}
  */
-function taskIn(driver, root, ref) {
+function taskIn(driver, root, ref, lacking = `${taskName(ref)} is not in the tracker`) {
   const shown = driver.show(root, ref);
-  if (shown === null) throw new TaskRefusal(`${taskName(ref)} is not in the tracker`);
+  if (shown === null) throw new TaskRefusal(lacking);
   return shown;
 }
 
@@ -351,13 +352,14 @@ function listTasks(cwd, unit, given) {
 /**
  * A task as the tracker holds it, read as any read is — for `task show`,
  * and for a verb of another kind that reads a task — refused where the
- * unit or the task is missing.
- * @param {string} cwd @param {TaskRef} ref
+ * unit or the task is missing, the latter in the words `lacking` gives,
+ * where given.
+ * @param {string} cwd @param {TaskRef} ref @param {string} [lacking]
  * @returns {TaskDetail & {committed?: string|null, warnings?: string[]}}
  */
-function trackedTask(cwd, ref) {
+function trackedTask(cwd, ref, lacking) {
   requireUnit(cwd, ref.unit);
-  return withTracker(cwd, ref.unit, null, (driver, root) => taskIn(driver, root, ref));
+  return withTracker(cwd, ref.unit, null, (driver, root) => taskIn(driver, root, ref, lacking));
 }
 
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
@@ -444,4 +446,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values);
 }
 
-module.exports = { TASK_VERBS, runTaskVerb, trackedTask };
+module.exports = { TASK_VERBS, ENDED, runTaskVerb, trackedTask };
