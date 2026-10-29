@@ -28,7 +28,8 @@ const { git, githubOffline, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { RULESET, githubRepository } = require(path.join(SCRIPTS, 'domain/github-rule.cjs'));
+const { RULESET } = require(path.join(SCRIPTS, 'domain/github-rule.cjs'));
+const { githubRepository } = require(path.join(SCRIPTS, 'domain/remote.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, engine, codeProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');

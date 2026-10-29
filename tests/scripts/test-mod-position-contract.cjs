@@ -5,7 +5,8 @@
 // answer by its POSITION section marker and reads the keys of its one line of
 // JSON, the rows mod knows a compaction's note by the engine's opening words,
 // and both name the record of the notes handed up alike; the gate mod's
-// spinner reads the position file the engine keeps, by its name and keys;
+// spinner reads the position file the engine keeps, by its name and keys,
+// again after each task verb the engine moves it with;
 // and the gate mod records the executor the implementation dispatches
 // through the verb the engine answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
@@ -20,6 +21,7 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+const { TASK_VERBS } = require('../../skills/workflow-engine/scripts/domain/task-verbs.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -111,6 +113,17 @@ describe('the mods read conversation position as the engine writes it', () => {
     const keys = [...type[1].matchAll(/(\w+)\??: string/g)].map((m) => m[1]);
     assert.deepStrictEqual(Object.keys(written).sort(), [...keys].sort(), 'the spinner reads every key the engine writes');
     assert.match(source('skills/workflow-gates/hooks/position.ts'), /`\$\{word\} task \$\{task\}`/, 'the spinner says the task as the engine writes it');
+  });
+
+  it('the spinner reads the position again after each task verb that moves it — the tracker\'s start, done and close, and the plan\'s complete', () => {
+    const moves = /const MOVES =\s*\/(.+)\/\n/.exec(source('skills/workflow-gates/hooks/spinner.ts'));
+    assert.ok(moves, 'the spinner declares the calls that move the position');
+    const engine = literal('skills/workflow-gates/hooks/folder.ts', 'ENGINE');
+    for (const verb of ['start', 'done', 'close']) {
+      assert.ok(Object.hasOwn(TASK_VERBS, verb), `the engine dispatches task ${verb}`);
+      assert.match(`node ${engine} task ${verb} pay 1.1`, new RegExp(moves[1]), `task ${verb}`);
+    }
+    assert.match(`node ${engine} task complete pay ledger ledger-1-1`, new RegExp(moves[1]), 'task complete');
   });
 
   it('the spinner has a word for every phase and project-level place the engine records', () => {

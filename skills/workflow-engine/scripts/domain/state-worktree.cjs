@@ -36,12 +36,15 @@
 //   worktree's own index, so nothing a killed verb or a person left staged
 //   there can break it. A merge's landing a kill cut short is finished
 //   first (state-merge-landing.cjs), so the commit moves the branch on from
-//   where that landing put it. A commit whose ledger does not start, byte
-//   for byte, with its parent's is refused (ledger-check.cjs), but for the
-//   one a migration's conversion lets through. Then the branch is pushed
-//   wherever the project has a remote, never forced; a push that fails,
-//   runs out of time, or finds no remote chosen among several is a
+//   where that landing put it; a file the commit is given a change to is
+//   read from there too, and changed alone. A commit whose ledger does not
+//   start, byte for byte, with its parent's is refused (ledger-check.cjs),
+//   but for the one a migration's conversion lets through. Then the branch
+//   is pushed wherever the project has a remote, never forced; a push that
+//   fails, runs out of time, or finds no remote chosen among several is a
 //   warning, and the commit stands.
+// - Its `.gitignore`: written whole at the orphan's first commit; the task
+//   driver's local files are added to it later, as its store is made.
 //
 // The state's branch, its remote, and their time limits are named here once,
 // for the catch-up too (state-merge.cjs), as is the refusal of a branch
@@ -131,6 +134,13 @@ const NETWORK_ENV = Object.freeze({ GIT_TERMINAL_PROMPT: '0' });
 /** @typedef {{pushed: boolean, warnings: string[]}} PushOutcome */
 
 /** @typedef {{commit: string|null, pushed: boolean, warnings: string[]}} CommitOutcome */
+
+/**
+ * A change a state commit makes to a file as the branch holds it: given
+ * its text, null where the branch has no such file, it answers the text to
+ * commit, or null to leave the file as it is.
+ * @typedef {(held: string|null) => string|null} Change
+ */
 
 /**
  * The state worktree as git opens it: its root, a runner bound to it, the
@@ -335,6 +345,38 @@ function replaceFile(file, text) {
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, text);
   fs.renameSync(tmp, file);
+}
+
+/**
+ * An ignore file's text with the patterns it lacks added after its lines,
+ * or null where it lacks none.
+ * @param {string} held @param {string[]} patterns
+ * @returns {string|null}
+ */
+function withIgnored(held, patterns) {
+  const lines = held.split('\n');
+  const missing = patterns.filter((pattern) => !lines.includes(pattern));
+  if (missing.length === 0) return null;
+  return `${held}${held === '' || held.endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`;
+}
+
+/**
+ * The patterns the state's `.gitignore` lacks, added after the lines it
+ * holds: the ones `STATE_GITIGNORE` cannot name, since only the task
+ * driver knows its tool's local files (7.1.10). Whether any was added.
+ * Refuses where the file is gone, saying how to bring it back.
+ * @param {string} root @param {string[]} patterns
+ * @returns {boolean}
+ */
+function ignoreInState(root, patterns) {
+  const file = path.join(root, '.gitignore');
+  if (!fs.existsSync(file)) {
+    throw new Error(`the state's .gitignore is gone from ${root} — bring it back as ${STATE_BRANCH} holds it: git -C "${root}" checkout HEAD -- .gitignore`);
+  }
+  const text = withIgnored(fs.readFileSync(file, 'utf8'), patterns);
+  if (text === null) return false;
+  replaceFile(file, text);
+  return true;
 }
 
 /**
@@ -615,6 +657,39 @@ function onDisk(file) {
 }
 
 /**
+ * A file's text as the commit `head` holds it, or null where the commit
+ * holds no such path. Refuses, naming the path and the commit, where git
+ * cannot read it.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} head @param {string} spec
+ * @returns {string|null}
+ */
+function heldAt(git, head, spec) {
+  try {
+    const listed = git.run(['ls-tree', '-z', head, '--', spec]).split('\0')[0];
+    return listed === '' ? null : git.run(['cat-file', 'blob', listed.split('\t')[0].split(' ')[2]]);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    throw new Error(`${spec} could not be read from ${STATE_BRANCH} at ${head} — nothing committed: ${err.message}`);
+  }
+}
+
+/**
+ * The text `change` makes of a file as the commit `head` holds it, or null
+ * to leave it. Refuses, naming the path and the commit and how to go on,
+ * where the change cannot be made of what the file holds.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} head @param {string} spec @param {Change} change
+ * @returns {string|null}
+ */
+function changedAt(git, head, spec, change) {
+  const held = heldAt(git, head, spec);
+  try {
+    return change(held);
+  } catch (err) {
+    throw new Error(`${spec} as ${STATE_BRANCH} holds it at ${head} cannot take the change — nothing committed; commit ${spec} mended to go on: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
  * Commit the working tree's state of the pathspecs onto `leeway-state`. The
  * tree is built in a private index seeded from HEAD — never the worktree's
  * own, whatever it holds staged — and the branch moves only from the HEAD it
@@ -622,22 +697,32 @@ function onDisk(file) {
  * (ledger-check.cjs), but for a conversion's, whose pass the commit spends;
  * a commit that lands clears the engine's kept stop on the ledger.
  * A kill at any step leaves the branch where it was or at the whole commit,
- * and the private index is cleared before and after. Null where the tree
- * comes out as HEAD's.
+ * and the private index is cleared before and after. A file given a change
+ * is committed as the change makes it of HEAD's, whatever the working tree
+ * holds. Null where the tree comes out as HEAD's.
  * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
+ * @param {Record<string, Change>} changes
  * @returns {string|null}
  */
-function commitPaths(worktree, specs, message) {
+function commitPaths(worktree, specs, message, changes) {
   const { git, root, index, gitDir } = worktree;
   const [head, headTree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
+  const changed = Object.entries(changes).flatMap(([spec, change]) => {
+    const text = changedAt(git, head, spec, change);
+    return text === null ? [] : [{ spec, text }];
+  });
   return withPrivateIndex(index, (env) => {
     git.run(['read-tree', head], { env });
-    const known = git.run(['ls-files', '-z', '--', ...literally(specs)], { env }).split('\0').filter((file) => file !== '');
+    const known = specs.length === 0 ? [] : git.run(['ls-files', '-z', '--', ...literally(specs)], { env }).split('\0').filter((file) => file !== '');
     // `add` refuses a pathspec that matches nothing on disk or in the index:
     // a path gone from both has nothing to commit.
     const stageable = specs.filter((spec) => spec === '.' || onDisk(path.join(root, spec))
       || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
     if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable)], { env });
+    for (const { spec, text } of changed) {
+      const blob = git.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
+      git.run(['update-index', '--add', '--cacheinfo', `100644,${blob},${spec}`], { env });
+    }
     const tree = git.run(['write-tree'], { env }).trim();
     if (tree === headTree) return null;
     const conversion = checkLedgerCommit(worktree, head, tree);
@@ -691,25 +776,32 @@ function push(git, timeoutMs) {
  * the writer lock (`withStateLock`). Refuses, committing nothing, where git
  * cannot open the state worktree and where it has another branch checked
  * out. A merge's landing a kill cut short is finished first. Paths that hold
- * no change commit nothing.
+ * no change commit nothing. A file in `contents` is committed as its change
+ * makes it of the file the branch holds once any landing is finished — over
+ * whatever `paths` gives of it — the working file's own changes left as
+ * they are, uncommitted; a file the branch holds that git cannot read, or
+ * that its change cannot be made of, refuses the commit.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
+ * @param {{contents?: Record<string, Change>}} [opts] `contents` by path as `paths` gives one
  * @returns {{commit: string|null, warnings: string[]}}
  */
-function commitHere(root, paths, message) {
+function commitHere(root, paths, message, { contents = {} } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
+  const given = Object.fromEntries(Object.entries(contents).map(([file, change]) => [fromRoot(root, file), change]));
   const worktree = openWorktree(root);
   if (!worktree.opened) throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed`);
   if (worktree.head !== BRANCH_REF) {
     const checkedOut = worktree.head === 'HEAD' ? 'a detached HEAD' : worktree.head.replace(/^refs\/heads\//, '');
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
-  if (specs.length === 0) return { commit: null, warnings: [] };
+  const taken = [...specs, ...Object.keys(given)];
+  if (taken.length === 0) return { commit: null, warnings: [] };
   const landed = finishLanding(worktree, STATE_BRANCH);
-  const commit = commitPaths(worktree, specs, message);
-  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', specs)] };
+  const commit = commitPaths(worktree, specs, message, given);
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', taken)] };
 }
 
 /**
@@ -718,11 +810,11 @@ function commitHere(root, paths, message) {
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number}} [opts]
+ * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>}} [opts] `contents` as `commitHere` takes it
  * @returns {CommitOutcome}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
-  const { commit, warnings } = commitHere(root, paths, message);
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {} } = {}) {
+  const { commit, warnings } = commitHere(root, paths, message, { contents });
   if (commit === null) return { commit: null, pushed: false, warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
@@ -766,6 +858,8 @@ module.exports = {
   stateRemoteUrl,
   withStateLock,
   withBootLock,
+  ignoreInState,
+  withIgnored,
   commitHere,
   commitState,
   pushState,

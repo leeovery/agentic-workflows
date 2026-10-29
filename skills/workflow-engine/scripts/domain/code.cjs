@@ -26,7 +26,7 @@ const {
   commitsBySubject, parentOrEmptyTree, emptyTree, hasCommits, diffPatch, diffWithUntracked, literally,
 } = require('../kernel/git.cjs');
 const { projectRepos, repoName, projectPath, codeHeldOut, projectDirtyEntries } = require('../kernel/repos.cjs');
-const { stepOfInternalId } = require('./tasks.cjs');
+const { stepOfId } = require('./task-id.cjs');
 
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 /** @typedef {{sha: string, subject: string, paths: string[]}} Commit */
@@ -61,8 +61,8 @@ function taskSelector(workUnit, topic, phase) {
     selects: (subject) => {
       if (!subject.startsWith(opening)) return false;
       const id = `${topic}-${subject.slice(opening.length).split(/[^\w-]/)[0]}`;
-      const step = stepOfInternalId(id);
-      return step !== null && id === `${topic}-${step.phase}-${step.task}` && (phase === undefined || step.phase === phase);
+      const step = stepOfId(id);
+      return step !== null && step.prefix === topic && (phase === undefined || step.phase === phase);
     },
   };
 }

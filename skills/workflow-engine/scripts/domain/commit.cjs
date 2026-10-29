@@ -71,14 +71,15 @@ function discoveryScope(workUnit) {
  * The state commit: exactly `paths` in the state worktree on
  * `leeway-state`, under the writer lock, then pushed. A push that fails
  * comes back as a warning; the commit stands. The sha is short, as the code
- * tree's commits answer it.
+ * tree's commits answer it. A file in `contents` is committed as its change
+ * makes it of the branch's own (`commitState`).
  * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
- * @param {string} message
+ * @param {string} message @param {Record<string, import('./state-worktree.cjs').Change>} [contents]
  * @returns {{committed: string|null, warnings: string[]}}
  */
-function commitStateScoped(cwd, paths, message) {
+function commitStateScoped(cwd, paths, message, contents = {}) {
   const root = stateRoot(cwd);
-  const { commit, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message));
+  const { commit, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents }));
   return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), warnings };
 }
 
@@ -88,11 +89,12 @@ function commitStateScoped(cwd, paths, message) {
  * fails the verb. A push that fails is a warning beside it.
  * @param {string} cwd @param {string|string[]} paths state-relative
  * @param {string} message @param {string[]} warnings
+ * @param {Record<string, import('./state-worktree.cjs').Change>} [contents] as `commitStateScoped`'s
  * @returns {{committed: string|null, failed: boolean}}
  */
-function commitStateTail(cwd, paths, message, warnings) {
+function commitStateTail(cwd, paths, message, warnings, contents = {}) {
   try {
-    const out = commitStateScoped(cwd, paths, message);
+    const out = commitStateScoped(cwd, paths, message, contents);
     warnings.push(...out.warnings);
     return { committed: out.committed, failed: false };
   } catch (err) {
