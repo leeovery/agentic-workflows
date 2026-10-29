@@ -5,7 +5,9 @@
 // (landing-world.cjs, `HOSTILE`): what the landing pins (landing-git.cjs,
 // `PINNED`) holds where the remedy table's rows never reach it. A stack is
 // read by its own commits where the person signs them and every log shows
-// signatures; a replay keeps a message that is not ASCII, recorded as UTF-8;
+// signatures; the landing and a replay are signed with the person's key, as
+// their own commits are, and one git cannot sign is refused in git's words;
+// a replay keeps a message that is not ASCII, recorded as UTF-8;
 // it follows renames, however many, stops where a folder the task moved
 // gains a file, and where line endings alone differ; and a remedy's rebase
 // keeps a landing that changes nothing. Git layer: the landing world with
@@ -16,10 +18,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 
 const { ok, git } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, cutTask, commitFiles, landedOn, refusedMoving, followRemedy, personState, short, way, moveStep, rebaseSteps, strayRefusal: stray,
+  TASKS, openArgs, cutTask, commitFiles, landedOn, refusedMoving, followRemedy, personState, signatures, short, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 const { READY } = require('./landing-remedies.cjs');
 
@@ -82,6 +85,25 @@ describe('land: under the person\'s config, hostile to it', () => {
     assert.strictEqual(refusedMoving(dir, ['land', 'chain', 'pay', '1.4']), refusal);
     followRemedy(dir, refusal);
     assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.4']).stack, ['1.1', '1.4']);
+  });
+
+  it('signs the landing an open makes and the commit a replay makes with the person\'s key, as their own git commit would', () => {
+    const dir = STATE.project();
+    git(dir, ['checkout', '-q', '-b', 'wip']);
+    STATE.apply(dir);
+    const landing = ok(dir, openArgs(cutTask(dir, '4.1', 'fix', 'Sign it', 'main', { 'signed.txt': 'signed\n' }))).commit;
+    commitFiles(dir, 'main', 'main', { 'other.txt': 'other\n' });
+    const replayed = ok(dir, MERGE_FOUR).commit;
+    assert.notStrictEqual(replayed, landing);
+    assert.deepStrictEqual(signatures(dir, [landing, replayed]), ['G', 'G']);
+  });
+
+  it('refuses a landing and a replay git cannot sign, in git\'s own words, naming the commit, and moves nothing', () => {
+    const dir = replaying('Sign it', { 'signed.txt': 'signed\n' }, { 'other.txt': 'other\n' });
+    git(dir, ['config', 'user.signingKey', path.join(dir, '.git', 'no key')]);
+    const cannot = (what, then) => new RegExp(`^land: ${what} could not be committed \\(git commit-tree failed: .*no key.*\\), so nothing moved — clear what git names and ${then}$`, 's');
+    assert.match(refusedMoving(dir, MERGE_FOUR), cannot('task 4\\.1\'s replay onto main', 'land again'));
+    assert.match(refusedMoving(dir, openArgs(cutTask(dir, '5.1', 'fix', 'Sign it too', 'main', { 'too.txt': 'too\n' }))), cannot('task 5\\.1\'s landing on feat/pay-phase-5', 'open the task again'));
   });
 
   it('replays a landing whose message is not ASCII as it reads, recorded as UTF-8', () => {

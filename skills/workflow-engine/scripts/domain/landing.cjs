@@ -12,15 +12,19 @@
 // and, for a task opened, its type and title, read from the tracker as the
 // task verbs read a task (task-verbs.cjs), a task it lacks or holds with no
 // type refused (7.2.18, 12.4.1), and its branch, named from them, whose
-// change carries nothing under `.leeway/`, in any case of its letters (4.1.3,
-// 4.S2), and lands in the project's own repository alone — nested
-// repositories are not supported yet. The driver answers the chain's tip
-// the task lands on, and the seam holds the task's branch to descend from
-// it before the driver opens anything (12.7.1). Every other verb names a
-// task by its id's shape alone; that a task passed its review is the
-// build's to know. Before anything else, every verb stops on a rebase
-// stopped in a worktree a remedy made, until it is settled or ended there
-// (landing-git.cjs).
+// change carries nothing under `.leeway/` at the repository's top, where the
+// state sits whichever folder of it the project is, in any case of its
+// letters (4.1.3, 4.S2), and lands in the project's own repository alone —
+// nested repositories are not supported yet. Past the state, a project
+// inside a larger repository reads the change from its own folder alone
+// (7.2.17): what the change does outside it is the larger repository's,
+// never refused, and lands with the task as its branch holds it. The driver
+// answers the chain's tip the task lands on, and the seam holds the task's
+// branch to descend from it before the driver opens anything (12.7.1).
+// Every other verb names a task by its id's shape alone; that a task passed
+// its review is the build's to know. Before anything else, every verb stops
+// on a rebase stopped in a worktree a remedy made, until it is settled or
+// ended there (landing-git.cjs).
 //
 // The landing's state is read off git and the host each time. Nothing is
 // recorded but the driver setting, which the first verb settles where it is
@@ -122,20 +126,17 @@ function carrying(warnings, act) {
 }
 
 /**
- * Refuse a task whose change carries the state, or reaches another
- * repository: a nested one's moved pointer, or a branch of its own there.
+ * Refuse a task whose change carries the state, where it sits at the
+ * repository's top, or reaches another repository in the project's folder:
+ * a nested one's moved pointer, or a branch of its own there.
  * @param {LandingContext} ctx @param {string} shown @param {string} branch
  */
 function refuseChange(ctx, shown, branch) {
-  const change = lg.changeOf(ctx.root, ctx.into, branch);
-  const state = change.map(({ path }) => path).filter((path) => {
-    const folded = path.toLowerCase();
-    return folded === STATE_DIR_NAME || folded.startsWith(`${STATE_DIR_NAME}/`);
-  });
+  const state = lg.changedAtTop(ctx.root, ctx.into, branch, STATE_DIR_NAME);
   if (state.length > 0) {
     throw new Error(`land: task ${shown}'s change carries ${state.map(lg.plain).join(', ')} — the workflows' state never lands on a code branch, so take it off the task's branch and open the task again`);
   }
-  const moved = change.filter(({ gitlink }) => gitlink).map(({ path }) => path);
+  const moved = lg.pointersMoved(ctx.root, ctx.into, branch);
   const nested = projectRepos(ctx.root).slice(1).filter((repo) => lg.branches(repo.path).has(branch)).map((repo) => repo.dir);
   const reached = [...new Set([...moved, ...nested])].map(lg.plain);
   if (reached.length > 0) {

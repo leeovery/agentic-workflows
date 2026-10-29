@@ -421,7 +421,8 @@ function open(ctx, task, tip) {
   if (at === tip.commit) throw new Error(`land: task ${shown}'s branch ${task.branch} changes nothing past ${tip.name} — commit its change there first`);
   const { phase } = task.ref;
   const branch = names.phaseBranch(ctx.unit, phase);
-  const commit = lg.commitTree(root, tree, onto, task.message);
+  const landing = { tree, parent: onto, message: task.message, signed: lg.signs(root) };
+  const commit = lg.commitTree(root, landing, `task ${shown}'s landing on ${branch}`, 'open the task again');
   lg.moveBranch(root, branch, tip.phaseAt, commit);
   if (!tip.stacks.has(phase)) forgetOpened(ctx, (of, other) => of === phase && other !== shown);
   lg.updateRefs(root, { set: [[`${openedUnder(ctx.unit)}${shown}`, at]] });

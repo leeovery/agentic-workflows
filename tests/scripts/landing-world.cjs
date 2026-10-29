@@ -17,7 +17,9 @@
 // (`refusedMoving`), and follows the remedy it names (`followRemedy`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
 // of the person's worktrees, or of their config (`personState`,
-// `followed`), against the way on it should read there (`way`).
+// `followed`), against the way on it should read there (`way`), every
+// commit the verb then makes signed as that config signs them
+// (`signatures`).
 
 require('./hermetic-env.cjs');
 
@@ -296,9 +298,10 @@ function followRemedy(dir, refusal, settle) {
 
 /**
  * A state of the person's worktrees a remedy is followed in: the world it
- * is in, and what it does to the repository once a row has built it, given
- * the branch the row's remedy moves — answering who then has it out.
- * @typedef {{project: () => string, apply: (dir: string, moves?: string) => Held}} PersonState
+ * is in, what it does to the repository once a row has built it, given the
+ * branch the row's remedy moves — answering who then has it out — and
+ * whether the person's config then signs every commit.
+ * @typedef {{project: () => string, apply: (dir: string, moves?: string) => Held, signs: boolean}} PersonState
  */
 
 /**
@@ -331,6 +334,33 @@ function busy(dir, tree) {
 
 /** Where the hostile state keeps the person's signing key: in the repository's own folder, so a copy carries it. @param {string} dir */
 const signingKeyOf = (dir) => path.join(dir, '.git', 'person-key');
+
+/** The signers a test checks a signature against, the person's key alone — never the person's config, which names none. @param {string} dir */
+const signersOf = (dir) => `${signingKeyOf(dir)}.signers`;
+
+/**
+ * The person's signing key made in the world, with the signers file a test
+ * checks its signatures against.
+ * @param {string} dir
+ */
+function makeSigningKey(dir) {
+  execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'the person', '-f', signingKeyOf(dir)]);
+  fs.writeFileSync(signersOf(dir), `test@example.com ${fs.readFileSync(`${signingKeyOf(dir)}.pub`, 'utf8')}`);
+}
+
+/**
+ * How each of `commits` is signed, checked against the person's key (git's
+ * `%G?`): `G` signed by it, `N` not signed.
+ * @param {string} dir @param {string[]} commits
+ * @returns {string[]}
+ */
+function signatures(dir, commits) {
+  if (commits.length === 0) return [];
+  return git(dir, ['-c', `gpg.ssh.allowedSignersFile=${signersOf(dir)}`, 'log', '--no-show-signature', '--no-walk', '--format=%G?', ...commits]).split('\n').filter(Boolean);
+}
+
+/** How each commit a code branch gained past `before` is signed (`signatures`). @param {string} dir @param {Set<string>} before */
+const signaturesPast = (dir, before) => signatures(dir, git(dir, ['rev-list', '--exclude=leeway-state', '--branches']).split('\n').filter((sha) => sha !== '' && !before.has(sha)));
 
 /**
  * The person's config in the hostile state (landing-git.cjs, `PINNED`): each
@@ -408,12 +438,13 @@ const PERSON_STATES = {
  * @returns {PersonState}
  */
 function personState(kind, prefix, ready = () => {}) {
-  const world = kind !== 'hostile' ? ready : (/** @type {string} */ dir) => {
+  const signs = kind === 'hostile';
+  const world = !signs ? ready : (/** @type {string} */ dir) => {
     ready(dir);
-    execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', 'the person', '-f', signingKeyOf(dir)]);
+    makeSigningKey(dir);
   };
   const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world);
-  return { project, apply: PERSON_STATES[kind] };
+  return { project, apply: PERSON_STATES[kind], signs };
 }
 
 /**
@@ -492,8 +523,10 @@ function leftOnNoBranch(dir, before) {
  * refuses as the row says for that state, moving nothing; its remedy is
  * taken; the verb then goes through. Every worktree is then as the person
  * left it, byte for byte — the one that had the branch out detached at the
- * commit it was at — with no worktree left behind, the stash as it was,
- * and no commit left on no branch.
+ * commit it was at — with no worktree left behind, the stash as it was, no
+ * commit left on no branch, and every commit the verb then made signed by
+ * the person's key where their config signs every commit, and none where
+ * it does not.
  * @param {PersonState} state @param {Row} row
  */
 function followed(state, { setup, moves }) {
@@ -505,11 +538,14 @@ function followed(state, { setup, moves }) {
     const expected = typeof refusal === 'string' ? refusal : refusal(held);
     assert.strictEqual(refusedMoving(dir, args), expected);
     follow(dir, expected);
+    const followedAt = onBranches(dir);
     check(dir, ok(dir, then));
     if (held !== null) Object.assign(before.checkouts[held.path], { branch: '(detached)' });
     assert.deepStrictEqual(checkoutsAt(dir), before.checkouts, 'a worktree the person has changed');
     assert.strictEqual(git(dir, ['stash', 'list']), before.stash, 'the stash changed');
     assert.deepStrictEqual(leftOnNoBranch(dir, before.commits), [], 'a commit was left on no branch');
+    const signature = state.signs ? 'G' : 'N';
+    assert.deepStrictEqual(signaturesPast(dir, followedAt).filter((made) => made !== signature), [], `a landing made ${state.signs ? 'unsigned' : 'signed'}`);
   };
 }
 
@@ -603,5 +639,5 @@ function pathsOn(dir, branch) {
 
 module.exports = {
   UNIT, BASE, TASKS, TRACKER, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
-  personState, followed, short, shellWord, scratchOf, way, moveStep, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
+  personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

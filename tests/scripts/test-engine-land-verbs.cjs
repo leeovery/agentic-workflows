@@ -11,7 +11,9 @@
 // with no type refused — one ended in words of its own — what the read
 // commits and is warned of answered, a refusal after a commit carrying its
 // warnings, and its branch named from them and judged by its own change; a
-// change reaching a nested repository refused. What every driver does is
+// change reaching a nested repository refused; and a project inside a
+// larger repository reading the change from its own folder alone, but for
+// the state, at the repository's top (7.2.17). What every driver does is
 // the landing conformance suite's; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb
@@ -27,7 +29,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, refuses, git, stateGit, tip, initRepo, statePath, commitAll } = require('./engine-harness.cjs');
-const { TASKS, TRACKER, openArgs, track, cutTask, commitFiles, setLandingDriver, useLandingWorld, followRemedy } = require('./landing-world.cjs');
+const { TASKS, TRACKER, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy } = require('./landing-world.cjs');
 const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
 const { card } = TASKS;
@@ -249,5 +251,44 @@ describe('land open: a task judged by its own change', () => {
       refuses(dir, openArgs(card)).error,
       `land: task 1.1's branch ${card.branch} does not descend from the chain's tip, main (${tip(dir, 'main').slice(0, 7)}) — merge it back onto main first`,
     );
+  });
+
+  describe('in a project that is a folder inside a larger repository (7.2.17)', () => {
+    /** The landing world with its project in a folder of it, `app`, from which every verb runs. @returns {[string, string]} the repository, the project */
+    const nested = () => {
+      const dir = project();
+      const app = path.join(dir, 'app');
+      fs.mkdirSync(app);
+      return [dir, app];
+    };
+
+    it('refuses a task carrying the state, which sits at the repository\'s top whatever the person\'s diff.relative', () => {
+      const [dir, app] = nested();
+      git(dir, ['config', 'diff.relative', 'true']);
+      const notes = cutTask(dir, '1.4', 'feat', 'Note it', 'main', { 'app/note.txt': 'note\n', '.leeway/notes.md': 'state\n' });
+      assert.strictEqual(
+        refuses(app, openArgs(notes)).error,
+        'land: task 1.4\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+      );
+    });
+
+    it('opens a task that changes a folder outside the project, a nested repository\'s pointer there among it, read from its own folder alone — the change landing as the branch holds it', () => {
+      const [dir, app] = nested();
+      const shared = cutTask(dir, '1.4', 'feat', 'Share it', 'main', { 'app/app.txt': 'app\n', 'other/o.txt': 'o\n' }, { gitlinks: { 'other/lib': tip(dir, 'main') } });
+      ok(app, openArgs(shared));
+      assert.deepStrictEqual(landedOn(dir, 'feat/pay-phase-1').map(({ paths }) => paths), [['app/app.txt', 'other/lib', 'other/o.txt']]);
+    });
+
+    it('names a nested repository the task reaches in the project from the project\'s folder, once', () => {
+      const [dir, app] = nested();
+      const lib = initRepo(path.join(app, 'vendor', 'lib'));
+      git(lib, ['commit', '-q', '--allow-empty', '-m', 'lib']);
+      const bump = cutTask(dir, '1.4', 'feat', 'Bump lib', 'main', { 'app/bump.txt': 'bump\n' }, { gitlinks: { 'app/vendor/lib': tip(lib, 'HEAD') } });
+      git(lib, ['branch', bump.branch]);
+      assert.strictEqual(
+        refuses(app, openArgs(bump)).error,
+        'land: task 1.4\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
+      );
+    });
   });
 });

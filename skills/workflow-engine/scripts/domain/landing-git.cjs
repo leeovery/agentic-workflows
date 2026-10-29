@@ -15,8 +15,14 @@
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
 //   never the state branch (4.9.4).
+// - A change is read from the project's folder alone, named from it — a
+//   project inside a larger repository reads only its own folder (7.2.17) —
+//   but for what a caller asks of a folder at the repository's top.
 // - A commit is made with no checkout: a tree committed onto a parent, or a
-//   commit replayed onto another, which stops on a conflict.
+//   commit replayed onto another, which stops on a conflict; signed where
+//   the person's config signs every commit, as `git commit` signs it. A
+//   commit git cannot make, a key it cannot sign with among them, is refused
+//   in git's words, naming the commit, and nothing moves.
 // - A branch moves by its ref alone, so no checkout moves — but for a branch
 //   a worktree has checked out, which moves only by a fast-forward there,
 //   its tracked files clean, nothing at a path the move adds, ignored or
@@ -164,25 +170,52 @@ function treesPast(root, from, to) {
 }
 
 /**
- * The paths a change touches from where `tip` left `base` to `tip`, each
- * with whether it is a nested repository's pointer.
+ * The nested repositories' pointers a change moves in the project's folder,
+ * from where `tip` left `base` to `tip`, named from that folder.
  * @param {string} root @param {string} base @param {string} tip
- * @returns {{path: string, gitlink: boolean}[]}
+ * @returns {string[]}
  */
-function changeOf(root, base, tip) {
-  const fields = git(root, ['diff', '--raw', '-z', '--no-renames', '--ignore-submodules=none', `${base}...${tip}`]).split('\0');
-  /** @type {{path: string, gitlink: boolean}[]} */
-  const change = [];
+function pointersMoved(root, base, tip) {
+  const fields = git(root, ['diff', '--raw', '-z', '--no-renames', '--relative', '--ignore-submodules=none', `${base}...${tip}`]).split('\0');
+  /** @type {string[]} */
+  const moved = [];
   for (let i = 0; i + 1 < fields.length; i += 2) {
     const [before, after] = fields[i].slice(1).split(' ');
-    change.push({ path: fields[i + 1], gitlink: before === '160000' || after === '160000' });
+    if (before === '160000' || after === '160000') moved.push(fields[i + 1]);
   }
-  return change;
+  return moved;
 }
 
-/** A tree committed onto a parent under a message. @param {string} root @param {string} tree @param {string} parent @param {string} message @returns {string} */
-function commitTree(root, tree, parent, message) {
-  return git(root, ['commit-tree', tree, '-p', parent, '-F', '-'], message).trim();
+/**
+ * The paths a change touches under a folder at the repository's top, in any
+ * case of its letters, whichever folder of it the project is, named from
+ * that top.
+ * @param {string} root @param {string} base @param {string} tip @param {string} folder
+ * @returns {string[]}
+ */
+function changedAtTop(root, base, tip, folder) {
+  return git(root, ['diff', '--name-only', '-z', '--no-renames', '--no-relative', `${base}...${tip}`, '--', `:(top,icase)${folder}`]).split('\0').filter(Boolean);
+}
+
+/** Whether the person's config signs every commit, as `git commit` reads it. @param {string} root @returns {boolean} */
+function signs(root) {
+  return git(root, ['config', '--type=bool', '--default=false', '--get', 'commit.gpgSign']).trim() === 'true';
+}
+
+/**
+ * A tree committed onto a parent under a message, signed where `signed`:
+ * `what` the commit is, as a refusal of one git cannot make names it, and
+ * `then` the way on once what git names is cleared.
+ * @param {string} root @param {{tree: string, parent: string, message: string, signed: boolean}} commit @param {string} what @param {string} then
+ * @returns {string}
+ */
+function commitTree(root, { tree, parent, message, signed }, what, then) {
+  try {
+    return git(root, ['commit-tree', ...(signed ? ['-S'] : []), tree, '-p', parent, '-F', '-'], message).trim();
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    throw new Error(`land: ${what} could not be committed (${plain(err.message)}), so nothing moved — clear what git names and ${then}`);
+  }
 }
 
 /** A change that conflicts where it is replayed: its message names it, and where. */
@@ -193,7 +226,8 @@ class Conflict extends Error {}
  * own message: the commit the last replay made, and those whose change was
  * there already, each replayed as a commit that changes nothing — a commit
  * that changes nothing itself is none of them. Stops on the first change
- * that conflicts, naming it and its paths (`Conflict`).
+ * that conflicts, naming it and its paths (`Conflict`), and is refused at
+ * the first commit git cannot make (`commitTree`).
  * @template {{sha: string, message: string, name: string}} C
  * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName
  * @returns {{tip: string, empty: C[]}}
@@ -202,6 +236,7 @@ function replay(root, commits, onto, ontoName) {
   let at = onto;
   let [atTree] = treesOf(root, [onto]);
   const own = treesOf(root, commits.flatMap(({ sha }) => [`${sha}^`, sha]));
+  const signed = signs(root);
   /** @type {C[]} */
   const empty = [];
   commits.forEach((commit, i) => {
@@ -214,7 +249,7 @@ function replay(root, commits, onto, ontoName) {
     if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
     const [tree] = res.stdout.split('\0');
     if (tree === atTree && own[2 * i] !== own[2 * i + 1]) empty.push(commit);
-    at = commitTree(root, tree, at, commit.message);
+    at = commitTree(root, { tree, parent: at, message: commit.message, signed }, `${commit.name}'s replay onto ${ontoName}`, 'land again');
     atTree = tree;
   });
   return { tip: at, empty };
@@ -638,6 +673,6 @@ function defaultBranch(root, remote) {
 
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  changeOf, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  pointersMoved, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
   defaultBranch,
 };
