@@ -81,7 +81,8 @@ function stateLostGate(project) {
 
 /**
  * Setup's offer of the rule on GitHub against deleting or force-pushing the
- * state branch (4.4.7), acted on only on yes.
+ * state branch (4.4.7), acted on only on yes; each answer leads to the
+ * `github-rule` verb that records it.
  * @param {string} project the project's name
  * @returns {string}
  */
@@ -90,8 +91,8 @@ function githubRuleGate(project) {
   return section('MENU: github rule gate', MENU_INSTRUCTION, menu(
     `${name}'s remote is on GitHub. A rule there can refuse deleting or force-pushing \`leeway-state\` for anything run outside Claude Code; inside it, Leeway already refuses both.`,
     [
-      cmdOption('y', 'yes', `Set it on ${name}'s repository`),
-      cmdOption('n', 'no', { head: 'Leave it unset', tail: 'setup carries on without it' }),
+      cmdOption('y', 'yes', `Set it on ${name}'s repository`, { next: { kind: 'engine', argv: ['github-rule', 'yes'] } }),
+      cmdOption('n', 'no', { head: 'Leave it unset', tail: 'setup carries on without it' }, { next: { kind: 'engine', argv: ['github-rule', 'no'] } }),
     ],
     { question: 'Set that rule on GitHub?' },
   ));

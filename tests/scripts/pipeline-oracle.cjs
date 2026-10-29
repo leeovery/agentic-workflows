@@ -14,6 +14,9 @@
 //     menu among its views,
 //   - every menu a gateway draws, and every menu a render draws, states
 //     itself whole in its gate payload once the gate surface is announced,
+//     and the gate a render's menu states is the one its conversation was
+//     shown, which an answer through `gate` adds one line to the trust log
+//     for,
 //   - the ledger's projections and its copies hold to the events.
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
@@ -54,6 +57,8 @@ const {
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
+const { SHOWN } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/gate.cjs'));
+const { TRUST_LOG } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/trust-log.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -256,8 +261,8 @@ function auditState(dir, label) {
   // it stands, or a move between menus.
   assert.doesNotMatch(START_GATEWAY.format(START_GATEWAY.discover(dir)), /^=== MENU/m, ctx('the start head insert carries a gate'));
   for (const [name, views] of Object.entries(VIEW_MENUS)) {
-    for (const view of views(dir)) {
-      auditGate(announcedRender(() => LIB.gateway.menuBlock(view().rendered)), `${label} — ${name} view`);
+    for (const [gate, view] of views(dir)) {
+      auditGate(announcedRender(() => LIB.gateway.menuBlock(gate, view().rendered)), `${label} — ${name} view`);
       auditRoutes(dir, view().keys, `${label} — ${name} view`);
     }
   }
@@ -654,33 +659,37 @@ function auditRoutes(dir, keys, label) {
 // `spec-view` and `spec-completed-menu` verbs: the routing read and the
 // scenario's display render whatever the state, beside the scenario's menu
 // and, once anything has concluded, the concluded-specs sub-view.
-/** @param {string} dir @param {string} workUnit @returns {(() => ViewMenu)[]} */
+/** @param {string} dir @param {string} workUnit @returns {GatewayMenu[]} */
 function specificationViewMenus(dir, workUnit) {
   EPIC_GATEWAY.specScenario(dir, workUnit);
   const detail = specDetail(dir, workUnit);
   LIB.project.specificationDisplay(detail);
   return [
-    () => LIB.project.specificationMenu(detail),
-    ...(detail.concluded.length > 0 ? [() => LIB.project.specificationCompletedMenu(detail)] : []),
+    [EPIC_GATEWAY.GATES.spec, () => LIB.project.specificationMenu(detail)],
+    ...(detail.concluded.length > 0 ? [/** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.specRefine, () => LIB.project.specificationCompletedMenu(detail)])] : []),
   ];
 }
 
-/** @type {Record<string, (dir: string) => (() => ViewMenu)[]>} */
+/** A gateway's menu: the gate it states, by the gateway's name for it, and its composition. @typedef {[string, () => ViewMenu]} GatewayMenu */
+
+/** @type {Record<string, (dir: string) => GatewayMenu[]>} */
 const VIEW_MENUS = {
   start: (dir) => {
     const result = START_GATEWAY.discover(dir);
-    return [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))];
+    return [result.state.has_any_work
+      ? [START_GATEWAY.GATES.start, () => LIB.project.startMenu(result)]
+      : [START_GATEWAY.GATES.empty, () => LIB.project.emptyMenu(result)]];
   },
   epic: (dir) => listWorkUnits(dir).flatMap((wu) => {
     const detail = EPIC_GATEWAY.discover(dir, wu);
     return detail ? [
-      () => LIB.project.epicMenu(wu, detail),
-      () => LIB.project.epicCompletedMenu(wu, detail),
+      /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.epic, () => LIB.project.epicMenu(wu, detail)]),
+      /** @type {GatewayMenu} */ ([EPIC_GATEWAY.GATES.resume, () => LIB.project.epicCompletedMenu(wu, detail)]),
       ...specificationViewMenus(dir, wu),
     ] : [];
   }),
   linear: (dir) => listWorkUnits(dir).map((wu) => LIB.detail.activeWorkUnit(dir, wu)).filter(Boolean)
-    .map((/** @type {any} */ { type, unit }) => () => LIB.project.workUnitMenu(type, unit)),
+    .map((/** @type {any} */ { type, unit }) => /** @type {GatewayMenu} */ ([LINEAR_GATEWAY.GATES.view, () => LIB.project.workUnitMenu(type, unit)])),
 };
 
 /** One gateway render with the gate surface announced, collected from its start. @param {() => string} render */
@@ -698,9 +707,53 @@ function announcedRender(render) {
 /** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @returns {void} */
 function auditGatePayload(sim, args, identity) {
   const env = { ...sim.envOf(identity), WORKFLOWS_GATE_SURFACE: '1' };
-  auditGate(engine.run(['render', ...args], { cwd: sim.dir, env }).stdout, `render ${args.join(' ')} — gate payload`);
+  const stated = auditGate(engine.run(['render', ...args], { cwd: sim.dir, env }).stdout, `render ${args.join(' ')} — gate payload`);
+  auditGateShown(sim, stated, identity, `render ${args.join(' ')}`);
+}
+
+// ---------------------------------------------------------------------------
+// The gate shown, and the answers given at it
+// ---------------------------------------------------------------------------
+
+// The gate a render's menu states is the one its conversation was shown:
+// the record `gate` answers against holds it — named as its MENU declares
+// it, up to its first ` — ` — row for row, and unanswered.
+/**
+ * @param {Sim} sim @param {import('./gate-audit.cjs').GatePayload|null} stated
+ * @param {Record<string,string>|null} identity @param {string} label
+ */
+function auditGateShown(sim, stated, identity, label) {
+  if (stated === null) return;
+  const folder = path.join(sim.configDir, 'conversations', sim.envOf(identity).CLAUDE_CODE_SESSION_ID);
+  const shown = JSON.parse(fs.readFileSync(path.join(folder, SHOWN), 'utf8'));
+  /** @param {{key: string, word: string|null, head: string, recommended: boolean}} o */
+  const row = ({ key, word, head, recommended }) => ({ key, word, head, recommended });
+  assert.deepStrictEqual(
+    { gate: shown.gate, question: shown.question, options: shown.options.map(row), typed: shown.typed.map((/** @type {{label: string}} */ t) => t.label), answered: shown.answered },
+    { gate: stated.gate.split(' — ')[0], question: stated.question, options: stated.options.map(row), typed: stated.typed.map((t) => t.label), answered: null },
+    `[${label}] the gate shown is not the gate the menu states`,
+  );
+}
+
+/** The sim's trust log, a line apiece. @param {Sim} sim @returns {string[]} */
+function trustLines(sim) {
+  const file = path.join(sim.configDir, TRUST_LOG);
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').slice(0, -1) : [];
+}
+
+// Each answer through `gate` is one line of the trust log: the gate event
+// holding the gate, the row recommended, the row picked and how it came, as
+// `gate` answered them.
+/** @param {Sim} sim @param {Record<string, unknown>} answered @param {string[]} before @param {string} label */
+function auditGateAnswer(sim, answered, before, label) {
+  const lines = trustLines(sim);
+  assert.deepStrictEqual(lines.slice(0, before.length), before, `[${label}] the trust log was not appended to`);
+  assert.strictEqual(lines.length, before.length + 1, `[${label}] the answer is not one line of the trust log`);
+  const { type, gate, recommended, picked, via } = JSON.parse(lines[lines.length - 1]);
+  assert.deepStrictEqual({ type, gate, recommended, picked, via }, { type: 'gate', gate: answered.gate, recommended: answered.recommended, picked: answered.picked, via: answered.via },
+    `[${label}] the trust log's line is not the answer given`);
 }
 
 module.exports = {
-  auditState, auditGatePayload, specDetail, shellWords,
+  auditState, auditGatePayload, specDetail, shellWords, trustLines, auditGateAnswer,
 };

@@ -18,6 +18,13 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
+// The gate each of the roadmap's menus states, named for what it asks: a key
+// of the trust log forever (16.11.9), so never another menu's.
+const GATES = Object.freeze({
+  home: 'roadmap menu',
+  pullSet: 'roadmap pull pick',
+});
+
 function state(cwd) {
   return engine.roadmap.roadmapState(cwd);
 }
@@ -58,7 +65,7 @@ function view() {
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock(engine.project.roadmapTitle()),
     engine.gateway.displayBlock(engine.project.roadmapMapView(s)),
-    engine.gateway.menuBlock(menu.rendered),
+    engine.gateway.menuBlock(GATES.home, menu.rendered),
   ].join('\n');
 }
 
@@ -76,7 +83,7 @@ function pullSet() {
   return [
     engine.gateway.dataBlock(v.data),
     engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu),
+    engine.gateway.menuBlock(GATES.pullSet, v.menu),
   ].join('\n');
 }
 
@@ -155,4 +162,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { view, pullSet, proposal };
+module.exports = { view, pullSet, proposal, GATES };

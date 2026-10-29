@@ -28,8 +28,10 @@ export type Typed = {
   detail: string | null
 }
 
-/** A gate as the engine states it, less its name. */
+/** A gate as the engine states it. */
 export type Gate = {
+  /** The gate's name, which a press records for the engine. */
+  name: string
   question: string
   statement: string
   options: Option[]

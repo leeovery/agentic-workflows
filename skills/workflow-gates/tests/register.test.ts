@@ -105,6 +105,9 @@ const keptAt = (id: string) => inFolder(id, 'gate.json')
 /** Where a send leaves what it answered: the conversation's folder. */
 const sentAt = (id: string) => inFolder(id, 'sent.json')
 
+/** Where a press leaves the row it sent, for the engine: beside the send's record. */
+const pressedAt = (id: string) => inFolder(id, 'pressed.json')
+
 const COMMIT = 'Commit and continue to next task'
 const AUTH = 'Continue "Auth"'
 const HOLDER = 'in session (last active 4m ago)'
@@ -514,8 +517,9 @@ const BOOTED = [
   said('assistant', TURN_END.answer),
 ]
 
-/** The task gate as the payload states it, less its name. */
+/** The task gate as the payload states it. */
 const TASK_GATE = {
+  name: 'task gate',
   question: 'Approve this task?',
   statement: '',
   options: OPTIONS,
@@ -529,6 +533,17 @@ const KEPT_AT_GATE = {
 }
 
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000
+
+/**
+ * What a press on the commit row leaves for the engine: the gate's name, the
+ * row's answer, and when it was sent by the mod's clock, which starts at the
+ * epoch.
+ */
+const PRESSED = {
+  gate: 'task gate',
+  answer: 'yes',
+  at: new Date(0).toISOString(),
+}
 
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
@@ -863,6 +878,15 @@ function sentIn(files: Map<string, string>, id = 's0'): unknown {
   const text = files.get(sentAt(id))
 
   expect(text, 'a send record was written').toBeDefined()
+
+  return JSON.parse(text ?? 'null')
+}
+
+/** What the last press in the conversation `id` recorded for the engine. */
+function pressedIn(files: Map<string, string>, id = 's0'): unknown {
+  const text = files.get(pressedAt(id))
+
+  expect(text, 'a press record was written').toBeDefined()
 
   return JSON.parse(text ?? 'null')
 }
@@ -1610,6 +1634,7 @@ describe('register', () => {
       expect(calls, 'the turn the answer opens takes the band down').toEqual([
         'fill ',
         'write',
+        'write',
         'submit yes',
         'invalidate',
       ])
@@ -1627,6 +1652,27 @@ describe('register', () => {
       await ui.unmount()
     })
   }
+
+  test("a press records the gate's name, the row's answer and when it was sent by the mod's clock, in a file of its own beside the send's record", async ($, on) => {
+    const { files, clock } = world($, on, announced())
+
+    await presented($)
+
+    const ui = await $.ui.mount(MOUNT)
+
+    await click(ui, COMMIT)
+    await clock.set(YEAR_MS)
+    await click(ui, COMMIT)
+
+    expect(pressedIn(files)).toEqual({ ...PRESSED, at: new Date(YEAR_MS).toISOString() })
+    expect(sentIn(files)).toEqual({
+      answer: 'yes',
+      question: 'Approve this task?',
+      label: COMMIT,
+    })
+
+    await ui.unmount()
+  })
 
   test('Enter picks the row the cursor is on, and sends it once picked', async ($, on) => {
     const { filled, submitted } = world($, on, announced())
@@ -1680,6 +1726,7 @@ describe('register', () => {
     expect(submitted).toEqual(['yes'])
     expect(filled, 'picked, cleared to send, put back').toEqual(['yes', '', 'yes'])
     expect(sentIn(files), 'no send is left recorded').toBeNull()
+    expect(pressedIn(files), 'no press is left recorded').toBeNull()
     expect(await ui.find({ type: 'Client', key: 'gate' })).toBeDefined()
     expect(await backgroundOf(ui, COMMIT)).toBe('diffAddedDimmed')
     expect(await footerOf(ui)).toBe(
@@ -1709,6 +1756,7 @@ describe('register', () => {
     expect(submitted).toEqual(['yes'])
     expect(filled, 'picked, cleared to send, put back').toEqual(['yes', '', 'yes'])
     expect(sentIn(files)).toBeNull()
+    expect(pressedIn(files)).toBeNull()
     expect(await backgroundOf(ui, COMMIT), 'the pick holds').toBe('diffAddedDimmed')
 
     await ui.key({ key: 'return', in: 'gate' })
@@ -2615,7 +2663,7 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('the turn’s end sends the held answer while the same gate is on the band, and the band comes down as that turn starts', async ($, on) => {
+  test('the turn’s end sends the held answer while the same gate is on the band, recorded as pressed, and the band comes down as that turn starts', async ($, on) => {
     const { files, submitted } = world($, on, announced())
 
     await presented($)
@@ -2634,6 +2682,7 @@ describe('register', () => {
       question: 'Approve this task?',
       label: COMMIT,
     })
+    expect(pressedIn(files)).toEqual(PRESSED)
     expect(await isDrawn($)).toBe(false)
   })
 
@@ -3917,6 +3966,7 @@ describe('register', () => {
     expect(submitted).toEqual([CONTINUATION])
     expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
     expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
+    expect(files.has(pressedAt(AFTER_CLEAR)), 'a handoff is no press').toBe(false)
   })
 
   test("a subagent's handoff is cut out of what it reads, and never carried", async ($, on) => {

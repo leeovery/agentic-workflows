@@ -53,6 +53,8 @@ const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledg
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
+const { answerGate, recordGateShown } = require('./domain/gate.cjs');
+const { openGate } = require('./domain/projections/surfaces.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -155,6 +157,7 @@ Commands:
   boot [--start-again]
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
+  gate <name> (--pick <key> | --typed [<key>])
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
   manifest set    <dotpath> <field> <value>
@@ -1723,6 +1726,26 @@ function runGithubRule(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// gate — the person's answer at a gate, logged to the trust log by the
+// gate's name and answered with what the row leads to (domain/gate.cjs).
+// ---------------------------------------------------------------------------
+
+const GATE_USAGE = 'Usage: engine gate <name> (--pick <key> | --typed [<key>])';
+
+/** @param {Call} call @param {string[]} argv */
+function runGate(call, argv) {
+  try {
+    const { opts, positional } = parseArgs(argv);
+    const name = positional.join(' ');
+    const [answer, ...others] = Object.keys(opts);
+    if (name === '' || others.length > 0 || (answer !== 'pick' && answer !== 'typed') || (answer === 'pick' && !opts.pick)) throw new Error(GATE_USAGE);
+    respond(call, answerGate(call.cwd, name, answer === 'pick' ? { pick: opts.pick } : { typed: opts.typed ?? null }));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // state-merge — the person's pick at the state merge's stop, which boot's
 // catch-up leaves where both clones changed a manifest field
 // (domain/state-merge.cjs).
@@ -2281,6 +2304,7 @@ const COMMANDS = Object.freeze({
   code: runCode,
   render: runRender,
   handoff: runHandoff,
+  gate: runGate,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2296,7 +2320,8 @@ const COMMANDS = Object.freeze({
 // check holds it around each result it records, and a `ledger` read takes
 // none; `presence`, `session label`, `repair`, `cleanup` and `resume`, and
 // the hold `topic mailbox` refreshes write only the session files the state
-// ignores; a conversation's folder is outside the project; and the rest
+// ignores; a conversation's folder is outside the project; `gate` writes the
+// trust log, under its own lock, and the conversation's folder; and the rest
 // read, `layout guard` among them, run before every file Claude writes.
 // `manifest` takes it to write alone, and `commit` but for a code commit
 // (`--paths`).
@@ -2313,6 +2338,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   topic: ['mailbox', 'incorporations'],
   roadmap: ['state'],
   session: ['label', 'repair', 'cleanup', 'resume'],
+  gate: '*',
 }));
 
 /** @param {string[]} argv @returns {boolean} */
@@ -2364,14 +2390,18 @@ function exitCode(call, err) {
 /**
  * One command against a bound call, answering its exit code — later, for a
  * command that waits on the embedding provider. Whatever the exit, a command
- * the conversation ran marks it as one that runs the workflows — after the
- * command, which may take the folder the mark lives in: boot's tidy-up
- * deletes one whose transcript is gone.
+ * the conversation ran marks it as one that runs the workflows; one that
+ * answered records the gate its MENU stated as the gate the conversation was
+ * shown, where a failed one showed none. Both after the command, which may
+ * take the folder both live in: boot's tidy-up deletes one whose transcript
+ * is gone.
  * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
  */
 function dispatch(call, argv) {
+  openGate();
   const settle = (/** @type {number} */ code) => {
     if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
+    if (code === 0) recordGateShown();
     return code;
   };
   let answer;

@@ -28,6 +28,20 @@ const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { loadActiveManifests } = engine.reads;
 
+// The gate each of the epic's menus states, named for what it asks: a key of
+// the trust log forever (16.11.9), so never another menu's.
+const GATES = Object.freeze({
+  epic: 'epic menu',
+  resume: 'resume pick',
+  cancel: 'cancel pick',
+  reactivate: 'reactivate pick',
+  postpone: 'postpone pick',
+  pullForward: 'pull forward pick',
+  unblock: 'unblock pick',
+  spec: 'spec menu',
+  specRefine: 'spec refine pick',
+});
+
 /** @typedef {import('../../workflow-engine/scripts/domain/epic-detail.cjs').EpicDetail} EpicDetail */
 
 /**
@@ -183,7 +197,7 @@ function view(workUnit, newArrivalsJson) {
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock(engine.project.titlecase(workUnit)),
     engine.gateway.displayBlock(key ? display + '\n' + key : display),
-    engine.gateway.menuBlock(menu.rendered),
+    engine.gateway.menuBlock(GATES.epic, menu.rendered),
   ].join('\n');
 }
 
@@ -214,11 +228,11 @@ function inSessionGate(workUnit, key) {
 /** @typedef {(name: string, detail: object, opts: {presence: object[]}) => {keys: object[], title: string, display: string, rendered: string}} SubViewProjection */
 
 // One selection sub-view (sections D–G): the keys table as DATA, the view's
-// heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU. The
-// presence scan rides along as the view's does — a held unit's row carries
-// its in-session age, a cue and never a lock.
-/** @param {string} workUnit @param {SubViewProjection} projection */
-function subView(workUnit, projection) {
+// heading as TITLE, the grouped list as DISPLAY, the pick menu as MENU,
+// stating the gate `gate`. The presence scan rides along as the view's does —
+// a held unit's row carries its in-session age, a cue and never a lock.
+/** @param {string} workUnit @param {string} gate @param {SubViewProjection} projection */
+function subView(workUnit, gate, projection) {
   const d = discover(process.cwd(), workUnit);
   if (!d) {
     return engine.gateway.dataBlock({ work_unit: workUnit, error: 'no active epic with this name' })
@@ -239,7 +253,7 @@ function subView(workUnit, projection) {
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock(view.title),
     engine.gateway.displayBlock(view.display),
-    engine.gateway.menuBlock(view.rendered),
+    engine.gateway.menuBlock(gate, view.rendered),
   ].join('\n');
 }
 
@@ -329,7 +343,7 @@ function specView(cwd, workUnit) {
     engine.gateway.dataBlock(specData(result, detail, menu.keys)),
     engine.gateway.titleBlock(engine.project.SPEC_TITLE),
     engine.gateway.displayBlock(engine.project.specificationDisplay(detail)),
-    ...(menu.rendered ? [engine.gateway.menuBlock(menu.rendered)] : []),
+    ...(menu.rendered ? [engine.gateway.menuBlock(GATES.spec, menu.rendered)] : []),
   ].join('\n');
 }
 
@@ -343,7 +357,7 @@ function specCompletedMenu(cwd, workUnit) {
     engine.gateway.dataBlock([`work_unit: ${detail.work_unit}`, ...specActions(sub.keys)].join('\n')),
     engine.gateway.titleBlock(sub.title),
     engine.gateway.displayBlock(sub.display),
-    engine.gateway.menuBlock(sub.rendered),
+    engine.gateway.menuBlock(GATES.specRefine, sub.rendered),
   ].join('\n');
 }
 
@@ -373,11 +387,11 @@ function specHandler(verb, build) {
   };
 }
 
-/** @param {string} verb @param {SubViewProjection} projection */
-function subViewHandler(verb, projection) {
+/** @param {string} verb @param {string} gate @param {SubViewProjection} projection */
+function subViewHandler(verb, gate, projection) {
   return (/** @type {string} */ workUnit, /** @type {string[]} */ ...rest) => (!workUnit || rest.length > 0
     ? usageError(`${verb} takes exactly one work unit`)
-    : subView(workUnit, projection));
+    : subView(workUnit, gate, projection));
 }
 
 if (require.main === module) {
@@ -386,12 +400,12 @@ if (require.main === module) {
     view: (workUnit, newArrivalsJson, ...rest) => (!workUnit || rest.length > 0
       ? usageError('view takes a work unit and an optional new-arrivals JSON')
       : view(workUnit, newArrivalsJson)),
-    'completed-menu': subViewHandler('completed-menu', (name, d) => engine.project.epicCompletedMenu(name, d)),
-    'cancel-menu': subViewHandler('cancel-menu', (name, d, opts) => engine.project.epicCancelMenu(d, opts)),
-    'reactivate-menu': subViewHandler('reactivate-menu', (name, d, opts) => engine.project.epicReactivateMenu(d, opts)),
-    'postpone-menu': subViewHandler('postpone-menu', (name, d, opts) => engine.project.epicPostponeMenu(d, opts)),
-    'pull-forward-menu': subViewHandler('pull-forward-menu', (name, d) => engine.project.epicPullForwardMenu(d)),
-    'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
+    'completed-menu': subViewHandler('completed-menu', GATES.resume, (name, d) => engine.project.epicCompletedMenu(name, d)),
+    'cancel-menu': subViewHandler('cancel-menu', GATES.cancel, (name, d, opts) => engine.project.epicCancelMenu(d, opts)),
+    'reactivate-menu': subViewHandler('reactivate-menu', GATES.reactivate, (name, d, opts) => engine.project.epicReactivateMenu(d, opts)),
+    'postpone-menu': subViewHandler('postpone-menu', GATES.postpone, (name, d, opts) => engine.project.epicPostponeMenu(d, opts)),
+    'pull-forward-menu': subViewHandler('pull-forward-menu', GATES.pullForward, (name, d) => engine.project.epicPullForwardMenu(d)),
+    'unblock-menu': subViewHandler('unblock-menu', GATES.unblock, (name, d) => engine.project.epicUnblockMenu(d)),
     'spec-scenario': specHandler('spec-scenario', specScenario),
     'spec-view': specHandler('spec-view', specView),
     'spec-completed-menu': specHandler('spec-completed-menu', specCompletedMenu),
@@ -404,4 +418,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, formatScoped, specScenario };
+module.exports = { discover, formatScoped, specScenario, GATES };

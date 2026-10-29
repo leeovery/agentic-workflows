@@ -234,12 +234,36 @@ function drawLabel(label) {
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
 /** @typedef {GateOption|GateTyped} GateRow */
 /** @typedef {{question: string, statement: string}} GateProse */
-/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[]}} GateCollection */
 
-// A render is synchronous, so one collection is enough: opened as the render
-// begins, taken at the first MENU.
+/**
+ * What answering a row leads to, as the menu's composer declares it — an
+ * engine command to run, by its argv after `engine`; a handoff into a skill,
+ * as `engine handoff` takes it; or carrying on in the flow — for `gate` to
+ * answer with (gate.cjs), never to act on.
+ * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'continue'}} Next
+ */
+
+/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
+
+/** @typedef {{key: string, word: string|null, head: string, recommended: boolean, next: Next|null}} ShownOption */
+/** @typedef {{label: string, next: Next|null}} ShownTyped */
+/**
+ * The gate a MENU stated: its name as declared, its question, its rows and
+ * what each leads to.
+ * @typedef {{gate: string, question: string, options: ShownOption[], typed: ShownTyped[]}} GateShown
+ */
+
+// A render is synchronous, so one collection is enough: opened as the command
+// begins — by the engine's dispatch or a skill's gateway, never by what it
+// renders — and taken at the first MENU.
 /** @type {GateCollection|null} */
 let collected = null;
+
+// The gate the command's MENU stated, for the conversation's record of the
+// gate shown (gate.cjs): set as the MENU is emitted, written by the caller
+// once the command is done.
+/** @type {GateShown|null} */
+let shown = null;
 
 /**
  * Whether the gate surface announced itself to this process — the mod sets
@@ -252,14 +276,23 @@ function gateSurfaceAnnounced() {
 }
 
 /**
- * Begin collecting this render's gate. A no-op while the gate surface is
- * unannounced, which is what keeps default output byte-identical.
+ * Begin collecting this command's gate, the gate shown before it forgotten.
+ * Every gate is collected, announced or not; only its GATE block waits on
+ * the announcement, which keeps default output byte-identical.
  * @returns {void}
  */
 function openGate() {
-  collected = gateSurfaceAnnounced()
-    ? { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [] }
-    : null;
+  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], next: new Map() };
+  shown = null;
+}
+
+/**
+ * The gate the command's MENU stated since the gate was opened; null where
+ * it stated none.
+ * @returns {GateShown|null}
+ */
+function gateShown() {
+  return shown;
 }
 
 /**
@@ -278,10 +311,11 @@ function illustrate(compose) {
 }
 
 /**
- * The GATE block for the MENU about to be emitted, `''` when nothing was
- * collected or the menu composed neither a frame nor a row. Taken once: a
- * second menu in one response finds nothing, and a response with no menu
- * drops what it gathered at the next render.
+ * The GATE block for the MENU about to be emitted — `''` where the gate
+ * surface is unannounced, nothing was collected, or the menu composed
+ * neither a frame nor a row — and the gate it states kept as the gate
+ * shown. Taken once: a second menu in one response finds nothing, and a
+ * response with no menu drops what it gathered at the next command.
  * @param {string} name  the gate's name, `MENU:` prefix already dropped
  * @returns {string}
  */
@@ -289,9 +323,19 @@ function gateBlock(name) {
   const taken = collected;
   collected = null;
   if (taken === null || (taken.prose === null && taken.rows.size === 0)) return '';
+  const question = taken.prose?.question ?? '';
+  /** @param {GateRow} row */
+  const nextOf = (row) => taken.next.get(row) ?? null;
+  shown = {
+    gate: name,
+    question,
+    options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, recommended: o.recommended, next: nextOf(o) })),
+    typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
+  };
+  if (!gateSurfaceAnnounced()) return '';
   const payload = JSON.stringify({
     gate: name,
-    question: taken.prose?.question ?? '',
+    question,
     statement: taken.prose?.statement ?? '',
     options: taken.options,
     typed: taken.typed,
@@ -315,12 +359,13 @@ function plainPart(part) {
 
 /**
  * Record one pressable row — a single key the person can be offered, each
- * part of its label as text, its markup removed and its escapes honoured.
+ * part of its label as text, its markup removed and its escapes honoured —
+ * and what answering it leads to, where its composer declared that.
  * @param {string} line  the row as drawn
- * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts
+ * @param {string|number} key @param {string|null|undefined} word @param {LabelParts} parts @param {Next} [next]
  * @returns {void}
  */
-function recordOption(line, key, word, { head, tail, cue, holder, recommended }) {
+function recordOption(line, key, word, { head, tail, cue, holder, recommended }, next) {
   if (collected === null) return;
   /** @type {GateOption} */
   const option = {
@@ -336,19 +381,22 @@ function recordOption(line, key, word, { head, tail, cue, holder, recommended })
   };
   collected.rows.set(line, option);
   collected.options.push(option);
+  if (next) collected.next.set(option, next);
 }
 
 /**
- * Record one typed row — a natural reply or a span of numbers, never a press.
+ * Record one typed row — a natural reply or a span of numbers, never a press
+ * — and what answering it leads to, where its composer declared that.
  * @param {string} line  the row as drawn
- * @param {string} label @param {string} description @returns {void}
+ * @param {string} label @param {string} description @param {Next} [next] @returns {void}
  */
-function recordTyped(line, label, description) {
+function recordTyped(line, label, description, next) {
   if (collected === null) return;
   /** @type {GateTyped} */
   const typed = { label: stripMarkup(label), description: stripMarkup(description), detail: null };
   collected.rows.set(line, typed);
   collected.typed.push(typed);
+  if (next) collected.next.set(typed, next);
 }
 
 /**
@@ -394,16 +442,18 @@ function describe(row, line, continues) {
   row.detail = row.detail === null ? text : `${row.detail}${continues ? ' ' : '\n'}${text}`;
 }
 
-// `MENU: task gate` → `task gate`; the gateway's unnamed `MENU` → `menu`.
+// `MENU: task gate` → `task gate`.
 /** @param {string} name @returns {string} */
 function gateName(name) {
-  return name.replace(/^MENU:?\s*/, '') || 'menu';
+  return name.replace(/^MENU:\s*/, '');
 }
 
 /**
- * One `=== NAME (instruction) ===` demarcated section. A MENU carries its
- * gate payload immediately above it, so a surface drawing the gate never has
- * to read the markdown back out.
+ * One `=== NAME (instruction) ===` demarcated section — the one place a
+ * MENU's marker is built, so every MENU states the gate shown. A MENU
+ * carries its gate payload immediately above it where the gate surface
+ * announced, so a surface drawing the gate never has to read the markdown
+ * back out.
  * @param {string} name @param {string} instruction @param {string} body
  * @returns {string}
  */
@@ -618,12 +668,14 @@ function menu(label, options, { question } = {}) {
  * (CONVENTIONS.md option grammar): key and word share one code span, the
  * arrow separates it from the label. The word is omitted for bare-key
  * options (numbered entries). Arrows are aligned by the enclosing frame.
+ * `next` is what answering the row leads to (gate.cjs).
  * @param {string} key @param {string | null | undefined} word @param {OptionLabel} label
+ * @param {{next?: Next}} [opts]
  * @returns {string}
  */
-function cmdOption(key, word, label) {
+function cmdOption(key, word, label, { next } = {}) {
   const line = `**\`${word ? `${key}/${word}` : key}\`** → ${drawLabel(label)}`;
-  recordOption(line, key, word, labelParts(label));
+  recordOption(line, key, word, labelParts(label), next);
   return line;
 }
 
@@ -632,25 +684,27 @@ function cmdOption(key, word, label) {
  * yes/no gate takes (CONVENTIONS.md: Yes/no prompt): the question above the
  * options already says what yes means, so a label would only repeat it.
  * Carries no arrow, so the enclosing frame passes it through unaligned.
- * @param {string} key @param {string} word
+ * `next` is what answering the row leads to (gate.cjs).
+ * @param {string} key @param {string} word @param {{next?: Next}} [opts]
  * @returns {string}
  */
-function bareOption(key, word) {
+function bareOption(key, word, { next } = {}) {
   const line = `**\`${key}/${word}\`**`;
-  recordOption(line, key, word, { head: '' });
+  recordOption(line, key, word, { head: '' }, next);
   return line;
 }
 
 /**
  * Prompt option line — the user responds naturally; the description directs
  * their response. Plain bold rather than a code span, because there is no
- * literal input to type.
- * @param {string} label @param {string} description
+ * literal input to type. `next` is what answering the row leads to
+ * (gate.cjs).
+ * @param {string} label @param {string} description @param {{next?: Next}} [opts]
  * @returns {string}
  */
-function promptOption(label, description) {
+function promptOption(label, description, { next } = {}) {
   const line = `**${label}** → ${description}`;
-  recordTyped(line, label, description);
+  recordTyped(line, label, description, next);
   return line;
 }
 
@@ -764,5 +818,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, autoSelectLine, subDetail, treeList };
+module.exports = { DOTS, NBSP, MENU_GLYPH, gateSurfaceAnnounced, openGate, gateShown, illustrate, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, autoSelectLine, subDetail, treeList };
 

@@ -81,7 +81,17 @@ const ELEMENT = 'gate'
  */
 const SENT = 'sent.json'
 
-/** The record that claims no send, which that mod draws nothing from. */
+/**
+ * The file in the conversation's folder where a press leaves the row it sent,
+ * for the engine's `gate` to tell a press from an answer typed: a file of its
+ * own, since that mod spends its record once it draws the row.
+ */
+const PRESSED = 'pressed.json'
+
+/**
+ * The record that claims no send, which that mod draws nothing from and the
+ * engine reads as no press.
+ */
 const NOTHING_SENT = 'null'
 
 /**
@@ -92,6 +102,9 @@ const NOTHING_SENT = 'null'
 type Sent =
   | { answer: string; question: string; label: string }
   | { answer: string; line: string }
+
+/** What a press leaves: the gate's name, the row's answer, and when it was sent. */
+type Pressed = { gate: string; answer: string; at: string }
 
 /** A move into work the engine named: the continuation to send, and its line. */
 type Handoff = { text: string; line: string }
@@ -178,7 +191,7 @@ type Settled = {
 
 const NOTHING_SETTLED: Settled = { held: null, gone: null }
 
-/** Whether two gates state the same question over the same rows. */
+/** Whether two gates are the same gate by name, stating the same question over the same rows. */
 const isSameGate = (gate: Gate | null, other: Gate | null) =>
   JSON.stringify(gate) === JSON.stringify(other)
 
@@ -209,7 +222,8 @@ function gateIn(
     return null
   }
 
-  const { gate: name, ...gate } = JSON.parse(payload) as Gate & { gate: string }
+  const { gate: name, ...stated } = JSON.parse(payload) as Omit<Gate, 'name'> & { gate: string }
+  const gate: Gate = { name, ...stated }
   const before = lines.slice(0, at)
   const after = lines.findIndex(
     (line, n) => n > at + 2 && line.startsWith(SECTION_MARKER),
@@ -355,41 +369,53 @@ async function fill($: EngineInterface, text: string): Promise<boolean> {
 }
 
 /**
- * Sends the next message, the send recorded in the conversation's folder
- * where it has one; whether it entered. A send that fails or is dropped
- * leaves no send recorded.
+ * Sends `answer` as the next message, each record written to its file in the
+ * conversation's folder first where it has one; whether it entered. A send
+ * that fails or is dropped leaves each file recording no send.
  */
-async function deliver($: EngineInterface, sent: Sent): Promise<boolean> {
+async function deliver(
+  $: EngineInterface,
+  answer: string,
+  records: Record<string, Sent | Pressed>,
+): Promise<boolean> {
   const folder = await folderOf($, await $.session.id())
-  const record = async (text: string) => {
+  const write = async (text: (record: Sent | Pressed) => string) => {
     if (folder !== null) {
-      await $.fs.write(inFolder(folder, SENT), text)
+      for (const [file, record] of Object.entries(records)) {
+        await $.fs.write(inFolder(folder, file), text(record))
+      }
     }
   }
   let isSent = false
 
   try {
-    await record(JSON.stringify(sent))
+    await write(record => JSON.stringify(record))
     // Framed for the model and labelled on screen as this plugin's, by design.
-    const { drop } = await $.prompt.submit({ text: sent.answer })
+    const { drop } = await $.prompt.submit({ text: answer })
 
     isSent = drop === undefined
   } finally {
     if (!isSent) {
-      await record(NOTHING_SENT)
+      await write(() => NOTHING_SENT)
     }
   }
 
   return isSent
 }
 
-/** Sends a row as the next message; whether it entered. */
-const submit = ($: EngineInterface, gate: Gate, option: Option) =>
-  deliver($, {
-    answer: answerOf(option),
-    question: gate.question,
-    label: option.head,
+/** Sends a row as the next message, recorded as pressed; whether it entered. */
+const submit = async ($: EngineInterface, gate: Gate, option: Option) => {
+  const answer = answerOf(option)
+
+  return deliver($, answer, {
+    [SENT]: { answer, question: gate.question, label: option.head },
+    [PRESSED]: {
+      gate: gate.name,
+      answer,
+      at: new Date(await $.clock.now()).toISOString(),
+    },
   })
+}
 
 /** Whether `attempt` took; one that fails did not. */
 const took = (attempt: Promise<boolean>) => attempt.catch(() => false)
@@ -410,7 +436,7 @@ async function handOff($: EngineInterface, { text, line }: Handoff) {
   }
 
   const isCarried =
-    (await took(deliver($, { answer: text, line }))) ||
+    (await took(deliver($, text, { [SENT]: { answer: text, line } }))) ||
     (await took(fill($, text)))
 
   if (isCarried) {

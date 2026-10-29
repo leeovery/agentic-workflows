@@ -18,6 +18,19 @@
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
+// The gate each of the start's menus states, named for what it asks: a key
+// of the trust log forever (16.11.9), so never another menu's.
+const GATES = Object.freeze({
+  start: 'start menu',
+  empty: 'new work menu',
+  inbox: 'inbox menu',
+  archived: 'archived pick',
+  workingSet: 'working set menu',
+  manage: 'manage pick',
+  manageUnit: 'manage actions',
+  completed: 'completed pick',
+});
+
 function discover(cwd) {
   return engine.detail.startDetail(cwd);
 }
@@ -115,7 +128,7 @@ function view() {
     engine.gateway.dataBlock(dataLines.join('\n')),
     engine.gateway.titleBlock('Workflow Overview'),
     engine.gateway.displayBlock(empty ? engine.project.emptyOverview(detail) : engine.project.startOverview(detail)),
-    engine.gateway.menuBlock(menu.rendered),
+    engine.gateway.menuBlock(empty ? GATES.empty : GATES.start, menu.rendered),
   ].join('\n');
 }
 
@@ -129,7 +142,7 @@ function inboxView() {
     engine.gateway.dataBlock(v.data),
     engine.gateway.titleBlock('Inbox'),
     engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu ?? ''),
+    engine.gateway.menuBlock(GATES.inbox, v.menu ?? ''),
   ].filter(Boolean).join('\n');
 }
 
@@ -138,16 +151,16 @@ function inboxView() {
 function archivedView() {
   const detail = discover(process.cwd());
   const v = engine.project.archivedView(engine.detail.combinedInbox(detail.inbox.archived));
-  return pickSnapshot(v, 'Archived');
+  return pickSnapshot(v, 'Archived', GATES.archived);
 }
 
-// A pick snapshot: DATA and TITLE, then the menu that lists the rows — or,
-// with no rows, the display that says so.
-function pickSnapshot(v, title) {
+// A pick snapshot: DATA and TITLE, then the menu that lists the rows, stating
+// the gate `gate` — or, with no rows, the display that says so.
+function pickSnapshot(v, title, gate) {
   return [
     engine.gateway.dataBlock(v.data),
     engine.gateway.titleBlock(title),
-    v.menu ? engine.gateway.menuBlock(v.menu) : engine.gateway.displayBlock(v.display),
+    v.menu ? engine.gateway.menuBlock(gate, v.menu) : engine.gateway.displayBlock(v.display),
   ].join('\n');
 }
 
@@ -182,7 +195,7 @@ function workingSetView(...args) {
     engine.gateway.dataBlock(v.data),
     engine.gateway.titleBlock(v.title),
     engine.gateway.displayBlock(v.display),
-    engine.gateway.menuBlock(v.menu),
+    engine.gateway.menuBlock(GATES.workingSet, v.menu),
   ].join('\n');
 }
 
@@ -209,7 +222,7 @@ function manageView(workUnit) {
     return [
       engine.gateway.dataBlock(v.data),
       engine.gateway.titleBlock('Manage'),
-      engine.gateway.menuBlock(v.menu),
+      engine.gateway.menuBlock(GATES.manage, v.menu),
     ].join('\n');
   }
   const md = engine.detail.manageDetail(process.cwd(), workUnit);
@@ -219,14 +232,14 @@ function manageView(workUnit) {
   const v = engine.project.manageUnitView(md);
   return [
     engine.gateway.dataBlock(v.data),
-    engine.gateway.menuBlock(v.menu),
+    engine.gateway.menuBlock(GATES.manageUnit, v.menu),
   ].join('\n');
 }
 
 // The completed & cancelled snapshot: the closed units as a numbered pick
 // menu — or, with nothing closed, the display that says so.
 function completedView() {
-  return pickSnapshot(engine.project.completedView(discover(process.cwd())), 'Completed & Cancelled');
+  return pickSnapshot(engine.project.completedView(discover(process.cwd())), 'Completed & Cancelled', GATES.completed);
 }
 
 if (require.main === module) {
@@ -244,4 +257,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format };
+module.exports = { discover, format, GATES };

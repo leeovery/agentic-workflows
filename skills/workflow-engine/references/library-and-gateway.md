@@ -132,7 +132,7 @@ engine.project.specificationCompletedMenu(detail) // → { keys, title, display,
 engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
 engine.gateway.dataBlock(obj | string)            // → demarcated DATA section
 engine.gateway.displayBlock(text)                 // → demarcated DISPLAY section
-engine.gateway.menuBlock(text)                    // → demarcated MENU section, the GATE block directly ahead of it under WORKFLOWS_GATE_SURFACE=1 ('' for an empty menu — no gate, no section)
+engine.gateway.menuBlock(name, text)              // → demarcated `MENU: {name}` section stating the gate `name` — the gateway's own, from its table of gates — the GATE block directly ahead of it under WORKFLOWS_GATE_SURFACE=1 ('' for an empty menu — no gate, no section)
 ```
 
 `wrapWithPrefix` throws if the prefix leaves no room within the width — a misconfigured gutter fails loudly rather than silently overflowing.

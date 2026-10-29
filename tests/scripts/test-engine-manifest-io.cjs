@@ -548,10 +548,11 @@ describe('structurally corrupt manifests refuse writes', () => {
 
 /**
  * One call per entry of the writer lock's exempt table, each one that
- * succeeds in the epic fixture with a specification beside its research.
- * Boot and the ledger's writes are the table's verbs that wait on the lock,
- * each taking it itself around the state writes it makes, so they have none:
- * the ledger's suite holds its writes to waiting.
+ * succeeds in the epic fixture with a specification beside its research, in
+ * a conversation — the gate it answers rendered just before it. Boot and the
+ * ledger's writes are the table's verbs that wait on the lock, each taking
+ * it itself around the state writes it makes, so they have none: the
+ * ledger's suite holds its writes to waiting.
  */
 const EXEMPT_CALLS = [
   ['knowledge', 'status'],
@@ -568,6 +569,8 @@ const EXEMPT_CALLS = [
   ['session', 'cleanup', 'sess-1'],
   ['session', 'resume', 'sess-1'],
   ['layout', 'guard'],
+  ['render', 'migration-gate'],
+  ['gate', 'migration gate', '--pick', 'y'],
 ];
 
 describe('engine writes take the writer lock', () => {
@@ -644,7 +647,7 @@ describe('engine writes take the writer lock', () => {
     const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
 
     for (const args of EXEMPT_CALLS) {
-      const res = harness.call(dir, args);
+      const res = harness.call(dir, args, { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } });
       assert.strictEqual(res.code, 0, `engine ${args.join(' ')}: ${res.stderr}`);
     }
     assert.deepStrictEqual(attempts, []);

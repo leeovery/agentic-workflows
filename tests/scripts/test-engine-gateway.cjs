@@ -21,6 +21,12 @@ const {
 
 const lib = require('../../skills/workflow-engine/scripts/lib.cjs');
 const { dataSection, titleSection } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { SCHEMA } = require('../../skills/workflow-engine/scripts/domain/trust-events.cjs');
+
+const SKILLS = path.join(__dirname, '../../skills');
+
+// The marker of a gateway's MENU, which names the gate it states.
+const MENU_MARKER = '=== MENU: start menu (emit verbatim as markdown (not a code block)) ===';
 
 // Capture stdout writes around a runGateway call.
 function captureRun(handlers, argv) {
@@ -115,21 +121,21 @@ describe('gateway: output sections', () => {
     assert.ok(titleBlock('Workflow Start').startsWith(SECTION.title + '\n'));
   });
 
-  it('displayBlock and menuBlock demarcate and trim trailing newlines', () => {
+  it('displayBlock and menuBlock demarcate and trim trailing newlines, the MENU marked with the gate it states', () => {
     assert.strictEqual(displayBlock('TREE\n\n'), SECTION.display + '\nTREE\n');
-    assert.strictEqual(menuBlock('MENU'), SECTION.menu + '\nMENU\n');
+    assert.strictEqual(menuBlock('start menu', 'MENU\n\n'), `${MENU_MARKER}\nMENU\n`);
   });
 
   it('an empty menu is no gate — menuBlock renders no section, not an empty marker', () => {
-    assert.strictEqual(menuBlock(''), '');
-    assert.strictEqual(menuBlock('\n\n'), '');
+    assert.strictEqual(menuBlock('start menu', ''), '');
+    assert.strictEqual(menuBlock('start menu', '\n\n'), '');
   });
 
   it('sections compose into one demarcated stdout payload', () => {
-    const out = [dataBlock({ k: 1 }), displayBlock('D'), menuBlock('M')].join('\n');
+    const out = [dataBlock({ k: 1 }), displayBlock('D'), menuBlock('start menu', 'M')].join('\n');
     const idx = (s) => out.indexOf(s);
     assert.ok(idx(SECTION.data) < idx(SECTION.display));
-    assert.ok(idx(SECTION.display) < idx(SECTION.menu));
+    assert.ok(idx(SECTION.display) < idx(MENU_MARKER));
   });
 });
 
@@ -137,8 +143,46 @@ describe('gateway: output sections', () => {
 // the skill loads, before any step shows anything, so a gate it carried would
 // be one no step ever shows — every insert the skills declare is run over a
 // world holding active and closed work of every type.
+// Every menu a skill's gateway draws states a gate of its own, a key of the
+// trust log forever (16.11.9): the gateway names each from its table of
+// gates, and no name is any other menu's — another gateway's, or one an
+// engine render declares.
+describe('gateway: each menu states a gate of its own', () => {
+  const gateways = fs.readdirSync(SKILLS)
+    .map((skill) => path.join(SKILLS, skill, 'scripts', 'gateway.cjs'))
+    .filter((file) => fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes('gateway.menuBlock('));
+  const names = gateways.flatMap((file) => Object.values(require(file).GATES ?? {}));
+
+  /** Every name an engine MENU declares, a templated one aside. @param {string} folder @returns {string[]} */
+  const declared = (folder) => fs.readdirSync(folder, { withFileTypes: true }).flatMap((e) => {
+    const at = path.join(folder, e.name);
+    if (e.isDirectory()) return declared(at);
+    if (!e.name.endsWith('.cjs')) return [];
+    return [...fs.readFileSync(at, 'utf8').matchAll(/['`]MENU: ([^'`$]+)/g)].map((m) => m[1].split(' — ')[0]);
+  });
+
+  it('finds the gateways it guards', () => {
+    assert.ok(gateways.length > 0, 'no gateway draws a menu — the guard would pass vacuously');
+  });
+
+  it('every gateway names its menus from its table of gates', () => {
+    for (const file of gateways) {
+      assert.ok(require(file).GATES, `${path.relative(SKILLS, file)} exports no table of gates`);
+      assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /menuBlock\(\s*['"`]/, `${path.relative(SKILLS, file)} names a menu outside its table`);
+    }
+  });
+
+  it('no two menus share a name, none takes a name an engine render declares, and each is a name the trust log keys', () => {
+    const engine = new Set(declared(path.join(SKILLS, 'workflow-engine/scripts')));
+    const gate = SCHEMA.events.gate.fields.find((f) => f.name === 'gate');
+
+    assert.deepStrictEqual(names.filter((name, i) => names.indexOf(name) !== i), []);
+    assert.deepStrictEqual(names.filter((name) => engine.has(name)), []);
+    assert.deepStrictEqual(names.filter((name) => !gate?.type.test(name)), []);
+  });
+});
+
 describe('gateway: a head-of-skill insert is never a gate', () => {
-  const SKILLS = path.join(__dirname, '../../skills');
   const INSERT = /^!`node \.claude\/skills\/(.+?)`$/gm;
   const inserts = fs.readdirSync(SKILLS).flatMap((skill) => {
     const file = path.join(SKILLS, skill, 'SKILL.md');
@@ -181,7 +225,6 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
 // research register, several live experiments (the record pick), agents in
 // flight, a baseline mid-assessment, and a roadmap with waiting items.
 describe('a context-refresh recovery fetches no gate and draws nothing', () => {
-  const SKILLS = path.join(__dirname, '../../skills');
   const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
   const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
     const file = path.join(SKILLS, skill, 'SKILL.md');
@@ -272,8 +315,6 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
 // view whose menu an `ACTIONS` table routes is run over a world where each
 // offers its rows, and every row it offers must name an entry by both.
 describe('an ACTIONS table resolves every row its MENU offers', () => {
-  const SKILLS = path.join(__dirname, '../../skills');
-
   /** @param {string} dir */
   function projectManifest(dir) {
     createFile(dir, '.leeway/manifest.json', JSON.stringify({

@@ -16,7 +16,7 @@ const { execFile, spawnSync } = require('child_process');
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate, gateBlock, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { menuBlock } = require('../../skills/workflow-engine/scripts/gateway.cjs');
 
 const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' };
@@ -324,13 +324,13 @@ describe('gate payload — a gateway menu', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the unnamed MENU is the "menu" gate, and its range row is typed rather than pressable', () => {
+  it('a gateway\'s MENU states the gate the gateway names it, and its range row is typed rather than pressable', () => {
     createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
     createFile(dir, '.leeway/.inbox/bugs/2026-03-20--bad-thing.md', '# Bad Thing\n\nContent.');
     const out = runGateway(dir, 'workflow-start', ['inbox'], ANNOUNCED);
 
     assert.deepStrictEqual(gateOf(out), {
-      gate: 'menu',
+      gate: 'inbox menu',
       question: 'What would you like to do?',
       statement: '',
       options: [
@@ -356,7 +356,7 @@ describe('gate payload — a gateway menu', () => {
     seedHeldEpic(dir);
     const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
 
-    assert.strictEqual(gate.gate, 'menu');
+    assert.strictEqual(gate.gate, 'epic menu');
     assert.deepStrictEqual(gate.options[0],
       { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: null, holder: null, detail: null, struck: false, recommended: true });
     assert.deepStrictEqual(gate.options[1],
@@ -369,7 +369,7 @@ describe('gate payload — a gateway menu', () => {
     seedHeldEpic(dir);
     const seen = markers(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
 
-    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU (emit verbatim as markdown (not a code block)) ===']);
+    assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU: epic menu (emit verbatim as markdown (not a code block)) ===']);
     assert.ok(seen.slice(0, -2).every((m) => !m.startsWith('=== GATE') && !m.startsWith('=== MENU')), seen.join('\n'));
   });
 
@@ -807,7 +807,7 @@ describe('gate payload — a menu that draws nothing', () => {
   it('states no gate', () => {
     const out = announced(() => {
       openGate();
-      return menuBlock('');
+      return menuBlock('empty menu', '');
     });
 
     assert.ok(!out.includes(GATE_MARKER), out);
@@ -815,10 +815,13 @@ describe('gate payload — a menu that draws nothing', () => {
   });
 
   it('a render that composed no frame and no row takes nothing', () => {
-    assert.strictEqual(announced(() => {
+    const out = announced(() => {
       openGate();
-      return gateBlock('menu');
-    }), '');
+      return section('MENU: empty menu', 'emit verbatim as markdown (not a code block)', '');
+    });
+
+    assert.ok(!out.includes(GATE_MARKER), out);
+    assert.strictEqual(gateShown(), null);
   });
 });
 

@@ -18,6 +18,12 @@
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 
+// The gate the unit's menu states, named for what it asks: a key of the
+// trust log forever (16.11.9), so never another menu's.
+const GATES = Object.freeze({
+  view: 'work unit menu',
+});
+
 /**
  * One snapshot of the unit: reasoning DATA (flow flags + the ACTIONS table),
  * the TITLE, the rendered status block (DISPLAY), and the proceed/revisit
@@ -36,7 +42,7 @@ function view(cwd, workUnit) {
     engine.gateway.dataBlock(engine.project.workUnitData(type, unit, menu)),
     engine.gateway.titleBlock(engine.project.workUnitTitle(unit)),
     engine.gateway.displayBlock(engine.project.workUnitStatus(type, unit)),
-    engine.gateway.menuBlock(menu.rendered),
+    engine.gateway.menuBlock(GATES.view, menu.rendered),
   ].filter(Boolean).join('\n');
 }
 
@@ -59,4 +65,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { view };
+module.exports = { view, GATES };

@@ -15,14 +15,21 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { Sim, sessionLog, handoffEntry, handoff, bridgeTo, linearPick, startNew } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, handoffEntry, handoff, answerGate, bridgeTo, linearPick, startNew } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: quick-fix', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: scoping registers spec+plan in one pass → verification → review → complete', () => {
+  it('quick-fix: scoping registers spec+plan in one pass → verification → review → complete, each gate answered through `gate`', () => {
+    // Setup offers the GitHub rule; the person declines, and the flow runs
+    // what the row leads to rather than branching on the answer itself.
+    sim.render(['github-rule-gate'], { expect: 'content' });
+    const declined = answerGate(sim, 'github rule gate', '--pick', 'n');
+    assert.deepStrictEqual(declined.next, { kind: 'engine', argv: ['github-rule', 'no'] });
+    assert.strictEqual(sim.run(declined.next.argv).github_rule, 'declined');
+
     const wu = 'typo';
     startNew(sim, 'quick-fix');
     const log = sessionLog(sim, wu);
@@ -44,6 +51,7 @@ describe('pipeline simulation: quick-fix', () => {
     sim.run(['manifest', 'set', 'project.defaults.plan_format', 'local-markdown']);
     // Scoping's format step fetches the same offer planning does.
     assert.match(sim.render(['plan-format-gate'], { expect: 'content' }), /Use the same format\?/);
+    answerGate(sim, 'plan format gate', '--pick', 'n');
     // Declining it opens the same catalogue, its offer written under scoping's own cache.
     const formats = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/format-offer.json`, {
       formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
@@ -81,6 +89,7 @@ describe('pipeline simulation: quick-fix', () => {
     const qfGate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
     assert.match(qfGate, /\*\*`d\/done`\*\* +→ Complete without review/);
     assert.match(qfGate, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    answerGate(sim, 'next phase gate', '--pick', 'y');
     bridgeTo(sim, wu, 'review');
     sim.run(['topic', 'start', wu, 'review', wu]);
     sim.run(['topic', 'complete', wu, 'review', wu]);
