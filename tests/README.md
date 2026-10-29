@@ -28,7 +28,7 @@ Every test belongs to one layer, and every file sits in one. The layer decides h
 | **verb** | The engine's argv contract: the response, the state written, the state commit, and a refusal leaving nothing behind | `engine-harness.cjs` in process, over a world copied from a template (§3) | ≤ 15 s, ≤ ~100 tests | `test-engine-ledger-write.cjs`, `test-engine-workunit-create.cjs` |
 | **git** | What only real git shows: the state worktree, the merge between clones, push and catch-up, the commit door across repos, lost-state recovery | Real repositories from the git world templates (§3): a project, a project with a bare remote, two machines | ≤ 30 s | `test-engine-state-merge-catch-up.cjs`, `test-engine-state-worktree.cjs` |
 | **process** | What only a process shows: the real CLI's exit codes and streams, hooks fed stdin JSON, races between processes, detached launches, killed writers | Spawned; each race proves its contention happened (§6) | a handful of tests, beside the verb they concern | the hook tests in `test-engine-layout-hook.cjs`; the races in `test-engine-manifest-io.cjs` |
-| **conformance** | One contract run against each driver (§10) | One suite per kind of driver, parametrised over the drivers | — | none yet |
+| **conformance** | One contract run against each driver (§10) | One suite per kind of driver, parametrised over the drivers | — | `test-engine-task-conformance.cjs` |
 | **simulation** | End-to-end replays of the engine call sequences the prose makes, with the state oracle after every mutation (§11) | In process | ≤ 30 s per scenario file | `test-pipeline-simulation-feature.cjs` |
 | **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | — | `test-migration-070.cjs` |
 | **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | — | `test-prose-invariants.cjs` |
@@ -122,10 +122,10 @@ The rules every migration keeps are CLAUDE.md's (Migrations); the module contrac
 
 A conformance suite is the contract a driver meets: one suite per kind of driver, run in the hermetic environment, parametrised over the drivers of that kind.
 
-- **The task suite** covers a phase, links across phases, ready returning several, done unblocking, close, list and show. The task driver runs against the real tool at its declared floor.
+- **The task suite** covers a phase, links across phases, ready returning several, done unblocking, close and close unblocking, an addition to a task, list and show. The task driver runs against the real tool at or above its declared floor, read through the driver's own `needs`; where none is installed, the suite fails, naming it.
 - **The landing suite** covers a task's pull request, a stack, a phase merged, finish, and a change touching nested repositories. The local driver runs fully in the suite; GitHub's runs against a stubbed `gh`. A live GitHub run happens only on the person's word, on a scratch repository they create for it.
 
-A new driver joins its kind's suite; it never gets a suite of its own.
+A suite names no driver and no tool: it runs against every shipped driver of its kind, and each driver's side of it — readying the world for that driver and reading what it did — is `tests/drivers/{name}/{kind}.cjs`. A new driver joins its kind's suite with its side; it never gets a suite of its own.
 
 ## 11. The pipeline simulation
 

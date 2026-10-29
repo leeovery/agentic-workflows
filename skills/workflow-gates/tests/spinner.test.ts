@@ -240,6 +240,26 @@ describe('the spinner', () => {
     expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing task 2.4…')
   })
 
+  test('the tracker\'s verbs move the word: a task started comes on it, and off it once done or closed', async ($, on) => {
+    const unit = { name: 'pay', phase: 'implementation', topic: 'pay' }
+    const { places } = world(on, { positions: { s0: unit } })
+    const steps: [string, Position, string][] = [
+      ['task start pay 1.1', { ...unit, task: '1.1' }, 'Implementing task 1.1…'],
+      ['task done pay 1.1', unit, 'Implementing…'],
+      ['task start pay 1.2', { ...unit, task: '1.2' }, 'Implementing task 1.2…'],
+      ['task close pay 1.2 --reason "Not needed."', unit, 'Implementing…'],
+    ]
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Implementing…')
+
+    for (const [command, position, word] of steps) {
+      places(position)
+      await $.tool.call({ tool: 'Bash', command: `${ENGINE} ${command}` })
+
+      expect(textOf(await drawn($, spinnerOf('terminal'))), command).toBe(word)
+    }
+  })
+
   test('a call that leaves the word as it was asks for no redraw, and a subagent\'s call reads nothing', async ($, on) => {
     const { counts } = world(on, { positions: { s0: { name: 'pay', phase: 'discussion', topic: 'ledger' } } })
 

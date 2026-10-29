@@ -501,9 +501,11 @@ describe('engine workunit create — validation', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
   });
 
-  it('rejects illegal work-unit names — dots, slashes, phase names, reserved', () => {
-    assert.match(engineFails(fix, createArgs('pay.ments', 'epic')).error, /must not contain dots or slashes/);
-    assert.match(engineFails(fix, createArgs('../escape', 'epic')).error, /must not contain dots or slashes/);
+  it('rejects illegal work-unit names — anything but a kebab-case slug, phase names, reserved', () => {
+    assert.match(engineFails(fix, createArgs('pay.ments', 'epic')).error, /must be a kebab-case slug/);
+    assert.match(engineFails(fix, createArgs('../escape', 'epic')).error, /must be a kebab-case slug/);
+    assert.match(engineFails(fix, createArgs('Pay Flow', 'epic')).error, /must be a kebab-case slug/);
+    assert.match(engineFails(fix, createArgs('feat(auth)', 'epic')).error, /must be a kebab-case slug/);
     assert.match(engineFails(fix, createArgs('research', 'epic')).error, /conflicts with a phase name/);
     assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);

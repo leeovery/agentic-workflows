@@ -898,11 +898,36 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
+// The task writer's calls for one phase (12.5.2–12.5.4): the phase written
+// into the tracker, then each task from its file, one call per task, then
+// the links between them. A task's `after` names the tasks it waits on, as
+// `{phase}.{n}`.
+/**
+ * @param {Sim} sim @param {string} wu @param {number} phase @param {string} title
+ * @param {{title: string, after?: string[]}[]} tasks
+ * @returns {string[]} the tasks as created
+ */
+function writePhaseTasks(sim, wu, phase, title, tasks) {
+  sim.run(['task', 'phase', wu, String(phase), '--title', title]);
+  const created = tasks.map((task) => {
+    const file = sim.write(`.leeway/.cache/${wu}/build/task.md`, [
+      `# ${task.title}`, '', '## Type', 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
+      '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', `- Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`, '',
+      '## Spec reference', '§1', '',
+    ].join('\n'));
+    return sim.run(['task', 'create', wu, String(phase), '--file', file]).task;
+  });
+  tasks.forEach((task, i) => {
+    for (const after of task.after ?? []) sim.run(['task', 'link', wu, created[i], '--after', after]);
+  });
+  return created;
+}
+
 /** A string as the regular expression that matches it literally. @param {string} text */
 function literal(text) {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation,
+  Sim, sessionLog, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

@@ -297,9 +297,8 @@ describe('engine task start', () => {
     assert.strictEqual(implItem(dir).fix_attempts, 0);
   });
 
-  it('rejects unknown topic, missing internal id, path-unsafe ids, and an id carrying no phase', () => {
+  it('rejects unknown topic, path-unsafe ids, and an id carrying no phase', () => {
     assert.match(engineFails(dir, ['start', 'auth', 'ghost', 'x-1-1']).error, /no implementation item "ghost"/);
-    assert.match(engineFails(dir, ['start', 'auth', 'auth-flow']).error, /Usage: engine task start/);
     assert.match(engineFails(dir, ['start', 'auth', 'auth-flow', '../escape']).error, /invalid internal id/);
     assert.match(engineFails(dir, ['start', 'auth', 'auth-flow', 'oddly-shaped-id']).error, /cannot derive the phase from "oddly-shaped-id"/);
     assert.strictEqual(implItem(dir).current_task, 'auth-flow-2-1');
@@ -1432,6 +1431,6 @@ describe('engine task usage', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('rejects an unknown subcommand', () => {
-    assert.match(engineFails(dir, ['bogus', 'auth', 'auth-flow']).error, /Usage: engine task <init\|start\|fix-attempt\|complete\|analysis-cycle>/);
+    assert.match(engineFails(dir, ['bogus', 'auth', 'auth-flow']).error, /Usage: engine task <phase\|create\|add\|type\|link\|ready\|start\|done\|close\|list\|show\|init\|fix-attempt\|complete\|analysis-cycle>/);
   });
 });

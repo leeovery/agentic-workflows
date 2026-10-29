@@ -176,10 +176,10 @@ and ellipsis, its word the phase the conversation works in — `Discussing`,
 conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
 spinner draws in, and again after each engine call that moves it (`session
-label`, `session repair`, `boot`, `task start`, `task complete`), never per
-frame. At a work unit's menu or the start menu it keeps Claude Code's word,
-and on the Desktop app a step that names itself (`Creating notes.md`) keeps
-its words.
+label`, `session repair`, `boot`, `task start`, `task done`, `task close`,
+`task complete`), never per frame. At a work unit's menu or the start menu it
+keeps Claude Code's word, and on the Desktop app a step that names itself
+(`Creating notes.md`) keeps its words.
 
 ## What it refuses
 

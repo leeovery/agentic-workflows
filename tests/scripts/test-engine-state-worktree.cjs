@@ -5,9 +5,11 @@
 // the isolated git it runs on (kernel/isolated-git.cjs): the orphan
 // `leeway-state` checked out at `.leeway/` in the main checkout and locked,
 // found from any worktree through the common git directory; the writer lock
-// that keeps concurrent verbs one after the other; the confined commit and
-// its push, a failed push a warning; and every call made with hooks off and
-// the caller's repository environment cleared.
+// that keeps concurrent verbs one after the other; the confined commit — a
+// file given a change committed as it makes it of the branch's own, refused
+// where git cannot read that — and its push, a failed push a warning; the
+// ignore file's added patterns; and every call made with hooks off and the
+// caller's repository environment cleared.
 //
 // Real repositories in temp folders, a bare repository as the remote.
 // ---------------------------------------------------------------------------
@@ -913,6 +915,51 @@ describe('committing state', () => {
       'A\tunit/topics/a/brief.md', 'A\tunit/topics/a/log.md', 'D\tunit/old.md', 'M\tmanifest.json',
     ]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+
+  it('commits a file given a change as it makes it of the branch\'s own — a new one among them, and over what the paths give of it — the working file\'s own changes left uncommitted', () => {
+    const { root } = project();
+    createState(root);
+    write(root, '.gitignore', `${STATE_GITIGNORE}/mine/\n`);
+    write(root, 'unit/state.json', '{"a":1,"mine":true}\n');
+    write(root, 'unit/new.md', 'theirs\n');
+    /** @type {Record<string, string|null>} */
+    const seen = {};
+    /** @param {string} file @param {(held: string|null) => string|null} change */
+    const seeing = (file, change) => (/** @type {string|null} */ held) => { seen[file] = held; return change(held); };
+
+    const out = withStateLock(root, () => commitState(root, ['unit/state.json'], 'state: given', {
+      contents: {
+        '.gitignore': seeing('.gitignore', (held) => `${held}/given/\n`),
+        'unit/state.json': seeing('unit/state.json', () => '{"a":1}\n'),
+        'unit/new.md': seeing('unit/new.md', () => null),
+      },
+    }));
+
+    assert.deepStrictEqual(seen, { '.gitignore': STATE_GITIGNORE, 'unit/state.json': null, 'unit/new.md': null });
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tunit/state.json', 'M\t.gitignore']);
+    assert.deepStrictEqual([git(root, ['show', 'HEAD:unit/state.json']), git(root, ['show', 'HEAD:.gitignore'])], ['{"a":1}\n', `${STATE_GITIGNORE}/given/\n`]);
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), ' M .gitignore\n M unit/state.json\n?? unit/new.md\n');
+  });
+
+  it('refuses a commit where a file it is given a change to cannot be read from the branch, naming it and the commit, committing nothing', () => {
+    const { root } = project();
+    createState(root);
+    const head = git(root, ['rev-parse', 'HEAD']).trim();
+    const object = git(root, ['rev-parse', 'HEAD:.gitignore']).trim();
+    fs.rmSync(path.join(root, '..', '.git', 'objects', object.slice(0, 2), object.slice(2)));
+
+    assert.throws(() => withStateLock(root, () => commitState(root, [], 'state: given', { contents: { '.gitignore': (held) => `${held}/given/\n` } })), {
+      message: new RegExp(`^\\.gitignore could not be read from ${STATE_BRANCH} at ${head} — nothing committed: `),
+    });
+    assert.strictEqual(git(root, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('adds the patterns an ignore file lacks after its lines, its last line ended first where it was not, and nothing where it lacks none', () => {
+    assert.deepStrictEqual(
+      [state.withIgnored('/a/\n', ['/a/', '/b/', '/c/']), state.withIgnored('/a/', ['/b/']), state.withIgnored('', ['/b/']), state.withIgnored('/a/\n/b/\n', ['/b/'])],
+      ['/a/\n/b/\n/c/\n', '/a/\n/b/\n', '/b/\n', null],
+    );
   });
 
   it('commits a deletion already staged in the state worktree, named by its file or by its folder', () => {

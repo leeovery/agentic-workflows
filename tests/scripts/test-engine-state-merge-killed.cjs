@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // A catch-up killed between its steps
 // (workflow-engine/scripts/domain/state-merge-landing.cjs): the landing
-// finished by the next state commit or catch-up, losing nothing.
+// finished by the next state commit or catch-up, losing nothing — a task
+// verb's setting up among them.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
 // on a bare remote and a second clone of it on "another machine", each with
@@ -16,7 +17,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { git, tip, remoteTip } = require('./engine-harness.cjs');
+const { ok, git, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -24,7 +25,9 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, blobId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, ledger, projectManifest, mergeLeftovers, killedAfter } = require('./state-merge-world.cjs');
+const {
+  useWorld, blobId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, ledger, json, projectManifest, mergeLeftovers, killedAfter,
+} = require('./state-merge-world.cjs');
 
 useWorld();
 
@@ -93,6 +96,23 @@ describe('a catch-up killed between its steps', () => {
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
     assert.strictEqual(status(here.root), '');
     assert.deepStrictEqual(mergeLeftovers(here.root), []);
+  });
+
+  it('is finished by a task verb\'s setting up, its setting put onto the manifest the landing brought, so the remote\'s change is kept and goes on to the other machine', () => {
+    const { here, there } = twoMachines({
+      'manifest.json': projectManifest('now'), 'pay/manifest.json': json({ name: 'pay', work_type: 'feature', status: 'in-progress', description: 'x', phases: {} }),
+    });
+    commitUnpushed(here, { 'unit/notes.md': 'here\n' });
+    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
+
+    ok(here.main, ['task', 'ready', 'pay']);
+
+    const held = JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]));
+    assert.deepStrictEqual([held.roadmap.items['a-lifetime-tier'].horizon, held.drivers.task], ['someday', 'tick']);
+    assert.strictEqual(status(here.root), '');
+    assert.strictEqual(catchUpState(there.root).action, 'fast-forwarded');
+    assert.strictEqual(JSON.parse(readFile(there.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'someday');
   });
 
   it('says, finishing the landing, that a file a session changed since may already hold the merged copy it sets beside', () => {

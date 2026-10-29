@@ -42,6 +42,7 @@ const { mailboxDir } = require('./domain/derivations.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
+const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
@@ -231,6 +232,17 @@ ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   sources stale <work-unit> <discussion> [--except <spec-topic>]
+  task phase <work-unit> <N> --title <title>
+  task create <work-unit> <N> --file <path>
+  task add <work-unit> <task> --file <path> --by <orchestrator|person>
+  task type <work-unit> <task> <type>
+  task link <work-unit> <task> --after <task>
+  task ready <work-unit> [<N>]
+  task start <work-unit> <task>
+  task done <work-unit> <task>
+  task close <work-unit> <task> --reason <reason>
+  task list <work-unit> <N>
+  task show <work-unit> <task>
   task init <work-unit> <topic>
   task start <work-unit> <topic> <internal-id>
   task fix-attempt <work-unit> <topic> <internal-id> --findings-file <path>
@@ -1299,10 +1311,16 @@ function runExperiment(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// task — implementation-task bookkeeping: format-blind, manifest-side only.
-// The engine never touches a task backend; the session does the plan surgery,
-// these commands record it. No git commit — the per-task commit is the
-// session's. Each verb answers with its one-line JSON only; the loop's
+// task — the tracker's verbs through the project's task driver
+// (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
+// done, close, list and show, each committing what it wrote to the state
+// branch.
+//
+// Beside them, until the plan's loops go, the implementation-task
+// bookkeeping: format-blind, manifest-side only — init, the three-argument
+// start, fix-attempt, complete and analysis-cycle. The session does the plan
+// surgery and these record it, with no git commit — the per-task commit is
+// the session's. Each verb answers with its one-line JSON only; the loop's
 // brief, result header, and gate sections are fetched by their own `render`
 // calls (task-brief, task-result, task-gate, fix-gate, blocked-tasks,
 // cycle-limit, cycle-gate) at the stage that displays them.
@@ -1315,7 +1333,9 @@ function runTask(call, argv) {
   try {
     const { opts, flags, positional } = parseArgs(rest, ['skipped', 'phase-complete']);
     const [workUnit, topic, internalId] = positional;
-    if (command === 'init' || command === 'analysis-cycle') {
+    if (Object.hasOwn(TASK_VERBS, command) && !(command === 'start' && positional.length === 3)) {
+      respond(call, runTaskVerb(cwd, command, positional, opts));
+    } else if (command === 'init' || command === 'analysis-cycle') {
       if (!workUnit || !topic) throw new Error(`Usage: engine task ${command} <work-unit> <topic>`);
       if (command === 'init') {
         respond(call, initTasks(cwd, workUnit, topic));
@@ -1323,9 +1343,6 @@ function runTask(call, argv) {
         respond(call, analysisCycle(cwd, workUnit, topic));
       }
     } else if (command === 'start') {
-      if (!workUnit || !topic || !internalId) {
-        throw new Error('Usage: engine task start <work-unit> <topic> <internal-id>');
-      }
       const started = startTask(cwd, workUnit, topic, internalId);
       recordTask(cwd, workUnit, topic, internalId);
       respond(call, started);
@@ -1356,7 +1373,7 @@ function runTask(call, argv) {
       clearTask(workUnit, topic, result.internal_id);
       respond(call, result);
     } else {
-      throw new Error('Usage: engine task <init|start|fix-attempt|complete|analysis-cycle> …');
+      throw new Error(`Usage: engine task <${[...Object.keys(TASK_VERBS), 'init', 'fix-attempt', 'complete', 'analysis-cycle'].join('|')}> …`);
     }
   } catch (err) {
     failJson(call, err);

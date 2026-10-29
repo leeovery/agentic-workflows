@@ -13,7 +13,9 @@
 // `session label {wu}` at a work unit's menu, `session label roadmap|baseline`
 // at the project-level places — a place this project lacks is refused before
 // anything is labelled or recorded. Inside implementation, `task start` adds
-// the task in flight and that task's `task complete` takes it off; a
+// the task in flight and that task's `task complete` takes it off; the
+// tracker's `task start` does the same with the unit as the topic, its
+// `task done` and `task close` taking it off (task-verbs.cjs); a
 // re-label of the same implementation keeps it, and any other place leaves
 // none. The gate mod's `conversation executor` adds the agent id of the
 // executor it saw dispatched, only while a task is in flight: it rides with
@@ -41,7 +43,7 @@ const { recordDir } = require('./experiment.cjs');
 const { latestSessionLog } = require('./discovery-session.cjs');
 const { ROADMAP_DIR } = require('./roadmap.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { stepOfInternalId } = require('./tasks.cjs');
+const { stepOfId, shownTask } = require('./task-id.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
@@ -166,8 +168,8 @@ function samePlace(a, b) {
 
 /** The plan step an internal id ends in, `{phase}.{task}`. @param {string} internalId @returns {string|null} */
 function taskStep(internalId) {
-  const step = stepOfInternalId(internalId);
-  return step === null ? null : `${step.phase}.${step.task}`;
+  const step = stepOfId(internalId);
+  return step === null ? null : shownTask(step);
 }
 
 /**
