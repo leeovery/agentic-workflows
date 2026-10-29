@@ -13,7 +13,9 @@
 //   The unit and topic must be live (5.8.17), as a move's destination must,
 //   both before the lock and again under it. The session is the
 //   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
-//   refused.
+//   refused. A raise (raise.cjs), whose answer is a decision, reads and
+//   checks its place and its links as `decide` does before the lock, as it
+//   draws, refused in its own words.
 // - What: the content comes as one JSON object on stdin, the links as flags.
 //   Content never carries a link, nor anything the engine gives. A link names
 //   an entry by a prefix of its id, resolved as git resolves a short hash
@@ -280,9 +282,9 @@ function flagUsage(flag) {
   return flag.required ? shown : `[${shown}]`;
 }
 
-/** @param {string} verb */
-function verbUsage(verb) {
-  return [`ledger ${verb} <work-unit>.<phase>${WRITES[verb].fromTopic ? '.<topic>' : '[.<topic>]'}`, ...WRITES[verb].flags.map(flagUsage)].join(' ');
+/** @param {string} verb @param {string} [said] the command, as its usage names it */
+function verbUsage(verb, said = `ledger ${verb}`) {
+  return [`${said} <work-unit>.<phase>${WRITES[verb].fromTopic ? '.<topic>' : '[.<topic>]'}`, ...WRITES[verb].flags.map(flagUsage)].join(' ');
 }
 
 /** The write verbs' usage, a line each, its content as JSON on stdin. */
@@ -290,15 +292,15 @@ const LEDGER_USAGE = Object.keys(WRITES).map((verb) => `${verbUsage(verb)}   (co
 
 /**
  * A write's argv read: the dot-path it names, and each flag's values by
- * field, in the order given. Refuses a flag the verb does not take, a flag
- * with no value, a flag given more often than it takes, a missing required
- * flag, and anything but one dot-path.
- * @param {string} verb @param {string[]} args
+ * field, in the order given. Refuses, in the words of `said`, the command
+ * asking, a flag the verb does not take, a flag with no value, a flag given
+ * more often than it takes, a missing required flag, and anything but one
+ * dot-path, each with `usage`.
+ * @param {string} verb @param {string[]} args @param {string} said @param {string} usage
  * @returns {{dotpath: string, given: Map<string, string[]>}}
  */
-function readArgs(verb, args) {
+function readArgs(verb, args, said, usage) {
   const { flags } = WRITES[verb];
-  const usage = `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`;
   /** @type {Map<string, string[]>} */
   const given = new Map(flags.map((flag) => [flag.field, []]));
   /** @type {string[]} */
@@ -309,17 +311,17 @@ function readArgs(verb, args) {
       continue;
     }
     const flag = flags.find((f) => flagName(f) === args[i]);
-    if (flag === undefined) throw new Error(`ledger ${verb} takes no ${args[i]} — ${usage}`);
+    if (flag === undefined) throw new Error(`${said} takes no ${args[i]} — ${usage}`);
     const named = args[i + 1];
-    if (named === undefined || named.startsWith('--') || named === '') throw new Error(`ledger ${verb}: ${args[i]} takes ${flag.shown} — ${usage}`);
+    if (named === undefined || named.startsWith('--') || named === '') throw new Error(`${said}: ${args[i]} takes ${flag.shown} — ${usage}`);
     /** @type {string[]} */ (given.get(flag.field)).push(named);
     i += 1;
   }
   if (positional.length !== 1) throw new Error(usage);
   for (const flag of flags) {
     const count = /** @type {string[]} */ (given.get(flag.field)).length;
-    if (flag.required && count === 0) throw new Error(`ledger ${verb} needs ${flagName(flag)} ${flag.shown} — ${usage}`);
-    if (!flag.many && count > 1) throw new Error(`ledger ${verb} takes one ${flagName(flag)} — ${usage}`);
+    if (flag.required && count === 0) throw new Error(`${said} needs ${flagName(flag)} ${flag.shown} — ${usage}`);
+    if (!flag.many && count > 1) throw new Error(`${said} takes one ${flagName(flag)} — ${usage}`);
   }
   return { dotpath: positional[0], given };
 }
@@ -331,42 +333,43 @@ function phasesOf(manifest) {
 }
 
 /**
- * Where a write is made, read from its dot-path. Refuses a path of another
- * shape, a phase that is none, a unit that does not exist, a phase its work
- * type does not have, a topic from the spec on, a topic with no item in the
- * phase, and a unit or topic that is not live.
- * @param {string} cwd @param {string} verb @param {string} dotpath
+ * Where a write is made, read from its dot-path. Refuses, in the words of
+ * `said`, the command asking, a path of another shape, a phase that is none,
+ * a unit that does not exist, a phase its work type does not have, a topic
+ * from the spec on, a topic with no item in the phase, and a unit or topic
+ * that is not live.
+ * @param {string} cwd @param {string} said @param {string} dotpath
  * @returns {Address}
  */
-function addressOf(cwd, verb, dotpath) {
+function addressOf(cwd, said, dotpath) {
   const parts = dotpath.split('.');
   if (parts.length < 2 || parts.length > 3 || parts.some((part) => part === '')) {
-    throw new Error(`ledger ${verb}: "${dotpath}" names no place to write — <work-unit>.<phase>.<topic>, or <work-unit>.<phase> at the unit's level`);
+    throw new Error(`${said}: "${dotpath}" names no place to write — <work-unit>.<phase>.<topic>, or <work-unit>.<phase> at the unit's level`);
   }
   const [unit, phase, topic = null] = parts;
-  if (!VALID_PHASES.includes(phase)) throw new Error(`ledger ${verb}: "${phase}" is no phase — one of ${VALID_PHASES.join(', ')}`);
+  if (!VALID_PHASES.includes(phase)) throw new Error(`${said}: "${phase}" is no phase — one of ${VALID_PHASES.join(', ')}`);
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
-  if (manifest === null) throw new Error(`ledger ${verb}: there is no work unit "${unit}"`);
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   const phases = phasesOf(manifest);
-  if (!phases.includes(phase)) throw new Error(`ledger ${verb}: ${unit} has no ${phase} phase — its work type, ${manifest.work_type}, has ${phases.join(', ')}`);
+  if (!phases.includes(phase)) throw new Error(`${said}: ${unit} has no ${phase} phase — its work type, ${manifest.work_type}, has ${phases.join(', ')}`);
   if (topic !== null && !TOPIC_PHASES.includes(phase)) {
-    throw new Error(`ledger ${verb}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
+    throw new Error(`${said}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
-  if (topic !== null && !hasItem(manifest, phase, topic)) throw new Error(`ledger ${verb}: ${unit} has no topic "${topic}" in ${phase}`);
+  if (topic !== null && !hasItem(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
   const at = { dotpath, root, unit, manifest, phase, topic };
-  checkPlaceLive(verb, at, liveness(root));
+  checkPlaceLive(said, at, liveness(root));
   return at;
 }
 
 /**
- * Refuse a write on a unit or topic that is not live as `live` reads it
- * (5.8.17).
- * @param {string} verb @param {Address} at @param {Liveness} live
+ * Refuse, in the words of `said`, the command asking, a write on a unit or
+ * topic that is not live as `live` reads it (5.8.17).
+ * @param {string} said @param {Address} at @param {Liveness} live
  */
-function checkPlaceLive(verb, at, live) {
+function checkPlaceLive(said, at, live) {
   const dead = live(at.unit, at.topic);
-  if (dead !== null) throw new Error(`ledger ${verb}: ${at.dotpath} takes no writes — ${dead}`);
+  if (dead !== null) throw new Error(`${said}: ${at.dotpath} takes no writes — ${dead}`);
 }
 
 /**
@@ -477,13 +480,14 @@ function staleness(read, id, why, short) {
  * The id a link's prefix names, checked against what the link must name: an
  * entry not current is refused for a link that must be current, saying why
  * and naming the current one, and an entry the link may not name from where
- * the write is made is refused, saying where it stands.
- * @param {string} verb @param {Address} at @param {Flag} flag @param {string} prefix @param {Folded} read
+ * the write is made is refused, saying where it stands — each in the words
+ * of `said`, the command asking.
+ * @param {string} said @param {Address} at @param {Flag} flag @param {string} prefix @param {Folded} read
  * @returns {string}
  */
-function resolveLink(verb, at, flag, prefix, read) {
+function resolveLink(said, at, flag, prefix, read) {
   const { facts } = read;
-  const where = `ledger ${verb} ${flagName(flag)}`;
+  const where = `${said} ${flagName(flag)}`;
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   let id;
   try {
@@ -502,21 +506,30 @@ function resolveLink(verb, at, flag, prefix, read) {
 }
 
 /**
- * Each flag's field as the event holds it: a link's prefixes resolved to
- * ids and checked, and a value as given.
- * @param {Request} request @param {Folded} read
+ * Each of `flags`' fields as the event holds it: a link's prefixes resolved
+ * to ids and checked, in the words of `said`, the command asking, and a
+ * value as given.
+ * @param {string} said @param {Flag[]} flags @param {Address} at @param {Map<string, string[]>} given @param {Folded} read
  * @returns {Linked}
  */
-function resolvedLinks(request, read) {
-  const { verb, write, at, given } = request;
+function linksOf(said, flags, at, given, read) {
   /** @type {Linked} */
   const fields = {};
-  for (const flag of write.flags) {
+  for (const flag of flags) {
     const values = /** @type {string[]} */ (given.get(flag.field));
-    const resolved = flag.names === null ? values : [...new Set(values.map((prefix) => resolveLink(verb, at, flag, prefix, read)))];
+    const resolved = flag.names === null ? values : [...new Set(values.map((prefix) => resolveLink(said, at, flag, prefix, read)))];
     fields[flag.field] = flag.many ? resolved : resolved[0] ?? null;
   }
   return fields;
+}
+
+/**
+ * A request's links as its event holds them (`linksOf`).
+ * @param {Request} request @param {Folded} read
+ * @returns {Linked}
+ */
+function resolvedLinks({ verb, write, at, given }, read) {
+  return linksOf(`ledger ${verb}`, write.flags, at, given, read);
 }
 
 /**
@@ -630,7 +643,7 @@ function readBefore(at, warnings) {
  */
 function replacedEntry(verb, at, given, read) {
   const flag = /** @type {Flag} */ (WRITES[verb].flags.find((f) => f.field === 'replaces'));
-  const id = resolveLink(verb, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
+  const id = resolveLink(`ledger ${verb}`, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
   return /** @type {IdFacts} */ (read.facts.get(id));
 }
 
@@ -698,6 +711,34 @@ function trustEventOf(kind, content, reason, replaced) {
 }
 
 /**
+ * The usage of a command whose argv is a decision's — its place, and the
+ * flags `ledger decide` takes — named `said`.
+ * @param {string} said
+ */
+function decisionUsage(said) {
+  return verbUsage('decide', said);
+}
+
+/**
+ * Where a decision is to be written and the entries its links name, read
+ * and checked as `ledger decide` checks them before the lock, against the
+ * ledger as it stands, and refused in the words of `said`, the command
+ * asking: a raise (raise.cjs), whose answer is that decision. Answers the
+ * place, the links, and the ledger as read.
+ * @param {string} cwd @param {string[]} args @param {string} said @param {string} usage @param {string[]} warnings
+ * @returns {{at: Address, linked: Linked, read: Folded}}
+ */
+function decisionPlaced(cwd, args, said, usage, warnings) {
+  const write = WRITES.decide;
+  const { dotpath, given } = readArgs('decide', args, said, usage);
+  const at = addressOf(cwd, said, dotpath);
+  const read = readNow(at, warnings);
+  const linked = linksOf(said, write.flags, at, given, read);
+  write.checkLinked(linked, read);
+  return { at, linked, read };
+}
+
+/**
  * A write as asked, read whole and checked before the lock: its argv, where
  * it is made, the session, and its content in the shape of the kind it
  * writes, a replacement reading the kind it replaces from the ledger.
@@ -711,8 +752,8 @@ function trustEventOf(kind, content, reason, replaced) {
  */
 function requestOf(cwd, verb, args, stdin, warnings) {
   const write = WRITES[verb];
-  const { dotpath, given } = readArgs(verb, args);
-  const at = addressOf(cwd, verb, dotpath);
+  const { dotpath, given } = readArgs(verb, args, `ledger ${verb}`, `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`);
+  const at = addressOf(cwd, `ledger ${verb}`, dotpath);
   if (write.fromTopic && at.topic === null) {
     throw new Error(TOPIC_PHASES.includes(at.phase)
       ? `ledger ${verb}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
@@ -802,7 +843,7 @@ function ledgerMessage(unit, event, id, topic) {
 function land(cwd, request, warnings) {
   const { verb, at, write, given, logs } = request;
   const read = readNow(at, warnings);
-  checkPlaceLive(verb, at, read.live);
+  checkPlaceLive(`ledger ${verb}`, at, read.live);
   write.checkLive(at, given, read.live);
   const fields = eventOf(request, read);
   const id = newId();
@@ -837,4 +878,4 @@ function writeLedger(cwd, verb, args, stdin) {
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage };
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, decisionUsage, decisionPlaced };

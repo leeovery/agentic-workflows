@@ -10,7 +10,10 @@
 //   session.
 // - When: a decision `ledger decide` writes, and one `ledger replace` writes
 //   in place of a decision, before the writer lock, so no peer waits on the
-//   call.
+//   call; and each row of a raise as it is drawn (raise.cjs), as the decision
+//   it would land as — its answer, and the other rows as what it rules out,
+//   its why not given until the person answers — every row's call put at
+//   once (`judgeDecisionAsync`).
 // - What follows: one rule, and the entry lands checked. Several, and the
 //   write is refused, nothing appended, naming the rules found and the
 //   question, so the writer splits it, each part answering the question the
@@ -48,7 +51,8 @@ const EFFORT = 'high';
 const TIMEOUT_MS = 60000;
 
 /**
- * What the call reads of a decision: its answer, why, and what it rules out.
+ * What the call reads of a decision: its answer, why — null where it is not
+ * given yet — and what it rules out.
  * @param {Record<string, unknown>} content
  * @returns {string}
  */
@@ -56,22 +60,46 @@ function entryText({ text, why, rules_out: rulesOut }) {
   const ruled = /** @type {string[]} */ (rulesOut);
   return [
     `The answer: ${text}`,
-    `Why: ${why}`,
+    why === null ? 'Why: not given' : `Why: ${why}`,
     ruled.length === 0 ? 'What it rules out: nothing named' : `What it rules out:\n${ruled.map((r) => `- ${r}`).join('\n')}`,
   ].join('\n\n');
+}
+
+/** @typedef {{rules: string[]}|{cannot: CannotRun, detail: string}} Judged */
+
+/** The call's question of a decision's content. @param {Record<string, unknown>} content @returns {import('../kernel/claude-call.cjs').Ask} */
+function askOf(content) {
+  return { system: PROMPT, schema: SCHEMA, model: MODEL, effort: EFFORT, input: entryText(content), timeoutMs: TIMEOUT_MS };
+}
+
+/** The rules the call's answer names, or why it cannot run. @param {import('../kernel/claude-call.cjs').Answer} answered @returns {Judged} */
+function rulesOf(answered) {
+  if ('cannot' in answered) return answered;
+  return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules };
 }
 
 /**
  * The rules a decision holds, as the separate call judges them from its own
  * content; or why the call cannot run — a call that throws among them.
  * @param {Record<string, unknown>} content
- * @returns {{rules: string[]}|{cannot: CannotRun, detail: string}}
+ * @returns {Judged}
  */
 function judgeDecision(content) {
   try {
-    const answered = claudeCall.askClaude({ system: PROMPT, schema: SCHEMA, model: MODEL, effort: EFFORT, input: entryText(content), timeoutMs: TIMEOUT_MS });
-    if ('cannot' in answered) return answered;
-    return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules };
+    return rulesOf(claudeCall.askClaude(askOf(content)));
+  } catch (err) {
+    return { cannot: 'failed', detail: messageOf(err) };
+  }
+}
+
+/**
+ * `judgeDecision` answering later, so several decisions are judged at once.
+ * @param {Record<string, unknown>} content
+ * @returns {Promise<Judged>}
+ */
+async function judgeDecisionAsync(content) {
+  try {
+    return rulesOf(await claudeCall.askClaudeAsync(askOf(content)));
   } catch (err) {
     return { cannot: 'failed', detail: messageOf(err) };
   }
@@ -114,4 +142,4 @@ function checkOneDecision(request, named) {
   return { ...request, unchecked: false };
 }
 
-module.exports = { PROMPT, SCHEMA, judgeDecision, checkOneDecision };
+module.exports = { PROMPT, SCHEMA, judgeDecision, judgeDecisionAsync, checkOneDecision };

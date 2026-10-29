@@ -6,15 +6,16 @@
 // `section()` (surfaces.cjs), the command's MENU kept for the calling
 // conversation by the engine's dispatch and a skill's gateway, with the mod
 // announced or not, never for a command that failed, a menu drawn as an
-// illustration, or a command without a session — and `engine gate`, which
-// logs the answer to the trust log by the gate's name (3.2.6, 16.11.9): the
-// row the engine recommended and the row picked, a typed row, or free text;
-// pressed only where the mod's record of its last press names this gate and
-// row after it was shown — whatever the rows mod did with the send's own
-// record — typed otherwise and always with the mod off (6.6.3, 6.6.4); what
-// the row leads to returned and never performed (6.6.2); a rerun after a
-// kill read once; each refusal logging nothing; and the mod's record of a press read as the mod writes
-// it, each literal read off its source.
+// illustration, a raise's menu, or a command without a session — and
+// `engine gate`, which logs the answer to the trust log by the gate's name
+// (3.2.6, 16.11.9): the row the engine recommended and the row picked, a
+// typed row, or free text; pressed only where the mod's record of its last
+// press names this gate and row after it was shown — whatever the rows mod
+// did with the send's own record — typed otherwise and always with the mod
+// off (6.6.3, 6.6.4); what the row leads to returned and never performed
+// (6.6.2); a rerun after a kill read once; each refusal logging nothing, a
+// raise's among them; and the mod's record of a press read as the mod
+// writes it, each literal read off its source.
 //
 // Layer: verb, the gateway's record and the source guard beside it. World:
 // the project from the fixture library, read and never written — a feature
@@ -199,6 +200,15 @@ describe('the gate shown (3.S6)', () => {
     assert.strictEqual(before.gate, 'migration gate');
     assert.strictEqual(replaced.gate, 'github rule gate');
     assert.deepStrictEqual(shown(), replaced);
+  });
+
+  it('a raise is no gate: a MENU declared as a raise\'s is never recorded, announced or not, and the gate shown before it stands (E6)', () => {
+    render(['migration-gate']);
+    const before = shown();
+
+    for (const env of [{}, ANNOUNCED]) showMenu('raise — 3IvpS2ynHKerzBxUBYWrs', IN_SESSION_ROWS, env);
+
+    assert.deepStrictEqual(shown(), before);
   });
 
   it('a command that fails records nothing — the gate it composed before it failed was never shown, and the gate shown stands to be answered', () => {
@@ -445,6 +455,16 @@ describe('gate — refusals, logging nothing', () => {
     assert.strictEqual(refused(['migration gate', '--pick', 'n']), 'gate: "migration gate" has no row n to pick — its rows: y');
     assert.strictEqual(refused(['migration gate', '--pick', 'ask']), 'gate: "migration gate" has no row ask to pick — its rows: y — ask is typed: --typed ask');
     assert.strictEqual(refused(['migration gate', '--typed', 'y']), 'gate: "migration gate" has no typed row y — its typed rows: ask');
+    assert.deepStrictEqual([events(), shown()], [[], record]);
+  });
+
+  it('a raise, by its menu or its name: a raise is no gate, and is answered by raise answer', () => {
+    render(['migration-gate']);
+    const record = shown();
+
+    for (const name of ['raise — 3IvpS2ynHKerzBxUBYWrs', 'raise']) {
+      assert.strictEqual(refused([name, '--pick', '1']), 'gate: a raise is no gate — answer it with raise answer <id>', name);
+    }
     assert.deepStrictEqual([events(), shown()], [[], record]);
   });
 

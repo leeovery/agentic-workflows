@@ -17,7 +17,9 @@
 // each conversation's file of events waiting for it and that file's lock;
 // each conversation's two files a gate event is built from, the gate shown
 // and the gate mod's last press, which the mod writes by no tool of
-// Claude's (gate.cjs); the settings file and the record of the person; and
+// Claude's (gate.cjs); each conversation's sealed raises, which hold
+// Claude's lean before the person answers (raise.cjs); the settings file and
+// the record of the person; and
 // in each project folder of Claude Code's projects directory, the files of
 // its own the trust log reads the model from (conversation.cjs): a conversation's transcript,
 // and a subagent's transcript and its record. Those it judges by the names
@@ -47,7 +49,7 @@ const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { TRUST_LOG, PENDING } = require('./trust-log.cjs');
-const { SHOWN, PRESSED } = require('./gate.cjs');
+const { SHOWN, PRESSED, RAISE_SHOWN } = require('./gate.cjs');
 const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
@@ -80,6 +82,7 @@ function userFiles() {
     conversationFile(`${PENDING}.lock`, 'the lock on a conversation\'s events waiting for the trust log'),
     conversationFile(SHOWN, 'the record of the gate a conversation was shown'),
     conversationFile(PRESSED, 'the gate mod\'s record of a conversation\'s last press'),
+    conversationFile(RAISE_SHOWN, 'a conversation\'s sealed raises'),
     configFile(path.basename(systemConfigPath()), 'the settings file'),
     configFile('person.md', 'the record of the person'),
   ];

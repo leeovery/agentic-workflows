@@ -39,6 +39,12 @@
 //                  `gate` answers against (gate.cjs); made where the folder
 //                  is unmarked too, so a gate before the project has state
 //                  is answered like any other
+//   raise-shown.json
+//                  each raise the conversation was drawn, sealed by its id
+//                  before the person answers: Claude's call with its lean,
+//                  where it was raised and the question it answers, and its
+//                  answer once given — what `raise show` draws again
+//                  (raise.cjs)
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press, or a handoff's
 //                  continuation with its line (the mod's; the rows mod

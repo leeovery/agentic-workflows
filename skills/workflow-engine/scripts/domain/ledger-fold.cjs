@@ -692,6 +692,17 @@ function answersOf(folded, question) {
 const SHOWN_IN = new WeakMap();
 
 /**
+ * Where a current question stands on its own topic's map: merged, answered,
+ * or open.
+ * @param {Folded} folded @param {string} question
+ * @returns {'open'|'answered'|'merged'}
+ */
+function questionStands(folded, question) {
+  if (mergedAnswer(folded, question).length > 0) return 'merged';
+  return answersOf(folded, question).length > 0 ? 'answered' : 'open';
+}
+
+/**
  * Every place an entry shows in (5.8.19): those it is placed in, and, for
  * an answer, where each current question it answers stands, on whose map it
  * shows as that question's answer; none while it is not current. Worked out
@@ -765,7 +776,7 @@ function standingRow(folded, id, unit) {
   const parts = factsOf(folded, factsOf(folded, id).root).parts.filter((part) => isCurrent(folded, part));
   return {
     id,
-    stands: mergedAnswer(folded, id).length > 0 ? 'merged' : answers.length > 0 ? 'answered' : 'open',
+    stands: questionStands(folded, id),
     moved_from: from === null || folded.live(unit, from) !== null ? null : from,
     moved_to: null,
     stands_in: null,
@@ -963,5 +974,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  foldedBeneath, wordingOf, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
+  foldedBeneath, wordingOf, answersOf, questionStands, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

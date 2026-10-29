@@ -21,9 +21,14 @@
 //   environment's names — each name's value null but for the names
 //   CLAUDE_STUB_LOG_VALUES lists, comma-separated, so no login the
 //   environment holds is written down unasked.
+// - CLAUDE_STUB_MEET, `<n>:<folder>`, holds each call at a barrier: it
+//   leaves a mark in the folder and answers once the folder holds n marks,
+//   so n calls made at once all answer. A call still waiting after 5 s
+//   answers as an outage does: calls made one after another fail.
 //
 
 const fs = require('fs');
+const path = require('path');
 
 const input = fs.readFileSync(0, 'utf8');
 
@@ -60,6 +65,21 @@ const FAILURES = {
   },
 };
 
-const answer = answerFor();
+/** Whether this call met the others the barrier waits for; true where none is set. */
+function met() {
+  const meet = process.env.CLAUDE_STUB_MEET;
+  if (!meet) return true;
+  const at = meet.indexOf(':');
+  const [count, folder] = [Number(meet.slice(0, at)), meet.slice(at + 1)];
+  fs.writeFileSync(path.join(folder, String(process.pid)), '');
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  for (let waited = 0; waited < 5000; waited += 10) {
+    if (fs.readdirSync(folder).length >= count) return true;
+    Atomics.wait(nap, 0, 0, 10);
+  }
+  return false;
+}
+
+const answer = met() ? answerFor() : 'failed';
 if (typeof answer === 'string') FAILURES[/** @type {keyof typeof FAILURES} */ (answer)]();
 else result({ subtype: 'success', is_error: false, result: '', structured_output: answer, total_cost_usd: 0.01 }, 0);

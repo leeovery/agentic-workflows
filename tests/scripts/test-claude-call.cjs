@@ -8,7 +8,8 @@
 // the workflows' and Leeway's own variables, the login's kept; the question
 // on stdin; the answer where it fits the schema, and each way it cannot run
 // — no login, a rate limit, a timeout, an answer that does not fit, a
-// binary that will not start.
+// binary that will not start. The form answering later puts the same call,
+// gives the same answers, and runs beside the calls put with it.
 //
 // Driven through the suite's stub binary (claude-stub.cjs), which records
 // what each call handed it.
@@ -22,7 +23,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { askClaude } = require('../../skills/workflow-engine/scripts/kernel/claude-call.cjs');
+const { askClaude, askClaudeAsync } = require('../../skills/workflow-engine/scripts/kernel/claude-call.cjs');
 
 const STUB = path.join(__dirname, 'claude-stub.cjs');
 const SYSTEM = 'Answer whether the row is about the session.\n\nOne line.';
@@ -33,6 +34,9 @@ const SCHEMA = Object.freeze({
   additionalProperties: false,
 });
 const ANSWER = Object.freeze({ rows: [{ id: 'r1', process: true }] });
+// A call past its time is killed well within this, or the test fails rather
+// than waiting on the stub's 10-minute wait.
+const KILLED_WITHIN_MS = 10000;
 const ASK = Object.freeze({ system: SYSTEM, schema: SCHEMA, model: 'sonnet', effort: 'high', input: 'row r1: shall I commit?', timeoutMs: 20000 });
 
 /** @type {string} */
@@ -184,7 +188,7 @@ describe('the call\'s answer', () => {
     assert.deepStrictEqual(askClaude(ASK), { cannot: 'rate-limit', detail: 'API Error: Request rejected (429) · rate limited' });
   });
 
-  it('cannot run past its time: the call is killed outright — one deaf to SIGTERM too — and no answer stands', () => {
+  it('cannot run past its time: the call is killed outright — one deaf to SIGTERM too — and no answer stands', { timeout: KILLED_WITHIN_MS }, () => {
     arm({ '': 'timeout' });
     const started = Date.now();
 
@@ -268,5 +272,47 @@ describe('the call\'s answer', () => {
 
     assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
     assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*ENOENT/);
+  });
+});
+
+describe('the call answering later', () => {
+  it('puts the call the waiting form puts — its command line, the question on stdin alone, a fresh empty folder gone after — and gives the answer it gives', async () => {
+    arm({ '': ANSWER });
+
+    const later = await askClaudeAsync(ASK);
+    const now = askClaude(ASK);
+
+    const [putLater, putNow] = calls();
+    assert.deepStrictEqual([later, putLater.argv, putLater.input, putLater.held], [now, putNow.argv, putNow.input, []]);
+    assert.strictEqual(path.dirname(putLater.cwd), fs.realpathSync(os.tmpdir()));
+    assert.ok(!fs.existsSync(putLater.cwd), 'the call left its folder behind');
+  });
+
+  it('calls put together run at once: each meets the other before either answers', async () => {
+    const meet = path.join(scratch, 'meet');
+    fs.mkdirSync(meet);
+    arm({ '': ANSWER });
+    setEnv({ CLAUDE_STUB_MEET: `2:${meet}` });
+
+    assert.deepStrictEqual(await Promise.all([askClaudeAsync(ASK), askClaudeAsync(ASK)]), [{ answer: ANSWER, cost: 0.01 }, { answer: ANSWER, cost: 0.01 }]);
+  });
+
+  it('cannot run past its time, killed outright — one deaf to SIGTERM too — nor where the binary will not start, as the waiting form cannot', { timeout: KILLED_WITHIN_MS }, async () => {
+    arm({ '': 'timeout' });
+    const started = Date.now();
+    assert.deepStrictEqual(await askClaudeAsync({ ...ASK, timeoutMs: 400 }), { cannot: 'timeout', detail: 'no answer within 0.4 s' });
+    assert.ok(Date.now() - started < 5000, 'the call outlived its time');
+
+    setEnv({ LEEWAY_CLAUDE: path.join(scratch, 'no-such-claude') });
+    const answer = await askClaudeAsync(ASK);
+    assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /no-such-claude did not run: .*ENOENT/);
+  });
+
+  it('refuses a schema an answer cannot be checked against, before any call', async () => {
+    arm({ '': ANSWER });
+
+    await assert.rejects(askClaudeAsync({ ...ASK, schema: { ...SCHEMA, pattern: '^r' } }), /the call's schema uses pattern, which the engine cannot check an answer against/);
+    assert.deepStrictEqual(calls(), []);
   });
 });

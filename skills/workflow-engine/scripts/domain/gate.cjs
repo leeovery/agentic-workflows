@@ -39,6 +39,10 @@
 //   typed: with the mod off, every answer.
 // - The recommended row is the engine's own, from the record, never the
 //   caller's word.
+// - A raise is no gate (16.9, raise.cjs). Its MENU is declared `raise — <id>`,
+//   and the one rule on that name keeps it out: it is never recorded as the
+//   gate shown, and `gate` refuses it, naming `raise answer`. Drawing one
+//   clears the gate shown, so only one shows at a time (6.6.10).
 // - `gate` refuses, logging nothing, with no session, no gate shown,
 //   another gate's name, a key the gate lacks, and a gate already
 //   answered. It writes no state: the trust log under the trust log's lock
@@ -73,13 +77,26 @@ const { record } = require('./trust-log.cjs');
 /** @typedef {{pick: string} | {typed: string|null}} Answer */
 
 const SHOWN = 'gate-shown.json';
+// The raises a conversation was drawn, sealed (raise.cjs).
+const RAISE_SHOWN = 'raise-shown.json';
 // The gate mod's record of its last press (conversation.cjs).
 const PRESSED = 'pressed.json';
 const ENTRY_SEPARATOR = ' — ';
+const RAISE = 'raise';
 
 /** The gate a MENU declares, by its name: what comes before its first ` — `. @param {string} declared */
 function nameOf(declared) {
   return declared.split(ENTRY_SEPARATOR)[0];
+}
+
+/** Whether a declared menu is a raise's, which is no gate. @param {string} declared */
+function isRaise(declared) {
+  return nameOf(declared) === RAISE;
+}
+
+/** The menu a raise is declared as, by its id. @param {string} id */
+function raiseMenu(id) {
+  return `${RAISE}${ENTRY_SEPARATOR}${id}`;
 }
 
 /** A typed row's key: its label's words, lowercase, joined by hyphens. @param {string} label */
@@ -99,7 +116,7 @@ function shownFile(session) {
 function recordGateShown() {
   const shown = gateShown();
   const session = handedSession();
-  if (shown === null || session === null) return;
+  if (shown === null || session === null || isRaise(shown.gate)) return;
   /** @type {ShownRecord} */
   const kept = {
     gate: nameOf(shown.gate),
@@ -114,6 +131,11 @@ function recordGateShown() {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     writeJsonAtomic(file, kept);
   } catch { /* the command stands without it */ }
+}
+
+/** Forget the gate the conversation `session` was shown. @param {string} session */
+function clearGateShown(session) {
+  fs.rmSync(shownFile(session), { force: true });
 }
 
 /** A JSON file's value; null where it is missing or no JSON. @param {string} file @returns {unknown} */
@@ -165,6 +187,7 @@ function isPressed(session, shown, row) {
  */
 function answerGate(cwd, named, answer) {
   const name = nameOf(named);
+  if (isRaise(name)) throw new Error('gate: a raise is no gate — answer it with raise answer <id>');
   const session = handedSession();
   if (session === null) throw new Error('gate: no conversation to answer in — Claude Code hands every command it runs a session id, and this one has none');
   const file = shownFile(session);
@@ -185,4 +208,4 @@ function answerGate(cwd, named, answer) {
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, recordGateShown, answerGate };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown };
