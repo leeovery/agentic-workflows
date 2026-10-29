@@ -39,7 +39,8 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { ROLES, templateOf, storeBrief, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
+const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
+const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));

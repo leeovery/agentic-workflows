@@ -580,4 +580,4 @@ function readProjectEvents(root, visit) {
   }, ({ entry }) => holds(entry));
 }
 
-module.exports = { TRUST_LOG, PENDING, trustLogPath, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readProjectEvents };
+module.exports = { TRUST_LOG, PENDING, trustLogPath, projectOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readProjectEvents };

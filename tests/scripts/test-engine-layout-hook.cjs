@@ -12,7 +12,9 @@
 // the trust log — the log, its lock, each conversation's file of events
 // waiting for it and that file's lock — the settings file and the record of
 // the person in the system config directory, from anywhere, folders named
-// with no letters among them (16.13.2); refuses a write to the files of
+// with no letters among them (16.13.2); refuses a write to any file in a
+// conversation's briefs, and to the brief hook's refusals (6.5.12);
+// refuses a write to the files of
 // Claude Code's own the trust log reads the model from — a conversation's
 // transcript, a subagent's transcript and its record (16.4.4). Those are
 // judged by the names the target is written with below the nearest folder
@@ -208,6 +210,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     'conversations/0001-0002/gate-shown.json': 'the record of the gate a conversation was shown',
     'conversations/0001-0002/pressed.json': 'the gate mod\'s record of a conversation\'s last press',
     'conversations/0001-0002/raise-shown.json': 'a conversation\'s sealed raises',
+    'brief-refusals.jsonl': 'the brief hook\'s refusals',
     'config.json': 'the settings file',
     'person.md': 'the record of the person',
   });
@@ -302,8 +305,28 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     assert.deepStrictEqual(listed(), before, 'nothing made under /Users');
   });
 
+  it('every file in a conversation\'s briefs, at any depth there, is refused — Write and Edit, by a relative path, through `..`, through a link to the conversations folder, in another case where the filesystem ignores case — and a name beside them, or a briefs folder anywhere else, passes', () => {
+    const briefs = path.join(config, 'conversations', 'sess-1', 'briefs');
+    fs.mkdirSync(briefs, { recursive: true });
+    const reason = (/** @type {string} */ name) => `a brief a conversation issued (${name}) changes only through the engine's commands`;
+    const elsewhere = outside('briefs-link');
+    fs.symlinkSync(path.join(config, 'conversations'), path.join(elsewhere, 'conversations'));
+
+    for (const name of ['b1.md', 'b1.json']) {
+      for (const tool of ['Write', 'Edit']) assertRefused(guard(dir, path.join(briefs, name), { ...inConfig, tool }), `${name} ${tool}`, reason(name));
+      assertRefused(guard(briefs, name, inConfig), `${name} relative`, reason(name));
+      assertRefused(guard(dir, `${briefs}/../../sess-2/briefs/${name}`, inConfig), `${name} through ..`, reason(name));
+      assertRefused(guard(dir, path.join(elsewhere, 'conversations', 'sess-1', 'briefs', name), inConfig), `${name} through a link to the conversations folder`, reason(name));
+      assertRefusedInAnotherCase(guard(dir, path.join(config, 'conversations', 'sess-1', 'BRIEFS', name), inConfig), `${name} in another case`, reason(name));
+    }
+    assertRefused(guard(dir, path.join(briefs, 'deeper', 'b2.md'), inConfig), 'a file deeper in briefs/', reason('b2.md'));
+    for (const at of [path.join(config, 'conversations', 'sess-1', 'briefs.md'), path.join(config, 'conversations', 'briefs', 'b1.md'), path.join(config, 'briefs', 'b1.md'), path.join(root, 'briefs', 'b1.md'), path.join(dir, 'briefs', 'b1.md')]) {
+      assertAllowed(guard(dir, at, inConfig), at);
+    }
+  });
+
   it('the rest of the system config directory passes, and so does a file of the same name anywhere else', () => {
-    for (const rel of ['credentials.json', 'conversations/sess-1/position.json', 'brief-refusals.jsonl', 'nested/trust.jsonl', 'conversations/trust-pending.jsonl', 'conversations/sess-1/nested/trust-pending.jsonl']) {
+    for (const rel of ['credentials.json', 'conversations/sess-1/position.json', 'nested/trust.jsonl', 'conversations/trust-pending.jsonl', 'conversations/sess-1/nested/trust-pending.jsonl']) {
       assertAllowed(guard(dir, path.join(config, rel), inConfig), rel);
     }
     for (const name of Object.keys(USER_FILES)) {
