@@ -26,6 +26,7 @@ const REAL_MIGRATE = path.join(
   __dirname,
   '../../skills/workflow-migrate/scripts/migrate.cjs'
 );
+const { LAST_CODE_TREE_MIGRATION } = require(REAL_MIGRATE);
 
 // Stock /bin/bash is 3.2.57 on macOS — the whole point of the .sh path being
 // bash-3.2-safe. Pin it explicitly where the .sh execution path is under test.
@@ -112,7 +113,7 @@ describe('migrate.cjs — real fleet', () => {
     assert.ok(runReport(res.stdout).ran > 0, 'the fleet ran against the code tree\'s state');
   });
 
-  it('leaves a project with no state in its code tree untouched, recording the fleet unrun', () => {
+  it('leaves a project with no state in its code tree untouched, recording the code-tree fleet unrun', () => {
     const project = tmp('mig-orch-none-');
     const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
@@ -122,7 +123,8 @@ describe('migrate.cjs — real fleet', () => {
     const ids = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations'))
       .map((name) => (name.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
     assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), ids, 'every migration recorded');
-    assert.deepStrictEqual(runReport(res.stdout), { ran: 0 });
+    // The code-tree fleet is recorded unrun; the migrations past it run and find nothing to do.
+    assert.deepStrictEqual(runReport(res.stdout), { ran: ids.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION).length });
   });
 
   it('is idempotent — a second run reports no changes', () => {

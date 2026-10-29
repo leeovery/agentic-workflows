@@ -326,8 +326,12 @@ function main() {
   process.stdout.write(JSON.stringify({ ran: migrationsRun }) + '\n');
 }
 
-try {
-  main();
-} catch (err) {
-  fail(`migration run failed: ${err instanceof Error ? (err.stack || err.message) : String(err)}`, 1);
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    fail(`migration run failed: ${err instanceof Error ? (err.stack || err.message) : String(err)}`, 1);
+  }
 }
+
+module.exports = { LAST_CODE_TREE_MIGRATION };
