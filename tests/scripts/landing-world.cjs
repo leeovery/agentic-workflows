@@ -15,8 +15,9 @@
 // person's changes it. The nested world (`buildNested`) is the project with
 // a repository of its own nested in its folder twice — a submodule and a
 // clone — and tasks touching one, some or all of them (`NESTED`). A suite
-// takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`),
-// reads a verb's answer for the project's own repository (`own`), checks a
+// takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`) —
+// a nested conformance suite through its driver's side (`nestedConformance`)
+// — reads a verb's answer for the project's own repository (`own`), checks a
 // refusal moved nothing in the repository (`refusedMoving`), and follows
 // the remedy it names (`followRemedy`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
@@ -296,6 +297,53 @@ function useNestedWorld(prefix, ready = () => {}) {
   return () => {
     const dir = path.join(copy(), NESTED_PROJECT);
     return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
+  };
+}
+
+/**
+ * A landing driver's side of the conformance suites (tests/drivers/{name}/landing.cjs).
+ * @typedef {{
+ *   env: Record<string, string|undefined>, prepare: (dir: string) => void, nest: (dir: string, into: string) => void, on: (dir: string) => string,
+ *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
+ *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
+ * }} DriverSide
+ */
+
+/**
+ * What a nested conformance suite reads a driver by: its side; the verbs
+ * under the side's environment; a copy of the nested world readied for it
+ * at each call, built once per process (`useNestedWorld`); each
+ * repository's checkout and default branch, by the name an answer gives it;
+ * the tasks each default branch gained; and where the project's default
+ * branch points the submodule.
+ * @param {string} name the driver's
+ * @param {string} prefix the copies' temp-directory prefix
+ */
+function nestedConformance(name, prefix) {
+  /** @type {DriverSide} */
+  const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
+  const env = (/** @type {Record<string, string>} */ more) => ({ env: { ...side.env, ...more } });
+  const project = useNestedWorld(prefix, (dir) => {
+    side.prepare(dir);
+    for (const { folder, into } of Object.values(NESTED)) side.nest(path.join(dir, folder), into);
+  });
+  /** @param {Nested} at @returns {Record<string, [string, string]>} */
+  const repos = (at) => ({ '.': [at.dir, 'main'], ext: [at.ext, NESTED.ext.into], lib: [at.lib, NESTED.lib.into] });
+  /** @param {Nested} at */
+  const pointer = (at) => git(side.on(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
+  return {
+    side,
+    project,
+    repos,
+    pointer,
+    /** A verb that must go through. @param {string} at @param {string[]} args */
+    ok: (at, args) => ok(at, args, env({})),
+    /** A verb that must refuse, its refusal. @param {string} at @param {string[]} args @param {Record<string, string>} [more] */
+    refuses: (at, args, more = {}) => refuses(at, args, env(more)).error,
+    /** The tasks each repository's default branch gained, oldest first. @param {Nested} at */
+    tasksLanded: (at) => Object.fromEntries(Object.entries(repos(at)).map(([repo, [dir, into]]) => [repo, side.landed(dir, into).map(({ task }) => task)])),
+    /** Whether the project's default branch points the submodule at its default branch's tip. @param {Nested} at */
+    pointsAtSubmodule: (at) => pointer(at) === side.defaultTip(at.ext, NESTED.ext.into),
   };
 }
 
@@ -759,7 +807,7 @@ function pathsOn(dir, branch) {
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld, nestedConformance,
   refusedMoving, commandsOf, followRemedy,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };
