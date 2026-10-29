@@ -36,7 +36,8 @@
 //   command and its record of the last press, `pressed.json`, names this
 //   gate and this row, sent after the gate was shown — so a press that
 //   answered an earlier showing never counts again. Anything else was
-//   typed: with the mod off, every answer.
+//   typed: with the mod off, every answer. A raise's answer is read the
+//   same way, by the menu it is declared as (raise.cjs).
 // - The recommended row is the engine's own, from the record, never the
 //   caller's word.
 // - A raise is no gate (16.9, raise.cjs). Its MENU is declared `raise — <id>`,
@@ -167,15 +168,26 @@ function rowAnswered(shown, answer) {
 }
 
 /**
- * Whether the person pressed `row` on the gate `shown`: the mod announced
- * itself, and its last press was that row of this gate, after it was shown.
- * @param {string} session @param {ShownRecord} shown @param {ShownOption} row
+ * Whether the person pressed `answer` on a menu shown at `shownAt`: the mod
+ * announced itself, and its last press sent that answer from a menu
+ * `declared` accepts, after it was shown — a gate by its name, a raise by
+ * the menu it is declared as.
+ * @param {string} session @param {(declared: string) => boolean} declared @param {string} answer @param {string} shownAt
  */
-function isPressed(session, shown, row) {
+function isPressed(session, declared, answer, shownAt) {
   if (!gateSurfaceAnnounced()) return false;
   const pressed = readJson(path.join(conversationDir(session), PRESSED));
-  return isObject(pressed) && typeof pressed.gate === 'string' && nameOf(pressed.gate) === shown.gate
-    && pressed.answer === (row.word ?? row.key) && typeof pressed.at === 'string' && Date.parse(pressed.at) > Date.parse(shown.at);
+  return isObject(pressed) && typeof pressed.gate === 'string' && declared(pressed.gate)
+    && pressed.answer === answer && typeof pressed.at === 'string' && Date.parse(pressed.at) > Date.parse(shownAt);
+}
+
+/**
+ * Whether the person pressed `row` on the gate `shown`: a press of this
+ * gate, by its name, sending the row's word, or its key where it has none.
+ * @param {string} session @param {ShownRecord} shown @param {ShownOption} row
+ */
+function pressedOnGate(session, shown, row) {
+  return isPressed(session, (declared) => nameOf(declared) === shown.gate, row.word ?? row.key, shown.at);
 }
 
 /**
@@ -197,7 +209,7 @@ function answerGate(cwd, named, answer) {
   if (shown.gate !== name) throw new Error(`gate: the gate shown is "${shown.gate}", not "${name}"`);
   if (shown.answered !== null) throw new Error(`gate: "${name}" is answered — render it again to answer it again`);
   const row = rowAnswered(shown, answer);
-  const via = 'pick' in answer && isPressed(session, shown, /** @type {ShownOption} */ (row)) ? 'pressed' : 'typed';
+  const via = 'pick' in answer && pressedOnGate(session, shown, /** @type {ShownOption} */ (row)) ? 'pressed' : 'typed';
   const recommended = shown.options.find((o) => o.recommended)?.key ?? null;
   const picked = row?.key ?? null;
   /** @type {string[]} */
@@ -208,4 +220,4 @@ function answerGate(cwd, named, answer) {
   return { gate: name, picked, recommended, via, next: row?.next ?? null, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown };
+module.exports = { SHOWN, PRESSED, RAISE_SHOWN, recordGateShown, answerGate, raiseMenu, clearGateShown, isPressed };

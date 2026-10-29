@@ -15,7 +15,10 @@
 //   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
 //   refused. A raise (raise.cjs), whose answer is a decision, reads and
 //   checks its place and its links as `decide` does before the lock, as it
-//   draws, refused in its own words.
+//   draws, refused in its own words; and the decision it lands — the
+//   person's answer, or Claude's call the decision point lets proceed — is
+//   `decide`'s, its place read again and its links checked under the same
+//   lock, beside the raise's own check of them, in the raise's words.
 // - What: the content comes as one JSON object on stdin, the links as flags.
 //   Content never carries a link, nor anything the engine gives. A link names
 //   an entry by a prefix of its id, resolved as git resolves a short hash
@@ -47,8 +50,9 @@
 //   (5.3.8); who moved whom is what the departure rule allows
 //   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
 //   lean on an entry Claude made, and on the person's replacement of a
-//   decision carrying no sealed answer of Claude's, what its reason and the
-//   entry it replaces allow.
+//   decision, what its reason and the entry it replaces allow. The person's
+//   entry carries no sealed answer of Claude's: their answer to Claude's
+//   lean is a raise's, which sealed the lean before they answered.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -58,15 +62,19 @@
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
 //   being unchecked, where the one-decision check could not judge it
-//   (ledger-one-decision.cjs).
+//   (ledger-one-decision.cjs) — a raise's always, its draw having judged
+//   its rows without the why, so the late check judges it whole
+//   (ledger-late-check.cjs).
 // - What the trust log is told (16.13.3, 16.13.4): Claude's answer — its
 //   decision, or its replacement of a decision, the person's among them
 //   (5.8.19) — logs a call, naming the entry, its kind, label and sort left
 //   for the labeller and the decision point to fill; the person's
 //   replacement the departure rule holds standing over a lean the entry it
 //   replaces held logs a reversal, naming the entry it reverses (16.12.1,
-//   ledger-verdicts.cjs). Any other write logs nothing. The event is built
-//   in the command that writes its entry, under the writer lock, and kept
+//   ledger-verdicts.cjs). Any other write logs nothing. A raise's decision
+//   logs the event the raise gives it: a raise answered, or a call carrying
+//   the decision point's sort. The event is built in the command that
+//   writes its entry, under the writer lock, and kept
 //   waiting in the conversation ahead of its entry before the ledger's
 //   append, so what refuses it writes nothing, a project manifest holding
 //   no project_id among it; it lands after the ledger's append and before
@@ -75,7 +83,11 @@
 //   waiting on. A command killed between the two leaves it waiting for the
 //   conversation's next record or a boot, which lands it once the entry is
 //   in the ledger, and lets it go where the entry never came, so it is
-//   neither lost nor doubled (trust-log.cjs).
+//   neither lost nor doubled (trust-log.cjs). A raise's decision lands as
+//   the id its raise minted, so its rerun after a kill past the append finds
+//   the ledger holding it, appends and logs nothing again, and finishes what
+//   the kill left: the event kept ahead of the entry landed, the ledger
+//   committed.
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -173,14 +185,42 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
  */
 
 /**
- * A write as asked, read whole and checked before the lock: the verb, where
- * it is made, the session, each flag's values by field, the kind of entry it
- * writes — null for an event that is no entry — its content, checked in
- * that kind's shape, and, for a decision, whether it lands unchecked: true
- * until the one-decision check finds it holds one rule; the trust log's
- * event it logs, or null; and the ledger as it stood before the lock,
- * folded the first time a step reads it.
- * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, logs: TrustEvent|null, before: () => Folded}} Request
+ * The trust log's event a write logs, built from the entry it is about to
+ * append, its id minted: the event's type and its own fields.
+ * @typedef {(entry: Record<string, unknown>) => {type: string, fields: Record<string, unknown>}} Logs
+ */
+
+/**
+ * A write as asked, read whole and checked before the lock: the verb, the
+ * command asking, as its refusals name it, where it is made, the session,
+ * each flag's values by field, the kind of entry it writes — null for an
+ * event that is no entry — its content, checked in that kind's shape, and,
+ * for a decision, whether it lands unchecked: true until the one-decision
+ * check finds it holds one rule; the id it lands as, minted by its raise,
+ * or null for one minted under the lock; what it checks of its links under
+ * the lock beside its verb's own checks; the trust log's event it logs, or
+ * null; and the ledger as it stood before the lock, folded the first time a
+ * step reads it.
+ * @typedef {{verb: string, said: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, id: string|null, checkLinked: Write['checkLinked'], logs: Logs|null, before: () => Folded}} Request
+ */
+
+/**
+ * A write landed: the entry's short id, the commit, a note where the commit
+ * is pending, and any warnings.
+ * @typedef {{id: string, committed: string|null, note?: string, warnings?: string[]}} Landed
+ */
+
+/** Where a raise was drawn: its unit, its phase, and its topic, or null at the unit's level. @typedef {{unit: string, phase: string, topic: string|null}} Place */
+
+/**
+ * A decision a raise lands (raise.cjs) — the person's answer to it, or
+ * Claude's call the decision point lets proceed: the command asking, as its
+ * refusals name it; where the raise was drawn; the question it answers and
+ * the entries it relies on, by id; the entry's content; the id it lands as,
+ * minted at the draw, or null for one minted under the lock; the trust
+ * log's event it logs; and what it checks of its links under the lock
+ * beside `ledger decide`'s own checks.
+ * @typedef {{said: string, place: Place, answers: string, relies_on: string[], content: Record<string, unknown>, id: string|null, logs: Logs, checkLinked: Write['checkLinked']}} Raised
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -528,8 +568,8 @@ function linksOf(said, flags, at, given, read) {
  * @param {Request} request @param {Folded} read
  * @returns {Linked}
  */
-function resolvedLinks({ verb, write, at, given }, read) {
-  return linksOf(`ledger ${verb}`, write.flags, at, given, read);
+function resolvedLinks({ said, write, at, given }, read) {
+  return linksOf(said, write.flags, at, given, read);
 }
 
 /**
@@ -651,33 +691,33 @@ function replacedEntry(verb, at, given, read) {
  * The content the write's event holds, from what stdin gave: for a
  * replacement in the shape of the entry it replaces, each field typed as its
  * schema names, one left out taking its default — for a replacement's
- * product-wide mark, the replaced entry's. Refuses a link, a field the
- * engine gives, a field the event does not hold, and a field it needs that
- * is missing.
- * @param {string} verb @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced
+ * product-wide mark, the replaced entry's. Refuses, in the words of
+ * `said`, the command asking, a link, a field the engine gives, a field the
+ * event does not hold, and a field it needs that is missing.
+ * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced
  * @returns {Record<string, unknown>}
  */
-function contentFields(verb, write, given, replaced) {
+function contentFields(said, write, given, replaced) {
   const fields = eventFields(write.event, replaced === null ? null : replaced.kind).filter((f) => !FLAG_FIELDS.has(f.name) && !ENGINE_FIELDS.has(f.name));
   const defaults = replaced === null || replaced.product_wide === null ? DEFAULTS : { ...DEFAULTS, product_wide: replaced.product_wide };
   for (const key of Object.keys(given)) {
     if (FLAG_FIELDS.has(key)) {
       const flag = write.flags.find((f) => f.field === key);
-      throw new Error(`ledger ${verb}: the content carries ${key}, a link — a link is given as a flag${flag ? ` (${flagName(flag)})` : ''}, never in the content`);
+      throw new Error(`${said}: the content carries ${key}, a link — a link is given as a flag${flag ? ` (${flagName(flag)})` : ''}, never in the content`);
     }
-    if (ENGINE_FIELDS.has(key)) throw new Error(`ledger ${verb}: the content carries ${key}, which the engine gives`);
+    if (ENGINE_FIELDS.has(key)) throw new Error(`${said}: the content carries ${key}, which the engine gives`);
     if (!fields.some((f) => f.name === key)) {
-      throw new Error(`ledger ${verb}: the content has no field ${key} — it holds ${fields.map((f) => f.name).join(', ')}`);
+      throw new Error(`${said}: the content has no field ${key} — it holds ${fields.map((f) => f.name).join(', ')}`);
     }
   }
   /** @type {Record<string, unknown>} */
   const content = {};
   for (const { name, type } of fields) {
     if (!Object.hasOwn(given, name)) {
-      if (!Object.hasOwn(defaults, name)) throw new Error(`ledger ${verb}: the content needs ${name}`);
+      if (!Object.hasOwn(defaults, name)) throw new Error(`${said}: the content needs ${name}`);
       content[name] = structuredClone(defaults[name]);
     } else if (!type.test(given[name])) {
-      throw new Error(`ledger ${verb}: the content's ${name} is not ${type.is}`);
+      throw new Error(`${said}: the content's ${name} is not ${type.is}`);
     } else {
       content[name] = given[name];
     }
@@ -686,28 +726,42 @@ function contentFields(verb, write, given, replaced) {
 }
 
 /**
- * The trust log's events a write logs, each one's fields from the entry it
- * is about to append, its id minted: a call names the entry, a reversal the
- * entry it reverses too.
+ * Claude's call logged (16.3.7), naming the entry, with its sort — null
+ * where no raise sorted it — its kind and label left for the labeller.
+ * @param {'one'|'several'|null} sort
+ * @returns {Logs}
  */
-const TRUST_EVENTS = Object.freeze({
-  call: (/** @type {Record<string, unknown>} */ { id }) => ({ entry: id, kind: null, label: null, sort: null }),
-  reversal: (/** @type {Record<string, unknown>} */ { id, replaces }) => ({ entry: id, reverses: replaces }),
-});
+function callLogged(sort) {
+  return ({ id }) => ({ type: 'call', fields: { entry: id, kind: null, label: null, sort } });
+}
 
-/** @typedef {keyof typeof TRUST_EVENTS} TrustEvent */
+/** The person's reversal logged (16.12.1), naming the entry and the entry it reverses. @type {Logs} */
+const REVERSAL_LOGGED = ({ id, replaces }) => ({ type: 'reversal', fields: { entry: id, reverses: replaces } });
 
 /**
  * The trust log's event a write logs: a call for Claude's answer, a
  * decision or a decision's replacement; a reversal for the person's
  * replacement reversing the decision it replaces; null for any other.
  * @param {EntryKind|null} kind @param {Record<string, unknown>} content @param {string|null} reason @param {IdFacts|null} replaced
- * @returns {TrustEvent|null}
+ * @returns {Logs|null}
  */
 function trustEventOf(kind, content, reason, replaced) {
   if (kind !== 'decision') return null;
-  if (content.by === 'claude') return 'call';
-  return reverses(content, reason, replaced) ? 'reversal' : null;
+  if (content.by === 'claude') return callLogged(null);
+  return reverses(content, reason, replaced) ? REVERSAL_LOGGED : null;
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, the person's entry
+ * carrying Claude's sealed answer: the person's answer to Claude's lean is
+ * a raise's (raise.cjs), which sealed the lean before they answered and
+ * logs the answer beside its entry.
+ * @param {string} said @param {Record<string, unknown>} content
+ */
+function checkUnsealed(said, { by, sealed }) {
+  if (by === 'person' && sealed !== undefined && sealed !== null) {
+    throw new Error(`${said}: the person's entry carries sealed, Claude's lean — the person's answer to Claude's lean is recorded by raise answer, against the lean its raise sealed`);
+  }
 }
 
 /**
@@ -743,41 +797,74 @@ function decisionPlaced(cwd, args, said, usage, warnings) {
  * it is made, the session, and its content in the shape of the kind it
  * writes, a replacement reading the kind it replaces from the ledger.
  * Refuses argv the verb does not take, a place it cannot write, no session,
- * a value its event cannot hold, stdin holding no JSON object, content the
- * kind does not hold, and who moved whom the departure rule does not allow,
- * which it sets where the writer leaves it out and the rule allows one
- * value alone.
+ * a value its event cannot hold, stdin holding no JSON object, the person's
+ * entry carrying Claude's sealed answer, content the kind does not hold,
+ * and who moved whom the departure rule does not allow, which it sets where
+ * the writer leaves it out and the rule allows one value alone.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
  * @returns {Request}
  */
 function requestOf(cwd, verb, args, stdin, warnings) {
+  const said = `ledger ${verb}`;
   const write = WRITES[verb];
-  const { dotpath, given } = readArgs(verb, args, `ledger ${verb}`, `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`);
-  const at = addressOf(cwd, `ledger ${verb}`, dotpath);
+  const { dotpath, given } = readArgs(verb, args, said, `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`);
+  const at = addressOf(cwd, said, dotpath);
   if (write.fromTopic && at.topic === null) {
     throw new Error(TOPIC_PHASES.includes(at.phase)
-      ? `ledger ${verb}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
-      : `ledger ${verb}: a question moves from a topic, and ${at.phase} has none — a topic exists only before the spec`);
+      ? `${said}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
+      : `${said}: a question moves from a topic, and ${at.phase} has none — a topic exists only before the spec`);
   }
   const session = handedSession();
-  if (session === null) throw new Error(`ledger ${verb}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
+  if (session === null) throw new Error(`${said}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
   checkValues(verb, given);
   write.checkGiven(at, given);
   const content = stdinContent(verb, stdin());
+  checkUnsealed(said, content);
   const before = readBefore(at, warnings);
   const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
   const reason = replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0];
   const derived = derivedMove(content, reason, replaced);
-  const fields = contentFields(verb, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
   const unmoved = movedRefusal(fields, reason, replaced);
-  if (unmoved !== null) throw new Error(`ledger ${verb}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
+  if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   const kind = replaced === null ? entryKind({ event: write.event }) : replaced.kind;
   return {
-    verb, write, at, session, given, kind,
+    verb, said, write, at, session, given, kind,
     content: fields,
     unchecked: true,
+    id: null,
+    checkLinked: nothingToCheck,
     logs: trustEventOf(kind, fields, reason, replaced),
     before,
+  };
+}
+
+/** A dot-path naming `place`. @param {Place} place */
+function dotpathOf({ unit, phase, topic }) {
+  return [unit, phase, ...(topic === null ? [] : [topic])].join('.');
+}
+
+/**
+ * The decision a raise lands as a request (`Raised`): made where the raise
+ * was drawn and linked as it sealed, read and checked as `ledger decide`
+ * reads its place before the lock and its links under it, in the raise's
+ * words; its content in a decision's shape, what it leaves out taking its
+ * default; landing unchecked.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ * @returns {Request}
+ */
+function raisedRequest(cwd, { said, place, answers, relies_on: reliesOn, content, id, logs, checkLinked }, warnings) {
+  const write = WRITES.decide;
+  const at = addressOf(cwd, said, dotpathOf(place));
+  return {
+    verb: 'decide', said, write, at,
+    session: /** @type {string} */ (handedSession()),
+    given: new Map([['answers', [answers]], ['relies_on', reliesOn]]),
+    kind: 'decision',
+    content: contentFields(said, write, content, null),
+    unchecked: true,
+    id, checkLinked, logs,
+    before: readBefore(at, warnings),
   };
 }
 
@@ -792,6 +879,7 @@ function eventOf(request, read) {
   const { write, at, session, kind, content, unchecked } = request;
   const linked = resolvedLinks(request, read);
   write.checkLinked(linked, read);
+  request.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
     ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? { unchecked } : {}),
@@ -832,25 +920,61 @@ function ledgerMessage(unit, event, id, topic) {
 }
 
 /**
- * Under the writer lock: the ledger folded, the places the write names read
- * live again, the trust log's event built and kept waiting in the
- * conversation, the entry appended, the event landed in the trust log, and
- * the ledger committed to the state branch, a commit git refuses a warning.
- * Answers the entry as written and its short id.
+ * The ledger committed to the state branch, under the message of the
+ * request's entry `id`: a commit git refuses a warning.
+ * @param {string} cwd @param {Request} request @param {string} id @param {string[]} warnings
+ */
+function commitLedger(cwd, { at, write }, id, warnings) {
+  return commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings);
+}
+
+/**
+ * Under the writer lock: the ledger folded; where it already holds the id
+ * the request's raise minted, the write a rerun of one killed past its
+ * append, finished as the kill left it — its event, kept ahead of the
+ * entry, landed, and the ledger committed — nothing appended again. Else
+ * the places the write names read live again, the trust log's event built
+ * and kept waiting in the conversation, the entry appended, the event
+ * landed in the trust log, and the ledger committed to the state branch.
+ * Answers the entry's short id and the commit.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
- * @returns {{entry: Record<string, unknown>, id: string, outcome: {committed: string|null, failed: boolean}}}
+ * @returns {{id: string, outcome: {committed: string|null, failed: boolean}}}
  */
 function land(cwd, request, warnings) {
-  const { verb, at, write, given, logs } = request;
+  const { said, at, write, given, logs } = request;
   const read = readNow(at, warnings);
-  checkPlaceLive(`ledger ${verb}`, at, read.live);
+  const id = request.id ?? newId();
+  const short = shortId(id, read.facts.keys());
+  if (read.facts.has(id)) {
+    if (logs !== null) landKept(cwd, warnings);
+    return { id: short, outcome: commitLedger(cwd, request, id, warnings) };
+  }
+  checkPlaceLive(said, at, read.live);
   write.checkLive(at, given, read.live);
   const fields = eventOf(request, read);
-  const id = newId();
-  if (logs !== null) keepEvent(newEvent(logs, TRUST_EVENTS[logs]({ ...fields, id }), cwd), at.root, id);
-  const entry = appendEntry(at.root, fields, warnings, id);
+  if (logs !== null) {
+    const { type, fields: own } = logs({ ...fields, id });
+    keepEvent(newEvent(type, own, cwd), at.root, id);
+  }
+  appendEntry(at.root, fields, warnings, id);
   if (logs !== null) landKept(cwd, warnings);
-  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings) };
+  return { id: short, outcome: commitLedger(cwd, request, id, warnings) };
+}
+
+/**
+ * A request landed under the writer lock, then the knowledge base's copies
+ * rendered and indexed against the ledger.
+ * @param {string} cwd @param {Request} request @param {string[]} warnings
+ * @returns {Landed}
+ */
+function landed(cwd, request, warnings) {
+  const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
+  refreshLedgerCopies(cwd, warnings);
+  /** @type {Landed} */
+  const result = { id, committed: outcome.committed };
+  if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
+  if (warnings.length > 0) result.warnings = warnings;
+  return result;
 }
 
 /**
@@ -859,23 +983,31 @@ function land(cwd, request, warnings) {
  * commit, and any warnings; a commit git refused is pending, and the next
  * write's commit, or boot's, takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
- * @returns {{id: string, committed: string|null, note?: string, warnings?: string[]}}
+ * @returns {Landed}
  */
 function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const request = oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings));
-    const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
-    refreshLedgerCopies(cwd, warnings);
-    /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
-    const result = { id, committed: outcome.committed };
-    if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
-    if (warnings.length > 0) result.warnings = warnings;
-    return result;
+    return landed(cwd, oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings)), warnings);
   } catch (err) {
     throw carrying(err, warnings);
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, decisionUsage, decisionPlaced };
+/**
+ * The decision a raise lands, through the lock `ledger decide` lands
+ * through: answered as `writeLedger` answers, `warnings` the raise's own
+ * among them. A rerun whose first run appended it lands nothing again.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ * @returns {Landed}
+ */
+function landRaised(cwd, raised, warnings) {
+  try {
+    return landed(cwd, raisedRequest(cwd, raised, warnings), warnings);
+  } catch (err) {
+    throw carrying(err, warnings);
+  }
+}
+
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, decisionUsage, decisionPlaced, landRaised, callLogged };

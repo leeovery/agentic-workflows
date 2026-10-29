@@ -11,7 +11,9 @@
 // decide` or its replacement of a decision, a call naming the entry, the
 // person's replacement the departure rule holds standing over a lean the
 // replaced entry held a reversal naming the entry it reverses, wherever that
-// entry stands, and no other write anything; an append that fails a
+// entry stands, and no other write anything; the person's entry carrying
+// Claude's sealed answer refused, their answer to the lean a raise's (P4,
+// test-engine-raise-answer.cjs); an append that fails a
 // warning, the event waiting in the conversation for its next record, which
 // lands it once; and a writer killed at any point on the way, its call
 // landed by the next write or boot's pass where its entry was appended, let
@@ -29,8 +31,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
-const { NO_SPACE, head, stateGit, statePath, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
+const { NO_SPACE, head, stateGit, statePath, killedAt, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -39,7 +40,7 @@ const { TRUST_LOG, PENDING, trustLogPath, appendWaiting, readTrustLog } = requir
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
-const { SESSION_ID, MADE, NOTE, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { SESSION_ID, SESSION, MADE, NOTE, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld, answeredRaise } = require('./ledger-world.cjs');
 
 const config = useTempFolder('ledger-trust-config-');
 
@@ -130,7 +131,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
   it('logs a call for Claude\'s replacement of a decision that held the lean, its own or the person\'s, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
     const question = ask().id;
     const call = decide(question).id;
-    const agreed = decide(question, { by: 'person', who_moved_whom: 'none', sealed: 'A near-frameless floating note.' }).id;
+    const agreed = decide(question, { by: 'person', who_moved_whom: 'none' }).id;
 
     const own = change(call).id;
     const persons = change(agreed, { text: 'A floating panel.', why: 'It follows the person.' }).id;
@@ -138,36 +139,49 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.deepStrictEqual(logged(), [callOf(call), callOf(own), callOf(persons)]);
   });
 
-  it('logs a reversal of the person\'s own answer that held Claude\'s lean, made from another unit, as of Claude\'s call', () => {
-    const agreed = decide(ask().id, { by: 'person', who_moved_whom: 'none', sealed: 'A near-frameless floating note.' }).id;
+  it('logs a reversal of the person\'s own answer that took Claude\'s lean, made from another unit, as of Claude\'s call', async () => {
+    const agreed = await answeredRaise(dir, NOTE, ask().id, { lean: 'A near-frameless floating note.', other: 'A sheet.', key: '1', env: SESSION });
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const raised = logged();
 
     const reversal = overrule(agreed, 'mint.discussion.mint').id;
 
-    assert.deepStrictEqual(logged(), [reversalOf(reversal, agreed)]);
+    assert.deepStrictEqual(logged(), [...raised, reversalOf(reversal, agreed)]);
   });
 
-  it('logs no call for the person\'s own decision', () => {
-    decide(ask().id, { by: 'person', who_moved_whom: 'person-moved-claude', sealed: 'A floating panel.' });
+  it('logs no call for the person\'s own decision on a question Claude had no lean on', () => {
+    decide(ask().id, { by: 'person', who_moved_whom: 'none' });
 
     assert.deepStrictEqual(logged(), []);
   });
 
-  it('logs nothing for a write that is neither Claude\'s answer nor a replacement the departure rule holds standing over a lean the entry it replaces held: Claude\'s question, its finding and its replacement of one, a replacement for a new fact, the person\'s third answer after their own departure, one carrying Claude\'s sealed answer, and the person\'s merge', () => {
+  it('logs nothing for a write that is neither Claude\'s answer nor a replacement the departure rule holds standing over a lean the entry it replaces held: Claude\'s question, its finding and its replacement of one, a replacement for a new fact, the person\'s third answer after their own departure from Claude\'s lean, and the person\'s merge', async () => {
     const question = ask().id;
     const fact = find().id;
-    const [first, second] = [decide(question).id, decide(question, { text: 'A second note.' }).id];
-    const departed = decide(question, { by: 'person', who_moved_whom: 'person-moved-claude', sealed: 'A floating panel.' }).id;
+    const first = decide(question).id;
+    const departed = await answeredRaise(dir, NOTE, ask('Is a note a panel?').id, { lean: 'A floating panel.', other: 'A sheet.', key: '2', env: SESSION });
     const calls = logged();
     const persons = (/** @type {string} */ old, /** @type {string[]} */ flags, /** @type {Record<string, unknown>} */ made) => write('replace', NOTE, ['--replaces', old, ...flags], { by: 'person', drops: ['the old answer'], text: `Not ${old}.`, why: 'Because.', ...made }).id;
 
     persons(first, ['--reason', 'new-fact', '--cause', fact], { who_moved_whom: 'none' });
     const third = persons(departed, ['--reason', 'changed-mind'], { who_moved_whom: 'person-moved-claude' });
-    persons(second, ['--reason', 'was-wrong'], { who_moved_whom: 'person-moved-claude', sealed: 'A sheet.' });
     write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' });
     write('merge', NOTE, ['--question', ask('Does a note float?').id, '--into', third], { by: 'person', who_moved_whom: 'none' });
 
-    assert.deepStrictEqual([calls.map((event) => event.type), logged()], [['call', 'call'], calls]);
+    assert.deepStrictEqual([calls.map((event) => event.type), logged()], [['call', 'raise'], calls]);
+  });
+
+  it('refuses, appending, committing and logging nothing, the person\'s decision or replacement carrying Claude\'s sealed answer, naming raise: the person\'s answer to Claude\'s lean goes through raise alone (P4)', () => {
+    const question = ask().id;
+    const call = decide(question).id;
+    const before = logged();
+    const sealed = /^ledger (decide|replace): the person's entry carries sealed, Claude's lean — the person's answer to Claude's lean is recorded by raise answer, against the lean its raise sealed$/;
+    const person = { by: 'person', who_moved_whom: 'person-moved-claude', text: 'A sheet.', why: 'Sheets stay put.', sealed: 'A near-frameless floating note.' };
+
+    refused('decide', NOTE, ['--answers', question], person, sealed);
+    refused('replace', NOTE, ['--replaces', call, '--reason', 'changed-mind'], { ...person, drops: ['a floating note'] }, sealed);
+
+    assert.deepStrictEqual(logged(), before);
   });
 
   it('refuses, appending and committing nothing, a write that tells the trust log in a project whose manifest holds no project_id: its event is built before the ledger\'s append (16.13.5)', () => {
@@ -220,30 +234,20 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
 
 describe('a writer killed on the way (16.13.3)', () => {
   /** Each point a writer is killed at, by the file call it dies on and when; and what it leaves: its entry appended, its call waiting, its call landed. */
+  /** @type {Readonly<Record<string, {dies: import('./engine-harness.cjs').KillPoint, left: boolean[]}>>} */
   const KILLS = Object.freeze({
-    'before it keeps its call': { dies: ['appendFileSync', PENDING, 'before'], left: [false, false, false] },
-    'between keeping its call and the ledger\'s append': { dies: ['appendFileSync', PENDING, 'after'], left: [false, true, false] },
-    'between the ledger\'s append and the landing': { dies: ['renameSync', LEDGER, 'after'], left: [true, true, false] },
-    'in the landing, between its append and letting go of the waiting call': { dies: ['appendFileSync', TRUST_LOG, 'after'], left: [true, true, true] },
-    'after the landing, before the commit': { dies: ['rmSync', PENDING, 'after'], left: [true, false, true] },
+    'before it keeps its call': { dies: { method: 'appendFileSync', file: PENDING, when: 'before' }, left: [false, false, false] },
+    'between keeping its call and the ledger\'s append': { dies: { method: 'appendFileSync', file: PENDING, when: 'after' }, left: [false, true, false] },
+    'between the ledger\'s append and the landing': { dies: { method: 'renameSync', file: LEDGER, when: 'after' }, left: [true, true, false] },
+    'in the landing, between its append and letting go of the waiting call': { dies: { method: 'appendFileSync', file: TRUST_LOG, when: 'after' }, left: [true, true, true] },
+    'after the landing, before the commit': { dies: { method: 'rmSync', file: PENDING, when: 'after' }, left: [true, false, true] },
   });
-
-  // The engine in a child, which exits at its file call.
-  const KILLED = [
-    'const [method, file, when, cwd, stdin, env, ...args] = process.argv.slice(1);',
-    "const fs = require('fs');",
-    'const real = fs[method];',
-    "const hits = (a) => String(a[method === 'renameSync' ? 1 : 0]).endsWith(file);",
-    "fs[method] = (...a) => { if (when === 'before' && hits(a)) process.exit(9); const done = real.apply(fs, a); if (when === 'after' && hits(a)) process.exit(9); return done; };",
-    `process.stdout.write(JSON.stringify(require(${JSON.stringify(path.join(SCRIPTS, 'engine.cjs'))}).run(args, { cwd, stdin, env: JSON.parse(env) })));`,
-  ].join('\n');
 
   /** Claude's decision answering `question`, its writer killed at `point` in conversation `session`. @param {keyof typeof KILLS} point @param {string} question @param {string} [session] */
   function killedDecide(point, question, session = SESSION_ID) {
-    const content = JSON.stringify({ ...MADE, text: 'A note killed on the way.', why: 'Killed.' });
-    const argv = [...KILLS[point].dies, dir, content, JSON.stringify({ CLAUDE_CODE_SESSION_ID: session }), 'ledger', 'decide', NOTE, '--answers', question];
-    const { status, stdout, stderr } = spawnSync(process.execPath, ['-e', KILLED, ...argv], { env: process.env, encoding: 'utf8' });
-    assert.strictEqual(status, 9, `the writer was not killed ${point}\nstdout: ${stdout}\nstderr: ${stderr}`);
+    killedAt(KILLS[point].dies, dir, ['ledger', 'decide', NOTE, '--answers', question], {
+      env: { CLAUDE_CODE_SESSION_ID: session }, stdin: JSON.stringify({ ...MADE, text: 'A note killed on the way.', why: 'Killed.' }),
+    });
   }
 
   /** The conversation's file of waiting events. @param {string} [session] */

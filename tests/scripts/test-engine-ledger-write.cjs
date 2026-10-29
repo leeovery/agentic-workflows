@@ -82,13 +82,13 @@ describe('the write verbs (6.1.4)', () => {
     const finding = find().id;
 
     const res = write('decide', NOTE, ['--answers', question, '--relies-on', finding], {
-      by: 'person', who_moved_whom: 'claude-moved-person', text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-      rules_out: ['a title bar', 'a dock icon'], sealed: 'A plain window.', kind: 'look',
+      by: 'person', who_moved_whom: 'none', text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
+      rules_out: ['a title bar', 'a dock icon'], kind: 'look',
     });
 
     const id = assertLast('decided', AT_NOTE, {
-      by: 'person', who_moved_whom: 'claude-moved-person', answers: full(question), text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-      rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: 'A plain window.', alternatives: [], evidence: [], kind: 'look', unchecked: true,
+      by: 'person', who_moved_whom: 'none', answers: full(question), text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
+      rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: 'look', unchecked: true,
     });
     assertAnswered(res, id);
     assert.strictEqual(entries().length, 3, 'one line appended per write');
@@ -416,7 +416,7 @@ describe('scenarios', () => {
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().at(-1).of], [full(finding), 'was-wrong', 'finding']);
 
     const question = ask().id;
-    const persons = decide(question, { by: 'person', sealed: 'A plain window.', kind: 'look' }).id;
+    const persons = decide(question, { by: 'person', kind: 'look' }).id;
     write('replace', NOTE, ['--replaces', persons, '--reason', 'was-wrong'], { ...MADE, drops: ['near-frameless'], text: 'A plain window after all.', why: 'Frameless notes got lost.' });
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().find((e) => e.id === full(persons)).by], [full(persons), 'was-wrong', 'person']);
   });

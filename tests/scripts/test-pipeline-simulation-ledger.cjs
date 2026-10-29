@@ -23,6 +23,7 @@ const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/ker
 const { stateGit } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: ledger', () => {
   let sim;
@@ -226,7 +227,7 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
   });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — and Claude\'s call replacing it each land as a line of the trust log in the command that writes it', () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, and the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, each land as a line of the trust log in the command that writes it', async () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -242,5 +243,14 @@ describe('pipeline simulation: ledger', () => {
     sim.run(['verdict', 'queue']);
     sim.run(['verdict', 'give', reversal, 'loss', '--at', 'queue']);
     ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
+
+    /** Claude's lean on a question of its own, raised, and the person's pick of row `key`. @param {string} text @param {'1'|'2'} key */
+    const raised = async (text, key) => {
+      const question = ledger(['ask', note], { ...made, text });
+      const { raise } = await sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify(leaningCall('It floats.', 'It stays put.')));
+      sim.run(['raise', 'answer', raise, '--pick', key], null, JSON.stringify({ why: 'The person said why.' }));
+    };
+    await raised('Does a note float?', '1');
+    await raised('Does a note take focus?', '2');
   });
 });

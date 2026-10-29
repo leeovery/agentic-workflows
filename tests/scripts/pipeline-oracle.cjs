@@ -18,8 +18,8 @@
 //     shown, which an answer through `gate` adds one line to the trust log
 //     for,
 //   - the ledger's projections and its copies hold to the events,
-//   - the trust log holds a line for each call, reversal and verdict the
-//     ledger and the verdicts given call for, and nothing waits in a
+//   - the trust log holds a line for each call, raise, reversal and verdict
+//     the ledger and the verdicts given call for, and nothing waits in a
 //     conversation, after a refusal too (auditTrust).
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
@@ -627,7 +627,9 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // id: a call for each of Claude's answers, a decision or its replacement of
 // one; a reversal, naming the entry it reverses, for each of the person's
 // replacements of a decision that held Claude's lean, made for a changed
-// mind or a mistake and carrying no sealed answer of Claude's; neither for
+// mind or a mistake and carrying no sealed answer of Claude's; a raise,
+// naming the entry, for each of the person's answers to the lean a raise
+// sealed, beside the raises the person did not follow; none of them for
 // anything else; and nothing left waiting in a conversation, as no append
 // fails. Every verdict names a departure, a decision whose answer stood over
 // the lean, and none follows one that is no skip (16.10.1); the verdict a
@@ -654,6 +656,9 @@ function auditTrust(sim, label, ran = []) {
     && ['changed-mind', 'was-wrong'].includes(e.reason) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
     ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
+  assert.deepStrictEqual(ofType('raise').filter((e) => !e.didnt_follow).map((e) => e.entry).sort(),
+    entries.filter((e) => isDecision(e) && e.by === 'person' && e.sealed !== null).map((e) => e.id).sort(),
+    ctx('the trust log does not hold one raise for each of the person\'s answers to the lean a raise sealed, and no other'));
   const conversations = path.join(sim.configDir, 'conversations');
   const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));

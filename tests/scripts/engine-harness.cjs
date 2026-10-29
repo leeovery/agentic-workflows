@@ -30,7 +30,8 @@
 //
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
-// race), a script that is not the engine. A race runs its contenders as
+// race), a writer killed at a file call on its way (`killedAt`), a script
+// that is not the engine. A race runs its contenders as
 // children that wait at a barrier until every one is ready and report
 // evidence that they met (`contend`). A call that must wait on a lock
 // another holds runs in process, its attempts at the lock watched
@@ -44,7 +45,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const readline = require('readline');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const {
   STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, git, testIdentity, bareRepo, templateFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
@@ -674,6 +675,33 @@ async function contend(n, body, args, env = process.env) {
   return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
+// The engine in a child that exits, status 9, at one file call: `method` on
+// a path ending `file` — a rename by its destination — `before` or `after`
+// the call runs.
+const KILLED = [
+  'const [method, file, when, cwd, stdin, env, ...args] = process.argv.slice(1);',
+  "const fs = require('fs');",
+  'const real = fs[method];',
+  "const hits = (a) => String(a[method === 'renameSync' ? 1 : 0]).endsWith(file);",
+  "fs[method] = (...a) => { if (when === 'before' && hits(a)) process.exit(9); const done = real.apply(fs, a); if (when === 'after' && hits(a)) process.exit(9); return done; };",
+  `process.stdout.write(JSON.stringify(require(${JSON.stringify(ENGINE)}).run(args, { cwd, stdin, env: JSON.parse(env) })));`,
+].join('\n');
+
+/**
+ * A point a writer is killed at: its file call — `method` on a path ending
+ * `file`, a rename by its destination — and whether before or after it runs.
+ * @typedef {{method: string, file: string, when: 'before'|'after'}} KillPoint
+ */
+
+/**
+ * An engine call run in a child killed at `at`: asserted killed there.
+ * @param {KillPoint} at @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+ */
+function killedAt({ method, file, when }, dir, args, { env = {}, stdin = '' } = {}) {
+  const { status, stdout, stderr } = spawnSync(process.execPath, ['-e', KILLED, method, file, when, dir, stdin, JSON.stringify(env), ...args], { env: process.env, encoding: 'utf8' });
+  assert.strictEqual(status, 9, `engine ${args.join(' ')} was not killed ${when} ${method} ${file}\nstdout: ${stdout}\nstderr: ${stderr}`);
+}
+
 // A migration runner standing in for the real one, its report in the real
 // one's format byte for byte, for boot parses it. STUB_MIGRATE_MODE picks
 // what it does: nothing (unset); `update`, a migration recorded and a state
@@ -786,7 +814,7 @@ const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync,
 
 module.exports = {
   ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, OWN_HOOKS, hooked,
-  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,

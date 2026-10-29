@@ -70,7 +70,7 @@ const ANSWERS = Object.freeze([true, false, true, true, false, false, false, fal
 /** A well-formed event of every type, its own fields. */
 const SAMPLES = Object.freeze({
   gate: { gate: 'state lost gate', recommended: 'y', picked: 'n', via: 'pressed', with_text: false, reading: null },
-  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false },
+  raise: { entry: ENTRY, kind: 'behaviour', label: { labeller: 'claude-sonnet-5', answers: ANSWERS }, sort: null, sealed: '1', answer: '2', via: 'pressed', with_text: false, reading: null, didnt_follow: false, blocked_build: null },
   call: { entry: ENTRY, kind: null, label: null, sort: 'one' },
   verdict: { entry: ENTRY, verdict: 'skip', point: 'decided' },
   'blind-draw': { entry: ENTRY, kind: 'look' },
@@ -157,6 +157,7 @@ describe('record (16.13.4)', () => {
       ['departure', { entry: ENTRY }, 'the trust log holds no departure event: gate, raise, call, verdict, blind-draw, reversal, position-switch, convergence, correction'],
       ['call', { entry: ENTRY, kind: null, label: null }, 'a call event cannot be recorded: the call event needs sort'],
       ['verdict', { ...SAMPLES.verdict, verdict: 'maybe' }, 'a verdict event cannot be recorded: its verdict is not one of nothing, fix, loss, skip'],
+      ['raise', { ...SAMPLES.raise, blocked_build: 'yes' }, 'a raise event cannot be recorded: its blocked_build is not true or false, or null'],
       ...[
         { labeller: 'claude-sonnet-5', answers: ANSWERS.slice(1) },
         { labeller: 'claude-sonnet-5', answers: [...ANSWERS.slice(1), 'yes'] },
