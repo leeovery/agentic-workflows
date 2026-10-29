@@ -6,7 +6,10 @@
 // word, the project's id and a session's; and `useTrustWorld`, each test's
 // folder with the trust log in a config folder of its own, its projects plain
 // folders whose state roots are pinned, its events as the log's lines, and a
-// call run in a conversation.
+// call run in a conversation. And what every suite reading the trust log a
+// project world's commands wrote shares — the ledger's trust suite, the
+// verdicts' and the raises' (raise-world.cjs): the log's text and events, and
+// the project's id it keys them by (`trustLogHelpers`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -15,7 +18,7 @@ const { beforeEach, afterEach } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 
-const { STATE_DIR_NAME, layout } = require('./engine-harness.cjs');
+const { STATE_DIR_NAME, layout, statePath } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -97,4 +100,20 @@ function useTrustWorld(prefix) {
   return { folder, logPath, logText, project };
 }
 
-module.exports = { idOf, PROJECT_ID, SESSION, lines, from, waitingPath, inConversation, useTrustWorld };
+/**
+ * The trust log in the config folder `config` names, which the commands run
+ * in the project world at `dir` write to: its text, '' where there is none;
+ * its events, each as written; and the id the project's events are keyed by.
+ * @param {() => string} dir @param {() => string} config
+ */
+function trustLogHelpers(dir, config) {
+  const file = () => path.join(config(), TRUST_LOG);
+  const logText = () => (fs.existsSync(file()) ? fs.readFileSync(file(), 'utf8') : '');
+  /** @returns {Record<string, any>[]} */
+  const logEvents = () => logText().split('\n').slice(0, -1).map((line) => JSON.parse(line));
+  /** @returns {string} */
+  const project = () => JSON.parse(fs.readFileSync(statePath(dir(), layout.projectManifest), 'utf8')).project_id;
+  return { logText, logEvents, project };
+}
+
+module.exports = { idOf, PROJECT_ID, SESSION, lines, from, waitingPath, inConversation, useTrustWorld, trustLogHelpers };

@@ -118,8 +118,7 @@
 //   on an entry that stands (22.6.15).
 // ---------------------------------------------------------------------------
 
-const { messageOf } = require('../kernel/call.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { messageOf, stdinObject } = require('../kernel/call.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
@@ -507,22 +506,6 @@ function checkDestinationLive(said, at, given, live) {
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
 }
 
-/**
- * The content on stdin: one JSON object.
- * @param {string} verb @param {string} stdin
- * @returns {Record<string, unknown>}
- */
-function stdinContent(verb, stdin) {
-  let content;
-  try {
-    content = JSON.parse(stdin);
-  } catch (err) {
-    throw new Error(`ledger ${verb}: the entry's content comes on stdin as a JSON object, and stdin holds no JSON — ${messageOf(err)}`);
-  }
-  if (!isObject(content)) throw new Error(`ledger ${verb}: the entry's content comes on stdin as a JSON object, not ${JSON.stringify(content)}`);
-  return content;
-}
-
 /** @param {IdFacts} facts */
 function described(facts) {
   return facts.kind === null ? `a ${facts.event} event` : `a ${facts.kind}`;
@@ -869,7 +852,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   if (session === null) throw new Error(`${said}: no session to tag the entry with — CLAUDE_CODE_SESSION_ID is not set`);
   checkValues(said, write, given);
   write.checkGiven(said, at, given);
-  const content = stdinContent(verb, stdin());
+  const content = stdinObject(stdin(), `ledger ${verb}`, 'the entry\'s content');
   checkUnsealed(said, content);
   const before = readBefore(at, warnings);
   const replaced = write.event === 'replaced' ? replacedEntry(said, at, given, before()) : null;
@@ -1061,10 +1044,11 @@ function writeLedger(cwd, verb, args, stdin) {
 }
 
 /**
- * The decision a raise lands, through the lock `ledger decide` lands
- * through: answered as `writeLedger` answers, `warnings` the raise's own
- * among them, beside the entry the ledger already held at its id — a rerun
- * whose first run appended it lands nothing again — or null.
+ * What a raise lands — a decision, a replacement or a keep — through the
+ * lock the ledger's writes land through: answered as `writeLedger` answers,
+ * `warnings` the raise's own among them, beside the line the ledger already
+ * held at its id — a rerun whose first run appended it lands nothing
+ * again — or null.
  * @param {string} cwd @param {Raised} raised @param {string[]} warnings
  * @returns {RaiseLanded}
  */
@@ -1076,4 +1060,4 @@ function landRaised(cwd, raised, warnings) {
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, callLogged };
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, callLogged, staleness };

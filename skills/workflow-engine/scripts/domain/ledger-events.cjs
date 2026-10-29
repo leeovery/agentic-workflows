@@ -35,11 +35,13 @@
 // - kept: the person keeping a decision as it stands, where Claude proposed
 //   to replace it (raise.cjs, 5.3.10): the person's alone, standing over
 //   Claude's proposal; the entry kept; the reason and the cause the
-//   replacement was proposed for; and Claude's proposal, the answer the
-//   person's stood over, as its sealed answer. It is no entry and changes
-//   nothing current — no replacement, so nothing relying on the entry is
-//   affected (5.6.10), and against its cause it confirms the entry still
-//   holds (ledger-affected.cjs) — and a departure owed a verdict (16.10.1).
+//   replacement was proposed for; why, Claude's account of the person's
+//   reason, as every answer of the person's carries; and Claude's proposal,
+//   the answer the person's stood over, as its sealed answer. It is no entry
+//   and changes nothing current — no replacement, so nothing relying on the
+//   entry is affected (5.6.10), and against its cause it confirms the entry
+//   still holds (ledger-affected.cjs) — and a departure owed a verdict
+//   (16.10.1).
 //
 // The engine assigns every link; it constrains links and identity, never
 // content (5.1.8). Lines are written with their fields in the schema's
@@ -139,7 +141,14 @@ const SCHEMA = {
     moved: event([...made(PEOPLE), field('question', ID), field('to', TEXT)]),
     merged: event([...made(PEOPLE), field('question', ID), field('into', ID), field('duplicate', nullable(ID))]),
     checked: event([field('entry', ID), field('rules', oneOf('one', 'several'))]),
-    kept: event([...made(['person'], ['person-moved-claude']), field('entry', ID), field('reason', oneOf(...REASONS)), field('cause', nullable(ID)), field('sealed', TEXT)]),
+    kept: event([
+      ...made(['person'], ['person-moved-claude']),
+      field('entry', ID),
+      field('reason', oneOf(...REASONS)),
+      field('cause', nullable(ID)),
+      field('why', TEXT),
+      field('sealed', TEXT),
+    ]),
   },
 };
 

@@ -40,10 +40,11 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, okSectionsAsync, refusesAsync, refusedPristine, output, killedAt, readState, layout, cleanupFixture,
+  ok, okSectionsAsync, refusesAsync, refusedPristine, output, killedAt, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
+const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -53,8 +54,6 @@ const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cj
 const { linesToAdd, entryId } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 
-// A Claude Code session's id.
-const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const OVER = 'person-moved-claude';
 
@@ -83,9 +82,6 @@ const FOCUS_CALL = Object.freeze({
   lean: '2',
 });
 
-/** Claude's account of the person's reason. */
-const WHY = 'They keep their notes together on the main screen.';
-
 const { world, made } = writtenWorld('raise-replace-', PHASES, (write) => {
   const where = write('ask', NOTE, [], { ...MADE, text: 'Where does a new note open?' }).id;
   const screens = write('find', NOTE, [], { ...MADE, text: 'Most people work on one screen.', how: 'seen in a study' }).id;
@@ -109,28 +105,7 @@ afterEach(() => {
 
 const { ledgerText, entries, full } = ledgerHelpers(() => dir);
 const { copy } = copiesHelpers(() => dir);
-
-/** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, WORKFLOWS_CONFIG_DIR: config(), ...env });
-
-/** A file in the conversation's folder. @param {string} name */
-const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);
-
-/** The conversation's sealed raises, null where none was sealed. @returns {Record<string, any>|null} */
-const seals = () => (fs.existsSync(inFolder(RAISE_SHOWN)) ? JSON.parse(fs.readFileSync(inFolder(RAISE_SHOWN), 'utf8')) : null);
-
-/** The trust log's events, each but its id, its time and the project's name. */
-function logged() {
-  const file = path.join(config(), TRUST_LOG);
-  if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, 'utf8').split('\n').slice(0, -1).map((line) => {
-    const { id: _id, at: _at, project_name: _name, ...event } = JSON.parse(line);
-    return event;
-  });
-}
-
-/** The id setup minted the project. */
-const project = () => JSON.parse(readState(dir, layout.projectManifest)).project_id;
+const { conversation, inFolder, seals, logged, project, answer, lastEntry, raiseEvent } = raiseHelpers(() => dir, config, CALL);
 
 /** The argv naming Claude's decision as the one replaced, for `reason`. @param {string} [reason] @param {string[]} [more] */
 const replacing = (reason = 'changed-mind', more = []) => [NOTE, '--replaces', made.opens, '--reason', reason, ...more];
@@ -161,20 +136,6 @@ async function refusedDraw(args, call = CALL) {
 }
 
 /**
- * The person's answer, which must land: its response.
- * @param {string} id @param {string[]} how @param {Record<string, unknown>|null} [given] @param {Record<string, string|undefined>} [env]
- */
-function answer(id, how, given = { why: WHY }, env = {}) {
-  return ok(dir, ['raise', 'answer', id, ...how], { env: conversation(env), stdin: given === null ? '' : JSON.stringify(given) });
-}
-
-/** The ledger's last line but its time. */
-function lastEntry() {
-  const { at: _at, ...line } = /** @type {Record<string, unknown>} */ (entries().at(-1));
-  return line;
-}
-
-/**
  * The person's replacement of Claude's decision a raise lands, its line but
  * the time: `own` over the pick of the lean.
  * @param {string} id @param {Record<string, unknown>} [own]
@@ -192,19 +153,7 @@ function replacementOf(id, own = {}) {
 function keepOf(id) {
   return {
     v: 1, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
-    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, sealed: MAIN.text,
-  };
-}
-
-/**
- * A raise event as the trust log holds it, but its id and time: `own` over
- * the pick of the lean, typed.
- * @param {string|null} entry @param {Record<string, unknown>} [own]
- */
-function raiseEvent(entry, own = {}) {
-  return {
-    v: 1, type: 'raise', project: project(), model: null, session: SESSION,
-    entry, kind: null, label: null, sort: 'one', sealed: '1', answer: '1', via: 'typed', with_text: false, reading: null, didnt_follow: false, blocked_build: null, ...own,
+    by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text,
   };
 }
 
@@ -306,14 +255,23 @@ describe('the answer\'s refusals, recording nothing', () => {
     assert.deepStrictEqual(logged(), []);
   });
 
+  it('keep without its why, Claude\'s account of the person\'s reason, which every answer of theirs carries', async () => {
+    const id = await draw();
+
+    for (const given of ['', '{}', JSON.stringify({ why: WHY, who_moved_whom: 'person-moved-claude' })]) {
+      assert.match(refusedPristine(dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation(), stdin: given }).error, /^raise answer: the answer (comes on stdin as a JSON object|needs why$|has no field who_moved_whom)/);
+    }
+    assert.deepStrictEqual([logged(), /** @type {Record<string, any>} */ (seals())[id].answered], [[], null]);
+  });
+
   it('a decision replaced since the draw: keep and a pick each refused, naming the decision, what replaced it, and the way on, raising again on what is current', async () => {
     const id = await draw();
     const { write } = ledgerHelpers(() => dir);
     const since = write('replace', NOTE, ['--replaces', made.opens, '--reason', 'changed-mind'], { ...MADE, drops: [KEPT], text: 'Beside the last note', why: 'Notes gather.' }).id;
-    const said = `raise answer: the raise proposes replacing ${made.opens}, and since it was drawn ${since} replaced it — nothing recorded: raise again on ${since}, where it still calls for a change, and the person's answer stays in the conversation`;
+    const said = `raise answer: the raise proposes replacing ${made.opens}, which ${since} replaced — the current one is ${since} — nothing recorded: raise it again on what is current, where it still calls for a change, and the person's answer stays in the conversation`;
 
-    for (const [how, given] of [[['--pick', 'keep'], ''], [['--pick', '1'], JSON.stringify({ why: WHY })]]) {
-      assert.strictEqual(refusedPristine(dir, ['raise', 'answer', id, ...how], { env: conversation(), stdin: given }).error, said);
+    for (const how of [['--pick', 'keep'], ['--pick', '1']]) {
+      assert.strictEqual(refusedPristine(dir, ['raise', 'answer', id, ...how], { env: conversation(), stdin: JSON.stringify({ why: WHY }) }).error, said);
     }
     assert.deepStrictEqual([logged(), /** @type {Record<string, any>} */ (seals())[id].answered], [[], null]);
   });
@@ -362,11 +320,11 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual(queue(), [[id, 'Beside the note it was made from', MAIN.text]]);
   });
 
-  it('keep, pressed, reading no stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
+  it('keep, pressed, its why on stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, the why, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
     const id = await draw();
     fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate: `raise — ${id}`, answer: 'keep', at: new Date(Date.now() + 1000).toISOString() }));
 
-    const res = answer(id, ['--pick', 'keep'], null, { WORKFLOWS_GATE_SURFACE: '1' });
+    const res = answer(id, ['--pick', 'keep'], { why: WHY }, { WORKFLOWS_GATE_SURFACE: '1' });
 
     assert.strictEqual(full(res.id), id);
     assert.deepStrictEqual(lastEntry(), keepOf(id));
@@ -397,7 +355,7 @@ describe('a keep changes nothing current (5.6.10)', () => {
   it('the person keeps an entry Claude proposed to replace: its raise event stands as a departure, so the keep waits in this machine\'s queue, the answer it kept beside Claude\'s proposal as its lean, until its verdict is given; a second machine holds the keep in its ledger, none in its queue, and refuses a verdict on it; nothing that relied on the entry is affected, and no confirmation can name the keep, as none needs to', async () => {
     const kept = await draw();
 
-    answer(kept, ['--pick', 'keep'], null);
+    answer(kept, ['--pick', 'keep']);
 
     assert.deepStrictEqual(queue(), [[kept, KEPT, MAIN.text]]);
     const elsewhere = secondMachine();
@@ -419,7 +377,7 @@ describe('a keep changes nothing current (5.6.10)', () => {
     const [before, copied] = [ledgerText(), copy(NOTE_COPY)];
     assert.ok(copied?.includes(KEPT), 'the record\'s copy does not hold the decision');
 
-    answer(id, ['--pick', 'keep'], null);
+    answer(id, ['--pick', 'keep']);
 
     const after = ledgerText();
     assert.strictEqual(copy(NOTE_COPY), copied);
@@ -440,7 +398,7 @@ describe('a keep confirms the decision against its cause (5.6.10, 5.6.13)', () =
     assert.deepStrictEqual(affected(), [full(takes)]);
     const keepFor = async (/** @type {string[]} */ more) => {
       const id = /** @type {string} */ ((await drawn([NOTE, '--replaces', takes, ...more], { call: FOCUS_CALL })).res.raise);
-      answer(id, ['--pick', 'keep'], null);
+      answer(id, ['--pick', 'keep']);
       return id;
     };
 
@@ -459,10 +417,10 @@ describe('a keep confirms the decision against its cause (5.6.10, 5.6.13)', () =
 describe('once (E3)', () => {
   it('killed between the state commit and marking its seal, the keep re-answered lands one keep line and one event, saying the raise was answered already with keep', async () => {
     const id = await draw();
-    killedAt({ method: 'renameSync', file: RAISE_SHOWN, when: 'before' }, dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation() });
+    killedAt({ method: 'renameSync', file: RAISE_SHOWN, when: 'before' }, dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
     assert.strictEqual(/** @type {Record<string, any>} */ (seals())[id].answered, null);
 
-    const res = answer(id, ['--pick', 'keep'], null);
+    const res = answer(id, ['--pick', 'keep']);
 
     assert.deepStrictEqual([res.already, res.answer, full(res.id)], [true, 'keep', id]);
     assert.deepStrictEqual([entries().filter((e) => e.id === id).length, logged()], [1, [raiseEvent(id, { answer: 'keep' })]]);

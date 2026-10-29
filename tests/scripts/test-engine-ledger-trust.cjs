@@ -41,6 +41,7 @@ const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 const { SESSION_ID, SESSION, MADE, NOTE, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld, answeredRaise } = require('./ledger-world.cjs');
+const { trustLogHelpers } = require('./trust-world.cjs');
 
 const config = useTempFolder('ledger-trust-config-');
 
@@ -67,11 +68,10 @@ function keyed({ v: _v, id: _id, at: _at, project_name: _name, model: _model, se
   return own;
 }
 
+const { logEvents, project } = trustLogHelpers(() => dir, config);
+
 /** The trust log's lines, each keyed. */
-function logged() {
-  if (!fs.existsSync(trustLogPath())) return [];
-  return fs.readFileSync(trustLogPath(), 'utf8').split('\n').slice(0, -1).map((line) => keyed(JSON.parse(line)));
-}
+const logged = () => logEvents().map(keyed);
 
 /** The trust log's events as a read counts them, each once by its id, keyed. */
 function counted() {
@@ -79,11 +79,6 @@ function counted() {
   const events = [];
   readTrustLog((event) => events.push(keyed(event)));
   return events;
-}
-
-/** The id setup minted the project. */
-function project() {
-  return JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8')).project_id;
 }
 
 /** The call naming Claude's decision `short`. @param {string} short */

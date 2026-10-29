@@ -17,8 +17,9 @@
 //   to replace it (raise.cjs), confirms it as a confirmation does against
 //   the replacement it names as its cause: keeping it for a new fact or
 //   another topic's decision is saying it still holds against that change.
-//   A keep naming no cause, or a cause on no way, confirms nothing. An entry relies only on what is current as it is written, so
-//   every live replacement on the way of one it relies on is one it never
+//   A keep naming no cause, or a cause on no way, confirms nothing. An
+//   entry relies only on what is current as it is written, so every live
+//   replacement on the way of one it relies on is one it never
 //   saw: written after it, or set aside while it was written — wherever a
 //   merge has laid it in the ledger. A question's way is its line
 //   (ledger-fold.cjs): an answer, which records the question's wording as

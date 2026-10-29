@@ -140,7 +140,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'moved', ...TAGS, ...MADE, question: q, to: 'space-homing' }, []);
     appendEntry(root, { event: 'merged', ...TAGS, ...MADE, question: q, into: d, duplicate: null }, []);
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
-    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, sealed: 'A floating panel.' }, []);
+    appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.' }, []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -154,18 +154,20 @@ describe('the events and their schemas', () => {
       [...HEADER, ...BY, 'question', 'to'],
       [...HEADER, ...BY, 'question', 'into', 'duplicate'],
       [...HEADER, 'entry', 'rules'],
-      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'sealed'],
+      [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
     ]);
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
   });
 
-  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, and that proposal sealed in it, never none', () => {
-    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, sealed: 'A floating panel.' };
+  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
+    const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.' };
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
     for (const moved of ['none', 'claude-moved-person']) assert.throws(() => validEvent({ ...keep, who_moved_whom: moved }), /its who_moved_whom is not one of person-moved-claude$/);
     assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
     assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
+    const { why: _why, ...unexplained } = keep;
+    assert.throws(() => validEvent(unexplained), { message: 'the kept event needs why' });
   });
 
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {

@@ -43,9 +43,10 @@ const {
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
+const { trustLogHelpers } = require('./trust-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { TRUST_LOG, trustLogPath, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { TRUST_LOG, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -143,15 +144,10 @@ function give(entry, verdict, point, env = {}) {
   return ok(dir, ['verdict', 'give', entry, verdict, '--at', point], { env });
 }
 
-/** The trust log's text, '' where there is none. */
-function logText() {
-  return fs.existsSync(trustLogPath()) ? fs.readFileSync(trustLogPath(), 'utf8') : '';
-}
+const { logText, logEvents } = trustLogHelpers(() => dir, config);
 
-/** The trust log's events of `type`. @param {string} type @returns {Record<string, any>[]} */
-function logged(type) {
-  return logText().split('\n').slice(0, -1).map((line) => JSON.parse(line)).filter((event) => event.type === type);
-}
+/** The trust log's events of `type`. @param {string} type */
+const logged = (type) => logEvents().filter((event) => event.type === type);
 
 /** The verdict lines the trust log holds, each by its entry, verdict and point. */
 function verdicts() {

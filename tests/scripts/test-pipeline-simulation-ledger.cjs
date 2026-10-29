@@ -259,7 +259,7 @@ describe('pipeline simulation: ledger', () => {
     const snapping = ledger(['ask', note], { ...made, text: 'Does a note snap to the grid?' });
     const snaps = ledger(['decide', note, '--answers', snapping], { ...made, text: 'Notes snap to the grid.', why: 'Tidy desks.' });
     const proposed = await sim.runAsync(['raise', note, '--replaces', snaps, '--reason', 'changed-mind'], null, JSON.stringify(leaningCall('Notes float free.', 'Notes snap to a coarse grid.')));
-    sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep']);
+    sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'The person likes the grid.' }));
 
     // The person deciding unprompted, then changing their mind: Claude put
     // no lean on it, so it is no departure.
