@@ -31,10 +31,12 @@
 // end`, present in every workflow project regardless — the heartbeat sweep
 // and the conversation's transcript record are the workflows' own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
-// resume` while labels are on. PreToolUse, matched to the tools the layout
-// hook stands before, carries `layout guard` in every workflow project
-// (domain/layout-hook). Recording the choice syncs the hooks
-// (`recordLabelChoice`) and every boot re-syncs them (`syncSessionHooks`).
+// resume` while labels are on. PreToolUse carries two groups in every
+// workflow project, each matched to the tools its hook stands before:
+// `layout guard` before Write, Edit and NotebookEdit (domain/layout-hook),
+// and `brief guard` before Agent and SendMessage. Recording the choice syncs
+// the hooks (`recordLabelChoice`) and every boot re-syncs them
+// (`syncSessionHooks`).
 //
 // The original name is stashed in the state's cache (`.cache/.session-labels/`,
 // keyed by tmux socket + session id), git-ignored, so no other clone's engine
@@ -71,6 +73,7 @@ const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writePr
 const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
+const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -78,12 +81,13 @@ const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
 const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const CONVERSATION_END_COMMAND = `${HOOK_ENGINE} conversation end`;
 const LAYOUT_GUARD_COMMAND = `${HOOK_ENGINE} layout guard`;
+const BRIEF_GUARD_COMMAND = `${HOOK_ENGINE} brief guard`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
 // install prefix or carrying a timeout is recognised and never twinned; the
 // closing quote is part of the mark, so a re-quoted command is not.
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
-const HOOK_MARKS = wantedByEvent({ session: true, workflows: true }).flatMap((e) => e.commands.map(hookMark));
+const HOOK_MARKS = wantedGroups({ session: true, workflows: true }).flatMap((g) => g.commands.map(hookMark));
 
 /**
  * The opt-in for this project — `defaults.tmux_labels` when it is a
@@ -138,56 +142,77 @@ function carriesOurHooks(settings) {
   return Object.values(hooks).some((groups) => Array.isArray(groups) && groups.some((group) => marksOf(group).length > 0));
 }
 
+/** @typedef {{event: string, matcher?: string, commands: string[]}} WantedGroup */
+
 /**
- * What each hook event wants: the label hooks while labels are on
- * (`session`) — SessionEnd restores the name, and SessionStart brings a
+ * The groups wanted, each under its event: the label hooks while labels are
+ * on (`session`) — SessionEnd restores the name, and SessionStart brings a
  * resumed session's label back, its matcher having Claude Code fire it on
  * `claude --resume` alone — and the workflows' own (`workflows`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
- * transcript, and PreToolUse runs the layout hook before every write.
+ * transcript, and PreToolUse runs the layout hook before every write and the
+ * brief hook before every dispatch. A group with no command wanted is never
+ * written.
  * @param {{session: boolean, workflows: boolean}} want
- * @returns {{event: string, matcher?: string, commands: string[]}[]}
+ * @returns {WantedGroup[]}
  */
-function wantedByEvent({ session, workflows }) {
+function wantedGroups({ session, workflows }) {
   /** @param {(string|false)[]} candidates */
   const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
   return [
     { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, workflows && PRESENCE_CLEANUP_COMMAND, workflows && CONVERSATION_END_COMMAND]) },
     { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
     { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([workflows && LAYOUT_GUARD_COMMAND]) },
+    { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([workflows && BRIEF_GUARD_COMMAND]) },
   ];
 }
 
 /**
- * One event's groups with ours reconciled to `commands`: null when the
- * marks found already make up exactly the wanted set, wherever and however
- * they sit (a recognised hook is never rewritten, never twinned, never
- * reordered); otherwise ours are stripped from every group — a group
+ * The wanted groups gathered by event, in the table's order.
+ * @param {{session: boolean, workflows: boolean}} want
+ * @returns {Map<string, WantedGroup[]>}
+ */
+function wantedByEvent(want) {
+  /** @type {Map<string, WantedGroup[]>} */
+  const byEvent = new Map();
+  for (const group of wantedGroups(want)) byEvent.set(group.event, [...(byEvent.get(group.event) || []), group]);
+  return byEvent;
+}
+
+/**
+ * One event's groups with ours reconciled to the wanted groups: null when
+ * the marks found already make up exactly the wanted set, wherever and
+ * however they sit (a recognised hook is never rewritten, never twinned,
+ * never reordered); otherwise ours are stripped from every group — a group
  * emptied by that goes, one still holding foreign hooks keeps them and its
- * matcher — and the wanted set lands as one group.
- * @param {any[]} groups @param {string[]} commands @param {string} [matcher]
+ * matcher — and each wanted group lands after them, one per matcher.
+ * @param {any[]} groups @param {WantedGroup[]} wanted
  * @returns {any[]|null}
  */
-function reconcileEventGroups(groups, commands, matcher) {
-  if (groups.flatMap(marksOf).sort().join('\n') === commands.map(hookMark).sort().join('\n')) return null;
+function reconcileEventGroups(groups, wanted) {
+  const marks = wanted.flatMap((w) => w.commands.map(hookMark));
+  if (groups.flatMap(marksOf).sort().join('\n') === marks.sort().join('\n')) return null;
   const kept = groups.flatMap((g) => {
     if (marksOf(g).length === 0) return [g];
     const foreign = g.hooks.filter((/** @type {unknown} */ h) => !ourMark(h));
     return foreign.length > 0 ? [{ ...g, hooks: foreign }] : [];
   });
-  if (commands.length === 0) return kept;
-  const hooks = commands.map((command) => ({ type: 'command', command }));
-  return [...kept, matcher ? { matcher, hooks } : { hooks }];
+  const ours = wanted.filter((w) => w.commands.length > 0).map(({ matcher, commands }) => {
+    const hooks = commands.map((command) => ({ type: 'command', command }));
+    return matcher ? { matcher, hooks } : { hooks };
+  });
+  return [...kept, ...ours];
 }
 
 /**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
  * end` iff `workflows`; SessionStart carries `session resume` iff `session`;
- * PreToolUse carries `layout guard` iff `workflows` — each event reconciled
- * on its own, every other key (permissions, other events, foreign groups
- * and their matchers) preserved, an event emptied by a removal gone. Null
- * where the document already carries exactly those.
+ * PreToolUse carries `layout guard` and `brief guard`, each in its own
+ * group, iff `workflows` — each event reconciled on its own, every other
+ * key (permissions, other events, foreign groups and their matchers)
+ * preserved, an event emptied by a removal gone. Null where the document
+ * already carries exactly those.
  * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
  * @returns {Record<string, any>|null}
  */
@@ -195,8 +220,8 @@ function withSessionHooks(settings, want) {
   const hooks = isObject(settings.hooks) ? settings.hooks : {};
   const nextHooks = { ...hooks };
   let changed = false;
-  for (const { event, matcher, commands } of wantedByEvent(want)) {
-    const groups = reconcileEventGroups(Array.isArray(hooks[event]) ? hooks[event] : [], commands, matcher);
+  for (const [event, wanted] of wantedByEvent(want)) {
+    const groups = reconcileEventGroups(Array.isArray(hooks[event]) ? hooks[event] : [], wanted);
     if (groups === null) continue;
     changed = true;
     if (groups.length > 0) nextHooks[event] = groups;

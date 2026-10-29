@@ -26,7 +26,7 @@ const {
 const {
   drawLabel, bulletRow,
 } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
-const { git, stateGit } = require('./engine-harness.cjs');
+const { git, stateGit, GUARD_GROUPS } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, send, carryOn, arrive, handoff, arriveAtEpicMenu, pauseCheck, epicPick, epicKey, backToStart, startNew,
 } = require('./pipeline-world.cjs');
@@ -433,20 +433,23 @@ describe('pipeline simulation: epic map', () => {
     // conversation context — with nothing to resume; opting out takes
     // `session cleanup` and `session resume` back out and leaves the
     // workflows' own, the layout hook before every write among them, which
-    // refuses a Write to the ledger and lets one to a manifest through.
+    // refuses a Write to the ledger and lets one to a manifest through, and
+    // the brief hook before every dispatch.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
     sim.run(['session', 'label-config', 'true']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'true');
+    const verbOf = (/** @type {{command: string}} */ h) => h.command.slice(h.command.indexOf('engine.cjs"'));
     const hookVerbs = () => Object.fromEntries(
       Object.entries(JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8')).hooks)
-        .map(([event, groups]) => [event, groups.flatMap((g) => g.hooks.map((h) => h.command.slice(h.command.indexOf('engine.cjs"'))))]));
+        .map(([event, groups]) => [event, groups.flatMap((g) => g.hooks.map(verbOf))]));
+    const guardVerbs = GUARD_GROUPS.flatMap((g) => g.hooks.map(verbOf));
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
-      PreToolUse: ['engine.cjs" layout guard'],
-    }, 'the opt-in installs the session hooks on both events, beside the layout hook');
+      PreToolUse: guardVerbs,
+    }, 'the opt-in installs the session hooks on both events, beside the layout and brief hooks');
     assert.strictEqual(stateGit(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
       'the choice is state');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
@@ -474,7 +477,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
-      PreToolUse: ['engine.cjs" layout guard'],
+      PreToolUse: guardVerbs,
     }, 'opting out leaves the workflows\' own in place');
     const beforeWrite = (/** @type {string} */ rel) => sim.engine(['layout', 'guard'], null, JSON.stringify({
       hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.leeway', rel), content: '' },

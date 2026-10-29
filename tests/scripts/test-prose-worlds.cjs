@@ -16,6 +16,7 @@ const { Worker } = require('worker_threads');
 
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
+const harness = require('./engine-harness.cjs');
 const { createVerifyPool } = require('../prose/lib/verify-pool.cjs');
 
 // A case the corpus never sees: `_`-prefixed directories under cases/ are not
@@ -90,11 +91,9 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   }
-  const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
-  const END_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation end';
-  const LAYOUT_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" layout guard';
-  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK, LAYOUT_HOOK];
-  const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+  const [PRESENCE_HOOK] = harness.WORKFLOW_HOOKS.map((h) => h.command);
+  const WORKFLOW_HOOKS = [...harness.WORKFLOW_HOOKS, ...harness.GUARD_GROUPS.flatMap((g) => g.hooks)].map((h) => h.command);
+  const SESSION_HOOK = harness.engineHook('session cleanup').command;
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
 

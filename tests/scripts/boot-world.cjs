@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, hooked } = harness;
+const { git, commitAll, fixtureFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
@@ -25,9 +25,9 @@ const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const SESSION_HOOK = engineHook('session cleanup');
 const RESUME_HOOK = engineHook('session resume');
-/** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the layout hook. */
+/** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the guard groups. */
 const LABELS_ON = JSON.stringify({
-  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: [LAYOUT_GROUP] },
+  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: GUARD_GROUPS },
 }, null, 2) + '\n';
 
 /** The knowledge directory's files a checkout sets up, state-relative. */
