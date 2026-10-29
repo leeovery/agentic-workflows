@@ -3,22 +3,26 @@
 // ---------------------------------------------------------------------------
 // Departures and their verdicts (workflow-engine/scripts/domain/verdict.cjs,
 // over the departure rule and the queue's projection in
-// domain/ledger-verdicts.cjs): `engine verdict queue`, every departure made
-// in a live place that the trust log holds no verdict on — a decision the
-// person made whose answer stood over Claude's lean, the lean beside it
-// from the nearest entry down its chain that held it — and who moved whom
-// as the write verbs hold it: never over the lean on an entry Claude made,
-// and on the person's replacement of a decision, what its reason and the
-// entry it replaces allow, the engine setting it where that is one value
-// and the writer leaves it out, the writer saying it where only the writer
-// can tell; and `engine verdict give`, a verdict logged in the trust log by
-// its entry and the point it was given at, a skip leaving the departure
-// waiting for the verdict that follows, refusing an entry that is no
-// departure, a departure given its verdict — a peer's among them, given
-// while it waited on the writer lock, and one waiting in any conversation,
-// which the queue leaves out too — and what argv names outside §16.10's
-// verdicts and points; an append that fails a warning, the verdict waiting
-// in the conversation for its next record.
+// domain/ledger-verdicts.cjs, and the evidence this machine logged in
+// domain/trust-evidence.cjs): `engine verdict queue`, every departure this
+// machine's trust log holds made in a live place that the trust log holds
+// no verdict on — a raise the person answered against Claude's lean, or
+// their reversal of an answer that held it, the ledger agreeing it stood
+// over the lean, the lean beside it from the nearest entry down its chain
+// that held it — and who moved whom as the write verbs hold it: never over
+// the lean on an entry Claude made, and on the person's replacement of a
+// decision, what its reason and the entry it replaces allow, the engine
+// setting it where that is one value and the writer leaves it out, the
+// writer saying it where only the writer can tell; and `engine verdict
+// give`, a verdict logged in the trust log by its entry and the point it
+// was given at, a skip leaving the departure waiting for the verdict that
+// follows, refusing an entry that is no departure, a departure this machine
+// logged none for, a departure given its verdict — a peer's among them,
+// given while it waited on the writer lock, and one waiting in any
+// conversation, which the queue leaves out too — and what argv names
+// outside §16.10's verdicts and points; an append that fails a warning, the
+// verdict waiting in the conversation for its next record. A second machine
+// is a config folder of its own over the same state.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; each test keeps the
@@ -41,7 +45,9 @@ const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { trustLogPath, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { TRUST_LOG, trustLogPath, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
+const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
@@ -52,6 +58,9 @@ function persons(moved) {
 
 /** Claude's lean on the questions the person answers here, unless a test leans otherwise. */
 const LEAN = 'A panel.';
+
+/** Why `verdict give` refuses a departure this machine logged none for. */
+const ELSEWHERE = 'a departure\'s verdict is given on the machine where it was made, and the person\'s replacement of their own departure is owed none';
 
 const config = useTempFolder('verdict-config-');
 
@@ -158,15 +167,6 @@ function refusedGive(...argv) {
 }
 
 describe('the verdict queue (5.8.10, 16.10)', () => {
-  it('waits on nothing where the person took Claude\'s lean or came round to it, and a departure is a decision: never Claude\'s own call, nor a finding', async () => {
-    await answered(LEAN);
-    await answered('A frameless window.', { lean: 'A frameless window.', moved: 'claude-moved-person' });
-    decide('Notes snap to the grid.', MADE);
-    write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it' });
-
-    assert.deepStrictEqual(ok(dir, ['verdict', 'queue']), { ok: true, departures: [] });
-  });
-
   it('holds the person\'s answer that stood over Claude\'s lean — an amendment, an overrule, or a blind answer that differs from the sealed one — with the lean beside it, where it stands (16.10.1, 16.10.10)', async () => {
     const departed = await answered('A sheet.');
 
@@ -187,17 +187,28 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     assert.deepStrictEqual([row.id, row.who_moved_whom, row.lean], [overruled, 'person-moved-claude', 'A panel.']);
   });
 
-  it('holds a later reversal: the person\'s replacement of their own answer that took Claude\'s lean, or came round to it (16.10.10)', async () => {
+  it('waits on nothing where the person took Claude\'s lean or came round to it, nor on Claude\'s own call or a finding; their later reversal of either answer names it, cancels its agreement, and waits with the lean beside it, the raise\'s line as it was (16.S41, 16.10.10)', async () => {
     const agreed = await answered(LEAN);
     const cameRound = await answered('A frameless window.', { lean: 'A frameless window.', moved: 'claude-moved-person' });
+    const call = decide('Notes snap to the grid.', MADE);
+    write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it' });
+    assert.deepStrictEqual(ok(dir, ['verdict', 'queue']), { ok: true, departures: [] });
+    const raises = logText();
 
     const reversed = write(...replacing(agreed, 'changed-mind', persons('person-moved-claude')));
     const reversedToo = write(...replacing(cameRound, 'changed-mind', persons('person-moved-claude')));
 
+    const reversals = logged('reversal');
+    assert.deepStrictEqual(reversals.map(({ entry, reverses }) => [entry, reverses]), [[full(reversed), full(agreed)], [full(reversedToo), full(cameRound)]]);
+    assert.deepStrictEqual(evidenceOf(statePath(dir)).answers.map(({ event, standing, cancelled_by: by }) => [event.entry, standing, by]), [
+      [full(agreed), 'agreement', reversals[0].id], [full(cameRound), 'agreement', reversals[1].id], [full(call), 'call', null],
+      [full(reversed), 'departure', null], [full(reversedToo), 'departure', null],
+    ]);
     assert.deepStrictEqual(waiting(), [[reversed, 'A panel.'], [reversedToo, 'A frameless window.']]);
+    assert.ok(logText().startsWith(raises), 'the raises\' lines were rewritten');
   });
 
-  it('takes the person\'s replacement of their own departure at their word, a return to Claude\'s lean or a third answer still against it, never the lean from the start: the return leaves the departure waiting alone, and a third answer waits beside it, Claude\'s lean beside it still', async () => {
+  it('takes the person\'s replacement of their own departure at their word, a return to Claude\'s lean or a third answer still against it, never the lean from the start: the return leaves the departure waiting alone, and a third answer, no new evidence, is owed no verdict (P4)', async () => {
     const returned = await answered('A sheet.');
     assert.strictEqual(refused(...replacing(returned, 'changed-mind', persons('none'))),
       'ledger replace: who_moved_whom is none — the person replacing an answer that stood over Claude\'s lean, for a changed mind or a mistake, comes back round to it or stands over it still: claude-moved-person or person-moved-claude');
@@ -208,7 +219,8 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     const departed = await answered('A frameless window.');
     const third = write(...replacing(departed, 'was-wrong', persons('person-moved-claude')));
 
-    assert.deepStrictEqual(waiting(), [[returned, 'A panel.'], [departed, 'A panel.'], [third, 'A panel.']]);
+    assert.deepStrictEqual(waiting(), [[returned, 'A panel.'], [departed, 'A panel.']]);
+    assert.strictEqual(refusedGive(third, 'loss', '--at', 'queue'), `verdict give: ${third} is no departure this machine logged — ${ELSEWHERE}`);
   });
 
   it('never takes a replacement for a new fact or another topic\'s decision as a departure: new information, not disagreement', () => {
@@ -374,5 +386,41 @@ describe('giving a verdict (16.10.1, 16.10.9)', () => {
       assert.strictEqual(refuses(dir, ['verdict', 'give', departed, verdict, '--at', 'queue'], { env: peer }).error, `verdict give: ${departed} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
     }
     assert.deepStrictEqual([waiting(SESSION), waiting(peer), waitsIn(SESSION), waitsIn(peer), verdicts()], [[], [], true, false, []]);
+  });
+});
+
+describe('the departures this machine logged (16.13.1, 16.13.5, 16.13.6)', () => {
+  it('holds a departure whose raise event waits in the conversation ahead of its entry, the trust log\'s append failing after the ledger\'s, as a waiting verdict counts', async (t) => {
+    failingTrustAppends(t);
+
+    const departed = await answered('A sheet.');
+
+    const kept = fs.readFileSync(path.join(conversationDir(SESSION.CLAUDE_CODE_SESSION_ID), 'trust-pending.jsonl'), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+    assert.deepStrictEqual(kept.map(({ awaits, event }) => [awaits.entry, event.type]), [[full(departed), 'raise']]);
+    assert.deepStrictEqual([logText(), waiting()], ['', [[departed, 'A panel.']]]);
+  });
+
+  it('on a second machine, a config folder of its own, the project\'s departures are in the ledger and none is in the queue, and give refuses them; one judged on the first is never asked again, and of the second\'s own log, an event under another project\'s id is none of this project\'s', async () => {
+    const judged = await answered('A sheet.');
+    const unjudged = await answered('A frameless window.');
+    give(judged, 'loss', 'decided');
+    const second = { WORKFLOWS_CONFIG_DIR: path.join(config(), 'second-machine') };
+    const secondLog = path.join(second.WORKFLOWS_CONFIG_DIR, TRUST_LOG);
+
+    const { decisions } = ok(dir, ['ledger', 'record', UNIT, 'note-window'], { env: second });
+    assert.deepStrictEqual(decisions.filter((/** @type {{who_moved_whom: string}} */ d) => d.who_moved_whom === 'person-moved-claude').map((/** @type {{id: string}} */ d) => d.id), [judged, unjudged]);
+    assert.deepStrictEqual(waiting(second), []);
+    for (const entry of [judged, unjudged]) {
+      assert.strictEqual(refuses(dir, ['verdict', 'give', entry, 'skip', '--at', 'queue'], { env: second }).error, `verdict give: ${entry} is no departure this machine logged — ${ELSEWHERE}`);
+    }
+    assert.ok(!fs.existsSync(secondLog), 'the second machine logged a verdict it refused');
+    assert.deepStrictEqual(waiting(), [[unjudged, 'A panel.']]);
+
+    const [raised] = logged('raise').filter(({ entry }) => entry === full(unjudged));
+    fs.mkdirSync(path.dirname(secondLog), { recursive: true });
+    fs.writeFileSync(secondLog, `${JSON.stringify({ ...raised, id: newId(), project: newId() })}\n`);
+    assert.deepStrictEqual(waiting(second), []);
+    fs.appendFileSync(secondLog, `${JSON.stringify(raised)}\n`);
+    assert.deepStrictEqual(waiting(second), [[unjudged, 'A panel.']]);
   });
 });

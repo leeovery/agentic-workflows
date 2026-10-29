@@ -532,9 +532,10 @@ function runLedger(call, argv) {
 
 // ---------------------------------------------------------------------------
 // verdict — the verdicts on departures (domain/verdict.cjs): `queue` answers
-// the departures waiting on one, a projection of the ledger read as the
-// ledger's reads are, holding no lock; `give` logs one in the trust log,
-// under the writer lock runCli takes, writing nothing the state holds.
+// the departures this machine logged waiting on one, the ledger read as the
+// ledger's reads are through the trust log, holding no lock; `give` logs one
+// in the trust log, under the writer lock runCli takes, writing nothing the
+// state holds.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

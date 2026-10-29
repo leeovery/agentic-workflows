@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: departures and the verdict queue (5.8.10, 16.10) — a
-// projection of the ledger, never a file, read through `verdict queue`
-// (verdict.cjs).
+// Domain ring: departures and the verdict queue (5.8.10, 16.10) — the
+// ledger read through this machine's trust log, never a file, read through
+// `verdict queue` (verdict.cjs).
 //
 // - Who moved whom says whose answer stood, measured against Claude's lean
 //   (5.1.1): `none`, the person's answer was Claude's lean from the start;
@@ -38,22 +38,30 @@
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
 //   reverses (ledger-write.cjs).
-// - The queue: every departure made in a live place, current or replaced
-//   since — it happened, and its verdict is owed — less those given a
-//   verdict, in the trust log or waiting in any conversation for
-//   it (16.10.9), read through `judgedDepartures` alone (trust-log.cjs).
+// - The queue: every departure this machine logged (16.13.1, 16.13.6) made
+//   in a live place, current or replaced since — it happened, and its
+//   verdict is owed — less those given a verdict, in the trust log or
+//   waiting in any conversation for it (16.10.9), in the ledger's order.
+//   The departures and the verdicts are the trust log's, read in one pass
+//   (trust-evidence.cjs): a raise answered against the lean, and a
+//   reversal. A departure another machine logged is judged on the machine
+//   where it was made, so the queue never asks it again here. An event
+//   naming an entry the ledger lacks is skipped, and a ledger departure no
+//   event names — the person's replacement of their own departure, still
+//   against the lean, which is no new evidence — is no departure here.
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
 //   entry down its chain that holds one, or the answer of the nearest that
 //   held the lean, past the person's own earlier departures.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
-const { judgedDepartures } = require('./trust-log.cjs');
+const { evidenceOf } = require('./trust-evidence.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
+/** @typedef {import('./trust-evidence.cjs').Evidence} Evidence */
 
 const OVER_THE_LEAN = 'person-moved-claude';
 const BACK_TO_THE_LEAN = 'claude-moved-person';
@@ -153,13 +161,13 @@ function isDeparture(folded, id) {
 }
 
 /**
- * The verdict queue: every departure made in a live place that `judged`
- * holds no verdict on, in the ledger's order.
- * @param {Folded} folded @param {ReadonlySet<string>} judged
+ * The verdict queue: every departure `evidence` logged, made in a live
+ * place, that it holds no verdict on, in the ledger's order.
+ * @param {Folded} folded @param {Pick<Evidence, 'departures'|'judged'>} evidence
  * @returns {string[]}
  */
-function queueOf(folded, judged) {
-  return [...folded.facts.keys()].filter((id) => isDeparture(folded, id) && isLive(folded, id) && !judged.has(id));
+function queueOf(folded, evidence) {
+  return [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && isLive(folded, id) && !evidence.judged.has(id));
 }
 
 /**
@@ -185,7 +193,7 @@ function leanOf({ folded, show }, id) {
  */
 function answerQueue(shower, root) {
   return {
-    departures: queueOf(shower.folded, judgedDepartures(root)).map((id) => ({
+    departures: queueOf(shower.folded, evidenceOf(root)).map((id) => ({
       ...shower.show(id), standing: standingOf(shower.folded, id), lean: leanOf(shower, id),
     })),
   };

@@ -19,8 +19,9 @@
 //     for,
 //   - the ledger's projections and its copies hold to the events,
 //   - the trust log holds a line for each call, raise, reversal and verdict
-//     the ledger and the verdicts given call for, and nothing waits in a
-//     conversation, after a refusal too (auditTrust).
+//     the ledger and the verdicts given call for, every verdict on a
+//     departure it holds, and nothing waits in a conversation, after a
+//     refusal too (auditTrust).
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
 // ---------------------------------------------------------------------------
@@ -633,9 +634,11 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // naming the entry, for each of the person's answers to the lean a raise
 // sealed, beside the raises the person did not follow; none of them for
 // anything else; and nothing left waiting in a conversation, as no append
-// fails. Every verdict names a departure, a decision whose answer stood over
-// the lean, and none follows one that is no skip (16.10.1); the verdict a
-// command that `ran` gave has its line, the latest.
+// fails. Every verdict names a departure the trust log holds — a raise
+// answered against the lean, or a reversal — that the ledger holds as a
+// decision whose answer stood over the lean (16.13.6), and none follows one
+// that is no skip (16.10.1); the verdict a command that `ran` gave has its
+// line, the latest.
 /** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
 function auditTrust(sim, label, ran = []) {
   const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
@@ -666,10 +669,12 @@ function auditTrust(sim, label, ran = []) {
   const conversations = path.join(sim.configDir, 'conversations');
   const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
   assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
+  const departures = new Set([...ofType('raise').filter((e) => !e.didnt_follow && e.answer !== e.sealed), ...ofType('reversal')].map((e) => e.entry));
   /** @type {Map<string, Record<string, any>[]>} */
   const given = new Map();
   for (const v of ofType('verdict')) {
-    assert.ok(isDecision(byId.get(v.entry) ?? {}) && byId.get(v.entry).who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure`));
+    assert.ok(departures.has(v.entry), ctx(`the verdict ${v.id} names ${v.entry}, which is no departure the trust log holds`));
+    assert.ok(isDecision(byId.get(v.entry) ?? {}) && byId.get(v.entry).who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure in the ledger`));
     given.set(v.entry, [...(given.get(v.entry) ?? []), v]);
   }
   for (const [entry, verdicts] of given) {

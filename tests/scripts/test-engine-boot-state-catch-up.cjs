@@ -27,7 +27,8 @@ const { git, tip, remoteTip, commitOnState, statePath, readState, layout } = har
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
-const { record, judgedDepartures } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 
 const { readFile, createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, STUB_ENGINE, engine, remoteProject, cloneInWorld, boot, setUp } = require('./boot-state-world.cjs');
@@ -162,7 +163,7 @@ describe('the catch-up at boot (4.7.8)', () => {
       assert.strictEqual(boot(second).state, 'ready');
 
       assert.strictEqual(projectIdOf(second), firstId);
-      assert.deepStrictEqual([...judgedDepartures(statePath(second))], [onFirst]);
+      assert.deepStrictEqual([...evidenceOf(statePath(second)).judged], [onFirst]);
     } finally {
       process.env.WORKFLOWS_CONFIG_DIR = pinned;
     }

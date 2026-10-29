@@ -4,22 +4,28 @@
 // Domain ring: the verdict verbs (6.1.6) — the verdict queue, and a verdict
 // given on a departure (16.10).
 //
-// - `verdict queue` answers the departures waiting on a verdict, each with
-//   where it stands and Claude's lean (ledger-verdicts.cjs): a projection of
-//   the ledger, read as the ledger's reads are (ledger-read.cjs), holding no
-//   lock.
+// - `verdict queue` answers the departures this machine logged waiting on a
+//   verdict, each with where it stands and Claude's lean
+//   (ledger-verdicts.cjs): the ledger read as the ledger's reads are
+//   (ledger-read.cjs) through the trust log's evidence (trust-evidence.cjs),
+//   holding no lock.
 // - `verdict give <entry> <verdict> --at <point>` logs the verdict in the
 //   trust log (16.10.9): the entry named by a prefix of its id, as a ledger
 //   link names one; the verdict nothing, a fix later, a real loss, or a
 //   skip; the point a topic's decided screen, ready to build, an
 //   investigation's conclusion, the finish gate, a quick-fix's close
-//   (16.10.10, 16.10.11), or the queue (16.10.7). It refuses an entry that
-//   is no departure (16.10.1), a departure made in a place no longer live,
-//   which the queue leaves out (ledger-verdicts.cjs), and a departure whose
-//   latest verdict is no skip: a skip waits in the queue for the verdict that follows it, and a
-//   verdict given is corrected as a correction (16.15.4), never given again
-//   — a verdict waiting in any conversation for the trust log among them,
-//   which the queue leaves out too (trust-log.cjs).
+//   (16.10.10, 16.10.11), or the queue (16.10.7). It refuses an entry the
+//   ledger holds as no departure (16.10.1); a departure this machine logged
+//   none for: one made on another machine, whose verdict is given there
+//   (16.13.1), or the person's replacement of their own departure, still
+//   against the lean, which is owed none; a departure made in a place no
+//   longer live, which the queue leaves out (ledger-verdicts.cjs); and a
+//   departure whose latest verdict is no skip: a skip waits in the queue
+//   for the verdict that follows it, and a verdict given is corrected as a
+//   correction (16.15.4), never given again — a verdict waiting in any
+//   conversation for the trust log among them, which the queue leaves out
+//   too. The departures and the verdicts are read in one pass
+//   (trust-evidence.cjs).
 //   It holds the writer lock (engine.cjs), so a peer's verdict on the same
 //   departure never lands between the check and the append, and writes
 //   nothing the state holds. An append that fails is a warning, the event
@@ -34,7 +40,8 @@ const { ID_FACTS, foldLedger, whyDead } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { isDeparture, answerQueue } = require('./ledger-verdicts.cjs');
-const { record, judgedDepartures } = require('./trust-log.cjs');
+const { record } = require('./trust-log.cjs');
+const { evidenceOf } = require('./trust-evidence.cjs');
 const { VERDICTS, VERDICT_POINTS } = require('./trust-events.cjs');
 
 const QUEUE_USAGE = 'verdict queue';
@@ -110,9 +117,11 @@ function giveVerdict(cwd, args) {
     }
     const entry = shortId(id, folded.facts.keys());
     if (!isDeparture(folded, id)) throw new Error(`verdict give: ${entry} is no departure — a verdict is given on the person's answer that stood over Claude's lean`);
+    const { departures, judged } = evidenceOf(root);
+    if (!departures.has(id)) throw new Error(`verdict give: ${entry} is no departure this machine logged — a departure's verdict is given on the machine where it was made, and the person's replacement of their own departure is owed none`);
     const dead = whyDead(folded, id);
     if (dead !== null) throw new Error(`verdict give: ${entry} is owed no verdict — ${dead}, so the departure is no longer live`);
-    if (judgedDepartures(root).has(id)) throw new Error(`verdict give: ${entry} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
+    if (judged.has(id)) throw new Error(`verdict give: ${entry} has its verdict — only a skip waits for one, and a verdict given is corrected, never given again`);
     record('verdict', { entry: id, verdict, point }, { cwd, warnings });
     return { entry, verdict, point };
   });
