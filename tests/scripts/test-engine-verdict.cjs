@@ -231,11 +231,12 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     assert.deepStrictEqual(waiting(), [[returned, 'A panel.'], [departed, 'A sheet.']]);
   });
 
-  it('leaves out a departure made where it is set aside, until it comes back', () => {
+  it('leaves out a departure made where it is set aside, until it comes back, and a verdict on it is refused while it is out, logging nothing', () => {
     const departed = decide('A sheet.', DEPARTING);
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual(waiting(), []);
+    assert.strictEqual(refusedGive(departed, 'loss', '--at', 'queue'), `verdict give: ${departed} is owed no verdict — its topic, note-window, is cancelled, so the departure is no longer live`);
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual(waiting(), [[departed, 'A panel.']]);
   });

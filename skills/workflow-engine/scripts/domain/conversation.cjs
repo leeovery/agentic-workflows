@@ -27,10 +27,12 @@
 //                  re-applies, the gate mod's spinner says, and `conversation
 //                  position` names files for
 //   trust-pending.jsonl
-//                  the trust log's events the conversation could not append,
-//                  waiting for its next record to append them first
-//                  (trust-log.cjs) — made where the folder is unmarked, so
-//                  an event before the project has state waits too
+//                  the trust log's events waiting in the conversation
+//                  (trust-log.cjs): those it could not append, for its next
+//                  record to append first, and each call and reversal a
+//                  ledger write keeps ahead of its entry, for the landing
+//                  after it — made where the folder is unmarked, so an
+//                  event before the project has state waits too
 //   gate-shown.json
 //                  the gate the conversation was last shown, with what each
 //                  of its rows leads to, and its answer once given — what
@@ -94,6 +96,11 @@ const MARKER = 'workflow';
 const SYNTHETIC = '<synthetic>';
 const TRANSCRIPT = 'transcript';
 
+/** The session id Claude Code handed the command, null where it handed none. @returns {string|null} */
+function handedSession() {
+  return process.env.CLAUDE_CODE_SESSION_ID || null;
+}
+
 function conversationsRoot() {
   return path.join(systemConfigDir(), 'conversations');
 }
@@ -121,8 +128,8 @@ function safeId(sessionId) {
  * @param {string} cwd
  */
 function markConversation(cwd) {
-  const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId || findStateRoot(cwd) === null) return;
+  const sessionId = handedSession();
+  if (sessionId === null || findStateRoot(cwd) === null) return;
   const marker = path.join(conversationDir(sessionId), MARKER);
   if (fs.existsSync(marker)) return;
   try {
@@ -339,4 +346,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };
+module.exports = { handedSession, conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };

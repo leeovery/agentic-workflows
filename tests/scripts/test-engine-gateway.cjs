@@ -158,7 +158,7 @@ describe('gateway: each menu states a gate of its own', () => {
     const at = path.join(folder, e.name);
     if (e.isDirectory()) return declared(at);
     if (!e.name.endsWith('.cjs')) return [];
-    return [...fs.readFileSync(at, 'utf8').matchAll(/['`]MENU: ([^'`$]+)/g)].map((m) => m[1].split(' — ')[0]);
+    return [...fs.readFileSync(at, 'utf8').matchAll(/['`]MENU: ([^'`$]+?)(?: — [^'`]*)?['`]/g)].map((m) => m[1]);
   });
 
   it('finds the gateways it guards', () => {
@@ -172,13 +172,14 @@ describe('gateway: each menu states a gate of its own', () => {
     }
   });
 
-  it('no two menus share a name, none takes a name an engine render declares, and each is a name the trust log keys', () => {
+  it('no two menus share a name, none takes a name an engine render declares, and each, the engine\'s among them, is a name the trust log keys', () => {
     const engine = new Set(declared(path.join(SKILLS, 'workflow-engine/scripts')));
     const gate = SCHEMA.events.gate.fields.find((f) => f.name === 'gate');
 
+    assert.ok(engine.size > 0, 'no engine render declares a menu — the guard would pass vacuously');
     assert.deepStrictEqual(names.filter((name, i) => names.indexOf(name) !== i), []);
     assert.deepStrictEqual(names.filter((name) => engine.has(name)), []);
-    assert.deepStrictEqual(names.filter((name) => !gate?.type.test(name)), []);
+    assert.deepStrictEqual([...names, ...engine].filter((name) => !gate?.type.test(name)), []);
   });
 });
 

@@ -58,7 +58,7 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
-const { WRITER_LOCK, jsonText, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
+const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
@@ -340,13 +340,6 @@ function addStateWorktree(root) {
   addLockedWorktree(git, root);
 }
 
-/** Write `text` to `file` whole: a temp file beside it, renamed in. @param {string} file @param {string} text */
-function replaceFile(file, text) {
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, text);
-  fs.renameSync(tmp, file);
-}
-
 /**
  * An ignore file's text with the patterns it lacks added after its lines,
  * or null where it lacks none.
@@ -375,7 +368,7 @@ function ignoreInState(root, patterns) {
   }
   const text = withIgnored(fs.readFileSync(file, 'utf8'), patterns);
   if (text === null) return false;
-  replaceFile(file, text);
+  writeTextAtomic(file, text);
   return true;
 }
 
@@ -417,9 +410,9 @@ function repairStateWorktree(root) {
   let was = 'own';
   if (realpathOrSelf(named) !== realpathOrSelf(own)) {
     was = fs.existsSync(named) ? 'copied' : 'moved';
-    replaceFile(dotgit, `gitdir: ${own}\n`);
+    writeTextAtomic(dotgit, `gitdir: ${own}\n`);
   }
-  replaceFile(path.join(own, 'gitdir'), `${dotgit}\n`);
+  writeTextAtomic(path.join(own, 'gitdir'), `${dotgit}\n`);
   return { was, from };
 }
 

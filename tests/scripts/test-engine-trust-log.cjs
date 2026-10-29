@@ -51,8 +51,7 @@ const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const { conversationDir, isMarked, markConversation } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { isId, newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { SCHEMA, trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
-const { trustLog } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
-const { TRUST_LOG, newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog } = require(TRUST_LOG_MODULE);
+const { TRUST_LOG, newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog, judgedDepartures } = require(TRUST_LOG_MODULE);
 const { withWriterLock } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 /** An id of the ledger's shape, spelled from `word`. @param {string} word */
@@ -258,7 +257,7 @@ describe('record (16.13.4)', () => {
 
       const message = `the project manifest at ${file} holds no project_id — setup gives the project one as it creates the state, and the trust log knows the project by it`;
       assert.throws(() => record('call', SAMPLES.call, from(dir)), { message });
-      assert.throws(() => trustLog.verdicts(path.join(dir, '.leeway')), { message });
+      assert.throws(() => judgedDepartures(path.join(dir, '.leeway')), { message });
       assert.strictEqual(fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null, before, name);
     }
     assert.ok(!fs.existsSync(logPath()));
@@ -661,8 +660,8 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
     give(elsewhere, theirs, 'nothing', 'close');
     record('call', { ...SAMPLES.call, entry: skipped }, from(dir));
 
-    assert.deepStrictEqual(trustLog.verdicts(path.join(dir, '.leeway')), new Set([judged, later]));
-    assert.deepStrictEqual(trustLog.verdicts(path.join(elsewhere, '.leeway')), new Set([theirs]));
+    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([judged, later]));
+    assert.deepStrictEqual(judgedDepartures(path.join(elsewhere, '.leeway')), new Set([theirs]));
   });
 
   it('takes an entry\'s latest verdict by when it was given, the log\'s order breaking a tie: a skip given after a fix stands, and a skip that waited, landing after a later fix, does not', () => {
@@ -677,7 +676,7 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
       given(tied, 'skip', '3'), given(tied, 'fix', '3'),
     ));
 
-    assert.deepStrictEqual(trustLog.verdicts(path.join(dir, '.leeway')), new Set([kept, tied]));
+    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([kept, tied]));
   });
 
   it('breaks a tie between the log and what a conversation keeps waiting by the order read, the waiting read after: a skip waiting after a logged loss leaves the departure waiting, a fix waiting after a logged skip judges it', () => {
@@ -690,7 +689,7 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
     fs.writeFileSync(logPath(), lines(given(skipWaits, 'loss'), given(fixWaits, 'skip')));
     fs.writeFileSync(waiting, lines(given(skipWaits, 'skip'), given(fixWaits, 'fix')));
 
-    assert.deepStrictEqual(trustLog.verdicts(path.join(dir, '.leeway')), new Set([fixWaits]));
+    assert.deepStrictEqual(judgedDepartures(path.join(dir, '.leeway')), new Set([fixWaits]));
   });
 
   it('holds another project\'s verdict on an entry of the same id, logged or waiting in a conversation, as none of this project\'s', (t) => {
@@ -707,6 +706,6 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
       delete process.env.CLAUDE_CODE_SESSION_ID;
     }
 
-    assert.deepStrictEqual([trustLog.verdicts(path.join(dir, '.leeway')), trustLog.verdicts(path.join(elsewhere, '.leeway'))], [new Set(), new Set([ENTRY, waited])]);
+    assert.deepStrictEqual([judgedDepartures(path.join(dir, '.leeway')), judgedDepartures(path.join(elsewhere, '.leeway'))], [new Set(), new Set([ENTRY, waited])]);
   });
 });

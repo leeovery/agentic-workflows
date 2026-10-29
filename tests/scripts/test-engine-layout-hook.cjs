@@ -204,6 +204,8 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     'trust.jsonl.lock': 'the trust log\'s lock',
     'conversations/0001-0002/trust-pending.jsonl': 'a conversation\'s file of events waiting for the trust log',
     'conversations/0001-0002/trust-pending.jsonl.lock': 'the lock on a conversation\'s events waiting for the trust log',
+    'conversations/0001-0002/gate-shown.json': 'the record of the gate a conversation was shown',
+    'conversations/0001-0002/pressed.json': 'the gate mod\'s record of a conversation\'s last press',
     'config.json': 'the settings file',
     'person.md': 'the record of the person',
   });
@@ -221,7 +223,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     inConfig = { env: { WORKFLOWS_CONFIG_DIR: config } };
   });
 
-  it('Write, Edit and NotebookEdit on each in the system config directory — every file whose bytes reach the trust log among them — are refused with its reason, there or not yet written, from a project or from a folder in none', () => {
+  it('Write, Edit and NotebookEdit on each in the system config directory — every file whose bytes reach the trust log, and the gate\'s record a gate event is built from, among them — are refused with its reason, there or not yet written, from a project or from a folder in none', () => {
     fs.writeFileSync(path.join(config, 'trust.jsonl'), '{"v":1}\n');
     const elsewhere = outside('drifted');
     for (const rel of /** @type {(keyof typeof USER_FILES)[]} */ (Object.keys(USER_FILES))) {
@@ -259,7 +261,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     const real = outside('real-conversation');
     fs.mkdirSync(path.join(config, 'conversations'));
     fs.symlinkSync(real, path.join(config, 'conversations', 'linked'));
-    for (const rel of /** @type {const} */ (['conversations/0001-0002/trust-pending.jsonl', 'conversations/0001-0002/trust-pending.jsonl.lock'])) {
+    for (const rel of /** @type {const} */ (['conversations/0001-0002/trust-pending.jsonl', 'conversations/0001-0002/trust-pending.jsonl.lock', 'conversations/0001-0002/gate-shown.json', 'conversations/0001-0002/pressed.json'])) {
       const name = path.basename(rel);
       assertRefused(guard(dir, path.join(config, 'conversations', 'linked', name), inConfig), `${name} through the link`, reasonFor(rel));
       assertAllowed(guard(dir, path.join(real, name), inConfig), `${name} where the link leads: the Bash class`);

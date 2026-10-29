@@ -160,19 +160,28 @@ function jsonText(data) {
 }
 
 /**
- * Atomic JSON write: serialise (`jsonText`), write a hidden pid-suffixed temp
- * file in the same directory, rename over the target — a crash mid-write can
- * never leave a truncated manifest behind. A `mode` is the file's exactly,
- * set before the rename, so the content is never readable under another.
- * @param {string} file @param {object} data @param {{mode?: number}} [options]
+ * Atomic write: `text` written to a hidden pid-suffixed temp file in the
+ * same directory, renamed over the target — a crash mid-write can never
+ * leave a truncated file behind. A `mode` is the file's exactly, set before
+ * the rename, so the content is never readable under another.
+ * @param {string} file @param {string} text @param {{mode?: number}} [options]
  */
-function writeJsonAtomic(file, data, { mode } = {}) {
-  assertObjectRoot(data, file);
+function writeTextAtomic(file, text, { mode } = {}) {
   sweepOrphanedTmpFiles(file);
   const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
-  fs.writeFileSync(tmp, jsonText(data), { encoding: 'utf8', mode });
+  fs.writeFileSync(tmp, text, { encoding: 'utf8', mode });
   if (mode !== undefined) fs.chmodSync(tmp, mode);
   fs.renameSync(tmp, file);
+}
+
+/**
+ * Atomic JSON write: serialised (`jsonText`), then written as
+ * `writeTextAtomic` writes, so no manifest is ever left truncated.
+ * @param {string} file @param {object} data @param {{mode?: number}} [options]
+ */
+function writeJsonAtomic(file, data, options) {
+  assertObjectRoot(data, file);
+  writeTextAtomic(file, jsonText(data), options);
 }
 
 /**
@@ -603,6 +612,7 @@ module.exports = {
   isObject,
   readWorkUnitManifest,
   jsonText,
+  writeTextAtomic,
   writeJsonAtomic,
   writeWorkUnitManifestAtomic,
   readProjectManifest,

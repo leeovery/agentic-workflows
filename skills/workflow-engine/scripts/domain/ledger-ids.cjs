@@ -8,7 +8,9 @@
 //
 // - An id is 21 characters of the 62 letters and digits, drawn from Node's
 //   crypto without bias: 125 bits. Letters and digits alone, so a short id
-//   is one word in prose and never reads as a command's option.
+//   is one word in prose and never reads as a command's option. One drawn
+//   from what it names instead (`idFrom`) is the same each time it is drawn,
+//   for what is written again under the same id.
 // - Its short form is its shortest prefix no other id in the ledger shares,
 //   and never shorter than 6 characters.
 // - A prefix given back resolves as git resolves a short hash: to the one id
@@ -37,6 +39,22 @@ function newId() {
       id += ID_ALPHABET[byte % ID_ALPHABET.length];
       if (id.length === ID_LENGTH) break;
     }
+  }
+  return id;
+}
+
+/**
+ * An id of the same shape drawn from `parts`, the same for the same parts:
+ * their SHA-256 hash, as 21 of the alphabet's characters.
+ * @param {...string} parts @returns {string}
+ */
+function idFrom(...parts) {
+  const base = BigInt(ID_ALPHABET.length);
+  let hash = BigInt(`0x${crypto.createHash('sha256').update(parts.join('\0')).digest('hex')}`);
+  let id = '';
+  while (id.length < ID_LENGTH) {
+    id += ID_ALPHABET[Number(hash % base)];
+    hash /= base;
   }
   return id;
 }
@@ -103,4 +121,4 @@ function resolveId(prefix, ids) {
   return /** @type {string} */ (named.values().next().value);
 }
 
-module.exports = { ID_LENGTH, newId, isId, shortIds, shortId, resolveId };
+module.exports = { ID_LENGTH, newId, idFrom, isId, shortIds, shortId, resolveId };

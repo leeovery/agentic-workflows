@@ -35,7 +35,7 @@
 // - The queue: every departure made in a live place, current or replaced
 //   since — it happened, and its verdict is owed — less those given a
 //   verdict, in the trust log or waiting in any conversation for
-//   it (16.10.9), read through `trustLog.verdicts` alone.
+//   it (16.10.9), read through `judgedDepartures` alone (trust-log.cjs).
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
 //   entry down its chain that holds one, or the answer of the nearest that
 //   held the lean, past the person's own earlier departures.
@@ -134,16 +134,6 @@ function isDeparture(folded, id) {
 }
 
 /**
- * The trust log as the verdict queue reads it: the full ids of the
- * departures given a verdict, in it or waiting in any conversation for it —
- * nothing, a fix later or a real loss; a skip leaves one waiting (16.10.1).
- */
-const trustLog = {
-  /** @param {string} root the project's state root @returns {ReadonlySet<string>} */
-  verdicts: (root) => judgedDepartures(root),
-};
-
-/**
  * The verdict queue: every departure made in a live place that `judged`
  * holds no verdict on, in the ledger's order.
  * @param {Folded} folded @param {ReadonlySet<string>} judged
@@ -176,10 +166,10 @@ function leanOf({ folded, show }, id) {
  */
 function answerQueue(shower, root) {
   return {
-    departures: queueOf(shower.folded, trustLog.verdicts(root)).map((id) => ({
+    departures: queueOf(shower.folded, judgedDepartures(root)).map((id) => ({
       ...shower.show(id), standing: standingOf(shower.folded, id), lean: leanOf(shower, id),
     })),
   };
 }
 
-module.exports = { trustLog, derivedMove, movedRefusal, reverses, isDeparture, answerQueue };
+module.exports = { derivedMove, movedRefusal, reverses, isDeparture, answerQueue };
