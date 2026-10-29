@@ -20,46 +20,39 @@
 // that state's writer lock finds it never came, left waiting from another
 // state, without the lock, or in a line of a version this engine does not
 // write, and dropped where its line awaits no ledger and entry, no bad line
-// stopping another; the read, which skips and counts what it cannot read,
-// reads an event once however often it landed, and never stops; and the
-// verdict queue's seam over it (ledger-verdicts.cjs), each entry's latest
-// verdict by its time, the log's and every conversation's waiting verdicts
-// read.
+// stopping another; and the read, which skips and counts what it cannot
+// read, reads an event once however often it landed, and never stops. What
+// a project's read makes of its events is trust-evidence.cjs's
+// (test-engine-trust-evidence.cjs).
 //
 // Layer: process — races between processes, on barriers: appends from two
 // at once, and an event kept while a boot's pass or a record lands what
-// waits. The rest runs in process beside them. World: a project is a plain folder whose
-// state root is pinned, and each test keeps its log in a config folder of
-// its own.
+// waits. The rest runs in process beside them. World: a project is a plain
+// folder whose state root is pinned, and each test keeps its log in a
+// config folder of its own (trust-world.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
 const { NO_SPACE, STATE_DIR_NAME, statePath, layout, contend, failingTrustAppends, lockAttempts } = require('./engine-harness.cjs');
-const { useTempFolder } = require('./discovery-test-utils.cjs');
+const { idOf, PROJECT_ID, SESSION, lines, from, waitingPath, inConversation, useTrustWorld } = require('./trust-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const STATE_ROOT_MODULE = path.join(SCRIPTS, 'kernel/state-root.cjs');
 const TRUST_LOG_MODULE = path.join(SCRIPTS, 'domain/trust-log.cjs');
 const { pinStateRoot } = require(STATE_ROOT_MODULE);
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
-const { conversationDir, isMarked, markConversation } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const { isId, newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
-const { SCHEMA, trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
-const { TRUST_LOG, newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog, judgedDepartures } = require(TRUST_LOG_MODULE);
+const { conversationDir, isMarked } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
+const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
+const { newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog, readProjectEvents } = require(TRUST_LOG_MODULE);
 const { withWriterLock } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
-/** An id of the ledger's shape, spelled from `word`. @param {string} word */
-const idOf = (word) => word.padEnd(21, '0');
-
-const PROJECT_ID = idOf('Fumi');
-// A Claude Code session's id.
-const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const SENTENCE = 'rename the customers table to accounts';
 const NOT_LABEL = 'a call event cannot be recorded: its label is not a label: the labeller\'s model id, and its 12 answers, true or false, or null';
 const ENTRY = idOf('Entry');
@@ -82,45 +75,7 @@ const SAMPLES = Object.freeze({
 
 const HEADER_FIELDS = ['v', 'id', 'at', 'type', 'project', 'project_name', 'model', 'session'];
 
-const folder = useTempFolder('trust-log-');
-
-/** @type {string|undefined} */
-let pinned;
-beforeEach(() => {
-  pinned = process.env.WORKFLOWS_CONFIG_DIR;
-  process.env.WORKFLOWS_CONFIG_DIR = path.join(folder(), 'config');
-});
-afterEach(() => {
-  process.env.WORKFLOWS_CONFIG_DIR = pinned;
-});
-
-/** This test's trust log. */
-const logPath = () => path.join(folder(), 'config', TRUST_LOG);
-
-/** The log's text, '' where there is none. */
-function logText() {
-  return fs.existsSync(logPath()) ? fs.readFileSync(logPath(), 'utf8') : '';
-}
-
-/**
- * A project of this test whose state holds `manifest` as its project
- * manifest — none at all where null — its state root pinned: its folder.
- * @param {string} name @param {Record<string, unknown>|null} [manifest]
- */
-function project(name, manifest = { project_id: PROJECT_ID }) {
-  const dir = path.join(folder(), name);
-  const root = path.join(dir, STATE_DIR_NAME);
-  fs.mkdirSync(root, { recursive: true });
-  if (manifest !== null) fs.writeFileSync(path.join(root, layout.projectManifest), JSON.stringify(manifest));
-  pinStateRoot(dir, root);
-  return dir;
-}
-
-/** A record's context: run from `cwd`, its warnings into `warnings`. @param {string} cwd @param {string[]} [warnings] */
-const from = (cwd, warnings = []) => ({ cwd, warnings });
-
-/** Events as the lines of the log. @param {...Record<string, unknown>} events */
-const lines = (...events) => events.map((event) => `${JSON.stringify(event)}\n`).join('');
+const { folder, logPath, logText, project } = useTrustWorld('trust-log-');
 
 /** Every event the log reads, and how many lines it could not. */
 function readAll() {
@@ -250,7 +205,7 @@ describe('record (16.13.4)', () => {
     assert.deepStrictEqual(readAll().events, [event]);
   });
 
-  it('refuses a project whose manifest holds no project_id, never filling one in: nothing recorded, the manifest as it was, and its verdicts unread (16.13.5)', () => {
+  it('refuses a project whose manifest holds no project_id, never filling one in: nothing recorded, the manifest as it was, and its events unread (16.13.5)', () => {
     for (const [name, manifest] of /** @type {const} */ ([['before-ids', { work_units: {} }], ['no-manifest', null]])) {
       const dir = project(name, manifest);
       const file = statePath(dir, layout.projectManifest);
@@ -258,7 +213,7 @@ describe('record (16.13.4)', () => {
 
       const message = `the project manifest at ${file} holds no project_id — setup gives the project one as it creates the state, and the trust log knows the project by it`;
       assert.throws(() => record('call', SAMPLES.call, from(dir)), { message });
-      assert.throws(() => judgedDepartures(statePath(dir)), { message });
+      assert.throws(() => readProjectEvents(statePath(dir), () => {}), { message });
       assert.strictEqual(fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null, before, name);
     }
     assert.ok(!fs.existsSync(logPath()));
@@ -338,20 +293,6 @@ describe('appending', () => {
 
 describe('an append that fails (16.13.3, 16.S74)', () => {
   const WAITS = ' — the event waits in the conversation, appended first by its next record';
-
-  /** Where the conversation keeps what it could not append. */
-  const waitingPath = () => path.join(conversationDir(SESSION), 'trust-pending.jsonl');
-
-  /** Run `fn` in a conversation the engine has marked from `dir`. @template T @param {string} dir @param {() => T} fn @param {string} [session] @returns {T} */
-  function inConversation(dir, fn, session = SESSION) {
-    process.env.CLAUDE_CODE_SESSION_ID = session;
-    try {
-      markConversation(dir);
-      return fn();
-    } finally {
-      delete process.env.CLAUDE_CODE_SESSION_ID;
-    }
-  }
 
   it('is a warning, the events of two failures waiting in the conversation in order; its next record appends them first, and they wait no more (16.S74)', (t) => {
     const dir = project('fumi');
@@ -586,7 +527,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
   it('drops, with a warning, a kept line of its version whose awaits names no ledger and entry — null, none, a string — and lands the rest of its file and every conversation after it in boot\'s pass', () => {
     const dir = project('fumi');
     const [event, after, later] = ['gate', 'verdict', 'reversal'].map((type) => newEvent(type, SAMPLES[/** @type {keyof typeof SAMPLES} */ (type)], dir));
-    const [bad, next] = ['session-a', 'session-b'].map((session) => path.join(conversationDir(session), 'trust-pending.jsonl'));
+    const [bad, next] = ['session-a', 'session-b'].map((session) => waitingPath(session));
     const awaits = [null, {}, 'the note window'];
     for (const file of [bad, next]) fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(bad, lines(...awaits.map((awaited) => ({ v: 1, awaits: awaited, event })), after));
@@ -644,69 +585,5 @@ describe('reading', () => {
 
   it('reads no log as empty', () => {
     assert.deepStrictEqual(readAll(), { events: [], unread: 0 });
-  });
-});
-
-describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
-  it('answers the project\'s departures whose latest verdict is not a skip: a skip waits, a verdict after a skip stands, another project\'s is not this one\'s', () => {
-    const dir = project('fumi');
-    const elsewhere = project('aircon', { project_id: idOf('Aircon') });
-    const [skipped, judged, later, theirs] = ['Skipped', 'Judged', 'Later', 'Theirs'].map(idOf);
-    /** @param {string} cwd @param {string} entry @param {string} verdict @param {string} point */
-    const give = (cwd, entry, verdict, point) => record('verdict', { entry, verdict, point }, from(cwd));
-    give(dir, skipped, 'skip', 'decided');
-    give(dir, judged, 'loss', 'finish');
-    give(dir, later, 'skip', 'decided');
-    give(dir, later, 'fix', 'queue');
-    give(elsewhere, theirs, 'nothing', 'close');
-    record('call', { ...SAMPLES.call, entry: skipped }, from(dir));
-
-    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([judged, later]));
-    assert.deepStrictEqual(judgedDepartures(statePath(elsewhere)), new Set([theirs]));
-  });
-
-  it('takes an entry\'s latest verdict by when it was given, the log\'s order breaking a tie: a skip given after a fix stands, and a skip that waited, landing after a later fix, does not', () => {
-    const dir = project('fumi');
-    const [overruled, kept, tied] = ['Overruled', 'Kept', 'Tied'].map(idOf);
-    /** @param {string} entry @param {string} verdict @param {string} second */
-    const given = (entry, verdict, second) => trustEvent('verdict', { id: newId(), at: `2026-10-28T10:00:0${second}Z`, project: PROJECT_ID, project_name: 'fumi', model: null, session: null }, { entry, verdict, point: 'queue' });
-    fs.mkdirSync(path.dirname(logPath()), { recursive: true });
-    fs.writeFileSync(logPath(), lines(
-      given(overruled, 'fix', '0'), given(overruled, 'skip', '1'),
-      given(kept, 'fix', '5'), given(kept, 'skip', '2'),
-      given(tied, 'skip', '3'), given(tied, 'fix', '3'),
-    ));
-
-    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([kept, tied]));
-  });
-
-  it('breaks a tie between the log and what a conversation keeps waiting by the order read, the waiting read after: a skip waiting after a logged loss leaves the departure waiting, a fix waiting after a logged skip judges it', () => {
-    const dir = project('fumi');
-    const [skipWaits, fixWaits] = ['SkipWaits', 'FixWaits'].map(idOf);
-    /** @param {string} entry @param {string} verdict */
-    const given = (entry, verdict) => trustEvent('verdict', { id: newId(), at: '2026-10-28T10:00:03Z', project: PROJECT_ID, project_name: 'fumi', model: null, session: null }, { entry, verdict, point: 'queue' });
-    const waiting = path.join(conversationDir(SESSION), 'trust-pending.jsonl');
-    fs.mkdirSync(path.dirname(waiting), { recursive: true });
-    fs.writeFileSync(logPath(), lines(given(skipWaits, 'loss'), given(fixWaits, 'skip')));
-    fs.writeFileSync(waiting, lines(given(skipWaits, 'skip'), given(fixWaits, 'fix')));
-
-    assert.deepStrictEqual(judgedDepartures(statePath(dir)), new Set([fixWaits]));
-  });
-
-  it('holds another project\'s verdict on an entry of the same id, logged or waiting in a conversation, as none of this project\'s', (t) => {
-    const dir = project('fumi');
-    const elsewhere = project('aircon', { project_id: idOf('Aircon') });
-    const waited = idOf('Waited');
-    record('verdict', { entry: ENTRY, verdict: 'loss', point: 'queue' }, from(elsewhere));
-    process.env.CLAUDE_CODE_SESSION_ID = SESSION;
-    try {
-      const failing = failingTrustAppends(t);
-      record('verdict', { entry: waited, verdict: 'fix', point: 'queue' }, from(elsewhere));
-      failing.mock.restore();
-    } finally {
-      delete process.env.CLAUDE_CODE_SESSION_ID;
-    }
-
-    assert.deepStrictEqual([judgedDepartures(statePath(dir)), judgedDepartures(statePath(elsewhere))], [new Set(), new Set([ENTRY, waited])]);
   });
 });

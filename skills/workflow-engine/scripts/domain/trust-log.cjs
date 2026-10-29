@@ -70,9 +70,13 @@
 //   skipped and counted as unread, never a stop: engines of several releases
 //   share the file (trust-events.cjs). An event is read once by its id,
 //   however often it landed: an append that landed but failed is appended
-//   again. The verdicts a project's departures are given are read from the
-//   log and from what every conversation keeps waiting, so a verdict whose
-//   append failed is given all the same, wherever it was given.
+//   again. A project's events are read from the log and from what every
+//   conversation keeps waiting — an event whose append failed, and one kept
+//   ahead of its entry where it awaits that state's ledger and the ledger
+//   holds the entry, its landing failed or never run — so evidence whose
+//   append failed counts all the same, wherever it waits
+//   (trust-evidence.cjs); an event under another project's id is that
+//   project's.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -199,13 +203,22 @@ function ledgerIds(root) {
   return new Set(fs.existsSync(file) ? idsOf(file) : []);
 }
 
+/**
+ * Whether the ledger of the state at `root` holds an entry, its ids read the
+ * first time it is asked.
+ * @param {string} root @returns {(entry: string) => boolean}
+ */
+function ledgerHolds(root) {
+  /** @type {Set<string|undefined>|null} */
+  let ids = null;
+  return (entry) => (ids ??= ledgerIds(root)).has(entry);
+}
+
 /** A landing from `cwd`. @param {string} cwd @returns {Landing} */
 function landingFrom(cwd) {
   const root = findStateRoot(cwd);
   if (root === null) return { root, holds: () => false, locked: false };
-  /** @type {Set<string|undefined>|null} */
-  let ids = null;
-  return { root, holds: (entry) => (ids ??= ledgerIds(root)).has(entry), locked: holdsWriterLock(root) };
+  return { root, holds: ledgerHolds(root), locked: holdsWriterLock(root) };
 }
 
 /**
@@ -260,6 +273,11 @@ function sortKept({ v, awaits, event }, text, landing) {
   return 'land' in sorted ? sortAwaiting(awaits, sorted.land, text, landing) : sorted;
 }
 
+/** Whether a line's value is a kept line, told by the event it holds. @param {unknown} value @returns {value is KeptAhead} */
+function isKept(value) {
+  return isObject(value) && Object.hasOwn(value, 'event');
+}
+
 /**
  * A line waiting in a conversation, sorted: a kept line (`sortKept`), told
  * by the event it holds, or an event; or why it is dropped. Never refuses,
@@ -271,7 +289,7 @@ function sortWaiting(text, landing) {
   const parsed = parsedLine(text);
   if ('not' in parsed) return { drop: parsed.not };
   const { value } = parsed;
-  return isObject(value) && Object.hasOwn(value, 'event') ? sortKept(/** @type {KeptAhead} */ (value), text, landing) : sortEvent(value, text);
+  return isKept(value) ? sortKept(value, text, landing) : sortEvent(value, text);
 }
 
 /**
@@ -474,13 +492,33 @@ function record(type, fields, { cwd, warnings, id }) {
 }
 
 /**
- * A line of the log as its event, or why this engine cannot read it.
- * @param {string} text the line, without its newline
+ * Whether the entry a kept line awaits has landed, as a read asks it.
+ * @typedef {(awaits: {ledger: string, entry: string}) => boolean} Landed
+ */
+
+/** A read that takes no kept line's entry as landed. @type {Landed} */
+const NONE_LANDED = () => false;
+
+/**
+ * A kept line's event, where it is of this version and the entry it awaits
+ * has `landed`; or why it is not read.
+ * @param {KeptAhead} kept @param {Landed} landed
  * @returns {{event: Record<string, unknown>} | {not: string}}
  */
-function readLine(text) {
+function readKept({ v, awaits, event }, landed) {
+  return v === KEPT_VERSION && isAwaits(awaits) && landed(awaits) ? readTrustEvent(event) : { not: 'it waits ahead of an entry not landed' };
+}
+
+/**
+ * A line as its event — a kept line's, where its entry has `landed` — or
+ * why this engine cannot read it.
+ * @param {string} text the line, without its newline @param {Landed} landed
+ * @returns {{event: Record<string, unknown>} | {not: string}}
+ */
+function readLine(text, landed) {
   const parsed = parsedLine(text);
-  return 'not' in parsed ? parsed : readTrustEvent(parsed.value);
+  if ('not' in parsed) return parsed;
+  return isKept(parsed.value) ? readKept(parsed.value, landed) : readTrustEvent(parsed.value);
 }
 
 /** The lines of each of `files` there is, in turn, as bytes. @param {string[]} files @returns {Generator<Buffer>} */
@@ -490,17 +528,18 @@ function* linesOfEach(files) {
 
 /**
  * Read `files` through once each, in turn: `visit` is given each event this
- * engine reads, in the order written, once by its id across them all.
- * Answers how many lines it could not read.
- * @param {string[]} files @param {(event: Record<string, unknown>) => void} visit
+ * engine reads, in the order written, once by its id across them all — a
+ * kept line's among them where its entry has `landed`. Answers how many
+ * lines it could not read.
+ * @param {string[]} files @param {(event: Record<string, unknown>) => void} visit @param {Landed} [landed]
  * @returns {{unread: number}}
  */
-function readEvents(files, visit) {
+function readEvents(files, visit, landed = NONE_LANDED) {
   let unread = 0;
   const seen = new Set();
   for (const line of linesOfEach(files)) {
     const ended = line[line.length - 1] === NEWLINE;
-    const read = ended ? readLine(line.toString('utf8', 0, line.length - 1)) : null;
+    const read = ended ? readLine(line.toString('utf8', 0, line.length - 1), landed) : null;
     if (read === null || 'not' in read) {
       unread += 1;
     } else if (!seen.has(read.event.id)) {
@@ -523,26 +562,22 @@ function readTrustLog(visit) {
 }
 
 /**
- * The project's departures given a verdict (16.10.9): the entries whose
- * latest verdict event, in the trust log or waiting in any conversation
- * for it, is one — nothing, a fix later or a real loss — and not a skip,
- * which leaves a departure waiting (16.10.6). The latest is the one given
- * last, by its time, the order read breaking a tie — the log's, then each
- * conversation's — as a verdict that waited lands after the log's.
+ * Read the project whose state is at `root` through once, on this machine:
+ * `visit` is given each of its events, in the order read, once by its id —
+ * the log's, then what every conversation keeps waiting: an event whose
+ * append failed, and one kept ahead of its entry where it awaits this
+ * state's ledger and the ledger holds the entry. An event under another
+ * project's id is never this one's (16.13.5). Refuses a project whose
+ * manifest holds no project_id.
  * @param {string} root the project's state root
- * @returns {Set<string>} full entry ids
+ * @param {(event: Record<string, unknown>) => void} visit
  */
-function judgedDepartures(root) {
+function readProjectEvents(root, visit) {
   const project = projectId(root);
-  /** @type {Map<string, {at: number, verdict: unknown}>} */
-  const latest = new Map();
+  const holds = ledgerHolds(root);
   readEvents([trustLogPath(), ...waitingFiles()], (event) => {
-    if (event.type !== 'verdict' || event.project !== project) return;
-    const entry = /** @type {string} */ (event.entry);
-    const at = Date.parse(/** @type {string} */ (event.at));
-    if (at >= (latest.get(entry)?.at ?? -Infinity)) latest.set(entry, { at, verdict: event.verdict });
-  });
-  return new Set([...latest].filter(([, { verdict }]) => verdict !== 'skip').map(([entry]) => entry));
+    if (event.project === project) visit(event);
+  }, ({ ledger, entry }) => ledger === root && holds(entry));
 }
 
-module.exports = { TRUST_LOG, PENDING, trustLogPath, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, judgedDepartures };
+module.exports = { TRUST_LOG, PENDING, trustLogPath, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readProjectEvents };
