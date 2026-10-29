@@ -7,10 +7,13 @@
 // each row, why it asks, and, with the toggle on, the mechanism; then the
 // rows, the lean recommended, the toggle, "I don't follow" and a comment.
 // Every line above the rows is the menu's statement, so a surface drawing
-// the gate payload draws it all.
+// the gate payload draws it all. Claude's words are escaped, so they read
+// as written, never as markup; the mechanism keeps its lines, each drawn
+// from its first word: a leading indent in a menu is a row's continuation.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { escapeMarkdown } = require('./worklist.cjs');
 const { titlecase } = require('../conventions.cjs');
 
 /** @typedef {import('../raise.cjs').Seal} Seal */
@@ -19,6 +22,11 @@ const { titlecase } = require('../conventions.cjs');
 /** An engine command a row leads to. @param {string[]} argv @returns {Next} */
 function engine(argv) {
   return { kind: 'engine', argv };
+}
+
+/** The mechanism's lines as written, each escaped, from its first word. @param {string} mechanism */
+function mechanismLines(mechanism) {
+  return mechanism.split(/\r?\n/).map((line) => escapeMarkdown(line.trimStart()));
 }
 
 /** Where the question stands: its unit, and its topic where it has one of its own. @param {Seal['place']} place */
@@ -38,18 +46,18 @@ function statement({ place, call, reason }, technical) {
   return [
     header(place),
     '',
-    call.question,
+    escapeMarkdown(call.question),
     '',
-    `I lean: ${lean.text}`,
+    `I lean: ${escapeMarkdown(lean.text)}`,
     '',
     'WHAT YOU\'D NOTICE',
     '',
-    ...call.rows.map((row) => `- ${row.name}: ${row.notice}`),
+    ...call.rows.map((row) => `- ${escapeMarkdown(row.name)}: ${escapeMarkdown(row.notice)}`),
     '',
     'WHY I\'M ASKING',
     '',
-    reason,
-    ...(technical ? ['', 'THE MECHANISM', '', call.mechanism] : []),
+    escapeMarkdown(reason),
+    ...(technical ? ['', 'THE MECHANISM', '', ...mechanismLines(call.mechanism)] : []),
   ];
 }
 
@@ -61,7 +69,7 @@ function statement({ place, call, reason }, technical) {
 function raiseScreen(seal, { technical = false } = {}) {
   const { id, call } = seal;
   const rows = [
-    ...call.rows.map((row) => cmdOption(row.key, null, { head: row.text, recommended: row.key === call.lean }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
+    ...call.rows.map((row) => cmdOption(row.key, null, { head: escapeMarkdown(row.text), recommended: row.key === call.lean }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
     cmdOption('t', 'technical', technical ? 'Hide the mechanism' : 'Show the mechanism', { next: engine(['raise', 'show', id, ...(technical ? [] : ['--technical'])]) }),
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', 'Ask about it, or tell me what I\'ve missed'),

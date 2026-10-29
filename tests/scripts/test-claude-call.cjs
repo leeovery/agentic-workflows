@@ -34,6 +34,9 @@ const SCHEMA = Object.freeze({
   additionalProperties: false,
 });
 const ANSWER = Object.freeze({ rows: [{ id: 'r1', process: true }] });
+// A call past its time is killed well within this, or the test fails rather
+// than waiting on the stub's 10-minute wait.
+const KILLED_WITHIN_MS = 10000;
 const ASK = Object.freeze({ system: SYSTEM, schema: SCHEMA, model: 'sonnet', effort: 'high', input: 'row r1: shall I commit?', timeoutMs: 20000 });
 
 /** @type {string} */
@@ -185,7 +188,7 @@ describe('the call\'s answer', () => {
     assert.deepStrictEqual(askClaude(ASK), { cannot: 'rate-limit', detail: 'API Error: Request rejected (429) · rate limited' });
   });
 
-  it('cannot run past its time: the call is killed outright — one deaf to SIGTERM too — and no answer stands', () => {
+  it('cannot run past its time: the call is killed outright — one deaf to SIGTERM too — and no answer stands', { timeout: KILLED_WITHIN_MS }, () => {
     arm({ '': 'timeout' });
     const started = Date.now();
 
@@ -294,7 +297,7 @@ describe('the call answering later', () => {
     assert.deepStrictEqual(await Promise.all([askClaudeAsync(ASK), askClaudeAsync(ASK)]), [{ answer: ANSWER, cost: 0.01 }, { answer: ANSWER, cost: 0.01 }]);
   });
 
-  it('cannot run past its time, killed outright — one deaf to SIGTERM too — nor where the binary will not start, as the waiting form cannot', async () => {
+  it('cannot run past its time, killed outright — one deaf to SIGTERM too — nor where the binary will not start, as the waiting form cannot', { timeout: KILLED_WITHIN_MS }, async () => {
     arm({ '': 'timeout' });
     const started = Date.now();
     assert.deepStrictEqual(await askClaudeAsync({ ...ASK, timeoutMs: 400 }), { cannot: 'timeout', detail: 'no answer within 0.4 s' });

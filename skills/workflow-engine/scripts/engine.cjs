@@ -1812,9 +1812,9 @@ function runGate(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 async function runRaiseDraw(call, argv) {
   try {
-    const { decision, reason, seal, warnings } = await drawRaise(call.cwd, argv, call.stdin);
+    const { decision, reason, seal, kept, warnings } = await drawRaise(call.cwd, argv, call.stdin);
     const screen = raiseScreen(seal);
-    respond(call, { decision, reason, raise: seal.id, ...(warnings.length > 0 ? { warnings } : {}) });
+    respond(call, { decision, reason, raise: seal.id, kept, ...(warnings.length > 0 ? { warnings } : {}) });
     respondSections(call, screen);
   } catch (err) {
     failJson(call, err);
