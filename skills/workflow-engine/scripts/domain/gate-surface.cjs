@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
+const { atLeast } = require('../kernel/version.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 
 /**
@@ -44,14 +45,6 @@ function claudeCodeVersion(agent) {
   return m ? m.slice(1).map(Number) : null;
 }
 
-/** @param {number[]} version @returns {boolean} */
-function supported(version) {
-  for (let i = 0; i < MIN_VERSION.length; i++) {
-    if (version[i] !== MIN_VERSION[i]) return version[i] > MIN_VERSION[i];
-  }
-  return true;
-}
-
 /**
  * Where the mod stands, for boot's report: `unavailable` outside the
  * terminal app and the Desktop app's Code tab — on the web, the VS Code
@@ -67,7 +60,7 @@ function gateSurface(cwd) {
   if (!fs.existsSync(path.join(codeRoot(cwd), MOD_DIR))) return 'unavailable';
   const version = claudeCodeVersion(process.env.AI_AGENT);
   if (!version) return 'unavailable';
-  if (!supported(version)) return 'outdated';
+  if (!atLeast(version, MIN_VERSION)) return 'outdated';
   return gateSurfaceAnnounced() ? 'on' : 'not-running';
 }
 

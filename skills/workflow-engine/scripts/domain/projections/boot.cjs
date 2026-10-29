@@ -82,7 +82,7 @@ function stateLostGate(project) {
 
 /**
  * Boot's stop where the git on the PATH is older than the engine's floor, or
- * none runs: the floor, what boot found, and how to get a newer git.
+ * none runs: the floor, what boot found, and where to get one at the floor.
  * @param {string} floor the oldest git the engine runs on
  * @param {string|null} found the version boot found, or null where no git runs
  * @returns {string}
@@ -94,7 +94,7 @@ function gitFloorStop(floor, found) {
   const account = [
     `> Leeway runs on git ${floor} or newer, ${what}`,
     '>',
-    "> Install a newer git, then start a new session in this project. On a Mac, Homebrew's `brew install git` puts one ahead of the git that comes with Apple's command-line tools; elsewhere, your system's package manager or git-scm.com has one.",
+    `> Install git ${floor} or newer, then start a new session in this project. git-scm.com/downloads gives the ways to get one on each system; on a Mac, Homebrew's git takes over from the one Apple's command-line tools bring.`,
   ];
   return [
     section('DISPLAY: git floor stop', emitAs('properties'), `⚑ Boot stopped: ${title}`),

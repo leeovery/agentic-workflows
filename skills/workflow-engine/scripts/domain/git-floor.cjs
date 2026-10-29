@@ -11,6 +11,7 @@
 
 const { spawnSync } = require('child_process');
 const { gitFloorStop } = require('./projections/boot.cjs');
+const { atLeast } = require('../kernel/version.cjs');
 
 /** The oldest git the engine runs on. */
 const GIT_FLOOR = [2, 40, 0];
@@ -18,7 +19,8 @@ const GIT_FLOOR = [2, 40, 0];
 /**
  * How the git on the PATH falls short of the floor: null where it meets it,
  * or answers a version that does not read, which is not judged; else the
- * version it answers, `found` null where no git runs.
+ * version it answers, `found` null where no git runs or `git --version`
+ * fails, as Apple's stand-in does on a Mac without its command-line tools.
  * @typedef {{found: string|null}|null} GitShortfall
  */
 
@@ -34,20 +36,12 @@ function versionOf(answer) {
   return m ? [Number(m[1]), Number(m[2]), Number(m[3] ?? 0)] : null;
 }
 
-/** @param {number[]} version @returns {boolean} */
-function meetsFloor(version) {
-  for (let i = 0; i < GIT_FLOOR.length; i++) {
-    if (version[i] !== GIT_FLOOR[i]) return version[i] > GIT_FLOOR[i];
-  }
-  return true;
-}
-
 /** @returns {GitShortfall} */
 function gitShortfall() {
   const res = spawnSync('git', ['--version'], { encoding: 'utf8' });
   if (res.error || res.status !== 0) return { found: null };
   const version = versionOf(res.stdout.trim());
-  return version === null || meetsFloor(version) ? null : { found: version.join('.') };
+  return version === null || atLeast(version, GIT_FLOOR) ? null : { found: version.join('.') };
 }
 
 /**
