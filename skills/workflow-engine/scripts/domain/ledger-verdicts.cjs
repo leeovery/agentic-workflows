@@ -31,9 +31,11 @@
 //   it comes back round to the lean or gives a third answer still against
 //   it: only its writer can tell, so the writer says which, and never that
 //   it was the lean from the start. For a new fact or another topic's
-//   decision it is new information, never a departure. The write verbs
-//   hold every entry to this as it is written (ledger-write.cjs), so the
-//   ledger's line says it.
+//   decision it is new information, never a departure. The person keeping a
+//   decision as it stands, where Claude proposed to replace it, stands over
+//   the proposal: a departure, though it is no entry (ledger-events.cjs).
+//   The write verbs, and a raise's keep, hold every line to this as it is
+//   written (ledger-write.cjs, raise.cjs), so the ledger's line says it.
 // - A reversal (16.12.1) is the person's replacement this rule holds
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
@@ -43,15 +45,17 @@
 //   verdict is owed — less those given a verdict, in the trust log or
 //   waiting in any conversation for it (16.10.9), in the ledger's order.
 //   The departures and the verdicts are the trust log's, read in one pass
-//   (trust-evidence.cjs): a raise answered against the lean, and a
-//   reversal. A departure another machine logged is judged on the machine
-//   where it was made, so the queue never asks it again here. An event
-//   naming an entry the ledger lacks is skipped, and a ledger departure no
-//   event names — the person's replacement of their own departure, still
-//   against the lean, which is no new evidence — is no departure here.
+//   (trust-evidence.cjs): a raise answered against the lean — a keep among
+//   them, its raise event naming the keep — and a reversal. A departure
+//   another machine logged is judged on the machine where it was made, so
+//   the queue never asks it again here. An event naming an entry the ledger
+//   lacks is skipped, and a ledger departure no event names — the person's
+//   replacement of their own departure, still against the lean, which is no
+//   new evidence — is no departure here.
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
 //   entry down its chain that holds one, or the answer of the nearest that
-//   held the lean, past the person's own earlier departures.
+//   held the lean, past the person's own earlier departures; beside a keep,
+//   the proposal it seals, the keep's row carrying the answer it kept.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
@@ -78,6 +82,12 @@ const NO_LEAN = Object.freeze({
   why: 'the person\'s decision holds no lean of Claude\'s to move, no entry down its chain being Claude\'s own or carrying its sealed answer; their answer to Claude\'s lean is recorded by raise answer',
 });
 
+/** The rule on the person keeping a decision Claude proposed to replace. */
+const KEEPING = Object.freeze({
+  moves: Object.freeze([OVER_THE_LEAN]),
+  why: 'the person keeping an entry as it stands, where Claude proposed to replace it, stands over Claude\'s proposal',
+});
+
 /** The reasons a replacement disagrees with what it replaces, and what each of the others brings instead. */
 const DISAGREEING = Object.freeze(['changed-mind', 'was-wrong']);
 const NEW_INFORMATION = Object.freeze({ 'new-fact': 'a new fact', 'other-topic': 'another topic\'s decision' });
@@ -93,15 +103,17 @@ function heldTheLean({ who_moved_whom: moved }) {
 }
 
 /**
- * The values who moved whom may take on an entry, and why, by who made it,
- * the kind it is and, for the person's replacement of a decision, its
- * reason and the entry it replaces; null where the departure rule leaves it
- * to the writer.
- * @param {Record<string, unknown>} content the entry's, its maker among it
+ * The values who moved whom may take on a line, and why: on a keep, the
+ * person standing over Claude's proposal; on an entry, by who made it, the
+ * kind it is and, for the person's replacement of a decision, its reason
+ * and the entry it replaces; null where the departure rule leaves it to the
+ * writer.
+ * @param {Record<string, unknown>} content the line's, its maker among it, and its event where it is a keep
  * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  * @returns {{moves: readonly string[], why: string}|null}
  */
-function ruleFor({ by }, kind, reason, replaced) {
+function ruleFor({ by, event }, kind, reason, replaced) {
+  if (event === 'kept') return KEEPING;
   if (by === 'claude') return { moves: NOT_OVER, why: 'an entry Claude made never stands over its own lean' };
   if (kind !== 'decision') return null;
   if (replaced === null || !replaced.leaned) return NO_LEAN;
@@ -118,7 +130,7 @@ function ruleFor({ by }, kind, reason, replaced) {
 /**
  * Who moved whom where the departure rule allows one value alone, for the
  * engine to set where the writer leaves it out; null where it allows more.
- * @param {Record<string, unknown>} content the entry's, its maker among it
+ * @param {Record<string, unknown>} content the line's, its maker among it, and its event where it is a keep
  * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  * @returns {string|null}
  */
@@ -150,14 +162,15 @@ function movedRefusal(content, kind, reason, replaced) {
 }
 
 /**
- * Whether an entry is a departure (16.10.1): a decision whose answer stood
+ * Whether a line is a departure (16.10.1): a decision whose answer stood
  * over Claude's lean — the person's, as a decision is the person's or
- * Claude's, and Claude's never stands over its own.
+ * Claude's, and Claude's never stands over its own — or the person's keep
+ * of a decision, standing over Claude's proposed replacement.
  * @param {Folded} folded @param {string} id
  */
 function isDeparture(folded, id) {
-  const { kind, who_moved_whom: moved } = factsOf(folded, id);
-  return kind === 'decision' && moved === OVER_THE_LEAN;
+  const { event, kind, who_moved_whom: moved } = factsOf(folded, id);
+  return (kind === 'decision' || event === 'kept') && moved === OVER_THE_LEAN;
 }
 
 /**
@@ -172,8 +185,9 @@ function queueOf(folded, evidence) {
 
 /**
  * Claude's lean beside a departure: the sealed answer of the nearest entry
- * down its chain that holds one, or the answer of the nearest that held the
- * lean, past the person's own earlier departures; null where none did.
+ * down its chain that holds one — a keep's own, Claude's proposal — or the
+ * answer of the nearest that held the lean, past the person's own earlier
+ * departures; null where none did.
  * @param {Shower} shower @param {string} id
  * @returns {unknown}
  */
@@ -187,16 +201,23 @@ function leanOf({ folded, show }, id) {
 }
 
 /**
- * The verdict queue's answer: the departures waiting on a verdict, each
- * with where it stands and Claude's lean.
+ * A departure as the queue shows it: its line — a keep's with the answer it
+ * kept, the entry's text, as a decision's line holds its answer — where it
+ * stands, and Claude's lean.
+ * @param {Shower} shower @param {string} id
+ */
+function departureRow(shower, id) {
+  const { event, entry } = factsOf(shower.folded, id);
+  const kept = event === 'kept' ? { text: shower.show(/** @type {string} */ (entry)).text } : {};
+  return { ...shower.show(id), ...kept, standing: standingOf(shower.folded, id), lean: leanOf(shower, id) };
+}
+
+/**
+ * The verdict queue's answer: the departures waiting on a verdict.
  * @param {Shower} shower @param {string} root
  */
 function answerQueue(shower, root) {
-  return {
-    departures: queueOf(shower.folded, evidenceOf(root)).map((id) => ({
-      ...shower.show(id), standing: standingOf(shower.folded, id), lean: leanOf(shower, id),
-    })),
-  };
+  return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
 module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, answerQueue };

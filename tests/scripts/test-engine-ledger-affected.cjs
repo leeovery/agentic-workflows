@@ -110,7 +110,7 @@ function changes() {
 /** An entry's line as a read shows it, from the record of where it stands. @param {string} id @param {string} unit @param {string} topic */
 function shown(id, unit, topic) {
   const record = ok(dir, ['ledger', 'record', unit, topic]);
-  const { holds: _holds, replaced: _replaced, ...line } = [...record.questions, ...record.findings, ...record.decisions].find((e) => e.id === id);
+  const { holds: _holds, kept: _kept, replaced: _replaced, ...line } = [...record.questions, ...record.findings, ...record.decisions].find((e) => e.id === id);
   return line;
 }
 

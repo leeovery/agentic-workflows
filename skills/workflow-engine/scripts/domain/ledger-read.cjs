@@ -16,8 +16,9 @@
 //   the entries standing in a unit, or one topic — each where the earliest
 //   entry of its chain in a live place was made, a question's wording on
 //   the topic its unit's last live move took it to — each current entry
-//   with the live entries it replaced folded beneath it, newest first, and
-//   the live confirmations that it still holds (5.6.5); the moves made
+//   with the live entries it replaced folded beneath it, newest first, the
+//   live confirmations that it still holds (5.6.5), and the person's live
+//   keeps of it against a replacement Claude proposed; the moves made
 //   there, as history, which the map can differ from; the merges made
 //   there, each with the duplicate it named and whether it holds; and, read
 //   from their own current entries, never copied, the entries standing
@@ -42,7 +43,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, keptOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
@@ -110,9 +111,13 @@ function showerOf(folded, entryAt) {
   return { folded, show, short };
 }
 
-/** An entry with the live confirmations that it still holds. @param {Shower} shower @param {string} id @returns {Shown} */
+/**
+ * An entry with the live confirmations that it still holds, and the
+ * person's live keeps of it against a replacement Claude proposed.
+ * @param {Shower} shower @param {string} id @returns {Shown}
+ */
 function held({ folded, show }, id) {
-  return { ...show(id), holds: holdsOf(folded, id).map(show) };
+  return { ...show(id), holds: holdsOf(folded, id).map(show), kept: keptOf(folded, id).map(show) };
 }
 
 /** A current entry with its chain folded beneath it, newest first (5.6.5). @param {Shower} shower @param {string} id @returns {Shown} */
@@ -138,10 +143,10 @@ function mergedRow({ folded, show }, id) {
 
 /**
  * `ledger record`: a unit's or a topic's current entries by kind, each with
- * its chain and its confirmations; its moves, and its merges each with its
- * duplicate and whether it holds; and the current entries standing
- * elsewhere it relies on, merged into by a merge that holds, or that answer
- * its questions.
+ * its chain, its confirmations and its keeps; its moves, and its merges
+ * each with its duplicate and whether it holds; and the current entries
+ * standing elsewhere it relies on, merged into by a merge that holds, or
+ * that answer its questions.
  * @param {Shower} shower @param {Place} place
  */
 function answerRecord(shower, { unit, topic }) {
@@ -204,7 +209,7 @@ function answerMap(shower, { unit, topic }) {
   };
 }
 
-/** `ledger product`: the product record, each entry with its chain and its confirmations. @param {Shower} shower */
+/** `ledger product`: the product record, each entry with its chain, its confirmations and its keeps. @param {Shower} shower */
 function answerProduct(shower) {
   const ids = productOf(shower.folded);
   return {

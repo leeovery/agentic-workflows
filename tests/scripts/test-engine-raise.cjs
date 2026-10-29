@@ -174,7 +174,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
     const { res, sections } = await draw();
 
     assert.ok(isId(res.raise), `the raise's id is no ledger id: ${res.raise}`);
-    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, raise: res.raise, kept: false });
+    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, raise: res.raise, redrawn: false });
     assert.strictEqual(sections, screen(res.raise));
   });
 
@@ -260,6 +260,7 @@ describe('the seal (P1, P6)', () => {
       place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' },
       answers: full(asked.where),
       relies_on: [full(asked.size)],
+      replaces: null,
       call: CALL,
       rows_judged: [],
       reason: EVERY_CALL_ASKS,
@@ -274,7 +275,7 @@ describe('the seal (P1, P6)', () => {
     const sealed = seals();
 
     const again = await draw({ ...CALL, rows: [MAIN, CURSOR], lean: '2', mechanism: 'The main screen, always.' });
-    assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, kept: true }, first.sections]);
+    assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, redrawn: true }, first.sections]);
     assert.deepStrictEqual(seals(), sealed);
 
     const other = await draw(CALL, { answers: asked.size });
@@ -365,7 +366,7 @@ describe('the decision point (29.5.2)', () => {
 
     const { res, sections } = await draw();
 
-    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, kept: false });
+    assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
     assert.strictEqual(seals()[res.raise].reason, reason);
     assert.strictEqual(sections, screen(res.raise, { reason }));
   });
@@ -390,7 +391,7 @@ describe('a raise is no gate (6.6.10, E6)', () => {
     assert.strictEqual(answer(), NO_GATE);
 
     gateOnScreen();
-    assert.strictEqual((await draw()).res.kept, true);
+    assert.strictEqual((await draw()).res.redrawn, true);
     assert.strictEqual(answer(), NO_GATE);
 
     gateOnScreen();

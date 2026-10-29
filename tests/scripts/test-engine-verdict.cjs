@@ -172,7 +172,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
 
     const [row] = ok(dir, ['verdict', 'queue']).departures;
     const shown = ok(dir, ['ledger', 'record', UNIT, 'note-window']).decisions.find((/** @type {{id: string}} */ d) => d.id === departed);
-    const { holds: _holds, replaced: _replaced, ...line } = shown;
+    const { holds: _holds, kept: _kept, replaced: _replaced, ...line } = shown;
     assert.deepStrictEqual(row, { ...line, standing: { unit: UNIT, topic: 'note-window' }, lean: 'A panel.' });
   });
 

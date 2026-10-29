@@ -15,8 +15,9 @@
 //   another project's id never this one's (16.13.5, trust-log.cjs).
 // - Each answer stands, by its event:
 //   - a raise answered with Claude's sealed answer: an agreement;
-//   - a raise answered with another row, or in the person's own words, which
-//     name no row: a departure (16.10.1);
+//   - a raise answered with another row — on a replacement, keeping the
+//     decision as it stands among them (raise.cjs) — or in the person's own
+//     words, which name no row: a departure (16.10.1);
 //   - a raise the person didn't follow: no weight (16.12.3);
 //   - a call: Claude's own call;
 //   - a reversal: a departure (16.10.10). It cancels the answer whose entry

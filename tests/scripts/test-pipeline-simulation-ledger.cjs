@@ -227,7 +227,7 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
   });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, and the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none', async () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -252,6 +252,14 @@ describe('pipeline simulation: ledger', () => {
     };
     await raised('Does a note float?', '1');
     await raised('Does a note take focus?', '2');
+
+    // Claude proposing to change an earlier call of its own, and the person
+    // keeping it as it stands: a keep at the raise's id, its raise event
+    // naming it.
+    const snapping = ledger(['ask', note], { ...made, text: 'Does a note snap to the grid?' });
+    const snaps = ledger(['decide', note, '--answers', snapping], { ...made, text: 'Notes snap to the grid.', why: 'Tidy desks.' });
+    const proposed = await sim.runAsync(['raise', note, '--replaces', snaps, '--reason', 'changed-mind'], null, JSON.stringify(leaningCall('Notes float free.', 'Notes snap to a coarse grid.')));
+    sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep']);
 
     // The person deciding unprompted, then changing their mind: Claude put
     // no lean on it, so it is no departure.

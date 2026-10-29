@@ -6,6 +6,8 @@
 // stands, the question, Claude's lean, what the person would notice with
 // each row, why it asks, and, with the toggle on, the mechanism; then the
 // rows, the lean recommended, the toggle, "I don't follow" and a comment.
+// A raise on a replacement draws Claude's proposals, then the row its seal
+// holds for keeping the entry as it stands, never recommended.
 // Every line above the rows is the menu's statement, so a surface drawing
 // the gate payload draws it all. Claude's words are escaped, so they read
 // as written, never as markup; the mechanism keeps its lines, each drawn
@@ -29,6 +31,16 @@ function mechanismLines(mechanism) {
   return mechanism.split(/\r?\n/).map((line) => escapeMarkdown(line.trimStart()));
 }
 
+/**
+ * The rows a raise draws: Claude's, then, on a replacement, keeping the
+ * entry as it stands.
+ * @param {Seal} seal
+ * @returns {import('../raise.cjs').Row[]}
+ */
+function drawnRows({ call, replaces }) {
+  return replaces === null ? call.rows : [...call.rows, replaces.keep];
+}
+
 /** Where the question stands: its unit, and its topic where it has one of its own. @param {Seal['place']} place */
 function header({ unit, topic }) {
   return [unit, ...(topic === null || topic === unit ? [] : [topic])].map(titlecase).join(' · ');
@@ -41,7 +53,8 @@ function header({ unit, topic }) {
  * @param {Seal} seal @param {boolean} technical
  * @returns {string[]}
  */
-function statement({ place, call, reason }, technical) {
+function statement(seal, technical) {
+  const { place, call, reason } = seal;
   const lean = /** @type {{text: string}} */ (call.rows.find((row) => row.key === call.lean));
   return [
     header(place),
@@ -52,7 +65,7 @@ function statement({ place, call, reason }, technical) {
     '',
     'WHAT YOU\'D NOTICE',
     '',
-    ...call.rows.map((row) => `- ${escapeMarkdown(row.name)}: ${escapeMarkdown(row.notice)}`),
+    ...drawnRows(seal).map((row) => `- ${escapeMarkdown(row.name)}: ${escapeMarkdown(row.notice)}`),
     '',
     'WHY I\'M ASKING',
     '',
@@ -69,7 +82,7 @@ function statement({ place, call, reason }, technical) {
 function raiseScreen(seal, { technical = false } = {}) {
   const { id, call } = seal;
   const rows = [
-    ...call.rows.map((row) => cmdOption(row.key, null, { head: escapeMarkdown(row.text), recommended: row.key === call.lean }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
+    ...drawnRows(seal).map((row) => cmdOption(row.key, null, { head: escapeMarkdown(row.text), recommended: row.key === call.lean }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
     cmdOption('t', 'technical', technical ? 'Hide the mechanism' : 'Show the mechanism', { next: engine(['raise', 'show', id, ...(technical ? [] : ['--technical'])]) }),
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', 'Ask about it, or tell me what I\'ve missed'),
@@ -77,4 +90,4 @@ function raiseScreen(seal, { technical = false } = {}) {
   return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical).join('\n'), rows, { question: 'Which way?' }));
 }
 
-module.exports = { raiseScreen };
+module.exports = { drawnRows, raiseScreen };

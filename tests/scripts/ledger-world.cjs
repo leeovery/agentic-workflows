@@ -4,12 +4,12 @@
 // What the ledger suites share (test-engine-ledger*.cjs, and
 // test-engine-verdict.cjs over the ledger's departures): the unit, the
 // session and the topics they write to, the unit's starting phases, and the
-// worlds built from them (`ledgerWorld`; `askedWorld`, its questions asked
-// once and copied; and the copies suites' hook `useCopiesWorld`); one write
-// that must succeed, the ledger's text, lines
-// and entries, and an entry's full id (`ledgerHelpers`); the person's answer
-// to Claude's lean, a raise drawn and answered (`answeredRaise`); and over
-// those, the
+// worlds built from them (`ledgerWorld`; `writtenWorld`, its entries
+// written once and copied, and `askedWorld`, its questions; and the copies
+// suites' hook `useCopiesWorld`); one write that must succeed, the ledger's
+// text, lines and entries, and an entry's full id (`ledgerHelpers`); the
+// person's answer to Claude's lean, a raise drawn and answered
+// (`answeredRaise`); and over those, the
 // helpers each aspect's suites share: the reads and the forms an entry takes
 // in a record and a map (`ledgerReadHelpers`), the written line and a refusal
 // asserted (`ledgerWriteHelpers`), and the rendered copies (`copiesHelpers`).
@@ -71,21 +71,37 @@ function ledgerWorld(prefix, phases = PHASES) {
 
 /**
  * A world many tests start from, built once and copied for each
- * (`fixtureFrom`): the unit's manifest written with `phases`, and Claude's
- * `questions` asked on the note window. Answers the world, and each
- * question's short id by its name, filled as the world is first built.
+ * (`fixtureFrom`): the unit's manifest written with `phases`, and the
+ * entries `build` writes through the ledger's verbs. Answers the world, and
+ * what `build` answered — each entry's short id by its name — filled as
+ * the world is first built.
+ * @template {string} Name
+ * @param {string} prefix @param {Record<string, unknown>} phases
+ * @param {(write: ReturnType<typeof ledgerHelpers>['write']) => Record<Name, string>} build
+ * @returns {{world: (dir?: string) => string, made: Record<Name, string>}}
+ */
+function writtenWorld(prefix, phases, build) {
+  const made = /** @type {Record<Name, string>} */ ({});
+  const world = fixtureFrom(prefix, (template) => {
+    createManifest(template, UNIT, { work_type: 'epic', phases });
+    Object.assign(made, build(ledgerHelpers(() => template).write));
+  });
+  return { world, made };
+}
+
+/**
+ * A world many tests start from (`writtenWorld`): Claude's `questions`
+ * asked on the note window. Answers the world, and each question's short id
+ * by its name.
  * @template {string} Name
  * @param {string} prefix @param {Record<string, unknown>} phases @param {Record<Name, string>} questions
  * @returns {{world: (dir?: string) => string, asked: Record<Name, string>}}
  */
 function askedWorld(prefix, phases, questions) {
-  const asked = /** @type {Record<Name, string>} */ ({});
-  const world = fixtureFrom(prefix, (template) => {
-    createManifest(template, UNIT, { work_type: 'epic', phases });
-    const { write } = ledgerHelpers(() => template);
-    for (const [name, text] of /** @type {[Name, string][]} */ (Object.entries(questions))) asked[name] = write('ask', NOTE, [], { ...MADE, text }).id;
-  });
-  return { world, asked };
+  const { world, made } = writtenWorld(prefix, phases, (write) => /** @type {Record<Name, string>} */ (Object.fromEntries(
+    Object.entries(questions).map(([name, text]) => [name, write('ask', NOTE, [], { ...MADE, text }).id]),
+  )));
+  return { world, asked: made };
 }
 
 /**
@@ -246,9 +262,9 @@ function ledgerReadHelpers(dir) {
     return event;
   }
 
-  /** An entry as a record shows it on its own or in a chain: its line, and the confirmations that it holds. @param {string} short @param {string[]} [holds] */
-  function held(short, holds = []) {
-    return { ...line(short), holds: holds.map(line) };
+  /** An entry as a record shows it on its own or in a chain: its line, the confirmations that it holds, and the person's keeps of it. @param {string} short @param {string[]} [holds] @param {string[]} [kept] */
+  function held(short, holds = [], kept = []) {
+    return { ...line(short), holds: holds.map(line), kept: kept.map(line) };
   }
 
   /** A current entry as a record shows it: its line, its confirmations, and the entries it replaced beneath it. @param {string} short @param {string[]} replaced @param {string[]} [holds] */
@@ -477,7 +493,7 @@ function copiesHelpers(dir) {
 }
 
 module.exports = {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, askedWorld, useCopiesWorld, ledgerHelpers, leaningCall, answeredRaise,
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, writtenWorld, askedWorld, useCopiesWorld, ledgerHelpers, leaningCall, answeredRaise,
   LINKS, HEAP_MB, ids, ledgerReadHelpers,
   ID, AT_NOTE, ledgerWriteHelpers,
   NOTE_COPY, SPACE_COPY, copiesHelpers,

@@ -401,7 +401,7 @@ describe('the answer\'s refusals, writing nothing', () => {
     fs.writeFileSync(inFolder(RAISE_SHOWN), JSON.stringify({ ...seals(), [twin]: { ...seals()[id], id: twin } }));
     assert.strictEqual(refusedAnswer([id.slice(0, 8), '--pick', '1']), `raise answer: "${id.slice(0, 8)}" begins the ids of 2 raises this conversation drew — give more of the id`);
     assert.match(refusedAnswer([id, '--pick', '1'], { why: WHY }, { CLAUDE_CODE_SESSION_ID: undefined }), /^raise answer: no conversation to raise it in/);
-    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
+    const usage = 'Usage: engine raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin, none for keep)';
     for (const args of [[], [id], ['--pick', '1'], [id, '--pick'], [id, '--pick', '--own'], [id, '--pick', '1', '--own'], [id, '--own', '1'], [id, '--choose', '1']]) {
       assert.strictEqual(refusedAnswer(args), usage, args.join(' '));
     }
