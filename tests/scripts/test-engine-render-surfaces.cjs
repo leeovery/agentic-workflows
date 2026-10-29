@@ -2710,7 +2710,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
   });
 
-  it('the state lost stop and the GitHub rule offer are yes/no gates naming the project by its main checkout\'s folder', () => {
+  it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
     const name = titlecase(path.basename(dir));
     const lost = renderSurface(dir, 'state-lost-gate', {});
     assert.match(lost, /=== DISPLAY: state lost stop[^\n]*\n⚑ Boot stopped: Leeway's state branch is gone\n/);
@@ -2720,6 +2720,10 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(rule.includes(`\n${name}'s remote is on GitHub.`), rule);
     assert.match(rule, /\*\*`◆ Set that rule on GitHub\?`\*\*/);
     assert.match(unwrap(rule), /\*\*`n\/no`\*\*\s+→ Leave it unset — \*setup carries on without it\*/);
+    const squash = renderSurface(dir, 'github-squash-gate', {});
+    assert.ok(squash.includes(`\n${name} lands each task on GitHub as a pull request squashed into one commit.`), squash);
+    assert.match(squash, /\*\*`◆ Squash from the pull request's title and description\?`\*\*/);
+    assert.match(unwrap(squash), /\*\*`n\/no`\*\*\s+→ Leave it as it is — \*set it later by hand\*/);
   });
 
   it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {

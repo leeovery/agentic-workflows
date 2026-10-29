@@ -393,7 +393,7 @@ describe('pipeline simulation: sessions', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
-  it('boot: a git below the floor stops at its screen; lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer once, and the no is recorded', () => {
+  it('boot: a git below the floor stops at its screen; lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
     // A machine whose git is older than the engine's floor stops before
     // anything runs.
     const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
@@ -411,19 +411,24 @@ describe('pipeline simulation: sessions', () => {
     assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
     assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
     const restarted = sim.run(['boot', '--start-again']);
-    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer], ['restarted', false]);
+    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer, restarted.github_squash_offer], ['restarted', false, false]);
     assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'leeway-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
 
     // A remote on GitHub, out of reach: boot works on the state it has, and
-    // offers the rule until the offer is answered.
+    // offers the rule, and the squash default its landing on GitHub needs,
+    // until each offer is answered.
     git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
     sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     const offered = sim.run(['boot']);
-    assert.deepStrictEqual([offered.state, offered.github_rule_offer], ['ready', true]);
+    assert.deepStrictEqual([offered.state, offered.github_rule_offer, offered.github_squash_offer], ['ready', true, true]);
     assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Set that rule on GitHub\?/);
     assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
-    assert.strictEqual(sim.run(['boot']).github_rule_offer, false);
+    assert.match(sim.render(['github-squash-gate'], { expect: 'content' }), /Squash from the pull request's title and description\?/);
+    assert.strictEqual(sim.run(['github-squash', 'no']).github_squash, 'declined');
+    const answered = sim.run(['boot']);
+    assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer], [false, false]);
     sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
+    sim.refuses(['github-squash', 'yes'], /an answer is recorded once/);
   });
 
   // -------------------------------------------------------------------------

@@ -65,12 +65,14 @@ function commandOf(args) {
  * @param {string[]} args
  * @param {Record<string, string>} [env] variables layered over the process's own
  * @param {string} [input] written to git's stdin
+ * @param {number} [timeoutMs] how long it may run, as a call over the network is held
  * @returns {string}
  */
-function git(cwd, args, env, input) {
+function git(cwd, args, env, input, timeoutMs) {
   const res = spawnSync('git', args, {
-    cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES,
+    cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES, timeout: timeoutMs,
   });
+  if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') throw new GitError(`git ${commandOf(args)} timed out after ${Number(timeoutMs) / 1000}s`);
   if (res.error) throw new GitError(`git ${commandOf(args)} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();

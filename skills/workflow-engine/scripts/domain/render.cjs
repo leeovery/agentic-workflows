@@ -37,7 +37,7 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -7258,6 +7258,7 @@ const SURFACES = {
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
   'git-floor-stop': () => gitFloorStopSurface(),
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
+  'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ready': knowledgeReadySurface,

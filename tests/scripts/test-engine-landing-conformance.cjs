@@ -6,13 +6,16 @@
 // turn — a task's pull request, a stack in the order its tasks were merged
 // back, a phase merged, finish, a task whose branch moved on since it
 // opened refused at its phase's merge with the way back, its commits kept
-// on a branch, and nothing under `.leeway/` landed (4.S2). After every
-// test, the default branch holds nothing under `.leeway/`. The local driver
-// runs fully here (7.3.6, 7.S11). A driver's own side
-// (tests/drivers/{name}/landing.cjs) readies the world for it and reads
-// what the default branch gained and holds; this file names no driver and
-// no tool. Conformance layer: the landing world (landing-world.cjs), built
-// once per driver and copied for each test.
+// on a branch, and nothing under `.leeway/` landed (4.S2). Once a phase
+// lands, the default branch here holds the landing, wherever the driver
+// lands it. After every test, the default branch holds nothing under
+// `.leeway/`. The local driver runs fully here (7.3.6, 7.S11), and the
+// host's driver against its stand-in tool (7.3.7). A driver's own side
+// (tests/drivers/{name}/landing.cjs) readies the world for it, names the
+// environment every call runs under, and reads what the default branch it
+// lands on gained, holds and is at; this file names no driver and no tool.
+// Conformance layer: the landing world (landing-world.cjs), built once per
+// driver and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,7 +24,9 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { ok, refuses, git, tip, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const harness = require('./engine-harness.cjs');
+
+const { git, tip, fixtureFrom, cleanupFixture } = harness;
 const { TASKS, openArgs, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 
@@ -31,8 +36,17 @@ const { card, total, notes, loudNotes, rounding, currency } = TASKS;
 const isState = (file) => /^\.leeway(\/|$)/i.test(file);
 
 for (const { name } of listDrivers('landing')) {
-  /** @type {{prepare: (dir: string) => void, landed: (dir: string) => {subject: string, task: string|null, paths: string[]}[], holds: (dir: string) => string[]}} */
+  /**
+   * @type {{
+   *   env: Record<string, string|undefined>, prepare: (dir: string) => void, landed: (dir: string) => {subject: string, task: string|null, paths: string[]}[],
+   *   holds: (dir: string) => string[], defaultTip: (dir: string) => string,
+   * }}
+   */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
+  const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, { env: side.env });
+  const refuses = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.refuses(at, args, { env: side.env });
+  /** That the default branch here is where the driver landed it. @param {string} at */
+  const holdsTheLanding = (at) => assert.strictEqual(tip(at, 'main'), side.defaultTip(at), 'the default branch here does not hold the landing');
   const world = fixtureFrom(`engine-landing-${name}-`, (dir) => {
     buildLanding(dir);
     side.prepare(dir);
@@ -86,6 +100,7 @@ for (const { name } of listDrivers('landing')) {
         { subject: 'feat(pay): Show total', task: 'pay-1-2', paths: ['total.txt'] },
         { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
       ]);
+      holdsTheLanding(at);
     });
 
     it('phases side by side: each merges onto the default branch as the other left it', () => {
@@ -93,6 +108,7 @@ for (const { name } of listDrivers('landing')) {
       ok(at, openArgs(card));
       ok(at, openArgs(rounding));
       ok(at, ['land', 'phase', 'pay', '2']);
+      holdsTheLanding(at);
       ok(at, ['land', 'phase', 'pay', '1']);
       assert.deepStrictEqual(side.landed(at), [
         { subject: 'fix(pay): Round totals', task: 'pay-2-1', paths: ['round.txt'] },
@@ -112,6 +128,7 @@ for (const { name } of listDrivers('landing')) {
         { subject: 'fix(pay): Round totals', task: 'pay-2-1', paths: ['round.txt'] },
         { subject: 'fix(pay): Name the currency', task: 'pay-3-1', paths: ['currency.txt'] },
       ]);
+      holdsTheLanding(at);
     });
 
     it('a task whose branch moved on since it opened: its phase is refused, naming where it opened, keeping what it holds now on a branch and putting it back, and merges once that is done', () => {

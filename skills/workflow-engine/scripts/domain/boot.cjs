@@ -78,7 +78,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { placeState } = require('./state-checks.cjs');
 const { catchUpState } = require('./state-merge.cjs');
 const { keepStateIgnored } = require('./code-trace.cjs');
-const { githubRuleOffered } = require('./github-rule.cjs');
+const { githubRuleOffered, githubSquashOffered } = require('./github-setup.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { renderLedgerCopies } = require('./ledger-copies.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
@@ -165,6 +165,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @typedef {object} BootResult
  * @property {'ready'|'restarted'} state `restarted` where this boot started a lost state again, on the person's yes — the product's read of the code follows
  * @property {boolean} github_rule_offer the state's remote is on GitHub and the rule against deleting or force-pushing its branch was never answered — `render github-rule-gate` offers it, and `github-rule <yes|no>` answers
+ * @property {boolean} github_squash_offer the project lands through GitHub and the squash default was never answered — `render github-squash-gate` offers it, and `github-squash <yes|no>` answers
  * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], notices: MigrationNotice[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
@@ -293,7 +294,7 @@ function boot(cwd, { startAgain = false } = {}) {
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd) };
+  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

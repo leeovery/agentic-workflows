@@ -56,6 +56,7 @@ describe('engine boot', () => {
       baseline: 'none',
       walkthrough: 'none',
       github_rule_offer: false,
+      github_squash_offer: false,
       // The fixture's first code commit, its `.gitignore` naming the state,
       // is the setup's own, in the second the state arrived: no history
       // came before the workflows.

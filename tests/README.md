@@ -45,7 +45,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 - **paths from one place:** a layout helper over the engine's own resolver (`statePath`, `stateRelative`), so a layout change touches one file;
 - **state reads:** `stateGit`, `head`, `commitsSince(fix)`, `lastMessage`, `treeSnapshot`;
 - **a frozen clock** for the engine in process;
-- **stubs:** `claude-stub`, `tmux-stub`, a `gh` stub for the landing driver, and `githubOffline`.
+- **stubs:** `claude-stub`, `tmux-stub`, the `gh` stub for the landing driver (`tests/drivers/github/`), and `githubOffline`.
 
 **What exists today:**
 
@@ -59,10 +59,11 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
 | `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its worlds, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-world.cjs`); a seam that must load before the engine does is a module of its own (`ledger-copies-seams.cjs`) |
 | `pipeline-oracle.cjs`, `pipeline-world.cjs` | the simulation's oracle; its world, `Sim` and the steps the prose takes (§11) |
+| `tests/drivers/{name}/` | a driver's side of its kind's conformance suite (§10), and what stands in for its tool: for GitHub's landing driver, the fake GitHub a world carries in its own git directory and the stand-in `gh` and ssh that reach it (`world.cjs`, `gh-stub.cjs`), and the live run (`live-run.cjs`) |
 
 Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). The project world is a template made once per process and copied for each test, and a world of a suite's own is built once through `fixtureFrom` and copied the same way; the remote and two-machine worlds are not templates yet, and are built for each test over `bareRepo`.
 
-`knowledge-eval*.cjs` and `knowledge-openai-smoke.cjs` sit beside the suites but are tools, not support.
+`knowledge-eval*.cjs` and `knowledge-openai-smoke.cjs` sit beside the suites but are tools, not support; so is GitHub's live run, `tests/drivers/github/live-run.cjs`, which no gate runs.
 
 **The rule:** a helper used by two suites moves into the library in the same change, or into its family's module where only that family's suites use it. No suite keeps a file-local copy of a library helper (`readManifest`, `writeFile`, a local `engine` wrapper over `ok`, a local `setupGitFixture`).
 
@@ -123,9 +124,9 @@ The rules every migration keeps are CLAUDE.md's (Migrations); the module contrac
 A conformance suite is the contract a driver meets: one suite per kind of driver, run in the hermetic environment, parametrised over the drivers of that kind.
 
 - **The task suite** covers a phase, links across phases, ready returning several, done unblocking, close and close unblocking, an addition to a task, list and show. The task driver runs against the real tool at or above its declared floor, read through the driver's own `needs`; where none is installed, the suite fails, naming it.
-- **The landing suite** covers a task's pull request, a stack, a phase merged, finish, and a change touching nested repositories. The local driver runs fully in the suite; GitHub's runs against a stubbed `gh`. A live GitHub run happens only on the person's word, on a scratch repository they create for it.
+- **The landing suite** covers a task's pull request, a stack, a phase merged — the default branch here then holding it — finish, and a change touching nested repositories. The local driver runs fully in the suite; GitHub's runs against a stubbed `gh`, so the developer's `gh` is never reached, and the hermetic environment keeps their login out of every suite — GH_CONFIG_DIR pinned, gh's tokens and host dropped; every suite that reaches `gh` uses that one stub. A live GitHub run happens only on the person's word, on a scratch repository they create for it, under their own login: `node tests/drivers/github/live-run.cjs <owner>/<repo>`.
 
-A suite names no driver and no tool: it runs against every shipped driver of its kind, and each driver's side of it — readying the world for that driver and reading what it did — is `tests/drivers/{name}/{kind}.cjs`. A new driver joins its kind's suite with its side; it never gets a suite of its own.
+A suite names no driver and no tool: it runs against every shipped driver of its kind, and each driver's side of it — readying the world for that driver, naming the environment its calls run under, and reading what it did — is `tests/drivers/{name}/{kind}.cjs`. A new driver joins its kind's suite with its side. What only that driver does — its tool's own calls, how it fails, and what setup sets through it — is a suite beside its side, `tests/drivers/{name}/test-*.cjs`, which may name the tool.
 
 ## 11. The pipeline simulation
 
