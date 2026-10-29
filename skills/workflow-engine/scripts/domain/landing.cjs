@@ -23,27 +23,32 @@
 // A task lands in every repository of the project it touches (7.2.17): the
 // project's own and each nested in its folder, a clone or a submodule
 // (kernel/repos.cjs), each on its own default branch, under the same names.
-// A repository is touched where it holds the task's branch with a commit
-// past its chain's tip, which the driver answers there; one holding the
-// branch with nothing past its default branch, or its chain's tip, gets
-// nothing — a task's worktree makes the branch in every child repository
-// (12.7.10), changed or not. `open` reads the chain's tip in every
-// repository holding the branch, and holds the branch to descend from it
-// there (12.7.1), before it opens anything; the other verbs walk the
-// project's own repository and each nested one holding a branch of the
-// unit's in question with a commit its default branch lacks. Every verb
-// walks them children first, the project's own last, so a submodule's
-// landing merges before the repository holding it records its pointer, as
-// each driver records it; a merge is told each submodule of its repository
-// for that. A driver that lands through a host refuses, before anything
-// moves, a repository it walks whose remote it does not serve
-// (`assertServes`). A refusal in a nested repository names it, and one
-// after a repository moved names what moved where; the verb run again picks
-// up where it stopped, a repository done already passed over. A verb
-// answers each repository's landing, children first, as `repos`, and a
-// warning in a nested repository names it. Every verb, before anything
-// else, stops on a rebase stopped in a worktree a remedy made in a
-// repository it walks, until it is settled or ended there (landing-git.cjs).
+// A nested repository holds work on a branch of the unit's where the branch
+// holds a commit no branch there but the unit's holds — read without its
+// default branch, so one the unit never touched is passed over, whatever
+// remote or default branch it lacks; a task's worktree makes the branch in
+// every child repository (12.7.10), changed or not. `open` judges, before it
+// opens anything, the project's own repository and each nested one holding
+// work on the task's branch: touched where the branch holds a commit past
+// its chain's tip, which the driver answers there, and refused where it does
+// not descend from that tip (12.7.1); one with nothing past its default
+// branch or the chain's tip gets nothing. The other verbs walk the project's
+// own repository and each nested one holding work on a branch of the
+// unit's in question. Every verb walks them children first, the project's
+// own last, so a submodule's landing merges before the repository holding
+// it records its pointer, as each driver records it; a merge is told, for
+// that, each submodule of its repository the walk lands in, and no other. A
+// driver that lands through a host refuses, before anything moves, a
+// repository it walks whose remote it does not serve (`assertServes`). A
+// refusal in a nested repository names it, and one after a repository moved
+// names what moved where and carries the warnings those landings gave; the
+// verb run again picks up where it stopped, a repository done already
+// passed over. A verb answers, children first, as `repos`, each repository
+// where its landing did something — a merge, those where a phase merged —
+// and every warning, one in a nested repository naming it. Every verb,
+// before anything else, stops on a rebase stopped in a worktree a remedy
+// made in a repository it walks, until it is settled or ended there
+// (landing-git.cjs).
 //
 // The landing's state is read off git and the host each time. Nothing is
 // recorded but the driver setting, which the first verb settles where it is
@@ -159,42 +164,41 @@ function contextOf(project, repo) {
 }
 
 /**
- * A repository's context for a merge: with each of its submodules that is
- * a repository of the project, by its path from the repository's top.
- * @param {Project} project @param {Repo} repo
+ * A repository's context for a merge: with each of its submodules the walk
+ * lands in, by its path from the repository's top.
+ * @param {Project} project @param {Repo} repo @param {Repo[]} walking
  * @returns {LandingContext}
  */
-function mergingIn(project, repo) {
+function mergingIn(project, repo, walking) {
   const ctx = contextOf(project, repo);
-  const subs = repo.submodules.flatMap((folder) => project.repos.filter((sub) => sub.dir === projectPath(repo.dir, folder)).map((sub) => ({ folder, sub })));
+  const subs = repo.submodules.flatMap((folder) => walking.filter((sub) => sub.dir === projectPath(repo.dir, folder)).map((sub) => ({ folder, sub })));
   if (subs.length === 0) return ctx;
   const prefix = lg.prefixOf(repo.path);
   return { ...ctx, submodules: subs.map(({ folder, sub }) => ({ path: `${prefix}${folder}`, ctx: contextOf(project, sub) })) };
 }
 
 /**
- * Whether a nested repository holds a branch `picks` with a commit its
- * default branch lacks.
- * @param {Project} project @param {Repo} repo @param {(branch: string) => boolean} picks
+ * Whether a nested repository holds work on a branch of the unit's `picks`
+ * names: a commit no branch there but the unit's holds — read without its
+ * default branch, so a repository the unit never touched is passed over
+ * whatever it lacks.
+ * @param {string} unit @param {Repo} repo @param {(branch: string) => boolean} picks
  */
-function holdsWork(project, repo, picks) {
-  const named = [...lg.branches(repo.path).keys()].filter(picks);
-  if (named.length === 0) return false;
-  const ctx = contextOf(project, repo);
-  const past = lg.branchesPast(ctx.root, ctx.into);
-  return named.some((branch) => past.has(branch));
+function holdsWork(unit, repo, picks) {
+  const held = [...lg.branches(repo.path).keys()];
+  const picked = held.filter(picks);
+  return picked.length > 0 && lg.holdsBeyond(repo.path, picked, held.filter((branch) => !names.isUnitBranch(unit, branch)));
 }
 
 /**
  * The repositories a verb but `open` walks, children first: the project's
- * own, and each nested one holding a branch `picks` with a commit its
- * default branch lacks — each refused before any acts where the driver does
- * not serve its remote.
+ * own, and each nested one holding work on a branch `picks` names — each
+ * refused before any acts where the driver does not serve its remote.
  * @param {Project} project @param {LandingDriver} driver @param {(branch: string) => boolean} picks
  * @returns {Repo[]}
  */
 function walked(project, driver, picks) {
-  const repos = childrenFirst(project.repos).filter((repo) => repo.dir === '' || holdsWork(project, repo, picks));
+  const repos = childrenFirst(project.repos).filter((repo) => repo.dir === '' || holdsWork(project.unit, repo, picks));
   for (const repo of repos) {
     const ctx = contextOf(project, repo);
     inRepo(ctx.repo, () => driver.assertServes?.(ctx));
@@ -202,11 +206,13 @@ function walked(project, driver, picks) {
   return repos;
 }
 
+/** A refusal after repositories moved: the warnings their landings gave. @typedef {Error & {landed?: string[]}} Partial */
+
 /**
  * Each step's answer, in turn, with its repository, those with nothing to
  * do left out. A refusal names its repository and, where those before it
  * moved, what moved where — `did` says it of an answer, null where it moved
- * nothing.
+ * nothing — carrying the warnings their landings gave.
  * @param {Step[]} steps @param {(answer: Answer) => string|null} did
  * @returns {Answer[]}
  */
@@ -225,30 +231,34 @@ function walk(steps, did) {
 }
 
 /**
- * A refusal carrying what moved, and where, before it.
+ * A refusal carrying what moved, and where, before it, and the warnings
+ * those landings gave (`Partial`).
  * @param {unknown} err @param {Answer[]} done @param {(answer: Answer) => string|null} did
  */
 function movedBefore(err, done, did) {
+  if (!(err instanceof Error)) return err;
   /** @type {Map<string, string[]>} */
   const moved = new Map();
   for (const answer of done) {
     const what = did(answer);
     if (what !== null) moved.set(what, [...(moved.get(what) ?? []), lg.plain(answer.repo)]);
   }
-  if (moved.size > 0 && err instanceof Error) {
-    err.message = `${err.message} (${[...moved].map(([what, repos]) => `${what} in ${repos.join(', ')}`).join('; ')} before it)`;
-  }
+  if (moved.size > 0) err.message = `${err.message} (${[...moved].map(([what, repos]) => `${what} in ${repos.join(', ')}`).join('; ')} before it)`;
+  const { warnings } = answered(done, () => false);
+  if (warnings !== undefined) /** @type {Partial} */ (err).landed = warnings;
   return err;
 }
 
 /**
- * The repositories' answers, and their warnings beside them, each from a
- * nested repository naming it.
- * @param {Answer[]} answers
+ * The answers of the repositories where something `happened`, and every
+ * repository's warnings beside them, each from a nested repository naming
+ * it.
+ * @param {Answer[]} answers @param {(answer: Answer) => boolean} [happened]
+ * @returns {{repos: Record<string, any>[], warnings?: string[]}}
  */
-function lifted(answers) {
+function answered(answers, happened = () => true) {
   const warnings = answers.flatMap(({ repo, warnings: said = [] }) => said.map((/** @type {string} */ warning) => (repo === '.' ? warning : `in ${lg.plain(repo)}, ${warning}`)));
-  const repos = answers.map(({ warnings: _said, ...answer }) => answer);
+  const repos = answers.filter(happened).map(({ warnings: _said, ...answer }) => answer);
   return { repos, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
@@ -259,7 +269,8 @@ function lifted(answers) {
  * to run, is refused for that (`needsRefusal`). The answer carries the
  * verb's last state commit, null where it failed, and every warning:
  * `before`'s — what the verb committed and was warned of before — the
- * setting's own, and the driver's.
+ * setting's own, and the driver's, a refusal's those of the landings before
+ * it (`Partial`).
  * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown> & {warnings?: string[]}} act
  * @param {{committed?: string|null, warnings?: string[]}} [before]
  */
@@ -271,6 +282,7 @@ function withDriver(cwd, act, before = {}) {
     try {
       return act(/** @type {LandingDriver} */ (driver));
     } catch (err) {
+      if (err instanceof Error) warnings.push(...(/** @type {Partial} */ (err).landed ?? []));
       const missing = needsRefusal(driver);
       throw missing === null ? err : new Error(`land: ${missing}`);
     } finally {
@@ -312,9 +324,10 @@ function untyped(ref, status) {
 
 /**
  * The landing a task opens under, from the type and title the tracker holds
- * for it (7.2.18, 12.4.1), and the repositories holding its branch: refused
- * where it has no type, where no repository holds its branch, and where its
- * change carries the state.
+ * for it (7.2.18, 12.4.1), and the repositories holding its branch — a
+ * nested one only where the branch holds work there (`holdsWork`): refused
+ * where it has no type, where no repository holds its branch, or none holds
+ * work on it, and where its change carries the state.
  * @param {Project} project @param {TaskRef} ref @param {{type: string|null, title: string, status: string}} task
  * @returns {{task: LandingTask, holding: Repo[]}}
  */
@@ -322,10 +335,12 @@ function landingOf(project, ref, { type, title, status }) {
   const shown = shownTask(ref);
   if (type === null) throw new Error(untyped(ref, status));
   const branch = names.taskBranch(ref, type, title);
-  const holding = project.repos.filter((repo) => lg.branches(repo.path).has(branch));
-  if (holding.length === 0) {
+  const named = project.repos.filter((repo) => lg.branches(repo.path).has(branch));
+  if (named.length === 0) {
     throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
   }
+  const holding = named.filter((repo) => repo.dir === '' || holdsWork(project.unit, repo, (held) => held === branch));
+  if (holding.length === 0) throw new Error(`land: task ${shown}'s branch ${branch} changes nothing in the repositories holding it — commit its change there first`);
   const own = /** @type {LandingContext} */ (project.contexts.get(''));
   const state = holding[0].dir === '' ? lg.changedAtTop(own.root, own.into, branch, STATE_DIR_NAME) : [];
   if (state.length > 0) {
@@ -345,32 +360,36 @@ function landingOf(project, ref, { type, title, status }) {
  */
 function touching(project, driver, task, holding) {
   const shown = shownTask(task.ref);
-  /** @type {{ctx: LandingContext, tip: ChainTip}[]} */
-  const opening = [];
-  let opened = false;
-  /** @type {{ctx: LandingContext, past: string}|null} */
-  let idle = null;
-  for (const repo of childrenFirst(holding)) {
+  const judged = childrenFirst(holding).map((repo) => {
     const ctx = contextOf(project, repo);
-    inRepo(ctx.repo, () => {
-      if (lg.isAncestor(ctx.root, task.branch, ctx.into)) {
-        idle = { ctx, past: ctx.into };
-        return;
-      }
-      driver.assertServes?.(ctx);
-      const tip = driver.chainTip(ctx, task);
-      if (tip === null) opened = true;
-      else if (lg.isAncestor(ctx.root, task.branch, tip.commit)) idle = { ctx, past: tip.name };
-      else if (lg.isAncestor(ctx.root, tip.commit, task.branch)) opening.push({ ctx, tip });
-      else throw new Error(`land: task ${shown}'s branch ${task.branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
-    });
-  }
+    return { ctx, found: inRepo(ctx.repo, () => standing(driver, ctx, task)) };
+  });
+  const opening = judged.flatMap(({ ctx, found }) => ('tip' in found ? [{ ctx, tip: found.tip }] : []));
   if (opening.length > 0) return opening;
-  if (opened) throw new Error(`land: task ${shown} is in phase ${task.ref.phase}'s stack already — there is nothing more to open`);
-  const { ctx, past } = /** @type {{ctx: LandingContext, past: string}} */ (/** @type {unknown} */ (idle));
+  if (judged.some(({ found }) => 'opened' in found)) throw new Error(`land: task ${shown} is in phase ${task.ref.phase}'s stack already — there is nothing more to open`);
+  const idle = judged.flatMap(({ ctx, found }) => ('past' in found ? [{ ctx, past: found.past }] : []));
+  const { ctx, past } = idle[idle.length - 1];
   return inRepo(ctx.repo, () => {
     throw new Error(lg.nothingPast(shown, task.branch, past));
   });
+}
+
+/**
+ * Where a task's branch stands in one repository holding it: past the
+ * chain's tip, to open on it; opened already; or with nothing past the
+ * default branch or the chain's tip — refused where it does not descend
+ * from the tip.
+ * @param {LandingDriver} driver @param {LandingContext} ctx @param {LandingTask} task
+ * @returns {{tip: ChainTip}|{opened: true}|{past: string}}
+ */
+function standing(driver, ctx, task) {
+  if (lg.isAncestor(ctx.root, task.branch, ctx.into)) return { past: ctx.into };
+  driver.assertServes?.(ctx);
+  const tip = driver.chainTip(ctx, task);
+  if (tip === null) return { opened: true };
+  if (lg.isAncestor(ctx.root, task.branch, tip.commit)) return { past: tip.name };
+  if (lg.isAncestor(ctx.root, tip.commit, task.branch)) return { tip };
+  throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
 }
 
 /**
@@ -389,7 +408,7 @@ function landOpen(cwd, unit, task) {
   const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
-    return { task: shown, branch: landing.branch, ...lifted(walk(steps, () => `task ${shown} opened`)) };
+    return { task: shown, branch: landing.branch, ...answered(walk(steps, () => `task ${shown} opened`)) };
   }, { committed, warnings });
 }
 
@@ -401,7 +420,10 @@ function landOpen(cwd, unit, task) {
 function landChain(cwd, unit, task) {
   const ref = parseShownTask(unit, task);
   const project = projectOf(cwd, unit);
-  const ofTask = (/** @type {string} */ branch) => names.taskOfBranch(unit, branch)?.n === ref.n && names.taskOfBranch(unit, branch)?.phase === ref.phase;
+  const ofTask = (/** @type {string} */ branch) => {
+    const of = names.taskOfBranch(unit, branch);
+    return of !== null && of.phase === ref.phase && of.n === ref.n;
+  };
   return withDriver(cwd, (driver) => {
     const steps = walked(project, driver, ofTask).map((repo) => {
       const ctx = contextOf(project, repo);
@@ -409,7 +431,7 @@ function landChain(cwd, unit, task) {
     });
     const answers = walk(steps, () => `phase ${ref.phase} chained`);
     if (answers.length === 0) throw new Error(`land: task ${shownTask(ref)} is not open — open it first`);
-    return { phase: ref.phase, ...lifted(answers) };
+    return { phase: ref.phase, ...answered(answers) };
   });
 }
 
@@ -420,7 +442,7 @@ function landChain(cwd, unit, task) {
  * @param {number} phase @param {Answer[]} answers
  */
 function mergedAlready(phase, answers) {
-  const { warnings = [] } = lifted(answers);
+  const { warnings = [] } = answered(answers);
   const { repo, into } = answers[answers.length - 1];
   return inRepo(repo, () => {
     throw new Error(`land: phase ${phase} is merged into ${into} already — there is nothing more to merge${warnings.map((warning) => `; ${warning}`).join('')}`);
@@ -436,34 +458,34 @@ function landPhase(cwd, unit, given) {
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
-    const steps = walked(project, driver, ofPhase).map((repo) => {
-      const ctx = mergingIn(project, repo);
+    const walking = walked(project, driver, ofPhase);
+    const steps = walking.map((repo) => {
+      const ctx = mergingIn(project, repo, walking);
       return { ctx, act: () => driver.mergePhase(ctx, phase) };
     });
     const answers = walk(steps, (answer) => (answer.already ? null : `phase ${phase} merged`));
     if (answers.length === 0) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
-    const merged = answers.filter((answer) => !answer.already);
-    if (merged.length === 0) return mergedAlready(phase, answers);
-    const { warnings } = lifted(answers);
-    return { phase, repos: lifted(merged).repos, ...(warnings === undefined ? {} : { warnings }) };
+    if (answers.every((answer) => answer.already)) return mergedAlready(phase, answers);
+    return { phase, ...answered(answers, (answer) => !answer.already) };
   });
 }
 
 /**
  * Every phase still standing merged, after every other (7.2.6), in every
- * repository of the unit's, children first.
+ * repository of the unit's, children first — answering those where a phase
+ * merged.
  * @param {string} cwd @param {string} unit
  */
 function landFinish(cwd, unit) {
   const project = projectOf(cwd, unit);
-  const ofUnit = (/** @type {string} */ branch) => names.taskOfBranch(unit, branch) !== null || names.phaseOfBranch(unit, branch) !== null;
   return withDriver(cwd, (driver) => {
-    const steps = walked(project, driver, ofUnit).map((repo) => {
-      const ctx = mergingIn(project, repo);
+    const walking = walked(project, driver, (branch) => names.isUnitBranch(unit, branch));
+    const steps = walking.map((repo) => {
+      const ctx = mergingIn(project, repo, walking);
       return { ctx, act: () => driver.finish(ctx) };
     });
     const did = (/** @type {Answer} */ answer) => (answer.phases.length === 0 ? null : `phase ${answer.phases.map((/** @type {{phase: number}} */ merged) => merged.phase).join(', ')} merged`);
-    return lifted(walk(steps, did));
+    return answered(walk(steps, did), (answer) => answer.phases.length > 0);
   });
 }
 

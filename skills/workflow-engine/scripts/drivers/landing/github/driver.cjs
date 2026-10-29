@@ -51,16 +51,24 @@
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
-//   moves (`assertServes`). A submodule's pointer: its stack merges first
-//   (landing.cjs merges children first), squashed into new commits, so the
-//   pointer its repository's stack carries names commits its default branch
-//   lacks. Where the top task's branch names such a commit, one commit on
-//   that branch points the submodule at the tip of its default branch on
-//   GitHub, fetched; it is pushed, and the branch here moved to it, before
-//   the stack merges, so it squashes into the top task's landing, its
-//   subject the task's. The landings below it name the submodule's commits
-//   from before its squash, which GitHub keeps under each of its pull
-//   requests' own refs.
+//   moves (`assertServes`). A submodule's pointer, of each submodule the
+//   phase landed in: its stack merges first (landing.cjs merges children
+//   first), squashed into new commits, so the pointer its repository's
+//   stack carries names commits its default branch lacks. The pointer the
+//   stack records is the local driver's: where the last task moving it has
+//   a landing on the submodule's default branch on GitHub, fetched and read
+//   by its trailer, that landing — else the task's own, a pin kept. Where it
+//   is not the top task's own, one commit on that branch records it; it is
+//   pushed, and the branch here moved to it, before the stack merges, so it
+//   squashes into the top task's landing, its subject the task's. GitHub
+//   cannot merge two moves of a submodule's pointer, having no copy of the
+//   submodule: where its default branch moved a pointer the stack moves
+//   since the stack's base, a lone pull request's commit merges the default
+//   branch in, so GitHub's merge finds the default branch's pointer already
+//   settled; a stack, whose pull requests GitHub merges each onto the one
+//   below, is refused before it merges. The landings below the top
+//   name the submodule's commits from before its squash, which GitHub keeps
+//   under each of its pull requests' own refs.
 // ---------------------------------------------------------------------------
 
 const names = require('../../../domain/landing-names.cjs');
@@ -351,48 +359,115 @@ function bringDefaultUp(ctx, host) {
 }
 
 /**
- * The tip of a submodule's default branch on GitHub, fetched — refused
- * where it cannot be, as the pointer to it is then not recorded.
- * @param {LandingContext} sub
+ * The tip of a repository's default branch on GitHub, fetched — refused
+ * where it cannot be, no pointer then recorded.
+ * @param {LandingContext} ctx
  * @returns {string}
  */
-function mergedTip(sub) {
-  const fetched = lg.fetchBranch(sub.root, hostOf(sub).remote, sub.into);
+function fetchedDefault(ctx) {
+  const fetched = lg.fetchBranch(ctx.root, hostOf(ctx).remote, ctx.into);
   if ('failed' in fetched) {
-    throw new Error(`land: ${lg.plain(sub.repo)}'s ${sub.into} could not be fetched (${fetched.failed}), so its pointer was not recorded and nothing merged — land again once it can be`);
+    const named = ctx.repo === '.' ? ctx.into : `${lg.plain(ctx.repo)}'s ${ctx.into}`;
+    throw new Error(`land: ${named} could not be fetched (${fetched.failed}), so no submodule's pointer was recorded and nothing merged — land again once it can be`);
   }
   return fetched.commit;
 }
 
 /**
- * Each submodule's pointer recorded on the stack's top task's branch at the
- * tip of the submodule's default branch on GitHub, where the top names a
- * commit that branch lacks (see the header): one commit, pushed, then the
- * branch here moved to it — refused before it is pushed where the branch
- * here is checked out and cannot move.
+ * The pointer the stack records last of each submodule it moves, of those
+ * the walk landed in (see the header), against the stack's base: the
+ * submodule's landing on GitHub of the last task moving it, by its trailer,
+ * or that task's own pointer where the submodule landed none.
+ * @param {LandingContext} ctx @param {Stack} stack @param {string} below the stack's base
+ * @returns {Map<string, string|null>}
+ */
+function recordedPointers(ctx, stack, below) {
+  const paths = ctx.submodules.map(({ path }) => path);
+  const [base, ...held] = lg.pointersAt(ctx.root, [below, ...stack.pulls.map(({ oid }) => oid)], paths);
+  const subs = new Map(ctx.submodules.map(({ path, ctx: sub }) => [path, sub]));
+  /** @type {Map<string, Map<string, string>>} */
+  const landings = new Map();
+  /** The submodule's landing of the last of `tasks` it landed, if any. @param {string} at @param {string[]} tasks */
+  const landing = (at, tasks) => {
+    const from = base.get(at) ?? null;
+    const sub = /** @type {LandingContext} */ (subs.get(at));
+    if (from === null) return undefined;
+    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, lg.firstParentLine(sub.root, from, fetchedDefault(sub))));
+    return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
+  };
+  const moves = lg.pointerMoves(base, stack.pulls.map((pull, i) => ({ pointers: held[i], tasks: [shownTask(pull.ref)] })), landing);
+  return new Map(moves.flatMap((moved) => [...moved]));
+}
+
+/**
+ * Each submodule's pointer the stack records (`recordedPointers`) put on
+ * the stack's top task's branch, in one commit, pushed, then the branch
+ * here moved to it — refused before it is pushed where the branch here is
+ * checked out and cannot move. Where GitHub's default branch moved a
+ * pointer the stack moves since the stack's base, a lone pull request's
+ * commit merges that branch in, so GitHub's merge of the two finds nothing
+ * to settle; a stack's is refused before it merges, as GitHub merges each
+ * of its pull requests onto the one below.
  * @param {LandingContext} ctx @param {Host} host @param {Stack} stack
  */
 function recordPointers(ctx, host, stack) {
   if (ctx.submodules.length === 0) return;
   const top = stack.pulls[stack.pulls.length - 1];
-  const [held] = lg.pointersAt(ctx.root, [top.oid], ctx.submodules.map(({ path }) => path));
-  /** @type {Map<string, string>} */
-  const pointers = new Map();
-  for (const { path, ctx: sub } of ctx.submodules) {
-    const at = held.get(path) ?? null;
-    if (at === null || lg.isAncestor(sub.root, at, sub.into)) continue;
-    const tip = mergedTip(sub);
-    if (!lg.isAncestor(sub.root, at, tip)) pointers.set(path, tip);
-  }
+  const into = fetchedDefault(ctx);
+  const below = lg.mergeBase(ctx.root, into, stack.pulls[0].oid);
+  const recorded = recordedPointers(ctx, stack, below);
+  if (recorded.size === 0) return;
+  const paths = [...recorded.keys()];
+  const [base, onto, own] = lg.pointersAt(ctx.root, [below, into, top.oid], paths);
+  const crossed = paths.filter((at) => (onto.get(at) ?? null) !== (base.get(at) ?? null));
+  if (crossed.length > 0 && stack.pulls.length > 1) throw new Error(crossing(ctx, stack, crossed));
+  const pointers = new Map([...recorded].filter(([at, sha]) => crossed.length > 0 || sha !== (own.get(at) ?? null)));
   if (pointers.size === 0) return;
   const listed = [...pointers.keys()].map(lg.plain).join(', ');
-  const message = `chore(${ctx.unit}): point ${listed} at ${pointers.size === 1 ? 'its' : 'their'} landing\n`;
-  const tree = lg.treeWithPointers(ctx.root, top.oid, pointers);
-  const commit = lg.commitTree(ctx.root, { tree, parent: top.oid, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
+  const made = crossed.length === 0 ? pointedOn(ctx, top, pointers) : mergedOn(ctx, top, into, below, pointers);
+  const message = `chore(${ctx.unit}): ${crossed.length === 0 ? 'point' : `merge ${ctx.into}, pointing`} ${listed} at ${pointers.size === 1 ? 'its' : 'their'} landing\n`;
+  const commit = lg.commitTree(ctx.root, { tree: made.tree, parent: made.parents, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
   const block = lg.checkoutBlock(ctx.root, top.head, { from: top.oid, to: commit });
   if (block !== null) throw new Error(`land: ${block}`);
   lg.pushBranch(ctx.root, host.remote, top.head, `${listed}'s pointer was not recorded and nothing merged — clear what git names, and land again`, commit);
   lg.moveBranch(ctx.root, top.head, top.oid, commit);
+}
+
+/** A commit's tree and parents. @typedef {{tree: string, parents: string[]}} Made */
+
+/** The top task's head with `pointers` recorded. @param {LandingContext} ctx @param {Pull} top @param {Map<string, string|null>} pointers @returns {Made} */
+function pointedOn(ctx, top, pointers) {
+  return { tree: lg.treeWithPointers(ctx.root, top.oid, pointers), parents: [top.oid] };
+}
+
+/**
+ * The default branch on GitHub, `into`, merged into the top task's head:
+ * each submodule the walk landed in at `into`'s pointer, but those the
+ * stack moves at `pointers` — refused where the two conflict.
+ * @param {LandingContext} ctx @param {Pull} top @param {string} into @param {string} below the stack's base @param {Map<string, string|null>} pointers
+ * @returns {Made}
+ */
+function mergedOn(ctx, top, into, below, pointers) {
+  const base = lg.pointedLike(ctx.root, below, top.oid, ctx.submodules.map(({ path }) => path));
+  const merged = lg.mergeTree(ctx.root, base, top.oid, into);
+  if ('conflicts' in merged) {
+    const listed = [...pointers.keys()].map(lg.plain).join(', ');
+    throw new Error(`land: ${top.head} conflicts with ${ctx.into} at ${merged.conflicts.map(lg.plain).join(', ')}, so ${listed}'s pointer was not recorded and nothing merged — `
+      + `merge ${ctx.into} into ${top.head}, settling the conflict, and land again`);
+  }
+  return { tree: lg.treeWithPointers(ctx.root, merged.tree, pointers), parents: [top.oid, into] };
+}
+
+/**
+ * The refusal of a stack moving a submodule's pointer the default branch
+ * on GitHub moved since the stack's base.
+ * @param {LandingContext} ctx @param {Stack} stack @param {string[]} crossed
+ */
+function crossing(ctx, stack, crossed) {
+  const listed = crossed.map(lg.plain).join(', ');
+  return `land: phase ${stack.phase}'s stack moves ${listed}'s pointer, which ${ctx.into} on GitHub has moved since the stack's tasks were cut — `
+    + `GitHub merges each pull request of a stack onto the one below it, so the two moves would conflict, and the stack was not merged; `
+    + `bring its branches up to date with ${ctx.into}, the bottom first and each above onto the one below it, settling ${listed}'s pointer, push them, and land again`;
 }
 
 /**

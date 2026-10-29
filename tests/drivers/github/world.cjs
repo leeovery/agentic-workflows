@@ -13,11 +13,14 @@
 // What a person might do by hand on GitHub — close a pull request, merge
 // one, change GitHub's default branch or its squash default — is done to
 // the fake's state here. The fake starts with GitHub's own squash default.
+// The verbs its suites call go through and refuse under `GH_ENV` (`ok`,
+// `refused`), and a phase of two is built the one way (`stackOfTwo`).
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { git, bareRepo, githubOffline } = require('../../scripts/engine-harness.cjs');
+const { git, bareRepo, githubOffline, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
+const { TASKS, openArgs, mergeBack } = require('../../scripts/landing-world.cjs');
 const { STATE_BRANCH } = require('../../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
 
@@ -114,4 +117,25 @@ function squashFromPullRequests(dir) {
 /** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
-module.exports = { REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, tipOnGithub };
+/** The pull requests GitHub holds, each its number, state and base. @param {string} dir */
+const pulls = (dir) => github(dir).pulls.map(({ number, state, base }) => ({ number, state, base }));
+
+/** A verb that must go through, under the stand-in gh. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
+const ok = (dir, args, env = {}) => harnessOk(dir, args, { env: { ...GH_ENV, ...env } });
+
+/** A verb that must refuse, its refusal. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
+const refused = (dir, args, env = {}) => refuses(dir, args, { env: { ...GH_ENV, ...env } }).error;
+
+/** A phase of two in the landing world: card opened from main, total merged back onto it and opened on it, the two linked. @param {string} dir */
+function stackOfTwo(dir) {
+  const { card, total } = TASKS;
+  ok(dir, openArgs(card));
+  mergeBack(dir, total.branch, card.branch);
+  ok(dir, openArgs(total));
+  ok(dir, ['land', 'chain', 'pay', '1.2']);
+}
+
+module.exports = {
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, tipOnGithub,
+  pulls, ok, refused, stackOfTwo,
+};

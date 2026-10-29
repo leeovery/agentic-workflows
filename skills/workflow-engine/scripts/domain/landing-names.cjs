@@ -83,6 +83,11 @@ function taskOfBranch(unit, branch) {
   return named === null ? null : { unit, phase: Number(named[1]), n: Number(named[2]) };
 }
 
+/** Whether a branch is one of the unit's: a task's or a phase's. @param {string} unit @param {string} branch @returns {boolean} */
+function isUnitBranch(unit, branch) {
+  return taskOfBranch(unit, branch) !== null || phaseOfBranch(unit, branch) !== null;
+}
+
 /**
  * The message a task lands under: its subject, then its id as a trailer.
  * @param {TaskRef} ref @param {string} type @param {string} title
@@ -115,6 +120,21 @@ function tasksOfMessage(unit, message) {
 }
 
 /**
+ * The unit's landings among commits, newest first, by the task each lands:
+ * the newest of each task's.
+ * @param {string} unit @param {{sha: string, message: string}[]} commits
+ * @returns {Map<string, string>} the commit, by the task, shown
+ */
+function landingsByTask(unit, commits) {
+  /** @type {Map<string, string>} */
+  const landings = new Map();
+  for (const { sha, message } of commits) {
+    for (const ref of tasksOfMessage(unit, message)) if (!landings.has(shownTask(ref))) landings.set(shownTask(ref), sha);
+  }
+  return landings;
+}
+
+/**
  * The type and title a task's landing carries in a commit's message — the
  * last subject of the unit's above its `Task:` line — or null where there is
  * none.
@@ -132,4 +152,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, phaseOfBranch, taskOfBranch, landedMessage, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, phaseOfBranch, taskOfBranch, isUnitBranch, landedMessage, landingOf, tasksOfMessage, landingsByTask };

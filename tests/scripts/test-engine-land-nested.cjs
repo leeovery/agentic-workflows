@@ -8,9 +8,12 @@
 // that task, a landing leaving the pointer carrying the one before it, and
 // one moving it to a commit the submodule landed nothing for keeping that
 // commit; phases side by side, each moving the pointer, land in either
-// order, the later replayed onto the earlier; and a project that is a folder
-// of a larger repository records its submodule's pointer at the path from
-// the repository's top (7.2.17). Git layer: the nested world
+// order, the later replayed onto the earlier; the submodule's checkout kept
+// on its default branch where the person's git recurses into submodules; a
+// clone with no default branch, the unit's branches in it holding nothing,
+// passed over; and a project that is a folder of a larger repository
+// records its submodule's pointer at the path from the repository's top
+// (7.2.17). Git layer: the nested world
 // (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
@@ -81,6 +84,30 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     git(at.dir, ['reset', '-q', '--', NESTED.ext.folder]);
     ok(at.dir, ['land', 'phase', 'pay', '1']);
     assert.strictEqual(git(at.dir, ['rev-parse', 'HEAD']).trim(), tip(at.dir, 'main'));
+  });
+
+  it('keeps the submodule\'s checkout on its own default branch where the person\'s git recurses into submodules', () => {
+    const at = project();
+    git(at.dir, ['config', 'submodule.recurse', 'true']);
+    ok(at.dir, openArgs(rates));
+    ok(at.dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual([git(at.ext, ['rev-parse', '--symbolic-full-name', 'HEAD']).trim(), git(at.ext, ['rev-parse', 'HEAD']).trim()], ['refs/heads/main', tip(at.ext, 'main')]);
+    assert.strictEqual(git(at.dir, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), tip(at.ext, 'main'));
+  });
+
+  it('passes over, in every verb, a clone the unit never touched that has no default branch to land on, though it holds the unit\'s branches', () => {
+    const at = project();
+    const odd = initRepo(path.join(at.dir, 'odd'));
+    git(odd, ['symbolic-ref', 'HEAD', 'refs/heads/work']);
+    git(odd, ['commit', '-q', '--allow-empty', '-m', 'odd']);
+    for (const task of [rates, show]) git(odd, ['branch', task.branch]);
+    const repos = (/** @type {{repos: {repo: string}[]}} */ answer) => answer.repos.map(({ repo }) => repo);
+
+    assert.deepStrictEqual(repos(ok(at.dir, openArgs(rates))), ['ext', 'lib', '.']);
+    assert.deepStrictEqual(repos(ok(at.dir, openArgs(show))), ['.']);
+    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'chain', 'pay', '1.2'])), ['.']);
+    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'phase', 'pay', '1'])), ['ext', 'lib', '.']);
+    assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
   });
 
   it('records the pointer of a submodule in a project that is a folder of a larger repository at its path from the repository\'s top (7.2.17)', () => {

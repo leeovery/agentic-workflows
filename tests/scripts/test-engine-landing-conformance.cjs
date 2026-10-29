@@ -151,7 +151,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
       assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEEWAY/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
-      assert.deepStrictEqual(own(ok(at, ['land', 'finish', 'pay'])).phases, []);
+      assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).repos, []);
       assert.deepStrictEqual(side.landed(at), []);
     });
   });

@@ -57,7 +57,7 @@ describe('land: what the local driver records, and the shapes of landing it read
     assert.deepStrictEqual(opened(), []);
     ok(dir, openArgs(cutTask(dir, '5.1', 'fix', 'Five', 'main', { 'five.txt': 'five\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-5']);
-    assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases, []);
+    assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).repos, []);
     assert.deepStrictEqual(opened(), []);
   });
 
@@ -108,7 +108,8 @@ describe('land: what the local driver records, and the shapes of landing it read
     const vendored = initRepo(path.join(paths, 'vendor', 'li`b'));
     git(vendored, ['commit', '-q', '--allow-empty', '-m', 'lib']);
     git(vendored, ['branch', '-m', 'main', 'trunk']);
-    git(vendored, ['branch', card.branch]);
+    git(vendored, ['checkout', '-q', '-b', card.branch]);
+    git(vendored, ['commit', '-q', '--allow-empty', '-m', 'card']);
     assert.deepStrictEqual([carried, card].map((task) => refusedMoving(paths, openArgs(task))), [
       'land: task 1.4\'s change carries .leeway/no\'tes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
       'land: in vendor/li\'b, no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '

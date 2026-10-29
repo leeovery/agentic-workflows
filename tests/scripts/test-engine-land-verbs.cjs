@@ -262,12 +262,13 @@ describe('land open: a task judged by its own change', () => {
       assert.deepStrictEqual(landedOn(dir, 'feat/pay-phase-1').map(({ paths }) => paths), [['app/app.txt', 'other/lib', 'other/o.txt']]);
     });
 
-    it('names a nested repository holding the task\'s branch from the project\'s folder, its refusal given there', () => {
+    it('names a nested repository holding work on the task\'s branch from the project\'s folder, its refusal given there', () => {
       const [, app] = nested();
       const lib = initRepo(path.join(app, 'vendor', 'lib'));
       git(lib, ['commit', '-q', '--allow-empty', '-m', 'lib']);
       git(lib, ['branch', '-m', 'main', 'trunk']);
-      git(lib, ['branch', card.branch]);
+      git(lib, ['checkout', '-q', '-b', card.branch]);
+      git(lib, ['commit', '-q', '--allow-empty', '-m', 'card']);
       assert.strictEqual(
         refuses(app, openArgs(card)).error,
         'land: in vendor/lib, no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '

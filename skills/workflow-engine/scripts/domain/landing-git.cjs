@@ -80,7 +80,6 @@ const PINNED = [
   'log.showSignature=false', // a signed commit's check printed ahead of the format a read parses
   'i18n.logOutputEncoding=UTF-8', // a message read re-encoded, and replayed so
   'i18n.commitEncoding=UTF-8', // a replayed message labelled another encoding
-  'submodule.recurse=false', // a fast-forward moving a submodule's checkout with its parent's
   ...MERGE_PINS,
 ].flatMap((setting) => ['-c', setting]);
 
@@ -118,15 +117,24 @@ function branchesHeldBy(root, commit) {
   return new Set(refs.map((ref) => ref.slice(HEADS.length)));
 }
 
-/** The local branches holding a commit `commit` does not. @param {string} root @param {string} commit @returns {Set<string>} */
-function branchesPast(root, commit) {
-  const refs = git(root, ['for-each-ref', `--no-merged=${commit}`, '--format=%(refname)', HEADS]).split('\n').filter(Boolean);
-  return new Set(refs.map((ref) => ref.slice(HEADS.length)));
+/**
+ * Whether any of the local `branches` holds a commit none of `others` does.
+ * @param {string} root @param {string[]} branches @param {string[]} others
+ * @returns {boolean}
+ */
+function holdsBeyond(root, branches, others) {
+  const refs = (/** @type {string[]} */ names) => names.map((name) => `${HEADS}${name}`);
+  return git(root, ['rev-list', '-1', ...refs(branches), '--not', ...refs(others)]).trim() !== '';
 }
 
 /** Whether `ancestor` is `commit` or one it descends from. @param {string} root @param {string} ancestor @param {string} commit @returns {boolean} */
 function isAncestor(root, ancestor, commit) {
   return tryGit(root, ['merge-base', '--is-ancestor', ancestor, commit]) !== null;
+}
+
+/** The best common ancestor of two commits. @param {string} root @param {string} a @param {string} b @returns {string} */
+function mergeBase(root, a, b) {
+  return git(root, ['merge-base', a, b]).trim();
 }
 
 /** The trees of commits, in their order. @param {string} root @param {string[]} commits @returns {string[]} */
@@ -216,23 +224,60 @@ function pointersAt(root, commits, paths) {
 }
 
 /**
- * A commit's tree with each submodule of `pointers` pointed at its commit,
- * the paths from the repository's top: built in an index of its own, so no
- * checkout's index is touched.
- * @param {string} root @param {string} commit @param {Map<string, string>} pointers
- * @returns {string}
+ * A tree's own, or a commit's, with each submodule of `pointers` pointed at
+ * its commit — or taken out, where that is null — the paths from the
+ * repository's top: built in an index of its own, so no checkout's index is
+ * touched.
+ * @param {string} root @param {string} treeish @param {Map<string, string|null>} pointers
+ * @returns {string} the tree
  */
-function treeWithPointers(root, commit, pointers) {
+function treeWithPointers(root, treeish, pointers) {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-pointers-'));
   const env = { GIT_INDEX_FILE: path.join(folder, 'index') };
   try {
-    personGit(root, [...PINNED, 'read-tree', commit], env);
-    const entries = [...pointers].map(([at, sha]) => `160000 commit ${sha}\t${at}\n`).join('');
+    personGit(root, [...PINNED, 'read-tree', treeish], env);
+    const none = '0'.repeat(git(root, ['rev-parse', treeish]).trim().length);
+    const entries = [...pointers].map(([at, sha]) => (sha === null ? `0 ${none}\t${at}\n` : `160000 commit ${sha}\t${at}\n`)).join('');
     personGit(root, [...PINNED, 'update-index', '--index-info'], env, entries);
     return personGit(root, [...PINNED, 'write-tree'], env).trim();
   } finally {
     fs.rmSync(folder, { recursive: true, force: true });
   }
+}
+
+/**
+ * A commit, standing alone and never signed, of `commit`'s tree with each
+ * submodule of `paths` pointed as `like` points it: the base a merge is
+ * given so that its side holding `like`'s pointers takes the other side's,
+ * and no merge of a submodule's two moves is ever git's to make.
+ * @param {string} root @param {string} commit @param {string} like @param {string[]} paths
+ * @returns {string}
+ */
+function pointedLike(root, commit, like, paths) {
+  const [pointers] = pointersAt(root, [like], paths);
+  return git(root, ['commit-tree', '--no-gpg-sign', treeWithPointers(root, commit, pointers), '-m', 'leeway: a merge base']).trim();
+}
+
+/**
+ * Each step's moves of the submodules' pointers, against the step below it —
+ * the first, against `base`: where a step points a submodule elsewhere, the
+ * submodule's landing of the step's tasks (`landing`), or, where it landed
+ * none of them, the step's own pointer; a submodule taken out stays out.
+ * @param {Map<string, string|null>} base
+ * @param {{pointers: Map<string, string|null>, tasks: string[]}[]} steps
+ * @param {(path: string, tasks: string[]) => string|undefined} landing
+ * @returns {Map<string, string|null>[]}
+ */
+function pointerMoves(base, steps, landing) {
+  return steps.map(({ pointers, tasks }, i) => {
+    const below = i === 0 ? base : steps[i - 1].pointers;
+    /** @type {Map<string, string|null>} */
+    const moves = new Map();
+    for (const [at, sha] of pointers) {
+      if (sha !== (below.get(at) ?? null)) moves.set(at, sha === null ? null : landing(at, tasks) ?? sha);
+    }
+    return moves;
+  });
 }
 
 /**
@@ -252,36 +297,60 @@ function signs(root) {
 }
 
 /**
- * A tree committed onto a parent under a message, signed where `signed`:
+ * A tree committed onto its parents under a message, signed where `signed`:
  * `what` the commit is, as a refusal of one git cannot make names it, and
  * `then` the way on once what git names is cleared.
- * @param {string} root @param {{tree: string, parent: string, message: string, signed: boolean}} commit @param {string} what @param {string} then
+ * @param {string} root @param {{tree: string, parent: string|string[], message: string, signed: boolean}} commit @param {string} what @param {string} then
  * @returns {string}
  */
 function commitTree(root, { tree, parent, message, signed }, what, then) {
+  const parents = (Array.isArray(parent) ? parent : [parent]).flatMap((sha) => ['-p', sha]);
   try {
-    return git(root, ['commit-tree', ...(signed ? ['-S'] : []), tree, '-p', parent, '-F', '-'], message).trim();
+    return git(root, ['commit-tree', ...(signed ? ['-S'] : []), tree, ...parents, '-F', '-'], message).trim();
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     throw new Error(`land: ${what} could not be committed (${plain(err.message)}), so nothing moved — clear what git names and ${then}`);
   }
 }
 
-/** A change that conflicts where it is replayed: its message names it, and where. */
+/** A change that conflicts where it is merged: its message names it, and where. */
 class Conflict extends Error {}
+
+/**
+ * The tree `theirs` merged into `ours` makes over `base`, as git's own merge
+ * makes it — or the paths it conflicts at.
+ * @param {string} root @param {string} base @param {string} ours @param {string} theirs
+ * @returns {{tree: string}|{conflicts: string[]}}
+ */
+function mergeTree(root, base, ours, theirs) {
+  const args = [...PINNED, 'merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', `--merge-base=${base}`, ours, theirs];
+  const res = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
+  if (res.status === 1) return { conflicts: res.stdout.split('\0').slice(1).filter(Boolean) };
+  if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
+  return { tree: res.stdout.split('\0')[0] };
+}
+
+/**
+ * Each submodule's pointer a replay records (`pointerMoves`): the paths it
+ * decides, from the repository's top, and each commit's moves of them.
+ * @typedef {{paths: string[], moves: Map<string, string|null>[]}} Pointers
+ */
 
 /**
  * Commits replayed onto `onto`, oldest first, each its own change under its
  * own message: the commit the last replay made, and those whose change was
  * there already, each replayed as a commit that changes nothing — a commit
- * that changes nothing itself is none of them. Stops on the first change
- * that conflicts, naming it and its paths (`Conflict`), and is refused at
- * the first commit git cannot make (`commitTree`).
+ * that changes nothing itself is none of them. Where `pointers` decides a
+ * submodule's pointer, git never merges it: each commit keeps the pointer
+ * of the one it is replayed onto but where it moves it, and then takes its
+ * move. Stops on the first change that conflicts, naming it and its paths
+ * (`Conflict`), and is refused at the first commit git cannot make
+ * (`commitTree`).
  * @template {{sha: string, message: string, name: string}} C
- * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName
+ * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName @param {Pointers} [pointers]
  * @returns {{tip: string, empty: C[]}}
  */
-function replay(root, commits, onto, ontoName) {
+function replay(root, commits, onto, ontoName, pointers) {
   let at = onto;
   let [atTree] = treesOf(root, [onto]);
   const own = treesOf(root, commits.flatMap(({ sha }) => [`${sha}^`, sha]));
@@ -289,14 +358,11 @@ function replay(root, commits, onto, ontoName) {
   /** @type {C[]} */
   const empty = [];
   commits.forEach((commit, i) => {
-    const args = [...PINNED, 'merge-tree', '--write-tree', '-z', '--name-only', '--no-messages', `--merge-base=${commit.sha}^`, at, commit.sha];
-    const res = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
-    if (res.status === 1) {
-      const paths = res.stdout.split('\0').slice(1).filter(Boolean);
-      throw new Conflict(`land: ${commit.name} conflicts with ${ontoName} at ${paths.map(plain).join(', ')}`);
-    }
-    if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
-    const [tree] = res.stdout.split('\0');
+    const base = pointers === undefined ? `${commit.sha}^` : pointedLike(root, `${commit.sha}^`, commit.sha, pointers.paths);
+    const merged = mergeTree(root, base, at, commit.sha);
+    if ('conflicts' in merged) throw new Conflict(`land: ${commit.name} conflicts with ${ontoName} at ${merged.conflicts.map(plain).join(', ')}`);
+    const moves = pointers?.moves[i] ?? new Map();
+    const tree = moves.size === 0 ? merged.tree : treeWithPointers(root, merged.tree, moves);
     if (tree === atTree && own[2 * i] !== own[2 * i + 1]) empty.push(commit);
     at = commitTree(root, { tree, parent: at, message: commit.message, signed }, `${commit.name}'s replay onto ${ontoName}`, 'land again');
     atTree = tree;
@@ -839,7 +905,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, branchesPast, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  prefixOf, pointersAt, treeWithPointers, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
+  prefixOf, pointersAt, treeWithPointers, pointedLike, pointerMoves, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, gitSaid, fetchBranch, nothingPast,
 };

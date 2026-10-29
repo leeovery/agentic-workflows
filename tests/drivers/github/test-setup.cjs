@@ -28,19 +28,13 @@ const harness = require('../../scripts/engine-harness.cjs');
 const { useLandingWorld, setLandingDriver } = require('../../scripts/landing-world.cjs');
 const { githubRuleOffered, githubSquashOffered } = require('../../../skills/workflow-engine/scripts/domain/github-setup.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
-const { GH_ENV, githubWorld, github, calls } = require('./world.cjs');
+const { githubWorld, github, calls, ok, refused } = require('./world.cjs');
 
 const { git, layout } = harness;
 const project = useLandingWorld('github-setup-', (dir) => {
   setLandingDriver(dir, 'github');
   githubWorld(dir);
 });
-
-/** A verb that must go through, under the stand-in gh. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
-const ok = (dir, args, env = {}) => harness.ok(dir, args, { env: { ...GH_ENV, ...env } });
-
-/** A verb that must refuse, its refusal. @param {string} dir @param {string[]} args */
-const refused = (dir, args) => harness.refuses(dir, args, { env: GH_ENV }).error;
 
 /** The project manifest as the state branch holds it. @param {string} dir */
 const committedManifest = (dir) => JSON.parse(git(dir, ['show', `leeway-state:${layout.projectManifest}`]));
