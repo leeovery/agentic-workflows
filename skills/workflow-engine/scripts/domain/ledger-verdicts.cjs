@@ -45,9 +45,8 @@
 //   The departures and the verdicts are the trust log's, read in one pass
 //   (trust-evidence.cjs): a raise answered against the lean, and a
 //   reversal. A departure another machine logged is judged on the machine
-//   where it was made, so the queue never asks it again here. A departure
-//   is one where both stores hold it: an event naming an entry the ledger
-//   lacks, or holds as no departure, is skipped, and a ledger departure no
+//   where it was made, so the queue never asks it again here. An event
+//   naming an entry the ledger lacks is skipped, and a ledger departure no
 //   event names — the person's replacement of their own departure, still
 //   against the lean, which is no new evidence — is no departure here.
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
@@ -162,21 +161,13 @@ function isDeparture(folded, id) {
 }
 
 /**
- * Whether `evidence` logged the entry as a departure, the ledger agreeing.
- * @param {Folded} folded @param {Pick<Evidence, 'departures'>} evidence @param {string} id
- */
-function isLoggedDeparture(folded, { departures }, id) {
-  return departures.has(id) && isDeparture(folded, id);
-}
-
-/**
  * The verdict queue: every departure `evidence` logged, made in a live
  * place, that it holds no verdict on, in the ledger's order.
  * @param {Folded} folded @param {Pick<Evidence, 'departures'|'judged'>} evidence
  * @returns {string[]}
  */
 function queueOf(folded, evidence) {
-  return [...folded.facts.keys()].filter((id) => isLoggedDeparture(folded, evidence, id) && isLive(folded, id) && !evidence.judged.has(id));
+  return [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && isLive(folded, id) && !evidence.judged.has(id));
 }
 
 /**

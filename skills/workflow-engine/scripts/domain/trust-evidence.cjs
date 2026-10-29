@@ -10,8 +10,8 @@
 //
 // - The read: the project's events on this machine, whose trust log it is
 //   (16.13.1) — landed in the log; waiting in a conversation after an append
-//   that failed; or kept ahead of an entry this state's ledger holds, its
-//   landing failed or never run — each once by its id, an event under
+//   that failed; or kept ahead of an entry this state's ledger holds, by
+//   whichever of the project's clones, its landing failed or never run — each once by its id, an event under
 //   another project's id never this one's (16.13.5, trust-log.cjs).
 // - Each answer stands, by its event:
 //   - a raise answered with Claude's sealed answer: an agreement;

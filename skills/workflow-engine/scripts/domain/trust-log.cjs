@@ -72,9 +72,10 @@
 //   however often it landed: an append that landed but failed is appended
 //   again. A project's events are read from the log and from what every
 //   conversation keeps waiting — an event whose append failed, and one kept
-//   ahead of its entry where it awaits that state's ledger and the ledger
-//   holds the entry, its landing failed or never run — so evidence whose
-//   append failed counts all the same, wherever it waits
+//   ahead of its entry where the project's ledger holds the entry, from
+//   whichever of its clones on the machine kept it, its landing failed or
+//   never run — so evidence whose append failed counts all the same,
+//   wherever it waits
 //   (trust-evidence.cjs); an event under another project's id is that
 //   project's.
 // ---------------------------------------------------------------------------
@@ -565,8 +566,8 @@ function readTrustLog(visit) {
  * Read the project whose state is at `root` through once, on this machine:
  * `visit` is given each of its events, in the order read, once by its id —
  * the log's, then what every conversation keeps waiting: an event whose
- * append failed, and one kept ahead of its entry where it awaits this
- * state's ledger and the ledger holds the entry. An event under another
+ * append failed, and one kept ahead of its entry where this state's ledger
+ * holds the entry, whichever clone kept it. An event under another
  * project's id is never this one's (16.13.5). Refuses a project whose
  * manifest holds no project_id.
  * @param {string} root the project's state root
@@ -577,7 +578,7 @@ function readProjectEvents(root, visit) {
   const holds = ledgerHolds(root);
   readEvents([trustLogPath(), ...waitingFiles()], (event) => {
     if (event.project === project) visit(event);
-  }, ({ ledger, entry }) => ledger === root && holds(entry));
+  }, ({ entry }) => holds(entry));
 }
 
 module.exports = { TRUST_LOG, PENDING, trustLogPath, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readProjectEvents };
