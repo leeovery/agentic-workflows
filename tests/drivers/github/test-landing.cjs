@@ -11,18 +11,20 @@
 // brought to the merge (7.S7, 7.S13); a stack merged only once the
 // repository squashes into the pull request's title and description, a
 // lone pull request whatever it squashes into (7.2.18); a phase stacked on
-// a higher one, merged after it; which pull request is a task's; the
-// refusals a person meets, each saying what is missing or what happened
-// and the way on, never an install command (22.4.7) — gh not installed or
-// not signed in, the extension missing, GitHub's rate limit, no network, a
-// merge GitHub refuses, a pull request closed or a stack merged in part by
-// hand on GitHub, a task with nothing to land or opened into a merged
-// phase, and a push refused; git never waiting on a prompt; the default
-// branch here left where the person's work stops it, with the way to bring
-// it up; the stand-in gh
-// failing closed; and the live run refusing without the person's word
-// (7.3.7, 7.S15). Git layer: the landing world on a fake GitHub (world.cjs),
-// built once and copied for each test.
+// a higher one, merged after it; which pull request is a task's, and which
+// is no task's; the refusals a person meets, each saying what is missing or
+// what happened and the way on, never an install command (22.4.7) — gh not
+// installed or not signed in, the extension missing, GitHub's rate limit,
+// no network, a merge GitHub refuses, a pull request closed or a stack
+// merged in part by hand on GitHub, a task with nothing to land, opened
+// already or opened into a merged phase, and a push refused; the push
+// naming its branch, with no tag and no prompt; the default branch here
+// left where the person's work, a failed fetch or git itself stops it,
+// warned once with the way to bring it up, the merge standing; the
+// stand-in gh at the driver's floors, failing closed; and the live run
+// refusing without the person's word (7.3.7, 7.S15). Git layer: the
+// landing world on a fake GitHub (world.cjs), built once and copied for
+// each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -124,7 +126,7 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
 });
 
 describe('the squash default (7.2.18)', () => {
-  it('squashing as GitHub does unless told: a lone pull request merges under its title and " (#N)", and a stack is refused naming the setting — merged once setup sets it', () => {
+  it('squashing as GitHub does unless told: a lone pull request merges under its title and " (#N)", and a stack is refused naming the setting while either half is not the pull request\'s — merged once it is set', () => {
     const dir = project();
     onGithub(dir, (state) => {
       state.squash = { ...GITHUB_SQUASH };
@@ -134,11 +136,14 @@ describe('the squash default (7.2.18)', () => {
     ok(dir, ['land', 'phase', 'pay', '2']);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [{ subject: 'fix(pay): Round totals (#4)', task: 'pay-2-1', paths: ['round.txt'] }]);
 
-    assert.strictEqual(
-      refused(dir, ['land', 'phase', 'pay', '1']),
-      'land: acme/portal does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
-      + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests (setup offers to set it), and land again',
-    );
+    const refusal = 'land: acme/portal does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
+      + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests, and land again';
+    for (const squash of [GITHUB_SQUASH, { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'COMMIT_MESSAGES' }, { squash_merge_commit_title: 'COMMIT_OR_PR_TITLE', squash_merge_commit_message: 'PR_BODY' }]) {
+      onGithub(dir, (state) => {
+        state.squash = { ...squash };
+      });
+      assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), refusal, JSON.stringify(squash));
+    }
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['OPEN', 'OPEN', 'MERGED']);
     assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
     ok(dir, ['land', 'phase', 'pay', '1']);
@@ -191,30 +196,85 @@ describe('phases and their pull requests', () => {
     assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, empty.branch)], [[], '']);
   });
 
-  it('a task\'s open pull request outranks a closed one of its own, whatever their numbers', () => {
+  it('a task\'s open pull request outranks a closed one of its own, whatever their numbers, and one that is no task\'s — the person\'s own, or a bot\'s — is passed over', () => {
     const dir = project();
     ok(dir, openArgs(card));
     onGithub(dir, (state) => {
-      state.pulls.push({ number: 2, state: 'CLOSED', head: card.branch, base: 'main', title: 'feat(pay): Add card', body: 'Task: pay-1-1' });
-      state.next = 3;
+      state.pulls.push(
+        { number: 2, state: 'CLOSED', head: card.branch, base: 'main', title: 'feat(pay): Add card', body: 'Task: pay-1-1' },
+        { number: 3, state: 'OPEN', head: 'dependabot/npm_and_yarn/lodash-4.17.21', base: 'main', title: 'Bump lodash', body: '' },
+        { number: 4, state: 'OPEN', head: 'my-own-fix', base: 'main', title: 'Fix the footer', body: '' },
+      );
+      state.next = 5;
     });
 
     assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).pull_requests, [1]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ subject }) => subject), ['feat(pay): Add card (#1)']);
+    assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'CLOSED', 'OPEN', 'OPEN']);
+  });
+
+  it('finish stopped by a pull request closed by hand in a phase another stacks on: refused naming it, and the phases finish merged before it', () => {
+    const dir = project();
+    const three = cutTask(dir, '3.2', 'fix', 'Fix three', 'main', { 'three.txt': 'three\n' });
+    const again = cutTask(dir, '3.3', 'fix', 'Fix three again', three.branch, { 'again.txt': 'again\n' });
+    const two = cutTask(dir, '2.5', 'fix', 'Fix two', again.branch, { 'two.txt': 'two\n' });
+    for (const task of [card, three, again, two]) ok(dir, openArgs(task));
+    closeByHand(dir, 3);
+
+    assert.strictEqual(
+      refused(dir, ['land', 'finish', 'pay']),
+      'land: task 3.3\'s pull request #3 was closed on GitHub without being merged — reopen it there, as `gh pr reopen 3` does, and land again (finish merged phase 1 before it)',
+    );
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task }) => task), ['pay-1-1']);
   });
 });
 
 describe('the default branch here, once a phase merges', () => {
-  it('holding a commit GitHub\'s does not: the merge stands, and the answer warns it was not moved', () => {
+  it('holding a commit GitHub\'s does not: every phase finish merges stands, and the answer warns once that it was not moved', () => {
     const dir = project();
     ok(dir, openArgs(card));
+    ok(dir, openArgs(rounding));
     fs.writeFileSync(path.join(dir, 'local.txt'), 'local\n');
     git(dir, ['add', 'local.txt']);
     git(dir, ['commit', '-q', '-m', 'local work']);
     const ours = tip(dir, 'main');
 
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).warnings, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']);
-    assert.deepStrictEqual([tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [ours, ['pay-1-1']]);
+    const finished = ok(dir, ['land', 'finish', 'pay']);
+    assert.deepStrictEqual([finished.phases.length, finished.warnings], [2, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']]);
+    assert.deepStrictEqual([tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [ours, ['pay-1-1', 'pay-2-1']]);
+  });
+
+  it('its fetch failing: the merge stands, and the answer warns, in git\'s words, that it was not brought up', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    const bin = fs.mkdtempSync(path.join(dir, '..', 'no-fetch-'));
+    fs.writeFileSync(path.join(bin, 'ssh'), `#!/bin/sh\ncase "$*" in *git-upload-pack*) echo 'the test refuses fetching' >&2; exit 1 ;; esac\nexec "${path.join(__dirname, 'ssh')}" "$@"\n`, { mode: 0o755 });
+    git(dir, ['config', 'core.sshCommand', path.join(bin, 'ssh')]);
+    const ours = tip(dir, 'main');
+    try {
+      const { warnings } = ok(dir, ['land', 'phase', 'pay', '1']);
+
+      assert.match(warnings[0], /^main here was not brought up to the merge, as origin\/main could not be fetched \(git fetch failed: the test refuses fetching .*\) — fetch it, and fast-forward main to it$/);
+      assert.deepStrictEqual([warnings.length, tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [1, ours, ['pay-1-1']]);
+    } finally {
+      fs.rmSync(bin, { recursive: true, force: true });
+    }
+  });
+
+  it('git failing as it moves it — its index locked: the merge stands, the answer warns in git\'s words, and landing the phase again brings it up', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    const lock = path.join(dir, '.git', 'index.lock');
+    fs.writeFileSync(lock, '');
+    const ours = tip(dir, 'main');
+
+    const { warnings } = ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.match(warnings[0], /^main here was not moved to the merge, origin\/main at \w+: git merge failed: .*index\.lock.* — once that is clear, `git merge --ff-only origin\/main` where main is checked out brings it up$/);
+    assert.deepStrictEqual([warnings.length, tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [1, ours, ['pay-1-1']]);
+    fs.rmSync(lock);
+
+    assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), 'land: phase 1 is merged into main already — there is nothing more to merge');
+    assert.strictEqual(tip(dir, 'main'), side.defaultTip(dir));
   });
 
   it('checked out with a file not tracked in the merge\'s way: the file kept, the answer naming it and the command that brings the branch up once it is clear', () => {
@@ -273,6 +333,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     );
     assert.deepStrictEqual([tipOnGithub(dir, card.branch), pulls(dir)], [tip(dir, card.branch), []]);
     assert.strictEqual(ok(dir, openArgs(card)).pull_request, 1);
+    assert.strictEqual(refused(dir, openArgs(card)), 'land: task 1.1 is in phase 1\'s stack already — there is nothing more to open');
   });
 
   it('no network: refused in gh\'s words, to land again once it is back, nothing merged', () => {
@@ -337,14 +398,21 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, card.branch)], [[], theirs]);
   });
 
-  it('git never waits on a prompt: the push as a task opens and the fetch once its phase merges run with git\'s prompt off, as the state branch\'s do', () => {
+  it('the push names its branch whatever the person\'s push settings, carries no tag, and git never waits on a prompt — the push as a task opens and the fetch once its phase merges run with git\'s prompt off, as the state branch\'s do', () => {
     const dir = project();
+    git(dir, ['config', 'remote.origin.push', 'refs/heads/*:refs/heads/elsewhere/*']);
+    git(dir, ['config', 'push.followTags', 'true']);
+    git(dir, ['tag', '-a', '-m', 'a note on the card', 'card-note', card.branch]);
     const bin = fs.mkdtempSync(path.join(dir, '..', 'prompt-'));
     const seen = path.join(bin, 'seen');
     fs.writeFileSync(path.join(bin, 'ssh'), `#!/bin/sh\nprintf '%s\\n' "\${GIT_TERMINAL_PROMPT-unset}" >> "${seen}"\nexec "${path.join(__dirname, 'ssh')}" "$@"\n`, { mode: 0o755 });
     git(dir, ['config', 'core.sshCommand', path.join(bin, 'ssh')]);
     try {
       ok(dir, openArgs(card));
+      assert.deepStrictEqual(
+        [tipOnGithub(dir, card.branch), git(bareOf(dir), ['for-each-ref', '--format=%(refname)', 'refs/heads/elsewhere/', 'refs/tags/card-note']).trim()],
+        [tip(dir, card.branch), ''],
+      );
       ok(dir, ['land', 'phase', 'pay', '1']);
 
       assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0']);
@@ -364,6 +432,18 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
       assert.strictEqual(spawnSync(gh, ['pr', 'list'], { cwd: plain, encoding: 'utf8', env: ghEnv() }).status, 98);
     } finally {
       harness.cleanupFixture(plain);
+    }
+  });
+
+  it('the stand-in is the oldest gh and stack extension the driver works with: it answers their versions as the driver\'s floors', () => {
+    const driver = /** @type {any} */ (loadDriver('landing', 'github'));
+    const was = process.env.PATH;
+    process.env.PATH = GH_ENV.PATH;
+    try {
+      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => [need.tool, need.found()]), [['gh', '2.30.0'], ['gh-stack', '0.1.0']]);
+      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => need.floor), ['2.30.0', '0.1.0']);
+    } finally {
+      process.env.PATH = was;
     }
   });
 

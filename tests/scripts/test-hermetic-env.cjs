@@ -2,10 +2,10 @@
 
 // The suite's own guard: the hermetic environment is pinned, every node test
 // file adopts it, a knowledge store built under it reaches no embedding
-// provider, and Claude Code's config directory is never the developer's own.
-// A future suite that forgets the module fails here rather than silently
-// reading the developer's config, billing their key, or writing their
-// settings.
+// provider, and neither Claude Code's config directory nor gh's login is
+// ever the developer's own. A future suite that forgets the module fails
+// here rather than silently reading the developer's config, billing their
+// key, writing their settings, or acting on GitHub as them.
 
 const hermeticEnv = require('./hermetic-env.cjs');
 
@@ -157,10 +157,27 @@ describe('hermetic environment — the pins', () => {
     assert.deepStrictEqual(JSON.parse(res.stdout), [null, null]);
   });
 
+  it('gh reaches no login of the developer\'s — its config directory an empty one of the suite\'s, and no token or host it would take over that', () => {
+    const login = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST'];
+    const mine = path.join(os.homedir(), '.config', 'gh');
+    const probe = `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))});
+      const fs = require('fs'); const os = require('os');
+      const dir = process.env.GH_CONFIG_DIR;
+      console.log(JSON.stringify({
+        set: ${JSON.stringify(login)}.filter((name) => process.env[name] !== undefined),
+        mine: dir === ${JSON.stringify(mine)},
+        suites: fs.realpathSync(dir).startsWith(fs.realpathSync(os.tmpdir())) && fs.readdirSync(dir).length === 0,
+      }));`;
+    const res = spawnSync('node', ['-e', probe], { encoding: 'utf8', env: { ...process.env, GH_CONFIG_DIR: mine, ...Object.fromEntries(login.map((name) => [name, 'the-developers'])) } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), { set: [], mine: false, suites: true });
+  });
+
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
       CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+      GH_CONFIG_DIR: process.env.GH_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
       WORKFLOWS_DISPLAY_WIDTH: '65',

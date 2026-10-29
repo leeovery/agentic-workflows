@@ -6,15 +6,14 @@
 // shadowing any other on the PATH, and by the stand-in ssh. Its remote is
 // 29.2's fake GitHub remote (engine-harness.cjs, `githubOffline`): a GitHub
 // URL rewritten to port 0, so a git call the stand-in ssh misses fails
-// closed, never reaching github.com. Every call runs under `GH_ENV`: the
-// stand-in first on the PATH, GH_CONFIG_DIR pinned to an empty temp folder
-// and no token, so neither the developer's gh nor their login is reached.
+// closed, never reaching github.com. Every call runs under `GH_ENV`, the
+// stand-in first on the PATH, so the developer's gh is never reached; the
+// hermetic environment keeps their login out (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
 // one, change GitHub's default branch or its squash default — is done to
 // the fake's state here. The fake starts with GitHub's own squash default.
 
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { git, bareRepo, githubOffline } = require('../../scripts/engine-harness.cjs');
@@ -23,15 +22,8 @@ const stub = require('./gh-stub.cjs');
 const REPOSITORY = 'acme/portal';
 const URL = `git@github.com:${REPOSITORY}.git`;
 const SSH = path.join(__dirname, 'ssh');
-const CONFIG = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-config-'));
-process.on('exit', () => fs.rmSync(CONFIG, { recursive: true, force: true }));
-
-/** The environment every call runs under, as a call's overlay: `undefined` unsets. */
-const GH_ENV = Object.freeze({
-  PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}`,
-  GH_CONFIG_DIR: CONFIG,
-  GH_TOKEN: undefined, GITHUB_TOKEN: undefined, GH_ENTERPRISE_TOKEN: undefined, GITHUB_ENTERPRISE_TOKEN: undefined, GH_HOST: undefined, GH_REPO: undefined,
-});
+/** The environment every call runs under, as a call's overlay. */
+const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}` });
 
 /** `GH_ENV` over the process's own, as a spawned shell takes it. @param {Record<string, string|undefined>} [more] */
 function ghEnv(more = {}) {

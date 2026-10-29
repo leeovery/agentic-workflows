@@ -778,5 +778,5 @@ function defaultBranch(root, remote) {
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
   pointersMoved, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
-  defaultBranch, remoteUrlOf, pushBranch, fetchBranch, nothingPast,
+  defaultBranch, remoteUrlOf, pushBranch, gitSaid, fetchBranch, nothingPast,
 };

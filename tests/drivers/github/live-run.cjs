@@ -17,7 +17,10 @@
 // commit against 7.2.18 — its subject the task's landing subject with
 // GitHub's " (#N)", its body naming the task's id on a line of its own — and
 // each pull request merged. Everything it made stays on GitHub to be looked
-// at; the local copy goes at exit.
+// at; the local copy goes at exit. It runs as the person on GitHub: their
+// gh login, which the harness's hermetic environment pins away, is taken
+// before the harness loads and given back to every call the run makes —
+// its own gh, git's credential helper, and the engine's.
 
 const os = require('os');
 const { execFileSync } = require('child_process');
@@ -29,8 +32,15 @@ if (named === undefined || extra.length > 0 || !REPOSITORY.test(named)) {
   process.exit(2);
 }
 
+const LOGIN = ['GH_CONFIG_DIR', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST'];
+const login = new Map(LOGIN.map((name) => [name, process.env[name]]));
 const harness = require('../../scripts/engine-harness.cjs');
 const { BASE, TASKS, openArgs, cutTask, mergeBack, buildLanding, setLandingDriver } = require('../../scripts/landing-world.cjs');
+
+for (const [name, value] of login) {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
 
 const { card, total, rounding, currency } = TASKS;
 const run = (/** @type {string} */ command, /** @type {string[]} */ args, /** @type {string} */ cwd) => execFileSync(command, args, { cwd, encoding: 'utf8' }).trim();

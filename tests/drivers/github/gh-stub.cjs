@@ -36,8 +36,8 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const VERSION = 'gh version 2.103.3 (2026-10-26)\nhttps://github.com/cli/cli/releases/tag/v2.103.3\n';
-const STACK_VERSION = 'gh stack version 0.3.0\n';
+const VERSION = 'gh version 2.30.0 (2023-05-30)\nhttps://github.com/cli/cli/releases/tag/v2.30.0\n';
+const STACK_VERSION = 'gh stack version 0.1.0\n';
 const IDENTITY = { GIT_AUTHOR_NAME: 'GitHub', GIT_AUTHOR_EMAIL: 'noreply@github.com', GIT_COMMITTER_NAME: 'GitHub', GIT_COMMITTER_EMAIL: 'noreply@github.com' };
 const FAULTS = Object.freeze({
   'signed-out': { code: 4, said: 'To get started with GitHub CLI, please run:  gh auth login\nAlternatively, populate the GH_TOKEN environment variable with a GitHub API authentication token.' },

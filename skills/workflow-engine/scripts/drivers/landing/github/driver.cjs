@@ -43,8 +43,11 @@
 //   driver's way back (landing-git.cjs). Once merged, the default branch is
 //   fetched and moved here to the merge, as the local driver leaves it,
 //   where git would fast-forward it; where it cannot be, the answer warns
-//   why, and the merge stands.
-// - Finish: every phase not yet merged, each after the one it stacks on.
+//   why, and the merge stands. A phase found merged already is refused, the
+//   default branch here brought to it all the same, so landing again
+//   recovers one a merge left behind, or one merged on GitHub by hand.
+// - Finish: every phase not yet merged, each after the one it stacks on,
+//   each warning given once.
 // ---------------------------------------------------------------------------
 
 const names = require('../../../domain/landing-names.cjs');
@@ -296,13 +299,14 @@ function refuseSquashDefault(ctx, host, stack) {
   if (repository.squash_merge_commit_title === 'PR_TITLE' && repository.squash_merge_commit_message === 'PR_BODY') return;
   throw new Error(
     `land: ${host.repo} does not squash a pull request into its title and description, so phase ${stack.phase}'s stack would land under other subjects than its tasks' — `
-    + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests (setup offers to set it), and land again',
+    + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests, and land again',
   );
 }
 
 /**
  * The default branch here brought to the merge GitHub's holds (see the
- * header), or the warning why it is not.
+ * header), or the warning why it is not — whatever stops it, the merge
+ * stands.
  * @param {LandingContext} ctx @param {Host} host
  * @returns {string[]}
  */
@@ -314,11 +318,16 @@ function bringDefaultUp(ctx, host) {
   const ours = /** @type {string} */ (lg.branches(root).get(into));
   if (ours === fetched.commit) return [];
   if (!lg.isAncestor(root, ours, fetched.commit)) return [`${into} here holds commits ${theirs} does not, so it was not moved to the merge — bring it up to date with ${theirs} yourself`];
-  const block = lg.checkoutBlock(root, into, { from: ours, to: fetched.commit });
-  if (block !== null) {
-    return [`${into} here was not moved to the merge, ${theirs} at ${lg.short(fetched.commit)}: ${block.split(', so nothing moved')[0]} — once that is clear, \`git merge --ff-only ${theirs}\` where ${into} is checked out brings it up`];
+  const notMoved = (/** @type {string} */ why) => [
+    `${into} here was not moved to the merge, ${theirs} at ${lg.short(fetched.commit)}: ${why} — once that is clear, \`git merge --ff-only ${theirs}\` where ${into} is checked out brings it up`,
+  ];
+  try {
+    const block = lg.checkoutBlock(root, into, { from: ours, to: fetched.commit });
+    if (block !== null) return notMoved(block.split(', so nothing moved')[0]);
+    lg.moveBranch(root, into, ours, fetched.commit);
+  } catch (err) {
+    return notMoved(lg.gitSaid(/** @type {Error} */ (err)));
   }
-  lg.moveBranch(root, into, ours, fetched.commit);
   return [];
 }
 
@@ -361,30 +370,34 @@ function mergePhase(ctx, phase) {
   const stacks = stacksOf(pullsOf(ctx, host));
   const stack = stacks.get(phase);
   if (stack === undefined) throw new Error(`land: phase ${phase} of ${ctx.unit} has no task opened — open its tasks first`);
-  if (isMerged(stack)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} already — there is nothing more to merge`);
+  if (isMerged(stack)) {
+    const [warning] = bringDefaultUp(ctx, host);
+    throw new Error(`land: phase ${phase} is merged into ${ctx.into} already — there is nothing more to merge${warning === undefined ? '' : `; ${warning}`}`);
+  }
   return mergeStack(ctx, host, stacks, stack);
 }
 
 /**
  * Merge every phase not yet merged, lowest first, each after the one it
- * stacks on. Stops at the first that cannot merge, saying which merged.
+ * stacks on, each warning given once. Stops at the first that cannot merge,
+ * saying which merged.
  * @param {LandingContext} ctx
  */
 function finish(ctx) {
   const host = hostOf(ctx);
   /** @type {Omit<ReturnType<typeof mergeStack>, 'warnings'>[]} */
   const merged = [];
-  /** @type {string[]} */
-  const warned = [];
+  /** @type {Set<string>} */
+  const warned = new Set();
   for (;;) {
     const stacks = stacksOf(pullsOf(ctx, host));
     const unmerged = [...stacks.values()].filter((stack) => !isMerged(stack)).sort((a, b) => a.phase - b.phase);
-    if (unmerged.length === 0) return { into: ctx.into, phases: merged, ...(warned.length > 0 ? { warnings: warned } : {}) };
-    const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
+    if (unmerged.length === 0) return { into: ctx.into, phases: merged, ...(warned.size > 0 ? { warnings: [...warned] } : {}) };
     try {
+      const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
       const { warnings = [], ...phase } = mergeStack(ctx, host, stacks, next);
       merged.push(phase);
-      warned.push(...warnings);
+      warnings.forEach((warning) => warned.add(warning));
     } catch (err) {
       if (merged.length === 0) throw err;
       throw new Error(`${err instanceof Error ? err.message : String(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
@@ -440,8 +453,8 @@ module.exports = {
   name: 'github',
   isDefault: false,
   needs: [
-    { tool: 'gh', floor: '2.103.0', update: 'https://cli.github.com', found: ghVersion },
-    { tool: 'gh-stack', floor: '0.3.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
+    { tool: 'gh', floor: '2.30.0', update: 'https://cli.github.com', found: ghVersion },
+    { tool: 'gh-stack', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
   ],
   serves: (/** @type {string} */ url) => repositoryOf(url) !== null,
   chainTip,
