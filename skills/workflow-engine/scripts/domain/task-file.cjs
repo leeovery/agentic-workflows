@@ -11,7 +11,8 @@
 // lacks, typed outside the kinds, or titled over more than one line, is
 // refused, every fault named at once. A title is one line wherever the
 // engine takes one, a phase's too: no character that breaks a line anywhere
-// in it, the task file's own line ending aside.
+// in it, the task file's own line ending aside. A verb of another kind
+// reads a task's spec reference from its text as the tracker holds it.
 // ---------------------------------------------------------------------------
 
 /** The kinds a task's type is one of. */
@@ -92,4 +93,14 @@ function readTaskText(text) {
   return { title: /** @type {string} */ (title), type: /** @type {string[]} */ (sections.get('Type'))[0], text: text.trim() };
 }
 
-module.exports = { TASK_TYPES, breaksLine, readTaskText };
+/**
+ * The spec reference a task's text holds, as written; null where it holds
+ * none, or more than one.
+ * @param {string} text @returns {string|null}
+ */
+function specReferenceOf(text) {
+  const bodies = sectionsOf(text.trim().split('\n').slice(1)).get('Spec reference') ?? [];
+  return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
+}
+
+module.exports = { TASK_TYPES, breaksLine, readTaskText, specReferenceOf };
