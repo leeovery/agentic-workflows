@@ -122,6 +122,24 @@ function githubRuleGate(project) {
 }
 
 /**
+ * Setup's offer of the squash default on GitHub (7.2.18), acted on only on
+ * yes; each answer leads to the `github-squash` verb that records it.
+ * @param {string} project the project's name
+ * @returns {string}
+ */
+function githubSquashGate(project) {
+  const name = escapeMarkdown(project);
+  return section('MENU: github squash gate', MENU_INSTRUCTION, menu(
+    `${name} lands each task on GitHub as a pull request squashed into one commit. Made from the pull request's title and description, that commit carries the task's subject and id; until the repository squashes so, Leeway won't merge a phase's stack.`,
+    [
+      cmdOption('y', 'yes', `Set it on ${name}'s repository`, { next: { kind: 'engine', argv: ['github-squash', 'yes'] } }),
+      cmdOption('n', 'no', { head: 'Leave it as it is', tail: 'set it later by hand' }, { next: { kind: 'engine', argv: ['github-squash', 'no'] } }),
+    ],
+    { question: 'Squash from the pull request\'s title and description?' },
+  ));
+}
+
+/**
  * The one-time tmux session-label opt-in.
  * @returns {string}
  */
@@ -259,4 +277,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

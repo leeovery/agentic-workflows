@@ -24,23 +24,33 @@
 //   descends from it is the seam's to check (landing.cjs).
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
-//   subject, its body the rest of that message, with the task's id.
+//   subject, its body the rest of that message, with the task's id. A task
+//   whose branch holds nothing past the tip is refused as the local driver
+//   refuses it, nothing pushed and no pull request opened.
 // - Chain: the phase's pull requests linked into one stack, bottom to top,
 //   always with the default branch as the stack's base — without it, the
 //   extension retargets the bottom pull request onto GitHub's own default.
 //   A stack of one pull request is no stack to link.
 // - Phase: the stack merged whole, every pull request squashed, once the
-//   phase it stacks on has merged — a lone pull request merged alone, its
-//   base made the default branch first where it stood on another phase's
-//   task. A task's branch here that is not where its pull request's head
-//   is stops the phase, with the local driver's way back (landing-git.cjs).
+//   phase it stacks on has merged. GitHub makes each squash commit as the
+//   repository's squash default says, so a stack merges only where that is
+//   the pull request's title and description — each commit then the task's
+//   subject with GitHub's " (#N)", and its id in the body (7.2.18); setup
+//   offers to set it (github-setup.cjs). A lone pull request is merged alone
+//   under that same subject and body, its base made the default branch
+//   first where it stood on another phase's task. A task's branch here that
+//   is not where its pull request's head is stops the phase, with the local
+//   driver's way back (landing-git.cjs). Once merged, the default branch is
+//   fetched and moved here to the merge, as the local driver leaves it,
+//   where git would fast-forward it; where it cannot be, the answer warns
+//   why, and the merge stands.
 // - Finish: every phase not yet merged, each after the one it stacks on.
 // ---------------------------------------------------------------------------
 
 const names = require('../../../domain/landing-names.cjs');
 const lg = require('../../../domain/landing-git.cjs');
 const { taskId, shownTask } = require('../../../domain/task-id.cjs');
-const { gh, ghVersion, stackVersion, postRuleset } = require('./gh.cjs');
+const { gh, ghVersion, stackVersion, setOnGithub } = require('./gh.cjs');
 
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../../../domain/landing.cjs').LandingContext} LandingContext */
@@ -169,7 +179,7 @@ function refuseHandled(stack) {
   const is = (/** @type {Pull[]} */ pulls) => (pulls.length === 1 ? 'is' : 'are');
   throw new Error(
     `land: phase ${stack.phase}'s stack was merged in part by hand on GitHub — ${pullsNamed(merged)} ${is(merged)} merged, and ${pullsNamed(rest)} ${is(rest)} not; `
-    + 'merge the rest there too, and land again',
+    + 'merge the rest there too, and the phase is landed',
   );
 }
 
@@ -219,6 +229,7 @@ function chainTip(ctx, task) {
  */
 function open(ctx, task, tip) {
   const shown = shownTask(task.ref);
+  if (lg.isAncestor(ctx.root, task.branch, tip.commit)) throw new Error(lg.nothingPast(shown, task.branch, tip.name));
   lg.pushBranch(ctx.root, tip.host.remote, task.branch, `task ${shown}'s pull request was not opened — clear what git names, and open the task again`);
   const [title, ...body] = task.message.split('\n');
   const url = ghAt(ctx, tip.host, ['pr', 'create', '--base', tip.name, '--head', task.branch, '--title', title, '--body', body.join('\n').trim()], `open task ${shown}'s pull request`);
@@ -275,10 +286,48 @@ function refuseMoved(ctx, stack) {
 }
 
 /**
+ * Refuse a stack merge where the repository's squash default would not make
+ * each commit from its pull request's title and description.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack
+ */
+function refuseSquashDefault(ctx, host, stack) {
+  /** @type {{squash_merge_commit_title?: string, squash_merge_commit_message?: string}} */
+  const repository = JSON.parse(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read ${host.repo}'s squash default`));
+  if (repository.squash_merge_commit_title === 'PR_TITLE' && repository.squash_merge_commit_message === 'PR_BODY') return;
+  throw new Error(
+    `land: ${host.repo} does not squash a pull request into its title and description, so phase ${stack.phase}'s stack would land under other subjects than its tasks' — `
+    + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests (setup offers to set it), and land again',
+  );
+}
+
+/**
+ * The default branch here brought to the merge GitHub's holds (see the
+ * header), or the warning why it is not.
+ * @param {LandingContext} ctx @param {Host} host
+ * @returns {string[]}
+ */
+function bringDefaultUp(ctx, host) {
+  const { root, into } = ctx;
+  const theirs = `${host.remote}/${into}`;
+  const fetched = lg.fetchBranch(root, host.remote, into);
+  if ('failed' in fetched) return [`${into} here was not brought up to the merge, as ${theirs} could not be fetched (${fetched.failed}) — fetch it, and fast-forward ${into} to it`];
+  const ours = /** @type {string} */ (lg.branches(root).get(into));
+  if (ours === fetched.commit) return [];
+  if (!lg.isAncestor(root, ours, fetched.commit)) return [`${into} here holds commits ${theirs} does not, so it was not moved to the merge — bring it up to date with ${theirs} yourself`];
+  const block = lg.checkoutBlock(root, into, { from: ours, to: fetched.commit });
+  if (block !== null) {
+    return [`${into} here was not moved to the merge, ${theirs} at ${lg.short(fetched.commit)}: ${block.split(', so nothing moved')[0]} — once that is clear, \`git merge --ff-only ${theirs}\` where ${into} is checked out brings it up`];
+  }
+  lg.moveBranch(root, into, ours, fetched.commit);
+  return [];
+}
+
+/**
  * Merge a stack whole into the default branch, every pull request squashed:
  * linked first, so a pull request chained late is in it, and merged by the
- * extension; a lone one merged alone, under its own title and body, onto
- * the default branch.
+ * extension; a lone one merged alone, under the subject and body a squash
+ * makes, onto the default branch. The default branch here is then brought
+ * to the merge.
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
  */
 function mergeStack(ctx, host, stacks, stack) {
@@ -290,15 +339,17 @@ function mergeStack(ctx, host, stacks, stack) {
   refuseMoved(ctx, stack);
   const merging = `merge phase ${stack.phase}'s stack`;
   if (stack.pulls.length > 1) {
+    refuseSquashDefault(ctx, host, stack);
     link(ctx, host, stack);
     ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
   } else {
     const [lone] = stack.pulls;
     if (lone.base !== ctx.into) ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
-    ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', lone.title, '--body', lone.body], merging);
+    ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
   }
   const { stack: tasks, pull_requests } = answered(stack);
-  return { phase: stack.phase, into: ctx.into, merged: tasks, pull_requests };
+  const warnings = bringDefaultUp(ctx, host);
+  return { phase: stack.phase, into: ctx.into, merged: tasks, pull_requests, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /**
@@ -321,15 +372,19 @@ function mergePhase(ctx, phase) {
  */
 function finish(ctx) {
   const host = hostOf(ctx);
-  /** @type {ReturnType<typeof mergeStack>[]} */
+  /** @type {Omit<ReturnType<typeof mergeStack>, 'warnings'>[]} */
   const merged = [];
+  /** @type {string[]} */
+  const warned = [];
   for (;;) {
     const stacks = stacksOf(pullsOf(ctx, host));
     const unmerged = [...stacks.values()].filter((stack) => !isMerged(stack)).sort((a, b) => a.phase - b.phase);
-    if (unmerged.length === 0) return { into: ctx.into, phases: merged };
+    if (unmerged.length === 0) return { into: ctx.into, phases: merged, ...(warned.length > 0 ? { warnings: warned } : {}) };
     const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
     try {
-      merged.push(mergeStack(ctx, host, stacks, next));
+      const { warnings = [], ...phase } = mergeStack(ctx, host, stacks, next);
+      merged.push(phase);
+      warned.push(...warnings);
     } catch (err) {
       if (merged.length === 0) throw err;
       throw new Error(`${err instanceof Error ? err.message : String(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
@@ -352,15 +407,32 @@ function rulesetFor(branch) {
   };
 }
 
+/** The repository a remote URL names, as GitHub names it, for a URL the driver serves. @param {string} url */
+function repositoryNamed(url) {
+  const { owner, repo } = /** @type {{owner: string, repo: string}} */ (repositoryOf(url));
+  return `${owner}/${repo}`;
+}
+
 /**
  * Set the rule on a branch of the remote's repository (4.4.6): the
  * repository, and why the rule is not set, null where it is.
- * @param {string} url @param {string} branch
+ * @param {string} root @param {string} url @param {string} branch
  */
-function protectBranch(url, branch) {
-  const { owner, repo } = /** @type {{owner: string, repo: string}} */ (repositoryOf(url));
-  const repository = `${owner}/${repo}`;
-  return { repository, unset: postRuleset(repository, rulesetFor(branch)) };
+function protectBranch(root, url, branch) {
+  const repository = repositoryNamed(url);
+  return { repository, unset: setOnGithub(root, ['--method', 'POST', `repos/${repository}/rulesets`, '--input', '-'], JSON.stringify(rulesetFor(branch))) };
+}
+
+/**
+ * Make the remote's repository squash a pull request into its title and
+ * description (7.2.18): the repository, and why it does not, null where it
+ * does.
+ * @param {string} root @param {string} url
+ */
+function setSquashDefault(root, url) {
+  const repository = repositoryNamed(url);
+  const squash = ['-f', 'squash_merge_commit_title=PR_TITLE', '-f', 'squash_merge_commit_message=PR_BODY'];
+  return { repository, unset: setOnGithub(root, ['--method', 'PATCH', `repos/${repository}`, ...squash]) };
 }
 
 module.exports = {
@@ -378,6 +450,6 @@ module.exports = {
   mergePhase,
   finish,
   protectBranch,
+  setSquashDefault,
   repositoryOf,
-  rulesetFor,
 };

@@ -54,7 +54,7 @@ const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledg
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
-const { answerGithubRule } = require('./domain/github-rule.cjs');
+const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
 const { RAISE_USAGE, drawRaise, showRaise, raiseWaits } = require('./domain/raise.cjs');
 const { raiseScreen } = require('./domain/projections/raise.cjs');
@@ -163,6 +163,7 @@ Commands:
   boot [--start-again]
   state-merge pick <1|2> <choice>
   github-rule <yes|no>
+  github-squash <yes|no>
   gate <name> (--pick <key> | --typed [<key>])
 ${RAISE_USAGE.replace(/^/gm, '  ')}
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
@@ -453,6 +454,7 @@ ${LAND_USAGE.replace(/^/gm, '  ')}
   render state-lost-gate
   render git-floor-stop
   render github-rule-gate
+  render github-squash-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
@@ -1770,19 +1772,27 @@ function runBoot(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// github-rule — the person's answer to setup's offer of the rule on GitHub
-// against deleting or force-pushing the state branch (domain/github-rule.cjs).
+// github-rule, github-squash — the person's answer to setup's offer of the
+// rule on GitHub against deleting or force-pushing the state branch, and of
+// the squash default the landing needs (domain/github-setup.cjs).
 // ---------------------------------------------------------------------------
 
-/** @param {Call} call @param {string[]} argv */
-function runGithubRule(call, argv) {
+/**
+ * A verb answering one of setup's offers on GitHub.
+ * @param {string} verb @param {(cwd: string, answer: string) => Record<string, unknown>} answer
+ * @returns {(call: Call, argv: string[]) => void}
+ */
+const answeringGithub = (verb, answer) => (call, argv) => {
   try {
-    if (argv.length !== 1) throw new Error('Usage: engine github-rule <yes|no>');
-    respond(call, answerGithubRule(call.cwd, argv[0]));
+    if (argv.length !== 1) throw new Error(`Usage: engine ${verb} <yes|no>`);
+    respond(call, answer(call.cwd, argv[0]));
   } catch (err) {
     failJson(call, err);
   }
-}
+};
+
+const runGithubRule = answeringGithub('github-rule', answerGithubRule);
+const runGithubSquash = answeringGithub('github-squash', answerGithubSquash);
 
 // ---------------------------------------------------------------------------
 // gate — the person's answer at a gate, logged to the trust log by the
@@ -2369,6 +2379,7 @@ const COMMANDS = Object.freeze({
   boot: runBoot,
   'state-merge': runStateMerge,
   'github-rule': runGithubRule,
+  'github-squash': runGithubSquash,
   manifest: runManifest,
   ledger: runLedger,
   verdict: runVerdict,

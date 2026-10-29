@@ -7,14 +7,22 @@
 // three tasks — each branch pushed as its pull request opens, each pull
 // request based on the one before, the stack linked with the default branch
 // as its base whatever GitHub's own default is, and merged whole, each pull
-// request squashed (7.S7, 7.S13); the refusals a person meets, each saying
-// what is missing or what happened and the way on, never an install
-// command (22.4.7) — gh not installed or not signed in, the extension
-// missing, GitHub's rate limit, no network, a pull request closed or a
-// stack merged in part by hand on GitHub, and a push refused; the
-// stand-in gh failing closed; and the live run refusing without the
-// person's word (7.3.7, 7.S15). Git layer: the landing world on a fake
-// GitHub (world.cjs), built once and copied for each test.
+// request squashed under its title and " (#N)", the default branch here
+// brought to the merge (7.S7, 7.S13); a stack merged only once the
+// repository squashes into the pull request's title and description, a
+// lone pull request whatever it squashes into (7.2.18); a phase stacked on
+// a higher one, merged after it; which pull request is a task's; the
+// refusals a person meets, each saying what is missing or what happened
+// and the way on, never an install command (22.4.7) — gh not installed or
+// not signed in, the extension missing, GitHub's rate limit, no network, a
+// merge GitHub refuses, a pull request closed or a stack merged in part by
+// hand on GitHub, a task with nothing to land or opened into a merged
+// phase, and a push refused; git never waiting on a prompt; the default
+// branch here left where the person's work stops it, with the way to bring
+// it up; the stand-in gh
+// failing closed; and the live run refusing without the person's word
+// (7.3.7, 7.S15). Git layer: the landing world on a fake GitHub (world.cjs),
+// built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -30,10 +38,11 @@ const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, ghEnv, github, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, tipOnGithub } = require('./world.cjs');
+const { GITHUB_SQUASH } = require('./gh-stub.cjs');
+const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, tipOnGithub } = require('./world.cjs');
 
 const { git, tip } = harness;
-const { card, total } = TASKS;
+const { card, total, rounding } = TASKS;
 const project = useLandingWorld('github-landing-', side.prepare);
 
 /** A verb that must go through, under the stand-in gh. @param {string} dir @param {string[]} args @param {Record<string, string|undefined>} [env] */
@@ -73,8 +82,9 @@ describe('the remotes it serves (22.4.3)', () => {
 });
 
 describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
-  it('pushes each branch as its pull request opens, bases each on the one before, links them on the default branch — never GitHub\'s own — and merges the stack whole, each squashed', () => {
+  it('pushes each branch as its pull request opens, bases each on the one before, links them on the default branch — never GitHub\'s own — merges the stack whole, each squashed under its title and " (#N)", and brings the default branch here to the merge', () => {
     const dir = project();
+    const started = tip(dir, 'main');
     defaultOnGithub(dir, 'release');
 
     assert.deepStrictEqual(ok(dir, openArgs(card)), { ok: true, task: '1.1', branch: card.branch, base: 'main', pull_request: 1, driver: 'github' });
@@ -94,12 +104,13 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
 
     assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), { ok: true, phase: 1, into: 'main', merged: ['1.1', '1.2', '1.4'], pull_requests: [1, 2, 4], driver: 'github' });
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
-      { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: ['card.txt'] },
-      { subject: 'feat(pay): Show total', task: 'pay-1-2', paths: ['total.txt'] },
-      { subject: 'feat(pay): Add tax', task: 'pay-1-4', paths: ['tax.txt'] },
+      { subject: 'feat(pay): Add card (#1)', task: 'pay-1-1', paths: ['card.txt'] },
+      { subject: 'feat(pay): Show total (#2)', task: 'pay-1-2', paths: ['total.txt'] },
+      { subject: 'feat(pay): Add tax (#4)', task: 'pay-1-4', paths: ['tax.txt'] },
     ]);
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'MERGED', 'MERGED']);
-    assert.strictEqual(git(bareOf(dir), ['rev-parse', 'release']).trim(), tip(dir, 'main'), 'GitHub\'s own default branch took nothing');
+    assert.strictEqual(git(bareOf(dir), ['rev-parse', 'release']).trim(), started, 'GitHub\'s own default branch took nothing');
+    assert.strictEqual(tip(dir, 'main'), side.defaultTip(dir), 'the default branch here is at the merge');
     assert.deepStrictEqual(calls(dir), [
       LIST, `pr create --base main --head ${card.branch} --title feat(pay): Add card --body Task: pay-1-1`,
       LIST,
@@ -107,8 +118,120 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
       LIST, 'stack link --base main --remote origin 1 2',
       LIST, `pr create --base ${total.branch} --head ${tax.branch} --title feat(pay): Add tax --body Task: pay-1-4`,
       LIST, 'stack link --base main --remote origin 1 2 4',
-      LIST, 'stack link --base main --remote origin 1 2 4', 'stack merge 4 --yes --squash',
+      LIST, 'api repos/acme/portal', 'stack link --base main --remote origin 1 2 4', 'stack merge 4 --yes --squash',
     ]);
+  });
+});
+
+describe('the squash default (7.2.18)', () => {
+  it('squashing as GitHub does unless told: a lone pull request merges under its title and " (#N)", and a stack is refused naming the setting — merged once setup sets it', () => {
+    const dir = project();
+    onGithub(dir, (state) => {
+      state.squash = { ...GITHUB_SQUASH };
+    });
+    stackOfTwo(dir);
+    ok(dir, openArgs(rounding));
+    ok(dir, ['land', 'phase', 'pay', '2']);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [{ subject: 'fix(pay): Round totals (#4)', task: 'pay-2-1', paths: ['round.txt'] }]);
+
+    assert.strictEqual(
+      refused(dir, ['land', 'phase', 'pay', '1']),
+      'land: acme/portal does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
+      + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests (setup offers to set it), and land again',
+    );
+    assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['OPEN', 'OPEN', 'MERGED']);
+    assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').slice(1), [
+      { subject: 'feat(pay): Add card (#1)', task: 'pay-1-1', paths: ['card.txt'] },
+      { subject: 'feat(pay): Show total (#2)', task: 'pay-1-2', paths: ['total.txt'] },
+    ]);
+  });
+});
+
+describe('phases and their pull requests', () => {
+  it('a phase built on a higher phase not yet merged: its pull request based on that phase\'s top, its merge refused naming it, and finish merging that one first', () => {
+    const dir = project();
+    const four = cutTask(dir, '4.1', 'feat', 'Add four', 'main', { 'four.txt': 'four\n' });
+    const more = cutTask(dir, '4.2', 'feat', 'Add more', four.branch, { 'more.txt': 'more\n' });
+    ok(dir, openArgs(four));
+    ok(dir, openArgs(more));
+    ok(dir, ['land', 'chain', 'pay', '4.2']);
+    const fix = cutTask(dir, '3.2', 'fix', 'Fix four', more.branch, { 'fix.txt': 'fix\n' });
+
+    assert.strictEqual(ok(dir, openArgs(fix)).base, more.branch);
+    assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '3']), 'land: phase 3 stacks on phase 4, which has not merged — merge it first with `land phase pay 4`, then land again');
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), []);
+
+    assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [4, 3]);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
+      { subject: 'feat(pay): Add four (#1)', task: 'pay-4-1', paths: ['four.txt'] },
+      { subject: 'feat(pay): Add more (#2)', task: 'pay-4-2', paths: ['more.txt'] },
+      { subject: 'fix(pay): Fix four (#4)', task: 'pay-3-2', paths: ['fix.txt'] },
+    ]);
+    assert.ok(calls(dir).includes('pr edit 4 --base main'), 'the lone pull request is based on the default branch before it merges');
+  });
+
+  it('a task opened into a phase merged already: refused, to number it in a phase not yet merged, nothing pushed', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    const late = cutTask(dir, '1.5', 'feat', 'Add late', 'main', { 'late.txt': 'late\n' });
+
+    assert.strictEqual(refused(dir, openArgs(late)), 'land: phase 1 is merged into main — task 1.5 lands in a phase not yet merged, so number it in one');
+    assert.deepStrictEqual([tipOnGithub(dir, late.branch), pulls(dir).length], ['', 1]);
+  });
+
+  it('a task with nothing past the chain\'s tip: refused as every driver refuses it, no pull request opened and nothing pushed', () => {
+    const dir = project();
+    const empty = cutTask(dir, '1.5', 'feat', 'Add nothing', 'main', {});
+    git(dir, ['update-ref', `refs/heads/${empty.branch}`, 'main']);
+
+    assert.strictEqual(refused(dir, openArgs(empty)), `land: task 1.5's branch ${empty.branch} changes nothing past main — commit its change there first`);
+    assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, empty.branch)], [[], '']);
+  });
+
+  it('a task\'s open pull request outranks a closed one of its own, whatever their numbers', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    onGithub(dir, (state) => {
+      state.pulls.push({ number: 2, state: 'CLOSED', head: card.branch, base: 'main', title: 'feat(pay): Add card', body: 'Task: pay-1-1' });
+      state.next = 3;
+    });
+
+    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).pull_requests, [1]);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ subject }) => subject), ['feat(pay): Add card (#1)']);
+  });
+});
+
+describe('the default branch here, once a phase merges', () => {
+  it('holding a commit GitHub\'s does not: the merge stands, and the answer warns it was not moved', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    fs.writeFileSync(path.join(dir, 'local.txt'), 'local\n');
+    git(dir, ['add', 'local.txt']);
+    git(dir, ['commit', '-q', '-m', 'local work']);
+    const ours = tip(dir, 'main');
+
+    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).warnings, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']);
+    assert.deepStrictEqual([tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [ours, ['pay-1-1']]);
+  });
+
+  it('checked out with a file not tracked in the merge\'s way: the file kept, the answer naming it and the command that brings the branch up once it is clear', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    fs.writeFileSync(path.join(dir, 'card.txt'), 'mine\n');
+    const ours = tip(dir, 'main');
+
+    const [warning] = ok(dir, ['land', 'phase', 'pay', '1']).warnings;
+    assert.strictEqual(
+      warning,
+      `main here was not moved to the merge, origin/main at ${harness.git(dir, ['rev-parse', '--short', 'origin/main']).trim()}: main is checked out at ${fs.realpathSync(dir)}, where files not tracked are in the way: card.txt — once that is clear, \`git merge --ff-only origin/main\` where main is checked out brings it up`,
+    );
+    assert.deepStrictEqual([tip(dir, 'main'), fs.readFileSync(path.join(dir, 'card.txt'), 'utf8')], [ours, 'mine\n']);
+    fs.rmSync(path.join(dir, 'card.txt'));
+    execFileSync('sh', ['-c', /** @type {string} */ (/`([^`]+)`/.exec(warning)?.[1])], { cwd: dir });
+    assert.strictEqual(tip(dir, 'main'), side.defaultTip(dir));
   });
 });
 
@@ -162,6 +285,22 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual(pulls(dir), [{ number: 1, state: 'OPEN', base: 'main' }]);
   });
 
+  it('the stack extension failing, its exit the same whatever failed: refused by what its words say — signed out, the rate limit, or a merge GitHub refuses, in GitHub\'s words — nothing merged, and merged when landed again', () => {
+    const dir = project();
+    stackOfTwo(dir);
+
+    for (const [fault, refusal] of [
+      ['signed-out@stack link', 'land: gh could not link phase 1\'s pull requests into its stack: it is not signed in to github.com — sign in with `gh auth login`, and land again'],
+      ['rate-limit@stack merge', 'land: gh could not merge phase 1\'s stack: GitHub\'s rate limit stopped it (GraphQL: API rate limit already exceeded for user ID 1.) — wait for the limit to reset, and land again'],
+      ['unmergeable@stack merge', 'land: gh could not merge phase 1\'s stack: GraphQL: Required status check "test" is expected. (mergePullRequest) — settle what GitHub names, then land again'],
+    ]) {
+      assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1'], { GH_STUB_FAULT: fault }), refusal, fault);
+      assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['OPEN', 'OPEN'], fault);
+    }
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'MERGED']);
+  });
+
   it('a pull request closed by hand on GitHub: its phase refused, naming it and how to reopen it — and merged once it is', () => {
     const dir = project();
     ok(dir, openArgs(card));
@@ -175,13 +314,13 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task }) => task), ['pay-1-1']);
   });
 
-  it('a stack merged in part by hand on GitHub: its phase refused, and a task opened into it, naming what merged and what did not — and done once the rest is merged there', () => {
+  it('a stack merged in part by hand on GitHub: its phase refused, and a task opened into it, naming what merged and what did not — and landed once the rest is merged there', () => {
     const dir = project();
     stackOfTwo(dir);
     mergeByHand(dir, 1);
     const tax = cutTask(dir, '1.4', 'feat', 'Add tax', total.branch, { 'tax.txt': 'tax\n' });
 
-    const partly = 'land: phase 1\'s stack was merged in part by hand on GitHub — #1 (task 1.1) is merged, and #2 (task 1.2) is not; merge the rest there too, and land again';
+    const partly = 'land: phase 1\'s stack was merged in part by hand on GitHub — #1 (task 1.1) is merged, and #2 (task 1.2) is not; merge the rest there too, and the phase is landed';
     assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), partly);
     assert.strictEqual(refused(dir, openArgs(tax)), partly);
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'OPEN']);
@@ -197,6 +336,22 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.match(refused(dir, openArgs(card)), new RegExp(`^land: ${card.branch} could not be pushed to origin \\(git push failed: .*\\[rejected\\].*\\), so task 1\\.1's pull request was not opened — clear what git names, and open the task again$`));
     assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, card.branch)], [[], theirs]);
   });
+
+  it('git never waits on a prompt: the push as a task opens and the fetch once its phase merges run with git\'s prompt off, as the state branch\'s do', () => {
+    const dir = project();
+    const bin = fs.mkdtempSync(path.join(dir, '..', 'prompt-'));
+    const seen = path.join(bin, 'seen');
+    fs.writeFileSync(path.join(bin, 'ssh'), `#!/bin/sh\nprintf '%s\\n' "\${GIT_TERMINAL_PROMPT-unset}" >> "${seen}"\nexec "${path.join(__dirname, 'ssh')}" "$@"\n`, { mode: 0o755 });
+    git(dir, ['config', 'core.sshCommand', path.join(bin, 'ssh')]);
+    try {
+      ok(dir, openArgs(card));
+      ok(dir, ['land', 'phase', 'pay', '1']);
+
+      assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0']);
+    } finally {
+      fs.rmSync(bin, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
@@ -210,6 +365,14 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
     } finally {
       harness.cleanupFixture(plain);
     }
+  });
+
+  it('the stand-in refuses a pull request whose head holds nothing past its base, as GitHub does', () => {
+    const dir = project();
+    git(bareOf(dir), ['branch', 'level', 'main']);
+    const made = spawnSync(path.join(__dirname, 'bin', 'gh'), ['pr', 'create', '--base', 'main', '--head', 'level', '--title', 'Level'], { cwd: dir, encoding: 'utf8', env: ghEnv() });
+    assert.deepStrictEqual([made.status, made.stderr], [1, 'pull request create failed: GraphQL: No commits between main and level (createPullRequest)\n']);
+    assert.deepStrictEqual(pulls(dir), []);
   });
 
   it('no live GitHub run without the person\'s word: the live run refuses without the scratch repository named, calling nothing, and no gate runs it', () => {

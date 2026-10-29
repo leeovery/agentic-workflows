@@ -12,9 +12,11 @@
 // (`MERGE_PINS`), its backend and strategy, and every other branch left
 // where it is.
 //
-// - A push names its refspec, the branch to the branch of its name, and takes
-//   nothing with it — no tag, no signature, no nested repository — so no
-//   `push.*` setting changes what goes where.
+// - A push or a fetch names its refspec, the branch to the branch of its
+//   name, and takes nothing with it — no tag, no signature, no nested
+//   repository — so no `push.*` or `fetch.*` setting changes what goes
+//   where; it never prompts, and is held to the state's time limits
+//   (state-worktree.cjs).
 // - The default branch: the one the project's remote names its HEAD; else
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
@@ -52,7 +54,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError, READ_BUDGET_BYTES } = require('../kernel/git.cjs');
-const { STATE_BRANCH } = require('./state-worktree.cjs');
+const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
 
 /**
  * A worktree of the repository: where it is, the branch it has checked out,
@@ -80,6 +82,9 @@ const PINNED = [
 
 /** The landing's git: the person's, its settings pinned. @param {string} cwd @param {string[]} args @param {string} [input] */
 const git = (cwd, args, input) => personGit(cwd, [...PINNED, ...args], undefined, input);
+
+/** The landing's git over the network, as the state's is held: no prompt, and a time limit. @param {string} cwd @param {string[]} args @param {number} timeoutMs */
+const networkGit = (cwd, args, timeoutMs) => personGit(cwd, [...PINNED, ...args], NETWORK_ENV, undefined, timeoutMs);
 
 /** The landing's git, null where it fails. @param {string} cwd @param {string[]} args */
 const tryGit = (cwd, args) => personTryGit(cwd, [...PINNED, ...args]);
@@ -697,12 +702,43 @@ function remoteUrlOf(root, remote) {
 function pushBranch(root, remote, branch, then) {
   const ref = `${HEADS}${branch}`;
   try {
-    git(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${ref}:${ref}`]);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${ref}:${ref}`], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    const said = err.message.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('hint:')).join(' ');
-    throw new Error(`land: ${branch} could not be pushed to ${remote} (${plain(said)}), so ${then}`);
+    throw new Error(`land: ${branch} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
   }
+}
+
+/** What a failed git call said, on one line, its hints aside. @param {GitError} err */
+function gitSaid(err) {
+  return plain(err.message.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('hint:')).join(' '));
+}
+
+/**
+ * A remote's branch fetched to its remote-tracking ref by its refspec,
+ * nothing else with it, and that ref's commit; where it cannot be, what git
+ * said, on one line.
+ * @param {string} root @param {string} remote @param {string} branch
+ * @returns {{commit: string}|{failed: string}}
+ */
+function fetchBranch(root, remote, branch) {
+  const tracking = `refs/remotes/${remote}/${branch}`;
+  try {
+    networkGit(root, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', '--recurse-submodules=no', remote, `+${HEADS}${branch}:${tracking}`], FETCH_TIMEOUT_MS);
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    return { failed: gitSaid(err) };
+  }
+  return { commit: git(root, ['rev-parse', tracking]).trim() };
+}
+
+/**
+ * The refusal of a task whose branch holds nothing past the chain's tip,
+ * which no driver lands.
+ * @param {string} shown @param {string} branch @param {string} tip the chain tip's name
+ */
+function nothingPast(shown, branch, tip) {
+  return `land: task ${shown}'s branch ${branch} changes nothing past ${tip} — commit its change there first`;
 }
 
 /** The branch the remote names its HEAD, or null. @param {string} root @param {string|null} remote @returns {string|null} */
@@ -742,5 +778,5 @@ function defaultBranch(root, remote) {
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
   pointersMoved, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
-  defaultBranch, remoteUrlOf, pushBranch,
+  defaultBranch, remoteUrlOf, pushBranch, fetchBranch, nothingPast,
 };

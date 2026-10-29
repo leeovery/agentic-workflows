@@ -21,7 +21,8 @@
 // driver (22.4.3, 7.2.16). A setting naming a driver the workflows don't ship
 // is refused, naming those they do. The code host's driver, which acts on
 // the remote's host for setup, is the landing driver that serves the
-// remote, whatever the setting. The loader names no host: a driver for
+// remote, whatever the setting; which driver a project lands through can be
+// read without settling it. The loader names no host: a driver for
 // another one is a folder of its own and nothing else.
 // ---------------------------------------------------------------------------
 
@@ -49,7 +50,7 @@ const METHODS = Object.freeze({
   },
   landing: {
     required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'finish']),
-    optional: /** @type {const} */ (['protectBranch']),
+    optional: /** @type {const} */ (['protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -135,19 +136,23 @@ const METHODS = Object.freeze({
  * A landing driver's methods, and the least each answers — what the landing
  * conformance suite reads. `serves` answers whether it serves a remote's
  * URL; `chainTip` the branch a task's branch must descend from, at a commit
- * the repository has locally, which the seam checks before `open`.
- * `protectBranch`, where the host can, sets a rule on the remote's
- * repository refusing a branch's deletion and any push to it that is not a
- * fast-forward (4.4.6), answering the repository as its host names it, and
- * why the rule is not set, null where it is.
+ * the repository has locally, which the seam checks before `open`; a merge,
+ * what it was warned of. Where the host can, run from the code root
+ * against the remote's repository: `protectBranch` sets a rule refusing a
+ * branch's deletion and any push to it that is not a fast-forward (4.4.6),
+ * and `setSquashDefault` makes a squash merge's commit the pull request's
+ * title and description (7.2.18) — each answering the repository as its
+ * host names it, and why the setting is not made, null where it is.
+ * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
  *   serves: (url: string) => boolean,
- *   protectBranch?: (url: string, branch: string) => {repository: string, unset: string|null},
+ *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
+ *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {task: string, branch: string, base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]},
- *   mergePhase: (ctx: LandingContext, phase: number) => {merged: string[]},
- *   finish: (ctx: LandingContext) => {phases: {phase: number, merged: string[]}[]},
+ *   mergePhase: (ctx: LandingContext, phase: number) => {merged: string[], warnings?: string[]},
+ *   finish: (ctx: LandingContext) => {phases: {phase: number, merged: string[]}[], warnings?: string[]},
  * }} LandingMethods
  */
 /** @typedef {DriverDeclaration & Omit<MethodsOf<typeof METHODS.landing>, keyof LandingMethods> & LandingMethods} LandingDriver */
@@ -290,6 +295,18 @@ function settingOf(project, kind) {
 }
 
 /**
+ * The project's driver of a kind as things stand, writing nothing: the one
+ * its setting names, or the kind's default; `set` says the setting names it.
+ * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
+ * @returns {{driver: Driver, set: boolean}}
+ */
+function chosenDriver(cwd, kind, root = DRIVERS_ROOT) {
+  const set = settingOf(readProjectManifest(cwd), kind);
+  if (set !== null) return { driver: loadDriver(kind, set, root), set: true };
+  return { driver: defaultDriver(kind, listDrivers(kind, root), kind === 'landing' ? remoteUrl(cwd) : null), set: false };
+}
+
+/**
  * The project's driver of a kind: the one its setting names, or, where the
  * setting is absent, the kind's default, written to the project manifest
  * under the writer lock as the setting from then on. `written` says this
@@ -299,9 +316,8 @@ function settingOf(project, kind) {
  * @returns {{driver: Driver, written: boolean}}
  */
 function resolveDriver(cwd, kind, root = DRIVERS_ROOT) {
-  const set = settingOf(readProjectManifest(cwd), kind);
-  if (set !== null) return { driver: loadDriver(kind, set, root), written: false };
-  const driver = defaultDriver(kind, listDrivers(kind, root), kind === 'landing' ? remoteUrl(cwd) : null);
+  const { driver, set } = chosenDriver(cwd, kind, root);
+  if (set) return { driver, written: false };
   withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
     manifest.drivers = { ...(isObject(manifest.drivers) ? manifest.drivers : {}), [kind]: driver.name };
@@ -336,4 +352,4 @@ function needsRefusal(driver) {
   return faults.length === 0 ? null : `the ${driver.kind} driver ${faults.join('; and ')}`;
 }
 
-module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, resolveDriver, settingOf, needsRefusal };
+module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, hostDriver, chosenDriver, resolveDriver, settingOf, needsRefusal };

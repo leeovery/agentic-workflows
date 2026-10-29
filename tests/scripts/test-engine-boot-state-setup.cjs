@@ -42,7 +42,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const res = boot(main);
 
     const root = path.join(main, '.leeway');
-    assert.deepStrictEqual([res.state, res.github_rule_offer, res.warnings], ['ready', false, []]);
+    assert.deepStrictEqual([res.state, res.github_rule_offer, res.github_squash_offer, res.warnings], ['ready', false, false, []]);
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)], 'one commit, with no parent');
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
     assert.deepStrictEqual(placed(root), IN_PLACE);

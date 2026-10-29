@@ -94,17 +94,18 @@ function contextOf(cwd, unit) {
  * Run a driver's verb with the project's landing driver, committing the
  * setting where this call settled it, whether or not the driver refused. A
  * verb that fails where a tool the driver needs is not installed, or fails
- * to run, is refused for that (`needsRefusal`). The answer carries the verb's last state commit, null where it failed,
- * and every warning: `before`'s — what the verb committed and was warned of
- * before — and the setting's own.
- * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown>} act
+ * to run, is refused for that (`needsRefusal`). The answer carries the
+ * verb's last state commit, null where it failed, and every warning:
+ * `before`'s — what the verb committed and was warned of before — the
+ * setting's own, and the driver's.
+ * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown> & {warnings?: string[]}} act
  * @param {{committed?: string|null, warnings?: string[]}} [before]
  */
 function withDriver(cwd, act, before = {}) {
   const { driver, written } = resolveDriver(cwd, 'landing');
   const warnings = [...(before.warnings ?? [])];
   let { committed } = before;
-  const answer = carrying(warnings, () => {
+  const { warnings: driven = [], ...answer } = carrying(warnings, () => {
     try {
       return act(/** @type {LandingDriver} */ (driver));
     } catch (err) {
@@ -114,6 +115,7 @@ function withDriver(cwd, act, before = {}) {
       if (written) committed = commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `chore: the landing driver is ${driver.name}`, warnings).committed;
     }
   });
+  warnings.push(...driven);
   return { ...answer, driver: driver.name, ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
 }
 

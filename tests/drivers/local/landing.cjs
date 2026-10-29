@@ -5,6 +5,7 @@
 // remote and no host, the project set to the driver; what landed is what
 // the default branch itself gained, and what it holds is its own tree.
 
+const { git } = require('../../scripts/engine-harness.cjs');
 const { setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
 
 module.exports = {
@@ -16,4 +17,6 @@ module.exports = {
   landed: (dir) => landedOn(dir, 'main'),
   /** Every path the default branch holds. @param {string} dir */
   holds: (dir) => pathsOn(dir, 'main'),
+  /** The commit the default branch is at. @param {string} dir */
+  defaultTip: (dir) => git(dir, ['rev-parse', 'main']).trim(),
 };

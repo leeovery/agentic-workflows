@@ -10,7 +10,8 @@
 // stand-in first on the PATH, GH_CONFIG_DIR pinned to an empty temp folder
 // and no token, so neither the developer's gh nor their login is reached.
 // What a person might do by hand on GitHub — close a pull request, merge
-// one, change GitHub's default branch — is done to the fake's state here.
+// one, change GitHub's default branch or its squash default — is done to
+// the fake's state here. The fake starts with GitHub's own squash default.
 
 const fs = require('fs');
 const os = require('os');
@@ -61,7 +62,7 @@ function githubWorld(dir) {
   git(dir, ['push', '-q', '--tags', 'origin', 'refs/heads/main:refs/heads/main', 'refs/heads/leeway-state:refs/heads/leeway-state']);
   git(dir, ['fetch', '-q', 'origin']);
   git(dir, ['remote', 'set-head', 'origin', 'main']);
-  stub.writeState(githubOf(dir), { repo: REPOSITORY, default: 'main', next: 1, method: 'merge', pulls: [], stacks: [] });
+  stub.writeState(githubOf(dir), { repo: REPOSITORY, default: 'main', next: 1, method: 'merge', squash: { ...stub.GITHUB_SQUASH }, rulesets: [], pulls: [], stacks: [] });
   return bare;
 }
 
@@ -106,7 +107,14 @@ function defaultOnGithub(dir, branch) {
   });
 }
 
+/** The repository's squash default made the pull request's title and description, as setup's yes makes it. @param {string} dir */
+function squashFromPullRequests(dir) {
+  onGithub(dir, (state) => {
+    state.squash = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
+  });
+}
+
 /** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
-module.exports = { REPOSITORY, GH_ENV, ghEnv, githubWorld, github, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, tipOnGithub };
+module.exports = { REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, tipOnGithub };

@@ -418,7 +418,7 @@ function open(ctx, task, tip) {
     throw new Error(`land: ${tip.top.branch}'s commit for task ${shownTask(last.ref)}, ${named(last)}, has changed since it was opened — ${offSteps(ctx, tip.top, last, again)}`);
   }
   const at = /** @type {string} */ (tip.refs.get(task.branch));
-  if (at === tip.commit) throw new Error(`land: task ${shown}'s branch ${task.branch} changes nothing past ${tip.name} — commit its change there first`);
+  if (at === tip.commit) throw new Error(lg.nothingPast(shown, task.branch, tip.name));
   const { phase } = task.ref;
   const branch = names.phaseBranch(ctx.unit, phase);
   const landing = { tree, parent: onto, message: task.message, signed: lg.signs(root) };

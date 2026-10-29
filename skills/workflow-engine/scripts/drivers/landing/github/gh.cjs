@@ -7,9 +7,12 @@
 // driver's needs declare it (22.4.9): null where it is not installed, the
 // extension among them where gh does not know the command. A call that
 // fails is refused in the words of what happened and the way on — gh not
-// signed in, GitHub's rate limit, GitHub out of reach — or else in gh's own
-// words; a call that cannot run at all throws as it falls, for the seam to
-// name the tool missing (landing.cjs). No refusal names an install command.
+// signed in, GitHub's rate limit, GitHub out of reach — or else in GitHub's
+// own words, to settle what they name and land again. gh's own calls exit 4
+// where it is not signed in; the extension exits 4 on any failure of
+// GitHub's API, so its calls are told apart by their words alone. A call
+// that cannot run at all throws as it falls, for the seam to name the tool
+// missing (landing.cjs). No refusal names an install command.
 // ---------------------------------------------------------------------------
 
 const { spawnSync } = require('child_process');
@@ -45,6 +48,9 @@ function saidBy(ran) {
   return plain((ran.stderr || ran.stdout || `exited ${ran.status}`).split('\n').map((line) => line.trim()).filter(Boolean).join(' '));
 }
 
+/** Whether a failed run says gh is not signed in: gh's own exit for it, or its words. @param {string[]} args @param {Ran} ran @param {string} said */
+const signedOut = (args, ran, said) => (args[0] !== 'stack' && ran.status === 4) || SIGNED_OUT.test(said);
+
 /**
  * gh's answer to `args`, refused where it fails: `what` names the call, as
  * a refusal says what gh could not do.
@@ -58,10 +64,10 @@ function gh(args, what, opts) {
   if (ran.error) throw ran.error;
   if (ran.status === 0) return ran.stdout;
   const said = saidBy(ran);
-  if (ran.status === 4 || SIGNED_OUT.test(said)) throw new Error(`land: gh could not ${what}: it is not signed in to ${HOST} — sign in with \`gh auth login\`, and land again`);
+  if (signedOut(args, ran, said)) throw new Error(`land: gh could not ${what}: it is not signed in to ${HOST} — sign in with \`gh auth login\`, and land again`);
   if (RATE_LIMITED.test(said)) throw new Error(`land: gh could not ${what}: GitHub's rate limit stopped it (${said}) — wait for the limit to reset, and land again`);
   if (OFFLINE.test(said)) throw new Error(`land: gh could not ${what}: it could not reach GitHub (${said}) — land again once the network is back`);
-  throw new Error(`land: gh could not ${what}: ${said}`);
+  throw new Error(`land: gh could not ${what}: ${said} — settle what GitHub names, then land again`);
 }
 
 /**
@@ -88,22 +94,23 @@ const ghVersion = () => versionOf(['--version'], /^gh version (\S+)/);
 const stackVersion = () => versionOf(['stack', '--version'], /^gh stack version (\S+)/);
 
 /**
- * Why gh did not set a ruleset on a repository, or null where it did: gh
- * missing, signed out, or refused, each said as setup's warning says it.
- * @param {string} repository `{owner}/{repo}` @param {object} ruleset
+ * Why gh did not make a setting on GitHub through its API, or null where it
+ * did: gh missing, signed out, or refused, each said as setup's warning says
+ * it.
+ * @param {string} cwd @param {string[]} api the call's arguments past `api` @param {string} [input]
  * @returns {string|null}
  */
-function postRuleset(repository, ruleset) {
-  const signedIn = spawnGh(['auth', 'status', '--hostname', HOST]);
+function setOnGithub(cwd, api, input) {
+  const signedIn = spawnGh(['auth', 'status', '--hostname', HOST], { cwd });
   if (signedIn.error) {
     const missing = /** @type {NodeJS.ErrnoException} */ (signedIn.error).code === 'ENOENT';
     return missing ? `${GH} is not installed` : `${GH} could not run: ${signedIn.error.message}`;
   }
   if (signedIn.status !== 0) return `${GH} is not signed in to ${HOST}`;
-  const made = spawnGh(['api', '--method', 'POST', `repos/${repository}/rulesets`, '--input', '-'], { input: JSON.stringify(ruleset) });
+  const made = spawnGh(['api', ...api], { cwd, input });
   if (made.error) return `${GH} could not run: ${made.error.message}`;
   if (made.status !== 0) return `${GH} refused it: ${(made.stderr || made.stdout || `exit ${made.status}`).trim()}`;
   return null;
 }
 
-module.exports = { GH, gh, ghVersion, stackVersion, postRuleset };
+module.exports = { gh, ghVersion, stackVersion, setOnGithub };
