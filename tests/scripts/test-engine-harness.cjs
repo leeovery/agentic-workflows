@@ -1,13 +1,15 @@
 'use strict';
 
-// The shared engine runner's own contract: each shape answers what its name
-// says, the refusal shape asserts the refusal, the call's environment and
-// stdin reach the engine, the git fixture is a repo with its state worktree
-// that an engine commit lands in, every remote in the tests is a bare repo
-// that runs no maintenance, a world made once is copied whole and
-// apart, a keyword-only checkout is one a transaction's index builds a real
-// store in, a call's attempts at a lock are seen as it makes them, and the
-// `ps` that fails does.
+// The shared engine runner's own contract: what its shapes add to the
+// in-process entry (test-engine-run.cjs owns the entry itself) — `call`
+// handing on the call's stdin and asserting nothing, `output` the whole
+// stdout, `ok` and `refuses` failing on the wrong outcome, and `okSections`
+// — the git fixture is a repo with its state worktree that an engine commit
+// lands in, every remote in the tests is a bare repo that runs no
+// maintenance, a world made once is copied whole and apart, a keyword-only
+// checkout is one a transaction's index builds a real store in, a call's
+// attempts at a lock are seen as it makes them, and the `ps` that fails
+// does.
 
 require('./hermetic-env.cjs');
 
@@ -67,12 +69,6 @@ describe('engine harness — the shapes', () => {
     assert.match(scan.sections, /Analyses deferred/, 'the sections after the response line');
   });
 
-  it('refuses answers the refusal, and asserts exit 1 with nothing on stdout', () => {
-    const before = fs.readFileSync(statePath(dir, 'pay/manifest.json'), 'utf8');
-    assert.match(refuses(dir, ['topic', 'complete', 'pay', 'research', 'absent']).error, /absent/);
-    assert.strictEqual(fs.readFileSync(statePath(dir, 'pay/manifest.json'), 'utf8'), before);
-  });
-
   it('refuses fails loudly when the call succeeds instead', () => {
     assert.throws(() => refuses(dir, ['manifest', 'get', 'pay', 'work_type']),
       /was expected to refuse/);
@@ -91,16 +87,6 @@ describe('engine harness — the shapes', () => {
     const miss = call(dir, ['manifest', 'key-of', 'pay.research', 'items', 'absent']);
     assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "absent" not found/);
-  });
-
-  it('the call\'s environment reaches the engine, and a key it takes away is gone', () => {
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: OWN });
-    const record = JSON.parse(fs.readFileSync(statePath(dir, '.cache/pay/research/pay/presence'), 'utf8'));
-    assert.strictEqual(record.session_id, 'sess-own');
-
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: { ...OWN, CLAUDE_CODE_SESSION_ID: undefined } });
-    const anonymous = JSON.parse(fs.readFileSync(statePath(dir, '.cache/pay/research/pay/presence'), 'utf8'));
-    assert.strictEqual(anonymous.session_id, null, 'the engine saw no session id at all');
   });
 
   it('the call\'s stdin reaches the engine', () => {

@@ -1,15 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine manifest` — the manifest field surface.
+// `engine manifest` — the manifest field surface (domain/fields.cjs).
 //
 // Pins the ruled output split: reads (get/exists/list/key-of/resolve) print
 // bare stdout with the `Error: …` stderr exit-code convention (2 = expected
-// miss); mutations (set/push/pull/delete) answer
-// with the engine's one-line JSON response and fail as {ok:false} stderr
-// exit 1. The full behavioural matrix lives in the contract suite
-// (tests/scripts/test-engine-manifest.sh); this file pins the namespace
-// dispatch, the JSON shapes, and set batching.
+// miss); mutations (set/push/pull/delete) answer with the engine's one-line
+// JSON response and fail as {ok:false} stderr exit 1. Then the batched set
+// under the writer lock, `apply`, the two set grammars, and the guards on
+// the vocabulary, the phases tree, storage_paths and dismissed_grounds.
+// The shell suite (test-engine-manifest.sh) drives much of the same surface
+// through the CLI; where the two overlap, this file is the home.
+//
+// Layer: verb. World: a plain temp project per test (setupFixture).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,11 +22,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const { ENGINE } = harness;
 
@@ -361,31 +363,24 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
   beforeEach(() => { dir = setupFixture('engine-fields-'); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  it('a held writer lock blocks a batched set until released — nothing lands early, everything lands together', async () => {
+  it('a held writer lock blocks a batched set until released — nothing lands early, everything lands together', (t) => {
     writeWorkUnit(dir, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    // Held by this test's own process: alive, and never the child's.
-    const lock = path.join(dir, '.leeway/.lock');
-    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const lock = harness.holdLock(path.join(dir, '.leeway/.lock'));
+    const item = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8')).phases.discussion.items.auth;
+    /** @type {unknown[]} */
+    const whileHeld = [];
+    // The peer lets go at the set's second attempt: it found the lock held, and waited.
+    const attempts = harness.lockAttempts(t, lock, (taken) => {
+      whileHeld.push(item().review_cycle);
+      if (taken === 2) fs.unlinkSync(lock);
+    });
 
-    const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18'], { cwd: dir });
-    let stdout = '';
-    child.stdout.on('data', (c) => { stdout += c; });
-    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
-    const exit = new Promise((resolve) => child.on('close', resolve));
+    const res = runJson(dir, ['set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18']);
 
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'batched set must wait on a live lock');
-    const before = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8'));
-    assert.strictEqual(before.phases.discussion.items.auth.review_cycle, undefined, 'no field lands while the lock is held');
-
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    const after = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8'));
-    assert.strictEqual(after.phases.discussion.items.auth.review_cycle, 2);
-    assert.strictEqual(after.phases.discussion.items.auth.date, '2026-07-18');
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [undefined, undefined], 'no field lands while the lock is held');
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual([item().review_cycle, item().date], [2, '2026-07-18']);
     assert.ok(!fs.existsSync(lock), 'lock released after the batch');
   });
 });

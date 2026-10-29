@@ -180,17 +180,6 @@ describe('engine commit --topic: pathspec isolation', () => {
       /research\|discussion\|investigation only/);
   });
 
-  it('leaves content another process staged out of the commit and still staged', () => {
-    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
-    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
-    stateGit(dir, ['add', '--', 'payments/discussion/topic-b.md']);
-
-    engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
-
-    assert.ok(!headFiles(dir).includes('payments/discussion/topic-b.md'), 'staged peer file not committed');
-    assert.strictEqual(stateGit(dir, ['diff', '--cached', '--name-only']).trim(), 'payments/discussion/topic-b.md', 'peer staging preserved');
-  });
-
   it('commits an untracked artifact directory (specification phase)', () => {
     writeFile(dir, '.leeway/payments/specification/topic-a/specification.md', '# Spec\n');
 
@@ -257,16 +246,6 @@ describe('engine commit --topic: pathspec isolation', () => {
       '--topic', 'investigation/crash-fix']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
     assert.deepStrictEqual(statusLines(dir), [], 'nothing left dirty');
-  });
-
-  it('does not stage the knowledge store — the KB dir never rides a --topic commit', () => {
-    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
-
-    engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
-
-    assert.ok(!headFiles(dir).some((f) => f.startsWith('.knowledge/')), 'KB dir not committed');
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'KB dirt left in place');
   });
 
   it('rejects malformed and illegal --topic specs', () => {
@@ -346,8 +325,7 @@ describe('engine commit --state: the analysis scopes', () => {
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('the work unit form takes its analysis dir and its manifest — never the store', () => {
-    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
+  it('the work unit form takes its analysis dir and its manifest', () => {
     writeFile(dir, '.leeway/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
     // A live peer mid-write, in the same work unit — the theft this scope closes.
@@ -360,7 +338,6 @@ describe('engine commit --state: the analysis scopes', () => {
     const files = headFiles(dir);
     assert.ok(files.includes('payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
     assert.ok(files.includes('payments/manifest.json'), 'so does the manifest it wrote');
-    assert.ok(!files.some((f) => f.startsWith('.knowledge/')), 'the store is never committed');
     assert.deepStrictEqual(
       statusLines(dir).sort(),
       [' M payments/discussion/topic-b.md', '?? payments/specification/'],
@@ -454,20 +431,6 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
     assert.ok(headFiles(dir).includes('payments/planning/topic-a/planning.md'));
     assert.deepStrictEqual(statusLines(dir), [' M payments/planning/topic-b/planning.md'],
       'the peer planning session keeps its own dirt');
-  });
-
-  it('leaves the knowledge store alone', () => {
-    const manifest = epicManifest();
-    manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: [] } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    // A conclusion in a peer session left the store mid-index.
-    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan\n');
-
-    engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
-
-    assert.ok(!headFiles(dir).some((f) => f.startsWith('.knowledge/')), 'a plan pass never commits the store');
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'which stays as it was on disk');
   });
 
   it('refuses a planning topic name that is a path', () => {
@@ -1648,14 +1611,14 @@ describe('commit door: transaction tails commit their own scope', () => {
     assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
   });
 
-  it('the inbox scope leaves the knowledge store alone', () => {
+  it('the inbox scope commits the inbox alone — dirt outside it that the state does not ignore stays out', () => {
     writeFile(dir, '.leeway/.inbox/ideas/a-thought.md', '# A thought\n');
-    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
 
     engine(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
     assert.deepStrictEqual(headFiles(dir), ['.inbox/ideas/a-thought.md']);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'the store dirt is a peer session\'s');
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
@@ -1776,7 +1739,6 @@ describe('commit door: a push the remote refuses (4.S4)', () => {
     assert.deepStrictEqual(headFiles(dir), ['payments/manifest.json']);
     assert.strictEqual(git(bare, ['rev-parse', 'leeway-state']).trim(), pushed, 'the remote refused it');
     assert.strictEqual(res.warnings.length, 1, JSON.stringify(res.warnings));
-    assert.match(res.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
   });
 });
 

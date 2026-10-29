@@ -49,6 +49,41 @@ function writeJSON(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+/**
+ * Every rename made while the test runs: its source, its target, what the
+ * source held, and what the target held just before it was replaced.
+ * @param {import('node:test').TestContext} t
+ */
+function watchRenames(t) {
+  const rename = fs.renameSync;
+  /** @type {{from: string, to: string, held: string, replaced: string}[]} */
+  const renames = [];
+  t.mock.method(fs, 'renameSync', (/** @type {string} */ from, /** @type {string} */ to) => {
+    renames.push({ from, to, held: fs.readFileSync(from, 'utf8'), replaced: fs.readFileSync(to, 'utf8') });
+    rename(from, to);
+  });
+  return renames;
+}
+
+/**
+ * `write` over the existing `filePath` lands through one temp file beside it,
+ * renamed into place: the target keeps what it held until the rename, and
+ * nothing is left behind.
+ * @param {import('node:test').TestContext} t @param {string} filePath @param {() => void} write
+ */
+function assertRenamedIn(t, filePath, write) {
+  const old = fs.readFileSync(filePath, 'utf8');
+  const renames = watchRenames(t);
+
+  write();
+
+  assert.deepStrictEqual(renames.map(({ from, to, replaced }) => [path.dirname(from), to, replaced]), [[path.dirname(filePath), filePath, old]]);
+  assert.notStrictEqual(renames[0].from, filePath, 'the write went straight to the target');
+  assert.strictEqual(renames[0].held, fs.readFileSync(filePath, 'utf8'));
+  assert.notStrictEqual(renames[0].held, old);
+  assert.deepStrictEqual(fs.readdirSync(path.dirname(filePath)), [path.basename(filePath)]);
+}
+
 // ---------------------------------------------------------------------------
 // readConfigFile
 // ---------------------------------------------------------------------------
@@ -611,10 +646,10 @@ describe('writeCredentials', () => {
     assert.strictEqual(parsed.credentials.anthropic.api_key, 'sk-anthropic');
   });
 
-  it('uses atomic write (no .tmp left behind on success)', () => {
+  it('writes atomically: a temp file beside the credentials, renamed over them', (t) => {
     const filePath = path.join(tmpDir, 'credentials.json');
     writeCredentials(filePath, 'openai', 'sk-1');
-    assert.ok(!fs.existsSync(filePath + '.tmp'));
+    assertRenamedIn(t, filePath, () => writeCredentials(filePath, 'openai', 'sk-2'));
   });
 
   it('rejects a missing provider name', () => {
@@ -737,10 +772,10 @@ describe('writeConfigFile', () => {
     assert.ok(fs.existsSync(filePath));
   });
 
-  it('uses atomic write (no temp file left behind on success)', () => {
+  it('writes atomically: a temp file beside the config, renamed over it', (t) => {
     const filePath = path.join(tmpDir, 'config.json');
     writeConfigFile(filePath, { knowledge: {} });
-    assert.deepStrictEqual(fs.readdirSync(tmpDir), ['config.json']);
+    assertRenamedIn(t, filePath, () => writeConfigFile(filePath, { knowledge: { provider: 'openai' } }));
   });
 
   it('rejects payloads missing the knowledge wrapper', () => {

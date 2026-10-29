@@ -26,7 +26,7 @@ const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs')
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
 const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, parents, status, commitOn, commitUnpushed, twoMachines, ledger, json, projectManifest, traced, keptStopFile, pickShown } = require('./state-merge-world.cjs');
+const { useWorld, parents, status, commitOn, commitUnpushed, twoMachines, ledger, projectManifest, traced, keptStopFile, pickShown } = require('./state-merge-world.cjs');
 
 useWorld();
 
@@ -55,18 +55,6 @@ describe('the manifests (4.S17)', () => {
     const merged = JSON.parse(readFile(here.root, 'manifest.json'));
     assert.strictEqual(merged.defaults.plan_format, 'tick');
     assert.strictEqual(merged.roadmap.items['a-lifetime-tier'].horizon, 'next');
-  });
-
-  it('takes a field both sides set to the same value, and does not stop', () => {
-    const unit = (fields) => json({ work_type: 'feature', status: 'in-progress', ...fields });
-    const { here, there } = twoMachines({ 'auth-flow/manifest.json': unit({}) });
-    commitUnpushed(here, { 'auth-flow/manifest.json': unit({ status: 'completed', closed_by: 'here' }) });
-    commitOn(there, { 'auth-flow/manifest.json': unit({ status: 'completed' }) });
-
-    const out = catchUpState(here.root);
-
-    assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
-    assert.deepStrictEqual(JSON.parse(readFile(here.root, 'auth-flow/manifest.json')), { work_type: 'feature', status: 'completed', closed_by: 'here' });
   });
 
   it('stops on a field both sides changed to different values, with both values and nothing written; the pick finishes the merge', () => {

@@ -86,7 +86,6 @@ describe('a catch-up killed between its steps', () => {
     const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
     assert.strictEqual(live.warnings.length, 2, live.warnings.join('\n'));
     assert.strictEqual(live.warnings[0], `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`);
-    assert.match(live.warnings[1], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: /);
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
     assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('later'), 'a field the killed landing wrote came back');

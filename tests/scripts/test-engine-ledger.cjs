@@ -280,9 +280,9 @@ describe('ids', () => {
     assert.strictEqual(resolveId('Xk3vQ9Zb', ids), ids[1]);
     assert.strictEqual(resolveId('Pq00', ids), ids[2]);
     assert.strictEqual(resolveId(ids[0], ids), ids[0]);
-    assert.throws(() => resolveId('Xk3vQ9Z', ids), /"Xk3vQ9Z" is ambiguous: 2 ledger entries' ids begin with it/);
-    assert.throws(() => resolveId('Zz00', ids), /no ledger entry's id begins "Zz00"/);
-    assert.throws(() => resolveId('Pq0', ids), /too short to name a ledger entry/);
+    assert.throws(() => resolveId('Xk3vQ9Z', ids), { message: `"Xk3vQ9Z" is ambiguous: 2 ledger entries' ids begin with it — give more of the id` });
+    assert.throws(() => resolveId('Zz00', ids), { message: `no ledger entry's id begins "Zz00"` });
+    assert.throws(() => resolveId('Pq0', ids), { message: `"Pq0" is too short to name a ledger entry — give at least 4 characters of its id` });
     assert.throws(() => resolveId('xk3vQ9Zb', ids), /no ledger entry's id begins/);
   });
 });

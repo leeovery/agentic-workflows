@@ -106,6 +106,17 @@ describe('knowledge store — chunks', () => {
     assert.throws(() => store.removeByIdentity(db, { work_unit: 'x', phase: 'y' }), /all required/);
   });
 
+  it('removes by the whole identity: a sibling topic under the same work unit and phase stays, and the same topic in another work unit', () => {
+    const session = { phase: 'discovery', work_unit: 'payments', topic: 'session-001' };
+    const db = storeOf(
+      ['one', 'offline mode surface', session],
+      ['sibling', 'analytics dashboard tempo', { ...session, topic: 'session-002' }],
+      ['elsewhere', 'offline mode surface', { ...session, work_unit: 'billing' }],
+    );
+    assert.strictEqual(store.removeByIdentity(db, session), 1);
+    assert.deepStrictEqual(store.allChunks(db).map((c) => c.id), ['sibling', 'elsewhere']);
+  });
+
   it('counts and removes by a filter of values or lists of values', () => {
     const db = storeOf(
       ['s', 'shared', { phase: 'specification' }],

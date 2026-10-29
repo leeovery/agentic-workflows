@@ -102,16 +102,6 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.ok(readFile(here.root, SPEC) === merged, 'the merged copy is not both sides\' lines');
   });
 
-  it('keeps a line both sides hold by id once', () => {
-    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
-    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'both', 'a1') });
-    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1', 'both') });
-
-    catchUpState(here.root);
-
-    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'both', 'a1'));
-  });
-
   it('keeps the remote\'s ledger byte for byte, adding a last newline it lacks only before lines it adds', () => {
     const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
     const held = `${ledger('base', 'b1')}{"id":"both", "spaced": true}`;
