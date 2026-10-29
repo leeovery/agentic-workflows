@@ -44,21 +44,21 @@
 //   that one, its branch kept or deleted. A task whose branch is not where
 //   it opened stops the phase; a phase's commits otherwise land as its
 //   branch stands.
-// - A submodule's pointer, of each submodule the phase landed in: decided
-//   as its repository's phase merges, after the submodule's own (landing.cjs
-//   merges children first). Each landing that moves the pointer is pointed
-//   at the submodule's landing of its own task, read off the submodule's
-//   default branch by its trailer — or kept as it is where the submodule
-//   landed none of its tasks — and each that does not move it keeps the
-//   pointer of the landing below it, the default branch's for the first,
-//   so every landing the default branch gains names a commit on the
-//   submodule's. Git never merges such a pointer: the phase is replayed
-//   onto the default branch wherever one changes. It waits for the merge,
-//   not the open: until then each landing keeps its task's own tree, which
-//   every check above reads, and a submodule's phase replayed onto a
-//   default branch that moved on makes commits no open could have named. A
-//   submodule the phase landed nothing in keeps whatever its tasks point it
-//   at.
+// - A submodule's pointer: decided as its repository's phase merges, after
+//   the submodule's own (landing.cjs merges children first). A landing
+//   moves it where its commit points it other than the commit below it does
+//   (`stackMoves`), so a pointer inherited from a phase below is no move of
+//   it. Each that moves it is pointed at the submodule's landing of its own
+//   task, read off the submodule's default branch by its trailer — or kept
+//   as it is where the submodule landed none of its tasks, a pin kept — and
+//   each that does not keeps the pointer of the landing below it, the
+//   default branch's for the first, so every landing the default branch
+//   gains names a commit on the submodule's, or the task's own pin. Git
+//   never merges such a pointer: the phase is replayed onto the default
+//   branch wherever one changes. It waits for the merge, not the open: until
+//   then each landing keeps its task's own tree, which every check above
+//   reads, and a submodule's phase replayed onto a default branch that
+//   moved on makes commits no open could have named.
 // - Finish: every phase not yet merged, each after the one it stacks on.
 //
 // Every refusal says the way on, its commands fitted to the repository as
@@ -67,7 +67,7 @@
 
 const names = require('../../../domain/landing-names.cjs');
 const lg = require('../../../domain/landing-git.cjs');
-const { taskId, shownTask } = require('../../../domain/task-id.cjs');
+const { taskId, shownTask, sameTask } = require('../../../domain/task-id.cjs');
 const { GitError } = require('../../../kernel/git.cjs');
 
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
@@ -104,9 +104,6 @@ const { GitError } = require('../../../kernel/git.cjs');
  */
 
 const OPENED = 'refs/leeway/opened/';
-
-/** @param {TaskRef} a @param {TaskRef} b */
-const sameTask = (a, b) => a.unit === b.unit && a.phase === b.phase && a.n === b.n;
 
 /** A commit as a refusal names it. @param {Commit} commit */
 const named = (commit) => `${lg.short(commit.sha)} "${lg.plain(commit.message.split('\n')[0])}"`;
@@ -514,28 +511,18 @@ function replayed(stack) {
 }
 
 /**
- * The pointers the stack's commits record of each submodule the walk landed
- * in (see the header) — null where the repository holds none — and whether
- * each records its own, so the stack lands as it stands.
- * @param {LandingContext} ctx @param {Replayed[]} commits
+ * The pointers the stack's commits record of each of the repository's
+ * submodules (see the header) — null where it holds none — and whether each
+ * records its own, so the stack lands as it stands.
+ * @param {LandingContext} ctx @param {Replayed[]} commits @param {string} intoTip
  * @returns {(Pointers & {kept: boolean})|null}
  */
-function pointersOf(ctx, commits) {
-  if (ctx.submodules.length === 0) return null;
-  const paths = ctx.submodules.map(({ path }) => path);
-  const [base, ...held] = lg.pointersAt(ctx.root, [`${commits[0].sha}^`, ...commits.map(({ sha }) => sha)], paths);
-  const subs = new Map(ctx.submodules.map(({ path, ctx: sub }) => [path, sub]));
-  /** @type {Map<string, Map<string, string>>} */
-  const landings = new Map();
-  /** The submodule's landing of the last of `tasks` it landed, if any. @param {string} at @param {string[]} tasks */
-  const landing = (at, tasks) => {
-    const from = base.get(at) ?? null;
-    const sub = /** @type {LandingContext} */ (subs.get(at));
-    if (from === null) return undefined;
-    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, lg.firstParentLine(sub.root, from, sub.into)));
-    return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
-  };
-  const moves = lg.pointerMoves(base, commits.map((commit, i) => ({ pointers: held[i], tasks: commit.tasks })), landing);
+function pointersOf(ctx, commits, intoTip) {
+  const paths = ctx.gitlinks;
+  if (paths.length === 0) return null;
+  const subs = new Map(ctx.submodules.map(({ path, ctx: sub }) => [path, { root: sub.root, unit: sub.unit, tip: () => sub.into }]));
+  const moves = lg.stackMoves(ctx.root, commits.map(({ sha, tasks }) => ({ sha, parents: [`${sha}^`], tasks })), paths, subs, intoTip);
+  const held = lg.pointersAt(ctx.root, commits.map(({ sha }) => sha), paths);
   const kept = moves.every((moved, i) => [...moved].every(([at, sha]) => sha === (held[i].get(at) ?? null)));
   return { paths, moves, kept };
 }
@@ -582,7 +569,7 @@ function mergeStack(ctx, refs, stacks, stack) {
   const merged = { into, merged: stack.tasks.map((landed) => shownTask(landed.ref)) };
   const landed = () => forgetOpened(ctx, (phase) => phase === stack.phase);
   const commits = replayed(stack);
-  const pointers = pointersOf(ctx, commits);
+  const pointers = pointersOf(ctx, commits, intoTip);
   if (lg.isAncestor(root, intoTip, stack.tip) && (pointers === null || pointers.kept)) {
     try {
       lg.moveBranch(root, into, intoTip, stack.tip);

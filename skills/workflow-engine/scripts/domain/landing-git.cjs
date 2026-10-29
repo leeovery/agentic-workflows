@@ -58,6 +58,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError, READ_BUDGET_BYTES } = require('../kernel/git.cjs');
 const { STATE_BRANCH, NETWORK_ENV, PUSH_TIMEOUT_MS, FETCH_TIMEOUT_MS } = require('./state-worktree.cjs');
+const names = require('./landing-names.cjs');
 
 /**
  * A worktree of the repository: where it is, the branch it has checked out,
@@ -259,24 +260,64 @@ function pointedLike(root, commit, like, paths) {
 }
 
 /**
- * Each step's moves of the submodules' pointers, against the step below it —
- * the first, against `base`: where a step points a submodule elsewhere, the
- * submodule's landing of the step's tasks (`landing`), or, where it landed
- * none of them, the step's own pointer; a submodule taken out stays out.
- * @param {Map<string, string|null>} base
- * @param {{pointers: Map<string, string|null>, tasks: string[]}[]} steps
- * @param {(path: string, tasks: string[]) => string|undefined} landing
+ * A submodule whose landings a stack's moves of its pointer are read
+ * against: its repository's folder, the unit, and its default branch's tip,
+ * read when first needed.
+ * @typedef {{root: string, unit: string, tip: () => string}} Landed
+ */
+
+/**
+ * Each of a stack's own commits' moves of the pointers at `paths`, in the
+ * commits' order: where a commit points a submodule other than every parent
+ * of it does — so a merge taking one side's pointer moves nothing, and a
+ * pointer the stack inherited from below it is no move of its — the
+ * submodule's landing of the latest of the commit's tasks it landed, read
+ * off its default branch's first-parent line from where `since` points it
+ * to its tip, for a submodule of `subs`; else the commit's own pointer. One
+ * taken out stays out.
+ * @param {string} root @param {{sha: string, parents: string[], tasks: string[]}[]} commits
+ * @param {string[]} paths @param {Map<string, Landed>} subs @param {string} since the default branch's tip
  * @returns {Map<string, string|null>[]}
  */
-function pointerMoves(base, steps, landing) {
-  return steps.map(({ pointers, tasks }, i) => {
-    const below = i === 0 ? base : steps[i - 1].pointers;
+function stackMoves(root, commits, paths, subs, since) {
+  if (commits.length === 0 || paths.length === 0) return commits.map(() => new Map());
+  const asked = [since, ...commits.flatMap(({ sha, parents }) => [sha, ...parents])];
+  const read = new Map(pointersAt(root, asked, paths).map((pointers, i) => [asked[i], pointers]));
+  const from = /** @type {Map<string, string|null>} */ (read.get(since));
+  /** @type {Map<string, Map<string, string>>} */
+  const landings = new Map();
+  /** The submodule's landing of the latest of `tasks` it landed, if any. @param {string} at @param {string[]} tasks */
+  const landing = (at, tasks) => {
+    const sub = subs.get(at);
+    const start = from.get(at) ?? null;
+    if (sub === undefined || start === null) return undefined;
+    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, sub.tip())));
+    return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
+  };
+  return commits.map(({ sha, parents, tasks }) => {
+    const own = /** @type {Map<string, string|null>} */ (read.get(sha));
     /** @type {Map<string, string|null>} */
     const moves = new Map();
-    for (const [at, sha] of pointers) {
-      if (sha !== (below.get(at) ?? null)) moves.set(at, sha === null ? null : landing(at, tasks) ?? sha);
+    for (const at of paths) {
+      const pointer = own.get(at) ?? null;
+      const before = parents.length === 0 ? [null] : parents.map((parent) => read.get(parent)?.get(at) ?? null);
+      if (!before.includes(pointer)) moves.set(at, pointer === null ? null : landing(at, tasks) ?? pointer);
     }
     return moves;
+  });
+}
+
+/**
+ * The commits `head` holds that none of `not` does, oldest first — parents
+ * before children — each with its parents; a commit of `not` this
+ * repository lacks is passed over.
+ * @param {string} root @param {string} head @param {string[]} not
+ * @returns {{sha: string, parents: string[]}[]}
+ */
+function commitsPast(root, head, not) {
+  return git(root, ['rev-list', '--ignore-missing', '--reverse', '--topo-order', '--parents', head, '--not', ...not]).split('\n').filter(Boolean).map((line) => {
+    const [sha, ...parents] = line.split(' ');
+    return { sha, parents };
   });
 }
 
@@ -331,7 +372,7 @@ function mergeTree(root, base, ours, theirs) {
 }
 
 /**
- * Each submodule's pointer a replay records (`pointerMoves`): the paths it
+ * Each submodule's pointer a replay records (`stackMoves`): the paths it
  * decides, from the repository's top, and each commit's moves of them.
  * @typedef {{paths: string[], moves: Map<string, string|null>[]}} Pointers
  */
@@ -821,19 +862,29 @@ function remoteUrlOf(root, remote) {
 
 /**
  * A branch pushed to the remote under its own name — at its tip here, or at
- * `commit` — the refspec named, no tag following it, nothing signed, and no
- * nested repository pushed with it, so no `push.*` setting changes what
- * goes where. Refused in git's words, hints aside, where the remote refuses
- * it or cannot be reached, saying what `then` did not happen.
+ * `commit` — as `pushBranches` pushes it.
  * @param {string} root @param {string} remote @param {string} branch @param {string} then @param {string} [commit]
  */
 function pushBranch(root, remote, branch, then, commit) {
-  const ref = `${HEADS}${branch}`;
+  pushBranches(root, remote, [{ branch, commit: commit ?? `${HEADS}${branch}` }], then);
+}
+
+/**
+ * Branches pushed to the remote under their own names, each at its
+ * `commit`, all or none: each refspec named, no tag following them, nothing
+ * signed, and no nested repository pushed with them, so no `push.*` setting
+ * changes what goes where. Refused in git's words, hints aside, where the
+ * remote refuses them or cannot be reached, saying what `then` did not
+ * happen.
+ * @param {string} root @param {string} remote @param {{branch: string, commit: string}[]} pushed @param {string} then
+ */
+function pushBranches(root, remote, pushed, then) {
+  const atomic = pushed.length > 1 ? ['--atomic'] : [];
   try {
-    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${commit ?? ref}:${ref}`], PUSH_TIMEOUT_MS);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', ...atomic, remote, ...pushed.map(({ branch, commit }) => `${commit}:${HEADS}${branch}`)], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    throw new Error(`land: ${branch} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
+    throw new Error(`land: ${pushed.map(({ branch }) => branch).join(', ')} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
   }
 }
 
@@ -906,6 +957,6 @@ function defaultBranch(root, remote, nested = false) {
 
 module.exports = {
   short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  prefixOf, pointersAt, treeWithPointers, pointedLike, pointerMoves, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
-  defaultBranch, remoteUrlOf, pushBranch, gitSaid, fetchBranch, nothingPast,
+  prefixOf, pointersAt, treeWithPointers, pointedLike, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
 };

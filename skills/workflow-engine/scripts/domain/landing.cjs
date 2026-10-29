@@ -37,8 +37,8 @@
 // unit's in question. Every verb walks them children first, the project's
 // own last, so a submodule's landing merges before the repository holding
 // it records its pointer, as each driver records it; a merge is told, for
-// that, each submodule of its repository the walk lands in, and no other. A
-// driver that lands through a host refuses, before anything moves, a
+// that, each submodule of its repository, and which of them the walk lands
+// in. A driver that lands through a host refuses, before anything moves, a
 // repository it walks whose remote it does not serve (`assertServes`). A
 // refusal in a nested repository names it, and one after a repository moved
 // names what moved where and carries the warnings those landings gave; the
@@ -81,8 +81,9 @@ const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
  * the repository as answers name it, `.` for the project's own; the unit;
  * the default branch everything lands on there; the name of its remote,
  * null where it has none chosen; and, for a merge, each submodule directly
- * inside it, by its path from the repository's top, with its own context.
- * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, submodules: {path: string, ctx: LandingContext}[]}} LandingContext
+ * inside it, by its path from the repository's top, and of those each the
+ * walk lands in, with its own context.
+ * @typedef {{root: string, repo: string, unit: string, into: string, remote: string|null, gitlinks: string[], submodules: {path: string, ctx: LandingContext}[]}} LandingContext
  */
 
 /**
@@ -142,7 +143,7 @@ function repoContext(unit, repo, remote) {
   return inRepo(named, () => {
     const stopped = lg.scratchBlock(repo.path);
     if (stopped !== null) throw new Error(`land: ${stopped}`);
-    return { root: repo.path, repo: named, unit, into: lg.defaultBranch(repo.path, remote, nested), remote, submodules: [] };
+    return { root: repo.path, repo: named, unit, into: lg.defaultBranch(repo.path, remote, nested), remote, gitlinks: [], submodules: [] };
   });
 }
 
@@ -164,17 +165,21 @@ function contextOf(project, repo) {
 }
 
 /**
- * A repository's context for a merge: with each of its submodules the walk
- * lands in, by its path from the repository's top.
+ * A repository's context for a merge: with each of its submodules, and of
+ * those each the walk lands in, by its path from the repository's top.
  * @param {Project} project @param {Repo} repo @param {Repo[]} walking
  * @returns {LandingContext}
  */
 function mergingIn(project, repo, walking) {
   const ctx = contextOf(project, repo);
-  const subs = repo.submodules.flatMap((folder) => walking.filter((sub) => sub.dir === projectPath(repo.dir, folder)).map((sub) => ({ folder, sub })));
-  if (subs.length === 0) return ctx;
+  if (repo.submodules.length === 0) return ctx;
   const prefix = lg.prefixOf(repo.path);
-  return { ...ctx, submodules: subs.map(({ folder, sub }) => ({ path: `${prefix}${folder}`, ctx: contextOf(project, sub) })) };
+  const subs = repo.submodules.flatMap((folder) => walking.filter((sub) => sub.dir === projectPath(repo.dir, folder)).map((sub) => ({ folder, sub })));
+  return {
+    ...ctx,
+    gitlinks: repo.submodules.map((folder) => `${prefix}${folder}`),
+    submodules: subs.map(({ folder, sub }) => ({ path: `${prefix}${folder}`, ctx: contextOf(project, sub) })),
+  };
 }
 
 /**

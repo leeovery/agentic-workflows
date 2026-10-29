@@ -8,13 +8,14 @@
 // that task, a landing leaving the pointer carrying the one before it, and
 // one moving it to a commit the submodule landed nothing for keeping that
 // commit; phases side by side, each moving the pointer, land in either
-// order, the later replayed onto the earlier; the submodule's checkout kept
-// on its default branch where the person's git recurses into submodules; a
-// clone with no default branch, the unit's branches in it holding nothing,
-// passed over; and a project that is a folder of a larger repository
-// records its submodule's pointer at the path from the repository's top
-// (7.2.17). Git layer: the nested world
-// (landing-world.cjs), built once and copied for each test.
+// order, the later replayed onto the earlier; the project's default branch
+// moved where its checkout has it out, the submodule's checkout kept on its
+// default branch though the person's git recurses into submodules; a clone
+// with no default branch, the unit's branches in it holding nothing, passed
+// over; and a project that is a folder of a larger repository records its
+// submodule's pointer at the path from the repository's top (7.2.17). Git
+// layer: the nested world (landing-world.cjs), built once and copied for
+// each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -71,8 +72,9 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.strictEqual(landed['pay-1-1'], tip(at.ext, 'main'));
   });
 
-  it('moves the project\'s default branch where its checkout has it out, the submodule\'s checkout moved by its own landing — but stops where a pointer is staged there, as any change not committed', () => {
+  it('moves the project\'s default branch where its checkout has it out, the submodule\'s checkout moved by its own landing and kept on its default branch though the person\'s git recurses into submodules — but stops where a pointer is staged there, as any change not committed', () => {
     const at = project();
+    git(at.dir, ['config', 'submodule.recurse', 'true']);
     git(at.dir, ['update-index', '--cacheinfo', `160000,${tip(at.ext, rates.branch)},${NESTED.ext.folder}`]);
     ok(at.dir, openArgs(rates));
     const before = tip(at.dir, 'main');
@@ -84,13 +86,6 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     git(at.dir, ['reset', '-q', '--', NESTED.ext.folder]);
     ok(at.dir, ['land', 'phase', 'pay', '1']);
     assert.strictEqual(git(at.dir, ['rev-parse', 'HEAD']).trim(), tip(at.dir, 'main'));
-  });
-
-  it('keeps the submodule\'s checkout on its own default branch where the person\'s git recurses into submodules', () => {
-    const at = project();
-    git(at.dir, ['config', 'submodule.recurse', 'true']);
-    ok(at.dir, openArgs(rates));
-    ok(at.dir, ['land', 'phase', 'pay', '1']);
     assert.deepStrictEqual([git(at.ext, ['rev-parse', '--symbolic-full-name', 'HEAD']).trim(), git(at.ext, ['rev-parse', 'HEAD']).trim()], ['refs/heads/main', tip(at.ext, 'main')]);
     assert.strictEqual(git(at.dir, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), tip(at.ext, 'main'));
   });

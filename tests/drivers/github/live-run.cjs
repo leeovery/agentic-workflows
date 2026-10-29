@@ -16,8 +16,11 @@
 // landed at finish. Given a second repository, it then adds that one as
 // the submodule `ext`, its code pushed there and its squash default set,
 // and lands two phases more across both (7.2.17): a stack of two tasks,
-// each moving the submodule's pointer, the lower first, and a fix phase
-// built on it that moves the pointer again, landed at finish. It then reads
+// each moving the submodule's pointer, the lower first, and a fix phase of
+// two built on it, the first leaving the pointer alone and the second
+// moving it again, landed at finish — so GitHub squashes a stack brought
+// up to date with its default branch, the stand-in's model of which the
+// suites rest on. It then reads
 // what each default branch gained and checks each commit against 7.2.18 —
 // its subject the task's landing subject with GitHub's " (#N)", its body
 // naming the task's id on a line of its own — each pull request merged,
@@ -153,18 +156,22 @@ function landNested(dir, repository) {
   };
   const rates = across('4.1', 'feat', 'Add ext rates', 'main');
   const shown = across('4.2', 'feat', 'Show ext rates', rates.branch);
-  const fix = across('5.1', 'fix', 'Fix ext rates', shown.branch);
-  land(dir, openArgs(rates));
-  land(dir, openArgs(shown));
+  const alone = cutTask(dir, '5.1', 'fix', 'Fix the rates page', shown.branch, { 'rates-page.txt': 'page\n' });
+  const fix = track(dir, '5.2', 'fix', 'Fix ext rates');
+  const moved = commitFiles(ext, fix.branch, shown.branch, { 'ext-fix-ext-rates.txt': 'fix\n' });
+  commitFiles(dir, fix.branch, alone.branch, { 'fix-ext-rates.txt': 'fix\n' }, { gitlinks: { ext: moved } });
+  for (const task of [rates, shown]) land(dir, openArgs(task));
   land(dir, ['land', 'chain', 'pay', '4.2']);
-  land(dir, openArgs(fix));
+  for (const task of [alone, fix]) land(dir, openArgs(task));
+  land(dir, ['land', 'chain', 'pay', '5.2']);
   land(dir, ['land', 'phase', 'pay', '4']);
   land(dir, ['land', 'finish', 'pay']);
 
-  const expected = [
-    { subject: 'feat(pay): Add ext rates', task: 'pay-4-1' }, { subject: 'feat(pay): Show ext rates', task: 'pay-4-2' }, { subject: 'fix(pay): Fix ext rates', task: 'pay-5-1' },
+  const [addRates, showRates, leftAlone, fixRates] = [
+    { subject: 'feat(pay): Add ext rates', task: 'pay-4-1' }, { subject: 'feat(pay): Show ext rates', task: 'pay-4-2' },
+    { subject: 'fix(pay): Fix the rates page', task: 'pay-5-1' }, { subject: 'fix(pay): Fix ext rates', task: 'pay-5-2' },
   ];
-  const faults = [...faultsIn(dir, named, added, expected), ...faultsIn(ext, repository, BASE, expected)];
+  const faults = [...faultsIn(dir, named, added, [addRates, showRates, leftAlone, fixRates]), ...faultsIn(ext, repository, BASE, [addRates, showRates, fixRates])];
   const pointer = git(dir, ['rev-parse', 'origin/main:ext']).trim();
   const onSub = spawnSync('git', ['merge-base', '--is-ancestor', pointer, 'origin/main'], { cwd: ext }).status === 0;
   return [...faults, ...(onSub ? [] : [`${named}'s main points ext at ${pointer.slice(0, 7)}, a commit ${repository}'s main lacks`])];

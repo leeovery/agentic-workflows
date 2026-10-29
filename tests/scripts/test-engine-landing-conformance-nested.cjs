@@ -9,17 +9,21 @@
 // on its own default branch, and in none it does not touch, though it holds
 // the task's branch; a phase merges in each, the project's default branch
 // then pointing the submodule at a commit on the submodule's, and finish
-// lands what stands in each — a fix phase stacked on the phase it fixes
-// too, both moving the submodule's pointer, the pointer then at the fix's
-// landing; a task pinning the submodule where it lands nothing keeps its
-// pin. A task whose branch in one repository does not descend from its
-// chain's tip there opens nowhere. A merge refused in one repository leaves
-// those before it merged and those after it untouched, the refusal naming
-// it and what merged where; landing again merges the rest, each once. A
-// driver's side (tests/drivers/{name}/landing.cjs) readies each repository
-// and reads what landed where; this file names no driver and no tool.
-// Conformance layer: the nested world (landing-world.cjs), built once per
-// driver and copied for each test.
+// lands what stands in each. Fix phases stacked on the phase that moved the
+// submodule's pointer land after it — one leaving the pointer alone, with
+// no branch in the submodule, merged as a phase, and ones of one task and
+// of two, moving it or not, at finish — the project's default branch
+// pointing the submodule at a commit on the submodule's after each, every
+// landing under its task's subject. A task pinning the submodule where it
+// lands nothing keeps its pin. A task whose branch in one repository does
+// not descend from its chain's tip there opens nowhere. A merge refused in
+// one repository leaves those before it merged and those after it
+// untouched, the refusal naming it and what merged where; landing again
+// merges the rest, each once. A driver's side
+// (tests/drivers/{name}/landing.cjs) readies each repository and reads what
+// landed where; this file names no driver and no tool. Conformance layer:
+// the nested world (landing-world.cjs), built once per driver and copied
+// for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -63,44 +67,84 @@ for (const { name } of listDrivers('landing')) {
   /** The commit the project's default branch points the submodule at. @param {Nested} at */
   const pointer = (at) => git(side.on(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
 
-  /** Whether the project's default branch points the submodule at a commit on the submodule's. @param {Nested} at */
-  const pointsIntoSubmodule = (at) => git(side.on(at.ext), ['merge-base', pointer(at), NESTED.ext.into]).trim() === pointer(at);
+  /** Whether the project's default branch points the submodule at its default branch's tip. @param {Nested} at */
+  const pointsAtSubmodule = (at) => pointer(at) === side.defaultTip(at.ext, NESTED.ext.into);
+
+  /** Each repository's phases a finish merged, by the name its answer gives it. @param {{repos: {repo: string, phases: {phase: number}[]}[]}} answer */
+  const finished = (answer) => answer.repos.map(({ repo, phases }) => [repo, phases.map(({ phase }) => phase)]);
+
+  /**
+   * Fix phases stacked on phase 1, cut from its top before it merges: 3,
+   * two tasks leaving the submodule alone with no branch there; 4, two
+   * moving it; 5, one leaving it alone.
+   * @param {Nested} at
+   */
+  function fixPhases(at) {
+    const alone = [track(at.dir, '3.1', 'fix', 'Fix the app'), track(at.dir, '3.2', 'fix', 'Fix it more')];
+    commitFiles(at.dir, alone[0].branch, show.branch, { 'fix.txt': 'fix\n' });
+    commitFiles(at.dir, alone[1].branch, alone[0].branch, { 'more.txt': 'more\n' });
+    const moving = [track(at.dir, '4.1', 'fix', 'Fix ext'), track(at.dir, '4.2', 'fix', 'Fix ext more')];
+    let [from, extFrom] = [show.branch, rates.branch];
+    for (const task of moving) {
+      const moved = commitFiles(at.ext, task.branch, extFrom, { [`ext-${task.shown}.txt`]: `${task.shown}\n` });
+      commitFiles(at.dir, task.branch, from, { [`${task.shown}.txt`]: `${task.shown}\n` }, { gitlinks: { [NESTED.ext.folder]: moved } });
+      [from, extFrom] = [task.branch, task.branch];
+    }
+    const last = cutTask(at.dir, '5.1', 'fix', 'Fix the last', show.branch, { 'last.txt': 'last\n' });
+    return [...alone, ...moving, last];
+  }
 
   describe(`the ${name} landing driver across nested repositories (7.2.17, 7.S19)`, () => {
-    it('a task lands in every repository it touches, children first, each on its own default branch, and in none it does not — opened, chained, merged as a phase and finished, the project\'s default branch then pointing the submodule at a commit on the submodule\'s', () => {
+    it('a task lands in every repository it touches, children first, each on its own default branch, and in none it does not — opened, chained, merged as a phase and finished, fix phases stacked on it after it, moving the submodule\'s pointer or not, the project\'s default branch pointing the submodule at a commit on the submodule\'s after each', () => {
       const at = project();
+      const fixes = fixPhases(at);
       const bases = (/** @type {{repos: {repo: string, base: string}[]}} */ answer) => answer.repos.map(({ repo, base }) => [repo, base]);
       assert.deepStrictEqual(bases(ok(at.dir, openArgs(rates))), [['ext', 'main'], ['lib', 'trunk'], ['.', 'main']]);
       assert.deepStrictEqual(bases(ok(at.dir, openArgs(show))), [['.', rates.branch]]);
       assert.deepStrictEqual(bases(ok(at.dir, openArgs(cache))), [['lib', 'trunk']]);
       assert.deepStrictEqual(ok(at.dir, ['land', 'chain', 'pay', '1.2']).repos.map((/** @type {{repo: string, stack: string[]}} */ { repo, stack }) => [repo, stack]), [['.', ['1.1', '1.2']]]);
-      assert.deepStrictEqual([at.dir, at.ext, at.lib].map(side.opened), [['pay-1-1', 'pay-1-2'], ['pay-1-1'], ['pay-1-1', 'pay-2-1']]);
+      for (const fix of fixes) ok(at.dir, openArgs(fix));
+      for (const top of ['3.2', '4.2']) ok(at.dir, ['land', 'chain', 'pay', top]);
+      assert.deepStrictEqual([at.dir, at.ext, at.lib].map(side.opened), [
+        ['pay-1-1', 'pay-1-2', 'pay-3-1', 'pay-3-2', 'pay-4-1', 'pay-4-2', 'pay-5-1'], ['pay-1-1', 'pay-4-1', 'pay-4-2'], ['pay-1-1', 'pay-2-1'],
+      ]);
 
       const merged = ok(at.dir, ['land', 'phase', 'pay', '1']);
       assert.deepStrictEqual(merged.repos.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged: tasks }) => [repo, tasks]), [['ext', ['1.1']], ['lib', ['1.1']], ['.', ['1.1', '1.2']]]);
-      assert.ok(pointsIntoSubmodule(at), 'the project\'s default branch points the submodule at a commit its default branch lacks');
-      const finished = ok(at.dir, ['land', 'finish', 'pay']);
-      assert.deepStrictEqual(finished.repos.map((/** @type {{repo: string, phases: {phase: number}[]}} */ { repo, phases }) => [repo, phases.map(({ phase }) => phase)]), [['lib', [2]]]);
+      assert.ok(pointsAtSubmodule(at), 'phase 1 left the submodule\'s pointer off its default branch');
+      assert.deepStrictEqual(ok(at.dir, ['land', 'phase', 'pay', '3']).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['.']);
+      assert.ok(pointsAtSubmodule(at), 'phase 3 left the submodule\'s pointer off its default branch');
+      assert.deepStrictEqual(finished(ok(at.dir, ['land', 'finish', 'pay'])), [['ext', [4]], ['lib', [2]], ['.', [4, 5]]]);
+      assert.ok(pointsAtSubmodule(at), 'finish left the submodule\'s pointer off its default branch');
 
-      assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-1-1', 'pay-1-2'], ext: ['pay-1-1'], lib: ['pay-1-1', 'pay-2-1'] });
+      assert.deepStrictEqual(tasksLanded(at), {
+        '.': ['pay-1-1', 'pay-1-2', 'pay-3-1', 'pay-3-2', 'pay-4-1', 'pay-4-2', 'pay-5-1'], ext: ['pay-1-1', 'pay-4-1', 'pay-4-2'], lib: ['pay-1-1', 'pay-2-1'],
+      });
+      assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), [
+        'feat(pay): Add rates', 'feat(pay): Show rates', 'fix(pay): Fix the app', 'fix(pay): Fix it more', 'fix(pay): Fix ext', 'fix(pay): Fix ext more', 'fix(pay): Fix the last',
+      ]);
       assert.deepStrictEqual(Object.values(repos(at)).map(([dir, into]) => side.holds(dir, into)), [
-        ['.gitignore', '.gitmodules', 'app.txt', 'ext', 'rates.txt', 'show.txt'], ['ext-rates.txt', 'ext.txt'], ['cache.txt', 'lib-rates.txt', 'lib.txt'],
+        ['.gitignore', '.gitmodules', '4.1.txt', '4.2.txt', 'app.txt', 'ext', 'fix.txt', 'last.txt', 'more.txt', 'rates.txt', 'show.txt'],
+        ['ext-4.1.txt', 'ext-4.2.txt', 'ext-rates.txt', 'ext.txt'], ['cache.txt', 'lib-rates.txt', 'lib.txt'],
       ]);
       for (const [dir, into] of Object.values(repos(at))) assert.strictEqual(tip(dir, into), side.defaultTip(dir, into), `${dir}'s default branch here does not hold its landing`);
     });
 
-    it('a merge refused in one repository: those before it stand merged and those after it untouched, the refusal naming it and what merged where — and landing again merges the rest, each once', () => {
+    it('a merge refused in one repository: those before it stand merged and those after it untouched, the refusal naming it and what merged where — and landing again merges the rest, each once; a task pinning the submodule where it lands nothing then keeps its pin', () => {
       const at = project();
-      ok(at.dir, openArgs(rates));
-      ok(at.dir, openArgs(show));
+      const release = commitFiles(at.ext, 'release', NESTED.ext.into, { 'release.txt': 'release\n' });
+      const pin = cutTask(at.dir, '4.1', 'chore', 'Pin ext to its release', 'main', {}, { gitlinks: { [NESTED.ext.folder]: release } });
+      for (const task of [rates, show, pin]) ok(at.dir, openArgs(task));
       const { env: refusing, undo } = side.refuseMerge(at.lib);
 
       assert.match(refuses(at.dir, ['land', 'phase', 'pay', '1'], refusing), /^land: in lib, .+ \(phase 1 merged in ext before it\)$/);
       assert.deepStrictEqual(tasksLanded(at), { '.': [], ext: ['pay-1-1'], lib: [] });
       undo();
       assert.deepStrictEqual(ok(at.dir, ['land', 'phase', 'pay', '1']).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['lib', '.']);
-      assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-1-1', 'pay-1-2'], ext: ['pay-1-1'], lib: ['pay-1-1'] });
-      assert.ok(pointsIntoSubmodule(at), 'the project\'s default branch points the submodule at a commit its default branch lacks');
+      assert.ok(pointsAtSubmodule(at), 'phase 1 left the submodule\'s pointer off its default branch');
+      ok(at.dir, ['land', 'phase', 'pay', '4']);
+      assert.strictEqual(pointer(at), release);
+      assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-1-1', 'pay-1-2', 'pay-4-1'], ext: ['pay-1-1'], lib: ['pay-1-1'] });
     });
 
     it('a task whose branch in one repository does not descend from its chain\'s tip there opens nowhere — refused before anything opens, naming the repository', () => {
@@ -111,32 +155,6 @@ for (const { name } of listDrivers('landing')) {
 
       assert.match(refuses(at.dir, openArgs(show), {}), new RegExp(`^land: in lib, task 1\\.2's branch ${show.branch} does not descend from the chain's tip, ${rates.branch} \\(\\w+\\) — merge it back onto ${rates.branch} first$`));
       assert.deepStrictEqual([at.dir, at.ext, at.lib].map(side.opened), [['pay-1-1'], ['pay-1-1'], ['pay-1-1']]);
-    });
-
-    it('a task pinning the submodule off its default branch, landing nothing there, keeps its pin', () => {
-      const at = project();
-      const release = commitFiles(at.ext, 'release', NESTED.ext.into, { 'release.txt': 'release\n' });
-      const pin = cutTask(at.dir, '4.1', 'chore', 'Pin ext to its release', 'main', {}, { gitlinks: { [NESTED.ext.folder]: release } });
-      ok(at.dir, openArgs(pin));
-      ok(at.dir, ['land', 'phase', 'pay', '4']);
-      assert.strictEqual(pointer(at), release);
-      assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-4-1'], ext: [], lib: [] });
-    });
-
-    it('a fix phase stacked on the phase it fixes, both moving the submodule\'s pointer, lands after it, the pointer then at the submodule\'s landing of the fix', () => {
-      const at = project();
-      const fix = track(at.dir, '3.1', 'fix', 'Fix ext');
-      const fixed = commitFiles(at.ext, fix.branch, rates.branch, { 'ext-fix.txt': 'fix\n' });
-      commitFiles(at.dir, fix.branch, rates.branch, { 'fix.txt': 'fix\n' }, { gitlinks: { [NESTED.ext.folder]: fixed } });
-      git(at.lib, ['branch', fix.branch, rates.branch]);
-      ok(at.dir, openArgs(rates));
-      ok(at.dir, openArgs(fix));
-
-      assert.deepStrictEqual(ok(at.dir, ['land', 'finish', 'pay']).repos.map((/** @type {{repo: string, phases: {phase: number}[]}} */ { repo, phases }) => [repo, phases.map(({ phase }) => phase)]), [
-        ['ext', [1, 3]], ['lib', [1]], ['.', [1, 3]],
-      ]);
-      assert.deepStrictEqual(tasksLanded(at), { '.': ['pay-1-1', 'pay-3-1'], ext: ['pay-1-1', 'pay-3-1'], lib: ['pay-1-1'] });
-      assert.strictEqual(pointer(at), side.defaultTip(at.ext, NESTED.ext.into));
     });
   });
 }
