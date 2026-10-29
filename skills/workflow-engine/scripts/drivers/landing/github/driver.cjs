@@ -48,6 +48,19 @@
 //   recovers one a merge left behind, or one merged on GitHub by hand.
 // - Finish: every phase not yet merged, each after the one it stacks on,
 //   each warning given once.
+// - Nested repositories: each repository a task touches lands on its own
+//   repository on GitHub, named by its own remote, with a stack of its own
+//   per phase; one whose remote is not on GitHub is refused before anything
+//   moves (`assertServes`). A submodule's pointer: its stack merges first
+//   (landing.cjs merges children first), squashed into new commits, so the
+//   pointer its repository's stack carries names commits its default branch
+//   lacks. Where the top task's branch names such a commit, one commit on
+//   that branch points the submodule at the tip of its default branch on
+//   GitHub, fetched; it is pushed, and the branch here moved to it, before
+//   the stack merges, so it squashes into the top task's landing, its
+//   subject the task's. The landings below it name the submodule's commits
+//   from before its squash, which GitHub keeps under each of its pull
+//   requests' own refs.
 // ---------------------------------------------------------------------------
 
 const names = require('../../../domain/landing-names.cjs');
@@ -82,17 +95,24 @@ function repositoryOf(url) {
 }
 
 /**
- * The host a verb lands on, refused where the project has no remote, or one
- * not on GitHub.
+ * The host a verb lands on in a repository, refused where it has no remote,
+ * or one not on GitHub.
  * @param {LandingContext} ctx
  * @returns {Host}
  */
 function hostOf(ctx) {
   const change = 'or change the landing driver from manage on the start menu';
-  if (ctx.remote === null) throw new Error(`land: GitHub's driver lands through the project's remote, and the project has none chosen — add its repository on GitHub as origin, ${change}`);
+  const own = ctx.repo === '.';
+  if (ctx.remote === null) {
+    throw new Error(own
+      ? `land: GitHub's driver lands through the project's remote, and the project has none chosen — add its repository on GitHub as origin, ${change}`
+      : `land: GitHub's driver lands every repository a task touches through that repository's own remote, and this one has none chosen — add its repository on GitHub as origin there, ${change}`);
+  }
   const url = lg.remoteUrlOf(ctx.root, ctx.remote);
   const repository = repositoryOf(url);
-  if (repository === null) throw new Error(`land: the project's remote, ${ctx.remote}, is not on GitHub (${lg.plain(url)}), where GitHub's driver lands — ${change}`);
+  if (repository === null) {
+    throw new Error(`land: ${own ? 'the project\'s' : 'its'} remote, ${ctx.remote}, is not on GitHub (${lg.plain(url)}), where GitHub's driver lands — ${own ? '' : 'point it at its repository on GitHub, '}${change}`);
+  }
   return { remote: ctx.remote, repo: `${repository.owner}/${repository.repo}` };
 }
 
@@ -202,11 +222,11 @@ function builtOn(ctx, stacks, phase, commit) {
 }
 
 /**
- * The chain's tip a task lands on (see the header). Refuses a task whose
- * phase is merged or holds it already, and one built on a stack something
- * done by hand stops.
+ * The chain's tip a task lands on (see the header) — null where its phase's
+ * stack holds it already. Refuses a task whose phase is merged, and one
+ * built on a stack something done by hand stops.
  * @param {LandingContext} ctx @param {LandingTask} task
- * @returns {ChainTip}
+ * @returns {ChainTip|null}
  */
 function chainTip(ctx, task) {
   const host = hostOf(ctx);
@@ -217,7 +237,7 @@ function chainTip(ctx, task) {
   if (own !== undefined) {
     refuseHandled(own);
     if (isMerged(own)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);
-    if (pullOf(own, task.ref) !== undefined) throw new Error(`land: task ${shown} is in phase ${phase}'s stack already — there is nothing more to open`);
+    if (pullOf(own, task.ref) !== undefined) return null;
   }
   const top = own ?? builtOn(ctx, stacks, phase, task.branch);
   if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)), host };
@@ -227,16 +247,15 @@ function chainTip(ctx, task) {
 
 /**
  * Open a task's pull request onto the chain's tip the seam checked it
- * descends from, its branch pushed first.
+ * descends from, with a commit past it, its branch pushed first.
  * @param {LandingContext} ctx @param {LandingTask} task @param {ChainTip} tip
  */
 function open(ctx, task, tip) {
   const shown = shownTask(task.ref);
-  if (lg.isAncestor(ctx.root, task.branch, tip.commit)) throw new Error(lg.nothingPast(shown, task.branch, tip.name));
   lg.pushBranch(ctx.root, tip.host.remote, task.branch, `task ${shown}'s pull request was not opened — clear what git names, and open the task again`);
   const [title, ...body] = task.message.split('\n');
   const url = ghAt(ctx, tip.host, ['pr', 'create', '--base', tip.name, '--head', task.branch, '--title', title, '--body', body.join('\n').trim()], `open task ${shown}'s pull request`);
-  return { task: shown, branch: task.branch, base: tip.name, pull_request: Number(/\/pull\/(\d+)\s*$/.exec(url)?.[1]) };
+  return { base: tip.name, pull_request: Number(/\/pull\/(\d+)\s*$/.exec(url)?.[1]) };
 }
 
 /**
@@ -255,7 +274,7 @@ const answered = (stack) => ({ stack: stack.pulls.map((pull) => shownTask(pull.r
 
 /**
  * Chain a task into its phase's stack, answered bottom first, in the order
- * its tasks were merged back.
+ * its tasks were merged back — null where it is not open.
  * @param {LandingContext} ctx @param {TaskRef} ref
  */
 function chain(ctx, ref) {
@@ -264,9 +283,9 @@ function chain(ctx, ref) {
   const stack = stacksOf(pullsOf(ctx, host)).get(phase);
   if (stack !== undefined) refuseHandled(stack);
   if (stack !== undefined && isMerged(stack)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — its stack is landed`);
-  if (stack === undefined || pullOf(stack, ref) === undefined) throw new Error(`land: task ${shownTask(ref)} is not open — open it first`);
+  if (stack === undefined || pullOf(stack, ref) === undefined) return null;
   link(ctx, host, stack);
-  return { phase, ...answered(stack) };
+  return answered(stack);
 }
 
 /**
@@ -332,11 +351,56 @@ function bringDefaultUp(ctx, host) {
 }
 
 /**
+ * The tip of a submodule's default branch on GitHub, fetched — refused
+ * where it cannot be, as the pointer to it is then not recorded.
+ * @param {LandingContext} sub
+ * @returns {string}
+ */
+function mergedTip(sub) {
+  const fetched = lg.fetchBranch(sub.root, hostOf(sub).remote, sub.into);
+  if ('failed' in fetched) {
+    throw new Error(`land: ${lg.plain(sub.repo)}'s ${sub.into} could not be fetched (${fetched.failed}), so its pointer was not recorded and nothing merged — land again once it can be`);
+  }
+  return fetched.commit;
+}
+
+/**
+ * Each submodule's pointer recorded on the stack's top task's branch at the
+ * tip of the submodule's default branch on GitHub, where the top names a
+ * commit that branch lacks (see the header): one commit, pushed, then the
+ * branch here moved to it — refused before it is pushed where the branch
+ * here is checked out and cannot move.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack
+ */
+function recordPointers(ctx, host, stack) {
+  if (ctx.submodules.length === 0) return;
+  const top = stack.pulls[stack.pulls.length - 1];
+  const [held] = lg.pointersAt(ctx.root, [top.oid], ctx.submodules.map(({ path }) => path));
+  /** @type {Map<string, string>} */
+  const pointers = new Map();
+  for (const { path, ctx: sub } of ctx.submodules) {
+    const at = held.get(path) ?? null;
+    if (at === null || lg.isAncestor(sub.root, at, sub.into)) continue;
+    const tip = mergedTip(sub);
+    if (!lg.isAncestor(sub.root, at, tip)) pointers.set(path, tip);
+  }
+  if (pointers.size === 0) return;
+  const listed = [...pointers.keys()].map(lg.plain).join(', ');
+  const message = `chore(${ctx.unit}): point ${listed} at ${pointers.size === 1 ? 'its' : 'their'} landing\n`;
+  const tree = lg.treeWithPointers(ctx.root, top.oid, pointers);
+  const commit = lg.commitTree(ctx.root, { tree, parent: top.oid, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
+  const block = lg.checkoutBlock(ctx.root, top.head, { from: top.oid, to: commit });
+  if (block !== null) throw new Error(`land: ${block}`);
+  lg.pushBranch(ctx.root, host.remote, top.head, `${listed}'s pointer was not recorded and nothing merged — clear what git names, and land again`, commit);
+  lg.moveBranch(ctx.root, top.head, top.oid, commit);
+}
+
+/**
  * Merge a stack whole into the default branch, every pull request squashed:
- * linked first, so a pull request chained late is in it, and merged by the
- * extension; a lone one merged alone, under the subject and body a squash
- * makes, onto the default branch. The default branch here is then brought
- * to the merge.
+ * linked first, so a pull request chained late is in it, each submodule's
+ * pointer recorded (`recordPointers`), and merged by the extension; a lone
+ * one merged alone, under the subject and body a squash makes, onto the
+ * default branch. The default branch here is then brought to the merge.
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
  */
 function mergeStack(ctx, host, stacks, stack) {
@@ -347,32 +411,35 @@ function mergeStack(ctx, host, stacks, stack) {
   }
   refuseMoved(ctx, stack);
   const merging = `merge phase ${stack.phase}'s stack`;
-  if (stack.pulls.length > 1) {
+  const [lone, ...more] = stack.pulls;
+  if (more.length > 0) {
     refuseSquashDefault(ctx, host, stack);
     link(ctx, host, stack);
-    ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
-  } else {
-    const [lone] = stack.pulls;
-    if (lone.base !== ctx.into) ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
-    ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
+  } else if (lone.base !== ctx.into) {
+    ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
   }
+  recordPointers(ctx, host, stack);
+  if (more.length > 0) ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
+  else ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
   const { stack: tasks, pull_requests } = answered(stack);
   const warnings = bringDefaultUp(ctx, host);
-  return { phase: stack.phase, into: ctx.into, merged: tasks, pull_requests, ...(warnings.length > 0 ? { warnings } : {}) };
+  return { into: ctx.into, merged: tasks, pull_requests, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /**
- * Merge a phase whole into the default branch.
+ * Merge a phase whole into the default branch — null where no task of it
+ * is open here, and `already` where it is merged, the default branch here
+ * brought to it all the same.
  * @param {LandingContext} ctx @param {number} phase
  */
 function mergePhase(ctx, phase) {
   const host = hostOf(ctx);
   const stacks = stacksOf(pullsOf(ctx, host));
   const stack = stacks.get(phase);
-  if (stack === undefined) throw new Error(`land: phase ${phase} of ${ctx.unit} has no task opened — open its tasks first`);
+  if (stack === undefined) return null;
   if (isMerged(stack)) {
-    const [warning] = bringDefaultUp(ctx, host);
-    throw new Error(`land: phase ${phase} is merged into ${ctx.into} already — there is nothing more to merge${warning === undefined ? '' : `; ${warning}`}`);
+    const warnings = bringDefaultUp(ctx, host);
+    return { into: ctx.into, already: true, ...(warnings.length > 0 ? { warnings } : {}) };
   }
   return mergeStack(ctx, host, stacks, stack);
 }
@@ -385,7 +452,7 @@ function mergePhase(ctx, phase) {
  */
 function finish(ctx) {
   const host = hostOf(ctx);
-  /** @type {Omit<ReturnType<typeof mergeStack>, 'warnings'>[]} */
+  /** @type {({phase: number} & Omit<ReturnType<typeof mergeStack>, 'warnings'>)[]} */
   const merged = [];
   /** @type {Set<string>} */
   const warned = new Set();
@@ -395,8 +462,8 @@ function finish(ctx) {
     if (unmerged.length === 0) return { into: ctx.into, phases: merged, ...(warned.size > 0 ? { warnings: [...warned] } : {}) };
     try {
       const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
-      const { warnings = [], ...phase } = mergeStack(ctx, host, stacks, next);
-      merged.push(phase);
+      const { warnings = [], ...landed } = mergeStack(ctx, host, stacks, next);
+      merged.push({ phase: next.phase, ...landed });
       warnings.forEach((warning) => warned.add(warning));
     } catch (err) {
       if (merged.length === 0) throw err;
@@ -457,6 +524,9 @@ module.exports = {
     { tool: 'gh-stack', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
   ],
   serves: (/** @type {string} */ url) => repositoryOf(url) !== null,
+  assertServes: (/** @type {LandingContext} */ ctx) => {
+    hostOf(ctx);
+  },
   chainTip,
   open,
   chain,

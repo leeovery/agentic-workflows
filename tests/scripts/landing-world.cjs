@@ -12,9 +12,13 @@
 // checkout touched — imported over the commit it starts from, under the
 // world's identity — so the main checkout stays as the test left it. What
 // landed is read off the default branch past the base, as no config of the
-// person's changes it. A suite takes a copy of the world per call
-// (`useLandingWorld`), checks a refusal moved nothing in the repository
-// (`refusedMoving`), and follows the remedy it names (`followRemedy`); the
+// person's changes it. The nested world (`buildNested`) is the project with
+// a repository of its own nested in its folder twice — a submodule and a
+// clone — and tasks touching one, some or all of them (`NESTED`). A suite
+// takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`),
+// reads a verb's answer for the project's own repository (`own`), checks a
+// refusal moved nothing in the repository (`refusedMoving`), and follows
+// the remedy it names (`followRemedy`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
 // of the person's worktrees, or of their config (`personState`,
 // `followed`), against the way on it should read there (`way`), every
@@ -26,9 +30,12 @@ require('./hermetic-env.cjs');
 const assert = require('node:assert');
 const { afterEach } = require('node:test');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const {
+  ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule,
+} = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
@@ -74,6 +81,16 @@ const TASKS = Object.freeze({
 
 /** The argv that opens a task. @param {Tracked} task @returns {string[]} */
 const openArgs = (task) => ['land', 'open', UNIT, task.shown];
+
+/**
+ * A verb's answer for the project's own repository, the only one it lands
+ * in where nothing is nested.
+ * @param {{repos: Record<string, any>[]}} answer
+ */
+function own(answer) {
+  assert.deepStrictEqual(answer.repos.map(({ repo }) => repo), ['.']);
+  return answer.repos[0];
+}
 
 /**
  * A task put into the world's tracker at the number given, through the
@@ -134,24 +151,96 @@ function mergeBack(dir, branch, onto) {
 }
 
 /**
- * The landing world built into the project world at `dir`: the code on
- * `main`, committed in the main checkout, the base tagged, and every task's
- * branch; and the unit in the tracker, set up by its first phase's `task
- * phase`, the rest of its phases and every task of `TASKS` put there
- * through the driver, all committed on the state branch.
- * @param {string} dir
+ * The unit in the world's tracker, set up by its first phase's `task
+ * phase`, the rest of its phases and each of `tasks` put there through the
+ * driver, all committed on the state branch.
+ * @param {string} dir @param {Tracked[]} tasks
  */
-function buildLanding(dir) {
-  fs.writeFileSync(path.join(dir, 'app.txt'), 'app\n');
-  git(dir, ['add', 'app.txt']);
-  git(dir, ['commit', '-q', '-m', 'the app']);
-  git(dir, ['tag', BASE]);
-  for (const task of Object.values(TASKS)) commitFiles(dir, task.branch, task.from, task.files);
+function trackUnit(dir, tasks) {
   createManifest(dir, UNIT, {});
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Phase 1']);
   for (let phase = 2; phase <= PHASES; phase += 1) TRACKER.createPhase(statePath(dir), UNIT, phase, `Phase ${phase}`);
-  for (const task of Object.values(TASKS)) track(dir, task.shown, task.type, task.title);
+  for (const task of tasks) track(dir, task.shown, task.type, task.title);
   commitAll(dir, 'the unit\'s tasks');
+}
+
+/** A repository's first commit: `file`, holding its name, committed in its checkout. @param {string} repo @param {string} file */
+function seed(repo, file) {
+  fs.writeFileSync(path.join(repo, file), `${file.split('.')[0]}\n`);
+  git(repo, ['add', file]);
+  git(repo, ['commit', '-q', '-m', `the ${file.split('.')[0]}`]);
+}
+
+/**
+ * The landing world built into the project world at `dir`: the code on
+ * `main`, committed in the main checkout, the base tagged, and every task's
+ * branch; and the unit in the tracker (`trackUnit`) with every task of
+ * `TASKS`.
+ * @param {string} dir
+ */
+function buildLanding(dir) {
+  seed(dir, 'app.txt');
+  git(dir, ['tag', BASE]);
+  for (const task of Object.values(TASKS)) commitFiles(dir, task.branch, task.from, task.files);
+  trackUnit(dir, Object.values(TASKS));
+}
+
+/**
+ * The repositories the nested world nests in the project's folder: a
+ * submodule, and a clone the project ignores, whose default branch is
+ * `trunk` — each by its folder and its default branch.
+ */
+const NESTED = Object.freeze({ ext: { folder: 'ext', into: 'main' }, lib: { folder: 'lib', into: 'trunk' } });
+
+/**
+ * The nested world's tasks: 1.1 touches all three repositories, moving the
+ * submodule's pointer; 1.2, cut from 1.1, the project's alone; 2.1 the
+ * clone's alone. Each has its branch in every repository, as a task's
+ * worktree makes it there (12.7.10) — at its default branch where it
+ * touches nothing.
+ */
+const NESTED_TASKS = Object.freeze({
+  rates: { shown: '1.1', type: 'feat', title: 'Add rates', branch: 'feat/pay-1.1-add-rates' },
+  show: { shown: '1.2', type: 'feat', title: 'Show rates', branch: 'feat/pay-1.2-show-rates' },
+  cache: { shown: '2.1', type: 'fix', title: 'Cache rates', branch: 'fix/pay-2.1-cache-rates' },
+});
+
+/** The nested world's project, by its folder in the world, beside its submodule's upstream. */
+const NESTED_PROJECT = 'project';
+
+/**
+ * The nested world built in `folder`: the project world, its code on
+ * `main` with the submodule `ext` — cloned from its upstream beside the
+ * project, its clone keeping no remote, so a copy's names only the copy —
+ * and the clone `lib` in its folder (`NESTED`), each repository's base
+ * tagged; the branches of `NESTED_TASKS`; and the unit in the tracker
+ * (`trackUnit`) with each of them.
+ * @param {string} folder
+ * @returns {string} the project
+ */
+function buildNested(folder) {
+  const { rates, show, cache } = NESTED_TASKS;
+  const dir = setupFixtureAt(path.join(folder, NESTED_PROJECT));
+  seed(dir, 'app.txt');
+  const upstream = initRepo(path.join(folder, NESTED.ext.folder));
+  seed(upstream, 'ext.txt');
+  const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
+  git(ext, ['remote', 'remove', 'origin']);
+  const lib = initRepo(path.join(dir, NESTED.lib.folder));
+  git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
+  git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
+  seed(lib, 'lib.txt');
+  fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
+  for (const repo of [dir, ext, lib]) git(repo, ['tag', BASE]);
+  const pointer = commitFiles(ext, rates.branch, 'main', { 'ext-rates.txt': 'rates\n' });
+  commitFiles(lib, rates.branch, NESTED.lib.into, { 'lib-rates.txt': 'rates\n' });
+  commitFiles(dir, rates.branch, 'main', { 'rates.txt': 'rates\n' }, { gitlinks: { [NESTED.ext.folder]: pointer } });
+  commitFiles(dir, show.branch, rates.branch, { 'show.txt': 'show\n' });
+  commitFiles(lib, cache.branch, NESTED.lib.into, { 'cache.txt': 'cache\n' });
+  for (const [repo, task] of [[ext, show], [lib, show], [ext, cache], [dir, cache]]) git(repo, ['branch', task.branch, repo === lib ? NESTED.lib.into : 'main']);
+  trackUnit(dir, Object.values(NESTED_TASKS));
+  return dir;
 }
 
 /**
@@ -188,10 +277,35 @@ function landedOn(dir, branch) {
  * @returns {() => string}
  */
 function useLandingWorld(prefix, ready = () => {}) {
-  const world = fixtureFrom(prefix, (dir) => {
+  return copiesOf(prefix, fixtureFrom(prefix, (dir) => {
     buildLanding(dir);
     ready(dir);
-  });
+  }));
+}
+
+/** A copy of the nested world: the project, and its submodule's and clone's checkouts. @typedef {{dir: string, ext: string, lib: string}} Nested */
+
+/**
+ * A copy of the nested world at each call, as `useLandingWorld` copies the
+ * landing world, `ready` run on its project.
+ * @param {string} prefix @param {(dir: string) => void} [ready]
+ * @returns {() => Nested}
+ */
+function useNestedWorld(prefix, ready = () => {}) {
+  const copy = copiesOf(prefix, folderFrom(prefix, (folder) => ready(buildNested(folder))));
+  return () => {
+    const dir = path.join(copy(), NESTED_PROJECT);
+    return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
+  };
+}
+
+/**
+ * A copy of `world` at each call in a test of the calling file, every copy
+ * removed after the test.
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite
+ * @param {(dir: string) => string} world
+ */
+function copiesOf(prefix, world) {
   /** @type {string[]} */
   let made = [];
   afterEach(() => {
@@ -199,7 +313,7 @@ function useLandingWorld(prefix, ready = () => {}) {
     made = [];
   });
   return () => {
-    const dir = world();
+    const dir = world(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
     made.push(dir);
     return dir;
   };
@@ -645,6 +759,7 @@ function pathsOn(dir, branch) {
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, TRACKER, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld,
+  refusedMoving, commandsOf, followRemedy,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

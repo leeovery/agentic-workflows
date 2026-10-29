@@ -23,7 +23,7 @@ const path = require('path');
 
 const { ok, git } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, cutTask, commitFiles, landedOn, refusedMoving, followRemedy, personState, signatures, short, way, moveStep, rebaseSteps, strayRefusal: stray,
+  TASKS, openArgs, own, cutTask, commitFiles, landedOn, refusedMoving, followRemedy, personState, signatures, short, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 const { READY } = require('./landing-remedies.cjs');
 
@@ -71,7 +71,7 @@ describe('land: under the person\'s config, hostile to it', () => {
     const refusal = stray(PHASE_ONE, 1, top, 'my signed tidy', way(dir, null, PHASE_ONE, moveStep(PHASE_ONE, `${short(top)}^`, `take ${short(top)} off ${PHASE_ONE}`)));
     assert.strictEqual(refusedMoving(dir, ['land', 'chain', 'pay', '1.1']), refusal);
     followRemedy(dir, refusal);
-    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.1']).stack, ['1.1']);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'chain', 'pay', '1.1'])).stack, ['1.1']);
   });
 
   it('keeps a landing that changes nothing where its stack is rebased off a commit below it', () => {
@@ -85,16 +85,16 @@ describe('land: under the person\'s config, hostile to it', () => {
     const refusal = stray(PHASE_ONE, 1, below, 'my tidy', way(dir, null, PHASE_ONE, off));
     assert.strictEqual(refusedMoving(dir, ['land', 'chain', 'pay', '1.4']), refusal);
     followRemedy(dir, refusal);
-    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.4']).stack, ['1.1', '1.4']);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'chain', 'pay', '1.4'])).stack, ['1.1', '1.4']);
   });
 
   it('signs the landing an open makes and the commit a replay makes with the person\'s key, as their own git commit would', () => {
     const dir = STATE.project();
     git(dir, ['checkout', '-q', '-b', 'wip']);
     STATE.apply(dir);
-    const landing = ok(dir, openArgs(cutTask(dir, '4.1', 'fix', 'Sign it', 'main', { 'signed.txt': 'signed\n' }))).commit;
+    const landing = own(ok(dir, openArgs(cutTask(dir, '4.1', 'fix', 'Sign it', 'main', { 'signed.txt': 'signed\n' })))).commit;
     commitFiles(dir, 'main', 'main', { 'other.txt': 'other\n' });
-    const replayed = ok(dir, MERGE_FOUR).commit;
+    const replayed = own(ok(dir, MERGE_FOUR)).commit;
     assert.notStrictEqual(replayed, landing);
     assert.deepStrictEqual(signatures(dir, [landing, replayed]), ['G', 'G']);
   });

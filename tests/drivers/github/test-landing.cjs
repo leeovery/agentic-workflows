@@ -22,7 +22,8 @@
 // left where the person's work, a failed fetch or git itself stops it,
 // warned once with the way to bring it up, the merge standing; the
 // stand-in gh at the driver's floors, failing closed; and the live run
-// refusing without the person's word (7.3.7, 7.S15). Git layer: the
+// refusing without the person's word (7.3.7, 7.S15); across nested
+// repositories, test-landing-nested.cjs's. Git layer: the
 // landing world on a fake GitHub (world.cjs), built once and copied for
 // each test.
 // ---------------------------------------------------------------------------
@@ -37,7 +38,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { TASKS, openArgs, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
@@ -89,22 +90,26 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
     const started = tip(dir, 'main');
     defaultOnGithub(dir, 'release');
 
-    assert.deepStrictEqual(ok(dir, openArgs(card)), { ok: true, task: '1.1', branch: card.branch, base: 'main', pull_request: 1, driver: 'github' });
+    assert.deepStrictEqual(ok(dir, openArgs(card)), { ok: true, task: '1.1', branch: card.branch, repos: [{ repo: '.', base: 'main', pull_request: 1 }], driver: 'github' });
     assert.strictEqual(tipOnGithub(dir, card.branch), tip(dir, card.branch), 'the branch is pushed as its pull request opens');
-    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.1']), { ok: true, phase: 1, stack: ['1.1'], pull_requests: [1], driver: 'github' });
+    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.1']), { ok: true, phase: 1, repos: [{ repo: '.', stack: ['1.1'], pull_requests: [1] }], driver: 'github' });
     mergeBack(dir, total.branch, card.branch);
-    assert.strictEqual(ok(dir, openArgs(total)).base, card.branch);
+    assert.strictEqual(own(ok(dir, openArgs(total))).base, card.branch);
     ok(dir, ['land', 'chain', 'pay', '1.2']);
     const tax = cutTask(dir, '1.4', 'feat', 'Add tax', total.branch, { 'tax.txt': 'tax\n' });
-    assert.deepStrictEqual(ok(dir, openArgs(tax)), { ok: true, task: '1.4', branch: tax.branch, base: total.branch, pull_request: 4, driver: 'github' });
-    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.4']), { ok: true, phase: 1, stack: ['1.1', '1.2', '1.4'], pull_requests: [1, 2, 4], driver: 'github' });
+    assert.deepStrictEqual(ok(dir, openArgs(tax)), { ok: true, task: '1.4', branch: tax.branch, repos: [{ repo: '.', base: total.branch, pull_request: 4 }], driver: 'github' });
+    assert.deepStrictEqual(ok(dir, ['land', 'chain', 'pay', '1.4']), {
+      ok: true, phase: 1, repos: [{ repo: '.', stack: ['1.1', '1.2', '1.4'], pull_requests: [1, 2, 4] }], driver: 'github',
+    });
 
     assert.deepStrictEqual(pulls(dir), [
       { number: 1, state: 'OPEN', base: 'main' }, { number: 2, state: 'OPEN', base: card.branch }, { number: 4, state: 'OPEN', base: total.branch },
     ]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [], 'nothing merges before the phase does');
 
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), { ok: true, phase: 1, into: 'main', merged: ['1.1', '1.2', '1.4'], pull_requests: [1, 2, 4], driver: 'github' });
+    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), {
+      ok: true, phase: 1, repos: [{ repo: '.', into: 'main', merged: ['1.1', '1.2', '1.4'], pull_requests: [1, 2, 4] }], driver: 'github',
+    });
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
       { subject: 'feat(pay): Add card (#1)', task: 'pay-1-1', paths: ['card.txt'] },
       { subject: 'feat(pay): Show total (#2)', task: 'pay-1-2', paths: ['total.txt'] },
@@ -164,11 +169,11 @@ describe('phases and their pull requests', () => {
     ok(dir, ['land', 'chain', 'pay', '4.2']);
     const fix = cutTask(dir, '3.2', 'fix', 'Fix four', more.branch, { 'fix.txt': 'fix\n' });
 
-    assert.strictEqual(ok(dir, openArgs(fix)).base, more.branch);
+    assert.strictEqual(own(ok(dir, openArgs(fix))).base, more.branch);
     assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '3']), 'land: phase 3 stacks on phase 4, which has not merged — merge it first with `land phase pay 4`, then land again');
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), []);
 
-    assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [4, 3]);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [4, 3]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
       { subject: 'feat(pay): Add four (#1)', task: 'pay-4-1', paths: ['four.txt'] },
       { subject: 'feat(pay): Add more (#2)', task: 'pay-4-2', paths: ['more.txt'] },
@@ -208,7 +213,7 @@ describe('phases and their pull requests', () => {
       state.next = 5;
     });
 
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).pull_requests, [1]);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'phase', 'pay', '1'])).pull_requests, [1]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ subject }) => subject), ['feat(pay): Add card (#1)']);
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'CLOSED', 'OPEN', 'OPEN']);
   });
@@ -240,7 +245,7 @@ describe('the default branch here, once a phase merges', () => {
     const ours = tip(dir, 'main');
 
     const finished = ok(dir, ['land', 'finish', 'pay']);
-    assert.deepStrictEqual([finished.phases.length, finished.warnings], [2, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']]);
+    assert.deepStrictEqual([own(finished).phases.length, finished.warnings], [2, ['main here holds commits origin/main does not, so it was not moved to the merge — bring it up to date with origin/main yourself']]);
     assert.deepStrictEqual([tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [ours, ['pay-1-1', 'pay-2-1']]);
   });
 
@@ -332,7 +337,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
       'land: gh could not open task 1.1\'s pull request: GitHub\'s rate limit stopped it (GraphQL: API rate limit already exceeded for user ID 1.) — wait for the limit to reset, and land again',
     );
     assert.deepStrictEqual([tipOnGithub(dir, card.branch), pulls(dir)], [tip(dir, card.branch), []]);
-    assert.strictEqual(ok(dir, openArgs(card)).pull_request, 1);
+    assert.strictEqual(own(ok(dir, openArgs(card))).pull_request, 1);
     assert.strictEqual(refused(dir, openArgs(card)), 'land: task 1.1 is in phase 1\'s stack already — there is nothing more to open');
   });
 

@@ -32,10 +32,12 @@
 // - A branch moves by its ref alone, so no checkout moves — but for a branch
 //   a worktree has checked out, which moves only by a fast-forward there,
 //   its tracked files clean, nothing at a path the move adds, ignored or
-//   not, and in the middle of no operation. A rebase stopped in a worktree
-//   leaves it detached, yet holds the branch it rebases and those it
-//   updates, so no such branch moves. Otherwise the move stops, saying what
-//   is in the way and the way on.
+//   not, and in the middle of no operation. A submodule's own checkout is
+//   its repository's: the move leaves it where it is, and it is no dirt of
+//   the parent's. A rebase stopped in a worktree leaves it detached, yet
+//   holds the branch it rebases and those it updates, so no such branch
+//   moves. Otherwise the move stops, saying what is in the way and the way
+//   on.
 // - No remedy changes the files of any worktree but one it makes itself.
 //   Before it moves or rewrites a branch, it keeps the branch as it stands
 //   on a `.kept-` branch and frees it: a worktree an earlier remedy left
@@ -51,6 +53,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { git: personGit, tryGit: personTryGit, operationInProgress, dirtyEntries, GitError, READ_BUDGET_BYTES } = require('../kernel/git.cjs');
@@ -77,6 +80,7 @@ const PINNED = [
   'log.showSignature=false', // a signed commit's check printed ahead of the format a read parses
   'i18n.logOutputEncoding=UTF-8', // a message read re-encoded, and replayed so
   'i18n.commitEncoding=UTF-8', // a replayed message labelled another encoding
+  'submodule.recurse=false', // a fast-forward moving a submodule's checkout with its parent's
   ...MERGE_PINS,
 ].flatMap((setting) => ['-c', setting]);
 
@@ -111,6 +115,12 @@ function branches(root) {
 /** The local branches whose tips a commit holds. @param {string} root @param {string} commit @returns {Set<string>} */
 function branchesHeldBy(root, commit) {
   const refs = git(root, ['for-each-ref', `--merged=${commit}`, '--format=%(refname)', HEADS]).split('\n').filter(Boolean);
+  return new Set(refs.map((ref) => ref.slice(HEADS.length)));
+}
+
+/** The local branches holding a commit `commit` does not. @param {string} root @param {string} commit @returns {Set<string>} */
+function branchesPast(root, commit) {
+  const refs = git(root, ['for-each-ref', `--no-merged=${commit}`, '--format=%(refname)', HEADS]).split('\n').filter(Boolean);
   return new Set(refs.map((ref) => ref.slice(HEADS.length)));
 }
 
@@ -185,21 +195,44 @@ function treesPast(root, from, to) {
   return new Set(git(root, ['log', '--format=%T', `${from}..${to}`]).split('\n').filter(Boolean));
 }
 
+/** The folder the code root is of its repository, from the repository's top: `''` at the top, else ending in `/`. @param {string} root */
+function prefixOf(root) {
+  return git(root, ['rev-parse', '--show-prefix']).trim();
+}
+
 /**
- * The nested repositories' pointers a change moves in the project's folder,
- * from where `tip` left `base` to `tip`, named from that folder.
- * @param {string} root @param {string} base @param {string} tip
- * @returns {string[]}
+ * The commit each of `commits` points each submodule of `paths` at, null
+ * where it holds no submodule there; the paths from the repository's top.
+ * @param {string} root @param {string[]} commits @param {string[]} paths
+ * @returns {Map<string, string|null>[]} by path, in `commits`' order
  */
-function pointersMoved(root, base, tip) {
-  const fields = git(root, ['diff', '--raw', '-z', '--no-renames', '--relative', '--ignore-submodules=none', `${base}...${tip}`]).split('\0');
-  /** @type {string[]} */
-  const moved = [];
-  for (let i = 0; i + 1 < fields.length; i += 2) {
-    const [before, after] = fields[i].slice(1).split(' ');
-    if (before === '160000' || after === '160000') moved.push(fields[i + 1]);
+function pointersAt(root, commits, paths) {
+  const asked = commits.flatMap((commit) => paths.map((at) => `${commit}:${at}`));
+  const answers = git(root, ['cat-file', '--batch-check=%(objectname) %(objecttype)'], `${asked.join('\n')}\n`).split('\n');
+  return commits.map((_, i) => new Map(paths.map((at, j) => {
+    const [sha, type] = answers[i * paths.length + j].split(' ');
+    return [at, type === 'submodule' ? sha : null];
+  })));
+}
+
+/**
+ * A commit's tree with each submodule of `pointers` pointed at its commit,
+ * the paths from the repository's top: built in an index of its own, so no
+ * checkout's index is touched.
+ * @param {string} root @param {string} commit @param {Map<string, string>} pointers
+ * @returns {string}
+ */
+function treeWithPointers(root, commit, pointers) {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-pointers-'));
+  const env = { GIT_INDEX_FILE: path.join(folder, 'index') };
+  try {
+    personGit(root, [...PINNED, 'read-tree', commit], env);
+    const entries = [...pointers].map(([at, sha]) => `160000 commit ${sha}\t${at}\n`).join('');
+    personGit(root, [...PINNED, 'update-index', '--index-info'], env, entries);
+    return personGit(root, [...PINNED, 'write-tree'], env).trim();
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
   }
-  return moved;
 }
 
 /**
@@ -306,6 +339,18 @@ function rebasing(gitDir) {
 }
 
 /**
+ * The folder of a repository's main checkout, from where git's listing
+ * names it: a submodule's is named by its git directory, which holds no
+ * `.git`, and is asked of that directory.
+ * @param {string} listed
+ * @returns {string}
+ */
+function mainCheckout(listed) {
+  if (!fs.existsSync(listed) || fs.existsSync(path.join(listed, '.git'))) return listed;
+  return tryGit(listed, ['rev-parse', '--show-toplevel'])?.trim() || listed;
+}
+
+/**
  * The repository's worktrees, the main checkout first, each with the branch
  * it has checked out and those a rebase stopped there is rewriting — which
  * leaves the worktree detached, though the rebase holds them.
@@ -313,9 +358,10 @@ function rebasing(gitDir) {
  * @returns {Worktree[]}
  */
 function worktrees(root, made = scratchRoot(root)) {
-  return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block) => {
+  return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block, i) => {
     const lines = block.split('\n');
-    const tree = lines[0].slice('worktree '.length);
+    const listed = lines[0].slice('worktree '.length);
+    const tree = i === 0 ? mainCheckout(listed) : listed;
     const branch = lines.find((line) => line.startsWith(`branch ${HEADS}`));
     return {
       path: tree,
@@ -636,6 +682,22 @@ function rebaseBlock(root, branch, trees = worktrees(root)) {
 }
 
 /**
+ * The tracked changes not committed in a worktree, by path — but for a
+ * submodule's own checkout, its commit or its files, which no move there
+ * touches (`PINNED`); a pointer staged there is the worktree's own.
+ * @param {string} tree
+ * @returns {string[]}
+ */
+function changesAt(tree) {
+  const entries = dirtyEntries(tree).filter((entry) => entry.status !== '??');
+  const unstaged = entries.filter((entry) => entry.status[0] === ' ').map((entry) => `:(literal)${entry.path}`);
+  if (unstaged.length === 0) return entries.map((entry) => entry.path);
+  const submodules = new Set(git(tree, ['ls-files', '--stage', '-z', '--', ...unstaged]).split('\0')
+    .filter((line) => line.startsWith('160000 ')).map((line) => line.slice(line.indexOf('\t') + 1)));
+  return entries.filter((entry) => !(entry.status[0] === ' ' && submodules.has(entry.path))).map((entry) => entry.path);
+}
+
+/**
  * What stops a branch a worktree holds from moving there, and the way on —
  * a rebase rewriting it, a worktree an earlier remedy left with it out, the
  * worktree that has it out with its folder missing, an operation in
@@ -657,7 +719,7 @@ function checkoutBlock(root, branch, move, trees = worktrees(root)) {
   if (!fs.existsSync(holder.path)) return `${at}, whose folder is missing, so nothing moved — remove that worktree with ${removing(holder)} and land again`;
   const stopped = stoppedAt(root, holder.path);
   if (stopped !== null) return `${at}, where ${stopped.operation} is in progress, so nothing moved — finish it, or end it with ${stopped.end}, and land again`;
-  const dirt = dirtyEntries(holder.path).filter((entry) => entry.status !== '??').map((entry) => plain(entry.path));
+  const dirt = changesAt(holder.path).map(plain);
   if (dirt.length > 0) {
     const freed = detaching(root, holder, branch, git(root, ['rev-parse', `${HEADS}${branch}`]).trim());
     return `${at}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or ${freed.step}, and land again; ${freed.note}`;
@@ -692,17 +754,17 @@ function remoteUrlOf(root, remote) {
 }
 
 /**
- * A branch pushed to the remote under its own name: the refspec named, no
- * tag following it, nothing signed, and no nested repository pushed with
- * it, so no `push.*` setting changes what goes where. Refused in git's
- * words, hints aside, where the remote refuses it or cannot be reached,
- * saying what `then` did not happen.
- * @param {string} root @param {string} remote @param {string} branch @param {string} then
+ * A branch pushed to the remote under its own name — at its tip here, or at
+ * `commit` — the refspec named, no tag following it, nothing signed, and no
+ * nested repository pushed with it, so no `push.*` setting changes what
+ * goes where. Refused in git's words, hints aside, where the remote refuses
+ * it or cannot be reached, saying what `then` did not happen.
+ * @param {string} root @param {string} remote @param {string} branch @param {string} then @param {string} [commit]
  */
-function pushBranch(root, remote, branch, then) {
+function pushBranch(root, remote, branch, then, commit) {
   const ref = `${HEADS}${branch}`;
   try {
-    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${ref}:${ref}`], PUSH_TIMEOUT_MS);
+    networkGit(root, ['push', '--quiet', '--no-follow-tags', '--no-signed', '--recurse-submodules=no', remote, `${commit ?? ref}:${ref}`], PUSH_TIMEOUT_MS);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     throw new Error(`land: ${branch} could not be pushed to ${remote} (${gitSaid(err)}), so ${then}`);
@@ -750,24 +812,25 @@ function remoteHead(root, remote) {
 }
 
 /**
- * The default branch everything lands on (see the header). Refuses where
- * nothing names one, where it is the state branch, and where the repository
- * has no local branch of its name.
- * @param {string} root @param {string|null} remote the project's
+ * The default branch everything lands on in a repository (see the header) —
+ * the project's own, or one `nested` in its folder. Refuses where nothing
+ * names one, where it is the state branch, and where the repository has no
+ * local branch of its name.
+ * @param {string} root @param {string|null} remote the repository's @param {boolean} [nested]
  * @returns {string}
  */
-function defaultBranch(root, remote) {
+function defaultBranch(root, remote, nested = false) {
   const local = branches(root);
   const configured = tryGit(root, ['config', '--get', 'init.defaultBranch'])?.trim() ?? '';
   const named = remoteHead(root, remote) ?? [configured, ...TRUNKS].find((branch) => local.has(branch));
   if (named === undefined) {
     throw new Error(
       'land: no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '
-      + 'name it with `git config init.defaultBranch <branch>` in the project',
+      + `name it with \`git config init.defaultBranch <branch>\` ${nested ? 'there' : 'in the project'}`,
     );
   }
   if (named === STATE_BRANCH) {
-    throw new Error(`land: the default branch reads as ${STATE_BRANCH}, the workflows' state branch, which nothing lands on — name the project's own with \`git config init.defaultBranch <branch>\``);
+    throw new Error(`land: the default branch reads as ${STATE_BRANCH}, the workflows' state branch, which nothing lands on — name ${nested ? 'its' : 'the project\'s'} own with \`git config init.defaultBranch <branch>\``);
   }
   if (!local.has(named)) {
     throw new Error(`land: the default branch is ${named}, and the repository has no local branch of that name — make one with \`git branch ${named} ${remote}/${named}\``);
@@ -776,7 +839,7 @@ function defaultBranch(root, remote) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  pointersMoved, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  short, branches, branchesHeldBy, branchesPast, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
+  prefixOf, pointersAt, treeWithPointers, changedAtTop, signs, commitTree, Conflict, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, gitSaid, fetchBranch, nothingPast,
 };

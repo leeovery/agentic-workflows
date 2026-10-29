@@ -43,6 +43,17 @@
 //   that one, its branch kept or deleted. A task whose branch is not where
 //   it opened stops the phase; a phase's commits otherwise land as its
 //   branch stands.
+// - A submodule's pointer: re-recorded as its repository's phase merges,
+//   after the submodule's own (landing.cjs merges children first). Each
+//   landing that moves the pointer is pointed at the submodule's landing of
+//   its own task, read off the submodule's default branch by its trailer —
+//   or kept as it is where the submodule landed none of its tasks — and
+//   each that does not move it keeps the pointer of the landing below, so
+//   every landing the default branch gains names a commit on the
+//   submodule's. It waits for the merge, not the open: until then each
+//   landing keeps its task's own tree, which every check above reads, and a
+//   submodule's phase replayed onto a default branch that moved on makes
+//   commits no open could have named.
 // - Finish: every phase not yet merged, each after the one it stacks on.
 //
 // Every refusal says the way on, its commands fitted to the repository as
@@ -308,11 +319,11 @@ function heldBy(ctx, task, refs, stacks) {
 
 /**
  * The chain's tip a task lands on, and what opening it takes (see the
- * header). Refuses a task whose phase is merged or holds it already, one
- * built on a stack something stops, and a chain whose last task's branch is
- * gone.
+ * header) — null where its phase's stack holds it already. Refuses a task
+ * whose phase is merged, one built on a stack something stops, and a chain
+ * whose last task's branch is gone.
  * @param {LandingContext} ctx @param {LandingTask} task
- * @returns {ChainTip}
+ * @returns {ChainTip|null}
  */
 function chainTip(ctx, task) {
   const { phase } = task.ref;
@@ -324,7 +335,7 @@ function chainTip(ctx, task) {
     throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);
   }
   if (own !== undefined) refuseFaulty(ctx, refs, own);
-  if (lands(own, task.ref)) throw new Error(`land: task ${shown} is in phase ${phase}'s stack already — there is nothing more to open`);
+  if (lands(own, task.ref)) return null;
   const held = heldBy(ctx, task, refs, stacks);
   const reached = [...stacks.values()].filter((stack) => stack !== own && held.some(({ ref }) => lands(stack, ref))).sort((a, b) => b.phase - a.phase);
   for (const stack of reached) refuseFaulty(ctx, refs, stack);
@@ -397,12 +408,12 @@ function forgetOpened(ctx, which) {
 }
 
 /**
- * Open a task on the chain's tip the seam checked it descends from: its
- * change squashed onto its phase's branch, and where its branch stands
- * recorded — the phase's other tasks' records dropped where its stack
- * begins again with this one. A task whose commits change nothing past the
- * tip opens as a commit that changes nothing, which the answer names; one
- * with no commits there is refused.
+ * Open a task on the chain's tip the seam checked it descends from, with a
+ * commit past it: its change squashed onto its phase's branch, and where its
+ * branch stands recorded — the phase's other tasks' records dropped where
+ * its stack begins again with this one. A task whose commits change nothing
+ * past the tip opens as a commit that changes nothing, which the answer
+ * names.
  * @param {LandingContext} ctx @param {LandingTask} task @param {ChainTip} tip
  */
 function open(ctx, task, tip) {
@@ -418,7 +429,6 @@ function open(ctx, task, tip) {
     throw new Error(`land: ${tip.top.branch}'s commit for task ${shownTask(last.ref)}, ${named(last)}, has changed since it was opened — ${offSteps(ctx, tip.top, last, again)}`);
   }
   const at = /** @type {string} */ (tip.refs.get(task.branch));
-  if (at === tip.commit) throw new Error(lg.nothingPast(shown, task.branch, tip.name));
   const { phase } = task.ref;
   const branch = names.phaseBranch(ctx.unit, phase);
   const landing = { tree, parent: onto, message: task.message, signed: lg.signs(root) };
@@ -426,14 +436,15 @@ function open(ctx, task, tip) {
   lg.moveBranch(root, branch, tip.phaseAt, commit);
   if (!tip.stacks.has(phase)) forgetOpened(ctx, (of, other) => of === phase && other !== shown);
   lg.updateRefs(root, { set: [[`${openedUnder(ctx.unit)}${shown}`, at]] });
-  if (tree !== tipTree) return { task: shown, branch: task.branch, base: tip.name, phase_branch: branch, commit };
+  if (tree !== tipTree) return { base: tip.name, phase_branch: branch, commit };
   const why = lg.ownChangeEmpty(root, tip.commit, task.branch) ? 'its commits change nothing' : `its change was on ${tip.name} already`;
-  return { task: shown, branch: task.branch, base: tip.name, phase_branch: branch, commit, landed_empty: [{ task: shown, why }] };
+  return { base: tip.name, phase_branch: branch, commit, landed_empty: [{ task: shown, why }] };
 }
 
 /**
  * Chain a task: it is in its phase's stack once opened, so this answers the
- * stack, in the order its tasks were merged back.
+ * stack, in the order its tasks were merged back — null where it is not
+ * open.
  * @param {LandingContext} ctx @param {TaskRef} ref
  */
 function chain(ctx, ref) {
@@ -442,8 +453,8 @@ function chain(ctx, ref) {
   const stack = stacksOf(ctx, refs).get(phase);
   if (stack?.merged) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — its stack is landed`);
   if (stack !== undefined) refuseFaulty(ctx, refs, stack);
-  if (stack === undefined || !lands(stack, ref)) throw new Error(`land: task ${shownTask(ref)} is not open — open it first`);
-  return { phase, phase_branch: stack.branch, stack: stack.tasks.map((landed) => shownTask(landed.ref)) };
+  if (stack === undefined || !lands(stack, ref)) return null;
+  return { phase_branch: stack.branch, stack: stack.tasks.map((landed) => shownTask(landed.ref)) };
 }
 
 /**
@@ -478,10 +489,13 @@ const errorText = (err) => (err instanceof Error ? err.message : String(err));
 /** What a failed git call said, as a refusal quotes it. @param {unknown} err */
 const gitSaid = (err) => lg.plain(errorText(err));
 
+/** A commit a stack replays, with the tasks it lands. @typedef {{sha: string, message: string, name: string, tasks: string[]}} Replayed */
+
 /**
  * The commits a stack replays, each once, oldest first, with the tasks it
  * lands.
  * @param {Stack} stack
+ * @returns {Replayed[]}
  */
 function replayed(stack) {
   const shas = [...new Set(stack.tasks.map(({ sha }) => sha))];
@@ -493,13 +507,91 @@ function replayed(stack) {
 }
 
 /**
- * Merge a stack into the default branch. A replay writes only commits, so
- * nothing moves until both branches can: the default branch checked where
- * it is out, then the phase's branch moved to the replay, then the default
- * branch — the phase's branch put back where that last move fails. A task
- * whose change the default branch held already lands as a commit that
- * changes nothing, which the answer names. The phase's opened refs are
- * dropped once it lands.
+ * A submodule's landings past `from` on its default branch, by the task
+ * each lands, the latest of each.
+ * @param {LandingContext} sub @param {string} from
+ * @returns {Map<string, string>} by task, shown
+ */
+function landingsIn(sub, from) {
+  /** @type {Map<string, string>} */
+  const landings = new Map();
+  for (const { sha, message } of lg.firstParentLine(sub.root, from, sub.into)) {
+    for (const ref of names.tasksOfMessage(sub.unit, message)) if (!landings.has(shownTask(ref))) landings.set(shownTask(ref), sha);
+  }
+  return landings;
+}
+
+/**
+ * The stack's commits with each submodule's pointer re-recorded (see the
+ * header), oldest first, and the last of them — the stack as it stands
+ * where no pointer changes.
+ * @param {LandingContext} ctx @param {Stack} stack
+ * @returns {{tip: string, commits: Replayed[]}}
+ */
+function pointed(ctx, stack) {
+  const commits = replayed(stack);
+  if (ctx.submodules.length === 0) return { tip: stack.tip, commits };
+  const below = `${commits[0].sha}^`;
+  const [base, ...held] = lg.pointersAt(ctx.root, [below, ...commits.map(({ sha }) => sha)], ctx.submodules.map(({ path }) => path));
+  /** @type {Map<string, Map<string, string>>} */
+  const landings = new Map();
+  /** The submodule's landing of the last of `tasks` it landed, if any. @param {{path: string, ctx: LandingContext}} sub @param {string[]} tasks */
+  const landingOf = ({ path, ctx: sub }, tasks) => {
+    const from = base.get(path) ?? null;
+    if (from === null) return undefined;
+    if (!landings.has(path)) landings.set(path, landingsIn(sub, from));
+    return [...tasks].reverse().map((task) => landings.get(path)?.get(task)).find((sha) => sha !== undefined);
+  };
+  const recorded = new Map(base);
+  const wanted = held.map((own, i) => {
+    for (const sub of ctx.submodules) {
+      const at = own.get(sub.path) ?? null;
+      if (at !== (i === 0 ? base : held[i - 1]).get(sub.path)) recorded.set(sub.path, at === null ? null : landingOf(sub, commits[i].tasks) ?? at);
+    }
+    return new Map(recorded);
+  });
+  const first = wanted.findIndex((want, i) => [...want].some(([path, sha]) => sha !== held[i].get(path)));
+  if (first === -1) return { tip: stack.tip, commits };
+  const signed = lg.signs(ctx.root);
+  let parent = first === 0 ? below : commits[first - 1].sha;
+  const rewritten = commits.map((commit, i) => {
+    if (i < first) return commit;
+    const pointers = new Map([...wanted[i]].filter((entry) => entry[1] !== null));
+    const tree = lg.treeWithPointers(ctx.root, commit.sha, /** @type {Map<string, string>} */ (pointers));
+    parent = lg.commitTree(ctx.root, { tree, parent, message: commit.message, signed }, `${commit.name}'s landing, its submodules' pointers recorded`, 'land again');
+    return { ...commit, sha: parent };
+  });
+  return { tip: parent, commits: rewritten };
+}
+
+/**
+ * The stack's commits replayed onto the default branch, as its pull
+ * requests squash onto it — refused, naming the conflict and the way on,
+ * where one of them conflicts there.
+ * @param {LandingContext} ctx @param {Stack} stack @param {Replayed[]} commits @param {string} intoTip
+ */
+function replayOnto(ctx, stack, commits, intoTip) {
+  const { root, into } = ctx;
+  try {
+    return lg.replay(root, commits, intoTip, into);
+  } catch (err) {
+    if (!(err instanceof lg.Conflict)) throw err;
+    const way = lg.remedy(root, stack.branch, lg.rewrite(stack.branch, lg.quoted(into), `bring ${stack.branch} up to date with ${into}`));
+    throw new Error(`${err.message}, so nothing moved — ${way}`);
+  }
+}
+
+/**
+ * Merge a stack into the default branch, each submodule's pointer
+ * re-recorded first (`pointed`). Where the stack lands as its branch
+ * stands, the default branch fast-forwards to it. Else its commits are
+ * written anew — re-recorded, or replayed where the default branch moved on
+ * — and nothing moves until both branches can: the default branch checked
+ * where it is out, then the phase's branch moved to the new commits, then
+ * the default branch — the phase's branch put back where that last move
+ * fails. A task whose change the default branch held already lands as a
+ * commit that changes nothing, which the answer names. The phase's opened
+ * refs are dropped once it lands.
  * @param {LandingContext} ctx @param {Map<string, string>} refs @param {Map<number, Stack>} stacks @param {Stack} stack
  */
 function mergeStack(ctx, refs, stacks, stack) {
@@ -510,9 +602,11 @@ function mergeStack(ctx, refs, stacks, stack) {
   if (rebased !== null) throw new Error(`land: ${rebased}`);
   refuseMoved(ctx, refs, stack.tasks);
   const intoTip = /** @type {string} */ (refs.get(into));
-  const merged = { phase: stack.phase, into, merged: stack.tasks.map((landed) => shownTask(landed.ref)) };
+  const merged = { into, merged: stack.tasks.map((landed) => shownTask(landed.ref)) };
   const landed = () => forgetOpened(ctx, (phase) => phase === stack.phase);
-  if (lg.isAncestor(root, intoTip, stack.tip)) {
+  const source = pointed(ctx, stack);
+  const forward = lg.isAncestor(root, intoTip, source.tip);
+  if (forward && source.tip === stack.tip) {
     try {
       lg.moveBranch(root, into, intoTip, stack.tip);
     } catch (err) {
@@ -522,15 +616,7 @@ function mergeStack(ctx, refs, stacks, stack) {
     landed();
     return { ...merged, commit: stack.tip };
   }
-  let replay;
-  try {
-    replay = lg.replay(root, replayed(stack), intoTip, into);
-  } catch (err) {
-    if (!(err instanceof lg.Conflict)) throw err;
-    const way = lg.remedy(root, stack.branch, lg.rewrite(stack.branch, lg.quoted(into), `bring ${stack.branch} up to date with ${into}`));
-    throw new Error(`${err.message}, so nothing moved — ${way}`);
-  }
-  const { tip, empty } = replay;
+  const { tip, empty } = forward ? { tip: source.tip, empty: [] } : replayOnto(ctx, stack, source.commits, intoTip);
   const block = lg.checkoutBlock(root, into, { from: intoTip, to: tip });
   if (block !== null) throw new Error(`land: ${block}`);
   lg.moveBranch(root, stack.branch, stack.tip, tip);
@@ -553,15 +639,16 @@ function mergeStack(ctx, refs, stacks, stack) {
 }
 
 /**
- * Merge a phase whole into the default branch.
+ * Merge a phase whole into the default branch — null where no task of it
+ * is open here, and `already` where it is merged.
  * @param {LandingContext} ctx @param {number} phase
  */
 function mergePhase(ctx, phase) {
   const refs = lg.branches(ctx.root);
   const stacks = stacksOf(ctx, refs);
   const stack = stacks.get(phase);
-  if (stack === undefined) throw new Error(`land: phase ${phase} of ${ctx.unit} has no task opened — open its tasks first`);
-  if (stack.merged) throw new Error(`land: phase ${phase} is merged into ${ctx.into} already — there is nothing more to merge`);
+  if (stack === undefined) return null;
+  if (stack.merged) return { into: ctx.into, already: true };
   return mergeStack(ctx, refs, stacks, stack);
 }
 
@@ -572,7 +659,7 @@ function mergePhase(ctx, phase) {
  * @param {LandingContext} ctx
  */
 function finish(ctx) {
-  /** @type {ReturnType<typeof mergeStack>[]} */
+  /** @type {({phase: number} & ReturnType<typeof mergeStack>)[]} */
   const merged = [];
   for (;;) {
     const refs = lg.branches(ctx.root);
@@ -584,7 +671,7 @@ function finish(ctx) {
     }
     const next = unmerged.find(({ stackedOn }) => stackedOn === null) ?? unmerged[0];
     try {
-      merged.push(mergeStack(ctx, refs, stacks, next));
+      merged.push({ phase: next.phase, ...mergeStack(ctx, refs, stacks, next) });
     } catch (err) {
       if (merged.length === 0) throw err;
       throw new Error(`${errorText(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);

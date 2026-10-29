@@ -176,9 +176,19 @@ function depth(repo) {
 }
 
 /**
+ * Repos deepest first, then by folder, so each comes before the one it is
+ * nested in, and the root last.
+ * @param {Repo[]} repos
+ * @returns {Repo[]}
+ */
+function childrenFirst(repos) {
+  return [...repos].sort((a, b) => depth(b) - depth(a) || (a.dir < b.dir ? -1 : 1));
+}
+
+/**
  * A code commit's project paths grouped by the repo that owns each, each
- * group's paths as its repo names them, in commit order: deepest first, then
- * by folder, so a repo commits before the one it is nested in. A repo whose
+ * group's paths as its repo names them, in commit order (`childrenFirst`),
+ * so a repo commits before the one it is nested in. A repo whose
  * submodule has a group takes the submodule's folder too, so the
  * submodule's new pointer lands in the same call.
  * @param {Repo[]} repos @param {string[]} relPaths
@@ -187,7 +197,7 @@ function depth(repo) {
 function commitGroups(repos, relPaths) {
   /** @type {Map<string, {repo: Repo, paths: string[]}>} */
   const groups = new Map();
-  for (const repo of [...repos].sort((a, b) => depth(b) - depth(a) || (a.dir < b.dir ? -1 : 1))) {
+  for (const repo of childrenFirst(repos)) {
     const paths = [
       ...relPaths.filter((p) => repoOf(repos, p) === repo).map((p) => repoPath(repo, p)),
       ...repo.submodules.filter((folder) => groups.has(projectPath(repo.dir, folder))),
@@ -232,6 +242,6 @@ function projectPathsTouchedBySubject(repos, prefix) {
 }
 
 module.exports = {
-  projectRepos, repoOf, repoPath, repoName, projectPath, commitGroups,
+  projectRepos, repoOf, repoPath, repoName, projectPath, childrenFirst, commitGroups,
   codeHeldOut, projectDirtyEntries, projectPathsTouchedBySubject,
 };

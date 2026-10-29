@@ -24,7 +24,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
@@ -58,14 +58,14 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(replayed, ['land', 'phase', 'pay', '2']);
     const more = cutTask(replayed, '4.1', 'fix', 'Round more', rounding.branch, { 'more.txt': 'more\n' });
     mergeBack(replayed, more.branch, 'main');
-    assert.strictEqual(ok(replayed, openArgs(more)).base, 'main');
+    assert.strictEqual(own(ok(replayed, openArgs(more))).base, 'main');
 
     const deleted = project();
     ok(deleted, openArgs(rounding));
     ok(deleted, ['land', 'phase', 'pay', '2']);
     git(deleted, ['branch', '-D', 'feat/pay-phase-2']);
     mergeBack(deleted, currency.branch, 'main');
-    assert.strictEqual(ok(deleted, openArgs(currency)).base, 'main');
+    assert.strictEqual(own(ok(deleted, openArgs(currency))).base, 'main');
   });
 
   it('ties a task to another by the branch it holds while that branch stands, never by a tree alike — and, the branch deleted, by its tree, within the task\'s chain', () => {
@@ -73,14 +73,14 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(alike, openArgs(card));
     const share = cutTask(alike, '2.4', 'fix', 'Share the card', 'main', card.files);
     commitFiles(alike, share.branch, share.branch, { 'share.txt': 'share\n' });
-    assert.strictEqual(ok(alike, openArgs(share)).base, 'main');
+    assert.strictEqual(own(ok(alike, openArgs(share))).base, 'main');
 
     const stacked = project();
     ok(stacked, openArgs(rounding));
     ok(stacked, openArgs(currency));
     git(stacked, ['branch', '-D', rounding.branch]);
     const more = cutTask(stacked, '3.2', 'fix', 'More currency', currency.branch, { 'more.txt': 'more\n' });
-    assert.strictEqual(ok(stacked, openArgs(more)).base, currency.branch);
+    assert.strictEqual(own(ok(stacked, openArgs(more))).base, currency.branch);
   });
 
   it('finish: a phase whose change conflicts with the default branch stops it, saying which merged before, if any', () => {
@@ -103,8 +103,8 @@ describe('land: how the local driver stacks and replays', () => {
     ok(dir, openArgs(rounding));
     ok(dir, openArgs(currency));
     const lower = cutTask(dir, '1.4', 'feat', 'Lower', currency.branch, { 'lower.txt': 'lower\n' });
-    assert.strictEqual(ok(dir, openArgs(lower)).base, currency.branch);
-    assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 1]);
+    assert.strictEqual(own(ok(dir, openArgs(lower))).base, currency.branch);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 1]);
     assert.deepStrictEqual(landedOn(dir, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt'], ['lower.txt']]);
   });
 
@@ -116,7 +116,7 @@ describe('land: how the local driver stacks and replays', () => {
     ok(dir, ['land', 'phase', 'pay', '1']);
     ok(dir, ['land', 'phase', 'pay', '2']);
     git(dir, ['branch', '-d', 'feat/pay-phase-2']);
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '3']).merged, ['3.1']);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'phase', 'pay', '3'])).merged, ['3.1']);
     assert.deepStrictEqual(landedOn(dir, 'main').map(({ paths }) => paths), [['card.txt'], ['round.txt'], ['currency.txt']]);
   });
 
@@ -157,7 +157,7 @@ describe('land: how the local driver stacks and replays', () => {
     git(dir, ['checkout', '-q', '-b', 'wip']);
     ok(dir, openArgs(card));
     commitFiles(dir, 'main', 'main', card.files, { message: 'the card, by hand' });
-    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).landed_empty, [{ task: '1.1', why: 'its change was on main already' }]);
+    assert.deepStrictEqual(own(ok(dir, ['land', 'phase', 'pay', '1'])).landed_empty, [{ task: '1.1', why: 'its change was on main already' }]);
     assert.deepStrictEqual(landedOn(dir, 'main'), [
       { subject: 'the card, by hand', task: null, paths: ['card.txt'] },
       { subject: 'feat(pay): Add card', task: 'pay-1-1', paths: [] },
