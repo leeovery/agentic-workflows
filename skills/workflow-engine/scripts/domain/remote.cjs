@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the project's remote, read for whatever asks where the
 // project's code is hosted — the drivers' landing default, the code host's
-// driver for setup's rule, and the default branch the landing reads off the
+// driver for setup's offers, and the default branch the landing reads off the
 // remote. The remote is the one the state goes to (state-worktree.cjs); a
 // repository nested in the project has its own, chosen by the same rule in
 // its own checkout. Its name and URL are read here; which host a URL names
@@ -12,7 +12,7 @@
 
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
-const { stateRemote, stateRemoteName, stateRemoteUrl } = require('./state-worktree.cjs');
+const { stateRemote, stateRemoteName, stateRemoteUrl, chosenRemoteUrl } = require('./state-worktree.cjs');
 
 /**
  * The name of the project's remote, or null where it has none chosen.
@@ -42,4 +42,14 @@ function nestedRemoteName(dir) {
   return stateRemote(isolatedGit(dir)).remote;
 }
 
-module.exports = { remoteName, remoteUrl, nestedRemoteName };
+/**
+ * The URL of a nested repository's own remote, or null where it has none
+ * chosen.
+ * @param {string} dir the nested repository's checkout
+ * @returns {string|null}
+ */
+function nestedRemoteUrl(dir) {
+  return chosenRemoteUrl(isolatedGit(dir));
+}
+
+module.exports = { remoteName, remoteUrl, nestedRemoteName, nestedRemoteUrl };

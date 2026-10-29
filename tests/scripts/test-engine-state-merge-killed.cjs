@@ -22,12 +22,15 @@ const { ok, git, tip, remoteTip, layout, commitOnState } = require('./engine-har
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
 const {
   useWorld, blobId, parents, status, pushFailing, commitUnpushed, machinesSharing, ledger, json, projectManifest, mergeLeftovers, killedAfter,
 } = require('./state-merge-world.cjs');
+
+const [TRACKER] = listDrivers('task').filter((driver) => driver.isDefault);
 
 useWorld();
 
@@ -109,7 +112,7 @@ describe('a catch-up killed between its steps', () => {
     ok(here.main, ['task', 'ready', 'pay']);
 
     const held = JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:${layout.projectManifest}`]));
-    assert.deepStrictEqual([held.roadmap.items['a-lifetime-tier'].horizon, held.drivers.task], ['someday', 'tick']);
+    assert.deepStrictEqual([held.roadmap.items['a-lifetime-tier'].horizon, held.drivers.task], ['someday', TRACKER.name]);
     assert.strictEqual(status(here.root), '');
     assert.strictEqual(catchUpState(there.root).action, 'fast-forwarded');
     assert.strictEqual(JSON.parse(readFile(there.root, layout.projectManifest)).roadmap.items['a-lifetime-tier'].horizon, 'someday');

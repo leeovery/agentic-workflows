@@ -4,8 +4,9 @@
 // The main checkout under the `land` verbs (workflow-engine/scripts/domain/
 // landing-git.cjs, through the local driver's merges): it never moves but by
 // a fast-forward of the default branch it has out, made through the
-// person's own git and hooks, with its tracked files clean, nothing at a
-// path the move adds, or in its way, but what it tracks, ignored or not —
+// person's own git and hooks, with its tracked files clean where the merge
+// changes them — changes to any other carried across — nothing at a path
+// the move adds, or in its way, but what it tracks, ignored or not —
 // git's own refusal its last guard — and no operation in progress, a pick
 // or revert sequence among them; changes not committed there are kept by
 // detaching the checkout, never set aside; a rebase stopped there holds the
@@ -70,16 +71,16 @@ describe('land phase: the main checkout', () => {
     assert.strictEqual(merged.commit, opened);
   });
 
-  it('stops where the default branch is out with changes not committed, and goes through once the checkout is detached, which keeps them where they were', () => {
+  it('stops where the default branch is out with changes not committed to files the merge changes, naming those alone, and goes through once the checkout is detached, which keeps them where they were', () => {
     const dir = project();
-    ok(dir, openArgs(card));
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Edit the app', 'main', { 'app.txt': 'app edited\n' })));
     const was = tip(dir, 'main');
     fs.writeFileSync(path.join(dir, 'app.txt'), 'edited\n');
     fs.writeFileSync(path.join(dir, 'note`s.txt'), 'notes\n');
     git(dir, ['add', 'note`s.txt']);
     const dirty = refusedMoving(dir, MERGE_ONE);
     assert.strictEqual(dirty, held(
-      'main', dir, ', with changes not committed: app.txt, note\'s.txt',
+      'main', dir, ', with changes not committed: app.txt',
       `commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${short(was)} with its edits, and land again; `
         + 'switching your checkout back to main is yours, when you\'re ready',
     ));
@@ -88,6 +89,19 @@ describe('land phase: the main checkout', () => {
     assert.deepStrictEqual(
       { main: tip(dir, 'main'), head: tip(dir, 'HEAD'), status: git(dir, ['status', '--porcelain', '--branch']), app: fs.readFileSync(path.join(dir, 'app.txt'), 'utf8') },
       { main: merged.commit, head: was, status: '## HEAD (no branch)\n M app.txt\nA  note`s.txt\n', app: 'edited\n' },
+    );
+  });
+
+  it('carries changes not committed to files the merge does not change across the fast-forward, staged or not', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    fs.writeFileSync(path.join(dir, 'app.txt'), 'edited\n');
+    fs.writeFileSync(path.join(dir, 'note`s.txt'), 'notes\n');
+    git(dir, ['add', 'note`s.txt']);
+    const merged = own(ok(dir, MERGE_ONE));
+    assert.deepStrictEqual(
+      { main: tip(dir, 'main'), checkout: checkout(dir), card: fs.readFileSync(path.join(dir, 'card.txt'), 'utf8') },
+      { main: merged.commit, checkout: { head: 'main', status: ' M app.txt\nA  note`s.txt\n' }, card: 'card\n' },
     );
   });
 

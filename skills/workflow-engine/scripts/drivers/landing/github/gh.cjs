@@ -95,18 +95,24 @@ const stackVersion = () => versionOf(['stack', '--version'], /^gh stack version 
 
 /**
  * Why gh did not make a setting on GitHub through its API, or null where it
- * did: gh missing, signed out, or refused, each said as setup's warning says
- * it.
- * @param {string} cwd @param {string[]} api the call's arguments past `api` @param {string} [input]
+ * did — or where `held`, read first, finds it made already, and it is left
+ * as it is: gh missing, signed out, or refused, each said as setup's warning
+ * says it. A read that fails leaves the call to say why.
+ * @param {string} cwd @param {string[]} api the call's arguments past `api`
+ * @param {{input?: string, held?: {read: string[], made: (read: string) => boolean}}} [opts]
  * @returns {string|null}
  */
-function setOnGithub(cwd, api, input) {
+function setOnGithub(cwd, api, { input, held } = {}) {
   const signedIn = spawnGh(['auth', 'status', '--hostname', HOST], { cwd });
   if (signedIn.error) {
     const missing = /** @type {NodeJS.ErrnoException} */ (signedIn.error).code === 'ENOENT';
     return missing ? `${GH} is not installed` : `${GH} could not run: ${signedIn.error.message}`;
   }
   if (signedIn.status !== 0) return `${GH} is not signed in to ${HOST}`;
+  if (held !== undefined) {
+    const read = spawnGh(['api', ...held.read], { cwd });
+    if (read.status === 0 && held.made(read.stdout)) return null;
+  }
   const made = spawnGh(['api', ...api], { cwd, input });
   if (made.error) return `${GH} could not run: ${made.error.message}`;
   if (made.status !== 0) return `${GH} refused it: ${(made.stderr || made.stdout || `exit ${made.status}`).trim()}`;

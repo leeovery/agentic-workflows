@@ -59,7 +59,9 @@
 //   then each landing keeps its task's own tree, which every check above
 //   reads, and a submodule's phase replayed onto a default branch that
 //   moved on makes commits no open could have named.
-// - Finish: every phase not yet merged, each after the one it stacks on.
+// - Finish: the phase merged next, the lowest not merged that stacks on no
+//   phase not merged; the seam makes each merge in turn (landing.cjs), and
+//   then every opened ref the unit has is dropped.
 //
 // Every refusal says the way on, its commands fitted to the repository as
 // it stands (landing-git.cjs).
@@ -69,6 +71,7 @@ const names = require('../../../domain/landing-names.cjs');
 const lg = require('../../../domain/landing-git.cjs');
 const { taskId, shownTask, sameTask } = require('../../../domain/task-id.cjs');
 const { GitError } = require('../../../kernel/git.cjs');
+const { messageOf } = require('../../../kernel/call.cjs');
 
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../../../domain/landing.cjs').LandingContext} LandingContext */
@@ -392,12 +395,7 @@ function refuseMoved(ctx, refs, tasks) {
     const at = opened.get(shownTask(ref));
     const branch = branchOf(refs, ref);
     if (at === undefined || branch === null || refs.get(branch) === at) continue;
-    const now = lg.short(/** @type {string} */ (refs.get(branch)));
-    const was = lg.short(at);
-    const way = lg.remedy(ctx.root, branch, lg.moveTo(branch, was, `put ${branch} back`), {
-      note: (kept) => `the change from ${was} to ${now}, on ${kept}, is a task of its own`,
-    });
-    throw new Error(`land: task ${shownTask(ref)}'s branch ${branch} has moved since it was opened at ${was}, to ${now} — ${way}`);
+    throw new Error(lg.movedSinceOpened(ctx.root, shownTask(ref), branch, at, /** @type {string} */ (refs.get(branch))));
   }
 }
 
@@ -487,11 +485,8 @@ function waitingOn(ctx, refs, stacks, stack) {
     + `${gone}open it again with \`land open ${ctx.unit} ${shown}\`, merge it with ${merge}, and land again`;
 }
 
-/** An error's message. @param {unknown} err */
-const errorText = (err) => (err instanceof Error ? err.message : String(err));
-
-/** What a failed git call said, as a refusal quotes it. @param {unknown} err */
-const gitSaid = (err) => lg.plain(errorText(err));
+/** What a failed git call said, on one line, as a refusal quotes it. @param {unknown} err */
+const errorSaid = (err) => lg.plain(messageOf(err));
 
 /** A commit a stack replays, with the tasks it lands. @typedef {{sha: string, message: string, name: string, tasks: string[]}} Replayed */
 
@@ -574,7 +569,7 @@ function mergeStack(ctx, refs, stacks, stack) {
       lg.moveBranch(root, into, intoTip, stack.tip);
     } catch (err) {
       if (!(err instanceof GitError)) throw err;
-      throw new Error(`land: ${into} could not move (${gitSaid(err)}), so nothing moved — clear what git names and land again`);
+      throw new Error(`land: ${into} could not move (${errorSaid(err)}), so nothing moved — clear what git names and land again`);
     }
     landed();
     return { ...merged, commit: stack.tip };
@@ -590,11 +585,11 @@ function mergeStack(ctx, refs, stacks, stack) {
       lg.moveBranch(root, stack.branch, tip, stack.tip);
     } catch (back) {
       throw new Error(
-        `land: ${into} could not move (${gitSaid(err)}), nor could ${stack.branch} be put back (${gitSaid(back)}) — `
+        `land: ${into} could not move (${errorSaid(err)}), nor could ${stack.branch} be put back (${errorSaid(back)}) — `
         + `${stack.branch} stands at the replay, ${lg.short(tip)}; \`git branch -f ${stack.branch} ${lg.short(stack.tip)}\` puts it back`,
       );
     }
-    throw new Error(`land: ${into} could not move (${gitSaid(err)}), so ${stack.branch} is put back and nothing moved — clear what git names and land again`);
+    throw new Error(`land: ${into} could not move (${errorSaid(err)}), so ${stack.branch} is put back and nothing moved — clear what git names and land again`);
   }
   landed();
   const why = `its change was on ${into} already`;
@@ -616,30 +611,17 @@ function mergePhase(ctx, phase) {
 }
 
 /**
- * Merge every phase not yet merged, lowest first, each after the one it
- * stacks on, and then drop every opened ref the unit has. Stops at the
- * first that cannot merge, saying which merged.
+ * The merge finish makes next: the lowest phase not merged that stacks on
+ * no phase not merged, else the lowest not merged — null where every one
+ * is.
  * @param {LandingContext} ctx
  */
-function finish(ctx) {
-  /** @type {({phase: number} & ReturnType<typeof mergeStack>)[]} */
-  const merged = [];
-  for (;;) {
-    const refs = lg.branches(ctx.root);
-    const stacks = stacksOf(ctx, refs);
-    const unmerged = [...stacks.values()].filter((stack) => !stack.merged).sort((a, b) => a.phase - b.phase);
-    if (unmerged.length === 0) {
-      forgetOpened(ctx, () => true);
-      return { into: ctx.into, phases: merged };
-    }
-    const next = unmerged.find(({ stackedOn }) => stackedOn === null) ?? unmerged[0];
-    try {
-      merged.push({ phase: next.phase, ...mergeStack(ctx, refs, stacks, next) });
-    } catch (err) {
-      if (merged.length === 0) throw err;
-      throw new Error(`${errorText(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
-    }
-  }
+function nextMerge(ctx) {
+  const refs = lg.branches(ctx.root);
+  const stacks = stacksOf(ctx, refs);
+  const unmerged = [...stacks.values()].filter((stack) => !stack.merged).sort((a, b) => a.phase - b.phase);
+  const next = unmerged.find(({ stackedOn }) => stackedOn === null) ?? unmerged[0];
+  return next === undefined ? null : { phase: next.phase, merge: () => mergeStack(ctx, refs, stacks, next) };
 }
 
 module.exports = {
@@ -652,5 +634,6 @@ module.exports = {
   open,
   chain,
   mergePhase,
-  finish,
+  nextMerge,
+  finished: (/** @type {LandingContext} */ ctx) => forgetOpened(ctx, () => true),
 };

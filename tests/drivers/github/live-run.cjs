@@ -14,7 +14,8 @@
 // does (`github-squash`), then lands three phases: a stack of three tasks
 // merged whole, a fix phase of one task, and a fix phase built on it,
 // landed at finish. Given a second repository, it then adds that one as
-// the submodule `ext`, its code pushed there and its squash default set,
+// the submodule `ext`, its code pushed there and its squash default set by
+// setup's yes again, which sets it on every repository nested since,
 // and lands two phases more across both (7.2.17): a stack of two tasks,
 // each moving the submodule's pointer, the lower first, and a fix phase of
 // two built on it, the first leaving the pointer alone and the second
@@ -80,6 +81,13 @@ function land(dir, args) {
   return answer;
 }
 
+/** The squash default set as setup's yes sets it, on every repository the project at `dir` lands in, the run stopped where it is not. @param {string} dir */
+function setSquash(dir) {
+  if (land(dir, ['github-squash', 'yes']).github_squash === 'set') return;
+  process.stderr.write('live-run: the squash default was not set — see the answer above\n');
+  process.exit(1);
+}
+
 /** Stop the run where a repository named holds a branch already. @param {string} repository */
 function refuseUnlessEmpty(repository) {
   const branches = JSON.parse(run('gh', ['api', `repos/${repository}/branches`], os.tmpdir()));
@@ -140,10 +148,10 @@ function landNested(dir, repository) {
   git(ext, ['commit', '-q', '-m', 'the ext']);
   git(ext, ['tag', BASE]);
   onGithub(ext, repository, ['refs/heads/main:refs/heads/main']);
-  run('gh', ['api', '--method', 'PATCH', `repos/${repository}`, '-f', 'squash_merge_commit_title=PR_TITLE', '-f', 'squash_merge_commit_message=PR_BODY'], os.tmpdir());
   git(dir, ['submodule', 'add', '-q', `https://github.com/${repository}.git`, 'ext']);
   git(dir, ['commit', '-q', '-m', 'chore: add ext']);
   git(dir, ['push', '-q', 'origin', 'main']);
+  setSquash(dir);
   const added = git(dir, ['rev-parse', 'main']).trim();
 
   /** A task cut in both repositories, from `from`, the project's moving the pointer to its change in ext. @param {string} shown @param {string} type @param {string} title @param {string} from */
@@ -185,10 +193,7 @@ process.on('exit', () => harness.cleanupFixture(dir));
 buildLanding(dir);
 setLandingDriver(dir, 'github');
 onGithub(dir, named, ['refs/heads/main:refs/heads/main', 'refs/heads/leeway-state:refs/heads/leeway-state']);
-if (land(dir, ['github-squash', 'yes']).github_squash !== 'set') {
-  process.stderr.write(`live-run: ${named}'s squash default was not set — see the answer above\n`);
-  process.exit(1);
-}
+setSquash(dir);
 
 land(dir, openArgs(card));
 land(dir, ['land', 'chain', 'pay', '1.1']);

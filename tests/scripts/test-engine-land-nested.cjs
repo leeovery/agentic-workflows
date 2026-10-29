@@ -13,8 +13,12 @@
 // moved where its checkout has it out, the submodule's checkout kept on its
 // default branch though the person's git recurses into submodules; a clone
 // with no default branch, the unit's branches in it holding nothing, passed
-// over; and a project that is a folder of a larger repository records its
-// submodule's pointer at the path from the repository's top (7.2.17). Git
+// over; a project that is a folder of a larger repository records its
+// submodule's pointer at the path from the repository's top (7.2.17); and a
+// pointer at a commit the submodule here does not hold refused, naming
+// both, before anything moves — a task's branch moving it there at the
+// open, the default branch pointing there at the merge — and landed once
+// the commit is fetched. Git
 // layer: the nested world (landing-world.cjs), built once and copied for
 // each test.
 // ---------------------------------------------------------------------------
@@ -27,7 +31,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip, initRepo, addSubmodule } = require('./engine-harness.cjs');
 const {
-  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld,
+  BASE, NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useNestedWorld, refusedMoving,
 } = require('./landing-world.cjs');
 
 const { rates, show } = NESTED_TASKS;
@@ -36,6 +40,9 @@ const project = useNestedWorld('engine-land-nested-', (dir) => setLandingDriver(
 /** Each landing a default branch gained past the base, oldest first: the task it lands and the commit it is. @param {string} dir @param {string} [into] */
 const landings = (dir, into = 'main') => git(dir, ['log', '--reverse', '--first-parent', '--format=%(trailers:key=Task,valueonly,separator=%x2C)%x1f%H', `${BASE}..${into}`])
   .split('\n').filter(Boolean).map((line) => line.split('\x1f'));
+
+/** The submodule's upstream, beside the project, its commits the submodule's checkout here lacks until fetched. @param {import('./landing-world.cjs').Nested} at */
+const upstreamOf = (at) => path.join(path.dirname(at.dir), NESTED.ext.folder);
 
 /** Each landing on the project's default branch, oldest first: the task it lands and where it points the submodule at `folder`. @param {string} dir @param {string} [folder] */
 const pointers = (dir, folder = NESTED.ext.folder) => landings(dir).map(([task, sha]) => [task, git(dir, ['rev-parse', `${sha}:${folder}`]).trim()]);
@@ -106,6 +113,42 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'chain', 'pay', '1.2'])), ['.']);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'phase', 'pay', '1'])), ['ext', 'lib', '.']);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
+  });
+
+  it('refuses, before anything opens, a task moving the submodule\'s pointer to a commit the submodule here does not hold — made in a clone of its own — naming both, and opens it once the commit is there', () => {
+    const at = project();
+    const task = track(at.dir, '2.2', 'feat', 'Elsewhere');
+    const elsewhere = commitFiles(upstreamOf(at), task.branch, 'main', { 'ext-elsewhere.txt': 'elsewhere\n' });
+    commitFiles(at.dir, task.branch, 'main', { 'elsewhere.txt': 'elsewhere\n' }, { gitlinks: { [NESTED.ext.folder]: elsewhere } });
+
+    assert.strictEqual(
+      refusedMoving(at.dir, openArgs(task)),
+      `land: task 2.2's branch ${task.branch} points ext at ${elsewhere.slice(0, 7)}, a commit ext here does not hold — commit the change in ext, on ${task.branch}, and open the task again`,
+    );
+    assert.strictEqual(git(at.ext, ['branch', '--list', task.branch]).trim(), '');
+    git(at.ext, ['fetch', '-q', upstreamOf(at), `${task.branch}:${task.branch}`]);
+    assert.deepStrictEqual(ok(at.dir, openArgs(task)).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['ext', '.']);
+  });
+
+  it('refuses, before anything merges, a phase whose default branch points the submodule at a commit the submodule here does not hold — the project pulled, the submodule not fetched — naming it, and lands once it is fetched', () => {
+    const at = project();
+    const pulled = commitFiles(upstreamOf(at), 'main', 'main', { 'ext-pulled.txt': 'pulled\n' });
+    commitFiles(at.dir, 'main', 'main', {}, { gitlinks: { [NESTED.ext.folder]: pulled }, message: 'bump ext' });
+    git(at.dir, ['reset', '-q']);
+    const task = track(at.dir, '2.2', 'feat', 'More ext');
+    const more = commitFiles(at.ext, task.branch, 'main', { 'ext-more.txt': 'more\n' });
+    commitFiles(at.dir, task.branch, 'main', { 'more.txt': 'more\n' }, { gitlinks: { [NESTED.ext.folder]: more } });
+    ok(at.dir, openArgs(task));
+    const ext = tip(at.ext, 'main');
+
+    assert.strictEqual(
+      refuses(at.dir, ['land', 'phase', 'pay', '2']).error,
+      `land: main points ext at ${pulled.slice(0, 7)}, a commit ext here does not hold — fetch it into ext, as \`git -C ext fetch\` does where its remote holds it, and land again`,
+    );
+    assert.strictEqual(tip(at.ext, 'main'), ext);
+    git(at.ext, ['fetch', '-q', upstreamOf(at), 'main']);
+    ok(at.dir, ['land', 'phase', 'pay', '2']);
+    assert.deepStrictEqual(pointers(at.dir).slice(-1), [['pay-2-2', tip(at.ext, 'main')]]);
   });
 
   it('records the pointer of a submodule in a project that is a folder of a larger repository at its path from the repository\'s top (7.2.17)', () => {

@@ -428,7 +428,7 @@ describe('pipeline simulation: sessions', () => {
     const answered = sim.run(['boot']);
     assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer], [false, false]);
     sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
-    sim.refuses(['github-squash', 'yes'], /an answer is recorded once/);
+    sim.refuses(['github-squash', 'no'], /only a yes is taken again/);
   });
 
   // -------------------------------------------------------------------------

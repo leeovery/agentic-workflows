@@ -100,7 +100,7 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
 });
 
 describe('the squash default (7.2.18)', () => {
-  it('squashing as GitHub does unless told: a lone pull request merges under its title and " (#N)", and a stack is refused naming the setting while either half is not the pull request\'s — merged once it is set', () => {
+  it('squashing as GitHub does unless told: a lone pull request merges under its title and " (#N)", and a stack is refused naming the setting and the verb that sets it while either half is not the pull request\'s — merged once it is set', () => {
     const dir = project();
     onGithub(dir, (state) => {
       state.squash = { ...GITHUB_SQUASH };
@@ -111,7 +111,7 @@ describe('the squash default (7.2.18)', () => {
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [{ subject: 'fix(pay): Round totals (#4)', task: 'pay-2-1', paths: ['round.txt'] }]);
 
     const refusal = 'land: acme/portal does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
-      + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests, and land again';
+      + 'set that squash default on every repository the project lands in on GitHub, as `engine github-squash yes` does, and land again';
     for (const squash of [GITHUB_SQUASH, { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'COMMIT_MESSAGES' }, { squash_merge_commit_title: 'COMMIT_OR_PR_TITLE', squash_merge_commit_message: 'PR_BODY' }]) {
       onGithub(dir, (state) => {
         state.squash = { ...squash };

@@ -22,7 +22,6 @@ require('../../scripts/hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
 
 const { git, tip } = require('../../scripts/engine-harness.cjs');
@@ -73,11 +72,11 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     const opened = beside.map((task) => tipOnGithub(at.dir, task.branch));
     const held = path.join(path.dirname(at.dir), 'held');
     git(at.dir, ['worktree', 'add', '-q', held, page.branch]);
-    fs.writeFileSync(path.join(held, 'page.txt'), 'changed\n');
-    assert.match(refused(at.dir, ['land', 'phase', 'pay', '5']), new RegExp(`^land: ${page.branch} is checked out at ${held}, with changes not committed: page\\.txt, so nothing moved — .+ \\(phase 5 merged in ext before it\\)$`));
+    git(held, ['update-index', '--cacheinfo', `160000,${moved},${NESTED.ext.folder}`]);
+    assert.match(refused(at.dir, ['land', 'phase', 'pay', '5']), new RegExp(`^land: ${page.branch} is checked out at ${held}, with changes not committed: ext, so nothing moved — .+ \\(phase 5 merged in ext before it\\)$`));
     assert.deepStrictEqual(beside.map((task) => tipOnGithub(at.dir, task.branch)), opened);
 
-    git(held, ['checkout', '--', 'page.txt']);
+    git(held, ['reset', '-q', '--', NESTED.ext.folder]);
     assert.match(refused(at.dir, ['land', 'phase', 'pay', '5'], { GH_STUB_FAULT: 'unmergeable@stack merge' }), /^land: gh could not merge phase 5's stack: /);
     const pushed = beside.map((task) => tipOnGithub(at.dir, task.branch));
     assert.deepStrictEqual(pushed.map((made) => git(top, ['log', '-1', '--format=%s', made]).trim()), [`chore(pay): merge main into ${page.branch}`, `chore(pay): merge ${page.branch} into ${again.branch}`]);

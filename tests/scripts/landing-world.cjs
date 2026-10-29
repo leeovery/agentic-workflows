@@ -18,8 +18,9 @@
 // takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`) —
 // a nested conformance suite through its driver's side (`nestedConformance`)
 // — reads a verb's answer for the project's own repository (`own`), checks a
-// refusal moved nothing in the repository (`refusedMoving`), and follows
-// the remedy it names (`followRemedy`); the
+// refusal moved nothing in the repository (`refusedMoving`), as an answer
+// finding its work done already does (`alreadyMoving`), and follows the
+// remedy it names (`followRemedy`); the
 // remedy table (landing-remedies.cjs) is followed a row a test, in a state
 // of the person's worktrees, or of their config (`personState`,
 // `followed`), against the way on it should read there (`way`), every
@@ -390,6 +391,19 @@ function refusedMoving(dir, args) {
   const { error } = refuses(dir, args);
   assert.deepStrictEqual(repositoryAt(dir), before, `${args.join(' ')} moved something`);
   return error;
+}
+
+/**
+ * A call's answer where it finds its work done already, every branch, HEAD
+ * and the checkout at `dir` where they were before it.
+ * @param {string} dir @param {string[]} args
+ * @returns {Record<string, any>} the answer, `already` held
+ */
+function alreadyMoving(dir, args) {
+  const before = repositoryAt(dir);
+  const answer = ok(dir, args);
+  assert.deepStrictEqual([answer.already, repositoryAt(dir)], [true, before], `${args.join(' ')} found its work undone, or moved something`);
+  return answer;
 }
 
 /** A command's words as the shell splits and unquotes them. @param {string} command @returns {string[]} */
@@ -808,6 +822,6 @@ function pathsOn(dir, branch) {
 
 module.exports = {
   UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, pathsOn, useLandingWorld, useNestedWorld, nestedConformance,
-  refusedMoving, commandsOf, followRemedy,
+  refusedMoving, alreadyMoving, commandsOf, followRemedy,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };
