@@ -301,16 +301,18 @@ function checkLines(root, notes) {
  * last line is unfinished. Answers the entry as written.
  * @param {string} root @param {Record<string, unknown>} fields
  * @param {string[]} notes what a landing the check finished said, pushed to
+ * @param {string} [id] the entry's id, minted by the writer where it names
+ * the entry before the line is written
  * @returns {Record<string, unknown>}
  */
-function appendEntry(root, fields, notes) {
+function appendEntry(root, fields, notes, id = newId()) {
   const assigned = ASSIGNED.find((name) => Object.hasOwn(fields, name));
   if (assigned !== undefined) throw new Error(`a ledger entry's ${assigned} is the engine's to give — nothing appended`);
   return withStateLock(root, () => {
     checkLedger(root, notes);
     const file = ledgerFile(root);
     if (fs.existsSync(file) && !endsWithNewline(file)) throw new Error(`${file} ends in an unfinished line — nothing appended`);
-    const entry = validEvent({ ...fields, v: LEDGER_VERSION, id: newId(), at: isoNow() });
+    const entry = validEvent({ ...fields, v: LEDGER_VERSION, id, at: isoNow() });
     appendLine(file, `${JSON.stringify(entry)}\n`);
     return entry;
   });

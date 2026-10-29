@@ -15,10 +15,16 @@
 // of its own, a torn last line cut away there too — for its next record or
 // a boot, which land the waiting events as read, leave a newer release's
 // waiting, drop any other line, and skip a folder another boot emptied; or
-// lost with no session to keep it in; the read, which skips and counts
-// what it cannot read, reads an event once however often it landed, and
-// never stops; and the verdict queue's seam over it (ledger-verdicts.cjs),
-// each entry's latest verdict by its time.
+// lost with no session to keep it in; an event kept ahead of its entry,
+// landed once its ledger holds the entry, let go where a landing holding
+// that state's writer lock finds it never came, left waiting from another
+// state, without the lock, or in a line of a version this engine does not
+// write, and dropped where its line awaits no ledger and entry, no bad line
+// stopping another; the read, which skips and counts what it cannot read,
+// reads an event once however often it landed, and never stops; and the
+// verdict queue's seam over it (ledger-verdicts.cjs), each entry's latest
+// verdict by its time, the log's and every conversation's waiting verdicts
+// read.
 //
 // Layer: process — races between processes, on barriers: appends from two
 // at once, and an event kept while a boot's pass or a record lands what
@@ -34,7 +40,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { contend, lockAttempts } = require('./engine-harness.cjs');
+const { NO_SPACE, contend, failingTrustAppends, lockAttempts } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -46,7 +52,8 @@ const { conversationDir, isMarked, markConversation } = require(path.join(SCRIPT
 const { isId, newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { SCHEMA, trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { trustLog } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
-const { TRUST_LOG, record, appendWaiting, readTrustLog } = require(TRUST_LOG_MODULE);
+const { TRUST_LOG, newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog } = require(TRUST_LOG_MODULE);
+const { withWriterLock } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 /** An id of the ledger's shape, spelled from `word`. @param {string} word */
 const idOf = (word) => word.padEnd(21, '0');
@@ -330,7 +337,6 @@ describe('appending', () => {
 });
 
 describe('an append that fails (16.13.3, 16.S74)', () => {
-  const ENOSPC = 'ENOSPC: no space left on device, write';
   const WAITS = ' — the event waits in the conversation, appended first by its next record';
 
   /** Where the conversation keeps what it could not append. */
@@ -347,28 +353,14 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
     }
   }
 
-  /**
-   * Fail every append to the log, as a full disk does, after writing it
-   * where it `lands`, until the answered mock is restored.
-   * @param {import('node:test').TestContext} t @param {boolean} [lands]
-   */
-  function failingAppends(t, lands = false) {
-    const append = fs.appendFileSync;
-    return t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
-      if (file !== logPath()) return append(file, data);
-      if (lands) append(file, data);
-      throw Object.assign(new Error(ENOSPC), { code: 'ENOSPC' });
-    });
-  }
-
   it('is a warning, the events of two failures waiting in the conversation in order; its next record appends them first, and they wait no more (16.S74)', (t) => {
     const dir = project('fumi');
     inConversation(dir, () => {
-      const failing = failingAppends(t);
+      const failing = failingTrustAppends(t);
       /** @type {string[]} */
       const warnings = [];
       const waiting = [record('call', SAMPLES.call, from(dir, warnings)), record('verdict', SAMPLES.verdict, from(dir, warnings))];
-      assert.deepStrictEqual(warnings, Array(2).fill(`the trust log was not written: ${ENOSPC}${WAITS}`));
+      assert.deepStrictEqual(warnings, Array(2).fill(`the trust log was not written: ${NO_SPACE}${WAITS}`));
       assert.deepStrictEqual([logText(), fs.readFileSync(waitingPath(), 'utf8')], ['', lines(...waiting)]);
 
       failing.mock.restore();
@@ -383,7 +375,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
   it('appended again after it landed but failed, is read once (16.S74)', (t) => {
     const dir = project('fumi');
     inConversation(dir, () => {
-      const failing = failingAppends(t, true);
+      const failing = failingTrustAppends(t, true);
       const landed = record('call', SAMPLES.call, from(dir));
       failing.mock.restore();
       const next = record('verdict', SAMPLES.verdict, from(dir));
@@ -396,7 +388,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
   it('lands the waiting events this engine reads as parsed, a duplicate key\'s first text gone; leaves a newer release\'s line waiting, never lost; and drops any other line with a warning saying why (16.13.2)', (t) => {
     const dir = project('fumi');
     inConversation(dir, () => {
-      const failing = failingAppends(t);
+      const failing = failingTrustAppends(t);
       const waiting = record('call', SAMPLES.call, from(dir));
       failing.mock.restore();
       const duplicate = { ...waiting, id: idOf('Duplicate') };
@@ -427,11 +419,11 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
     const dir = path.join(folder(), 'setting-up');
     pinStateRoot(dir, path.join(dir, '.leeway'));
     inConversation(dir, () => {
-      const failing = failingAppends(t);
+      const failing = failingTrustAppends(t);
       /** @type {string[]} */
       const warnings = [];
       const waiting = record('gate', SAMPLES.gate, from(dir, warnings));
-      assert.deepStrictEqual(warnings, [`the trust log was not written: ${ENOSPC}${WAITS}`]);
+      assert.deepStrictEqual(warnings, [`the trust log was not written: ${NO_SPACE}${WAITS}`]);
       assert.strictEqual(fs.readFileSync(waitingPath(), 'utf8'), lines(waiting));
       assert.ok(!isMarked(SESSION), 'the folder is the trust log\'s, the conversation unmarked');
 
@@ -445,7 +437,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
   it('a line a keeper killed mid-append left unterminated in the conversation\'s file is cut away before the next event waits there, so it swallows none (16.S74)', (t) => {
     const dir = project('fumi');
     inConversation(dir, () => {
-      const failing = failingAppends(t);
+      const failing = failingTrustAppends(t);
       const first = record('call', SAMPLES.call, from(dir));
       fs.appendFileSync(waitingPath(), '{"v":1,"id":"Torn');
       const second = record('verdict', SAMPLES.verdict, from(dir));
@@ -481,7 +473,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
         '    return text;',
         '  };',
         '  const warnings = [];',
-        `  const id = role === 'boot' ? (appendWaiting(warnings), null) : record('call', ${JSON.stringify(SAMPLES.call)}, { cwd, warnings }).id;`,
+        `  const id = role === 'boot' ? (appendWaiting(cwd, warnings), null) : record('call', ${JSON.stringify(SAMPLES.call)}, { cwd, warnings }).id;`,
         '  report({ id, warnings });',
         '} else {',
         // The keeper's log is out of reach, so its event goes straight to waiting.
@@ -498,7 +490,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
         '}',
       ].join('\n');
 
-      const failing = failingAppends(t);
+      const failing = failingTrustAppends(t);
       const waited = inConversation(dir, () => record('call', SAMPLES.call, from(dir)));
       failing.mock.restore();
       process.env.CLAUDE_CODE_SESSION_ID = SESSION;
@@ -513,14 +505,14 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
       assert.ok(keeper.taken > 0, 'the keeper never found the lock held: the two never met');
       assert.deepStrictEqual(landed.warnings, []);
-      appendWaiting([]);
+      appendWaiting(dir, []);
       assert.deepStrictEqual(readAll().events.map((event) => event.id), [waited.id, ...(landed.id === null ? [] : [landed.id]), keeper.id]);
     });
   }
 
   it('a boot\'s pass skips a conversation whose waiting events another boot landed, its folder tidied away, while it waited for the lock — no warning — and lands the rest', (t) => {
     const dir = project('fumi');
-    const failing = failingAppends(t);
+    const failing = failingTrustAppends(t);
     const [, kept] = ['sess-gone', 'sess-kept'].map((session) => inConversation(dir, () => record('call', SAMPLES.call, from(dir)), session));
     failing.mock.restore();
     const link = fs.linkSync;
@@ -531,7 +523,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
     /** @type {string[]} */
     const warnings = [];
 
-    appendWaiting(warnings);
+    appendWaiting(dir, warnings);
 
     assert.deepStrictEqual(warnings, []);
     assert.strictEqual(logText(), lines(kept));
@@ -557,14 +549,74 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
   it('with no session id, so no conversation to keep it in, is a warning that the event is lost', (t) => {
     const dir = project('fumi');
-    failingAppends(t);
+    failingTrustAppends(t);
     /** @type {string[]} */
     const warnings = [];
 
     record('call', SAMPLES.call, from(dir, warnings));
 
-    assert.deepStrictEqual(warnings, [`the trust log was not written: ${ENOSPC} — the event is lost, with no conversation to keep it in`]);
+    assert.deepStrictEqual(warnings, [`the trust log was not written: ${NO_SPACE} — the event is lost, with no conversation to keep it in`]);
     assert.ok(!fs.existsSync(path.join(folder(), 'config', 'conversations')));
+  });
+
+  it('keeps an event ahead of its entry until a landing judges it by the ledger it waits on: one from another state leaves it, one from its own lands it once the entry is there, and one holding that state\'s writer lock lets go of it where the entry never came', () => {
+    const dir = project('fumi');
+    const elsewhere = project('aircon', { project_id: idOf('Aircon') });
+    const [root, theirs] = [dir, elsewhere].map((at) => path.join(at, '.leeway'));
+    const [appended, never] = ['Appended', 'Never'].map(idOf);
+    fs.writeFileSync(path.join(root, '.ledger.jsonl'), `${JSON.stringify({ id: appended })}\n`);
+    /** @type {string[]} */
+    const warnings = [];
+    const kept = inConversation(dir, () => [appended, never].map((entry) => {
+      const event = newEvent('call', { ...SAMPLES.call, entry }, dir);
+      keepEvent(event, root, entry);
+      return event;
+    }));
+    const waiting = () => fs.readFileSync(waitingPath(), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line).event.entry);
+
+    inConversation(elsewhere, () => withWriterLock(theirs, () => landKept(elsewhere, warnings)));
+    assert.deepStrictEqual([logText(), waiting()], ['', [appended, never]]);
+    inConversation(dir, () => landKept(dir, warnings));
+    assert.deepStrictEqual([logText(), waiting()], [lines(kept[0]), [never]]);
+    inConversation(dir, () => withWriterLock(root, () => landKept(dir, warnings)));
+
+    assert.deepStrictEqual([logText(), fs.existsSync(waitingPath()), warnings], [lines(kept[0]), false, []]);
+  });
+
+  it('drops, with a warning, a kept line of its version whose awaits names no ledger and entry — null, none, a string — and lands the rest of its file and every conversation after it in boot\'s pass', () => {
+    const dir = project('fumi');
+    const [event, after, later] = ['gate', 'verdict', 'reversal'].map((type) => newEvent(type, SAMPLES[/** @type {keyof typeof SAMPLES} */ (type)], dir));
+    const [bad, next] = ['session-a', 'session-b'].map((session) => path.join(conversationDir(session), 'trust-pending.jsonl'));
+    const awaits = [null, {}, 'the note window'];
+    for (const file of [bad, next]) fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(bad, lines(...awaits.map((awaited) => ({ v: 1, awaits: awaited, event })), after));
+    fs.writeFileSync(next, lines(later));
+    /** @type {string[]} */
+    const warnings = [];
+
+    appendWaiting(dir, warnings);
+
+    assert.deepStrictEqual([logText(), [bad, next].map((file) => fs.existsSync(file))], [lines(after, later), [false, false]]);
+    assert.deepStrictEqual(warnings, awaits.map((awaited) => `a line waiting for the trust log in ${bad} was dropped: what it awaits, ${JSON.stringify(awaited)}, is no ledger and entry`));
+  });
+
+  it('leaves waiting, never dropped, a kept line of a version it does not write — none, a later one — and one holding a newer release\'s event, though its entry is there and the writer lock held; a landing that changes nothing leaves the file as it was', () => {
+    const dir = project('fumi');
+    const root = path.join(dir, '.leeway');
+    const entry = idOf('Appended');
+    fs.writeFileSync(path.join(root, '.ledger.jsonl'), `${JSON.stringify({ id: entry })}\n`);
+    const event = newEvent('call', { ...SAMPLES.call, entry }, dir);
+    const awaits = { ledger: root, entry };
+    const waiting = lines({ after: awaits, event }, { v: 2, awaits, event }, { v: 1, awaits, event: { ...event, v: 2 } });
+    fs.mkdirSync(path.dirname(waitingPath()), { recursive: true });
+    fs.writeFileSync(waitingPath(), waiting);
+    const was = fs.statSync(waitingPath()).ino;
+    /** @type {string[]} */
+    const warnings = [];
+
+    appendWaiting(dir, warnings);
+
+    assert.deepStrictEqual([logText(), fs.readFileSync(waitingPath(), 'utf8'), fs.statSync(waitingPath()).ino, warnings], ['', waiting, was, []]);
   });
 });
 
@@ -626,5 +678,35 @@ describe('the verdict queue\'s seam (16.10.9, 16.10.6)', () => {
     ));
 
     assert.deepStrictEqual(trustLog.verdicts(path.join(dir, '.leeway')), new Set([kept, tied]));
+  });
+
+  it('breaks a tie between the log and what a conversation keeps waiting by the order read, the waiting read after: a skip waiting after a logged loss leaves the departure waiting, a fix waiting after a logged skip judges it', () => {
+    const dir = project('fumi');
+    const [skipWaits, fixWaits] = ['SkipWaits', 'FixWaits'].map(idOf);
+    /** @param {string} entry @param {string} verdict */
+    const given = (entry, verdict) => trustEvent('verdict', { id: newId(), at: '2026-10-28T10:00:03Z', project: PROJECT_ID, project_name: 'fumi', model: null, session: null }, { entry, verdict, point: 'queue' });
+    const waiting = path.join(conversationDir(SESSION), 'trust-pending.jsonl');
+    fs.mkdirSync(path.dirname(waiting), { recursive: true });
+    fs.writeFileSync(logPath(), lines(given(skipWaits, 'loss'), given(fixWaits, 'skip')));
+    fs.writeFileSync(waiting, lines(given(skipWaits, 'skip'), given(fixWaits, 'fix')));
+
+    assert.deepStrictEqual(trustLog.verdicts(path.join(dir, '.leeway')), new Set([fixWaits]));
+  });
+
+  it('holds another project\'s verdict on an entry of the same id, logged or waiting in a conversation, as none of this project\'s', (t) => {
+    const dir = project('fumi');
+    const elsewhere = project('aircon', { project_id: idOf('Aircon') });
+    const waited = idOf('Waited');
+    record('verdict', { entry: ENTRY, verdict: 'loss', point: 'queue' }, from(elsewhere));
+    process.env.CLAUDE_CODE_SESSION_ID = SESSION;
+    try {
+      const failing = failingTrustAppends(t);
+      record('verdict', { entry: waited, verdict: 'fix', point: 'queue' }, from(elsewhere));
+      failing.mock.restore();
+    } finally {
+      delete process.env.CLAUDE_CODE_SESSION_ID;
+    }
+
+    assert.deepStrictEqual([trustLog.verdicts(path.join(dir, '.leeway')), trustLog.verdicts(path.join(elsewhere, '.leeway'))], [new Set(), new Set([ENTRY, waited])]);
   });
 });

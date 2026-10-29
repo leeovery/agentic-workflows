@@ -57,6 +57,23 @@
 //   and who moved whom where the departure rule settles it; a decision's
 //   being unchecked, where the one-decision check could not judge it
 //   (ledger-one-decision.cjs).
+// - What the trust log is told (16.13.3, 16.13.4): Claude's answer — its
+//   decision, or its replacement of a decision, the person's among them
+//   (5.8.19) — logs a call, naming the entry, its kind, label and sort left
+//   for the labeller and the decision point to fill; the person's
+//   replacement the departure rule holds standing over a lean the entry it
+//   replaces held logs a reversal, naming the entry it reverses (16.12.1,
+//   ledger-verdicts.cjs). Any other write logs nothing. The event is built
+//   in the command that writes its entry, under the writer lock, and kept
+//   waiting in the conversation ahead of its entry before the ledger's
+//   append, so what refuses it writes nothing, a project manifest holding
+//   no project_id among it; it lands after the ledger's append and before
+//   its commit, the trust log's own lock taken inside the writer's, where
+//   nothing but that append can fail: a failure is a warning, the event
+//   waiting on. A command killed between the two leaves it waiting for the
+//   conversation's next record or a boot, which lands it once the entry is
+//   in the ledger, and lets it go where the entry never came, so it is
+//   neither lost nor doubled (trust-log.cjs).
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -66,11 +83,13 @@
 //   refuse, and it is judged, one rule or several, by the separate Claude
 //   call, which no peer waits on either. Under the lock the ledger is folded
 //   (ledger-fold.cjs), the place's liveness read again, every link resolved
-//   and its currency and relations checked again, the event appended and the
-//   ledger committed, so no peer's write or lifecycle change lands between
-//   the check and the append. The answer is made once the lock is released:
-//   the entry's short id, the commit, and as warnings a push that failed and
-//   what a landing finished on the way said, which a refusal carries too.
+//   and its currency and relations checked again, the trust log's event
+//   built and kept, the entry appended, the event landed in the trust log,
+//   and the ledger committed, so no peer's write or lifecycle change lands
+//   between the check and the append. The answer is made once the lock is
+//   released: the entry's short id, the commit, and as warnings a push that
+//   failed and what a landing finished on the way said, which a refusal
+//   carries too.
 //   Then, the lock released, the knowledge base's copies are rendered
 //   against the ledger and indexed (ledger-copies.cjs), a failure a warning
 //   on an entry that stands (22.6.15).
@@ -82,15 +101,16 @@ const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
-const { shortId, resolveId } = require('./ledger-ids.cjs');
+const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { derivedMove, movedRefusal } = require('./ledger-verdicts.cjs');
+const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
 const { heldAgainst } = require('./ledger-affected.cjs');
+const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -154,9 +174,10 @@ const { heldAgainst } = require('./ledger-affected.cjs');
  * it is made, the session, each flag's values by field, the kind of entry it
  * writes — null for an event that is no entry — its content, checked in
  * that kind's shape, and, for a decision, whether it lands unchecked: true
- * until the one-decision check finds it holds one rule; and the ledger as it
- * stood before the lock, folded the first time a step reads it.
- * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, before: () => Folded}} Request
+ * until the one-decision check finds it holds one rule; the trust log's
+ * event it logs, or null; and the ledger as it stood before the lock,
+ * folded the first time a step reads it.
+ * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, logs: TrustEvent|null, before: () => Folded}} Request
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -651,6 +672,31 @@ function contentFields(verb, write, given, replaced) {
 }
 
 /**
+ * The trust log's events a write logs, each one's fields from the entry it
+ * is about to append, its id minted: a call names the entry, a reversal the
+ * entry it reverses too.
+ */
+const TRUST_EVENTS = Object.freeze({
+  call: (/** @type {Record<string, unknown>} */ { id }) => ({ entry: id, kind: null, label: null, sort: null }),
+  reversal: (/** @type {Record<string, unknown>} */ { id, replaces }) => ({ entry: id, reverses: replaces }),
+});
+
+/** @typedef {keyof typeof TRUST_EVENTS} TrustEvent */
+
+/**
+ * The trust log's event a write logs: a call for Claude's answer, a
+ * decision or a decision's replacement; a reversal for the person's
+ * replacement reversing the decision it replaces; null for any other.
+ * @param {EntryKind|null} kind @param {Record<string, unknown>} content @param {string|null} reason @param {IdFacts|null} replaced
+ * @returns {TrustEvent|null}
+ */
+function trustEventOf(kind, content, reason, replaced) {
+  if (kind !== 'decision') return null;
+  if (content.by === 'claude') return 'call';
+  return reverses(content, reason, replaced) ? 'reversal' : null;
+}
+
+/**
  * A write as asked, read whole and checked before the lock: its argv, where
  * it is made, the session, and its content in the shape of the kind it
  * writes, a replacement reading the kind it replaces from the ledger.
@@ -683,11 +729,12 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const fields = contentFields(verb, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
   const unmoved = movedRefusal(fields, reason, replaced);
   if (unmoved !== null) throw new Error(`ledger ${verb}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
+  const kind = replaced === null ? entryKind({ event: write.event }) : replaced.kind;
   return {
-    verb, write, at, session, given,
-    kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
+    verb, write, at, session, given, kind,
     content: fields,
     unchecked: true,
+    logs: trustEventOf(kind, fields, reason, replaced),
     before,
   };
 }
@@ -744,19 +791,23 @@ function ledgerMessage(unit, event, id, topic) {
 
 /**
  * Under the writer lock: the ledger folded, the places the write names read
- * live again, the event appended, and the ledger committed to the state
- * branch, a commit git refuses a warning.
+ * live again, the trust log's event built and kept waiting in the
+ * conversation, the entry appended, the event landed in the trust log, and
+ * the ledger committed to the state branch, a commit git refuses a warning.
  * Answers the entry as written and its short id.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {{entry: Record<string, unknown>, id: string, outcome: {committed: string|null, failed: boolean}}}
  */
 function land(cwd, request, warnings) {
-  const { verb, at, write, given } = request;
+  const { verb, at, write, given, logs } = request;
   const read = readNow(at, warnings);
   checkPlaceLive(verb, at, read.live);
   write.checkLive(at, given, read.live);
-  const entry = appendEntry(at.root, eventOf(request, read), warnings);
-  const id = /** @type {string} */ (entry.id);
+  const fields = eventOf(request, read);
+  const id = newId();
+  if (logs !== null) keepEvent(newEvent(logs, TRUST_EVENTS[logs]({ ...fields, id }), cwd), at.root, id);
+  const entry = appendEntry(at.root, fields, warnings, id);
+  if (logs !== null) landKept(cwd, warnings);
   return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings) };
 }
 

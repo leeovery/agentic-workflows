@@ -2,11 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the ledger's read verbs (5.8.3, 6.1.4) — a record, a topic's
-// map, the product record, what a replacement affects (ledger-affected.cjs),
-// Claude's calls since the person last looked (ledger-since.cjs) and the
-// verdict queue (ledger-verdicts.cjs) — each a projection of the ledger
-// worked out when read, never kept (5.8.2), answered as JSON; what the
-// person sees of them is drawn later.
+// map, the product record, what a replacement affects (ledger-affected.cjs)
+// and Claude's calls since the person last looked (ledger-since.cjs) — each
+// a projection of the ledger worked out when read, never kept (5.8.2),
+// answered as JSON; what the person sees of them is drawn later. The
+// verdict queue is read the same way (verdict.cjs).
 //
 // - Each read folds the ledger in one streamed pass (ledger-fold.cjs) and
 //   reads again the lines of the entries it shows alone, from the file the
@@ -46,7 +46,6 @@ const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, foldedBeneat
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
-const { answerVerdicts } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').MapRow} MapRow */
@@ -222,7 +221,6 @@ const READS = Object.freeze({
   affected: { usage: 'ledger affected <work-unit> [<topic>]', names: [1, 2], answer: answerAffected },
   since: { usage: 'ledger since <work-unit> [<topic>]', names: [1, 2], answer: answerSince },
   shown: { usage: 'ledger shown <work-unit> [<topic>]', names: [1, 2], answer: answerShown },
-  verdicts: { usage: 'ledger verdicts', names: [0], answer: answerVerdicts },
 });
 
 /** The read verbs' usage, a line each. */
@@ -246,9 +244,22 @@ function namedPlace(root, verb, args) {
 }
 
 /**
- * `ledger <record|map|product|affected|since|shown|verdicts>`: the
- * projection read, as JSON, and as warnings what a landing its check
- * finished said, and what the read said on the way.
+ * `answer`, given the shower over the ledger at `root`, folded in one
+ * streamed pass and read against liveness; what a landing its check
+ * finished said pushed to `warnings`.
+ * @template T
+ * @param {string} root @param {string[]} warnings @param {(shower: Shower) => T} answer
+ * @returns {T}
+ */
+function readShown(root, warnings, answer) {
+  const live = liveness(root);
+  return readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answer(showerOf({ facts, live }, entryAt)));
+}
+
+/**
+ * `ledger <record|map|product|affected|since|shown>`: the projection read,
+ * as JSON, and as warnings what a landing its check finished said, and what
+ * the read said on the way.
  * @param {string} cwd @param {string} verb @param {string[]} args
  * @returns {Record<string, unknown>}
  */
@@ -258,13 +269,11 @@ function readLedgerVerb(cwd, verb, args) {
   try {
     const root = stateRoot(cwd);
     const place = namedPlace(root, verb, args);
-    const live = liveness(root);
-    const answerOf = READS[verb].answer;
-    const answer = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answerOf(showerOf({ facts, live }, entryAt), place, root, warnings));
+    const answer = readShown(root, warnings, (shower) => READS[verb].answer(shower, place, root, warnings));
     return warnings.length > 0 ? { ...answer, warnings } : answer;
   } catch (err) {
     throw carrying(err, warnings);
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, showerOf };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown };

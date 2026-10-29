@@ -176,6 +176,21 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.ok(!fs.existsSync(path.join(dir, '.lock')));
   });
 
+  it('holdsWriterLock answers whether this process holds the writer lock: under it, nested, and after the inner hold lets go; never before it, after the outer hold lets go, or after a throw let it go', () => {
+    const held = () => io.holdsWriterLock(dir);
+    const seen = [held()];
+    io.withWriterLock(dir, () => {
+      seen.push(held());
+      io.withWriterLock(dir, () => seen.push(held()));
+      seen.push(held());
+    });
+    seen.push(held());
+    assert.throws(() => io.withWriterLock(dir, () => { throw new Error('the verb failed'); }), /the verb failed/);
+    seen.push(held());
+
+    assert.deepStrictEqual(seen, [false, true, true, true, false, false]);
+  });
+
   it('withWorkUnitLock takes over a dead holder\'s claim and proceeds', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
     const lock = path.join(dir, '.lock');
@@ -564,6 +579,7 @@ const EXEMPT_CALLS = [
   ['topic', 'mailbox', 'payments', 'research', 'auth-flow'],
   ['topic', 'incorporations', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
+  ['verdict', 'queue'],
   ['session', 'label', 'payments'],
   ['session', 'repair'],
   ['session', 'cleanup', 'sess-1'],

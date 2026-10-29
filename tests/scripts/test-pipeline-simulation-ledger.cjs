@@ -220,9 +220,27 @@ describe('pipeline simulation: ledger', () => {
     // The verdict queue: nothing waits while every answer is Claude's; the
     // person's replacement of Claude's own call, for a mistake, stands over
     // its lean and waits on a verdict.
-    assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures, []);
+    assert.deepStrictEqual(sim.run(['verdict', 'queue']).departures, []);
     const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
       { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
-    assert.deepStrictEqual(ids(sim.run(['ledger', 'verdicts']).departures), [departed]);
+    assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
+  });
+
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — and Claude\'s call replacing it each land as a line of the trust log in the command that writes it', () => {
+    const wu = 'fumi';
+    mappedEpic(sim, wu, ['note-window']);
+    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    const note = `${wu}.discussion.note-window`;
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
+    const ledger = (args, content) => sim.run(['ledger', ...args], null, JSON.stringify(content)).id;
+
+    const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
+    const call = ledger(['decide', note, '--answers', question], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
+    const reversal = ledger(['replace', note, '--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['a panel'], text: 'A document window.', why: 'Notes are documents.' });
+    sim.run(['verdict', 'give', reversal, 'skip', '--at', 'decided']);
+    sim.run(['verdict', 'queue']);
+    sim.run(['verdict', 'give', reversal, 'loss', '--at', 'queue']);
+    ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
   });
 });

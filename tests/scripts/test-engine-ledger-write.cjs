@@ -11,7 +11,8 @@
 // the writer lock taken by the verb itself, a refusal it needs no ledger for
 // answering while a peer holds it; two processes appending at once; and a
 // ledger changed outside the engine stopping the next write, showing the
-// line found.
+// line found. What the writes tell the trust log is
+// test-engine-ledger-trust.cjs's.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there. A `git` first on PATH
@@ -281,7 +282,7 @@ describe('content and links', () => {
     refused('hold', NOTE, ['--entry', question], {}, /^ledger hold needs --after <id> — Usage: engine ledger hold <work-unit>\.<phase>\[\.<topic>\] --entry <id> --after <id>/);
     refuses(dir, ['ledger', 'ask'], { env: SESSION, stdin: JSON.stringify(content) });
     refused('ask', NOTE, [SPACE], content, /^Usage: engine ledger ask /);
-    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|affected\|since\|shown\|verdicts\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger shown [^]*\nledger verdicts\nledger late-check /);
+    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|affected\|since\|shown\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger shown [^]*\nledger late-check /);
   });
 
   it('resolves each link from any prefix of four characters or more to the full id, and shows an id by its shortest prefix no other id shares', () => {

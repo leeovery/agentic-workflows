@@ -534,6 +534,11 @@ function withStateLockFile(lockFile, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS, n
   }
 }
 
+/** Whether this process holds the writer lock of the state at `stateDir`. @param {string} stateDir */
+function holdsWriterLock(stateDir) {
+  return stateHolds.has(writerLockPath(stateDir));
+}
+
 /**
  * Run `fn` holding the writer lock of the state at `stateDir`, taken again
  * for nothing where this process holds it already. `fn` runs synchronously.
@@ -605,6 +610,7 @@ module.exports = {
   listWorkUnitManifests,
   writeProjectManifestAtomic,
   withStateLockFile,
+  holdsWriterLock,
   withWriterLock,
   withWorkUnitLock,
   withProjectLock,

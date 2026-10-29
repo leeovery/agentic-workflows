@@ -227,7 +227,7 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
     const product = underHeap([ENGINE, 'ledger', 'product']);
     const affected = underHeap([ENGINE, 'ledger', 'affected', UNIT]);
     const since = underHeap([ENGINE, 'ledger', 'since', UNIT, 'note-window']);
-    const verdicts = underHeap([ENGINE, 'ledger', 'verdicts']);
+    const verdicts = underHeap([ENGINE, 'verdict', 'queue']);
 
     for (const [name, res] of Object.entries({ record, map, product, affected, since, verdicts })) assert.strictEqual(res.status, 0, `${name} did not answer under ${HEAP_MB} MB: ${res.signal} ${res.err}`);
     assert.deepStrictEqual([ids(record.out.questions), ids(record.out.decisions)], [[question], [decided]]);

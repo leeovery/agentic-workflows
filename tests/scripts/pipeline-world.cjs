@@ -36,7 +36,7 @@ const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
-const { shellWords, auditState, auditGatePayload, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
+const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
 
 // The project every scenario starts from, made once per process.
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
@@ -187,6 +187,7 @@ class Sim {
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }
     auditState(this.dir, label);
+    auditTrust(this, label, args);
     if (typeof parsed.committed === 'string' || (Array.isArray(parsed.committed) && parsed.committed.length > 0)) {
       assert.strictEqual(stateGit(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
         `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
@@ -224,6 +225,7 @@ class Sim {
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
     if (pattern) assert.match(parsed.error, pattern, `[${label}] refusal message drifted`);
     auditState(this.dir, `${label} — state untouched`);
+    auditTrust(this, `${label} — trust log untouched`);
     return parsed;
   }
 
