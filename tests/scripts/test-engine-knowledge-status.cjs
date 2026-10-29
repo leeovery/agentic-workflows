@@ -17,9 +17,12 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
-const { engineKnowledge, knowledgeUnit, configureKnowledge, knowledgeAt, systemConfigDir } = require('./knowledge-harness.cjs');
+const {
+  ENGINE_COMMAND, KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches,
+  knowledgeUnit, manifestSet, setItems, configureKnowledge, knowledgeAt, systemConfigDir,
+} = require('./knowledge-harness.cjs');
 
-const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
+refuseLaunches();
 
 describe('engine knowledge check', () => {
   let root;
@@ -32,7 +35,7 @@ describe('engine knowledge check', () => {
 
   /** A keyword-only store with one discussion indexed. */
   async function readyStore() {
-    configureKnowledge(root, { provider: null });
+    configureKnowledge(root, KEYWORD_ONLY);
     knowledgeUnit(root, 'auth', 'feature');
     createFile(statePath(root), 'auth/discussion/auth.md', '# Discussion\n\nSettled.\n');
     assert.strictEqual((await engineKnowledge(root, ['index', '.leeway/auth/discussion/auth.md'])).code, 0);
@@ -42,13 +45,13 @@ describe('engine knowledge check', () => {
   const STATES = [
     ['no knowledge folder', {}, () => {}, 'not-ready', null],
     ['a knowledge folder with no config', {}, () => fs.mkdirSync(knowledgeAt(root).dir, { recursive: true }), 'not-ready', null],
-    ['no store, a provider configured', {}, () => configureKnowledge(root, { provider: 'stub', dimensions: 16 }), 'buildable', null],
+    ['no store, a provider configured', {}, () => configureKnowledge(root, STUB), 'buildable', null],
     ['no store, and no configuration that names a provider or chooses keyword-only', {}, () => configureKnowledge(root, {}), 'not-ready', null],
     ['no store, a system config that names no provider', { 'config.json': '{ "knowledge": {} }' }, () => configureKnowledge(root, {}), 'buildable', null],
-    ['no store, the project pinning keyword-only', {}, () => configureKnowledge(root, { provider: null }), 'buildable', null],
+    ['no store, the project pinning keyword-only', {}, () => configureKnowledge(root, KEYWORD_ONLY), 'buildable', null],
     ['no store, a provider whose key does not resolve', { 'config.json': JSON.stringify({ knowledge: OPENAI }) }, () => configureKnowledge(root, {}), 'not-ready', null],
     ['a store that cannot be loaded', {}, () => {
-      configureKnowledge(root, { provider: null });
+      configureKnowledge(root, KEYWORD_ONLY);
       fs.writeFileSync(knowledgeAt(root).store, 'this is garbage data, not a store');
     }, 'not-ready', null],
     ['a config that is not JSON', {}, () => {
@@ -85,15 +88,13 @@ describe('engine knowledge check', () => {
 describe('engine knowledge status', () => {
   let root;
 
-  /** @param {...string} args */
-  const knowledge = (...args) => engineKnowledge(root, args);
-  /** An absolute path in the state. @param {string} rel */
-  const at = (rel) => statePath(root, rel);
+  const { knowledge, at } = knowledgeDoor(() => root);
 
   beforeEach(async () => {
     root = setupFixture('kb-status-');
-    configureKnowledge(root, { provider: null });
-    knowledgeUnit(root, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    configureKnowledge(root, KEYWORD_ONLY);
+    knowledgeUnit(root, 'auth', 'feature');
+    setItems(root, 'auth', { discussion: ['auth'] });
     createFile(statePath(root), 'auth/discussion/auth.md', '# Discussion\n\nSettled.\n');
   });
 
@@ -102,7 +103,7 @@ describe('engine knowledge status', () => {
   it('says the store is not initialized where there is none, and how to build it', async () => {
     assert.deepStrictEqual(await knowledge('status'), {
       code: 0,
-      stdout: '=== Knowledge Base Status ===\n\nStore: not initialized\nRun `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index` to build the index.\n',
+      stdout: `=== Knowledge Base Status ===\n\nStore: not initialized\nRun \`${ENGINE_COMMAND} knowledge index\` to build the index.\n`,
       stderr: '',
     });
   });
@@ -122,7 +123,8 @@ describe('engine knowledge status', () => {
   });
 
   it('names each file whose chunks the next index retires, and why', async () => {
-    knowledgeUnit(root, 'dropped', 'feature', { status: 'cancelled' });
+    knowledgeUnit(root, 'dropped', 'feature');
+    manifestSet(root, 'dropped', 'status', 'cancelled');
     createFile(statePath(root), 'dropped/discussion/dropped.md', '# Discussion\n\nDropped.\n');
     for (const rel of ['auth/discussion/auth.md', 'dropped/discussion/dropped.md']) await knowledge('index', `.leeway/${rel}`);
     fs.rmSync(at('auth/discussion/auth.md'));

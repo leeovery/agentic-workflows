@@ -22,7 +22,9 @@ const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/co
 const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { heldCall } = require('./knowledge-harness.cjs');
+const { heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
+
+refuseLaunches();
 
 /**
  * A throwaway home the system config resolves through. These forms read

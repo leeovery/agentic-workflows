@@ -17,17 +17,16 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
-const { engineKnowledge, knowledgeUnit, configureKnowledge, knowledgeAt, storedChunks } = require('./knowledge-harness.cjs');
-
-const ENGINE_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
+const {
+  ENGINE_COMMAND, KEYWORD_ONLY, engineKnowledge, knowledgeDoor, refuseLaunches,
+  knowledgeUnit, setItems, completeUnit, setRegistry, configureKnowledge, knowledgeAt, storedChunks,
+} = require('./knowledge-harness.cjs');
 
 describe('engine knowledge remove, compact and rebuild', () => {
   let root;
+  const { knowledge, at } = knowledgeDoor(() => root);
+  refuseLaunches();
 
-  /** @param {...string} args */
-  const knowledge = (...args) => engineKnowledge(root, args);
-  /** An absolute path in the state. @param {string} rel */
-  const at = (rel) => statePath(root, rel);
   /** Each file written and indexed on its own. @param {...string} rels */
   async function indexed(...rels) {
     for (const rel of rels) {
@@ -40,7 +39,7 @@ describe('engine knowledge remove, compact and rebuild', () => {
 
   beforeEach(() => {
     root = setupFixture('kb-maintenance-');
-    configureKnowledge(root, { provider: null });
+    configureKnowledge(root, KEYWORD_ONLY);
   });
 
   afterEach(() => cleanupFixture(root));
@@ -96,7 +95,7 @@ describe('engine knowledge remove, compact and rebuild', () => {
     it('takes the chunks of a unit the registry no longer names as an orphan cleanup, saying so — and then refuses the name', async () => {
       knowledgeUnit(root, 'absorbed', 'feature');
       await indexed('absorbed/discussion/absorbed.md');
-      fs.writeFileSync(at('manifest.json'), JSON.stringify({ work_units: {} }));
+      setRegistry(root, {});
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'absorbed'), {
         code: 0,
         stdout: 'Removed 1 chunks for absorbed (all phases) (orphan cleanup)\n',
@@ -134,10 +133,11 @@ describe('engine knowledge remove, compact and rebuild', () => {
     // S0 3 and a 0.95 floor: a unit two completions behind is at R ≈ 0.931,
     // below the floor.
     beforeEach(async () => {
-      configureKnowledge(root, { provider: null, decay_prune_below: 0.95, decay_base_stability: 3 });
-      knowledgeUnit(root, 'buried', 'feature', { status: 'completed', completed_at: '2024-01-01' });
-      knowledgeUnit(root, 'newer1', 'feature', { status: 'completed', completed_at: '2024-06-01' });
-      knowledgeUnit(root, 'newer2', 'feature', { status: 'completed', completed_at: '2024-12-01' });
+      configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: 0.95, decay_base_stability: 3 });
+      for (const [unit, date] of [['buried', '2024-01-01'], ['newer1', '2024-06-01'], ['newer2', '2024-12-01']]) {
+        knowledgeUnit(root, unit, 'feature');
+        completeUnit(root, unit, date);
+      }
       await indexed('buried/discussion/buried.md', 'buried/specification/buried/specification.md');
     });
 
@@ -155,13 +155,13 @@ describe('engine knowledge remove, compact and rebuild', () => {
     });
 
     it('prunes nothing at a floor of 0, which no retrievability falls below', async () => {
-      configureKnowledge(root, { provider: null, decay_prune_below: 0, decay_base_stability: 3 });
+      configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: 0, decay_base_stability: 3 });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: '', stderr: '' });
       assert.deepStrictEqual(identities(), ['buried/discussion/buried', 'buried/specification/buried']);
     });
 
     it('says compaction is disabled where decay_prune_below is false, and removes nothing', async () => {
-      configureKnowledge(root, { provider: null, decay_prune_below: false });
+      configureKnowledge(root, { ...KEYWORD_ONLY, decay_prune_below: false });
       assert.deepStrictEqual(await knowledge('compact'), { code: 0, stdout: 'Compaction disabled\n', stderr: '' });
       assert.deepStrictEqual(identities(), ['buried/discussion/buried', 'buried/specification/buried']);
     });
@@ -176,7 +176,8 @@ describe('engine knowledge remove, compact and rebuild', () => {
     const backups = () => ['store.bin.bak', 'metadata.json.bak'].filter((name) => fs.existsSync(path.join(knowledgeAt(root).dir, name)));
 
     beforeEach(async () => {
-      knowledgeUnit(root, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+      knowledgeUnit(root, 'auth', 'feature');
+      setItems(root, 'auth', { discussion: ['auth'] });
       await indexed('auth/discussion/auth.md');
     });
 
@@ -190,7 +191,7 @@ describe('engine knowledge remove, compact and rebuild', () => {
 
     it('aborts where nothing is indexable, saying the index was not modified', async () => {
       fs.rmSync(at('auth'), { recursive: true });
-      fs.writeFileSync(at('manifest.json'), JSON.stringify({ work_units: {} }));
+      setRegistry(root, {});
       const answer = await rebuild('rebuild\n');
       assert.strictEqual(answer.code, 1);
       assert.ok(answer.stderr.startsWith(`${PROMPT}No artifacts to index. Aborting rebuild — the existing index has NOT been modified.\n`), answer.stderr);
@@ -219,7 +220,8 @@ describe('engine knowledge remove, compact and rebuild', () => {
     });
 
     it('exits 1 when a file fails, the rebuilt store standing with no backup left', async () => {
-      knowledgeUnit(root, 'empty', 'feature', { phases: { discussion: { items: { empty: { status: 'completed' } } } } });
+      knowledgeUnit(root, 'empty', 'feature');
+      setItems(root, 'empty', { discussion: ['empty'] });
       createFile(statePath(root), 'empty/discussion/empty.md', '\n');
       const answer = await rebuild('rebuild\n');
       assert.strictEqual(answer.code, 1);

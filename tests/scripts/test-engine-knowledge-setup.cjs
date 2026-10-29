@@ -19,12 +19,12 @@ const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
-  embeddingEndpoint, engineKnowledge, knowledgeUnit, knowledgeAt, knowledgeMetadata, systemConfigDir,
+  ENGINE_COMMAND, KEYWORD_ONLY, OPENAI,
+  embeddingEndpoint, engineKnowledge, refuseLaunches, knowledgeUnit, knowledgeAt, knowledgeMetadata, systemConfigDir,
 } = require('./knowledge-harness.cjs');
 
-const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
-const UPGRADE = 'Upgrade anytime: `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider ...` '
-  + 'or the interactive `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup`.';
+const UPGRADE = `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` `
+  + `or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`;
 
 describe('engine knowledge setup', () => {
   let root;
@@ -37,6 +37,7 @@ describe('engine knowledge setup', () => {
   const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
   const check = async () => (await engineKnowledge(root, ['check'], { WORKFLOWS_CONFIG_DIR: system })).stdout;
   const systemConfig = () => path.join(system, 'config.json');
+  refuseLaunches();
 
   before(async () => {
     endpoint = await embeddingEndpoint(4);
@@ -83,7 +84,7 @@ describe('engine knowledge setup', () => {
         'Knowledge base ready — keyword-only (BM25) mode.', 'Semantic search is disabled until an embedding provider is configured.', UPGRADE, '',
       ].join('\n'));
       assert.deepStrictEqual(readJson(systemConfig()), { knowledge: OPENAI });
-      assert.deepStrictEqual(readJson(knowledgeAt(root).config), { knowledge: { provider: null } });
+      assert.deepStrictEqual(readJson(knowledgeAt(root).config), { knowledge: KEYWORD_ONLY });
       assert.strictEqual(knowledgeMetadata(root).provider, null);
       assert.strictEqual(await check(), 'ready\n');
     });
@@ -113,7 +114,7 @@ describe('engine knowledge setup', () => {
       await setup('--keyword-only');
       fs.rmSync(knowledgeAt(root).config);
       assert.strictEqual((await setup('--keyword-only')).code, 0);
-      assert.deepStrictEqual(readJson(knowledgeAt(root).config), { knowledge: { provider: null } });
+      assert.deepStrictEqual(readJson(knowledgeAt(root).config), { knowledge: KEYWORD_ONLY });
       assert.strictEqual(await check(), 'ready\n');
     });
 

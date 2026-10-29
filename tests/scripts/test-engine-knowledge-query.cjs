@@ -16,13 +16,13 @@ const assert = require('node:assert');
 
 const { fixtureFrom, call } = require('./engine-harness.cjs');
 const { cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
-const { engineKnowledge, knowledgeUnit, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
 
 const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for semantic search]';
 
 /** Two features and an epic's two specifications, every file indexed keyword-only, each naming the token. */
 const indexedWorld = fixtureFrom('kb-query-door-', (root) => {
-  configureKnowledge(root, { provider: null });
+  configureKnowledge(root, KEYWORD_ONLY);
   const files = {
     'auth/discussion/auth.md': 'Token refresh design for auth.',
     'auth/specification/auth/specification.md': 'Token refresh requirements for auth.',
@@ -42,9 +42,10 @@ const hits = (stdout) => [...stdout.matchAll(/^\[(\w+) \| (\S+) \|/gm)].map(([, 
 
 describe('engine knowledge query', () => {
   let root;
-
+  const { knowledge } = knowledgeDoor(() => root);
   /** @param {...string} args */
-  const query = (...args) => engineKnowledge(root, ['query', ...args]);
+  const query = (...args) => knowledge('query', ...args);
+  refuseLaunches();
 
   beforeEach(() => {
     root = indexedWorld();
@@ -61,9 +62,12 @@ describe('engine knowledge query', () => {
 
   it('refuses a blank term, naming status for listing everything, and answers any other', async () => {
     for (const term of ['', '   ']) {
-      const answer = await query(term);
-      assert.strictEqual(answer.code, 1, JSON.stringify(term));
-      assert.match(answer.stderr, /^Error: Empty search term\. .* use `node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge status` instead\.\n$/);
+      assert.deepStrictEqual(await query(term), {
+        code: 1,
+        stdout: '',
+        stderr: 'Error: Empty search term. `engine knowledge query` requires at least one non-empty positional term. '
+          + `If you intended to list everything indexed, use \`${ENGINE_COMMAND} knowledge status\` instead.\n`,
+      }, JSON.stringify(term));
     }
     assert.strictEqual((await query('token')).code, 0);
   });
@@ -104,9 +108,9 @@ describe('engine knowledge query', () => {
 
   it('over a keyword-only store a provider was configured over since, says the next start embeds it — and status says so, asking no rebuild', async () => {
     assert.strictEqual((await query('token')).stdout.split('\n')[0], CHOSEN_NOTE);
-    configureKnowledge(root, { provider: 'stub', dimensions: 16 });
+    configureKnowledge(root, STUB);
     assert.strictEqual((await query('token')).stdout.split('\n')[0], '[keyword-only mode — the store has no vectors yet; the next start embeds them]');
-    const status = (await engineKnowledge(root, ['status'])).stdout;
+    const status = (await knowledge('status')).stdout;
     assert.match(status, /^Mode: Keyword-only — the store has no vectors yet; the next start embeds them$/m);
     assert.doesNotMatch(status, /rebuild/);
   });

@@ -19,12 +19,11 @@ const assert = require('node:assert');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
-  engineKnowledge, knowledgeUnit, configureKnowledge, knowledgeAt, knowledgeMetadata, storedChunks, systemConfigDir,
+  KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt,
+  knowledgeMetadata, storedChunks, systemConfigDir,
 } = require('./knowledge-harness.cjs');
 
-const KEYWORD_ONLY = { provider: null };
-const STUB = { provider: 'stub', dimensions: 16 };
-const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
+refuseLaunches();
 
 /** A section of prose long enough to be a chunk of its own. @param {string} heading @param {string} body */
 const section = (heading, body) => `## ${heading}\n\n${body}\n\n${Array.from({ length: 30 }, (_, i) => `Line ${i} of the reasoning.`).join('\n')}\n`;
@@ -32,10 +31,7 @@ const section = (heading, body) => `## ${heading}\n\n${body}\n\n${Array.from({ l
 describe('engine knowledge index <file>', () => {
   let root;
 
-  /** @param {...string} args */
-  const knowledge = (...args) => engineKnowledge(root, args);
-  /** An absolute path in the state. @param {string} rel */
-  const at = (rel) => statePath(root, rel);
+  const { knowledge, at } = knowledgeDoor(() => root);
   /** @param {string} rel @param {string} text */
   const write = (rel, text) => createFile(statePath(root), rel, text);
 
@@ -188,9 +184,10 @@ describe('engine knowledge index <file>', () => {
     });
   });
 
-  describe('a store it may not write', () => {
+  describe('over the store it finds', () => {
     beforeEach(() => {
-      knowledgeUnit(root, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+      knowledgeUnit(root, 'auth', 'feature');
+      setItems(root, 'auth', { discussion: ['auth'] });
       write('auth/discussion/auth.md', '# Discussion\n\nToken refresh settled.\n');
     });
 
@@ -238,6 +235,16 @@ describe('engine knowledge index <file>', () => {
       assert.match(single.stderr, /no store is created without it/);
       assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 1);
       assert.ok(!fs.existsSync(knowledgeAt(root).store));
+    });
+
+    it('writes an edit by keyword into a store whose provider\'s key does not resolve, saying only what it wrote', async () => {
+      await knowledge('index', '.leeway/auth/discussion/auth.md');
+      store.writeMetadata(knowledgeAt(root).metadata, { ...knowledgeMetadata(root), ...OPENAI });
+      configureKnowledge(root, OPENAI);
+      fs.appendFileSync(at('auth/discussion/auth.md'), 'A late addition to the discussion.\n');
+      assert.deepStrictEqual(await knowledge('index', '.leeway/auth/discussion/auth.md'),
+        { code: 0, stdout: `Indexed 1 chunks from ${at('auth/discussion/auth.md')}\n`, stderr: '' });
+      assert.match((await knowledge('query', 'late addition')).stdout, /^A late addition to the discussion\.$/m);
     });
 
     it('a store that cannot be loaded, naming the file and that the next start retries it', async () => {
