@@ -13,7 +13,11 @@
 //   live confirmation that it still holds names the latest replacement on
 //   that way, each entry it is held against cleared on its own; a later
 //   replacement flags it again. A question, a finding and a decision alike
-//   (5.6.11). An entry relies only on what is current as it is written, so
+//   (5.6.11). The person's live keep of a decision, where Claude proposed
+//   to replace it (raise.cjs), confirms it as a confirmation does against
+//   the replacement it names as its cause: keeping it for a new fact or
+//   another topic's decision is saying it still holds against that change.
+//   A keep naming no cause, or a cause on no way, confirms nothing. An entry relies only on what is current as it is written, so
 //   every live replacement on the way of one it relies on is one it never
 //   saw: written after it, or set aside while it was written — wherever a
 //   merge has laid it in the ledger. A question's way is its line
@@ -33,7 +37,7 @@
 //   confirms or replaces it, the finished unit left finished.
 // ---------------------------------------------------------------------------
 
-const { factsOf, standingOf, madeOn, isCurrent, holdsOf, replacementsOf } = require('./ledger-fold.cjs');
+const { factsOf, standingOf, madeOn, isCurrent, holdsOf, keptOf, replacementsOf } = require('./ledger-fold.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -69,14 +73,27 @@ function heldAgainst(folded, id) {
  */
 
 /**
+ * The replacements `id` is confirmed to still hold against: each its live
+ * confirmations name, and each cause its live keeps name.
+ * @param {Folded} folded @param {string} id
+ * @returns {Set<string|null>}
+ */
+function confirmedAgainst(folded, id) {
+  return new Set([
+    ...holdsOf(folded, id).map((hold) => factsOf(folded, hold).after),
+    ...keptOf(folded, id).map((keep) => factsOf(folded, keep).cause),
+  ]);
+}
+
+/**
  * What changed under a current entry: each entry it is held against whose
  * way a live replacement changed, where no live confirmation that it still
- * holds names the latest.
+ * holds, or keep, names the latest.
  * @param {Folded} folded @param {string} id
  * @returns {Change[]}
  */
 function changesUnder(folded, id) {
-  const confirmed = new Set(holdsOf(folded, id).map((hold) => factsOf(folded, hold).after));
+  const confirmed = confirmedAgainst(folded, id);
   return heldAgainst(folded, id).filter(({ replacements }) => replacements.length > 0 && !confirmed.has(/** @type {string} */ (replacements.at(-1))));
 }
 

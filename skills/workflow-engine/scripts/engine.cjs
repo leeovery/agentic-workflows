@@ -1833,9 +1833,9 @@ async function runRaiseDraw(call, argv) {
       respond(call, { decision: drawn.decision, reason: drawn.reason, ...drawn.landed });
       return;
     }
-    const { decision, reason, seal, kept, warnings } = drawn;
+    const { decision, reason, seal, redrawn, warnings } = drawn;
     const screen = raiseScreen(seal);
-    respond(call, { decision, reason, raise: seal.id, kept, ...(warnings.length > 0 ? { warnings } : {}) });
+    respond(call, { decision, reason, raise: seal.id, redrawn, ...(warnings.length > 0 ? { warnings } : {}) });
     respondSections(call, screen);
   } catch (err) {
     failJson(call, err);

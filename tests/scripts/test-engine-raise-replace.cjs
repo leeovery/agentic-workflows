@@ -3,20 +3,24 @@
 // ---------------------------------------------------------------------------
 // A raise on a replacement (workflow-engine/scripts/domain/raise.cjs, landed
 // through domain/ledger-write.cjs; the keep's line domain/ledger-events.cjs,
-// read by domain/ledger-fold.cjs, ledger-read.cjs, ledger-verdicts.cjs,
-// ledger-copies.cjs, ledger-late-check.cjs and the state merge's line rule,
-// domain/state-merge-rules.cjs): `engine raise <place> --replaces <entry>
-// --reason <reason> [--cause <id>]`, Claude's proposed answers drawn with a
-// row of the screen's own keeping the decision as it stands, `ledger
-// replace`'s checks run before anything is drawn or sealed (16.5.7,
+// read by domain/ledger-fold.cjs, ledger-read.cjs, ledger-affected.cjs,
+// ledger-verdicts.cjs, ledger-copies.cjs, ledger-late-check.cjs and the
+// state merge's line rule, domain/state-merge-rules.cjs): `engine raise
+// <place> --replaces <entry> --reason <reason> [--cause <id>]`, Claude's
+// proposed answers drawn with a row of the screen's own keeping the
+// decision as it stands, `ledger replace`'s checks run before anything is
+// drawn or sealed, each decision's raise sealed on its own (16.5.7,
 // 29.5.2); each answer — a proposal picked, the person's own words, `keep`,
 // "I don't follow" — with its ledger line, its raise event, who moved whom
 // (5.3.10) and the verdict queue, read through this machine's trust log
-// (domain/trust-evidence.cjs); a keep changing nothing current, so nothing
-// relying on the decision is affected (5.6.10), its raise event a departure
-// this machine alone judges, and every reader passing it by or showing it
-// beside the decision; the keep landed once across a kill; and a call the
-// decision point lets proceed landed as Claude's replacement.
+// (domain/trust-evidence.cjs), and refused, recording nothing, on a raise
+// with no such row or a decision replaced since the draw; a keep changing
+// nothing current, so nothing relying on the decision is affected (5.6.10),
+// and confirming it still holds against its cause (5.6.13), its raise event
+// a departure this machine alone judges, and every reader passing it by or
+// showing it beside the decision; each answer landed once across a kill;
+// and a call the decision point lets proceed landed as Claude's
+// replacement.
 //
 // Layer: verb, and beside it process — the answer killed in a child at a
 // file call on its way. World: the ledger suites' unit with a question, a
@@ -69,6 +73,14 @@ const CALL = Object.freeze({
   sort: 'one',
   mechanism: 'The main display, whatever the pointer is over.',
   product_wide: false,
+});
+
+/** Claude's call on the answer to whether a new note takes focus. */
+const FOCUS_CALL = Object.freeze({
+  ...CALL,
+  question: 'Should a new note leave the focus where it was?',
+  rows: [{ ...MAIN, text: 'The focus stays where it was' }, { ...LAST, text: 'The focus follows the pointer' }],
+  lean: '2',
 });
 
 /** Claude's account of the person's reason. */
@@ -201,11 +213,18 @@ const secondMachine = () => ({ WORKFLOWS_CONFIG_DIR: path.join(config(), 'second
 
 /**
  * The verdict queue read through the trust log of the machine `env` names —
- * the conversation's where it names none: each departure's full id and the
- * lean beside it.
+ * the conversation's where it names none: each departure's full id, its
+ * answer and the lean beside it.
  * @param {Record<string, string|undefined>} [env]
  */
-const queue = (env = conversation()) => ok(dir, ['verdict', 'queue'], { env }).departures.map((/** @type {{id: string, lean: string}} */ d) => [full(d.id), d.lean]);
+const queue = (env = conversation()) => ok(dir, ['verdict', 'queue'], { env }).departures.map((/** @type {{id: string, text: string, lean: string}} */ d) => [full(d.id), d.text, d.lean]);
+
+/**
+ * Claude's decision that a new note takes focus, answering the question
+ * relying on where it opens, and relying on `more`'s entries: its short id.
+ * @param {string[]} [more]
+ */
+const decideFocus = (more = []) => ledgerHelpers(() => dir).write('decide', NOTE, ['--answers', made.focus, ...more], { ...MADE, text: 'It takes the focus', why: 'Typing starts at once.' }).id;
 
 /** What a replacement affects in the unit, by full id. */
 const affected = () => ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @type {{id: string}} */ e) => full(e.id));
@@ -233,7 +252,18 @@ describe('the draw (16.5.7, 29.5.2)', () => {
 
     const again = await drawn(replacing(), { call: { ...CALL, lean: '2' } });
 
-    assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, kept: true }, first.sections]);
+    assert.deepStrictEqual([again.res, again.sections], [{ ...first.res, redrawn: true }, first.sections]);
+  });
+
+  it('a raise to replace another decision at the same place, the first still open, is sealed fresh beside it with its own rows and lean', async () => {
+    const takes = decideFocus();
+    const first = await drawn();
+
+    const second = await drawn([NOTE, '--replaces', takes, '--reason', 'changed-mind'], { call: FOCUS_CALL });
+
+    assert.deepStrictEqual([second.res.redrawn, second.res.raise === first.res.raise], [false, false]);
+    const sealed = /** @type {Record<string, any>} */ (seals());
+    assert.deepStrictEqual([first.res.raise, second.res.raise].map((id) => [sealed[id].replaces.entry, sealed[id].call]), [[full(made.opens), CALL], [full(takes), FOCUS_CALL]]);
   });
 });
 
@@ -266,6 +296,29 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
   });
 });
 
+describe('the answer\'s refusals, recording nothing', () => {
+  it('keep on a raise of a question, which has no such row', async () => {
+    const id = /** @type {string} */ ((await okSectionsAsync(dir, ['raise', NOTE, '--answers', made.focus], { env: conversation(), stdin: JSON.stringify(FOCUS_CALL) })).res.raise);
+
+    const { error } = refusedPristine(dir, ['raise', 'answer', id, '--pick', 'keep'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
+
+    assert.strictEqual(error, 'raise answer: the raise has no row keep — its rows: 1, 2');
+    assert.deepStrictEqual(logged(), []);
+  });
+
+  it('a decision replaced since the draw: keep and a pick each refused, naming the decision, what replaced it, and the way on, raising again on what is current', async () => {
+    const id = await draw();
+    const { write } = ledgerHelpers(() => dir);
+    const since = write('replace', NOTE, ['--replaces', made.opens, '--reason', 'changed-mind'], { ...MADE, drops: [KEPT], text: 'Beside the last note', why: 'Notes gather.' }).id;
+    const said = `raise answer: the raise proposes replacing ${made.opens}, and since it was drawn ${since} replaced it — nothing recorded: raise again on ${since}, where it still calls for a change, and the person's answer stays in the conversation`;
+
+    for (const [how, given] of [[['--pick', 'keep'], ''], [['--pick', '1'], JSON.stringify({ why: WHY })]]) {
+      assert.strictEqual(refusedPristine(dir, ['raise', 'answer', id, ...how], { env: conversation(), stdin: given }).error, said);
+    }
+    assert.deepStrictEqual([logged(), /** @type {Record<string, any>} */ (seals())[id].answered], [[], null]);
+  });
+});
+
 describe('each answer, its line, its raise event, who moved whom and the queue (5.3.10)', () => {
   it('the lean picked: the person\'s replacement at the raise\'s id, dropping the answer as it stood, the other proposals what it rules out, the lean sealed, moving no one — one raise event naming it, no reversal, nothing in the queue; the record\'s copy holds the new answer', async () => {
     const id = await draw();
@@ -286,7 +339,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
 
     assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: OVER, text: LAST.text, rules_out: [MAIN.text] }));
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2' })]);
-    assert.deepStrictEqual(queue(), [[id, MAIN.text]]);
+    assert.deepStrictEqual(queue(), [[id, LAST.text, MAIN.text]]);
     assert.deepStrictEqual(affected(), [full(made.focus)]);
   });
 
@@ -306,7 +359,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
 
     assert.deepStrictEqual(lastEntry(), replacementOf(id, { who_moved_whom: OVER, text: 'Beside the note it was made from', rules_out: [] }));
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: null, with_text: true })]);
-    assert.deepStrictEqual(queue(), [[id, MAIN.text]]);
+    assert.deepStrictEqual(queue(), [[id, 'Beside the note it was made from', MAIN.text]]);
   });
 
   it('keep, pressed, reading no stdin: the person\'s keep at the raise\'s id — the decision, the reason and the cause, Claude\'s proposal sealed — standing over it; one raise event naming the keep; the decision current, the keep shown beside it in the record and waiting in the queue with the proposal as its lean', async () => {
@@ -324,7 +377,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual([decision?.kept.map((/** @type {Record<string, string>} */ k) => [full(k.id), k.event, full(k.entry), k.sealed]), decision?.replaced], [[[id, 'kept', full(made.opens), MAIN.text]], []]);
     const row = ok(dir, ['ledger', 'map', UNIT, 'note-window']).questions.find((/** @type {{id: string}} */ q) => full(q.id) === full(made.where));
     assert.deepStrictEqual(row.answers.map((/** @type {{id: string}} */ a) => full(a.id)), [full(made.opens)]);
-    assert.deepStrictEqual(queue(), [[id, MAIN.text]]);
+    assert.deepStrictEqual(queue(), [[id, KEPT, MAIN.text]]);
   });
 
   it('"I don\'t follow" logs a raise event in the trust log alone and leaves the raise open, to be shown again with keep among its rows', async () => {
@@ -341,12 +394,12 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
 });
 
 describe('a keep changes nothing current (5.6.10)', () => {
-  it('the person keeps an entry Claude proposed to replace: its raise event stands as a departure, so the keep waits in this machine\'s queue with Claude\'s proposal as its lean until its verdict is given; a second machine holds the keep in its ledger, none in its queue, and refuses a verdict on it; nothing that relied on the entry is affected, and no confirmation can name the keep, as none needs to', async () => {
+  it('the person keeps an entry Claude proposed to replace: its raise event stands as a departure, so the keep waits in this machine\'s queue, the answer it kept beside Claude\'s proposal as its lean, until its verdict is given; a second machine holds the keep in its ledger, none in its queue, and refuses a verdict on it; nothing that relied on the entry is affected, and no confirmation can name the keep, as none needs to', async () => {
     const kept = await draw();
 
     answer(kept, ['--pick', 'keep'], null);
 
-    assert.deepStrictEqual(queue(), [[kept, MAIN.text]]);
+    assert.deepStrictEqual(queue(), [[kept, KEPT, MAIN.text]]);
     const elsewhere = secondMachine();
     const { decisions } = ok(dir, ['ledger', 'record', UNIT, 'note-window'], { env: elsewhere });
     const decision = decisions.find((/** @type {{id: string}} */ d) => full(d.id) === full(made.opens));
@@ -378,6 +431,31 @@ describe('a keep changes nothing current (5.6.10)', () => {
   });
 });
 
+describe('a keep confirms the decision against its cause (5.6.10, 5.6.13)', () => {
+  it('a decision affected by a new finding, kept for no cause, stays affected; kept for that new fact, its cause the finding, the line holds both and the decision is no longer affected — until a newer finding flags it again', async () => {
+    const takes = decideFocus(['--relies-on', made.screens]);
+    const { write } = ledgerHelpers(() => dir);
+    const replaceScreens = (/** @type {string} */ finding, /** @type {string} */ was, /** @type {string} */ text) => write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: [was], text, how: 'seen in a second study' }).id;
+    const twoScreens = replaceScreens(made.screens, 'Most people work on one screen.', 'Most people work on two screens.');
+    assert.deepStrictEqual(affected(), [full(takes)]);
+    const keepFor = async (/** @type {string[]} */ more) => {
+      const id = /** @type {string} */ ((await drawn([NOTE, '--replaces', takes, ...more], { call: FOCUS_CALL })).res.raise);
+      answer(id, ['--pick', 'keep'], null);
+      return id;
+    };
+
+    await keepFor(['--reason', 'changed-mind']);
+    assert.deepStrictEqual(affected(), [full(takes)]);
+
+    const kept = await keepFor(['--reason', 'new-fact', '--cause', twoScreens]);
+    assert.deepStrictEqual(lastEntry(), { ...keepOf(kept), entry: full(takes), reason: 'new-fact', cause: full(twoScreens), sealed: FOCUS_CALL.rows[1].text });
+    assert.deepStrictEqual(affected(), []);
+
+    replaceScreens(twoScreens, 'Most people work on two screens.', 'Most people work on three screens.');
+    assert.deepStrictEqual(affected(), [full(takes)]);
+  });
+});
+
 describe('once (E3)', () => {
   it('killed between the state commit and marking its seal, the keep re-answered lands one keep line and one event, saying the raise was answered already with keep', async () => {
     const id = await draw();
@@ -389,6 +467,16 @@ describe('once (E3)', () => {
     assert.deepStrictEqual([res.already, res.answer, full(res.id)], [true, 'keep', id]);
     assert.deepStrictEqual([entries().filter((e) => e.id === id).length, logged()], [1, [raiseEvent(id, { answer: 'keep' })]]);
     assert.strictEqual(/** @type {Record<string, any>} */ (seals())[id].answered.answer, 'keep');
+  });
+
+  it('killed between the state commit and marking its seal, a pick re-answered — the decision now replaced by its own line — lands one line and one event, saying the raise was answered already with that row', async () => {
+    const id = await draw();
+    killedAt({ method: 'renameSync', file: RAISE_SHOWN, when: 'before' }, dir, ['raise', 'answer', id, '--pick', '2'], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
+
+    const res = answer(id, ['--pick', '2']);
+
+    assert.deepStrictEqual([res.already, res.answer, full(res.id)], [true, '2', id]);
+    assert.deepStrictEqual([entries().filter((e) => e.id === id).length, logged()], [1, [raiseEvent(id, { answer: '2' })]]);
   });
 });
 

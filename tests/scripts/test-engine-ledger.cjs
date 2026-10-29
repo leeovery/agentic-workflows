@@ -159,10 +159,11 @@ describe('the events and their schemas', () => {
     assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
   });
 
-  it('holds a keep to its shape: the person\'s alone, a reason of the four, and Claude\'s proposal sealed in it, never none', () => {
+  it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, and that proposal sealed in it, never none', () => {
     const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, sealed: 'A floating panel.' };
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
+    for (const moved of ['none', 'claude-moved-person']) assert.throws(() => validEvent({ ...keep, who_moved_whom: moved }), /its who_moved_whom is not one of person-moved-claude$/);
     assert.throws(() => validEvent({ ...keep, reason: 'a whim' }), /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
     assert.throws(() => validEvent({ ...keep, sealed: null }), /its sealed is not non-empty text/);
   });

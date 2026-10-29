@@ -55,7 +55,7 @@
 //   Each shows Claude's lean beside it: the sealed answer of the nearest
 //   entry down its chain that holds one, or the answer of the nearest that
 //   held the lean, past the person's own earlier departures; beside a keep,
-//   the proposal it seals.
+//   the proposal it seals, the keep's row carrying the answer it kept.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
@@ -201,16 +201,23 @@ function leanOf({ folded, show }, id) {
 }
 
 /**
- * The verdict queue's answer: the departures waiting on a verdict, each
- * with where it stands and Claude's lean.
+ * A departure as the queue shows it: its line — a keep's with the answer it
+ * kept, the entry's text, as a decision's line holds its answer — where it
+ * stands, and Claude's lean.
+ * @param {Shower} shower @param {string} id
+ */
+function departureRow(shower, id) {
+  const { event, entry } = factsOf(shower.folded, id);
+  const kept = event === 'kept' ? { text: shower.show(/** @type {string} */ (entry)).text } : {};
+  return { ...shower.show(id), ...kept, standing: standingOf(shower.folded, id), lean: leanOf(shower, id) };
+}
+
+/**
+ * The verdict queue's answer: the departures waiting on a verdict.
  * @param {Shower} shower @param {string} root
  */
 function answerQueue(shower, root) {
-  return {
-    departures: queueOf(shower.folded, evidenceOf(root)).map((id) => ({
-      ...shower.show(id), standing: standingOf(shower.folded, id), lean: leanOf(shower, id),
-    })),
-  };
+  return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
 module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, answerQueue };

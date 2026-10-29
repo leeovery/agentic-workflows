@@ -60,8 +60,8 @@
 //   raise. A raise of a question, or of a replacement of a decision, the
 //   conversation holds an open seal for — the same place, and the same
 //   question or the same decision — draws that seal, the call it is given
-//   set aside, and says it kept it: the pick is measured against the first
-//   lean. A seal of another version is never matched, and stays as
+//   set aside, and says it drew it again: the pick is measured against the
+//   first lean. A seal of another version is never matched, and stays as
 //   written. The layout hook refuses Claude's own writes to it
 //   (layout-hook.cjs).
 // - The decision point's answer is the response's, with its reason. An ask
@@ -95,7 +95,9 @@
 //   the lean row's text, Claude's proposal, sealed in it (ledger-events.cjs)
 //   — standing over the proposal as the departure rule holds
 //   (ledger-verdicts.cjs). Nothing it relies on changes: no replacement
-//   lands, so nothing is affected.
+//   lands, so nothing is affected; and where the decision is affected by
+//   the replacement the keep names as its cause, keeping it confirms it
+//   still holds against it (ledger-affected.cjs).
 // - Who moved whom is the engine's alone (5.3.10): a pick other than the
 //   lean, the person's own words and a keep stood over it; a pick of the
 //   lean is none, or the person come round to it where Claude says so on
@@ -108,9 +110,10 @@
 //   text, typed, its reading null until the separate call reads it
 //   (16.19.1) — how it came, whether the person didn't follow, no kind or
 //   label until the labeller's, and no blocked build outside one (16.4.7);
-//   never a word of the question, the rows or the why. An answer was pressed where the gate mod
-//   announced itself and its last press sent that row from this raise's
-//   menu after the raise was drawn (gate.cjs); anything else was typed.
+//   never a word of the question, the rows or the why. An answer was
+//   pressed where the gate mod announced itself and its last press sent
+//   that row from this raise's menu after the raise was drawn (gate.cjs);
+//   anything else was typed.
 // - Once (E3): under the writer lock, a ledger holding the minted id means
 //   the raise is answered: a rerun, after a kill past the append or once
 //   the answer landed, writes no second line and logs no second event, and
@@ -118,12 +121,13 @@
 //   keep's `keep`, an entry's the row whose text it holds, else the
 //   person's own words — so Claude knows its own answer did not land. A
 //   rerun after a kill before the append lands its own answer, the event
-//   the killed run kept let go (trust-log.cjs). Else
-//   the question must still be open, or nothing is recorded, the person's
-//   answer staying in the conversation. The seal is marked answered after
-//   the commit, with the answer the ledger holds, and keeps the first it was
-//   marked with: the ledger, not the seal, says whether a raise is
-//   answered.
+//   the killed run kept let go (trust-log.cjs). Else the question must
+//   still be open, or the decision a replacement proposes to replace still
+//   current, or nothing is recorded, the person's answer staying in the
+//   conversation: a decision replaced since is named with what replaced it,
+//   to raise again on. The seal is marked answered after the commit, with
+//   the answer the ledger holds, and keeps the first it was marked with:
+//   the ledger, not the seal, says whether a raise is answered.
 // - "I don't follow" logs a raise event in the trust log alone — no entry,
 //   no answer, no reading (16.9.3, 16.12.3) — and counts it on the seal;
 //   the raise stays open, to be shown again.
@@ -141,7 +145,7 @@ const { findStateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { entryKind } = require('./ledger-events.cjs');
-const { questionStands, answersOf } = require('./ledger-fold.cjs');
+const { questionStands, answersOf, notCurrent, currentsOf } = require('./ledger-fold.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -198,7 +202,7 @@ const decisionPoint = require('./decision-point.cjs');
  * What a draw did: the raise sealed and drawn, or the conversation's open
  * seal of the question, or of the replacement, drawn again; or Claude's
  * call landed, the decision point letting it proceed.
- * @typedef {{decision: 'ask', reason: string, seal: Seal, kept: boolean, warnings: string[]} | {decision: 'proceed', reason: string, landed: Landed}} Drawn
+ * @typedef {{decision: 'ask', reason: string, seal: Seal, redrawn: boolean, warnings: string[]} | {decision: 'proceed', reason: string, landed: Landed}} Drawn
  */
 /**
  * The person's answer as its entry and its event hold it: the entry's
@@ -208,10 +212,10 @@ const decisionPoint = require('./decision-point.cjs');
  * @typedef {{text: string, why: string, rules_out: string[], who_moved_whom: string, answer: string|null, with_text: boolean, via: Via}} Given
  */
 /**
- * How a raise lands, and what is checked under the lock beside its write's
- * own checks: its write, its links as sealed, what its content holds beyond
+ * How a raise lands, and what is checked under the lock before its links
+ * resolve: its write, its links as sealed, what its content holds beyond
  * the answer, and the check.
- * @typedef {{lands: Lands, linked: Linked, content: Record<string, unknown>, checkLinked: import('./ledger-write.cjs').LinkedCheck}} Landing
+ * @typedef {{lands: Lands, linked: Linked, content: Record<string, unknown>, checkRead: import('./ledger-write.cjs').ReadCheck}} Landing
  */
 /**
  * The person's answer as it lands: its landing, its line's content, and
@@ -485,6 +489,32 @@ function checkStillOpen(answers, read) {
   if (stands !== null) throw new Error(`${ANSWER_SAID}: the raise answers ${stands} now — nothing recorded: a raise answers an open question, and the person's answer stays in the conversation`);
 }
 
+/**
+ * What became of a decision no longer current, as its fold says why.
+ * @param {import('./ledger-fold.cjs').NotCurrent} why @param {(id: string) => string} short
+ */
+function sinceDrawn(why, short) {
+  if ('replaced_by' in why) return `${short(why.replaced_by)} replaced it`;
+  if ('merged_by' in why) return `${short(why.merged_by)} merged it as a duplicate`;
+  return `it stopped being current — ${why.dead}`;
+}
+
+/**
+ * Refuse, under the writer lock, the answer to a raise on a replacement
+ * whose decision is no longer current, naming the decision, what became of
+ * it, and the way on: raising again on what is current now. Nothing is
+ * recorded.
+ * @param {string} entry @param {Folded} read
+ */
+function checkStillCurrent(entry, read) {
+  const why = notCurrent(read, entry);
+  if (why === null) return;
+  const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+  const currents = currentsOf(read, entry).map(short);
+  const on = currents.length === 0 ? 'nothing it led to is current, so there is nothing to raise again on' : `raise again on ${currents.join(', ')}, where it still calls for a change`;
+  throw new Error(`${ANSWER_SAID}: the raise proposes replacing ${short(entry)}, and since it was drawn ${sinceDrawn(why, short)} — nothing recorded: ${on}, and the person's answer stays in the conversation`);
+}
+
 /** The calling conversation's session id; refuses a command handed none. @param {string} said */
 function sessionOf(said) {
   const session = handedSession();
@@ -493,20 +523,33 @@ function sessionOf(said) {
 }
 
 /**
+ * What a raise's landing checks under the lock, in the words of the command
+ * landing it: the question it answers still open; the decision it replaces
+ * still current.
+ * @typedef {{open: (answers: string, read: Folded) => void, current: (entry: string, read: Folded) => void}} Stands
+ */
+
+/** A proceed's, at the draw: a decision replaced since is `ledger replace`'s own refusal, in the draw's words. @type {Stands} */
+const AT_THE_DRAW = Object.freeze({ open: checkOpen, current: () => {} });
+
+/** The person's answer's. @type {Stands} */
+const AT_THE_ANSWER = Object.freeze({ open: checkStillOpen, current: checkStillCurrent });
+
+/**
  * How what a raise is about lands, the person's answer or Claude's call it
- * lets proceed: answering its question, checked still open under the lock
- * by `stillOpen`; or replacing the decision for the reason and cause
- * sealed, dropping its answer as it stood — the decision still current
- * being `ledger replace`'s own check of its link.
- * @param {Target} target @param {(answers: string, read: Folded) => void} stillOpen
+ * lets proceed: answering its question, checked still open under the lock;
+ * or replacing the decision for the reason and cause sealed, dropping its
+ * answer as it stood, checked still current — each by `stands`.
+ * @param {Target} target @param {Stands} stands
  * @returns {Landing}
  */
-function landsAs({ answers, relies_on: reliesOn, replaces }, stillOpen) {
+function landsAs({ answers, relies_on: reliesOn, replaces }, stands) {
   if (replaces === null) {
-    return { lands: 'decide', linked: { answers, relies_on: reliesOn }, content: {}, checkLinked: (linked, read) => stillOpen(/** @type {string} */ (linked.answers), read) };
+    const question = /** @type {string} */ (answers);
+    return { lands: 'decide', linked: { answers, relies_on: reliesOn }, content: {}, checkRead: (read) => stands.open(question, read) };
   }
   const { entry, reason, cause, keep } = replaces;
-  return { lands: 'replace', linked: { replaces: entry, reason, cause, relies_on: reliesOn }, content: { drops: [keep.text] }, checkLinked: () => {} };
+  return { lands: 'replace', linked: { replaces: entry, reason, cause, relies_on: reliesOn }, content: { drops: [keep.text] }, checkRead: (read) => stands.current(entry, read) };
 }
 
 /**
@@ -519,7 +562,7 @@ function landsAs({ answers, relies_on: reliesOn, replaces }, stillOpen) {
  */
 function proceeded(cwd, place, target, call, warnings) {
   const lean = leanRow(call);
-  const { lands, linked, content, checkLinked } = landsAs(target, checkOpen);
+  const { lands, linked, content, checkRead } = landsAs(target, AT_THE_DRAW);
   const { landed } = landRaised(cwd, {
     said: SAID,
     place,
@@ -528,7 +571,7 @@ function proceeded(cwd, place, target, call, warnings) {
     content: { by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide },
     id: null,
     logs: callLogged(call.sort),
-    checkLinked,
+    checkRead,
   }, warnings);
   return landed;
 }
@@ -566,7 +609,7 @@ function placedRaise(cwd, args, warnings) {
  * <reason> [--cause <id>]) [--relies-on <id> …]`: the call on stdin put
  * through the decision point and, where it asks, sealed in the
  * conversation and drawn — or the conversation's open seal of the question
- * or the replacement drawn again, said kept; where it proceeds, landed as
+ * or the replacement drawn again, said redrawn; where it proceeds, landed as
  * Claude's.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {Promise<Drawn>}
@@ -580,10 +623,10 @@ async function drawRaise(cwd, args, stdin) {
   const call = callOf(stdin(), target.replaces !== null);
   if (target.replaces !== null) checkProposals(call, target.replaces, short(target.replaces.entry));
   const seals = readSeals(session);
-  const kept = openSeal(seals, place, target);
-  if (kept !== null) {
+  const open = openSeal(seals, place, target);
+  if (open !== null) {
     clearGateShown(session);
-    return { decision: 'ask', reason: kept.reason, seal: kept, kept: true, warnings };
+    return { decision: 'ask', reason: open.reason, seal: open, redrawn: true, warnings };
   }
   const judged = await checkedRows(call);
   const { decision, reason } = decisionPoint.decide(call);
@@ -597,7 +640,7 @@ async function drawRaise(cwd, args, stdin) {
   };
   keepSeal(session, seals, seal);
   clearGateShown(session);
-  return { decision, reason, seal, kept: false, warnings };
+  return { decision, reason, seal, redrawn: false, warnings };
 }
 
 /**
@@ -758,9 +801,9 @@ function markAnswered(session, seals, seal, answer) {
  * @returns {Answering}
  */
 function answeredWith(seal, { text, why, rules_out: rulesOut, who_moved_whom: moved, answer, via, with_text: withText }) {
-  const { lands, linked, content, checkLinked } = landsAs(seal, checkStillOpen);
+  const { lands, linked, content, checkRead } = landsAs(seal, AT_THE_ANSWER);
   return {
-    lands, linked, checkLinked, answer, via, with_text: withText,
+    lands, linked, checkRead, answer, via, with_text: withText,
     content: { by: 'person', who_moved_whom: moved, ...content, text, why, rules_out: rulesOut, product_wide: seal.call.product_wide, sealed: leanRow(seal.call).text },
   };
 }
@@ -778,7 +821,7 @@ function keeping(session, seal, { entry, reason, cause }) {
     lands: 'keep',
     linked: { entry, reason, cause },
     content: { by: 'person', who_moved_whom: derivedMove({ event: 'kept', by: 'person' }, null, reason, null), sealed: leanRow(seal.call).text },
-    checkLinked: () => {},
+    checkRead: (read) => checkStillCurrent(entry, read),
     answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false,
   };
 }
@@ -791,7 +834,7 @@ function keeping(session, seal, { entry, reason, cause }) {
  * @param {string} cwd @param {string} session @param {Record<string, unknown>} seals @param {Seal} seal @param {Answering} answering
  * @returns {Landed & {raise: string, already?: true, answer?: string|null}}
  */
-function recordAnswer(cwd, session, seals, seal, { lands, linked, content, checkLinked, answer, via, with_text: withText }) {
+function recordAnswer(cwd, session, seals, seal, { lands, linked, content, checkRead, answer, via, with_text: withText }) {
   /** @type {string[]} */
   const warnings = [];
   const { landed, held } = landRaised(cwd, {
@@ -802,7 +845,7 @@ function recordAnswer(cwd, session, seals, seal, { lands, linked, content, check
     content,
     id: seal.id,
     logs: ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, didnt_follow: false }) }),
-    checkLinked,
+    checkRead,
   }, warnings);
   const first = held === null ? answer : heldAnswer(seal.call, held);
   markAnswered(session, seals, seal, first);
