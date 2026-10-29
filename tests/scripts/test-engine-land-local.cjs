@@ -7,7 +7,8 @@
 // its tasks' trailers on the default branch; the work a task is built on —
 // a branch it holds while that branch stands, never a tree alike, and the
 // work the default branch has counting for nothing; how a phase stacks on
-// another and replays onto a default branch that moved on; and what finish
+// another and replays onto a default branch that moved on, naming every
+// path a replay conflicts at, however long git's answer; and what finish
 // says where it stops. What it records, and the shapes of landing it reads,
 // are test-engine-land-reads.cjs's. Each refusal's way on is the remedy
 // table's (landing-remedies.cjs, followed by the
@@ -132,6 +133,23 @@ describe('land: how the local driver stacks and replays', () => {
       [git(dir, ['show', 'main:flag.txt']), landedOn(dir, 'main').map(({ subject }) => subject)],
       ['a\n', ['fix(pay): Round totals', 'feat(pay): Add flag', 'feat(pay): Trim flag']],
     );
+  });
+
+  it('names every path a replay conflicts at, though git\'s answer runs past a megabyte', () => {
+    const dir = project();
+    git(dir, ['checkout', '-q', '-b', 'wip']);
+    const deep = Array.from({ length: 160 }, (_, i) => `${String(i).padStart(3, '0')}${'d'.repeat(247)}`).join('/');
+    const files = Array.from({ length: 30 }, (_, i) => `${deep}/f${i}.txt`);
+    const each = (/** @type {string} */ text) => Object.fromEntries(files.map((file) => [file, text]));
+    commitFiles(dir, 'main', 'main', each('a\n'));
+    ok(dir, openArgs(cutTask(dir, '4.1', 'fix', 'Deep', 'main', each('task\n'))));
+    commitFiles(dir, 'main', 'main', each('main\n'));
+    const refusal = refusedMoving(dir, ['land', 'phase', 'pay', '4']);
+    const opening = 'land: task 4.1 conflicts with main at ';
+    const closing = `, so nothing moved — ${way(dir, null, 'feat/pay-phase-4', rebaseSteps(dir, 'feat/pay-phase-4', 'main', 'bring feat/pay-phase-4 up to date with main'))}`;
+    assert.deepStrictEqual([refusal.startsWith(opening), refusal.endsWith(closing)], [true, true]);
+    const leaf = (/** @type {string} */ file) => file.replace(`${deep}/`, '…/');
+    assert.deepStrictEqual(refusal.slice(opening.length, -closing.length).split(', ').map(leaf), files.map(leaf).sort());
   });
 
   it('lands a task whose change the default branch holds already as a commit that changes nothing, and names it', () => {

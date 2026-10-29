@@ -4,10 +4,11 @@
 // Linked worktrees under the `land` verbs (workflow-engine/scripts/domain/
 // landing-git.cjs, through the local driver's merges): a branch a linked
 // worktree has out moves only as the main checkout's would, a rebase stopped
-// there holding the branches it rewrites, and a worktree deleted but not
-// pruned holding its branch too; a remedy freeing such a branch prunes the
-// worktree where it is deleted, and waits on a merge stopped there, or a
-// rebase of the branch, ended first and alone; a replayed phase moves
+// there holding the branches it rewrites, and a worktree whose folder is
+// missing holding its branch too; a remedy freeing such a branch removes
+// that worktree alone — another whose folder is missing kept, with what it
+// holds — and waits on a merge stopped there, or a rebase of the branch,
+// ended first and alone; a replayed phase moves
 // nothing until both branches can, and is put back where the default
 // branch then fails to move. Each refusal's remedy is followed as written,
 // and the verb then goes through, every linked worktree at a path with a
@@ -35,7 +36,32 @@ const MERGE_ONE = ['land', 'phase', 'pay', '1'];
 const CHAIN_ONE = ['land', 'chain', 'pay', '1.1'];
 const PHASE_ONE = 'feat/pay-phase-1';
 const PHASE_FOUR = 'feat/pay-phase-4';
-const PRUNE = 'clear the worktree since deleted that has it out with `git worktree prune`';
+/** The step removing the worktree that has a branch out, its folder missing. @param {string} gone */
+const removeGone = (gone) => `remove the worktree that has it out, whose folder ${gone} is missing, with \`git worktree remove ${shellWord(gone)}\``;
+
+/**
+ * A worktree at `tree`, detached at `from` with a commit of its own on no
+ * branch and an edit staged, its folder then moved away, as an unmounted
+ * drive leaves it — the commit returned.
+ * @param {string} dir @param {string} tree @param {string} from
+ */
+function unmounted(dir, tree, from) {
+  git(dir, ['worktree', 'add', '-q', '--detach', tree, from]);
+  fs.writeFileSync(path.join(tree, 'wip.txt'), 'work in progress\n');
+  git(tree, ['add', 'wip.txt']);
+  git(tree, ['commit', '-q', '-m', 'detached work']);
+  const work = tip(tree, 'HEAD');
+  fs.writeFileSync(path.join(tree, 'staged.txt'), 'staged\n');
+  git(tree, ['add', 'staged.txt']);
+  fs.renameSync(tree, `${tree} unmounted`);
+  return work;
+}
+
+/** Whether a worktree moved away by `unmounted`, mounted again, is as it was left. @param {string} tree @param {string} work */
+function remounted(tree, work) {
+  fs.renameSync(`${tree} unmounted`, tree);
+  assert.deepStrictEqual([tip(tree, 'HEAD'), git(tree, ['status', '--porcelain'])], [work, 'A  staged.txt\n']);
+}
 
 describe('land phase: a linked worktree', () => {
   it('holds the default branch it has out as the main checkout would — changes not committed there, kept by detaching it; a rebase stopped there — and goes through once each remedy is followed', () => {
@@ -77,52 +103,56 @@ describe('land phase: a linked worktree', () => {
     ok(dir, MERGE_ONE);
   });
 
-  it('holds the default branch a worktree deleted but not pruned has out, a detached one deleted beside it, and goes through once pruned', () => {
+  it('holds the default branch a worktree whose folder is missing has out, and goes through once that worktree alone is removed — another missing beside it kept, with its own commit and its staged edit', () => {
     const dir = project();
     ok(dir, openArgs(card));
     git(dir, ['checkout', '-q', '-b', 'wip']);
     const detached = path.join(dir, '.git', 'linked detached');
     const gone = path.join(dir, '.git', 'linked main');
-    git(dir, ['worktree', 'add', '-q', '--detach', detached, 'main']);
+    const work = unmounted(dir, detached, 'main');
     git(dir, ['worktree', 'add', '-q', gone, 'main']);
-    for (const tree of [detached, gone]) fs.rmSync(tree, { recursive: true, force: true });
+    fs.rmSync(gone, { recursive: true, force: true });
     const refusal = refusedMoving(dir, MERGE_ONE);
-    assert.strictEqual(refusal, held('main', gone, ', a worktree since deleted', 'clear it with `git worktree prune` and land again'));
+    assert.strictEqual(refusal, held('main', gone, ', whose folder is missing', `remove that worktree with \`git worktree remove ${shellWord(gone)}\` and land again`));
     followRemedy(dir, refusal);
     ok(dir, MERGE_ONE);
+    remounted(detached, work);
   });
 });
 
 describe('land: a remedy freeing a branch a linked worktree has out', () => {
-  it('prunes a worktree since deleted that has the branch out, before a move and before a rebase, and the verb goes through', () => {
+  it('removes the worktree whose folder is missing that has the branch out, and it alone, before a move and before a rebase — another missing kept, with its own commit and its staged edit — and the verb goes through', () => {
     const dir = project();
     ok(dir, openArgs(card));
     const other = commitFiles(dir, PHASE_FOUR, 'main', { 'v2.txt': 'v2\n' }, { message: 'feat(pay-v2): Other\n\nTask: pay-v2-4-1\n' });
     commitFiles(dir, PHASE_FOUR, PHASE_FOUR, { 'four.txt': 'four\n' }, { message: 'fix(pay): Four\n\nTask: pay-4-1\n' });
     const top = commitFiles(dir, PHASE_ONE, PHASE_ONE, { 'tidy.txt': 'tidy\n' }, { message: 'my tidy' });
-    const outAndDeleted = (/** @type {string} */ branch) => {
-      const gone = path.join(dir, '.git', 'linked phase');
+    const detached = path.join(dir, '.git', 'linked detached');
+    const work = unmounted(dir, detached, 'main');
+    const gone = path.join(dir, '.git', 'linked phase');
+    const outAndGone = (/** @type {string} */ branch) => {
       git(dir, ['worktree', 'add', '-q', gone, branch]);
       fs.rmSync(gone, { recursive: true, force: true });
     };
-    outAndDeleted(PHASE_ONE);
+    outAndGone(PHASE_ONE);
     const moving = refusedMoving(dir, CHAIN_ONE);
-    assert.strictEqual(moving, stray(PHASE_ONE, 1, top, 'my tidy', way(dir, null, PHASE_ONE, [PRUNE, ...moveStep(PHASE_ONE, `${short(top)}^`, `take ${short(top)} off ${PHASE_ONE}`)])));
+    assert.strictEqual(moving, stray(PHASE_ONE, 1, top, 'my tidy', way(dir, null, PHASE_ONE, [removeGone(gone), ...moveStep(PHASE_ONE, `${short(top)}^`, `take ${short(top)} off ${PHASE_ONE}`)])));
     followRemedy(dir, moving);
     ok(dir, CHAIN_ONE);
-    outAndDeleted(PHASE_FOUR);
+    outAndGone(PHASE_FOUR);
     const rebasing = refusedMoving(dir, ['land', 'chain', 'pay', '4.1']);
     assert.strictEqual(rebasing, stray(PHASE_FOUR, 4, other, 'feat(pay-v2): Other', way(dir, null, PHASE_FOUR, [
-      PRUNE, ...rebaseSteps(dir, PHASE_FOUR, `--onto ${short(other)}^ ${short(other)}`, `take ${short(other)} off ${PHASE_FOUR}`),
+      removeGone(gone), ...rebaseSteps(dir, PHASE_FOUR, `--onto ${short(other)}^ ${short(other)}`, `take ${short(other)} off ${PHASE_FOUR}`),
     ])));
     followRemedy(dir, rebasing);
     ok(dir, ['land', 'chain', 'pay', '4.1']);
+    remounted(detached, work);
   });
 
   it('waits on a merge stopped where the branch is out, or a rebase of it, ended first and alone, then frees it as it would any', () => {
     for (const [stop, first] of /** @type {const} */ ([
       [['merge', 'side'], (/** @type {string} */ at) => `first finish a merge at ${at}, where ${PHASE_ONE} is out, or end it with \`git -C ${shellWord(at)} merge --abort\``],
-      [['rebase', 'side'], (/** @type {string} */ at) => `first finish the rebase of ${PHASE_ONE} at ${at}, or end it with \`git -C ${shellWord(at)} rebase --abort\``],
+      [['rebase', 'side'], (/** @type {string} */ at) => `${PHASE_ONE} is being rebased at ${at}, so first finish that rebase, or end it with \`git -C ${shellWord(at)} rebase --abort\``],
     ])) {
       const dir = project();
       ok(dir, openArgs(card));

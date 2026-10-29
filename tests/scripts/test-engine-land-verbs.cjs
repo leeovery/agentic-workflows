@@ -13,7 +13,8 @@
 // warnings, and its branch named from them and judged by its own change; a
 // change reaching a nested repository refused; and a project inside a
 // larger repository reading the change from its own folder alone, but for
-// the state, at the repository's top (7.2.17). What every driver does is
+// the state, at the repository's top (7.2.17), and naming the person's own
+// checkout as theirs. What every driver does is
 // the landing conformance suite's; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb
@@ -29,7 +30,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, refuses, git, stateGit, tip, initRepo, statePath, commitAll } = require('./engine-harness.cjs');
-const { TASKS, TRACKER, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy } = require('./landing-world.cjs');
+const {
+  TASKS, TRACKER, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
+} = require('./landing-world.cjs');
 const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
 const { card } = TASKS;
@@ -289,6 +292,18 @@ describe('land open: a task judged by its own change', () => {
         refuses(app, openArgs(bump)).error,
         'land: task 1.4\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
       );
+    });
+
+    it('names the person\'s own checkout, at the repository\'s top, as theirs in a remedy given from the project\'s folder', () => {
+      const [dir, app] = nested();
+      const phase = 'feat/pay-phase-1';
+      ok(app, openArgs(card));
+      const top = commitFiles(dir, phase, phase, { 'tidy.txt': 'tidy\n' }, { message: 'my tidy' });
+      git(dir, ['checkout', '-q', phase]);
+      const refusal = refuses(app, ['land', 'chain', 'pay', '1.1']).error;
+      assert.strictEqual(refusal, stray(phase, 1, top, 'my tidy', way(dir, { path: dir, here: true }, phase, moveStep(phase, `${short(top)}^`, `take ${short(top)} off ${phase}`))));
+      followRemedy(app, refusal);
+      assert.deepStrictEqual(ok(app, ['land', 'chain', 'pay', '1.1']).stack, ['1.1']);
     });
   });
 });

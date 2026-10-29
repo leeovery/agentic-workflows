@@ -23,7 +23,7 @@ const path = require('path');
 
 const { ok, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, way, moveStep, rebaseSteps,
+  TASKS, openArgs, commitFiles, mergeBack, useLandingWorld, refusedMoving, commandsOf, followRemedy, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps,
   strayRefusal: stray,
 } = require('./landing-world.cjs');
 
@@ -128,7 +128,7 @@ describe('land: a remedy taken again, or meeting what an earlier one left', () =
     const scratch = scratchOf(dir, PHASE_ONE);
     const there = `git -C ${shellWord(scratch)}`;
     const stopped = `land: ${PHASE_ONE} is being rebased at ${scratch}, a worktree a remedy made, so nothing moved — `
-      + `settle each conflict there and go on with \`${there} rebase --continue\`, or end it with \`${there} rebase --abort\`, `
+      + `settle each conflict there and go on with \`${rebasingIn(scratch)} rebase --continue\`, or end it with \`${there} rebase --abort\`, `
       + `then remove it with \`git worktree remove ${shellWord(scratch)}\`, and land again`;
     const verbs = [openArgs(total), CHAIN_ONE, ['land', 'phase', 'pay', '1'], ['land', 'finish', 'pay']];
     cutShort(dir, refusedMoving(dir, CHAIN_ONE), 3);

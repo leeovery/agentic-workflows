@@ -365,9 +365,10 @@ const signaturesPast = (dir, before) => signatures(dir, git(dir, ['rev-list', '-
 /**
  * The person's config in the hostile state (landing-git.cjs, `PINNED`): each
  * setting the landing pins at a value that would change what it makes or
- * reads — the person signing every commit with a key made in the world, no
- * signer git can check, and every log showing signatures — and the printed
- * rebase's at values that would move every branch it holds, or stop on a
+ * reads — the person signing every commit with a key made in the world,
+ * written as git reads it but for `true`, no signer git can check, and
+ * every log showing signatures — and the printed rebase's at values that
+ * would move every branch it holds, merge by another strategy, or stop on a
  * landing that changes nothing; and the settings the landing leaves the
  * person's at values that would show, were they not harmless to it.
  * @param {string} dir @returns {[string, string][]}
@@ -375,8 +376,9 @@ const signaturesPast = (dir, before) => signatures(dir, git(dir, ['rev-list', '-
 const HOSTILE = (dir) => [
   ['log.showSignature', 'true'], ['i18n.logOutputEncoding', 'ISO-8859-1'], ['i18n.commitEncoding', 'ISO-8859-1'],
   ['merge.renames', 'false'], ['merge.renameLimit', '1'], ['merge.directoryRenames', 'true'], ['merge.renormalize', 'true'], ['core.autocrlf', 'input'],
+  ['merge.default', 'union'], ['pull.twohead', 'ours'],
   ['merge.verifySignatures', 'true'], ['branch.main.mergeOptions', '--squash'], ['rebase.updateRefs', 'true'], ['rebase.backend', 'apply'],
-  ['gpg.format', 'ssh'], ['user.signingKey', signingKeyOf(dir)], ['commit.gpgSign', 'true'],
+  ['gpg.format', 'ssh'], ['user.signingKey', signingKeyOf(dir)], ['commit.gpgSign', 'yes'],
   ['color.ui', 'always'], ['diff.noprefix', 'true'], ['diff.relative', 'true'], ['diff.external', 'false'], ['diff.ignoreSubmodules', 'all'],
   ['status.showUntrackedFiles', 'no'], ['status.branch', 'true'], ['status.short', 'true'], ['format.pretty', 'oneline'], ['log.decorate', 'full'],
   ['rebase.autoSquash', 'true'], ['rebase.autoStash', 'true'], ['rebase.rebaseMerges', 'true'], ['merge.autoStash', 'true'], ['merge.ff', 'false'],
@@ -401,7 +403,8 @@ function configText(settings) {
  * What each state does to the repository, once a row has built it. Hostile:
  * the main checkout clean on the default branch, the person's config
  * hostile to the landing (`HOSTILE`) written into the repository's own.
- * Busy: the main checkout on a branch of its own, busy (`busy`). Held here:
+ * Busy: the main checkout on a branch of its own, busy (`busy`), and
+ * `commit.gpgSign` set nowhere, as for a person who never signs. Held here:
  * the main checkout has the branch the remedy frees out, busy. Held linked:
  * a linked worktree at a path with a space and a quote has it out, busy.
  * @type {Record<'hostile'|'busy'|'heldHere'|'heldLinked', (dir: string, moves?: string) => Held>}
@@ -413,6 +416,7 @@ const PERSON_STATES = {
   },
   busy: (dir) => {
     git(dir, ['checkout', '-q', '-b', 'mine']);
+    git(dir, ['config', '--unset', 'commit.gpgSign']);
     busy(dir, dir);
     return null;
   },
@@ -581,16 +585,19 @@ function way(dir, held, branch, act, { then = 'land again', note } = {}) {
 /** A remedy's step moving a branch to a commit. @param {string} branch @param {string} to @param {string} how */
 const moveStep = (branch, to, how) => [`${how} with \`git branch -f ${branch} ${to}\``];
 
+/** Git as a remedy's rebase runs in the worktree made for it, merging by the replay's settings. @param {string} tree */
+const rebasingIn = (tree) => `git -C ${shellWord(tree)} -c merge.renames=true -c merge.renameLimit=7000 -c merge.directoryRenames=conflict -c merge.renormalize=false -c merge.default=text`;
+
 /**
  * A remedy's steps rebasing a branch in a worktree made for it, removed after.
  * @param {string} dir @param {string} branch @param {string} args @param {string} how
  */
 function rebaseSteps(dir, branch, args, how) {
   const tree = scratchOf(dir, branch);
-  const there = `git -C ${shellWord(tree)}`;
+  const there = rebasingIn(tree);
   return [
     `${how} in a worktree of its own with \`git worktree add ${shellWord(tree)} ${branch}\``,
-    `\`${there} rebase --merge --no-update-refs ${args}\`, settling each conflict at ${tree} as it stops and going on with \`${there} rebase --continue\``,
+    `\`${there} rebase --merge --no-update-refs -s ort ${args}\`, settling each conflict at ${tree} as it stops and going on with \`${there} rebase --continue\``,
     `\`git worktree remove ${shellWord(tree)}\``,
   ];
 }
@@ -639,5 +646,5 @@ function pathsOn(dir, branch) {
 
 module.exports = {
   UNIT, BASE, TASKS, TRACKER, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
-  personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
+  personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

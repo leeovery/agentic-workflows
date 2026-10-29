@@ -9,7 +9,8 @@
 // their own commits are, and one git cannot sign is refused in git's words;
 // a replay keeps a message that is not ASCII, recorded as UTF-8;
 // it follows renames, however many, stops where a folder the task moved
-// gains a file, and where line endings alone differ; and a remedy's rebase
+// gains a file, where both sides changed one line, and where line endings
+// alone differ; and a remedy's rebase
 // keeps a landing that changes nothing. Git layer: the landing world with
 // tasks 1.1 and 2.1 opened, built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -124,6 +125,11 @@ describe('land: under the person\'s config, hostile to it', () => {
   it('stops where a folder the task moved gains a file on the default branch, as git\'s own merge does', () => {
     const dir = replaying('Move lib', { 'src/a.txt': 'a\n' }, { 'lib/b.txt': 'b\n' }, { before: { 'lib/a.txt': 'a\n' }, removed: ['lib/a.txt'] });
     assert.strictEqual(refusedMoving(dir, MERGE_FOUR), conflicting(dir, 'src/b.txt'));
+  });
+
+  it('stops where the task and the default branch changed one line, as git\'s own merge does, whatever the person\'s merge.default', () => {
+    const dir = replaying('Edit two', { 'two.txt': 'one\nTASK\nthree\n' }, { 'two.txt': 'one\nMAIN\nthree\n' }, { before: { 'two.txt': 'one\ntwo\nthree\n' } });
+    assert.strictEqual(refusedMoving(dir, MERGE_FOUR), conflicting(dir, 'two.txt'));
   });
 
   it('stops where the default branch changed a file\'s line endings alone and the task edited it, as git\'s own merge does', () => {
