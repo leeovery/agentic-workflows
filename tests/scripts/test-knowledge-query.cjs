@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, engineKnowledge, withoutBackoff } = require('./knowledge-harness.cjs');
+const { embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
@@ -42,6 +42,7 @@ const PARAPHRASE = { content: 'Receipts reconcile after close.', term: 'when is 
 /** A project holding none of the chunks' source files: each result carries its excerpt alone. */
 const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
 after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
+refuseLaunches();
 
 /** A chunk of `unit`'s discussion, `n` its ordinal. */
 /** `text` as a regular expression matches it exactly. @param {string} text */

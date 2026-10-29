@@ -5,12 +5,36 @@
 // records what it was sent. The door runs in process and waits, so the
 // endpoint — served from the test's own process — can answer it. And, in
 // process, a run whose retry backoff costs no real time, a call whose output
-// is held, and the vector fill's launches recorded rather than spawned.
+// is held, and the vector fill's launches recorded rather than spawned, or
+// refused outright. And the world a suite drives the door over: a work unit
+// registered, its statuses set, the knowledge config, the store's metadata
+// and its chunks, and a system config directory of the test's own.
+//
+// A work unit's manifest document is written by hand (`knowledgeUnit`) — the
+// one deliberate exception to tests/README.md's rule that named worlds are
+// built through the verbs. The door only reads manifests, and a unit made
+// through `workunit create` commits and brings a discovery item the door's
+// tests would then have to account for. Every status and completion date on
+// it is set through `engine manifest set`, so the engine's own vocabulary
+// checks each one.
 
+const fs = require('fs');
 const http = require('http');
+const os = require('os');
+const path = require('path');
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
+const { ENGINE_COMMAND, launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
+const { before, after } = require('node:test');
+const assert = require('node:assert');
+const { createManifest, statePath } = require('./discovery-test-utils.cjs');
+
+/** The knowledge settings a door suite sets up most. */
+const KEYWORD_ONLY = { provider: null };
+const STUB = { provider: 'stub', dimensions: 16 };
+const OPENAI = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 };
 
 /** How the endpoint answers in each failing mode. */
 const FAILURES = {
@@ -107,6 +131,25 @@ function recordLaunches(t) {
 }
 
 /**
+ * For the calling file, any detached job a call would launch refused with a
+ * throw — so a test that reaches the vector fill fails rather than racing a
+ * live process. A test that asserts the launch takes `recordLaunches`.
+ */
+function refuseLaunches() {
+  /** @type {typeof launcher.launch} */
+  let real;
+  before(() => {
+    real = launcher.launch;
+    launcher.launch = (/** @type {string} */ root, /** @type {string[]} */ argv) => {
+      throw new Error(`a test launched \`engine ${argv.join(' ')}\` for ${root}`);
+    };
+  });
+  after(() => {
+    launcher.launch = real;
+  });
+}
+
+/**
  * Run `run` in process with setTimeout mocked, every timer it sets fired at
  * once — a retry's backoff then costs no real time.
  * @template T
@@ -126,4 +169,112 @@ async function withoutBackoff(t, run) {
   return running;
 }
 
-module.exports = { embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff };
+/**
+ * The work unit `name`'s manifest written into the world's state and
+ * registered in the project manifest, the fields given laid over the
+ * defaults — never a status: those are `manifestSet`'s.
+ * @param {string} root @param {string} name @param {string} workType @param {Record<string, any>} [fields]
+ */
+function knowledgeUnit(root, name, workType, fields = {}) {
+  createManifest(root, name, { work_type: workType, created: '2026-01-01', ...fields });
+  const registry = statePath(root, 'manifest.json');
+  const project = JSON.parse(fs.readFileSync(registry, 'utf8'));
+  project.work_units = { ...project.work_units, [name]: { work_type: workType } };
+  fs.writeFileSync(registry, JSON.stringify(project, null, 2) + '\n');
+}
+
+/**
+ * `engine manifest set <path> <field> <value>` in the world, in process; it
+ * must succeed.
+ * @param {string} root @param {string} at @param {string} field @param {string} value
+ */
+function manifestSet(root, at, field, value) {
+  const answer = engine.run(['manifest', 'set', at, field, value], { cwd: root });
+  assert.strictEqual(answer.code, 0, `manifest set ${at} ${field} ${value}: ${answer.stderr}`);
+}
+
+/**
+ * Each named item of the unit given `status`.
+ * @param {string} root @param {string} unit @param {Record<string, string[]>} topics  by phase @param {string} [status]
+ */
+function setItems(root, unit, topics, status = 'completed') {
+  for (const [phase, names] of Object.entries(topics)) {
+    for (const name of names) manifestSet(root, `${unit}.${phase}.${name}`, 'status', status);
+  }
+}
+
+/** The unit completed on `date`. @param {string} root @param {string} unit @param {string} date */
+function completeUnit(root, unit, date) {
+  manifestSet(root, unit, 'status', 'completed');
+  manifestSet(root, unit, 'completed_at', date);
+}
+
+/**
+ * The project manifest's registry replaced by `workUnits`, its other keys kept.
+ * @param {string} root @param {Record<string, any>} workUnits
+ */
+function setRegistry(root, workUnits) {
+  const registry = statePath(root, 'manifest.json');
+  fs.writeFileSync(registry, JSON.stringify({ ...JSON.parse(fs.readFileSync(registry, 'utf8')), work_units: workUnits }, null, 2) + '\n');
+}
+
+/**
+ * The door bound to the world `rootOf` answers at the time of the call: the
+ * knowledge verbs in process, and an absolute path in its state.
+ * @param {() => string} rootOf
+ */
+function knowledgeDoor(rootOf) {
+  return {
+    knowledge: (/** @type {string[]} */ ...args) => engineKnowledge(rootOf(), args),
+    at: (/** @type {string} */ rel) => statePath(rootOf(), rel),
+  };
+}
+
+/**
+ * The world's knowledge config, its `knowledge` object as given.
+ * @param {string} root @param {Record<string, any>} knowledge
+ */
+function configureKnowledge(root, knowledge) {
+  const { config } = knowledgeFiles(statePath(root));
+  fs.mkdirSync(path.dirname(config), { recursive: true });
+  fs.writeFileSync(config, JSON.stringify({ knowledge }) + '\n');
+}
+
+/** The world's knowledge files. @param {string} root */
+const knowledgeAt = (root) => knowledgeFiles(statePath(root));
+
+/** The store's metadata as written. @param {string} root */
+function knowledgeMetadata(root) {
+  return JSON.parse(fs.readFileSync(knowledgeAt(root).metadata, 'utf8'));
+}
+
+/**
+ * The chunks the store holds, those of one identity where it is named.
+ * @param {string} root @param {{workUnit?: string, phase?: string, topic?: string}} [identity]
+ */
+function storedChunks(root, { workUnit, phase, topic } = {}) {
+  return store.allChunks(store.loadStore(knowledgeAt(root).store)).filter((c) =>
+    (workUnit === undefined || c.work_unit === workUnit)
+    && (phase === undefined || c.phase === phase)
+    && (topic === undefined || c.topic === topic));
+}
+
+/**
+ * A system config directory of the test's own, holding each file given —
+ * `config.json`, `credentials.json` — as written; removed after the test.
+ * A call takes it as its `WORKFLOWS_CONFIG_DIR`.
+ * @param {import('node:test').TestContext} t @param {Record<string, string>} [files]
+ * @returns {string}
+ */
+function systemConfigDir(t, files = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-system-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), content);
+  return dir;
+}
+
+module.exports = {
+  ENGINE_COMMAND, KEYWORD_ONLY, STUB, OPENAI,
+  embeddingEndpoint, engineKnowledge, knowledgeDoor, heldCall, recordLaunches, refuseLaunches, withoutBackoff,
+  knowledgeUnit, manifestSet, setItems, completeUnit, setRegistry, configureKnowledge, knowledgeAt, knowledgeMetadata, storedChunks, systemConfigDir,
+};

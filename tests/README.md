@@ -11,7 +11,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | Gate | What it runs |
 |---|---|
 | `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json`; its budget is 1.5 min on an idle machine |
-| `npm run test:cli` | the two shell contract suites |
+| `npm run test:cli` | the shell contract suite of the manifest field surface |
 | `npm run test:migrations` | the frozen `test-migration-*.sh` fleet |
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
 | `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
@@ -33,7 +33,7 @@ Every test belongs to one layer, and every file sits in one. The layer decides h
 | **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | — | `test-migration-070.cjs` |
 | **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | — | `test-prose-invariants.cjs` |
 
-The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The two `test:cli` suites become verb-layer node suites, or are deleted with their behaviour. Nothing new is written in bash.
+The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The `test:cli` suite becomes verb-layer node suites, or is deleted with its behaviour. Nothing new is written in bash.
 
 ## 3. The fixture library
 
@@ -54,7 +54,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | `hermetic-env.cjs` | the pinned environment. Every node suite requires it first; `test-hermetic-env.cjs` enforces that. |
 | `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `ledgerEntries` (the ledger as the engine reads it), `tip`, `remoteTip`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, `lockAttempts` and `contend` (a race's contenders at a barrier), the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
 | `discovery-test-utils.cjs` | the project world's template, made once per process and copied by `copyWorld`, which relinks the copy's state worktree; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `useTempFolder(prefix)`, a temp folder for each test of the calling file; `statePath`, `createManifest`, `createFile`, `readFile`, `datedAt` |
-| `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
+| `knowledge-harness.cjs` | the stand-in embeddings endpoint, `engineKnowledge` and `knowledgeDoor` (the knowledge door in process), `heldCall`, `recordLaunches`, `refuseLaunches`, `withoutBackoff`, the `KEYWORD_ONLY`/`STUB`/`OPENAI` settings; and the world the door's suites drive: `knowledgeUnit` (a unit's manifest written by hand — the one exception to named worlds through the verbs), `manifestSet`, `setItems`, `completeUnit`, `setRegistry`, `configureKnowledge`, `knowledgeAt`, `knowledgeMetadata`, `storedChunks`, `systemConfigDir` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
 | `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its worlds, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-world.cjs`); a seam that must load before the engine does is a module of its own (`ledger-copies-seams.cjs`) |
