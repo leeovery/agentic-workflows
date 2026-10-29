@@ -22,8 +22,10 @@
 //   composed from, Claude's sort of it as a call with one defensible answer
 //   or several (16.3.7), and the row of Claude's sealed answer; then the
 //   answer, and whether the person didn't follow, which leaves no answer,
-//   no reading and no entry (16.9.3, 16.12.3). A raise followed has its
-//   entry: the command that writes the entry records the event (16.13.3).
+//   no reading and no entry (16.9.3, 16.12.3); and, in a build, whether its
+//   question blocked build work, null outside one (16.4.7). A raise
+//   followed has its entry: the command that writes the entry records the
+//   event (16.13.3).
 // - call: a call Claude made (16.3.7), by its ledger entry, with its kind,
 //   its label and its sort.
 // - verdict: a departure's verdict (16.10.9), by its ledger entry — nothing,
@@ -150,6 +152,7 @@ const SCHEMA = {
       field('answer', nullable(KEY)),
       ...HOW_ANSWERED,
       field('didnt_follow', FLAG),
+      field('blocked_build', nullable(FLAG)),
     ]),
     call: event([field('entry', ID), field('kind', KIND), field('label', LABEL), field('sort', SORT)]),
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),

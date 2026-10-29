@@ -56,7 +56,7 @@ const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
-const { RAISE_USAGE, drawRaise, showRaise, raiseWaits } = require('./domain/raise.cjs');
+const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits } = require('./domain/raise.cjs');
 const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
@@ -1817,14 +1817,20 @@ function runGate(call, argv) {
 // ---------------------------------------------------------------------------
 // raise — a call Claude has a lean on, put through the decision point and,
 // where it asks, sealed in the conversation and drawn (domain/raise.cjs, its
-// screen domain/projections/raise.cjs), answering once its rows' one-decision
-// checks have; `show` draws a sealed raise again.
+// screen domain/projections/raise.cjs), or, where it proceeds, landed as
+// Claude's — answering once its rows' one-decision checks have; `show` draws
+// a sealed raise again; `answer` records the person's answer to it.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 async function runRaiseDraw(call, argv) {
   try {
-    const { decision, reason, seal, kept, warnings } = await drawRaise(call.cwd, argv, call.stdin);
+    const drawn = await drawRaise(call.cwd, argv, call.stdin);
+    if (drawn.decision === 'proceed') {
+      respond(call, { decision: drawn.decision, reason: drawn.reason, ...drawn.landed });
+      return;
+    }
+    const { decision, reason, seal, kept, warnings } = drawn;
     const screen = raiseScreen(seal);
     respond(call, { decision, reason, raise: seal.id, kept, ...(warnings.length > 0 ? { warnings } : {}) });
     respondSections(call, screen);
@@ -1833,14 +1839,20 @@ async function runRaiseDraw(call, argv) {
   }
 }
 
+/** @param {Call} call @param {string[]} argv */
+function runRaiseShow(call, argv) {
+  const { seal, technical } = showRaise(argv);
+  const screen = raiseScreen(seal, { technical });
+  respond(call, { raise: seal.id });
+  respondSections(call, screen);
+}
+
 /** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
 function runRaise(call, argv) {
   if (raiseWaits(argv)) return runRaiseDraw(call, argv);
   try {
-    const { seal, technical } = showRaise(argv.slice(1));
-    const screen = raiseScreen(seal, { technical });
-    respond(call, { raise: seal.id });
-    respondSections(call, screen);
+    if (argv[0] === 'answer') respond(call, answerRaise(call.cwd, argv.slice(1), call.stdin));
+    else runRaiseShow(call, argv.slice(1));
   } catch (err) {
     failJson(call, err);
   }
@@ -2416,21 +2428,23 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot` and `ledger`, and none but they waits on the lock: `knowledge`
-// writes the store the state ignores, under a lock of its own; `boot` holds
-// the writer lock around each state write it makes and no longer, so its
-// knowledge pass never holds a peer up; a `ledger` write holds it around its
-// read of the ledger, the append and the commit alone, so what it does
-// before and after holds no peer up — its Claude call among it — the late
-// check holds it around each result it records, and a `ledger` read takes
-// none; `presence`, `session label`, `repair`, `cleanup` and `resume`, and
-// the hold `topic mailbox` refreshes write only the session files the state
-// ignores; a conversation's folder is outside the project; `gate` writes the
-// trust log, under its own lock, and the conversation's folder; and the rest
-// read, `layout guard` among them, run before every file Claude writes.
-// `manifest` takes it to write alone, and `commit` but for a code commit
-// (`--paths`). A `raise` writes the conversation's folder alone: its seal,
-// and the gate shown it clears.
+// `boot`, `ledger` and `raise`, and none but they waits on the lock:
+// `knowledge` writes the store the state ignores, under a lock of its own;
+// `boot` holds the writer lock around each state write it makes and no
+// longer, so its knowledge pass never holds a peer up; a `ledger` write
+// holds it around its read of the ledger, the append and the commit alone,
+// so what it does before and after holds no peer up — its Claude call among
+// it — the late check holds it around each result it records, and a
+// `ledger` read takes none; a `raise` draw or `show` writes the
+// conversation's folder alone — its seal, and the gate shown it clears —
+// and its answer, or a draw that proceeds, holds it around its ledger write
+// as a `ledger` write does; `presence`, `session label`, `repair`, `cleanup`
+// and `resume`, and the hold `topic mailbox` refreshes write only the
+// session files the state ignores; a conversation's folder is outside the
+// project; `gate` writes the trust log, under its own lock, and the
+// conversation's folder; and the rest read, `layout guard` among them, run
+// before every file Claude writes. `manifest` takes it to write alone, and
+// `commit` but for a code commit (`--paths`).
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',

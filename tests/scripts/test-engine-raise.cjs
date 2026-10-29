@@ -370,11 +370,9 @@ describe('the decision point (29.5.2)', () => {
     assert.strictEqual(sections, screen(res.raise, { reason }));
   });
 
-  it('a proceed or a blind ask refuses, naming where it is built, and seals nothing', async (t) => {
-    const decide = t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'One answer.' }));
-    assert.strictEqual(await refusedCall(CALL), 'raise: the decision point answered proceed, and landing a call that proceeds is 29.5\'s slice 5.2, not built yet — nothing drawn');
+  it('a blind ask refuses, naming where it is built, and seals nothing', async (t) => {
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'A blind draw.' }));
 
-    decide.mock.mockImplementation(() => ({ decision: 'blind', reason: 'A blind draw.' }));
     assert.strictEqual(await refusedCall(CALL), 'raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
   });
 });

@@ -107,10 +107,15 @@ class Sim {
   }
 
   // Transactions answer with pure JSON — display artifacts belong to render
-  // surfaces fetched at their display point. The one section-bearing group
-  // left is presence: its scan is a read-only snapshot whose deferral
-  // advisory rides the dump, the view-family pattern.
-  static SECTION_CARRYING = new Set(['presence']);
+  // surfaces fetched at their display point. The section-bearing commands
+  // left are presence, whose scan is a read-only snapshot whose deferral
+  // advisory rides the dump, the view-family pattern, and a raise's draw and
+  // show — every raise command but its answer — whose sections are the
+  // screen the raise is drawn as.
+  /** @param {string[]} args */
+  static carriesSections([group, verb]) {
+    return group === 'presence' || (group === 'raise' && verb !== 'answer');
+  }
 
   /**
    * The environment one call runs under: the sim's own, or a named session's.
@@ -164,17 +169,30 @@ class Sim {
   /**
    * One engine call awaited — the door the knowledge verbs that wait on the
    * embedding provider take, which `engine` refuses.
-   * @param {string[]} args @param {object|null} [identity]
+   * @param {string[]} args @param {object|null} [identity] @param {string} [stdin]
    */
-  engineAsync(args, identity = null) {
-    return engine.runAsync(args, { cwd: this.dir, env: this.envOf(identity) });
+  engineAsync(args, identity = null, stdin = '') {
+    return engine.runAsync(args, { cwd: this.dir, env: this.envOf(identity), stdin });
   }
 
   /** Engine mutation: expect ok:true JSON, then audit the whole state. */
   run(args, identity = null, stdin = '') {
+    return this.audited(args, this.engine(args, identity, stdin));
+  }
+
+  /** Engine mutation awaited — the door a command that answers later takes — audited as `run`'s. */
+  async runAsync(args, identity = null, stdin = '') {
+    return this.audited(args, await this.engineAsync(args, identity, stdin));
+  }
+
+  /**
+   * A mutation's answer `res` held to ok:true JSON, then the whole state
+   * audited: its parsed answer.
+   * @param {string[]} args @param {{code: number, stdout: string, stderr: string}} res
+   */
+  audited(args, res) {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')}`;
-    const res = this.engine(args, identity, stdin);
     assert.strictEqual(res.code, 0,
       `[${label}] expected success\nstdout: ${res.stdout}\nstderr: ${res.stderr}`);
     const nl = res.stdout.indexOf('\n');
@@ -182,7 +200,7 @@ class Sim {
     const parsed = JSON.parse(first);
     assert.strictEqual(parsed.ok, true, `[${label}] engine answered ok:false`);
     this.sections = nl === -1 ? '' : res.stdout.slice(nl + 1);
-    if (!Sim.SECTION_CARRYING.has(args[0])) {
+    if (!Sim.carriesSections(args)) {
       assert.strictEqual(this.sections, '',
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }

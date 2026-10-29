@@ -13,7 +13,8 @@
 //   call; and each row of a raise as it is drawn (raise.cjs), as the decision
 //   it would land as — its answer, and the other rows as what it rules out,
 //   its why not given until the person answers — every row's call put at
-//   once (`judgeDecisionAsync`).
+//   once (`judgeDecisionAsync`). The raise's answer makes no call: the entry
+//   it lands, whose why no call read, lands unchecked, for the late check.
 // - What follows: one rule, and the entry lands checked. Several, and the
 //   write is refused, nothing appended, naming the rules found and the
 //   question, so the writer splits it, each part answering the question the

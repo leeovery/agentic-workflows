@@ -20,7 +20,10 @@
 //   entry the ledger lacks while the landing holds that state's writer lock,
 //   which the writer held from before it kept the event to after its
 //   append, so the write died between the two. Any other landing — from
-//   another state, or without the lock — leaves it waiting. A kept line is
+//   another state, or without the lock — leaves it waiting. A writer keeping
+//   an event ahead of an entry a line already awaits — the rerun of a write
+//   that died before its append, landing as the id it was given — lets
+//   that line go first, so the entry has one event, the rerun's. A kept line is
 //   told by the event it holds, and carries a version of its own beside
 //   what it awaits: one of a version this engine does not write waits, as
 //   a newer release's event does, never dropped; one of this version whose
@@ -383,11 +386,40 @@ function newEvent(type, fields, cwd, id = newId()) {
 }
 
 /**
+ * Whether the waiting line `text` is a kept line of this version awaiting
+ * `entry` in the ledger of the state at `ledger`.
+ * @param {string} text @param {string} ledger @param {string} entry
+ */
+function awaitsEntry(text, ledger, entry) {
+  const parsed = parsedLine(text);
+  if ('not' in parsed || !isObject(parsed.value)) return false;
+  const { v, awaits } = parsed.value;
+  return v === KEPT_VERSION && isAwaits(awaits) && awaits.ledger === ledger && awaits.entry === entry;
+}
+
+/**
+ * Let go of the lines waiting at `pending` ahead of `entry` in the ledger at
+ * `ledger`. Run holding the lock on the waiting events.
+ * @param {string} pending @param {string} ledger @param {string} entry
+ */
+function letGoAhead(pending, ledger, entry) {
+  if (!fs.existsSync(pending)) return;
+  const waiting = fs.readFileSync(pending, 'utf8').split('\n').slice(0, -1);
+  const others = waiting.filter((text) => !awaitsEntry(text, ledger, entry));
+  if (others.length === waiting.length) return;
+  if (others.length === 0) fs.rmSync(pending, { force: true });
+  else writeTextAtomic(pending, others.map((text) => `${text}\n`).join(''));
+}
+
+/**
  * Keep `event`, as `newEvent` built it, waiting in the calling conversation
  * ahead of its entry `entry`, which the command appends next to the ledger
  * of the state at `ledger`: a landing lands it once the entry is there, and
- * lets it go where it finds its write died first. Refuses, keeping nothing,
- * where the file cannot be written.
+ * lets it go where it finds its write died first. A line already kept ahead
+ * of the entry is let go first: the caller holds the writer lock and the
+ * entry is not appended, so the write that kept it died before its append
+ * — a rerun's, of a write given its id — and the entry's event is the one
+ * kept last. Refuses, keeping nothing, where the file cannot be written.
  * @param {Record<string, unknown>} event @param {string} ledger @param {string} entry
  */
 function keepEvent(event, ledger, entry) {
@@ -396,7 +428,10 @@ function keepEvent(event, ledger, entry) {
   const kept = { v: KEPT_VERSION, awaits: { ledger, entry }, event };
   try {
     fs.mkdirSync(path.dirname(pending), { recursive: true });
-    withPending(pending, () => fs.appendFileSync(pending, `${JSON.stringify(kept)}\n`));
+    withPending(pending, () => {
+      letGoAhead(pending, ledger, entry);
+      fs.appendFileSync(pending, `${JSON.stringify(kept)}\n`);
+    });
   } catch (err) {
     throw new Error(`the trust log's event could not be kept in the conversation: ${messageOf(err)}`);
   }

@@ -4,9 +4,12 @@
 // What the ledger suites share (test-engine-ledger*.cjs, and
 // test-engine-verdict.cjs over the ledger's departures): the unit, the
 // session and the topics they write to, the unit's starting phases, and the
-// worlds built from them (`ledgerWorld`, and the copies suites' hook
-// `useCopiesWorld`); one write that must succeed, the ledger's text, lines
-// and entries, and an entry's full id (`ledgerHelpers`); and over those, the
+// worlds built from them (`ledgerWorld`; `askedWorld`, its questions asked
+// once and copied; and the copies suites' hook `useCopiesWorld`); one write
+// that must succeed, the ledger's text, lines
+// and entries, and an entry's full id (`ledgerHelpers`); the person's answer
+// to Claude's lean, a raise drawn and answered (`answeredRaise`); and over
+// those, the
 // helpers each aspect's suites share: the reads and the forms an entry takes
 // in a record and a map (`ledgerReadHelpers`), the written line and a refusal
 // asserted (`ledgerWriteHelpers`), and the rendered copies (`copiesHelpers`).
@@ -20,7 +23,7 @@ const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, refusedPristine, stateGit, statePath, layout, setupGitFixture, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, refusedPristine, stateGit, statePath, layout, setupGitFixture, fixtureFrom, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -64,6 +67,25 @@ function ledgerWorld(prefix, phases = PHASES) {
   const dir = setupGitFixture(prefix);
   createManifest(dir, UNIT, { work_type: 'epic', phases });
   return dir;
+}
+
+/**
+ * A world many tests start from, built once and copied for each
+ * (`fixtureFrom`): the unit's manifest written with `phases`, and Claude's
+ * `questions` asked on the note window. Answers the world, and each
+ * question's short id by its name, filled as the world is first built.
+ * @template {string} Name
+ * @param {string} prefix @param {Record<string, unknown>} phases @param {Record<Name, string>} questions
+ * @returns {{world: (dir?: string) => string, asked: Record<Name, string>}}
+ */
+function askedWorld(prefix, phases, questions) {
+  const asked = /** @type {Record<Name, string>} */ ({});
+  const world = fixtureFrom(prefix, (template) => {
+    createManifest(template, UNIT, { work_type: 'epic', phases });
+    const { write } = ledgerHelpers(() => template);
+    for (const [name, text] of /** @type {[Name, string][]} */ (Object.entries(questions))) asked[name] = write('ask', NOTE, [], { ...MADE, text }).id;
+  });
+  return { world, asked };
 }
 
 /**
@@ -123,6 +145,39 @@ function ledgerHelpers(dir) {
   }
 
   return { write, ledgerText, rawLines, entries, full };
+}
+
+// ---------------------------------------------------------------------------
+// The person's answer to Claude's lean, through a raise (test-engine-ledger-
+// trust.cjs, test-engine-verdict.cjs).
+// ---------------------------------------------------------------------------
+
+/**
+ * Claude's call leaning to `lean` over `other`: the call a raise takes on
+ * stdin.
+ * @param {string} lean @param {string} other
+ */
+function leaningCall(lean, other) {
+  return {
+    question: 'What is a note?',
+    rows: [{ key: '1', name: 'Lean', text: lean, notice: 'what Claude would build' }, { key: '2', name: 'Other', text: other, notice: 'what else it could be' }],
+    lean: '1', why: 'It follows the person.', sort: 'several', mechanism: 'How a note is built.', product_wide: false,
+  };
+}
+
+/**
+ * The person's answer to Claude's lean on `question` at `address`: a raise
+ * drawn and answered in the conversation `env` names, Claude leaning to
+ * `lean` over `other`, the person picking `key` — `1` the lean, `2` the
+ * other — who moved whom on stdin where `moved` gives it. Answers the
+ * entry's short id.
+ * @param {string} dir @param {string} address @param {string} question
+ * @param {{lean: string, other: string, key: '1'|'2', moved?: string, env: Record<string, string|undefined>}} answer
+ */
+async function answeredRaise(dir, address, question, { lean, other, key, moved, env }) {
+  const { res } = await okSectionsAsync(dir, ['raise', address, '--answers', question], { env, stdin: JSON.stringify(leaningCall(lean, other)) });
+  const given = { why: 'The person said why.', ...(moved === undefined ? {} : { who_moved_whom: moved }) };
+  return ok(dir, ['raise', 'answer', res.raise, '--pick', key], { env, stdin: JSON.stringify(given) }).id;
 }
 
 // ---------------------------------------------------------------------------
@@ -422,7 +477,7 @@ function copiesHelpers(dir) {
 }
 
 module.exports = {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, useCopiesWorld, ledgerHelpers,
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, askedWorld, useCopiesWorld, ledgerHelpers, leaningCall, answeredRaise,
   LINKS, HEAP_MB, ids, ledgerReadHelpers,
   ID, AT_NOTE, ledgerWriteHelpers,
   NOTE_COPY, SPACE_COPY, copiesHelpers,
