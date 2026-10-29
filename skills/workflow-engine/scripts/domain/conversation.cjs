@@ -90,16 +90,12 @@ const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { fileLinesBackward } = require('../kernel/file-stream.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 
 const MARKER = 'workflow';
 // The model Claude Code names on the messages it writes itself.
 const SYNTHETIC = '<synthetic>';
 const TRANSCRIPT = 'transcript';
-
-/** The session id Claude Code handed the command, null where it handed none. @returns {string|null} */
-function handedSession() {
-  return process.env.CLAUDE_CODE_SESSION_ID || null;
-}
 
 function conversationsRoot() {
   return path.join(systemConfigDir(), 'conversations');
@@ -346,4 +342,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { handedSession, conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };

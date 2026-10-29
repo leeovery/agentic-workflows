@@ -82,7 +82,8 @@ const { messageOf } = require('../kernel/call.cjs');
 const { isId, newId } = require('./ledger-ids.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { idsOf } = require('./ledger-check.cjs');
-const { handedSession, callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { MODEL, SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
 
 const TRUST_LOG = 'trust.jsonl';

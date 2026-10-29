@@ -6,10 +6,13 @@
 // state nothing the MENU does not draw, and what it states is the text the
 // person reads — never the markup that draws it. Beside it, every section a
 // person is shown names how it renders in one of the four forms, so no older
-// or reworded form comes back.
+// or reworded form comes back. The gate it states is named as the trust log
+// keys it, so every gate a render draws, a templated name's every variant
+// among them, is held to the gate event's rule wherever it renders.
 
 const assert = require('node:assert');
 const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { SCHEMA } = require('../../skills/workflow-engine/scripts/domain/trust-events.cjs');
 
 const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
@@ -29,6 +32,9 @@ const RECOMMENDED_MARKER = ' (recommended)';
 
 const SHOWN_MARKER = /^=== (?:TITLE|DISPLAY|MENU)\b.*? \((.*)\) ===$/;
 const RENDER_FORMS = Object.keys(FORMS).map((form) => emitAs(form));
+// The gate event's rule for a gate's name, and where a declared entry's name ends.
+const GATE_NAME = SCHEMA.events.gate.fields.find((/** @type {{name: string}} */ f) => f.name === 'gate')?.type;
+const ENTRY_SEPARATOR = ' — ';
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, cue: string|null, holder: string|null, detail: string|null, struck: boolean, recommended: boolean}} GateOption */
 /** @typedef {{label: string, description: string, detail: string|null}} GateTyped */
@@ -242,6 +248,8 @@ function auditGate(out, label) {
     return null;
   }
   const gate = JSON.parse(lines[menuAt - 1]);
+  const name = gate.gate.split(ENTRY_SEPARATOR)[0];
+  assert.ok(GATE_NAME?.test(name), `[${label}] the gate "${name}" is no name the trust log keys — ${GATE_NAME?.is}`);
   assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
   assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
   assertPayloadDrawsMenu(gate, body, label);

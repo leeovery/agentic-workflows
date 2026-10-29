@@ -43,7 +43,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
@@ -122,7 +122,7 @@ function beatPresence(cwd, workUnit, phase, topic) {
   const record = {
     pid,
     pid_start: processStartTime(pid),
-    session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
+    session_id: handedSession(),
     checkout: workTree(codeRoot(cwd)),
   };
   fs.writeFileSync(p, JSON.stringify(record) + '\n');

@@ -51,7 +51,8 @@
 const fs = require('fs');
 const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { handedSession, conversationDir } = require('./conversation.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { conversationDir } = require('./conversation.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
 const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
