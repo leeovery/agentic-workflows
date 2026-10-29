@@ -18,11 +18,16 @@
 //   leaves it detached, yet holds the branch it rebases and those it
 //   updates, so no such branch moves. Otherwise the move stops, saying what
 //   is in the way and the way on.
-// - A remedy never acts in the person's own checkout but on a branch it has
-//   out: a branch moves by its ref, or in the worktree that has it; a
-//   branch's history is rewritten there, or in a worktree the remedy makes
-//   for it and removes. What it takes off a branch it keeps on one first.
-//   Every path and word it names is quoted for the shell.
+// - No remedy changes the files of any worktree but one it makes itself.
+//   Before it moves or rewrites a branch, it keeps the branch as it stands
+//   on a `.kept-` branch and frees it: a worktree an earlier remedy left
+//   with it out is removed, and the worktree that has it out, the person's
+//   own checkout among them, is detached at its own commit, which changes
+//   no file — switching back is the person's. The branch then moves by
+//   `git branch -f`, or is rebased in a worktree the remedy makes under the
+//   repository's `leeway/` folder and removes after. A rebase stopped there
+//   stops every verb until it is settled or ended. Every path and word a
+//   remedy names is quoted for the shell.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -33,8 +38,9 @@ const { STATE_BRANCH } = require('./state-worktree.cjs');
 
 /**
  * A worktree of the repository: where it is, the branch it has checked out,
- * if any, and the branches a rebase stopped there is rewriting.
- * @typedef {{path: string, branch: string|null, rebasing: string[]}} Worktree
+ * if any, the branches a rebase stopped there is rewriting, and whether a
+ * remedy made it.
+ * @typedef {{path: string, branch: string|null, rebasing: string[], scratch: boolean}} Worktree
  */
 
 const HEADS = 'refs/heads/';
@@ -161,8 +167,9 @@ class Conflict extends Error {}
 /**
  * Commits replayed onto `onto`, oldest first, each its own change under its
  * own message: the commit the last replay made, and those whose change was
- * there already, each replayed as a commit that changes nothing. Stops on
- * the first change that conflicts, naming it and its paths (`Conflict`).
+ * there already, each replayed as a commit that changes nothing — a commit
+ * that changes nothing itself is none of them. Stops on the first change
+ * that conflicts, naming it and its paths (`Conflict`).
  * @template {{sha: string, message: string, name: string}} C
  * @param {string} root @param {C[]} commits @param {string} onto @param {string} ontoName
  * @returns {{tip: string, empty: C[]}}
@@ -170,9 +177,10 @@ class Conflict extends Error {}
 function replay(root, commits, onto, ontoName) {
   let at = onto;
   let [atTree] = treesOf(root, [onto]);
+  const own = treesOf(root, commits.flatMap(({ sha }) => [`${sha}^`, sha]));
   /** @type {C[]} */
   const empty = [];
-  for (const commit of commits) {
+  commits.forEach((commit, i) => {
     const args = ['merge-tree', '--write-tree', '--name-only', '--no-messages', `--merge-base=${commit.sha}^`, at, commit.sha];
     const res = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
     if (res.status === 1) {
@@ -181,11 +189,22 @@ function replay(root, commits, onto, ontoName) {
     }
     if (res.error || res.status !== 0) throw new GitError(`git merge-tree failed: ${(res.error?.message ?? res.stderr).trim()}`);
     const tree = res.stdout.split('\n')[0];
-    if (tree === atTree) empty.push(commit);
+    if (tree === atTree && own[2 * i] !== own[2 * i + 1]) empty.push(commit);
     at = commitTree(root, tree, at, commit.message);
     atTree = tree;
-  }
+  });
   return { tip: at, empty };
+}
+
+/**
+ * Whether the commits `to` holds past `from`, merges aside, change nothing
+ * between the first's parent and the last.
+ * @param {string} root @param {string} from @param {string} to
+ * @returns {boolean}
+ */
+function ownChangeEmpty(root, from, to) {
+  const own = git(root, ['rev-list', '--no-merges', `${from}..${to}`]).split('\n').filter(Boolean);
+  return own.length === 0 || tryGit(root, ['diff', '--quiet', `${own[own.length - 1]}^`, own[0]]) !== null;
 }
 
 /** A worktree's own git directory. @param {string} tree @returns {string} */
@@ -217,6 +236,7 @@ function rebasing(gitDir) {
  * @returns {Worktree[]}
  */
 function worktrees(root) {
+  const made = scratchRoot(root);
   return git(root, ['worktree', 'list', '--porcelain']).split('\n\n').filter(Boolean).map((block) => {
     const lines = block.split('\n');
     const tree = lines[0].slice('worktree '.length);
@@ -225,8 +245,19 @@ function worktrees(root) {
       path: tree,
       branch: branch === undefined ? null : branch.slice(`branch ${HEADS}`.length),
       rebasing: lines.includes('detached') && fs.existsSync(tree) ? rebasing(gitDirOf(tree)) : [],
+      scratch: samePlace(path.dirname(tree), made),
     };
   });
+}
+
+/** Where a remedy makes the worktrees it rebases in: `leeway/` in the repository's git directory. @param {string} root */
+function scratchRoot(root) {
+  return path.join(git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), 'leeway');
+}
+
+/** The worktree a remedy makes to rebase a branch. @param {string} root @param {string} branch */
+function scratchTree(root, branch) {
+  return path.join(scratchRoot(root), branch.replace(/\//g, '-'));
 }
 
 /**
@@ -290,66 +321,9 @@ function gitIn(root, tree) {
   return samePlace(root, tree) ? 'git' : `git -C ${quoted(tree)}`;
 }
 
-/** The worktree that has a branch checked out, if any. @param {string} root @param {string} branch @param {Worktree[]} [trees] */
+/** The worktree that has a branch checked out, if any — never one a remedy made. @param {string} root @param {string} branch @param {Worktree[]} [trees] */
 function holderOf(root, branch, trees = worktrees(root)) {
-  return trees.find((tree) => tree.branch === branch);
-}
-
-/**
- * The command that keeps a commit on a branch of its own, named for the
- * branch it is taken off and the commit — a name no task's or phase's
- * branch can take.
- * @param {string} branch @param {string} commit
- * @returns {{kept: string, command: string}}
- */
-function keepCommand(branch, commit) {
-  const kept = `${branch}.kept-${short(commit)}`;
-  return { kept, command: `\`git branch ${kept} ${short(commit)}\`` };
-}
-
-/**
- * The command that moves a branch to a commit, fitted to where it is out:
- * a reset there, keeping what is not committed, or the branch alone where
- * nothing has it out.
- * @param {string} root @param {string} branch @param {string} to
- * @returns {string}
- */
-function moveCommand(root, branch, to) {
-  const holder = holderOf(root, branch);
-  if (holder === undefined) return `\`git branch -f ${branch} ${to}\``;
-  if (!fs.existsSync(holder.path)) return `\`git worktree prune\`, then \`git branch -f ${branch} ${to}\``;
-  return `\`${gitIn(root, holder.path)} reset --keep ${to}\``;
-}
-
-/** Where a remedy makes a worktree for a branch it rewrites. @param {string} root @param {string} branch */
-function scratchTree(root, branch) {
-  const common = git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim();
-  return path.join(common, 'leeway', branch.replace(/\//g, '-'));
-}
-
-/**
- * The commands that rebase a branch, fitted to where it is out: in the
- * worktree that has it, its changes not committed set aside first; or, where
- * nothing has it out, in a worktree made for it and removed after — never in
- * the person's own checkout. `settle` says how a stop on a conflict goes on.
- * @param {string} root @param {string} branch @param {string} args the rebase's own
- * @param {{settle?: boolean}} [opts]
- * @returns {string}
- */
-function rebaseCommand(root, branch, args, { settle = false } = {}) {
-  const holder = holderOf(root, branch);
-  const live = holder !== undefined && fs.existsSync(holder.path);
-  const tree = live ? holder.path : scratchTree(root, branch);
-  const there = gitIn(root, tree);
-  /** @type {string[]} */
-  const steps = [];
-  if (holder !== undefined && !live) steps.push('`git worktree prune`');
-  if (!live) steps.push(`\`git worktree add ${quoted(tree)} ${branch}\``);
-  else if (dirtyEntries(tree).some((entry) => entry.status !== '??')) steps.push(`\`${there} stash\` to set aside the changes not committed there`);
-  steps.push(`\`${there} rebase ${args}\``);
-  if (settle) steps.push(`settle each conflict at ${tree} as it stops and go on with \`${there} rebase --continue\``);
-  if (!live) steps.push(`\`git worktree remove ${quoted(tree)}\``);
-  return steps.join(', then ');
+  return trees.find((tree) => !tree.scratch && tree.branch === branch);
 }
 
 /** How an operation stopped in a worktree is abandoned, by the marker git leaves. */
@@ -361,6 +335,149 @@ const ABORTS = Object.freeze({
   'rebase-apply': 'rebase --abort',
   BISECT_START: 'bisect reset',
 });
+
+/**
+ * The operation stopped in a worktree, as a refusal names it, and the
+ * command that ends it there, or null where none is.
+ * @param {string} root @param {string} tree
+ * @returns {{operation: string, end: string}|null}
+ */
+function stoppedAt(root, tree) {
+  const open = operationInProgress(tree);
+  if (open === null) return null;
+  const applying = open.marker === 'rebase-apply' && fs.existsSync(path.join(gitDirOf(tree), 'rebase-apply', 'applying'));
+  const [operation, abort] = applying ? ['git am', 'am --abort'] : [open.operation, ABORTS[/** @type {keyof typeof ABORTS} */ (open.marker)]];
+  return { operation, end: `\`${gitIn(root, tree)} ${abort}\`` };
+}
+
+/**
+ * How a worktree that has a branch out lets it go without a file changing:
+ * detached at its own commit, the switch back the person's.
+ * @param {string} root @param {Worktree} holder @param {string} branch @param {string} tip the branch's commit
+ * @returns {{step: string, note: string}}
+ */
+function detaching(root, holder, branch, tip) {
+  const who = samePlace(root, holder.path) ? 'your checkout' : `the worktree at ${holder.path}`;
+  return {
+    step: `detach ${who} from ${branch} with \`${gitIn(root, holder.path)} switch --detach\`, which leaves it at ${short(tip)} with its edits`,
+    note: `switching ${who} back to ${branch} is yours, when you're ready`,
+  };
+}
+
+/** The way a worktree an earlier remedy left is cleared: removed, or pruned where deleted. @param {Worktree} tree */
+function clearing(tree) {
+  return fs.existsSync(tree.path)
+    ? `remove the worktree an earlier remedy left with \`git worktree remove ${quoted(tree.path)}\``
+    : 'clear the worktree an earlier remedy left with `git worktree prune`';
+}
+
+/**
+ * How a remedy keeps a branch as it stands: on `{branch}.kept-{sha}`, a name
+ * no task's or phase's branch can take — reused where it is at the commit
+ * already, and made fresh where it holds another, so a keep never fails and
+ * never moves a branch.
+ * @param {string} root @param {string} branch @param {string} commit
+ * @returns {{kept: string, step: string}}
+ */
+function keepStep(root, branch, commit) {
+  const local = branches(root);
+  const base = `${branch}.kept-${short(commit)}`;
+  let kept = base;
+  for (let n = 2; local.has(kept) && local.get(kept) !== commit; n += 1) kept = `${base}-${n}`;
+  return {
+    kept,
+    step: local.has(kept) ? `${branch} as it stands is kept on ${kept} already` : `keep ${branch} as it stands with \`git branch ${quoted(kept)} ${short(commit)}\``,
+  };
+}
+
+/**
+ * What holds a branch so no remedy can free it — a rebase of it, or another
+ * operation, stopped where it is out — for the person to finish or end
+ * first; or null where nothing does.
+ * @param {string} root @param {string} branch @param {Worktree[]} trees
+ * @returns {string|null}
+ */
+function heldFirst(root, branch, trees) {
+  const rebased = trees.find((tree) => tree.rebasing.includes(branch));
+  if (rebased !== undefined) return `first finish the rebase of ${branch} at ${rebased.path}, or end it with \`${gitIn(root, rebased.path)} rebase --abort\``;
+  const holder = holderOf(root, branch, trees);
+  const stopped = holder === undefined || !fs.existsSync(holder.path) ? null : stoppedAt(root, holder.path);
+  return holder === undefined || stopped === null ? null : `first finish ${stopped.operation} at ${holder.path}, where ${branch} is out, or end it with ${stopped.end}`;
+}
+
+/**
+ * A remedy's way on for a branch it moves or rewrites (see the header): an
+ * operation that holds the branch, ended first and alone; else a worktree an
+ * earlier remedy left with it out cleared, the branch kept as it stands, the
+ * worktree that has it out pruned where deleted or else detached, and the
+ * steps `act` gives for the worktree a rebase is made in. `note` says what
+ * the keep leaves, given the branch it keeps on.
+ * @param {string} root @param {string} branch
+ * @param {(scratch: string) => string[]} act
+ * @param {{then?: string, note?: (kept: string) => string}} [opts]
+ * @returns {string} the steps, and what follows them
+ */
+function remedy(root, branch, act, { then = 'land again', note } = {}) {
+  const trees = worktrees(root);
+  const first = heldFirst(root, branch, trees);
+  if (first !== null) return `${first}, and ${then}`;
+  const scratch = scratchTree(root, branch);
+  const tip = /** @type {string} */ (branches(root).get(branch));
+  const { kept, step } = keepStep(root, branch, tip);
+  const steps = [...trees.filter((tree) => tree.scratch && (tree.branch === branch || samePlace(tree.path, scratch))).map(clearing), step];
+  const notes = note === undefined ? [] : [note(kept)];
+  const holder = holderOf(root, branch, trees);
+  if (holder !== undefined && !fs.existsSync(holder.path)) steps.push('clear the worktree since deleted that has it out with `git worktree prune`');
+  else if (holder !== undefined) {
+    const freed = detaching(root, holder, branch, tip);
+    steps.push(freed.step);
+    notes.push(freed.note);
+  }
+  steps.push(...act(scratch));
+  return `${steps.join(', then ')}, and ${then}${notes.map((line) => `; ${line}`).join('')}`;
+}
+
+/**
+ * A remedy's step moving a branch, once free, to a commit.
+ * @param {string} branch @param {string} to @param {string} how what the move does
+ * @returns {(scratch: string) => string[]}
+ */
+function moveTo(branch, to, how) {
+  return () => [`${how} with \`git branch -f ${quoted(branch)} ${quoted(to)}\``];
+}
+
+/**
+ * A remedy's steps rebasing a branch, once free, in a worktree made for it
+ * and removed after, settling each conflict there as the rebase stops.
+ * @param {string} branch @param {string} args the rebase's own, quoted @param {string} how what the rebase does
+ * @returns {(scratch: string) => string[]}
+ */
+function rewrite(branch, args, how) {
+  return (scratch) => {
+    const there = `git -C ${quoted(scratch)}`;
+    return [
+      `${how} in a worktree of its own with \`git worktree add ${quoted(scratch)} ${quoted(branch)}\``,
+      `\`${there} rebase ${args}\`, settling each conflict at ${scratch} as it stops and going on with \`${there} rebase --continue\``,
+      `\`git worktree remove ${quoted(scratch)}\``,
+    ];
+  };
+}
+
+/**
+ * What a rebase stopped in a worktree a remedy made says, and the way on —
+ * settled or ended there, and the worktree removed — or null where none is.
+ * Every verb asks before anything else.
+ * @param {string} root
+ * @returns {string|null}
+ */
+function scratchBlock(root) {
+  const stopped = worktrees(root).find((tree) => tree.scratch && tree.rebasing.length > 0);
+  if (stopped === undefined) return null;
+  const there = `git -C ${quoted(stopped.path)}`;
+  return `${stopped.rebasing[0]} is being rebased at ${stopped.path}, a worktree a remedy made, so nothing moved — `
+    + `settle each conflict there and go on with \`${there} rebase --continue\`, or end it with \`${there} rebase --abort\`, `
+    + `then remove it with \`git worktree remove ${quoted(stopped.path)}\`, and land again`;
+}
 
 /**
  * What a rebase stopped in a worktree says of a branch it is rewriting, and
@@ -376,10 +493,11 @@ function rebaseBlock(root, branch, trees = worktrees(root)) {
 
 /**
  * What stops a branch a worktree holds from moving there, and the way on —
- * a rebase rewriting it, the worktree deleted but not pruned, an operation
- * in progress, tracked changes not committed, and, for a move given, one
- * that is no fast-forward or would overwrite a file — or null where nothing
- * does, or no worktree holds it.
+ * a rebase rewriting it, a worktree an earlier remedy left with it out, the
+ * worktree deleted but not pruned, an operation in progress, tracked changes
+ * not committed, and, for a move given, one that is no fast-forward or
+ * would overwrite a file — or null where nothing does, or no worktree holds
+ * it.
  * @param {string} root @param {string} branch
  * @param {{from: string, to: string}} [move]
  * @returns {string|null}
@@ -388,19 +506,20 @@ function checkoutBlock(root, branch, move) {
   const trees = worktrees(root);
   const rebased = rebaseBlock(root, branch, trees);
   if (rebased !== null) return rebased;
+  const left = trees.find((tree) => tree.scratch && tree.branch === branch);
+  if (left !== undefined) return `${branch} is checked out at ${left.path}, so nothing moved — ${clearing(left)} and land again`;
   const holder = holderOf(root, branch, trees);
   if (holder === undefined) return null;
   const at = `${branch} is checked out at ${holder.path}`;
   if (!fs.existsSync(holder.path)) return `${at}, a worktree since deleted, so nothing moved — clear it with \`git worktree prune\` and land again`;
   const there = gitIn(root, holder.path);
-  const open = operationInProgress(holder.path);
-  if (open !== null) {
-    const applying = open.marker === 'rebase-apply' && fs.existsSync(path.join(gitDirOf(holder.path), 'rebase-apply', 'applying'));
-    const [operation, abort] = applying ? ['git am', 'am --abort'] : [open.operation, ABORTS[/** @type {keyof typeof ABORTS} */ (open.marker)]];
-    return `${at}, where ${operation} is in progress, so nothing moved — finish it, or end it with \`${there} ${abort}\`, and land again`;
-  }
+  const stopped = stoppedAt(root, holder.path);
+  if (stopped !== null) return `${at}, where ${stopped.operation} is in progress, so nothing moved — finish it, or end it with ${stopped.end}, and land again`;
   const dirt = dirtyEntries(holder.path).filter((entry) => entry.status !== '??').map((entry) => entry.path);
-  if (dirt.length > 0) return `${at}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or set them aside with \`${there} stash\`, and land again`;
+  if (dirt.length > 0) {
+    const freed = detaching(root, holder, branch, git(root, ['rev-parse', `${HEADS}${branch}`]).trim());
+    return `${at}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or ${freed.step}, and land again; ${freed.note}`;
+  }
   if (move === undefined) return null;
   if (!isAncestor(root, move.from, move.to)) {
     return `${at}, and the landing would move it to a commit it does not lead to, so nothing moved — check out another branch there, as \`${there} switch --detach\` does, and land again`;
@@ -460,5 +579,6 @@ function defaultBranch(root, remote) {
 
 module.exports = {
   short, branches, branchesHeldBy, refsUnder, updateRefs, isAncestor, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  changeOf, commitTree, Conflict, replay, quoted, keepCommand, moveCommand, rebaseCommand, rebaseBlock, checkoutBlock, moveBranch, defaultBranch,
+  changeOf, commitTree, Conflict, replay, ownChangeEmpty, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  defaultBranch,
 };

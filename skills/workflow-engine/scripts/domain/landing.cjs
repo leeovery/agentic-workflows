@@ -16,6 +16,8 @@
 // the task lands on, and the seam holds the task's branch to descend from
 // it before the driver opens anything (12.7.1). A task is named by its id's
 // shape alone; that it exists and passed its review is the build's to know.
+// Before anything else, every verb stops on a rebase stopped in a worktree
+// a remedy made, until it is settled or ended there (landing-git.cjs).
 //
 // The landing's state is read off git and the host each time. Nothing is
 // recorded but the driver setting, which the first verb settles where it is
@@ -61,10 +63,16 @@ const LAND_USAGE = [
   'land finish <work-unit>',
 ].join('\n');
 
-/** The context every verb hands its driver. @param {string} cwd @param {string} unit @returns {LandingContext} */
+/**
+ * The context every verb hands its driver, once no rebase a remedy began is
+ * stopped.
+ * @param {string} cwd @param {string} unit @returns {LandingContext}
+ */
 function contextOf(cwd, unit) {
   assertUnit(unit);
   const root = codeRoot(cwd);
+  const stopped = lg.scratchBlock(root);
+  if (stopped !== null) throw new Error(`land: ${stopped}`);
   return { root, unit, into: lg.defaultBranch(root, remoteName(cwd)) };
 }
 

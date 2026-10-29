@@ -10,11 +10,11 @@
 // another and replays onto a default branch that moved on; and what finish
 // says where it stops. What it records, and the shapes of landing it reads,
 // are test-engine-land-reads.cjs's. Each refusal's way on is the remedy
-// table's
-// (landing-remedies.cjs, followed by the test-engine-land-remedies-*
-// suites); the person's checkouts, test-engine-land-checkout.cjs's and
-// test-engine-land-worktrees.cjs's. Git layer: the landing world
-// (landing-world.cjs), built once and copied for each test.
+// table's (landing-remedies.cjs, followed by the
+// test-engine-land-remedies-* suites); the person's checkouts,
+// test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's.
+// Git layer: the landing world (landing-world.cjs), built once and copied
+// for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,7 +23,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, rebaseAside } = require('./landing-world.cjs');
+const { TASKS, openArgs, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
@@ -91,7 +91,8 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(dir, openArgs(card));
     ok(dir, open('4.1', 'fix', 'Word the card'));
     const phase = tip(dir, 'feat/pay-phase-4');
-    const conflict = `land: task 4.1 conflicts with main at card.txt, so nothing moved — bring feat/pay-phase-4 up to date with main: ${rebaseAside(dir, 'feat/pay-phase-4', 'main', true)}, and land again`;
+    const conflict = 'land: task 4.1 conflicts with main at card.txt, so nothing moved — '
+      + way(dir, null, 'feat/pay-phase-4', rebaseSteps(dir, 'feat/pay-phase-4', 'main', 'bring feat/pay-phase-4 up to date with main'));
     assert.strictEqual(refuses(dir, ['land', 'finish', 'pay']).error, `${conflict} (finish merged phase 1 before it)`);
     assert.deepStrictEqual([tip(dir, 'main'), tip(dir, 'feat/pay-phase-4')], [tip(dir, 'feat/pay-phase-1'), phase]);
     assert.strictEqual(refusedMoving(dir, ['land', 'finish', 'pay']), conflict);

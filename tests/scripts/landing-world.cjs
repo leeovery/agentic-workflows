@@ -1,19 +1,19 @@
 'use strict';
 
-// The world the landing suites share (test-engine-land-verbs.cjs,
-// test-engine-land-local.cjs, test-engine-land-remedies.cjs,
-// test-engine-land-remedies-merge.cjs, test-engine-land-checkout.cjs,
-// test-engine-land-worktrees.cjs, test-engine-landing-conformance.cjs): the
-// project world, its default branch `main` holding the code a build starts
-// from, tagged `landing-base`, and the task branches Claude would leave
-// behind, each one commit off the branch it was cut from (`TASKS`). A branch
-// is made, and merged back onto another as Claude merges a parallel task
-// back, with no checkout touched — a scratch index over the commit it starts
-// from — so the main checkout stays as the test left it. What landed is read
-// off the default branch past the base. A suite takes a copy of the world per call
+// The world the landing suites share (test-engine-land-*.cjs and
+// test-engine-landing-conformance.cjs): the project world, its default
+// branch `main` holding the code a build starts from, tagged
+// `landing-base`, and the task branches Claude would leave behind, each one
+// commit off the branch it was cut from (`TASKS`). A branch is made, and
+// merged back onto another as Claude merges a parallel task back, with no
+// checkout touched — a scratch index over the commit it starts from — so
+// the main checkout stays as the test left it. What landed is read off the
+// default branch past the base. A suite takes a copy of the world per call
 // (`useLandingWorld`), checks a refusal moved nothing in the repository
-// (`refusedMoving`), and follows the remedy it names (`followRemedy`), a
-// table of them a test a row (`followed`).
+// (`refusedMoving`), and follows the remedy it names (`followRemedy`); the
+// remedy table (landing-remedies.cjs) is followed a row a test, in a state
+// of the person's worktrees (`personState`, `followed`), against the way on
+// it should read there (`way`).
 
 require('./hermetic-env.cjs');
 
@@ -197,103 +197,175 @@ function wordsOf(command) {
   return execFileSync('sh', ['-c', `printf '%s\\0' ${command}`], { encoding: 'utf8' }).split('\0').slice(0, -1);
 }
 
+/** Every command a refusal names in backquotes, in its order. @param {string} refusal @returns {string[]} */
+const commandsOf = (refusal) => [...refusal.matchAll(/`([^`]+)`/g)].map((found) => found[1]);
+
+/** Whether a rebase is stopped in the worktree at `tree`. @param {string} tree */
+const rebaseStopped = (tree) => fs.existsSync(path.resolve(tree, git(tree, ['rev-parse', '--git-path', 'rebase-merge']).trim()));
+
 /**
  * Every command a refusal names in backquotes, in its order, run as the
  * person would: a `land` verb through the engine, anything else in a shell
  * at `dir`, an editor git opens closed as it opens. A command that stops — a
- * rebase on a conflict — is handed to `settle`, which takes it on from
- * there; without one, it fails the test.
+ * rebase on a conflict — is handed to `settle`, which settles what stopped
+ * it; without one, it fails the test. A remedy goes on with a rebase only
+ * where it stopped, so `rebase --continue` runs while one is stopped where
+ * it runs, each stop again handed to `settle`.
  * @param {string} dir @param {string} refusal @param {(dir: string, command: string) => void} [settle]
  */
 function followRemedy(dir, refusal, settle) {
-  const commands = [...refusal.matchAll(/`([^`]+)`/g)].map((found) => found[1]);
+  const commands = commandsOf(refusal);
   assert.notStrictEqual(commands.length, 0, `the refusal names no command: ${refusal}`);
-  for (const command of commands) {
-    if (command.startsWith('land ')) {
-      ok(dir, wordsOf(command));
-      continue;
-    }
-    const run = spawnSync('sh', ['-c', command], { cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_EDITOR: 'true' } });
-    if (run.status === 0) continue;
-    assert.ok(settle !== undefined, `${command} failed: ${run.stderr}`);
+  const run = (/** @type {string} */ command) => {
+    const ran = spawnSync('sh', ['-c', command], { cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_EDITOR: 'true' } });
+    if (ran.status === 0) return;
+    assert.ok(settle !== undefined, `${command} failed: ${ran.stderr}`);
     settle(dir, command);
+  };
+  for (const command of commands) {
+    const going = /^git -C (.+) rebase --continue$/.exec(command);
+    if (command.startsWith('land ')) ok(dir, wordsOf(command));
+    else if (going === null) run(command);
+    else for (let stops = 0; rebaseStopped(wordsOf(going[1])[0]); stops += 1) {
+      assert.ok(stops < 5, `${command} never ends`);
+      run(command);
+    }
   }
 }
 
 /**
  * Where a remedy row leaves the repository: the verb it refuses and its
- * refusal; how the remedy is taken, if not by running its commands; and
- * the verb that then goes through, if not the same, with what to check of
- * it.
- * @typedef {{args: string[], refusal: string, follow?: (dir: string, refusal: string) => void, then?: string[], check?: (dir: string, answer: any) => void}} Remedy
+ * refusal, as it reads where the branch the row's remedy frees is held as
+ * the state holds it; how the remedy is taken, if not by running its
+ * commands; and the verb that then goes through, if not the same, with
+ * what to check of it.
+ * @typedef {{args: string[], refusal: string|((held: Held) => string), follow?: (dir: string, refusal: string) => void, then?: string[], check?: (dir: string, answer: any) => void}} Remedy
  */
 
 /**
- * A state the person's own checkout is in when a remedy is followed: the
- * world it is in, and what it does to the main checkout there.
- * @typedef {{project: () => string, apply: (dir: string) => void}} PersonState
+ * A remedy row: what it is, the repository it builds, the branch its remedy
+ * moves or rewrites, if any, and whether it rewrites it — in a worktree it
+ * makes, at a path the remedy names. Only a row that moves a branch is
+ * followed where the person has that branch out, and only one that
+ * rewrites it where nobody has: a branch moved by its ref alone changes no
+ * worktree, and names no path.
+ * @typedef {{name: string, setup: (dir: string) => Remedy, moves?: string, rewrites?: boolean}} Row
  */
 
-/** The main checkout on a branch of its own. @param {string} dir */
-const ownBranch = (dir) => git(dir, ['checkout', '-q', '-b', 'mine']);
+/**
+ * Who has the branch a remedy frees out, in the state a row is followed in:
+ * the person's own checkout, a linked worktree at `path`, or nobody (null).
+ * @typedef {{path: string, here: boolean}|null} Held
+ */
 
 /**
- * Every path a code branch tracks that the main checkout's HEAD does not.
- * @param {string} dir
+ * A state of the person's worktrees a remedy is followed in: the world it
+ * is in, and what it does to the repository once a row has built it, given
+ * the branch the row's remedy moves — answering who then has it out.
+ * @typedef {{project: () => string, apply: (dir: string, moves?: string) => Held}} PersonState
+ */
+
+/**
+ * Every path a code branch has held at any commit that the worktree at
+ * `tree` does not track, the state's aside.
+ * @param {string} dir @param {string} tree
  * @returns {string[]}
  */
-function pathsElsewhere(dir) {
-  const here = new Set(pathsOn(dir, 'HEAD'));
-  const heads = git(dir, ['for-each-ref', '--format=%(refname:short)', 'refs/heads/']).split('\n').filter((head) => head !== '' && head !== 'leeway-state');
-  return [...new Set(heads.flatMap((head) => pathsOn(dir, head)))].filter((file) => !here.has(file) && !file.toLowerCase().startsWith('.leeway'));
+function pathsElsewhere(dir, tree) {
+  const here = new Set(pathsOn(tree, 'HEAD'));
+  const ever = git(dir, ['log', '--exclude=leeway-state', '--branches', '--format=', '--name-only']).split('\n');
+  return [...new Set(ever)].filter((file) => file !== '' && !here.has(file) && !file.toLowerCase().startsWith('.leeway'));
 }
 
 /**
- * A state a remedy is followed in, in a world built once per suite: the
- * main checkout clean on the default branch; on a branch of its own with an
- * edit to a tracked file; on a branch of its own with a file it ignores at
- * every path a code branch tracks; or clean, the project in a folder whose
- * path holds a space.
+ * The worktree at `tree` given what a remedy could lose there: an edit to a
+ * tracked file, and a file of its own, ignored, at every path a code branch
+ * has held that it does not track.
+ * @param {string} dir @param {string} tree
+ */
+function busy(dir, tree) {
+  fs.writeFileSync(path.join(tree, 'app.txt'), 'my edit\n');
+  fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
+  for (const file of pathsElsewhere(dir, tree)) {
+    fs.mkdirSync(path.dirname(path.join(tree, file)), { recursive: true });
+    fs.writeFileSync(path.join(tree, file), `my own ${file}\n`);
+    fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${file}\n`);
+  }
+}
+
+/**
+ * What each state does to the repository, once a row has built it. Clean:
+ * the main checkout clean on the default branch. Busy: the main checkout on
+ * a branch of its own, busy (`busy`). Held here: the main checkout has the
+ * branch the remedy frees out, busy. Held linked: a linked worktree at a
+ * path with a space and a quote has it out, busy.
+ * @type {Record<'clean'|'busy'|'heldHere'|'heldLinked', (dir: string, moves?: string) => Held>}
+ */
+const PERSON_STATES = {
+  clean: () => null,
+  busy: (dir) => {
+    git(dir, ['checkout', '-q', '-b', 'mine']);
+    busy(dir, dir);
+    return null;
+  },
+  heldHere: (dir, moves) => {
+    git(dir, ['checkout', '-q', /** @type {string} */ (moves)]);
+    busy(dir, dir);
+    return { path: dir, here: true };
+  },
+  heldLinked: (dir, moves) => {
+    const tree = path.join(dir, '.git', 'the person\'s tree');
+    git(dir, ['worktree', 'add', '-q', tree, /** @type {string} */ (moves)]);
+    busy(dir, tree);
+    return { path: tree, here: false };
+  },
+};
+
+/**
+ * A state a remedy is followed in, its world built once per suite — for the
+ * busy state, at a path holding a space and a quote, which every path a
+ * remedy names must survive.
  * @param {keyof typeof PERSON_STATES} kind @param {string} prefix temp-directory prefix @param {(dir: string) => void} [ready]
  * @returns {PersonState}
  */
 function personState(kind, prefix, ready) {
-  const project = useLandingWorld(kind === 'spaced' ? `${prefix}spaced path ` : prefix, ready);
+  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, ready);
   return { project, apply: PERSON_STATES[kind] };
 }
 
-/** What each state of the person's checkout does to it. @type {Record<'clean'|'dirty'|'ignored'|'spaced', (dir: string) => void>} */
-const PERSON_STATES = {
-  clean: () => {},
-  dirty: (dir) => {
-    ownBranch(dir);
-    fs.writeFileSync(path.join(dir, 'app.txt'), 'my edit\n');
-  },
-  ignored: (dir) => {
-    ownBranch(dir);
-    fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
-    for (const file of pathsElsewhere(dir)) {
-      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-      fs.writeFileSync(path.join(dir, file), `my own ${file}\n`);
-      fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${file}\n`);
-    }
-  },
-  spaced: () => {},
-};
-
 /**
- * The person's own checkout: the branch it has out, its changes not
- * committed, and each file it does not track, ignored or not, with what it
- * holds.
- * @param {string} dir
+ * The worktree at `tree` as the person has it: where HEAD is — the default
+ * branch named alone, since a landing fast-forwards a clean checkout of it —
+ * and, byte for byte, every file that differs from HEAD's tree: an edit,
+ * staged or not, a deletion, a file not tracked, and a file ignored.
+ * @param {string} tree
  */
-function personAt(dir) {
-  const others = git(dir, ['ls-files', '-z', '--others', '--directory']).split('\0').filter((file) => file !== '' && !file.endsWith('/'));
-  return {
-    head: git(dir, ['symbolic-ref', '--short', 'HEAD']).trim(),
-    changes: git(dir, ['diff', 'HEAD']),
-    others: Object.fromEntries(others.map((file) => [file, fs.readFileSync(path.join(dir, file), 'utf8')])),
-  };
+function checkoutAt(tree) {
+  const records = git(tree, ['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all', '--ignored=traditional']).split('\0');
+  /** @type {Record<string, Buffer|null>} */
+  const files = {};
+  let branch = '';
+  let head = '';
+  for (let i = 0; i < records.length; i += 1) {
+    const [kind, ...fields] = records[i].split(' ');
+    if (kind === '#' && fields[0] === 'branch.head') branch = fields[1];
+    else if (kind === '#' && fields[0] === 'branch.oid') head = fields[1];
+    const file = { 1: fields.slice(7), 2: fields.slice(8), u: fields.slice(9), '?': fields, '!': fields }[kind]?.join(' ');
+    if (kind === '2') i += 1;
+    if (file !== undefined && !file.endsWith('/')) {
+      files[file] = fs.existsSync(path.join(tree, file)) ? fs.readFileSync(path.join(tree, file)) : null;
+    }
+  }
+  return { branch, head: branch === 'main' ? branch : head, files };
+}
+
+/** Every worktree of the repository at `dir` as the person has it, by its path, the state's aside. @param {string} dir */
+function checkoutsAt(dir) {
+  const trees = git(dir, ['worktree', 'list', '--porcelain']).split('\n\n').filter((block) => block !== '' && !block.includes('\nbranch refs/heads/leeway-state'));
+  return Object.fromEntries(trees.map((block) => {
+    const tree = block.split('\n')[0].slice('worktree '.length);
+    return [tree, checkoutAt(tree)];
+  }));
 }
 
 /**
@@ -332,25 +404,28 @@ function leftOnNoBranch(dir, before) {
 }
 
 /**
- * The test of a remedy row in one state of the person's checkout: the verb
- * refuses as the row says, moving nothing; its remedy is taken; the verb
- * then goes through; and the person's checkout is as they left it, its
- * branch, its edits, and its files not tracked, with no commit left on no
- * branch.
- * @param {PersonState} state @param {(dir: string) => Remedy} setup
+ * The test of a remedy row in a state of the person's worktrees: the verb
+ * refuses as the row says for that state, moving nothing; its remedy is
+ * taken; the verb then goes through. Every worktree is then as the person
+ * left it, byte for byte — the one that had the branch out detached at the
+ * commit it was at — with no worktree left behind, the stash as it was,
+ * and no commit left on no branch.
+ * @param {PersonState} state @param {Row} row
  */
-function followed(state, setup) {
+function followed(state, { setup, moves }) {
   return () => {
     const dir = state.project();
     const { args, refusal, follow = followRemedy, then = args, check = () => {} } = setup(dir);
-    state.apply(dir);
-    const person = personAt(dir);
-    const before = onBranches(dir);
-    assert.strictEqual(refusedMoving(dir, args), refusal);
-    follow(dir, refusal);
+    const held = state.apply(dir, moves);
+    const before = { checkouts: checkoutsAt(dir), stash: git(dir, ['stash', 'list']), commits: onBranches(dir) };
+    const expected = typeof refusal === 'string' ? refusal : refusal(held);
+    assert.strictEqual(refusedMoving(dir, args), expected);
+    follow(dir, expected);
     check(dir, ok(dir, then));
-    assert.deepStrictEqual(personAt(dir), person, 'the person\'s checkout changed');
-    assert.deepStrictEqual(leftOnNoBranch(dir, before), [], 'a commit was left on no branch');
+    if (held !== null) Object.assign(before.checkouts[held.path], { branch: '(detached)' });
+    assert.deepStrictEqual(checkoutsAt(dir), before.checkouts, 'a worktree the person has changed');
+    assert.strictEqual(git(dir, ['stash', 'list']), before.stash, 'the stash changed');
+    assert.deepStrictEqual(leftOnNoBranch(dir, before.commits), [], 'a commit was left on no branch');
   };
 }
 
@@ -360,22 +435,44 @@ const short = (sha) => sha.slice(0, 7);
 /** A word as a remedy quotes it for the shell. @param {string} word */
 const shellWord = (word) => (/^[\w@%+=:,./^-]+$/.test(word) ? word : `'${word.replace(/'/g, "'\\''")}'`);
 
-/** How a remedy keeps a commit on a branch of its own. @param {string} branch @param {string} sha */
-const keepWith = (branch, sha) => `\`git branch ${branch}.kept-${short(sha)} ${short(sha)}\``;
-
-/** The worktree a remedy makes to rewrite a branch out nowhere. @param {string} dir @param {string} branch */
+/** The worktree a remedy makes to rebase a branch. @param {string} dir @param {string} branch */
 const scratchOf = (dir, branch) => path.join(dir, '.git', 'leeway', branch.replace(/\//g, '-'));
 
 /**
- * How a remedy rebases a branch out nowhere: in a worktree it makes for it,
- * removed after, and, for a rebase that stops, how it goes on.
- * @param {string} dir @param {string} branch @param {string} args @param {boolean} [settle]
+ * A remedy's way on for a branch it moves or rewrites, as it reads where
+ * `held` has the branch out (landing-git.cjs, `remedy`): the branch kept as
+ * it stands, the worktree that has it out detached, then `act`'s steps.
+ * @param {string} dir @param {Held} held @param {string} branch @param {string[]} act
+ * @param {{then?: string, note?: (kept: string) => string}} [opts]
  */
-function rebaseAside(dir, branch, args, settle = false) {
+function way(dir, held, branch, act, { then = 'land again', note } = {}) {
+  const at = short(git(dir, ['rev-parse', branch]).trim());
+  const kept = `${branch}.kept-${at}`;
+  const steps = [`keep ${branch} as it stands with \`git branch ${kept} ${at}\``];
+  const notes = note === undefined ? [] : [note(kept)];
+  if (held !== null) {
+    const who = held.here ? 'your checkout' : `the worktree at ${held.path}`;
+    steps.push(`detach ${who} from ${branch} with \`${held.here ? 'git' : `git -C ${shellWord(held.path)}`} switch --detach\`, which leaves it at ${at} with its edits`);
+    notes.push(`switching ${who} back to ${branch} is yours, when you're ready`);
+  }
+  return `${[...steps, ...act].join(', then ')}, and ${then}${notes.map((line) => `; ${line}`).join('')}`;
+}
+
+/** A remedy's step moving a branch to a commit. @param {string} branch @param {string} to @param {string} how */
+const moveStep = (branch, to, how) => [`${how} with \`git branch -f ${branch} ${to}\``];
+
+/**
+ * A remedy's steps rebasing a branch in a worktree made for it, removed after.
+ * @param {string} dir @param {string} branch @param {string} args @param {string} how
+ */
+function rebaseSteps(dir, branch, args, how) {
   const tree = scratchOf(dir, branch);
   const there = `git -C ${shellWord(tree)}`;
-  const go = settle ? [`settle each conflict at ${tree} as it stops and go on with \`${there} rebase --continue\``] : [];
-  return [`\`git worktree add ${shellWord(tree)} ${branch}\``, `\`${there} rebase ${args}\``, ...go, `\`git worktree remove ${shellWord(tree)}\``].join(', then ');
+  return [
+    `${how} in a worktree of its own with \`git worktree add ${shellWord(tree)} ${branch}\``,
+    `\`${there} rebase ${args}\`, settling each conflict at ${tree} as it stops and going on with \`${there} rebase --continue\``,
+    `\`git worktree remove ${shellWord(tree)}\``,
+  ];
 }
 
 /** The branch the main checkout has out, and its files' state. @param {string} dir */
@@ -383,6 +480,12 @@ const checkoutOf = (dir) => ({ head: git(dir, ['symbolic-ref', '--short', 'HEAD'
 
 /** How a refusal of a branch out in a worktree reads. @param {string} branch @param {string} tree @param {string} state @param {string} remedy */
 const heldRefusal = (branch, tree, state, remedy) => `land: ${branch} is checked out at ${tree}${state}, so nothing moved — ${remedy}`;
+
+/**
+ * How a refusal of a commit no task of its phase reads.
+ * @param {string} branch @param {number} phase @param {string} sha @param {string} subject @param {string} remedy
+ */
+const strayRefusal = (branch, phase, sha, subject, remedy) => `land: ${branch} holds ${short(sha)} "${subject}", which is no task of phase ${phase} — ${remedy}`;
 
 /** How a refusal of a branch a rebase holds reads. @param {string} branch @param {string} tree @param {string} run git as the remedy runs it there */
 const rebasingRefusal = (branch, tree, run) => `land: ${branch} is being rebased at ${tree}, so nothing moved — finish that rebase, or end it with \`${run} rebase --abort\`, and land again`;
@@ -415,6 +518,6 @@ function pathsOn(dir, branch) {
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, openArgs, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, followRemedy,
-  personState, followed, short, shellWord, keepWith, scratchOf, rebaseAside, checkoutOf, heldRefusal, rebasingRefusal, stops, stoppedRebase,
+  UNIT, BASE, TASKS, openArgs, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
+  personState, followed, short, shellWord, scratchOf, way, moveStep, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

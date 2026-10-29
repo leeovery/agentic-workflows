@@ -4,17 +4,15 @@
 // The landing conformance suite (7.3.1, 7.3.4): the contract every landing
 // driver meets, run through the `land` verbs against each shipped driver in
 // turn — a task's pull request, a stack in the order its tasks were merged
-// back, a phase merged, finish, a task whose branch moved on since it opened
-// refused at its phase's merge with the way back, its commits kept on a
-// branch, and nothing under
-// `.leeway/` landed (4.S2).
-// After every test, the default branch holds nothing under `.leeway/`. The
-// local driver runs fully here (7.3.6, 7.S11). A driver's own side
+// back, a phase merged, finish, a task whose branch moved on since it
+// opened refused at its phase's merge with the way back, its commits kept
+// on a branch, and nothing under `.leeway/` landed (4.S2). After every
+// test, the default branch holds nothing under `.leeway/`. The local driver
+// runs fully here (7.3.6, 7.S11). A driver's own side
 // (tests/drivers/{name}/landing.cjs) readies the world for it and reads
 // what the default branch gained and holds; this file names no driver and
-// no tool.
-// Conformance layer: the landing world (landing-world.cjs), built once per
-// driver and copied for each test.
+// no tool. Conformance layer: the landing world (landing-world.cjs), built
+// once per driver and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

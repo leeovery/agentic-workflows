@@ -6,13 +6,13 @@
 // a fast-forward of the default branch it has out, made through the
 // person's own git and hooks, with its tracked files clean, nothing at a
 // path the move adds, or in its way, but what it tracks, ignored or not —
-// git's own refusal its last guard — and no operation in progress; a rebase
-// stopped there holds the branch it rebases and those it updates, though it
-// leaves the checkout detached. Each refusal's remedy is followed as
-// written, and the merge then goes through. Linked worktrees
-// and the replay's put-back are test-engine-land-worktrees.cjs's. Git layer:
-// the landing world (landing-world.cjs), built once and copied for each
-// test.
+// git's own refusal its last guard — and no operation in progress; changes
+// not committed there are kept by detaching the checkout, never set aside;
+// a rebase stopped there holds the branch it rebases and those it updates,
+// though it leaves the checkout detached. Each refusal's remedy is followed
+// as written, and the merge then goes through. Linked worktrees and the
+// replay's put-back are test-engine-land-worktrees.cjs's. Git layer: the
+// landing world (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -26,7 +26,8 @@ const path = require('path');
 const { ok, git, tip } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const {
-  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops, stoppedRebase,
+  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  stoppedRebase,
 } = require('./landing-world.cjs');
 const { checkoutBlock } = require('../../skills/workflow-engine/scripts/domain/landing-git.cjs');
 
@@ -68,14 +69,28 @@ describe('land phase: the main checkout', () => {
     assert.strictEqual(merged.commit, opened);
   });
 
-  it('stops where the default branch is out with changes not committed, mid-merge, mid-am, or being rebased by either backend — a branch the rebase updates held too — and goes through once each remedy is followed', () => {
+  it('stops where the default branch is out with changes not committed, and goes through once the checkout is detached, which keeps them where they were', () => {
     const dir = project();
     ok(dir, openArgs(card));
+    const was = tip(dir, 'main');
     fs.writeFileSync(path.join(dir, 'app.txt'), 'edited\n');
     const dirty = refusedMoving(dir, MERGE_ONE);
-    assert.strictEqual(dirty, held('main', dir, ', with changes not committed: app.txt', 'commit them, or set them aside with `git stash`, and land again'));
+    assert.strictEqual(dirty, held(
+      'main', dir, ', with changes not committed: app.txt',
+      `commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${short(was)} with its edits, and land again; `
+        + 'switching your checkout back to main is yours, when you\'re ready',
+    ));
     followRemedy(dir, dirty);
+    const merged = ok(dir, MERGE_ONE);
+    assert.deepStrictEqual(
+      { main: tip(dir, 'main'), head: tip(dir, 'HEAD'), status: git(dir, ['status', '--porcelain', '--branch']), app: fs.readFileSync(path.join(dir, 'app.txt'), 'utf8') },
+      { main: merged.commit, head: was, status: '## HEAD (no branch)\n M app.txt\n', app: 'edited\n' },
+    );
+  });
 
+  it('stops where the default branch is out mid-merge, mid-am, or being rebased by either backend — a branch the rebase updates held too — and goes through once each remedy is followed', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
     commitFiles(dir, 'theirs', 'main', { 'app.txt': 'theirs\n' });
     fs.writeFileSync(path.join(dir, 'app.txt'), 'ours\n');
     git(dir, ['commit', '-q', '-am', 'ours']);

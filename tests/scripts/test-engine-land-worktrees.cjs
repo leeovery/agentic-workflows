@@ -5,13 +5,15 @@
 // landing-git.cjs, through the local driver's merges): a branch a linked
 // worktree has out moves only as the main checkout's would, a rebase stopped
 // there holding the branches it rewrites, and a worktree deleted but not
-// pruned holding its branch too; a replayed phase moves nothing until both
-// branches can, and is put back where the default branch then fails to
-// move. Each refusal's remedy is followed as written, and the merge then
-// goes through, every linked worktree at a path with a space, which each
-// command quotes. The main checkout is test-engine-land-checkout.cjs's. Git
-// layer: the landing world (landing-world.cjs), built once and copied for
-// each test.
+// pruned holding its branch too; a remedy freeing such a branch prunes the
+// worktree where it is deleted, and waits on a merge stopped there, or a
+// rebase of the branch, ended first and alone; a replayed phase moves
+// nothing until both branches can, and is put back where the default
+// branch then fails to move. Each refusal's remedy is followed as written,
+// and the verb then goes through, every linked worktree at a path with a
+// space, which each command quotes. The main checkout is
+// test-engine-land-checkout.cjs's. Git layer: the landing world
+// (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -23,29 +25,43 @@ const path = require('path');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops, stoppedRebase,
+  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  stoppedRebase, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 
 const { card, rounding } = TASKS;
 const project = useLandingWorld('engine-land-worktrees-');
 const MERGE_ONE = ['land', 'phase', 'pay', '1'];
+const CHAIN_ONE = ['land', 'chain', 'pay', '1.1'];
+const PHASE_ONE = 'feat/pay-phase-1';
+const PHASE_FOUR = 'feat/pay-phase-4';
+const PRUNE = 'clear the worktree since deleted that has it out with `git worktree prune`';
 
 describe('land phase: a linked worktree', () => {
-  it('holds the default branch it has out as the main checkout would — changes not committed there, a rebase stopped there — and goes through once each remedy is followed', () => {
+  it('holds the default branch it has out as the main checkout would — changes not committed there, kept by detaching it; a rebase stopped there — and goes through once each remedy is followed', () => {
     const dir = project();
     ok(dir, openArgs(card));
+    ok(dir, openArgs(rounding));
     git(dir, ['checkout', '-q', '-b', 'wip']);
     const linked = path.join(dir, '.git', 'linked main');
     git(dir, ['worktree', 'add', '-q', linked, 'main']);
+    const was = short(tip(dir, 'main'));
     fs.writeFileSync(path.join(linked, 'app.txt'), 'edited\n');
     const dirty = refusedMoving(dir, MERGE_ONE);
-    assert.strictEqual(dirty, held('main', linked, ', with changes not committed: app.txt', `commit them, or set them aside with \`git -C ${shellWord(linked)} stash\`, and land again`));
+    assert.strictEqual(dirty, held(
+      'main', linked, ', with changes not committed: app.txt',
+      `commit them, or detach the worktree at ${linked} from main with \`git -C ${shellWord(linked)} switch --detach\`, which leaves it at ${was} with its edits, `
+        + `and land again; switching the worktree at ${linked} back to main is yours, when you're ready`,
+    ));
     followRemedy(dir, dirty);
+    ok(dir, MERGE_ONE);
+    assert.deepStrictEqual([short(tip(linked, 'HEAD')), git(linked, ['status', '--porcelain', '--branch'])], [was, '## HEAD (no branch)\n M app.txt\n']);
+    git(linked, ['checkout', '-q', '-f', 'main']);
     stoppedRebase(dir, linked);
-    const rebased = refusedMoving(dir, MERGE_ONE);
+    const rebased = refusedMoving(dir, ['land', 'phase', 'pay', '2']);
     assert.strictEqual(rebased, rebasing('main', linked, `git -C ${shellWord(linked)}`));
     followRemedy(dir, rebased);
-    ok(dir, MERGE_ONE);
+    ok(dir, ['land', 'phase', 'pay', '2']);
   });
 
   it('holds a phase\'s branch a rebase stopped there is rewriting, though the phase would merge by a fast-forward', () => {
@@ -74,6 +90,59 @@ describe('land phase: a linked worktree', () => {
     assert.strictEqual(refusal, held('main', gone, ', a worktree since deleted', 'clear it with `git worktree prune` and land again'));
     followRemedy(dir, refusal);
     ok(dir, MERGE_ONE);
+  });
+});
+
+describe('land: a remedy freeing a branch a linked worktree has out', () => {
+  it('prunes a worktree since deleted that has the branch out, before a move and before a rebase, and the verb goes through', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    const other = commitFiles(dir, PHASE_FOUR, 'main', { 'v2.txt': 'v2\n' }, { message: 'feat(pay-v2): Other\n\nTask: pay-v2-4-1\n' });
+    commitFiles(dir, PHASE_FOUR, PHASE_FOUR, { 'four.txt': 'four\n' }, { message: 'fix(pay): Four\n\nTask: pay-4-1\n' });
+    const top = commitFiles(dir, PHASE_ONE, PHASE_ONE, { 'tidy.txt': 'tidy\n' }, { message: 'my tidy' });
+    const outAndDeleted = (/** @type {string} */ branch) => {
+      const gone = path.join(dir, '.git', 'linked phase');
+      git(dir, ['worktree', 'add', '-q', gone, branch]);
+      fs.rmSync(gone, { recursive: true, force: true });
+    };
+    outAndDeleted(PHASE_ONE);
+    const moving = refusedMoving(dir, CHAIN_ONE);
+    assert.strictEqual(moving, stray(PHASE_ONE, 1, top, 'my tidy', way(dir, null, PHASE_ONE, [PRUNE, ...moveStep(PHASE_ONE, `${short(top)}^`, `take ${short(top)} off ${PHASE_ONE}`)])));
+    followRemedy(dir, moving);
+    ok(dir, CHAIN_ONE);
+    outAndDeleted(PHASE_FOUR);
+    const rebasing = refusedMoving(dir, ['land', 'chain', 'pay', '4.1']);
+    assert.strictEqual(rebasing, stray(PHASE_FOUR, 4, other, 'feat(pay-v2): Other', way(dir, null, PHASE_FOUR, [
+      PRUNE, ...rebaseSteps(dir, PHASE_FOUR, `--onto ${short(other)}^ ${short(other)}`, `take ${short(other)} off ${PHASE_FOUR}`),
+    ])));
+    followRemedy(dir, rebasing);
+    ok(dir, ['land', 'chain', 'pay', '4.1']);
+  });
+
+  it('waits on a merge stopped where the branch is out, or a rebase of it, ended first and alone, then frees it as it would any', () => {
+    for (const [stop, first] of /** @type {const} */ ([
+      [['merge', 'side'], (/** @type {string} */ at) => `first finish a merge at ${at}, where ${PHASE_ONE} is out, or end it with \`git -C ${shellWord(at)} merge --abort\``],
+      [['rebase', 'side'], (/** @type {string} */ at) => `first finish the rebase of ${PHASE_ONE} at ${at}, or end it with \`git -C ${shellWord(at)} rebase --abort\``],
+    ])) {
+      const dir = project();
+      ok(dir, openArgs(card));
+      const linked = path.join(dir, '.git', 'linked phase');
+      git(dir, ['worktree', 'add', '-q', linked, PHASE_ONE]);
+      fs.writeFileSync(path.join(linked, 'tidy.txt'), 'tidy\n');
+      git(linked, ['add', 'tidy.txt']);
+      git(linked, ['commit', '-q', '-m', 'my tidy']);
+      const top = tip(dir, PHASE_ONE);
+      commitFiles(dir, 'side', 'landing-base', { 'card.txt': 'side card\n' });
+      stops(linked, stop);
+      const waiting = refusedMoving(dir, CHAIN_ONE);
+      assert.strictEqual(waiting, stray(PHASE_ONE, 1, top, 'my tidy', `${first(linked)}, and land again`));
+      followRemedy(dir, waiting);
+      const freeing = refusedMoving(dir, CHAIN_ONE);
+      assert.strictEqual(freeing, stray(PHASE_ONE, 1, top, 'my tidy', way(dir, { path: linked, here: false }, PHASE_ONE, moveStep(PHASE_ONE, `${short(top)}^`, `take ${short(top)} off ${PHASE_ONE}`))));
+      followRemedy(dir, freeing);
+      ok(dir, CHAIN_ONE);
+      assert.deepStrictEqual([tip(linked, 'HEAD'), git(linked, ['status', '--porcelain', '--branch'])], [top, '## HEAD (no branch)\n']);
+    }
   });
 });
 
@@ -127,7 +196,7 @@ describe('land phase: a phase replayed onto a default branch that moved on', () 
     const replayed = tip(dir, 'feat/pay-phase-1');
     assert.match(error, new RegExp(
       `^land: main could not move \\(.*refused.*\\), nor could feat/pay-phase-1 be put back \\(.*refused.*\\) — feat/pay-phase-1 stands at the replay, ${replayed.slice(0, 7)}; `
-      + `\`git update-ref refs/heads/feat/pay-phase-1 ${opened}\` puts it back$`, 's',
+      + `\`git branch -f feat/pay-phase-1 ${opened.slice(0, 7)}\` puts it back$`, 's',
     ));
     assert.deepStrictEqual([tip(dir, 'main'), replayed === opened], [tip(dir, 'feat/pay-phase-2'), false]);
     fs.rmSync(hook);

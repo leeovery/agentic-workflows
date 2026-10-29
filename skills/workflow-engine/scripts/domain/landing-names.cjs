@@ -10,8 +10,8 @@
 // `{type}({unit}): {title}`, and the message's last line is the task's
 // internal id as a `Task:` trailer, which is how a task is read back off
 // git: every such line names a task the commit lands, so landings squashed
-// together, their messages joined, land each. The type is the task's own, from its template (12.4.1): a lowercase
-// word, as feat or fix.
+// together, their messages joined, land each. The type is the task's own,
+// from its template (12.4.1): a lowercase word, as feat or fix.
 // ---------------------------------------------------------------------------
 
 const { assertUnit, taskId, parseTaskId, shownTask } = require('./task-id.cjs');
