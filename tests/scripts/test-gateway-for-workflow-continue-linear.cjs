@@ -210,7 +210,7 @@ describe('workflow-continue-linear view', () => {
       '  ├─ ✓ Discussion       [completed]',
       '  └─ ◐ Specification    [in-progress]',
       '',
-      '=== MENU (emit verbatim as markdown (not a code block)) ===',
+      '=== MENU: work unit menu (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
       'Continuing "Auth" — *specification (in-progress)*.',
       '',

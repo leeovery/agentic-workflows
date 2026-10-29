@@ -23,6 +23,11 @@ plugin's; the mod leaves what it sent in the conversation's own folder (see
 below) as `sent.json`. A second plugin, `workflow-gates-rows`
 (`../workflow-gates-rows/`), reads that record to draw the row as the question
 and the answer, since no plugin can redraw the row of a prompt it submitted.
+Beside it the mod leaves the press itself as `pressed.json` — the gate's name,
+the row's answer, and when it was sent — which the engine's `gate` reads to
+log the answer as pressed rather than typed: a file of its own, since the
+second plugin spends `sent.json` once it draws the row. A send that fails, or
+that another plugin drops, leaves neither recording a send.
 Typing answers too: a key and Enter at the prompt, or Esc then Enter after a
 pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
 click on one says to type it in the prompt. The footer under the rows says

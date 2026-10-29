@@ -47,6 +47,7 @@ const COMMENT: Typed = {
 }
 
 const gateOf = (over: Partial<Gate> = {}): Gate => ({
+  name: 'task gate',
   question: 'Approve this task?',
   statement: '',
   options: [optionOf({ key: 'y', word: 'yes', head: 'Commit' })],

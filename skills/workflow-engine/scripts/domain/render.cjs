@@ -19,7 +19,7 @@ const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads
 const { signpost, wrap } = require('../kernel/render.cjs');
 const { displayWidth } = require('../kernel/terminal.cjs');
 const { TREE_WIDTH, titlecase, tag, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
-const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
+const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
@@ -7271,7 +7271,6 @@ const SURFACES = {
  * @returns {string}
  */
 function renderSurface(cwd, surface, args) {
-  openGate();
   const handler = SURFACES[surface];
   if (!handler) {
     throw new Error(`render: unknown surface "${surface}" (surfaces: ${Object.keys(SURFACES).join(', ')})`);

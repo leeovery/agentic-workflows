@@ -26,8 +26,9 @@
  *   `gateway.cjs {work_unit}`).
  */
 
-const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, gateBlock } = require('./domain/projections/surfaces.cjs');
+const { TITLE_INSTRUCTION, titleSection, DATA_INSTRUCTION, emitAs, openGate, section } = require('./domain/projections/surfaces.cjs');
 const { markConversation } = require('./domain/conversation.cjs');
+const { recordGateShown } = require('./domain/gate.cjs');
 
 const SECTION = {
   title:   `=== TITLE (${TITLE_INSTRUCTION}) ===`,
@@ -37,7 +38,6 @@ const SECTION = {
   // no language draws in the menus' colour. Displays stay quiet; colour lives
   // in the markdown chrome and menus.
   display: `=== DISPLAY (${emitAs('text')}) ===`,
-  menu:    `=== MENU (${emitAs('markdown')}) ===`,
 };
 
 /** Render a DATA section. Objects become stable `key: value` lines. @param {object|string} body */
@@ -55,10 +55,13 @@ function displayBlock(body) {
   return SECTION.display + '\n' + String(body).replace(/\n+$/, '') + '\n';
 }
 
-/** @param {string} body menu block, pre-rendered — empty renders no section: no gate, no marker */
-function menuBlock(body) {
+/**
+ * @param {string} name  the gate the menu states (16.11.9) — the gateway's own, never another menu's
+ * @param {string} body  menu block, pre-rendered — empty renders no section: no gate, no marker
+ */
+function menuBlock(name, body) {
   const menu = String(body).replace(/\n+$/, '');
-  return menu === '' ? '' : gateBlock('menu') + SECTION.menu + '\n' + menu + '\n';
+  return menu === '' ? '' : section(`MENU: ${name}`, emitAs('markdown'), menu);
 }
 
 // `key: value` lines for flat values; nested objects/arrays render as compact
@@ -72,7 +75,8 @@ function dataLines(obj) {
 
 /**
  * Dispatch argv against the registered handlers and write the result to
- * stdout, the calling conversation marked as one that runs the workflows.
+ * stdout, the calling conversation marked as one that runs the workflows,
+ * and the gate the result's MENU states recorded as the gate it was shown.
  * Exits non-zero with a usage line on an unknown verb.
  * @param {GatewayHandlers} handlers
  * @param {string[]} [argv] defaults to process.argv.slice(2)
@@ -100,6 +104,7 @@ function runGateway(handlers, argv = process.argv.slice(2)) {
   }
 
   process.stdout.write(String(out).replace(/\n+$/, '') + '\n');
+  recordGateShown();
 }
 
 module.exports = { runGateway, dataBlock, titleBlock, displayBlock, menuBlock, SECTION };

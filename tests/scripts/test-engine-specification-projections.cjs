@@ -1165,7 +1165,7 @@ describe('specification menu: the epic gateway\'s spec verbs', () => {
     const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
-    assert.ok(out.includes('=== MENU (emit verbatim as markdown (not a code block)) ==='));
+    assert.ok(out.includes('=== MENU: spec menu (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
     assert.ok(out.includes('  auth-flow: proposed, has_pending_sources=true\n    source: auth-design (pending, discussion: completed)\n'));

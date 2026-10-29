@@ -10,8 +10,8 @@
 // directory. Each conversation that runs the workflows has one folder beside
 // the system config, `{config}/conversations/{session-id}/`, found by the
 // session id Claude Code hands every command it runs, wherever the command
-// runs, and each concern writes a file of its own there, so no two writers
-// ever share one:
+// runs, and each concern writes a file of its own there — the one file two
+// write is the mod's `sent.json`, which the rows mod spends:
 //
 //   workflow       the mark that the conversation runs the workflows, which
 //                  the gate mod reads to set the workflow harness, to say the
@@ -29,12 +29,21 @@
 //   trust-pending.jsonl
 //                  the trust log's events the conversation could not append,
 //                  waiting for its next record to append them first
-//                  (trust-log.cjs) — the one writer that makes the folder
-//                  unmarked, so an event before the project has state waits
-//                  too
+//                  (trust-log.cjs) — made where the folder is unmarked, so
+//                  an event before the project has state waits too
+//   gate-shown.json
+//                  the gate the conversation was last shown, with what each
+//                  of its rows leads to, and its answer once given — what
+//                  `gate` answers against (gate.cjs); made where the folder
+//                  is unmarked too, so a gate before the project has state
+//                  is answered like any other
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press, or a handoff's
-//                  continuation with its line (the mod's own)
+//                  continuation with its line (the mod's; the rows mod
+//                  writes null over it once it has drawn the row)
+//   pressed.json   the row the mod last sent from a press: the gate's name,
+//                  the answer and when — what `gate` reads to log an answer
+//                  pressed (the mod's own)
 //   compacted.json every note the mod appended to a compaction, with the
 //                  place it carries on in (the mod's own; the rows mod reads
 //                  it)
@@ -125,8 +134,8 @@ function markConversation(cwd) {
 /**
  * Whether the engine has marked the conversation `sessionId` as one that
  * runs the workflows — what every other writer of the folder but the trust
- * log's waits on, so a conversation the engine never marked gets no folder
- * from them.
+ * log's and the gate shown's waits on, so a conversation the engine never
+ * marked gets no folder from them.
  * @param {string} sessionId
  */
 function isMarked(sessionId) {

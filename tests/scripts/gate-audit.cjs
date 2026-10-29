@@ -9,7 +9,7 @@
 // or reworded form comes back.
 
 const assert = require('node:assert');
-const { RENDER_FORMS: FORMS, emitAs } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
 const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
@@ -216,9 +216,9 @@ function auditMarkers(out, label) {
 }
 
 /**
- * The GATE payload in an announced response, held against its MENU: it sits
- * directly above the first MENU, asks a question over at least one row to
- * press, and states the whole of the menu. Null when the response carries no
+ * The GATE payload in an announced response, held against its MENU — a
+ * response carries one at most: it sits directly above the MENU, asks a
+ * question over at least one row to press, and states the whole of the menu. Null when the response carries no
  * menu, which then carries no gate either, and when the menu draws nothing,
  * which leaves nothing to state.
  * @param {string} out  the response's stdout
@@ -228,6 +228,7 @@ function auditMarkers(out, label) {
 function auditGate(out, label) {
   auditMarkers(out, label);
   const lines = out.split('\n');
+  assert.ok(lines.filter((l) => l.startsWith('=== MENU')).length <= 1, `[${label}] a response carries one MENU at most`);
   const menuAt = lines.findIndex((l) => l.startsWith('=== MENU'));
   if (menuAt === -1) {
     assert.ok(!lines.includes(GATE_MARKER), `[${label}] a response with no menu carries no gate`);
@@ -250,7 +251,8 @@ function auditGate(out, label) {
 /**
  * A render-surface caller that audits as it renders: every render's markers
  * name their forms, and every render that draws a menu is drawn again with
- * the gate surface announced, and its payload held against that menu.
+ * the gate surface announced, opened as a command opens it, and its payload
+ * held against that menu.
  * @param {(dir: string, surface: string, args: object) => string} renderSurface
  * @returns {(dir: string, surface: string, args: object) => string}
  */
@@ -258,7 +260,12 @@ function auditingRender(renderSurface) {
   return (dir, surface, args) => {
     const out = renderSurface(dir, surface, args);
     auditMarkers(out, `render ${surface}`);
-    if (out.includes('=== MENU')) auditGate(announced(() => renderSurface(dir, surface, args)), `render ${surface}`);
+    if (out.includes('=== MENU')) {
+      auditGate(announced(() => {
+        openGate();
+        return renderSurface(dir, surface, args);
+      }), `render ${surface}`);
+    }
     return out;
   };
 }

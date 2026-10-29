@@ -568,13 +568,13 @@ describe('workflow-start sub-view sections', () => {
     createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
 
-    for (const [args, title, firstRow] of /** @type {[string[], string, string][]} */ ([
-      [['archived'], 'Archived', '**`1`**      → Old Idea — *idea, 2026-05-01*'],
-      [['manage'], 'Manage', '**`1`**          → Auth Flow — *feature*'],
-      [['completed'], 'Completed & Cancelled', '**`1`**      → Done Feat — *completed after review*'],
+    for (const [args, title, gate, firstRow] of /** @type {[string[], string, string, string][]} */ ([
+      [['archived'], 'Archived', 'archived pick', '**`1`**      → Old Idea — *idea, 2026-05-01*'],
+      [['manage'], 'Manage', 'manage pick', '**`1`**          → Auth Flow — *feature*'],
+      [['completed'], 'Completed & Cancelled', 'completed pick', '**`1`**      → Done Feat — *completed after review*'],
     ])) {
       const out = run(args);
-      assert.ok(out.includes(`=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU (emit verbatim as markdown (not a code block)) ===\n`), `${args[0]}: ${out}`);
+      assert.ok(out.includes(`=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===\n# **\`■ ${title}\`**\n\n=== MENU: ${gate} (emit verbatim as markdown (not a code block)) ===\n`), `${args[0]}: ${out}`);
       assert.ok(!out.includes('=== DISPLAY'), `${args[0]} draws a display beside its list: ${out}`);
       assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
     }

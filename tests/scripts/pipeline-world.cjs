@@ -36,7 +36,7 @@ const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
-const { shellWords, auditState, auditGatePayload } = require('./pipeline-oracle.cjs');
+const { shellWords, auditState, auditGatePayload, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
 
 // The project every scenario starts from, made once per process.
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
@@ -435,6 +435,17 @@ function linearMenu(sim, wu) {
   const found = LIB.detail.activeWorkUnit(sim.dir, wu);
   assert.ok(found, `${wu} is a linear unit in progress`);
   return LIB.project.workUnitMenu(found.type, found.unit);
+}
+
+// The person's answer at the gate shown, through `gate` as the prose gives
+// it: one line of the trust log apiece, the oracle holds. Answers what
+// `gate` answered.
+/** @param {Sim} sim @param {string} name @param {...string} answer */
+function answerGate(sim, name, ...answer) {
+  const before = trustLines(sim);
+  const answered = sim.run(['gate', name, ...answer]);
+  auditGateAnswer(sim, answered, before, `gate ${name} ${answer.join(' ')}`);
+  return answered;
 }
 
 /** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
@@ -929,5 +940,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

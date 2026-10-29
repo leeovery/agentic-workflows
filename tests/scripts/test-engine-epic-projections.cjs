@@ -1771,7 +1771,7 @@ describe('epic projections: selection sub-views', () => {
       'Discussion',
       '  └─ 2. Auth Flow [completed]',
       '',
-      '=== MENU (emit verbatim as markdown (not a code block)) ===',
+      '=== MENU: resume pick (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
