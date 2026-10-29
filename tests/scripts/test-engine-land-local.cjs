@@ -23,13 +23,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
+const { TASKS, openArgs, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
-
-/** The argv opening a task the test makes a branch of. @param {string} task @param {string} type @param {string} title */
-const open = (task, type, title) => ['land', 'open', 'pay', task, '--type', type, '--title', title];
 
 describe('land: what the local driver reads off its stacks', () => {
   it('refuses a phase with nothing opened, a task not open, and a phase merged, saying so', () => {
@@ -40,9 +37,9 @@ describe('land: what the local driver reads off its stacks', () => {
     ]);
     ok(dir, openArgs(rounding));
     ok(dir, ['land', 'phase', 'pay', '2']);
-    commitFiles(dir, 'fix/pay-2.2-round-up', 'main', { 'up.txt': 'up\n' });
+    const up = cutTask(dir, '2.2', 'fix', 'Round up', 'main', { 'up.txt': 'up\n' });
     assert.deepStrictEqual(
-      [['land', 'phase', 'pay', '2'], open('2.2', 'fix', 'Round up'), ['land', 'chain', 'pay', '2.1']].map((args) => refusedMoving(dir, args)),
+      [['land', 'phase', 'pay', '2'], openArgs(up), ['land', 'chain', 'pay', '2.1']].map((args) => refusedMoving(dir, args)),
       [
         'land: phase 2 is merged into main already — there is nothing more to merge',
         'land: phase 2 is merged into main — task 2.2 lands in a phase not yet merged, so number it in one',
@@ -58,9 +55,9 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(replayed, openArgs(rounding));
     ok(replayed, ['land', 'phase', 'pay', '1']);
     ok(replayed, ['land', 'phase', 'pay', '2']);
-    commitFiles(replayed, 'fix/pay-4.1-round-more', rounding.branch, { 'more.txt': 'more\n' });
-    mergeBack(replayed, 'fix/pay-4.1-round-more', 'main');
-    assert.strictEqual(ok(replayed, open('4.1', 'fix', 'Round more')).base, 'main');
+    const more = cutTask(replayed, '4.1', 'fix', 'Round more', rounding.branch, { 'more.txt': 'more\n' });
+    mergeBack(replayed, more.branch, 'main');
+    assert.strictEqual(ok(replayed, openArgs(more)).base, 'main');
 
     const deleted = project();
     ok(deleted, openArgs(rounding));
@@ -73,23 +70,23 @@ describe('land: what the local driver reads off its stacks', () => {
   it('ties a task to another by the branch it holds while that branch stands, never by a tree alike — and, the branch deleted, by its tree, within the task\'s chain', () => {
     const alike = project();
     ok(alike, openArgs(card));
-    commitFiles(alike, 'fix/pay-2.4-share-the-card', 'main', card.files);
-    commitFiles(alike, 'fix/pay-2.4-share-the-card', 'fix/pay-2.4-share-the-card', { 'share.txt': 'share\n' });
-    assert.strictEqual(ok(alike, open('2.4', 'fix', 'Share the card')).base, 'main');
+    const share = cutTask(alike, '2.4', 'fix', 'Share the card', 'main', card.files);
+    commitFiles(alike, share.branch, share.branch, { 'share.txt': 'share\n' });
+    assert.strictEqual(ok(alike, openArgs(share)).base, 'main');
 
     const stacked = project();
     ok(stacked, openArgs(rounding));
     ok(stacked, openArgs(currency));
     git(stacked, ['branch', '-D', rounding.branch]);
-    commitFiles(stacked, 'fix/pay-3.2-more-currency', currency.branch, { 'more.txt': 'more\n' });
-    assert.strictEqual(ok(stacked, open('3.2', 'fix', 'More currency')).base, currency.branch);
+    const more = cutTask(stacked, '3.2', 'fix', 'More currency', currency.branch, { 'more.txt': 'more\n' });
+    assert.strictEqual(ok(stacked, openArgs(more)).base, currency.branch);
   });
 
   it('finish: a phase whose change conflicts with the default branch stops it, saying which merged before, if any', () => {
     const dir = project();
-    commitFiles(dir, 'fix/pay-4.1-word-the-card', 'main', { 'card.txt': 'a card\n' });
+    const word = cutTask(dir, '4.1', 'fix', 'Word the card', 'main', { 'card.txt': 'a card\n' });
     ok(dir, openArgs(card));
-    ok(dir, open('4.1', 'fix', 'Word the card'));
+    ok(dir, openArgs(word));
     const phase = tip(dir, 'feat/pay-phase-4');
     const conflict = 'land: task 4.1 conflicts with main at card.txt, so nothing moved — '
       + way(dir, null, 'feat/pay-phase-4', rebaseSteps(dir, 'feat/pay-phase-4', 'main', 'bring feat/pay-phase-4 up to date with main'));
@@ -104,8 +101,8 @@ describe('land: how the local driver stacks and replays', () => {
     const dir = project();
     ok(dir, openArgs(rounding));
     ok(dir, openArgs(currency));
-    commitFiles(dir, 'feat/pay-1.4-lower', currency.branch, { 'lower.txt': 'lower\n' });
-    assert.strictEqual(ok(dir, open('1.4', 'feat', 'Lower')).base, currency.branch);
+    const lower = cutTask(dir, '1.4', 'feat', 'Lower', currency.branch, { 'lower.txt': 'lower\n' });
+    assert.strictEqual(ok(dir, openArgs(lower)).base, currency.branch);
     assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).phases.map((/** @type {{phase: number}} */ merged) => merged.phase), [2, 3, 1]);
     assert.deepStrictEqual(landedOn(dir, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt'], ['lower.txt']]);
   });
@@ -124,10 +121,10 @@ describe('land: how the local driver stacks and replays', () => {
 
   it('replays each task\'s own change onto a default branch that moved on, a later task\'s undoing part of an earlier one\'s', () => {
     const dir = project();
-    commitFiles(dir, 'feat/pay-1.4-add-flag', 'main', { 'flag.txt': 'a\nb\n' });
-    commitFiles(dir, 'feat/pay-1.5-trim-flag', 'feat/pay-1.4-add-flag', { 'flag.txt': 'a\n' });
-    ok(dir, open('1.4', 'feat', 'Add flag'));
-    ok(dir, open('1.5', 'feat', 'Trim flag'));
+    const add = cutTask(dir, '1.4', 'feat', 'Add flag', 'main', { 'flag.txt': 'a\nb\n' });
+    const trim = cutTask(dir, '1.5', 'feat', 'Trim flag', add.branch, { 'flag.txt': 'a\n' });
+    ok(dir, openArgs(add));
+    ok(dir, openArgs(trim));
     ok(dir, openArgs(rounding));
     ok(dir, ['land', 'phase', 'pay', '2']);
     ok(dir, ['land', 'phase', 'pay', '1']);

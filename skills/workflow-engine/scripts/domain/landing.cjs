@@ -9,26 +9,32 @@
 //
 // What every driver shares is settled here: the names (landing-names.cjs);
 // the default branch everything lands on, never the state branch (4.9.4);
-// and, for a task opened, its branch, named from its type and title, whose
+// and, for a task opened, its type and title, read from the tracker as the
+// task verbs read a task (task-verbs.cjs), a task it lacks or holds with no
+// type refused (7.2.18, 12.4.1), and its branch, named from them, whose
 // change carries nothing under `.leeway/`, in any case of its letters (4.1.3,
 // 4.S2), and lands in the project's own repository alone — nested
 // repositories are not supported yet. The driver answers the chain's tip
 // the task lands on, and the seam holds the task's branch to descend from
-// it before the driver opens anything (12.7.1). A task is named by its id's
-// shape alone; that it exists and passed its review is the build's to know.
-// Before anything else, every verb stops on a rebase stopped in a worktree
-// a remedy made, until it is settled or ended there (landing-git.cjs).
+// it before the driver opens anything (12.7.1). Every other verb names a
+// task by its id's shape alone; that a task passed its review is the
+// build's to know. Before anything else, every verb stops on a rebase
+// stopped in a worktree a remedy made, until it is settled or ended there
+// (landing-git.cjs).
 //
 // The landing's state is read off git and the host each time. Nothing is
 // recorded but the driver setting, which the first verb settles where it is
-// absent and commits to the state branch, whatever the driver then does, and
-// what a driver keeps in the repository's own refs.
+// absent and commits to the state branch, whatever the driver then does;
+// the tracker's setting up, which `open`'s read commits where the state
+// branch lacks it, as every read of the tracker does; and what a driver
+// keeps in the repository's own refs.
 // ---------------------------------------------------------------------------
 
 const { resolveDriver } = require('./drivers.cjs');
 const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName } = require('./remote.cjs');
-const { assertUnit, parseShownTask, shownTask } = require('./task-id.cjs');
+const { assertUnit, parsePhase, parseShownTask, shownTask } = require('./task-id.cjs');
+const { trackedTask } = require('./task-verbs.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -57,7 +63,7 @@ const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
  */
 
 const LAND_USAGE = [
-  'land open <work-unit> <phase>.<task> --type <type> --title <title>',
+  'land open <work-unit> <phase>.<task>',
   'land chain <work-unit> <phase>.<task>',
   'land phase <work-unit> <phase>',
   'land finish <work-unit>',
@@ -79,14 +85,16 @@ function contextOf(cwd, unit) {
 /**
  * Run a driver's verb with the project's landing driver, committing the
  * setting where this call settled it, whether or not the driver refused.
+ * The answer carries the verb's last state commit, null where it failed,
+ * and every warning: `before`'s — what the verb committed and was warned of
+ * before — and the setting's own.
  * @param {string} cwd @param {(driver: LandingDriver) => Record<string, unknown>} act
+ * @param {{committed?: string|null, warnings?: string[]}} [before]
  */
-function withDriver(cwd, act) {
+function withDriver(cwd, act, before = {}) {
   const { driver, written } = resolveDriver(cwd, 'landing');
-  /** @type {string[]} */
-  const warnings = [];
-  /** @type {string|null} */
-  let committed = null;
+  const warnings = [...(before.warnings ?? [])];
+  let { committed } = before;
   /** @type {Record<string, unknown>} */
   let answer;
   try {
@@ -94,7 +102,7 @@ function withDriver(cwd, act) {
   } finally {
     if (written) committed = commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `chore: the landing driver is ${driver.name}`, warnings).committed;
   }
-  return { ...answer, driver: driver.name, ...(written ? { committed } : {}), ...(warnings.length > 0 ? { warnings } : {}) };
+  return { ...answer, driver: driver.name, ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /**
@@ -121,17 +129,23 @@ function refuseChange(ctx, shown, branch) {
 
 /**
  * The task's pull request opened — locally, its change squashed onto its
- * phase's branch.
+ * phase's branch — under the type and title the tracker holds for it
+ * (7.2.18, 12.4.1).
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
- * @param {{type: string, title: string}} named
  */
-function landOpen(cwd, unit, task, { type, title }) {
+function landOpen(cwd, unit, task) {
   const ref = parseShownTask(unit, task);
   const shown = shownTask(ref);
+  const ctx = contextOf(cwd, unit);
+  const { type, title, committed, warnings } = trackedTask(cwd, ref);
+  if (type === null) {
+    throw new Error(`land: task ${shown} has no type in the tracker, and its branch and landing are named from it — give it one with \`task type ${unit} ${shown} <type>\` and open it again`);
+  }
   const branch = names.taskBranch(ref, type, title);
   const message = names.landedMessage(ref, type, title);
-  const ctx = contextOf(cwd, unit);
-  if (!lg.branches(ctx.root).has(branch)) throw new Error(`land: task ${shown} has no branch ${branch} — its type and title name it, so open it with those its branch was named from`);
+  if (!lg.branches(ctx.root).has(branch)) {
+    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
+  }
   refuseChange(ctx, shown, branch);
   const landing = { ref, branch, message };
   return withDriver(cwd, (driver) => {
@@ -141,7 +155,7 @@ function landOpen(cwd, unit, task, { type, title }) {
       throw new Error(`land: task ${shown}'s branch ${branch} does not descend from the chain's tip, ${tip.name} (${lg.short(tip.commit)}) — merge it back onto ${tip.name} first`);
     }
     return driver.open(ctx, landing, tip);
-  });
+  }, { committed, warnings });
 }
 
 /**
@@ -160,9 +174,9 @@ function landChain(cwd, unit, task) {
  * @param {string} cwd @param {string} unit @param {string} phase
  */
 function landPhase(cwd, unit, phase) {
-  if (!/^[1-9][0-9]*$/.test(phase)) throw new Error(`land: the phase is a whole number from 1 — got "${phase}"`);
+  const number = parsePhase(phase);
   const ctx = contextOf(cwd, unit);
-  return withDriver(cwd, (driver) => driver.mergePhase(ctx, Number(phase)));
+  return withDriver(cwd, (driver) => driver.mergePhase(ctx, number));
 }
 
 /**

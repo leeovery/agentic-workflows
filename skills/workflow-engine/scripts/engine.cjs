@@ -1418,15 +1418,15 @@ function runLand(call, argv) {
   const { cwd } = call;
   try {
     const { opts, positional } = parseArgs(rest);
-    const named = Object.keys(opts).sort().join(' ');
+    const flagless = Object.keys(opts).length === 0;
     const [unit, which] = positional;
-    if (command === 'open' && positional.length === 2 && named === 'title type' && opts.type !== undefined && opts.title !== undefined) {
-      respond(call, landOpen(cwd, unit, which, { type: opts.type, title: opts.title }));
-    } else if (command === 'chain' && positional.length === 2 && named === '') {
+    if (command === 'open' && positional.length === 2 && flagless) {
+      respond(call, landOpen(cwd, unit, which));
+    } else if (command === 'chain' && positional.length === 2 && flagless) {
       respond(call, landChain(cwd, unit, which));
-    } else if (command === 'phase' && positional.length === 2 && named === '') {
+    } else if (command === 'phase' && positional.length === 2 && flagless) {
       respond(call, landPhase(cwd, unit, which));
-    } else if (command === 'finish' && positional.length === 1 && named === '') {
+    } else if (command === 'finish' && positional.length === 1 && flagless) {
       respond(call, landFinish(cwd, unit));
     } else {
       throw new Error(`Usage: ${LAND_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);

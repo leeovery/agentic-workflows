@@ -4,7 +4,10 @@
 // test-engine-landing-conformance.cjs): the project world, its default
 // branch `main` holding the code a build starts from, tagged
 // `landing-base`, and the task branches Claude would leave behind, each one
-// commit off the branch it was cut from (`TASKS`). A branch is made, and
+// commit off the branch it was cut from (`TASKS`), each in the tracker, as
+// the unit and its phases are — through the default task driver, its real
+// tool, where a test puts any other task it opens (`track`), for `land
+// open` reads a task's type and title there. A branch is made, and
 // merged back onto another as Claude merges a parallel task back, with no
 // checkout touched — a scratch index over the commit it starts from — so
 // the main checkout stays as the test left it. What landed is read off the
@@ -23,11 +26,22 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { ok, git, statePath, commitAll, refuses, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const names = require('../../skills/workflow-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const BASE = 'landing-base';
+// The phases the world writes into the tracker, before any task of them.
+const PHASES = 5;
+// The tracker a project has unless it names another: the default task driver, its real tool.
+const TRACKER = /** @type {import('../../skills/workflow-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
+  listDrivers('task').filter((driver) => driver.isDefault)[0]
+);
 
-/** @typedef {{shown: string, type: string, title: string, branch: string, from: string, files: Record<string, string>}} Task */
+/** A task in the tracker, and its branch, named from its type and title. @typedef {{shown: string, type: string, title: string, branch: string}} Tracked */
+/** A task the world holds a branch of: its files, committed off the branch it was cut from. @typedef {Tracked & {from: string, files: Record<string, string>}} Task */
 
 /**
  * The tasks the world holds branches of, each cut from `main` but 3.1. 1.1
@@ -53,8 +67,34 @@ const TASKS = Object.freeze({
   },
 });
 
-/** The argv that opens a task. @param {Task} task @returns {string[]} */
-const openArgs = (task) => ['land', 'open', UNIT, task.shown, '--type', task.type, '--title', task.title];
+/** The argv that opens a task. @param {Tracked} task @returns {string[]} */
+const openArgs = (task) => ['land', 'open', UNIT, task.shown];
+
+/**
+ * A task put into the world's tracker at the number given, through the
+ * project's task driver, as `task create` makes one — the phase written
+ * already — and the branch `land open` will name for it.
+ * @param {string} dir @param {string} shown @param {string} type @param {string} title
+ * @returns {Tracked}
+ */
+function track(dir, shown, type, title) {
+  const ref = parseShownTask(UNIT, shown);
+  TRACKER.createTask(statePath(dir), ref, { title, type, text: `${title}.` });
+  return { shown, type, title, branch: names.taskBranch(ref, type, title) };
+}
+
+/**
+ * A task a test cuts: put into the tracker (`track`), and its branch made,
+ * `files` committed over `from` as `commitFiles` commits them.
+ * @param {string} dir @param {string} shown @param {string} type @param {string} title @param {string} from @param {Record<string, string>} files
+ * @param {Parameters<typeof commitFiles>[4]} [opts]
+ * @returns {Tracked}
+ */
+function cutTask(dir, shown, type, title, from, files, opts) {
+  const task = track(dir, shown, type, title);
+  commitFiles(dir, task.branch, from, files, opts);
+  return task;
+}
 
 /**
  * Git under a scratch index of its own.
@@ -106,7 +146,9 @@ function mergeBack(dir, branch, onto) {
 /**
  * The landing world built into the project world at `dir`: the code on
  * `main`, committed in the main checkout, the base tagged, and every task's
- * branch.
+ * branch; and the unit in the tracker, set up by its first phase's `task
+ * phase`, the rest of its phases and every task of `TASKS` put there
+ * through the driver, all committed on the state branch.
  * @param {string} dir
  */
 function buildLanding(dir) {
@@ -115,6 +157,11 @@ function buildLanding(dir) {
   git(dir, ['commit', '-q', '-m', 'the app']);
   git(dir, ['tag', BASE]);
   for (const task of Object.values(TASKS)) commitFiles(dir, task.branch, task.from, task.files);
+  createManifest(dir, UNIT, {});
+  ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Phase 1']);
+  for (let phase = 2; phase <= PHASES; phase += 1) TRACKER.createPhase(statePath(dir), UNIT, phase, `Phase ${phase}`);
+  for (const task of Object.values(TASKS)) track(dir, task.shown, task.type, task.title);
+  commitAll(dir, 'the unit\'s tasks');
 }
 
 /**
@@ -122,7 +169,8 @@ function buildLanding(dir) {
  * @param {string} dir @param {string} name
  */
 function setLandingDriver(dir, name) {
-  fs.writeFileSync(statePath(dir, 'manifest.json'), `${JSON.stringify({ drivers: { landing: name } }, null, 2)}\n`);
+  const project = JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8'));
+  fs.writeFileSync(statePath(dir, 'manifest.json'), `${JSON.stringify({ ...project, drivers: { ...project.drivers, landing: name } }, null, 2)}\n`);
   commitAll(dir, 'the landing driver');
 }
 
@@ -518,6 +566,6 @@ function pathsOn(dir, branch) {
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, openArgs, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
+  UNIT, BASE, TASKS, TRACKER, openArgs, track, cutTask, commitFiles, mergeBack, buildLanding, setLandingDriver, landedOn, pathsOn, useLandingWorld, refusedMoving, commandsOf, followRemedy,
   personState, followed, short, shellWord, scratchOf, way, moveStep, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,
 };

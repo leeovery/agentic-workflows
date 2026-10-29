@@ -23,13 +23,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, followRemedy, short } = require('./landing-world.cjs');
+const { TASKS, openArgs, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, followRemedy, short } = require('./landing-world.cjs');
 
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
-
-/** The argv opening a task the test makes a branch of. @param {string} task @param {string} type @param {string} title */
-const open = (task, type, title) => ['land', 'open', 'pay', task, '--type', type, '--title', title];
 
 describe('land: what the local driver records, and the shapes of landing it reads', () => {
   it('records where a task\'s branch stood when it opened, kept while its phase\'s branch is gone, and dropped when its phase lands — replayed or fast-forwarded — when its phase\'s stack begins again without it, or at finish', () => {
@@ -48,14 +45,13 @@ describe('land: what the local driver records, and the shapes of landing it read
     commitFiles(dir, card.branch, card.branch, { 'card.txt': 'card, fixed\n' });
     assert.match(refusedMoving(dir, ['land', 'phase', 'pay', '1']), /^land: task 1\.1's branch feat\/pay-1\.1-add-card has moved since it was opened/);
     git(dir, ['branch', '-f', 'feat/pay-phase-1', 'main']);
-    commitFiles(dir, 'feat/pay-1.4-more', 'main', { 'more.txt': 'more\n' });
-    ok(dir, open('1.4', 'feat', 'More'));
-    assert.deepStrictEqual(opened(), [`1.4 ${tip(dir, 'feat/pay-1.4-more')}`]);
+    const more = cutTask(dir, '1.4', 'feat', 'More', 'main', { 'more.txt': 'more\n' });
+    ok(dir, openArgs(more));
+    assert.deepStrictEqual(opened(), [`1.4 ${tip(dir, more.branch)}`]);
     const forward = tip(dir, 'feat/pay-phase-1');
     assert.strictEqual(ok(dir, ['land', 'phase', 'pay', '1']).commit, forward);
     assert.deepStrictEqual(opened(), []);
-    commitFiles(dir, 'fix/pay-5.1-five', 'main', { 'five.txt': 'five\n' });
-    ok(dir, open('5.1', 'fix', 'Five'));
+    ok(dir, openArgs(cutTask(dir, '5.1', 'fix', 'Five', 'main', { 'five.txt': 'five\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-5']);
     assert.deepStrictEqual(ok(dir, ['land', 'finish', 'pay']).phases, []);
     assert.deepStrictEqual(opened(), []);
@@ -64,13 +60,13 @@ describe('land: what the local driver records, and the shapes of landing it read
   it('passes over a task landed by hand, which nothing records the opening of: its gone branch is made again at the commit a task holds with its tree, and its phase merges', () => {
     const dir = project();
     commitFiles(dir, 'feat/pay-phase-1', 'main', card.files, { message: 'feat(pay): Add card\n\nTask: pay-1-1\n' });
-    commitFiles(dir, 'feat/pay-1.5-saved-cards', card.branch, { 'saved.txt': 'saved\n' });
+    const saved = cutTask(dir, '1.5', 'feat', 'Saved cards', card.branch, { 'saved.txt': 'saved\n' });
     const was = tip(dir, card.branch);
     git(dir, ['branch', '-D', card.branch]);
-    const gone = refusedMoving(dir, open('1.5', 'feat', 'Saved cards'));
+    const gone = refusedMoving(dir, openArgs(saved));
     assert.strictEqual(gone, `land: task 1.1's branch is gone, and phase 1's chain ends at it — make it again with \`git branch ${card.branch} ${short(was)}\` and land again`);
     followRemedy(dir, gone);
-    ok(dir, open('1.5', 'feat', 'Saved cards'));
+    ok(dir, openArgs(saved));
     assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']).merged, ['1.1', '1.5']);
   });
 
@@ -86,25 +82,26 @@ describe('land: what the local driver records, and the shapes of landing it read
   it('refuses a task its phase holds already, and one with no commit past the chain\'s tip; a branch the tip holds counts for nothing, and a fault in another stack stops no other', () => {
     const dir = project();
     ok(dir, openArgs(card));
-    git(dir, ['branch', 'feat/pay-1.6-nothing-yet', card.branch]);
+    const nothing = track(dir, '1.6', 'feat', 'Nothing yet');
+    git(dir, ['branch', nothing.branch, card.branch]);
     git(dir, ['branch', 'feat/pay-1.7-early', card.branch]);
-    assert.deepStrictEqual([openArgs(card), open('1.6', 'feat', 'Nothing yet')].map((args) => refusedMoving(dir, args)), [
+    assert.deepStrictEqual([openArgs(card), openArgs(nothing)].map((args) => refusedMoving(dir, args)), [
       'land: task 1.1 is in phase 1\'s stack already — there is nothing more to open',
       `land: task 1.6's branch feat/pay-1.6-nothing-yet changes nothing past ${card.branch} — commit its change there first`,
     ]);
     ok(dir, openArgs(rounding));
     commitFiles(dir, 'feat/pay-phase-2', 'feat/pay-phase-2', { 'tidy.txt': 'tidy\n' }, { message: 'my tidy' });
-    commitFiles(dir, 'feat/pay-1.5-saved-cards', card.branch, { 'saved.txt': 'saved\n' });
-    assert.strictEqual(ok(dir, open('1.5', 'feat', 'Saved cards')).base, card.branch);
+    const saved = cutTask(dir, '1.5', 'feat', 'Saved cards', card.branch, { 'saved.txt': 'saved\n' });
+    assert.strictEqual(ok(dir, openArgs(saved)).base, card.branch);
   });
 
   it('counts a phase merged into the default branch on a merge\'s second parent, as a merge by hand or a pull leaves it', () => {
     const dir = project();
     ok(dir, openArgs(rounding));
     git(dir, ['merge', '--no-ff', '-q', '-m', 'merge phase 2 by hand', 'feat/pay-phase-2']);
-    commitFiles(dir, 'fix/pay-4.1-round-more', rounding.branch, { 'more.txt': 'more\n' });
-    mergeBack(dir, 'fix/pay-4.1-round-more', 'main');
-    assert.strictEqual(ok(dir, open('4.1', 'fix', 'Round more')).base, 'main');
+    const more = cutTask(dir, '4.1', 'fix', 'Round more', rounding.branch, { 'more.txt': 'more\n' });
+    mergeBack(dir, more.branch, 'main');
+    assert.strictEqual(ok(dir, openArgs(more)).base, 'main');
     assert.strictEqual(refusedMoving(dir, ['land', 'phase', 'pay', '2']), 'land: phase 2 is merged into main already — there is nothing more to merge');
   });
 
@@ -141,17 +138,15 @@ describe('land: what the local driver records, and the shapes of landing it read
       ['other work', ['other.txt']],
       ['feat(pay): Add card', ['card.txt', 'total.txt']],
     ]);
-    commitFiles(dir, 'feat/pay-4.1-after', 'main', { 'after.txt': 'after\n' });
-    assert.strictEqual(ok(dir, open('4.1', 'feat', 'After')).base, 'main');
+    assert.strictEqual(ok(dir, openArgs(cutTask(dir, '4.1', 'feat', 'After', 'main', { 'after.txt': 'after\n' }))).base, 'main');
   });
 
   it('names the oldest task a stacked phase\'s base lacks, where the default branch lacks several', () => {
     const dir = project();
     ok(dir, openArgs(rounding));
-    commitFiles(dir, 'fix/pay-2.2-round-down', rounding.branch, { 'down.txt': 'down\n' });
-    ok(dir, open('2.2', 'fix', 'Round down'));
-    commitFiles(dir, 'fix/pay-3.2-currency-down', 'fix/pay-2.2-round-down', { 'cd.txt': 'cd\n' });
-    ok(dir, open('3.2', 'fix', 'Currency down'));
+    const down = cutTask(dir, '2.2', 'fix', 'Round down', rounding.branch, { 'down.txt': 'down\n' });
+    ok(dir, openArgs(down));
+    ok(dir, openArgs(cutTask(dir, '3.2', 'fix', 'Currency down', down.branch, { 'cd.txt': 'cd\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-2']);
     assert.match(refusedMoving(dir, ['land', 'phase', 'pay', '3']), /^land: phase 3 is built on task 2\.1, which main does not hold/);
   });

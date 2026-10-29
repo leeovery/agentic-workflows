@@ -6,20 +6,22 @@
 // row per state of the repository a `land` verb refuses, each giving the
 // verb, its refusal word for word, how its remedy is taken where that is
 // not by running the commands it names alone, and the branch the remedy
-// moves or rewrites, if it moves one. What stops a stack: a commit no task
-// of its phase, at the branch's top or below; a task landed twice, either
-// copy; a stack a task is built on that something stops; a phase's commit
-// changed; a task's branch moved, reworded, or gone. What a task holds and
-// what a phase waits on: a task holding a task not opened, or one landed in
-// a phase off its chain; a task short of its chain's tip; a stacked phase
+// moves or rewrites, if it moves one; a task a row opens it puts into the
+// tracker first (landing-world.cjs, `track`). What stops a stack
+// (`STACK_ROWS`): a commit no task of its phase, at the branch's top or
+// below; a task landed twice, either copy; a stack a task is built on that
+// something stops; a phase's commit changed; a task's branch moved,
+// reworded, or gone. What a task holds and what a phase waits on
+// (`MERGE_ROWS`): a task holding a task not opened, or one landed in a
+// phase off its chain; a task short of its chain's tip; a stacked phase
 // whose base the default branch lacks a task of — its phase not merged, its
 // branches deleted, landed by hand, or merged without it; a replay that
-// conflicts. test-engine-land-remedies-clean.cjs follows every row with
-// the person's checkout clean; the held-here and held-linked suites each
-// row whose remedy moves a branch, with the person holding it, and the
-// busy suite each whose remedy rewrites one, with the person holding none
-// (landing-world.cjs, `personState`) — all in the landing world with tasks
-// 1.1 and 2.1 opened (`READY`).
+// conflicts. The clean-stacks and clean-merges suites follow every row of
+// their half with the person's checkout clean; the held-here and
+// held-linked suites each row whose remedy moves a branch, with the person
+// holding it, and the busy suite each whose remedy rewrites one, with the
+// person holding none (landing-world.cjs, `personState`) — all in the
+// landing world with tasks 1.1 and 2.1 opened (`READY`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -30,7 +32,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, commitFiles, mergeBack, landedOn, followRemedy, short: s, scratchOf, way, moveStep, rebaseSteps, strayRefusal: stray,
+  TASKS, openArgs, track, commitFiles, mergeBack, landedOn, followRemedy, short: s, scratchOf, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 
 /** @typedef {import('./landing-world.cjs').Row} Row */
@@ -43,9 +45,6 @@ function READY(dir) {
   ok(dir, openArgs(card));
   ok(dir, openArgs(rounding));
 }
-
-/** The argv opening a task the row makes a branch of. @param {string} task @param {string} type @param {string} title */
-const open = (task, type, title) => ['land', 'open', 'pay', task, '--type', type, '--title', title];
 
 const PHASE_ONE = 'feat/pay-phase-1';
 const PHASE_TWO = 'feat/pay-phase-2';
@@ -167,8 +166,6 @@ const COMMIT_ROWS = [
   },
 ];
 
-const KEEP_CONFIG = 'feat/pay-1.4-keep-config';
-
 /** A landing's trailer gone, a stack built on that something stops, a phase's commit changed, and a task's branch gone, moved or reworded. @type {Row[]} */
 const BRANCH_ROWS = [
   {
@@ -177,9 +174,10 @@ const BRANCH_ROWS = [
     setup: (dir) => {
       ok(dir, ['land', 'phase', 'pay', '2']);
       const reworded = commitFiles(dir, PHASE_ONE, 'main', card.files, { message: 'feat(pay): Add a card' });
-      commitFiles(dir, 'feat/pay-1.4-keep-cards', 'main', { 'keep.txt': 'keep\n' });
+      const keep = track(dir, '1.4', 'feat', 'Keep cards');
+      commitFiles(dir, keep.branch, 'main', { 'keep.txt': 'keep\n' });
       return {
-        args: open('1.4', 'feat', 'Keep cards'),
+        args: openArgs(keep),
         refusal: (held) => stray(PHASE_ONE, 1, reworded, 'feat(pay): Add a card', way(dir, held, PHASE_ONE, offTop(PHASE_ONE, reworded))),
         check: (at, answer) => assert.strictEqual(answer.base, 'main'),
       };
@@ -217,11 +215,12 @@ const BRANCH_ROWS = [
   {
     name: 'its own phase\'s last task\'s branch gone, the task opening cut from it: made again where it opened',
     setup: (dir) => {
-      commitFiles(dir, 'feat/pay-1.5-saved-cards', card.branch, { 'saved.txt': 'saved\n' });
+      const saved = track(dir, '1.5', 'feat', 'Saved cards');
+      commitFiles(dir, saved.branch, card.branch, { 'saved.txt': 'saved\n' });
       const was = tip(dir, card.branch);
       git(dir, ['branch', '-D', card.branch]);
       return {
-        args: open('1.5', 'feat', 'Saved cards'),
+        args: openArgs(saved),
         refusal: `land: task 1.1's branch is gone, and phase 1's chain ends at it — make it again with \`git branch ${card.branch} ${s(was)}\` and land again`,
       };
     },
@@ -229,15 +228,16 @@ const BRANCH_ROWS = [
   {
     name: 'its own phase\'s last task\'s branch gone, the task opening cut without it: made again where it opened, and the task merged back onto it',
     setup: (dir) => {
-      commitFiles(dir, 'feat/pay-1.5-saved-cards', 'main', { 'saved.txt': 'saved\n' });
+      const saved = track(dir, '1.5', 'feat', 'Saved cards');
+      commitFiles(dir, saved.branch, 'main', { 'saved.txt': 'saved\n' });
       const was = tip(dir, card.branch);
       git(dir, ['branch', '-D', card.branch]);
       return {
-        args: open('1.5', 'feat', 'Saved cards'),
+        args: openArgs(saved),
         refusal: `land: task 1.1's branch is gone, and phase 1's chain ends at it — make it again with \`git branch ${card.branch} ${s(was)}\` and land again`,
         follow: (at, refusal) => {
           followRemedy(at, refusal);
-          mergeBack(at, 'feat/pay-1.5-saved-cards', card.branch);
+          mergeBack(at, saved.branch, card.branch);
         },
       };
     },
@@ -247,9 +247,10 @@ const BRANCH_ROWS = [
     moves: PHASE_ONE,
     setup: (dir) => {
       const amended = commitFiles(dir, PHASE_ONE, 'main', { 'card.txt': 'card, amended\n' }, { message: CARD_LANDING });
-      commitFiles(dir, 'feat/pay-1.5-saved-cards', card.branch, { 'saved.txt': 'saved\n' });
+      const saved = track(dir, '1.5', 'feat', 'Saved cards');
+      commitFiles(dir, saved.branch, card.branch, { 'saved.txt': 'saved\n' });
       return {
-        args: open('1.5', 'feat', 'Saved cards'),
+        args: openArgs(saved),
         refusal: (held) => `land: ${PHASE_ONE}'s commit for task 1.1, ${s(amended)} "feat(pay): Add card", has changed since it was opened — `
           + way(dir, held, PHASE_ONE, offTop(PHASE_ONE, amended), { then: 'open task 1.1 again' }),
         follow: (at, refusal) => {
@@ -261,14 +262,16 @@ const BRANCH_ROWS = [
   },
   {
     name: 'the chain\'s last task\'s branch moved since it opened, by a review fix that stops tracking a file: the branch kept, and put back where it opened',
-    moves: KEEP_CONFIG,
+    moves: 'feat/pay-1.4-keep-config',
     setup: (dir) => {
-      commitFiles(dir, KEEP_CONFIG, card.branch, { 'local.env': 'TEMPLATE=1\n' });
-      ok(dir, open('1.4', 'feat', 'Keep config'));
-      const opened = tip(dir, KEEP_CONFIG);
-      const fixed = commitFiles(dir, KEEP_CONFIG, KEEP_CONFIG, IGNORE_LOCAL, { removed: ['local.env'], message: 'stop tracking local.env' });
-      commitFiles(dir, 'feat/pay-1.5-saved-cards', KEEP_CONFIG, { 'saved.txt': 'saved\n' });
-      return { args: open('1.5', 'feat', 'Saved cards'), refusal: (held) => moved(dir, held, '1.4', KEEP_CONFIG, opened, fixed) };
+      const keep = track(dir, '1.4', 'feat', 'Keep config');
+      commitFiles(dir, keep.branch, card.branch, { 'local.env': 'TEMPLATE=1\n' });
+      ok(dir, openArgs(keep));
+      const opened = tip(dir, keep.branch);
+      const fixed = commitFiles(dir, keep.branch, keep.branch, IGNORE_LOCAL, { removed: ['local.env'], message: 'stop tracking local.env' });
+      const saved = track(dir, '1.5', 'feat', 'Saved cards');
+      commitFiles(dir, saved.branch, keep.branch, { 'saved.txt': 'saved\n' });
+      return { args: openArgs(saved), refusal: (held) => moved(dir, held, '1.4', keep.branch, opened, fixed) };
     },
   },
   {
@@ -276,12 +279,14 @@ const BRANCH_ROWS = [
     moves: card.branch,
     setup: (dir) => {
       const opened = tip(dir, card.branch);
-      commitFiles(dir, 'feat/pay-1.5-saved-cards', card.branch, { 'saved.txt': 'saved\n' });
-      ok(dir, open('1.5', 'feat', 'Saved cards'));
+      const saved = track(dir, '1.5', 'feat', 'Saved cards');
+      commitFiles(dir, saved.branch, card.branch, { 'saved.txt': 'saved\n' });
+      ok(dir, openArgs(saved));
       const reworded = git(dir, ['commit-tree', `${opened}^{tree}`, '-p', `${opened}^`, '-m', 'add the card']).trim();
       git(dir, ['update-ref', `refs/heads/${card.branch}`, reworded]);
-      commitFiles(dir, 'feat/pay-1.6-card-limits', 'feat/pay-1.5-saved-cards', { 'limits.txt': 'limits\n' });
-      ok(dir, open('1.6', 'feat', 'Card limits'));
+      const limits = track(dir, '1.6', 'feat', 'Card limits');
+      commitFiles(dir, limits.branch, saved.branch, { 'limits.txt': 'limits\n' });
+      ok(dir, openArgs(limits));
       return {
         args: ['land', 'phase', 'pay', '1'],
         refusal: (held) => moved(dir, held, '1.1', card.branch, opened, reworded),
@@ -296,24 +301,27 @@ const MERGE_ROWS = [
   {
     name: 'a task holding a task not opened, beside a branch at its own tip and one its tip holds: the task opened first',
     setup: (dir) => {
-      commitFiles(dir, 'fix/pay-2.2-round-down', rounding.branch, { 'down.txt': 'down\n' });
-      commitFiles(dir, 'fix/pay-4.1-show-rounding', 'fix/pay-2.2-round-down', { 'show.txt': 'show\n' });
-      git(dir, ['branch', 'fix/pay-4.2-not-begun', 'fix/pay-4.1-show-rounding']);
+      const down = track(dir, '2.2', 'fix', 'Round down');
+      const show = track(dir, '4.1', 'fix', 'Show rounding');
+      commitFiles(dir, down.branch, rounding.branch, { 'down.txt': 'down\n' });
+      commitFiles(dir, show.branch, down.branch, { 'show.txt': 'show\n' });
+      git(dir, ['branch', 'fix/pay-4.2-not-begun', show.branch]);
       git(dir, ['branch', 'fix/pay-4.5-not-begun', 'main']);
       return {
-        args: open('4.1', 'fix', 'Show rounding'),
+        args: openArgs(show),
         refusal: 'land: task 4.1\'s branch fix/pay-4.1-show-rounding holds fix/pay-2.2-round-down, not opened — open task 2.2 first',
-        follow: (at) => ok(at, open('2.2', 'fix', 'Round down')),
+        follow: (at) => ok(at, openArgs(down)),
       };
     },
   },
   {
     name: 'a task holding a task landed in a phase off its chain: that phase merged first',
     setup: (dir) => {
-      commitFiles(dir, 'feat/pay-1.5-both', card.branch, { 'both.txt': 'both\n' });
-      mergeBack(dir, 'feat/pay-1.5-both', rounding.branch);
+      const both = track(dir, '1.5', 'feat', 'Both');
+      commitFiles(dir, both.branch, card.branch, { 'both.txt': 'both\n' });
+      mergeBack(dir, both.branch, rounding.branch);
       return {
-        args: open('1.5', 'feat', 'Both'),
+        args: openArgs(both),
         refusal: `land: task 1.5's branch feat/pay-1.5-both holds ${rounding.branch}, landed in a phase's stack off its chain — `
           + `merge that phase first with \`land phase pay 2\`, or cut the branch again from ${card.branch} without it, and land again`,
       };
@@ -322,12 +330,13 @@ const MERGE_ROWS = [
   {
     name: 'a task built on another phase\'s stack short of its tip: merged back onto that tip',
     setup: (dir) => {
-      commitFiles(dir, 'fix/pay-2.2-round-down', rounding.branch, { 'down.txt': 'down\n' });
-      ok(dir, open('2.2', 'fix', 'Round down'));
+      const down = track(dir, '2.2', 'fix', 'Round down');
+      commitFiles(dir, down.branch, rounding.branch, { 'down.txt': 'down\n' });
+      ok(dir, openArgs(down));
       return {
         args: openArgs(currency),
-        refusal: `land: task 3.1's branch ${currency.branch} does not descend from the chain's tip, fix/pay-2.2-round-down (${s(tip(dir, 'fix/pay-2.2-round-down'))}) — merge it back onto fix/pay-2.2-round-down first`,
-        follow: (at) => mergeBack(at, currency.branch, 'fix/pay-2.2-round-down'),
+        refusal: `land: task 3.1's branch ${currency.branch} does not descend from the chain's tip, fix/pay-2.2-round-down (${s(tip(dir, down.branch))}) — merge it back onto fix/pay-2.2-round-down first`,
+        follow: (at) => mergeBack(at, currency.branch, down.branch),
       };
     },
   },
@@ -345,10 +354,12 @@ const MERGE_ROWS = [
   {
     name: 'a phase stacked on one partly on the default branch by hand: that one merged first, not passed over',
     setup: (dir) => {
-      commitFiles(dir, 'fix/pay-2.2-round-down', rounding.branch, { 'down.txt': 'down\n' });
-      ok(dir, open('2.2', 'fix', 'Round down'));
-      commitFiles(dir, 'fix/pay-3.2-currency-down', 'fix/pay-2.2-round-down', { 'cd.txt': 'cd\n' });
-      ok(dir, open('3.2', 'fix', 'Currency down'));
+      const down = track(dir, '2.2', 'fix', 'Round down');
+      commitFiles(dir, down.branch, rounding.branch, { 'down.txt': 'down\n' });
+      ok(dir, openArgs(down));
+      const currencyDown = track(dir, '3.2', 'fix', 'Currency down');
+      commitFiles(dir, currencyDown.branch, down.branch, { 'cd.txt': 'cd\n' });
+      ok(dir, openArgs(currencyDown));
       git(dir, ['checkout', '-q', '-b', 'wip']);
       commitFiles(dir, 'main', 'main', rounding.files, { message: ROUND_LANDING });
       return {
@@ -366,7 +377,7 @@ const MERGE_ROWS = [
       return {
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 is built on task 2.1, which main does not hold and no branch of phase 2 lands — '
-          + 'open it again with `land open pay 2.1 --type fix --title \'Round totals\'`, merge it with `land phase pay 2`, and land again',
+          + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
         check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt']]),
       };
     },
@@ -381,7 +392,7 @@ const MERGE_ROWS = [
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 is built on task 2.1, which main does not hold and no branch of phase 2 lands — '
           + `make it again with \`git branch ${rounding.branch} ${s(was)}\`, `
-          + 'open it again with `land open pay 2.1 --type fix --title \'Round totals\'`, merge it with `land phase pay 2`, and land again',
+          + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
         check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['round.txt'], ['currency.txt']]),
       };
     },
@@ -396,7 +407,7 @@ const MERGE_ROWS = [
       return {
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 is built on task 2.1, which main does not hold and no branch of phase 2 lands — '
-          + 'open it again with `land open pay 2.1 --type fix --title \'Round totals\'`, merge it with `land phase pay 2`, and land again',
+          + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
         follow: (at, refusal) => {
           assert.match(refuses(at, openArgs(rounding)).error, /does not descend from the chain's tip, main .* — merge it back onto main first$/);
           mergeBack(at, rounding.branch, 'main');
@@ -411,11 +422,13 @@ const MERGE_ROWS = [
     moves: 'feat/pay-phase-3',
     rewrites: true,
     setup: (dir) => {
-      commitFiles(dir, 'fix/pay-2.2-round-down', rounding.branch, { 'down.txt': 'down\n' });
-      ok(dir, open('2.2', 'fix', 'Round down'));
+      const down = track(dir, '2.2', 'fix', 'Round down');
+      commitFiles(dir, down.branch, rounding.branch, { 'down.txt': 'down\n' });
+      ok(dir, openArgs(down));
       const dropped = tip(dir, PHASE_TWO);
-      commitFiles(dir, 'fix/pay-3.2-currency-down', 'fix/pay-2.2-round-down', { 'down.txt': 'down, in the currency\n' });
-      ok(dir, open('3.2', 'fix', 'Currency down'));
+      const currencyDown = track(dir, '3.2', 'fix', 'Currency down');
+      commitFiles(dir, currencyDown.branch, down.branch, { 'down.txt': 'down, in the currency\n' });
+      ok(dir, openArgs(currencyDown));
       git(dir, ['update-ref', `refs/heads/${PHASE_TWO}`, `${dropped}^`]);
       ok(dir, ['land', 'phase', 'pay', '2']);
       return {
@@ -431,15 +444,16 @@ const MERGE_ROWS = [
     setup: (dir) => {
       ok(dir, openArgs(currency));
       git(dir, ['branch', '-f', PHASE_TWO, 'main']);
-      commitFiles(dir, 'fix/pay-2.2-round-down', 'main', { 'down.txt': 'down\n' });
-      ok(dir, open('2.2', 'fix', 'Round down'));
+      const down = track(dir, '2.2', 'fix', 'Round down');
+      commitFiles(dir, down.branch, 'main', { 'down.txt': 'down\n' });
+      ok(dir, openArgs(down));
       return {
         args: ['land', 'phase', 'pay', '3'],
         refusal: 'land: phase 3 is built on task 2.1, which main does not hold and no branch of phase 2 lands — '
-          + 'open it again with `land open pay 2.1 --type fix --title \'Round totals\'`, merge it with `land phase pay 2`, and land again',
+          + 'open it again with `land open pay 2.1`, merge it with `land phase pay 2`, and land again',
         follow: (at, refusal) => {
           assert.match(refuses(at, openArgs(rounding)).error, /does not descend from the chain's tip, fix\/pay-2\.2-round-down .* — merge it back onto fix\/pay-2\.2-round-down first$/);
-          mergeBack(at, rounding.branch, 'fix/pay-2.2-round-down');
+          mergeBack(at, rounding.branch, down.branch);
           followRemedy(at, refusal);
         },
         check: (at) => assert.deepStrictEqual(landedOn(at, 'main').map(({ paths }) => paths), [['down.txt'], ['round.txt'], ['currency.txt']]),
@@ -451,8 +465,9 @@ const MERGE_ROWS = [
     moves: 'feat/pay-phase-4',
     rewrites: true,
     setup: (dir) => {
-      commitFiles(dir, 'fix/pay-4.1-word-the-card', 'main', { 'card.txt': 'a card\n' });
-      ok(dir, open('4.1', 'fix', 'Word the card'));
+      const word = track(dir, '4.1', 'fix', 'Word the card');
+      commitFiles(dir, word.branch, 'main', { 'card.txt': 'a card\n' });
+      ok(dir, openArgs(word));
       ok(dir, ['land', 'phase', 'pay', '1']);
       ok(dir, ['land', 'phase', 'pay', '2']);
       return {
@@ -466,7 +481,10 @@ const MERGE_ROWS = [
   },
 ];
 
-const ROWS = [...COMMIT_ROWS, ...BRANCH_ROWS, ...MERGE_ROWS];
+/** Every row that stops a stack, by what its branch holds or what became of a branch. */
+const STACK_ROWS = [...COMMIT_ROWS, ...BRANCH_ROWS];
+
+const ROWS = [...STACK_ROWS, ...MERGE_ROWS];
 
 /** Every row whose remedy moves or rewrites a branch. */
 const MOVING = ROWS.filter(({ moves }) => moves !== undefined);
@@ -474,4 +492,4 @@ const MOVING = ROWS.filter(({ moves }) => moves !== undefined);
 /** Every row whose remedy rewrites a branch in a worktree it makes. */
 const REWRITING = ROWS.filter(({ rewrites }) => rewrites === true);
 
-module.exports = { READY, ROWS, MOVING, REWRITING };
+module.exports = { READY, STACK_ROWS, MERGE_ROWS, MOVING, REWRITING };

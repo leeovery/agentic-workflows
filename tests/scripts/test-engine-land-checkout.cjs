@@ -26,7 +26,7 @@ const path = require('path');
 const { ok, git, tip } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const {
-  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  TASKS, openArgs, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
   stoppedRebase,
 } = require('./landing-world.cjs');
 const { checkoutBlock } = require('../../skills/workflow-engine/scripts/domain/landing-git.cjs');
@@ -136,8 +136,7 @@ describe('land phase: the main checkout', () => {
 
   it('fast-forwards over a file renamed in its case alone, where the volume folds case', { skip: CASE_SENSITIVE && 'the volume is case-sensitive, where a rename in case alone is two paths and nothing is in the way' }, () => {
     const dir = project();
-    commitFiles(dir, 'feat/pay-1.4-capitalise', 'main', { 'App.txt': 'app\n' }, { removed: ['app.txt'] });
-    ok(dir, ['land', 'open', 'pay', '1.4', '--type', 'feat', '--title', 'Capitalise']);
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Capitalise', 'main', { 'App.txt': 'app\n' }, { removed: ['app.txt'] })));
     ok(dir, MERGE_ONE);
     assert.deepStrictEqual([git(dir, ['ls-files', 'App.txt', 'app.txt']), checkout(dir)], ['App.txt\n', { head: 'main', status: '' }]);
   });
@@ -151,8 +150,7 @@ describe('land phase: the main checkout', () => {
     fs.symlinkSync(path.join('vendor', 'docs'), path.join(dir, 'docs'));
     git(dir, ['add', 'conf', 'vendor', 'docs']);
     git(dir, ['commit', '-q', '-m', 'conf, and the docs by a link']);
-    commitFiles(dir, 'feat/pay-1.4-flatten', 'main', { conf: 'flat\n', 'docs/guide.md': 'our guide\n' }, { removed: ['conf/a.txt', 'docs'] });
-    ok(dir, ['land', 'open', 'pay', '1.4', '--type', 'feat', '--title', 'Flatten']);
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Flatten', 'main', { conf: 'flat\n', 'docs/guide.md': 'our guide\n' }, { removed: ['conf/a.txt', 'docs'] })));
     ok(dir, MERGE_ONE);
     assert.deepStrictEqual(
       [fs.readFileSync(path.join(dir, 'conf'), 'utf8'), fs.lstatSync(path.join(dir, 'docs')).isDirectory(), fs.readFileSync(path.join(dir, 'vendor', 'docs', 'guide.md'), 'utf8'), checkout(dir)],
@@ -171,8 +169,8 @@ describe('land phase: the main checkout', () => {
     const mine = { 'settings.local': 'my settings\n', 'secret.env': 'my secret\n', 'a[b].txt': 'mine\n' };
     for (const [file, text] of Object.entries(mine)) fs.writeFileSync(path.join(dir, file), text);
     const ignored = git(dir, ['show', 'main:.gitignore']).replace('settings.local\n', '');
-    commitFiles(dir, 'feat/pay-1.4-share-settings', 'main', { '.gitignore': ignored, 'settings.local': 'shared\n', 'secret.env': 'EXAMPLE=1\n', 'a[b].txt': 'shared\n' });
-    ok(dir, ['land', 'open', 'pay', '1.4', '--type', 'feat', '--title', 'Share settings']);
+    const shared = { '.gitignore': ignored, 'settings.local': 'shared\n', 'secret.env': 'EXAMPLE=1\n', 'a[b].txt': 'shared\n' };
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Share settings', 'main', shared)));
     const refusal = held('main', dir, ', where files not tracked are in the way: a[b].txt, secret.env, settings.local', 'move them out of the way and land again');
     assert.strictEqual(refusedMoving(dir, MERGE_ONE), refusal);
     commitFiles(dir, rounding.branch, 'main', rounding.files);
@@ -194,8 +192,7 @@ describe('land phase: the main checkout', () => {
     fs.symlinkSync(outside, path.join(dir, 'docs'));
     const kept = () => ({ build: fs.readFileSync(path.join(dir, 'build'), 'utf8'), docs: fs.lstatSync(path.join(dir, 'docs')).isSymbolicLink() });
     for (const [n, file] of [[4, 'build/out.txt'], [5, 'docs/guide.md']]) {
-      commitFiles(dir, `feat/pay-1.${n}-add-${n}`, n === 4 ? 'main' : 'feat/pay-1.4-add-4', { [file]: 'made\n' });
-      ok(dir, ['land', 'open', 'pay', `1.${n}`, '--type', 'feat', '--title', `Add ${n}`]);
+      ok(dir, openArgs(cutTask(dir, `1.${n}`, 'feat', `Add ${n}`, n === 4 ? 'main' : 'feat/pay-1.4-add-4', { [file]: 'made\n' })));
     }
     const refusal = held('main', dir, ', where files not tracked are in the way: build, docs', 'move them out of the way and land again');
     assert.strictEqual(refusedMoving(dir, MERGE_ONE), refusal);
@@ -215,8 +212,7 @@ describe('land phase: the main checkout', () => {
     git(dir, ['commit', '-q', '-m', 'conf']);
     exclude(dir, 'conf/local.cfg');
     fs.writeFileSync(path.join(dir, 'conf', 'local.cfg'), 'my config\n');
-    commitFiles(dir, 'feat/pay-1.4-flatten', 'main', { conf: 'flat\n' }, { removed: ['conf/a.txt'] });
-    ok(dir, ['land', 'open', 'pay', '1.4', '--type', 'feat', '--title', 'Flatten']);
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Flatten', 'main', { conf: 'flat\n' }, { removed: ['conf/a.txt'] })));
     const local = () => fs.readFileSync(path.join(dir, 'conf', 'local.cfg'), 'utf8');
     assert.match(refusedMoving(dir, MERGE_ONE), /^land: main could not move \(.*\), so nothing moved — clear what git names and land again$/s);
     assert.strictEqual(local(), 'my config\n');

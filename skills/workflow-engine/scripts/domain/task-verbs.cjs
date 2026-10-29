@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the `task` verbs, the only way anything in the workflows
-// touches a tracker (7.1.2), through the project's task driver (drivers.cjs).
+// touches a tracker (7.1.2), through the project's task driver (drivers.cjs);
+// a verb of another kind that needs a task reads it as `task show` does
+// (`trackedTask`), as `land open` reads its type and title.
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), and its id is the engine's (task-id.cjs),
@@ -346,23 +348,23 @@ function listTasks(cwd, unit, given) {
   });
 }
 
+/**
+ * A task as the tracker holds it, read as any read is — for `task show`,
+ * and for a verb of another kind that reads a task — refused where the
+ * unit or the task is missing.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {TaskDetail & {committed?: string|null, warnings?: string[]}}
+ */
+function trackedTask(cwd, ref) {
+  requireUnit(cwd, ref.unit);
+  return withTracker(cwd, ref.unit, null, (driver, root) => taskIn(driver, root, ref));
+}
+
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
 function showTask(cwd, unit, given) {
   const ref = parseShownTask(unit, given);
-  requireUnit(cwd, unit);
-  return withTracker(cwd, unit, null, (driver, root) => {
-    const shown = taskIn(driver, root, ref);
-    return {
-      ...named(ref),
-      title: shown.title,
-      type: shown.type,
-      status: shown.status,
-      text: shown.text,
-      additions: shown.additions,
-      after: shown.after.map(shownTask),
-      reason: shown.reason,
-    };
-  });
+  const { ref: _ref, after, ...shown } = trackedTask(cwd, ref);
+  return { ...named(ref), ...shown, after: after.map(shownTask) };
 }
 
 /**
@@ -442,4 +444,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values);
 }
 
-module.exports = { TASK_VERBS, runTaskVerb };
+module.exports = { TASK_VERBS, runTaskVerb, trackedTask };

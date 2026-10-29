@@ -464,12 +464,9 @@ function waitingOn(ctx, refs, stacks, stack) {
   if (below?.merged) {
     return `land: phase ${stack.phase} is built on task ${shown}, which phase ${phase} merged into ${ctx.into} without — ${offSteps(ctx, stack, lacking)}`;
   }
-  const landing = namedBranch(lacking);
-  const reopen = landing === null
-    ? `open task ${shown} again`
-    : `open it again with \`land open ${ctx.unit} ${shown} --type ${landing.type} --title ${lg.quoted(landing.title)}\``;
   const gone = branchOf(refs, lacking.ref) === null ? `${remake(ctx, lacking, () => lacking.sha)}, ` : '';
-  return `land: phase ${stack.phase} is built on task ${shown}, which ${ctx.into} does not hold and no branch of phase ${phase} lands — ${gone}${reopen}, merge it with ${merge}, and land again`;
+  return `land: phase ${stack.phase} is built on task ${shown}, which ${ctx.into} does not hold and no branch of phase ${phase} lands — `
+    + `${gone}open it again with \`land open ${ctx.unit} ${shown}\`, merge it with ${merge}, and land again`;
 }
 
 /** An error's message. @param {unknown} err */

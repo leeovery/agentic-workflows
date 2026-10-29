@@ -6,9 +6,11 @@
 // refuse, writing nothing; the landing driver settled and committed by the
 // first verb where no setting names one, and kept once it does (7.S21); the
 // default branch read off the remote, `init.defaultBranch`, `main` or
-// `master`, never the state branch (4.9.4); a task's branch named from its
-// type and title, and judged by its own change; a change reaching a nested
-// repository refused. What every driver does is the landing conformance
+// `master`, never the state branch (4.9.4); a task's type and title read
+// from the tracker, a task it lacks or holds with no type refused, what the
+// read commits and is warned of answered, and its branch named from them
+// and judged by its own change; a change reaching a
+// nested repository refused. What every driver does is the landing conformance
 // suite's; the local driver's stacks, test-engine-land-local.cjs's; the
 // person's checkouts, test-engine-land-checkout.cjs's and
 // test-engine-land-worktrees.cjs's. Verb layer: the landing world
@@ -22,8 +24,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, stateGit, tip, initRepo, statePath } = require('./engine-harness.cjs');
-const { TASKS, openArgs, commitFiles, setLandingDriver, useLandingWorld, followRemedy } = require('./landing-world.cjs');
+const { ok, refuses, git, stateGit, tip, initRepo, statePath, commitAll } = require('./engine-harness.cjs');
+const { TASKS, TRACKER, openArgs, track, cutTask, commitFiles, setLandingDriver, useLandingWorld, followRemedy } = require('./landing-world.cjs');
+const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
 const { card } = TASKS;
 const project = useLandingWorld('engine-land-verbs-');
@@ -31,51 +34,78 @@ const project = useLandingWorld('engine-land-verbs-');
 /** The state branch's tip, and whether a project manifest is there. @param {string} dir */
 const stateAt = (dir) => ({ tip: tip(statePath(dir), 'HEAD'), manifest: fs.existsSync(statePath(dir, 'manifest.json')) });
 
-/** The argv opening a task the test makes a branch of. @param {string} task @param {string} type @param {string} title */
-const open = (task, type, title) => ['land', 'open', 'pay', task, '--type', type, '--title', title];
+/** The default task driver's side of the suites, what a person might do in its tool. */
+const SIDE = require(path.join(__dirname, '..', 'drivers', TRACKER.name, 'task.cjs'));
 
 describe('land: what it refuses before anything is read, writing nothing', () => {
   it('refuses another sub-verb, a missing or extra argument or flag, with the usage', () => {
     const dir = project();
     const before = stateAt(dir);
-    const usage = 'Usage: engine land open <work-unit> <phase>.<task> --type <type> --title <title> | engine land chain <work-unit> <phase>.<task>'
+    const usage = 'Usage: engine land open <work-unit> <phase>.<task> | engine land chain <work-unit> <phase>.<task>'
       + ' | engine land phase <work-unit> <phase> | engine land finish <work-unit>';
     for (const args of [
-      ['land'], ['land', 'merge', 'pay'], ['land', 'open', 'pay', '1.1', '--type', 'feat'], ['land', 'open', 'pay', '1.1', '--type', 'feat', '--title'],
-      [...openArgs(card), '--slug', 'x'], ['land', 'chain', 'pay'], ['land', 'phase', 'pay', '1', '2'], ['land', 'finish'],
+      ['land'], ['land', 'merge', 'pay'], ['land', 'open', 'pay'], [...openArgs(card), '--type', 'feat'], [...openArgs(card), '--title', 'Add card'],
+      ['land', 'chain', 'pay'], ['land', 'phase', 'pay', '1', '2'], ['land', 'finish'],
     ]) {
       assert.strictEqual(refuses(dir, args).error, usage, args.join(' '));
     }
     assert.deepStrictEqual(stateAt(dir), before);
   });
 
-  it('refuses a unit, task, type, title or phase of another shape', () => {
+  it('refuses a unit, task or phase of another shape', () => {
     const dir = project();
     const before = stateAt(dir);
     const refusals = /** @type {[string[], string][]} */ ([
-      [['land', 'open', 'Pay', '1.1', '--type', 'feat', '--title', 'Add card'], 'task-id: Work unit name "Pay" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens'],
-      [open('1-1', 'feat', 'Add card'), 'task-id: "1-1" is not a task — it is {phase}.{n}'],
-      [open('1.1', 'Feat', 'Add card'), 'land: the task\'s type is a lowercase word, as feat or fix — got "Feat"'],
-      [open('1.1', 'feat', '  '), 'land: the task\'s title is one line of text — got "  "'],
-      [open('1.1', 'feat', 'Add\ncard'), 'land: the task\'s title is one line of text — got "Add\\ncard"'],
-      [['land', 'phase', 'pay', '01'], 'land: the phase is a whole number from 1 — got "01"'],
+      [['land', 'open', 'Pay', '1.1'], 'task-id: Work unit name "Pay" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens'],
+      [['land', 'open', 'pay', '1-1'], 'task-id: "1-1" is not a task — it is {phase}.{n}'],
+      [['land', 'phase', 'pay', '01'], 'task-id: "01" is not a phase — it is a whole number from 1'],
       [['land', 'finish', 'research'], 'task-id: Work unit name "research" conflicts with a phase name'],
     ]);
     for (const [args, error] of refusals) assert.strictEqual(refuses(dir, args).error, error, args.join(' '));
     assert.deepStrictEqual(stateAt(dir), before);
   });
+});
+
+describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)', () => {
+  it('refuses a task the tracker lacks, and one it holds with no type, naming the verb that gives it one — and opens it once given, writing nothing before', () => {
+    const dir = project();
+    const before = stateAt(dir);
+    SIDE.makeTask(statePath(dir), 'Card limits', { unit: 'pay', phase: 1, n: 6 });
+    const untyped = refuses(dir, ['land', 'open', 'pay', '1.6']).error;
+    assert.deepStrictEqual([refuses(dir, ['land', 'open', 'pay', '1.7']).error, untyped], [
+      'task 1.7 of pay is not in the tracker',
+      'land: task 1.6 has no type in the tracker, and its branch and landing are named from it — give it one with `task type pay 1.6 <type>` and open it again',
+    ]);
+    assert.deepStrictEqual(stateAt(dir), before);
+    ok(dir, ['task', 'type', 'pay', '1.6', 'feat']);
+    commitFiles(dir, 'feat/pay-1.6-card-limits', 'main', { 'limits.txt': 'limits\n' });
+    assert.strictEqual(ok(dir, ['land', 'open', 'pay', '1.6']).branch, 'feat/pay-1.6-card-limits');
+  });
 
   it('refuses a task whose branch, named from its type and title, is not there', () => {
     const dir = project();
+    const tracked = [track(dir, '1.4', 'feat', 'Pay by link: QR codes, NFC & café terminals'), track(dir, '1.5', 'fix', 'Итоги корзины')];
     const before = stateAt(dir);
-    assert.deepStrictEqual(
-      [open('1.4', 'feat', 'Pay by link: QR codes, NFC & café terminals'), open('1.5', 'feat', 'Итоги корзины')].map((args) => refuses(dir, args).error),
-      [
-        'land: task 1.4 has no branch feat/pay-1.4-pay-by-link-qr-codes-nfc-cafe-terminals — its type and title name it, so open it with those its branch was named from',
-        'land: task 1.5 has no branch feat/pay-1.5-task — its type and title name it, so open it with those its branch was named from',
-      ],
-    );
+    assert.deepStrictEqual(tracked.map((task) => refuses(dir, openArgs(task)).error), [
+      'land: task 1.4 has no branch feat/pay-1.4-pay-by-link-qr-codes-nfc-cafe-terminals, the name its type and title in the tracker give it — name its branch so and open it again',
+      'land: task 1.5 has no branch fix/pay-1.5-task, the name its type and title in the tracker give it — name its branch so and open it again',
+    ]);
     assert.deepStrictEqual(stateAt(dir), before);
+  });
+
+  it('answers what its read of the tracker committed and was warned of: the setting up the state branch lacks, committed and not pushed', () => {
+    const dir = project();
+    setLandingDriver(dir, 'local');
+    const ignore = statePath(dir, '.gitignore');
+    const local = new Set(TRACKER.localFiles());
+    fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').split('\n').filter((line) => !local.has(line)).join('\n'));
+    commitAll(dir, 'the tracker\'s ignore lines gone');
+    git(dir, ['remote', 'add', 'origin', path.join(dir, '..', 'nowhere.git')]);
+
+    const { committed, warnings } = ok(dir, openArgs(card));
+
+    assert.deepStrictEqual([committed, stateGit(dir, ['log', '-1', '--format=%s'])], [tip(statePath(dir), 'HEAD').slice(0, committed.length), 'task(pay): set up the tracker\n']);
+    assert.deepStrictEqual(warnings.map((warning) => warning.split(' — ')[0]), [`${STATE_BRANCH} is committed here but was not pushed to origin`]);
   });
 });
 
@@ -85,7 +115,7 @@ describe('land: the landing driver setting (7.1.4, 7.S21)', () => {
     const opened = ok(dir, openArgs(card));
     assert.deepStrictEqual([opened.driver, opened.committed], ['local', tip(statePath(dir), 'HEAD').slice(0, opened.committed.length)]);
     assert.strictEqual(stateGit(dir, ['show', '--name-only', '--format=%s', 'HEAD']), 'chore: the landing driver is local\n\nmanifest.json\n');
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8')).drivers, { landing: 'local' });
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8')).drivers.landing, 'local');
 
     git(dir, ['remote', 'add', 'origin', 'git@github.com:acme/pay.git']);
     const before = stateAt(dir);
@@ -149,9 +179,9 @@ describe('land: the default branch everything lands on', () => {
 describe('land open: a task judged by its own change', () => {
   it('refuses a task whose change moves a nested repository\'s pointer', () => {
     const dir = project();
-    commitFiles(dir, 'feat/pay-1.4-bump-lib', 'main', { 'bump.txt': 'bump\n' }, { gitlinks: { 'vendor/lib': tip(dir, 'main') } });
+    const bump = cutTask(dir, '1.4', 'feat', 'Bump lib', 'main', { 'bump.txt': 'bump\n' }, { gitlinks: { 'vendor/lib': tip(dir, 'main') } });
     assert.strictEqual(
-      refuses(dir, open('1.4', 'feat', 'Bump lib')).error,
+      refuses(dir, openArgs(bump)).error,
       'land: task 1.4\'s change reaches the nested repository vendor/lib — nested repositories are not supported yet, so take that change off the task\'s branch and open the task again',
     );
   });
