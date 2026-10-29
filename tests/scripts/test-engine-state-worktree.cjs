@@ -23,7 +23,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, bareRepo } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout, createFile, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
@@ -49,49 +49,6 @@ beforeEach(() => {
 afterEach(() => {
   fs.rmSync(world, { recursive: true, force: true });
 });
-
-/**
- * A project with one code commit on `main`, and a bare remote as `origin`
- * where asked.
- * @param {{remote?: boolean, name?: string}} [opts]
- */
-function project({ remote = false, name = 'project' } = {}) {
-  const main = initRepo(path.join(world, name));
-  fs.writeFileSync(path.join(main, 'README.md'), '# Project\n');
-  git(main, ['add', 'README.md']);
-  git(main, ['commit', '-q', '-m', 'code']);
-  const bare = path.join(world, `${name}-remote.git`);
-  if (remote) {
-    bareRepo(bare);
-    git(main, ['remote', 'add', 'origin', bare]);
-    git(main, ['push', '-q', 'origin', 'main']);
-  }
-  return { main, root: path.join(main, '.leeway'), bare };
-}
-
-/** A clone of the bare remote, under the test identity. @param {string} bare @param {string} name */
-function clone(bare, name) {
-  const dir = path.join(world, name);
-  git(world, ['clone', '-q', bare, dir]);
-  testIdentity(dir);
-  return dir;
-}
-
-/** @param {string} dir @param {string} ref @returns {string} */
-function tip(dir, ref) {
-  return git(dir, ['rev-parse', ref]).trim();
-}
-
-/** The remote's `leeway-state`, or '' where it holds none. @param {string} bare */
-function remoteTip(bare) {
-  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
-}
-
-/** @param {string} dir @param {string} rel @param {string} content */
-function write(dir, rel, content) {
-  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-  fs.writeFileSync(path.join(dir, rel), content);
-}
 
 /**
  * The files a commit touched, each `{status}\t{path}` with the path as it
@@ -120,43 +77,10 @@ function ignored(root, rel) {
   return spawnSync('git', ['check-ignore', '-q', rel], { cwd: root }).status === 0;
 }
 
-/**
- * Run `fn` with git tracing every command into a file, and answer the
- * commands traced alongside its result.
- * @template T @param {() => T} fn @returns {{result: T, commands: string[]}}
- */
-function traced(fn) {
-  const file = path.join(world, 'git-trace.log');
-  fs.rmSync(file, { force: true });
-  process.env.GIT_TRACE = file;
-  try {
-    const result = fn();
-    const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    const commands = [...log.matchAll(/trace: built-in: git (\S+)/g)].map((m) => m[1]);
-    return { result, commands };
-  } finally {
-    delete process.env.GIT_TRACE;
-  }
-}
-
-/**
- * Run `fn` with `vars` in the environment, as a git hook's caller would
- * carry them, and take them off after.
- * @template T @param {Record<string, string>} vars @param {() => T} fn @returns {T}
- */
-function withEnv(vars, fn) {
-  Object.assign(process.env, vars);
-  try {
-    return fn();
-  } finally {
-    for (const name of Object.keys(vars)) delete process.env[name];
-  }
-}
-
 /** A repo of its own with one commit, for the environment to point at. @param {string} name */
 function elsewhereRepo(name = 'elsewhere') {
   const dir = initRepo(path.join(world, name));
-  write(dir, 'other.md', 'other\n');
+  createFile(dir, 'other.md', 'other\n');
   git(dir, ['add', 'other.md']);
   git(dir, ['commit', '-q', '-m', 'other']);
   return dir;
@@ -179,7 +103,7 @@ function snapshot(dir) {
 
 describe('the main checkout', () => {
   it('is found from the main checkout, a folder below it, a code worktree and the state worktree', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     fs.mkdirSync(path.join(main, 'src', 'deep'), { recursive: true });
     const code = path.join(world, 'code-worktree');
     git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -194,7 +118,7 @@ describe('the main checkout', () => {
   it('refuses a bare repository, from its folder and from a worktree of it', () => {
     const bare = bareRepo(path.join(world, 'bare.git'));
     const seed = initRepo(path.join(world, 'seed'));
-    write(seed, 'a.md', 'a\n');
+    createFile(seed, 'a.md', 'a\n');
     git(seed, ['add', 'a.md']);
     git(seed, ['commit', '-q', '-m', 'a']);
     git(seed, ['push', '-q', bare, 'main']);
@@ -211,14 +135,13 @@ describe('the main checkout', () => {
   });
 
   it('refuses a copy\'s worktree folder, which git reads as the original\'s, and finds the copy from its own main checkout', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     const side = path.join(main, 'side');
     git(main, ['worktree', 'add', '-q', '-b', 'side', side]);
     const copy = path.join(world, 'copy');
     fs.cpSync(main, copy, { recursive: true, verbatimSymlinks: true });
 
-    for (const [cwd, original] of [[path.join(copy, '.leeway'), root], [path.join(copy, 'side'), side]]) {
+    for (const [cwd, original] of [[statePath(copy), root], [path.join(copy, 'side'), side]]) {
       assert.throws(() => mainCheckout(cwd),
         new RegExp(`^Error: ${cwd} is in a copy of the worktree at ${original}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it — run from the copy's own project folder$`));
     }
@@ -233,7 +156,7 @@ describe('the isolated runner', () => {
   });
 
   it('runs in the cwd\'s repository whatever repository the environment names', () => {
-    const { main } = project();
+    const { main } = codeProject(world);
     const elsewhere = elsewhereRepo();
 
     const gitDir = withEnv({ GIT_DIR: path.join(elsewhere, '.git'), GIT_WORK_TREE: elsewhere },
@@ -243,7 +166,7 @@ describe('the isolated runner', () => {
   });
 
   it('reads an answer past spawnSync\'s 1 MiB default whole', () => {
-    const { main } = project();
+    const { main } = codeProject(world);
     const runner = isolatedGit(main);
     const text = `${'x'.repeat(2 * 1024 * 1024)}\n`;
     const oid = runner.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
@@ -252,7 +175,7 @@ describe('the isolated runner', () => {
   });
 
   it('writes an answer to the file it is given whole, answering nothing', () => {
-    const { main } = project();
+    const { main } = codeProject(world);
     const runner = isolatedGit(main);
     const text = `${'x'.repeat(2 * 1024 * 1024)}\n`;
     const oid = runner.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
@@ -268,7 +191,7 @@ describe('the isolated runner', () => {
   });
 
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {
-    const { main, root, bare } = project({ remote: true });
+    const { main, root, bare } = codeProject(world, { remote: true });
     const elsewhere = elsewhereRepo();
     const before = snapshot(elsewhere);
     fs.mkdirSync(path.join(world, 'quarantine'));
@@ -287,8 +210,8 @@ describe('the isolated runner', () => {
       GIT_QUARANTINE_PATH: path.join(world, 'quarantine'),
     }, () => {
       createState(root);
-      write(root, 'manifest.json', '{}\n');
-      return withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+      createFile(root, layout.projectManifest, '{}\n');
+      return withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
     });
 
     assert.deepStrictEqual([out.pushed, out.warnings], [true, []]);
@@ -302,34 +225,33 @@ describe('the isolated runner', () => {
 
 describe('creating the state', () => {
   it('makes leeway-state an orphan whose one commit holds the state\'s .gitignore and the project manifest, a new project_id its one field (16.13.5)', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
 
     const created = createState(root);
 
     assert.strictEqual(tip(main, STATE_BRANCH), created.commit);
     assert.deepStrictEqual(git(main, ['rev-list', '--parents', STATE_BRANCH]).trim().split(' '), [created.commit]);
-    assert.deepStrictEqual(git(main, ['ls-tree', '--name-only', STATE_BRANCH]).trim().split('\n'), ['.gitignore', 'manifest.json']);
+    assert.deepStrictEqual(git(main, ['ls-tree', '--name-only', STATE_BRANCH]).trim().split('\n'), ['.gitignore', layout.projectManifest]);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
     const manifest = JSON.parse(git(main, ['show', `${STATE_BRANCH}:manifest.json`]));
     assert.deepStrictEqual(Object.keys(manifest), ['project_id']);
     assert.ok(isId(manifest.project_id), manifest.project_id);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8')), manifest, 'checked out at the state root');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(root, layout.projectManifest), 'utf8')), manifest, 'checked out at the state root');
 
-    const other = project({ name: 'other' });
+    const other = codeProject(world, { name: 'other' });
     createState(other.root);
     assert.notStrictEqual(JSON.parse(git(other.main, ['show', `${STATE_BRANCH}:manifest.json`])).project_id, manifest.project_id, 'each project its own');
   });
 
   it('ignores the knowledge base, the cache and the writer lock in the state worktree, and nothing else', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
 
     for (const rel of ['.knowledge/store.bin', '.cache/unit/state.json', '.lock']) assert.ok(ignored(root, rel), rel);
-    for (const rel of ['manifest.json', '.ledger.jsonl', 'unit/.cache/x', 'unit/.lock']) assert.ok(!ignored(root, rel), rel);
+    for (const rel of [layout.projectManifest, layout.ledger, 'unit/.cache/x', 'unit/.lock']) assert.ok(!ignored(root, rel), rel);
   });
 
   it('checks the branch out at .leeway/ in the main checkout, locked with the state\'s reason (4.S6)', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
 
     createState(root);
 
@@ -341,19 +263,19 @@ describe('creating the state', () => {
   });
 
   it('puts .leeway/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     const code = path.join(world, 'code-worktree');
     git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
 
     createState(stateRoot(code));
 
-    assert.ok(fs.existsSync(path.join(main, '.leeway', '.gitignore')));
-    assert.ok(!fs.existsSync(path.join(code, '.leeway')));
+    assert.ok(fs.existsSync(statePath(main, layout.gitignore)));
+    assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
     assert.ok(worktreeRecord(main, root));
   });
 
   it('leaves the main checkout\'s branch, HEAD and index as they were', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     const before = snapshot(main);
 
     createState(root);
@@ -366,7 +288,7 @@ describe('creating the state', () => {
   });
 
   it('pushes the new branch where the project has a remote', () => {
-    const { root, bare } = project({ remote: true });
+    const { root, bare } = codeProject(world, { remote: true });
 
     const created = createState(root);
 
@@ -375,17 +297,17 @@ describe('creating the state', () => {
   });
 
   it('attempts no push where the project has no remote (4.S5)', () => {
-    const { root } = project();
+    const { root } = codeProject(world);
 
     const { result, commands } = traced(() => createState(root));
 
     assert.deepStrictEqual({ pushed: result.pushed, warnings: result.warnings }, { pushed: false, warnings: [] });
-    assert.ok(commands.includes('commit-tree'), `the trace caught nothing: ${commands}`);
-    assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
+    assert.ok(commands.some((c) => c.startsWith('commit-tree ')), `the trace caught nothing: ${commands}`);
+    assert.ok(!commands.some((c) => c.startsWith('push ')), `a push was attempted: ${commands}`);
   });
 
   it('refuses where .leeway/ already exists, creating no branch', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     fs.mkdirSync(root);
 
     assert.throws(() => createState(root), /already exists/);
@@ -393,8 +315,7 @@ describe('creating the state', () => {
   });
 
   it('clears a registration a deleted folder left at .leeway/, and checks the new branch out there', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     fs.rmSync(root, { recursive: true, force: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
@@ -405,7 +326,7 @@ describe('creating the state', () => {
   });
 
   it('refuses where leeway-state already exists, adding no worktree', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     git(main, ['branch', STATE_BRANCH]);
 
     assert.throws(() => createState(root), /cannot create leeway-state/);
@@ -416,7 +337,7 @@ describe('creating the state', () => {
 
 describe('inspecting the state', () => {
   it('reads nothing in a project the state has not reached', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
 
     assert.deepStrictEqual(inspectState(root), {
       main, root, branch: false, remotes: [], remote: null, remoteBranch: false, worktree: null, folder: 'absent',
@@ -424,8 +345,7 @@ describe('inspecting the state', () => {
   });
 
   it('reads the branch, its worktree on the branch and locked, and the folder git opens', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
 
     assert.deepStrictEqual(inspectState(root), {
       main,
@@ -440,7 +360,7 @@ describe('inspecting the state', () => {
   });
 
   it('reads the remote and its branch once pushed', () => {
-    const { root } = project({ remote: true });
+    const { root } = codeProject(world, { remote: true });
     assert.deepStrictEqual([inspectState(root).remote, inspectState(root).remoteBranch], ['origin', false]);
 
     createState(root);
@@ -449,20 +369,18 @@ describe('inspecting the state', () => {
   });
 
   it('reads a fresh clone: the remote\'s branch, no local branch, no worktree', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    const fresh = clone(bare, 'fresh');
+    const { bare } = codeProject(world, { remote: true, state: true });
+    const fresh = cloneOf(bare, path.join(world, 'fresh'));
 
     const seen = inspectState(stateRoot(fresh));
 
     assert.deepStrictEqual(seen, {
-      main: fresh, root: path.join(fresh, '.leeway'), branch: false, remotes: ['origin'], remote: 'origin', remoteBranch: true, worktree: null, folder: 'absent',
+      main: fresh, root: statePath(fresh), branch: false, remotes: ['origin'], remote: 'origin', remoteBranch: true, worktree: null, folder: 'absent',
     });
   });
 
   it('reads a worktree whose folder is gone, and one that is unlocked', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
 
     git(main, ['worktree', 'unlock', root]);
     assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: false, reason: null }, folder: 'linked' });
@@ -473,7 +391,7 @@ describe('inspecting the state', () => {
   });
 
   it('takes origin as the state\'s remote, else the one the main checkout\'s branch tracks, else the one remote', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     const seen = () => {
       const { remotes, remote } = inspectState(root);
       return { remotes, remote };
@@ -495,9 +413,8 @@ describe('inspecting the state', () => {
 
 describe('the repairs, each on its own', () => {
   it('brings a fresh clone\'s state in from the remote: the branch, then the worktree, locked (4.S11)', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    const fresh = clone(bare, 'fresh');
+    const { bare } = codeProject(world, { remote: true, state: true });
+    const fresh = cloneOf(bare, path.join(world, 'fresh'));
     const freshRoot = stateRoot(fresh);
 
     createStateBranchFromRemote(freshRoot);
@@ -509,8 +426,7 @@ describe('the repairs, each on its own', () => {
   });
 
   it('restores a lost local branch from the remote\'s (4.S8)', () => {
-    const { main, root, bare } = project({ remote: true });
-    createState(root);
+    const { main, root, bare } = codeProject(world, { remote: true, state: true });
     git(main, ['worktree', 'remove', '--force', '--force', root]);
     git(main, ['branch', '-D', STATE_BRANCH]);
 
@@ -520,16 +436,15 @@ describe('the repairs, each on its own', () => {
   });
 
   it('refuses to take the branch from a remote that is missing or holds none', () => {
-    const none = project();
+    const none = codeProject(world);
     assert.throws(() => createStateBranchFromRemote(none.root), /no remote to take leeway-state from/);
 
-    const empty = project({ remote: true, name: 'empty' });
+    const empty = codeProject(world, { remote: true, name: 'empty' });
     assert.throws(() => createStateBranchFromRemote(empty.root), /origin holds no leeway-state/);
   });
 
   it('re-adds a removed worktree, locked (4.S29)', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     git(main, ['worktree', 'remove', '--force', '--force', root]);
     assert.deepStrictEqual(pick(inspectState(root)), { worktree: null, folder: 'absent' });
 
@@ -539,8 +454,7 @@ describe('the repairs, each on its own', () => {
   });
 
   it('re-adds a worktree whose folder was deleted under its locked registration (4.S29)', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     fs.rmSync(root, { recursive: true, force: true });
 
     addStateWorktree(root);
@@ -550,15 +464,14 @@ describe('the repairs, each on its own', () => {
   });
 
   it('refuses to add the worktree where there is no local branch', () => {
-    const { root } = project();
+    const { root } = codeProject(world);
 
     assert.throws(() => addStateWorktree(root), /there is no local leeway-state/);
     assert.ok(!fs.existsSync(root));
   });
 
   it('locks an unlocked worktree with the state\'s reason (4.S29)', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     git(main, ['worktree', 'unlock', root]);
 
     lockStateWorktree(root);
@@ -567,47 +480,44 @@ describe('the repairs, each on its own', () => {
   });
 
   it('relinks the state worktree after the project folder moved, keeping what it holds, and commits again', () => {
-    const { main, root } = project();
-    createState(root);
-    write(root, 'manifest.json', '{"kept":true}\n');
+    const { main, root } = codeProject(world, { state: true });
+    createFile(root, layout.projectManifest, '{"kept":true}\n');
     const moved = path.join(world, 'moved');
     fs.renameSync(main, moved);
     const movedRoot = stateRoot(moved);
 
     const seen = inspectState(movedRoot);
     assert.deepStrictEqual([seen.branch, pick(seen)], [true, { worktree: null, folder: 'unlinked' }]);
-    assert.throws(() => commitState(movedRoot, ['manifest.json'], 'state: x'),
+    assert.throws(() => commitState(movedRoot, [layout.projectManifest], 'state: x'),
       /^Error: git cannot open the state worktree at .*moved\/\.leeway: git rev-parse failed: fatal: .+ — nothing committed$/s);
     assert.throws(() => addStateWorktree(movedRoot), /a folder is already at .*moved\/\.leeway — repair its worktree rather than add one over it/);
 
     assert.deepStrictEqual(repairStateWorktree(movedRoot), { was: 'moved', from: main });
 
     assert.deepStrictEqual(pick(inspectState(movedRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
-    assert.strictEqual(fs.readFileSync(path.join(movedRoot, 'manifest.json'), 'utf8'), '{"kept":true}\n');
-    const out = withStateLock(movedRoot, () => commitState(movedRoot, ['manifest.json'], 'state: after the move'));
+    assert.strictEqual(fs.readFileSync(path.join(movedRoot, layout.projectManifest), 'utf8'), '{"kept":true}\n');
+    const out = withStateLock(movedRoot, () => commitState(movedRoot, [layout.projectManifest], 'state: after the move'));
     assert.strictEqual(tip(moved, STATE_BRANCH), out.commit);
     assert.strictEqual(git(moved, ['show', `${STATE_BRANCH}:manifest.json`]), '{"kept":true}\n');
   });
 
   it('never writes through a copied project\'s state worktree, which git reads as the original\'s', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main } = codeProject(world, { state: true });
     const before = tip(main, STATE_BRANCH);
     const copy = path.join(world, 'copy');
     fs.cpSync(main, copy, { recursive: true, verbatimSymlinks: true });
     const copyRoot = stateRoot(copy);
-    write(copyRoot, 'manifest.json', '{}\n');
+    createFile(copyRoot, layout.projectManifest, '{}\n');
 
     assert.strictEqual(inspectState(copyRoot).folder, 'unlinked');
-    assert.throws(() => commitState(copyRoot, ['manifest.json'], 'state: x'),
+    assert.throws(() => commitState(copyRoot, [layout.projectManifest], 'state: x'),
       new RegExp(`git cannot open the state worktree at .*copy/\\.leeway: git reads it as part of .*, whose repository is ${main}/\\.git`));
     assert.strictEqual(tip(main, STATE_BRANCH), before);
     assert.strictEqual(tip(copy, STATE_BRANCH), before);
   });
 
   it('relinks a copied project\'s state worktree to the copy\'s own registration, the original\'s links — its code worktrees\' too — left as they were', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     const side = path.join(main, 'side');
     git(main, ['worktree', 'add', '-q', '-b', 'side', side]);
     const admin = path.join(main, '.git/worktrees');
@@ -623,15 +533,14 @@ describe('the repairs, each on its own', () => {
     assert.deepStrictEqual(links(), before);
     assert.deepStrictEqual(pick(inspectState(copyRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
     assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
-    write(copyRoot, 'manifest.json', '{"copy":true}\n');
-    const ours = withStateLock(copyRoot, () => commitState(copyRoot, ['manifest.json'], 'state: the copy'));
+    createFile(copyRoot, layout.projectManifest, '{"copy":true}\n');
+    const ours = withStateLock(copyRoot, () => commitState(copyRoot, [layout.projectManifest], 'state: the copy'));
     assert.strictEqual(tip(copy, STATE_BRANCH), ours.commit);
     assert.notStrictEqual(tip(main, STATE_BRANCH), ours.commit);
   });
 
   it('relinks a registration whose own link went stale, the folder\'s already right', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     fs.writeFileSync(path.join(main, '.git/worktrees/-leeway/gitdir'), `${path.join(world, 'elsewhere/.git')}\n`);
 
     assert.deepStrictEqual(repairStateWorktree(root), { was: 'own', from: main });
@@ -640,8 +549,7 @@ describe('the repairs, each on its own', () => {
   });
 
   it('refuses a folder holding no link, and one naming a registration this repository does not keep — nothing relinked', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
 
     fs.writeFileSync(path.join(root, '.git'), 'not a link\n');
     assert.throws(() => repairStateWorktree(root), new RegExp(`^Error: ${root} holds no worktree link git can read — nothing relinked$`));
@@ -655,17 +563,16 @@ describe('the repairs, each on its own', () => {
 
 describe('the remote, asked', () => {
   it('answers no remote where the project has none, never asking', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
 
     const { result, commands } = traced(() => askStateRemote(root));
 
     assert.deepStrictEqual(result, { remote: null, remotes: [] });
-    assert.ok(!commands.includes('ls-remote'));
+    assert.ok(!commands.some((c) => c.startsWith('ls-remote ')));
   });
 
   it('answers the remote\'s tip, or none where it holds no leeway-state', () => {
-    const { main, root, bare } = project({ remote: true });
+    const { main, root, bare } = codeProject(world, { remote: true });
 
     assert.deepStrictEqual(askStateRemote(root), { remote: 'origin', remotes: ['origin'], tip: null });
     createState(root);
@@ -674,7 +581,7 @@ describe('the remote, asked', () => {
   });
 
   it('answers why a remote out of reach could not be reached, never that it holds none', () => {
-    const { main, root } = project({ remote: true });
+    const { main, root } = codeProject(world, { remote: true });
     git(main, ['remote', 'set-url', 'origin', path.join(world, 'nowhere.git')]);
 
     const answer = askStateRemote(root);
@@ -684,26 +591,24 @@ describe('the remote, asked', () => {
   });
 
   it('brings the remote\'s tip into its tracking branch: set where this clone holds it, fetched where not', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
+    const { bare } = codeProject(world, { remote: true, state: true });
     const fresh = path.join(world, 'fresh');
     git(world, ['clone', '-q', '--single-branch', '--branch', 'main', `file://${bare}`, fresh]);
     testIdentity(fresh);
 
     const fetched = traced(() => fetchStateTip(stateRoot(fresh), 'origin', remoteTip(bare)));
-    assert.deepStrictEqual([fetched.result, fetched.commands.includes('fetch')], [null, true]);
+    assert.deepStrictEqual([fetched.result, fetched.commands.some((c) => c.startsWith('fetch '))], [null, true]);
     assert.strictEqual(tip(fresh, `refs/remotes/origin/${STATE_BRANCH}`), remoteTip(bare));
 
     git(fresh, ['update-ref', '-d', `refs/remotes/origin/${STATE_BRANCH}`]);
     const set = traced(() => fetchStateTip(stateRoot(fresh), 'origin', remoteTip(bare)));
-    assert.deepStrictEqual([set.result, set.commands.includes('fetch')], [null, false]);
+    assert.deepStrictEqual([set.result, set.commands.some((c) => c.startsWith('fetch '))], [null, false]);
     assert.strictEqual(tip(fresh, `refs/remotes/origin/${STATE_BRANCH}`), remoteTip(bare));
   });
 
   it('answers why a fetch failed, the tracking branch untouched', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    const fresh = clone(bare, 'fresh');
+    const { bare } = codeProject(world, { remote: true, state: true });
+    const fresh = cloneOf(bare, path.join(world, 'fresh'));
     git(fresh, ['update-ref', '-d', `refs/remotes/origin/${STATE_BRANCH}`]);
     git(fresh, ['remote', 'set-url', 'origin', path.join(world, 'nowhere.git')]);
 
@@ -712,33 +617,32 @@ describe('the remote, asked', () => {
   });
 
   it('reads the URL the state\'s remote fetches from, any insteadOf applied, and none without a remote', () => {
-    const { main, root, bare } = project({ remote: true });
+    const { main, root, bare } = codeProject(world, { remote: true });
     git(main, ['config', `url.${bare}.insteadOf`, 'gh:acme/portal']);
     git(main, ['remote', 'set-url', 'origin', 'gh:acme/portal']);
 
     assert.strictEqual(stateRemoteUrl(root), bare);
-    assert.strictEqual(stateRemoteUrl(project({ name: 'alone' }).root), null);
+    assert.strictEqual(stateRemoteUrl(codeProject(world, { name: 'alone' }).root), null);
   });
 });
 
 describe('a leeway-state holding code history', () => {
   it('shares a commit with a code branch, which is named; the orphan shares none, its remote copies not counted as code', () => {
-    const code = project({ name: 'code' });
+    const code = codeProject(world, { name: 'code' });
     git(code.main, ['branch', STATE_BRANCH, 'main']);
     assert.strictEqual(codeBranchSharing(code.root, STATE_BRANCH), 'main');
 
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    const fresh = clone(bare, 'fresh');
+    const { root, bare } = codeProject(world, { remote: true, state: true });
+    const fresh = cloneOf(bare, path.join(world, 'fresh'));
     createStateBranchFromRemote(stateRoot(fresh));
     assert.strictEqual(codeBranchSharing(root, STATE_BRANCH), null);
     assert.strictEqual(codeBranchSharing(stateRoot(fresh), STATE_BRANCH), null);
   });
 
   it('reads a remote\'s as last fetched', () => {
-    const { main, bare } = project({ remote: true });
+    const { main, bare } = codeProject(world, { remote: true });
     git(main, ['push', '-q', 'origin', `main:refs/heads/${STATE_BRANCH}`]);
-    const fresh = clone(bare, 'fresh');
+    const fresh = cloneOf(bare, path.join(world, 'fresh'));
 
     assert.strictEqual(codeBranchSharing(stateRoot(fresh), `refs/remotes/origin/${STATE_BRANCH}`), 'origin/main');
   });
@@ -746,8 +650,7 @@ describe('a leeway-state holding code history', () => {
 
 describe('the writer lock', () => {
   it('is .leeway/.lock, held while the verb runs and released after, whatever it throws', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const lock = path.join(root, '.lock');
 
     const held = withStateLock(root, () => JSON.parse(fs.readFileSync(lock, 'utf8')));
@@ -759,8 +662,7 @@ describe('the writer lock', () => {
   });
 
   it('takes over at once a lock whose holder is gone, however fresh the lock', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const lock = path.join(root, '.lock');
     const ended = spawnSync('node', ['-e', '']).pid;
 
@@ -801,27 +703,27 @@ describe('the writer lock', () => {
   }
 
   it('never breaks a live holder, however long it has held: the contender gives up, naming it', async () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const lock = path.join(root, '.lock');
     const holder = spawn('node', ['-e', HOLDER, STATE, root, world]);
     let stderr = '';
     holder.stderr.on('data', (chunk) => { stderr += chunk; });
     const exited = new Promise((resolve) => holder.on('exit', resolve));
-    await until(() => fs.existsSync(path.join(world, 'held')));
+    try {
+      await until(() => fs.existsSync(path.join(world, 'held')));
 
-    assert.throws(() => withStateLock(root, () => null, { timeoutMs: 300 }),
-      new RegExp(`Timed out waiting for the state lock .*process ${holder.pid} holds it`));
-    assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, holder.pid);
-
-    fs.writeFileSync(path.join(world, 'go'), '');
+      assert.throws(() => withStateLock(root, () => null, { timeoutMs: 300 }),
+        new RegExp(`Timed out waiting for the state lock .*process ${holder.pid} holds it`));
+      assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, holder.pid);
+    } finally {
+      fs.writeFileSync(path.join(world, 'go'), '');
+    }
     assert.strictEqual(await exited, 0, stderr);
     assert.ok(!fs.existsSync(lock));
   });
 
   it('is taken again at once by the process holding it, and let go when the outermost hold ends', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const lock = path.join(root, '.lock');
     const started = Date.now();
 
@@ -837,8 +739,7 @@ describe('the writer lock', () => {
   });
 
   it('leaves the lock alone at release where another holder has taken it', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const lock = path.join(root, '.lock');
     const other = JSON.stringify({ pid: 1, pid_start: 'another holder' });
 
@@ -848,8 +749,7 @@ describe('the writer lock', () => {
   });
 
   it('never shows as a change in the state worktree, nor do the files its claim makes', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
 
     const status = withStateLock(root, () => git(root, ['status', '--porcelain', '--untracked-files=all']));
 
@@ -858,7 +758,7 @@ describe('the writer lock', () => {
   });
 
   it('refuses where there is no state worktree', () => {
-    const { root } = project();
+    const { root } = codeProject(world);
 
     assert.throws(() => withStateLock(root, () => null), /no state worktree at/);
   });
@@ -866,7 +766,7 @@ describe('the writer lock', () => {
 
 describe('boot\'s lock', () => {
   it('is .git/leeway-boot.lock in the main checkout, there before the state worktree is, held while boot\'s checks run and released after, whatever they throw', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     const lock = path.join(main, '.git/leeway-boot.lock');
 
     const held = withBootLock(root, () => {
@@ -883,14 +783,13 @@ describe('boot\'s lock', () => {
 
 describe('committing state', () => {
   it('commits exactly the paths given, on leeway-state, whatever else is changed or staged', () => {
-    const { root } = project();
-    createState(root);
-    write(root, 'pay/manifest.json', '{}\n');
-    write(root, 'unit/topics/a/log.md', '# a\n');
-    write(root, 'unit/topics/a/brief.md', '# brief\n');
+    const { root } = codeProject(world, { state: true });
+    createFile(root, layout.manifest('pay'), '{}\n');
+    createFile(root, 'unit/topics/a/log.md', '# a\n');
+    createFile(root, 'unit/topics/a/brief.md', '# brief\n');
     git(root, ['add', 'unit/topics/a/brief.md']);
 
-    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.strictEqual(git(root, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the manifest');
@@ -899,17 +798,16 @@ describe('committing state', () => {
   });
 
   it('commits a file added, one changed and one deleted, a folder taking every file in it', () => {
-    const { root } = project();
-    createState(root);
-    write(root, 'manifest.json', '{}\n');
-    write(root, 'unit/old.md', 'old\n');
-    withStateLock(root, () => commitState(root, ['manifest.json', 'unit'], 'state: first'));
+    const { root } = codeProject(world, { state: true });
+    createFile(root, layout.projectManifest, '{}\n');
+    createFile(root, 'unit/old.md', 'old\n');
+    withStateLock(root, () => commitState(root, [layout.projectManifest, 'unit'], 'state: first'));
 
-    write(root, 'manifest.json', '{"a":1}\n');
+    createFile(root, layout.projectManifest, '{"a":1}\n');
     fs.rmSync(path.join(root, 'unit/old.md'));
-    write(root, 'unit/topics/a/log.md', '# a\n');
-    write(root, 'unit/topics/a/brief.md', '# brief\n');
-    const out = withStateLock(root, () => commitState(root, [path.join(root, 'manifest.json'), 'unit'], 'state: second'));
+    createFile(root, 'unit/topics/a/log.md', '# a\n');
+    createFile(root, 'unit/topics/a/brief.md', '# brief\n');
+    const out = withStateLock(root, () => commitState(root, [path.join(root, layout.projectManifest), 'unit'], 'state: second'));
 
     assert.deepStrictEqual(touched(root, out.commit), [
       'A\tunit/topics/a/brief.md', 'A\tunit/topics/a/log.md', 'D\tunit/old.md', 'M\tmanifest.json',
@@ -918,11 +816,10 @@ describe('committing state', () => {
   });
 
   it('commits a file given a change as it makes it of the branch\'s own — a new one among them, and over what the paths give of it — the working file\'s own changes left uncommitted', () => {
-    const { root } = project();
-    createState(root);
-    write(root, '.gitignore', `${STATE_GITIGNORE}/mine/\n`);
-    write(root, 'unit/state.json', '{"a":1,"mine":true}\n');
-    write(root, 'unit/new.md', 'theirs\n');
+    const { root } = codeProject(world, { state: true });
+    createFile(root, '.gitignore', `${STATE_GITIGNORE}/mine/\n`);
+    createFile(root, 'unit/state.json', '{"a":1,"mine":true}\n');
+    createFile(root, 'unit/new.md', 'theirs\n');
     /** @type {Record<string, string|null>} */
     const seen = {};
     /** @param {string} file @param {(held: string|null) => string|null} change */
@@ -943,8 +840,7 @@ describe('committing state', () => {
   });
 
   it('refuses a commit where a file it is given a change to cannot be read from the branch, naming it and the commit, committing nothing', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const head = git(root, ['rev-parse', 'HEAD']).trim();
     const object = git(root, ['rev-parse', 'HEAD:.gitignore']).trim();
     fs.rmSync(path.join(root, '..', '.git', 'objects', object.slice(0, 2), object.slice(2)));
@@ -963,10 +859,9 @@ describe('committing state', () => {
   });
 
   it('commits a deletion already staged in the state worktree, named by its file or by its folder', () => {
-    const { root } = project();
-    createState(root);
-    write(root, 'unit/old.md', 'old\n');
-    write(root, 'unit/gone.md', 'gone\n');
+    const { root } = codeProject(world, { state: true });
+    createFile(root, 'unit/old.md', 'old\n');
+    createFile(root, 'unit/gone.md', 'gone\n');
     withStateLock(root, () => commitState(root, ['unit'], 'state: first'));
     git(root, ['rm', '-q', 'unit/old.md', 'unit/gone.md']);
 
@@ -979,18 +874,17 @@ describe('committing state', () => {
   });
 
   it('makes no commit and no push where a staged change was undone in the working tree', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    write(root, 'manifest.json', '{}\n');
-    const before = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: first')).commit;
-    write(root, 'manifest.json', '{"a":1}\n');
-    git(root, ['add', 'manifest.json']);
-    write(root, 'manifest.json', '{}\n');
+    const { root, bare } = codeProject(world, { remote: true, state: true });
+    createFile(root, layout.projectManifest, '{}\n');
+    const before = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: first')).commit;
+    createFile(root, layout.projectManifest, '{"a":1}\n');
+    git(root, ['add', layout.projectManifest]);
+    createFile(root, layout.projectManifest, '{}\n');
 
-    const { result, commands } = traced(() => withStateLock(root, () => commitState(root, ['manifest.json'], 'state: nothing')));
+    const { result, commands } = traced(() => withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: nothing')));
 
     assert.deepStrictEqual(result, { commit: null, pushed: false, warnings: [] });
-    assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
+    assert.ok(!commands.some((c) => c.startsWith('push ')), `a push was attempted: ${commands}`);
     assert.strictEqual(tip(root, STATE_BRANCH), before);
     assert.strictEqual(remoteTip(bare), before);
   });
@@ -1003,13 +897,13 @@ describe('committing state', () => {
     {
       name: 'AD: added to the index, then deleted',
       base: { 'u/m.md': 'm\n' },
-      setup: (root) => { write(root, 'u/n.md', 'n\n'); git(root, ['add', 'u/n.md']); fs.rmSync(path.join(root, 'u/n.md')); },
+      setup: (root) => { createFile(root, 'u/n.md', 'n\n'); git(root, ['add', 'u/n.md']); fs.rmSync(path.join(root, 'u/n.md')); },
       touched: [],
     },
     {
       name: 'MD: changed in the index, then deleted',
       base: { 'u/m.md': 'm\n' },
-      setup: (root) => { write(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); fs.rmSync(path.join(root, 'u/m.md')); },
+      setup: (root) => { createFile(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); fs.rmSync(path.join(root, 'u/m.md')); },
       touched: ['D\tu/m.md'],
     },
     {
@@ -1021,13 +915,13 @@ describe('committing state', () => {
     {
       name: 'intent to add',
       base: { 'u/m.md': 'm\n' },
-      setup: (root) => { write(root, 'u/n.md', 'n\n'); git(root, ['add', '-N', 'u/n.md']); },
+      setup: (root) => { createFile(root, 'u/n.md', 'n\n'); git(root, ['add', '-N', 'u/n.md']); },
       touched: ['A\tu/n.md'],
     },
     {
       name: 'AM: added, then changed again',
       base: { 'u/m.md': 'm\n' },
-      setup: (root) => { write(root, 'u/n.md', 'n1\n'); git(root, ['add', 'u/n.md']); write(root, 'u/n.md', 'n2\n'); },
+      setup: (root) => { createFile(root, 'u/n.md', 'n1\n'); git(root, ['add', 'u/n.md']); createFile(root, 'u/n.md', 'n2\n'); },
       touched: ['A\tu/n.md'],
     },
     {
@@ -1039,19 +933,19 @@ describe('committing state', () => {
     {
       name: 'a staged change undone in the working tree',
       base: { 'u/m.md': 'm\n' },
-      setup: (root) => { write(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); write(root, 'u/m.md', 'm\n'); },
+      setup: (root) => { createFile(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); createFile(root, 'u/m.md', 'm\n'); },
       touched: [],
     },
     {
       name: 'a folder become a file',
       base: { 'u/x/a.md': 'a\n' },
-      setup: (root) => { fs.rmSync(path.join(root, 'u/x'), { recursive: true }); write(root, 'u/x', 'x\n'); },
+      setup: (root) => { fs.rmSync(path.join(root, 'u/x'), { recursive: true }); createFile(root, 'u/x', 'x\n'); },
       touched: ['A\tu/x', 'D\tu/x/a.md'],
     },
     {
       name: 'a file become a folder',
       base: { 'u/x': 'x\n' },
-      setup: (root) => { fs.rmSync(path.join(root, 'u/x')); write(root, 'u/x/a.md', 'a\n'); },
+      setup: (root) => { fs.rmSync(path.join(root, 'u/x')); createFile(root, 'u/x/a.md', 'a\n'); },
       touched: ['A\tu/x/a.md', 'D\tu/x'],
     },
     {
@@ -1070,9 +964,8 @@ describe('committing state', () => {
 
   for (const { name, base, setup, touched: expected } of INDEX_STATES) {
     it(`commits the working tree as it stands over an index left in a state: ${name}`, () => {
-      const { root } = project();
-      createState(root);
-      for (const [rel, content] of Object.entries(base)) write(root, rel, content);
+      const { root } = codeProject(world, { state: true });
+      for (const [rel, content] of Object.entries(base)) createFile(root, rel, content);
       withStateLock(root, () => commitState(root, ['u'], 'state: base'));
       setup(root);
 
@@ -1086,10 +979,9 @@ describe('committing state', () => {
   }
 
   it('takes every name literally, odd characters and all', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const names = ['u/a b.md', 'u/"quoted".md', 'u/é.md', 'u/-dash.md', 'u/star*.md', 'u/starX.md', 'u/[b].md', 'u/b.md', 'u/tab\there.md', 'u/new\nline.md'];
-    for (const rel of names) write(root, rel, `${rel}\n`);
+    for (const rel of names) createFile(root, rel, `${rel}\n`);
 
     const named = withStateLock(root, () => commitState(root, ['u/star*.md', 'u/[b].md'], 'state: two by name'));
     const rest = withStateLock(root, () => commitState(root, ['u'], 'state: the rest'));
@@ -1101,98 +993,91 @@ describe('committing state', () => {
   });
 
   it('refuses a path the state ignores, committing nothing', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const before = tip(root, STATE_BRANCH);
-    write(root, '.cache/unit/state.json', '{}\n');
+    createFile(root, '.cache/unit/state.json', '{}\n');
 
     assert.throws(() => commitState(root, ['.cache/unit/state.json'], 'state: x'), /ignored/);
     assert.strictEqual(tip(root, STATE_BRANCH), before);
   });
 
   it('commits past a private index and its lock a kill left mid-step', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
     fs.writeFileSync(index, 'left by a killed verb');
     fs.writeFileSync(`${index}.lock`, '');
-    write(root, 'pay/manifest.json', '{}\n');
+    createFile(root, layout.manifest('pay'), '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
     assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
     assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`));
   });
 
   it('keeps the commit and warns where the worktree\'s own index is held, and lines it up on the next commit', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const indexLock = path.resolve(root, git(root, ['rev-parse', '--git-path', 'index.lock']).trim());
     fs.writeFileSync(indexLock, '');
-    write(root, 'pay/manifest.json', '{}\n');
+    createFile(root, layout.manifest('pay'), '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
     assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^the state worktree's index was not brought into line with leeway-state: .*index\.lock/s);
 
     fs.rmSync(indexLock);
-    assert.deepStrictEqual(withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: again')), { commit: null, pushed: false, warnings: [] });
+    assert.deepStrictEqual(withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: again')), { commit: null, pushed: false, warnings: [] });
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
   });
 
   it('makes no commit and no push where the paths hold no change, or where no path is given', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
+    const { root, bare } = codeProject(world, { remote: true, state: true });
     const before = tip(root, STATE_BRANCH);
-    write(root, 'manifest.json', '{}\n');
+    createFile(root, layout.projectManifest, '{}\n');
 
     for (const paths of [['.gitignore', 'unit'], []]) {
       const { result, commands } = traced(() => withStateLock(root, () => commitState(root, paths, 'state: nothing')));
 
       assert.deepStrictEqual(result, { commit: null, pushed: false, warnings: [] }, String(paths));
-      assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
+      assert.ok(!commands.some((c) => c.startsWith('push ')), `a push was attempted: ${commands}`);
     }
     assert.strictEqual(tip(root, STATE_BRANCH), before);
     assert.strictEqual(remoteTip(bare), before);
   });
 
   it('refuses where the state worktree has another branch, or none, checked out — nothing committed', () => {
-    const { root } = project();
-    createState(root);
+    const { root } = codeProject(world, { state: true });
     const before = tip(root, STATE_BRANCH);
-    write(root, 'manifest.json', '{}\n');
+    createFile(root, layout.projectManifest, '{}\n');
 
     git(root, ['checkout', '-q', '-b', 'other']);
-    assert.throws(() => commitState(root, ['manifest.json'], 'state: x'), /has other checked out, not leeway-state — nothing committed/);
+    assert.throws(() => commitState(root, [layout.projectManifest], 'state: x'), /has other checked out, not leeway-state — nothing committed/);
 
     git(root, ['checkout', '-q', '--detach', STATE_BRANCH]);
-    assert.throws(() => commitState(root, ['manifest.json'], 'state: x'), /has a detached HEAD checked out/);
+    assert.throws(() => commitState(root, [layout.projectManifest], 'state: x'), /has a detached HEAD checked out/);
 
     assert.strictEqual(tip(root, STATE_BRANCH), before);
     assert.strictEqual(tip(root, 'other'), before);
   });
 
   it('refuses a path outside the state worktree — nothing committed', () => {
-    const { main, root } = project();
-    createState(root);
-    write(root, 'manifest.json', '{}\n');
+    const { main, root } = codeProject(world, { state: true });
+    createFile(root, layout.projectManifest, '{}\n');
     const before = tip(root, STATE_BRANCH);
 
     for (const outside of ['../README.md', path.join(main, 'README.md')]) {
-      assert.throws(() => commitState(root, ['manifest.json', outside], 'state: x'), /is outside the state worktree/, outside);
+      assert.throws(() => commitState(root, [layout.projectManifest, outside], 'state: x'), /is outside the state worktree/, outside);
     }
     assert.strictEqual(tip(root, STATE_BRANCH), before);
   });
 
   it('leaves the main checkout\'s branch, HEAD and index as they were', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     const before = snapshot(main);
-    write(root, 'manifest.json', '{}\n');
+    createFile(root, layout.projectManifest, '{}\n');
 
-    withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
 
     const after = snapshot(main);
     assert.deepStrictEqual([after.head, after.sha, after.index], [before.head, before.sha, before.index]);
@@ -1200,35 +1085,33 @@ describe('committing state', () => {
   });
 
   it('pushes leeway-state to the remote after the commit', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    write(root, 'manifest.json', '{}\n');
+    const { root, bare } = codeProject(world, { remote: true, state: true });
+    createFile(root, layout.projectManifest, '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
 
     assert.deepStrictEqual([out.pushed, out.warnings], [true, []]);
     assert.strictEqual(remoteTip(bare), out.commit);
   });
 
   it('attempts no push where the project has no remote (4.S5)', () => {
-    const { root } = project();
-    createState(root);
-    write(root, 'manifest.json', '{}\n');
+    const { root } = codeProject(world, { state: true });
+    createFile(root, layout.projectManifest, '{}\n');
 
-    const { result, commands } = traced(() => withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest')));
+    const { result, commands } = traced(() => withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest')));
 
     assert.deepStrictEqual([result.pushed, result.warnings], [false, []]);
-    assert.ok(commands.includes('commit-tree'), `the trace caught nothing: ${commands}`);
-    assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
+    assert.ok(commands.some((c) => c.startsWith('commit-tree ')), `the trace caught nothing: ${commands}`);
+    assert.ok(!commands.some((c) => c.startsWith('push ')), `a push was attempted: ${commands}`);
   });
 
   it('keeps the commit and answers a warning where the remote refuses the push (4.S4)', () => {
-    const { root, bare } = project({ remote: true });
+    const { root, bare } = codeProject(world, { remote: true });
     const created = createState(root);
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
-    write(root, 'manifest.json', '{}\n');
+    createFile(root, layout.projectManifest, '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
 
     assert.match(out.commit || '', /^[0-9a-f]{40}$/);
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
@@ -1240,17 +1123,16 @@ describe('committing state', () => {
   });
 
   it('never forces: a remote that moved ahead keeps its tip, and the push is a warning that says what is true, never git\'s advice to pull', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
-    const other = clone(bare, 'other');
+    const { root, bare } = codeProject(world, { remote: true, state: true });
+    const other = cloneOf(bare, path.join(world, 'other'));
     const otherRoot = stateRoot(other);
     createStateBranchFromRemote(otherRoot);
     addStateWorktree(otherRoot);
-    write(otherRoot, 'manifest.json', '{"from":"other"}\n');
-    const theirs = withStateLock(otherRoot, () => commitState(otherRoot, ['manifest.json'], 'state: theirs')).commit;
-    write(root, 'manifest.json', '{"from":"here"}\n');
+    createFile(otherRoot, layout.projectManifest, '{"from":"other"}\n');
+    const theirs = withStateLock(otherRoot, () => commitState(otherRoot, [layout.projectManifest], 'state: theirs')).commit;
+    createFile(root, layout.projectManifest, '{"from":"here"}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: ours'));
+    const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: ours'));
 
     assert.strictEqual(remoteTip(bare), theirs);
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
@@ -1260,16 +1142,15 @@ describe('committing state', () => {
   });
 
   it('gives up on a push the remote never answers, within the timeout, as a warning', () => {
-    const { main, root } = project();
-    createState(root);
+    const { main, root } = codeProject(world, { state: true });
     const silent = path.join(world, 'silent-ssh');
     fs.writeFileSync(silent, '#!/bin/sh\nexec sleep 5\n', { mode: 0o755 });
     git(main, ['remote', 'add', 'origin', 'ssh://state.invalid/project.git']);
     git(main, ['config', 'core.sshCommand', silent]);
-    write(root, 'manifest.json', '{}\n');
+    createFile(root, layout.projectManifest, '{}\n');
 
     const started = Date.now();
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest', { pushTimeoutMs: 500 }));
+    const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest', { pushTimeoutMs: 500 }));
     const took = Date.now() - started;
 
     assert.ok(took < 4000, `the push held the verb for ${took}ms`);
@@ -1279,7 +1160,7 @@ describe('committing state', () => {
   });
 
   it('warns on every push where several remotes choose none, and pushes to the one the main checkout\'s branch tracks', () => {
-    const { main, root } = project();
+    const { main, root } = codeProject(world);
     const [fork, upstream] = ['fork', 'upstream'].map((name) => {
       const bare = bareRepo(path.join(world, `${name}.git`));
       git(main, ['remote', 'add', name, bare]);
@@ -1288,8 +1169,8 @@ describe('committing state', () => {
     const unchosen = /^leeway-state is committed here but was not pushed: the project has several remotes \(fork, upstream\), and none is named origin or tracked by the main checkout's branch$/;
 
     const created = createState(root);
-    write(root, 'manifest.json', '{}\n');
-    const committed = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    createFile(root, layout.projectManifest, '{}\n');
+    const committed = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
     const pushed = pushState(root);
 
     for (const out of [created, committed, pushed]) {
@@ -1302,20 +1183,19 @@ describe('committing state', () => {
     assert.throws(() => createStateBranchFromRemote(root), /cannot take leeway-state from a remote: the project has several remotes \(fork, upstream\)/);
 
     git(main, ['config', 'branch.main.remote', 'upstream']);
-    write(root, 'manifest.json', '{"a":1}\n');
-    const tracked = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: again'));
+    createFile(root, layout.projectManifest, '{"a":1}\n');
+    const tracked = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: again'));
 
     assert.deepStrictEqual([tracked.pushed, tracked.warnings], [true, []]);
     assert.deepStrictEqual([remoteTip(fork), remoteTip(upstream)], ['', tracked.commit]);
   });
 
   it('pushes the branch as it stands on its own, what a failed push left behind', () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
+    const { root, bare } = codeProject(world, { remote: true, state: true });
     const hook = path.join(bare, 'hooks', 'pre-receive');
     fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
-    write(root, 'manifest.json', '{}\n');
-    const left = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest')).commit;
+    createFile(root, layout.projectManifest, '{}\n');
+    const left = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest')).commit;
     fs.rmSync(hook);
 
     assert.deepStrictEqual(pushState(root), { pushed: true, warnings: [] });
@@ -1365,12 +1245,11 @@ describe('a state commit interrupted between its steps', () => {
   }
 
   it('moves the branch only from the tip it built on: one that moved meanwhile refuses the commit', () => {
-    const { root } = project();
-    createState(root);
-    write(root, 'u/a.md', 'a\n');
+    const { root } = codeProject(world, { state: true });
+    createFile(root, 'u/a.md', 'a\n');
     withStateLock(root, () => commitState(root, ['u'], 'state: base'));
     const elsewhere = git(root, ['commit-tree', `${STATE_BRANCH}^{tree}`, '-p', STATE_BRANCH, '-m', 'a writer the lock missed']).trim();
-    write(root, 'u/a.md', 'a2\n');
+    createFile(root, 'u/a.md', 'a2\n');
 
     const res = commitInterrupted(root, { MOVE_AFTER: 'commit-tree', MOVE_TO: elsewhere });
 
@@ -1381,17 +1260,16 @@ describe('a state commit interrupted between its steps', () => {
 
   for (const step of ['read-tree', 'add', 'write-tree', 'commit-tree', 'update-ref', 'reset']) {
     it(`leaves the branch at its old tip or the whole commit, and the next commit right, when killed after ${step}`, () => {
-      const { root } = project();
-      createState(root);
-      write(root, 'u/a.md', 'a\n');
-      write(root, 'u/b.md', 'b\n');
+      const { root } = codeProject(world, { state: true });
+      createFile(root, 'u/a.md', 'a\n');
+      createFile(root, 'u/b.md', 'b\n');
       withStateLock(root, () => commitState(root, ['u'], 'state: base'));
       const before = tip(root, STATE_BRANCH);
-      write(root, 'other.md', 'other\n');
+      createFile(root, 'other.md', 'other\n');
       git(root, ['add', 'other.md']);
-      write(root, 'u/a.md', 'a2\n');
+      createFile(root, 'u/a.md', 'a2\n');
       fs.rmSync(path.join(root, 'u/b.md'));
-      write(root, 'u/c/d.md', 'd\n');
+      createFile(root, 'u/c/d.md', 'd\n');
 
       const killed = commitInterrupted(root, { KILL_AFTER: step });
       assert.strictEqual(killed.signal, 'SIGKILL', `the verb was not killed: ${killed.stderr}`);
@@ -1415,7 +1293,7 @@ describe('a state commit beside the person\'s repository (4.S18)', () => {
   const HOOKS = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit', 'reference-transaction', 'post-checkout', 'pre-push', 'post-index-change'];
 
   it('runs none of the repository\'s hooks and lands on leeway-state whatever GIT_DIR names', () => {
-    const { main, root, bare } = project({ remote: true });
+    const { main, root, bare } = codeProject(world, { remote: true });
     const elsewhere = elsewhereRepo();
     const elsewhereBefore = snapshot(elsewhere);
 
@@ -1433,8 +1311,8 @@ describe('a state commit beside the person\'s repository (4.S18)', () => {
     }, () => {
       const at = stateRoot(main);
       const made = createState(at);
-      write(at, 'manifest.json', '{}\n');
-      return { found: at, created: made, out: withStateLock(at, () => commitState(at, ['manifest.json'], 'state: the manifest')) };
+      createFile(at, layout.projectManifest, '{}\n');
+      return { found: at, created: made, out: withStateLock(at, () => commitState(at, [layout.projectManifest], 'state: the manifest')) };
     });
 
     assert.ok(!fs.existsSync(fired), `hooks fired: ${fs.existsSync(fired) ? fs.readFileSync(fired, 'utf8') : ''}`);
@@ -1456,13 +1334,13 @@ describe('two sessions writing state at once (4.S3)', () => {
     "const path = require('path');",
     'const [mod, root, who, turns] = process.argv.slice(1);',
     'const { withStateLock, commitState } = require(mod);',
-    "const ledger = path.join(root, '.ledger.jsonl');",
+    `const ledger = path.join(root, ${JSON.stringify(layout.ledger)});`,
     'for (let i = 1; i <= Number(turns); i++) {',
     '  withStateLock(root, () => {',
     "    const before = fs.existsSync(ledger) ? fs.readFileSync(ledger, 'utf8') : '';",
     '    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 15);',
     "    fs.writeFileSync(ledger, before + JSON.stringify({ who, i }) + '\\n');",
-    "    const out = commitState(root, ['.ledger.jsonl'], who + ' ' + i);",
+    `    const out = commitState(root, [${JSON.stringify(layout.ledger)}], who + ' ' + i);`,
     '    if (out.commit === null || !out.pushed) throw new Error(JSON.stringify(out));',
     '  });',
     '}',
@@ -1477,8 +1355,7 @@ describe('two sessions writing state at once (4.S3)', () => {
   }
 
   it('writes one after the other: every line kept, one line per commit, a linear branch with no merge', async () => {
-    const { root, bare } = project({ remote: true });
-    createState(root);
+    const { root, bare } = codeProject(world, { remote: true, state: true });
     const turns = 6;
 
     const results = await Promise.all([session(root, 'a', turns), session(root, 'b', turns)]);

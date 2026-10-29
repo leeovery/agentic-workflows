@@ -28,7 +28,7 @@ const { afterEach } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { ok, git, statePath, commitAll, refuses, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
@@ -159,8 +159,8 @@ function buildLanding(dir) {
  * @param {string} dir @param {string} name
  */
 function setLandingDriver(dir, name) {
-  const project = JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8'));
-  fs.writeFileSync(statePath(dir, 'manifest.json'), `${JSON.stringify({ ...project, drivers: { ...project.drivers, landing: name } }, null, 2)}\n`);
+  const project = JSON.parse(readState(dir, layout.projectManifest));
+  writeState(dir, layout.projectManifest, `${JSON.stringify({ ...project, drivers: { ...project.drivers, landing: name } }, null, 2)}\n`);
   commitAll(dir, 'the landing driver');
 }
 

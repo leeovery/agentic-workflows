@@ -20,11 +20,10 @@ const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, refuses, stateGit, statePath, setupGitFixture, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refusedPristine, stateGit, statePath, layout, setupGitFixture, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
@@ -102,7 +101,7 @@ function ledgerHelpers(dir) {
 
   /** The ledger's text, '' where there is none. */
   function ledgerText() {
-    const file = statePath(dir(), LEDGER);
+    const file = statePath(dir(), layout.ledger);
     return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
   }
 
@@ -301,11 +300,6 @@ const AT_NOTE = Object.freeze({ phase: 'discussion', topic: 'note-window' });
 function ledgerWriteHelpers(dir) {
   const { write, ledgerText, rawLines, entries, full } = ledgerHelpers(dir);
 
-  /** The state branch's tip. */
-  function stateTip() {
-    return stateGit(dir(), ['rev-parse', 'HEAD']).trim();
-  }
-
   /**
    * Assert the ledger's last line is exactly the event of `own` made at
    * `place` by this session: the engine's version first, then its id, the
@@ -332,21 +326,19 @@ function ledgerWriteHelpers(dir) {
     assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed']);
     assert.strictEqual(res.id, shortIds(entries().map((e) => e.id)).get(id));
     assert.strictEqual(res.committed, stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(dir(), ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
-    assert.strictEqual(stateGit(dir(), ['show', `HEAD:${LEDGER}`]), ledgerText());
+    assert.strictEqual(stateGit(dir(), ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), layout.ledger);
+    assert.strictEqual(stateGit(dir(), ['show', `HEAD:${layout.ledger}`]), ledgerText());
   }
 
   /**
-   * A write that must be refused, appending nothing and committing nothing:
+   * A write that must be refused, writing nothing and committing nothing:
    * its refusal.
    * @param {string} verb @param {string} address @param {string[]} flags @param {unknown} content
    * @param {RegExp} pattern @param {Record<string, string|undefined>} [env]
    */
   function refused(verb, address, flags, content, pattern, env = SESSION) {
-    const before = { ledger: ledgerText(), tip: stateTip() };
-    const res = refuses(dir(), ['ledger', verb, address, ...flags], { env, stdin: typeof content === 'string' ? content : JSON.stringify(content) });
+    const res = refusedPristine(dir(), ['ledger', verb, address, ...flags], { env, stdin: typeof content === 'string' ? content : JSON.stringify(content) });
     assert.match(res.error, pattern);
-    assert.deepStrictEqual({ ledger: ledgerText(), tip: stateTip() }, before, 'a refusal appended or committed');
     return res;
   }
 
@@ -381,7 +373,7 @@ function ledgerWriteHelpers(dir) {
     return { q, f, d, r, h, m };
   }
 
-  return { write, ledgerText, rawLines, entries, stateTip, full, assertLast, assertAnswered, refused, ask, find, decide, change, oneOfEach };
+  return { write, ledgerText, rawLines, entries, full, assertLast, assertAnswered, refused, ask, find, decide, change, oneOfEach };
 }
 
 // ---------------------------------------------------------------------------

@@ -18,22 +18,20 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, tip, remoteTip } = harness;
+const { git, tip, remoteTip, statePath, layout, readState, commitOnState, traced } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, cloneOf, boot, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
+const { useWorld, cloneOf, boot, setUp, placed, IN_PLACE, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
-const world = useWorld();
+useWorld();
 
 // --- a branch missing from the remote ---------------------------------------------
 
 describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   it('is pushed back — and the next boot has nothing to do', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main, bare } = setUp({ remote: true });
     git(bare, ['branch', '-D', STATE_BRANCH]);
 
     assert.strictEqual(boot(main).state, 'ready');
@@ -43,12 +41,11 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   });
 
   it('is never pushed back to a remote out of reach, which says nothing of what it holds', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main, bare } = setUp({ remote: true });
     git(bare, ['branch', '-D', STATE_BRANCH]);
     outOfReach(main);
 
-    const { result: res, commands } = traced((trace) => boot(main, trace));
+    const { result: res, commands } = traced(() => boot(main));
 
     assert.strictEqual(res.state, 'ready');
     assert.ok(!commands.some((c) => c.startsWith('push ')), 'a push was tried');
@@ -57,13 +54,12 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   });
 
   it('gone here and on the remote but held by another clone: this clone stops, the other pushes it back, and this one restores it with nothing lost', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main: other, root: otherRoot } = setUp({ remote: bare });
+    const { main: other, root: otherRoot, bare } = setUp({ remote: true });
     const here = cloneOf(bare, 'here');
     boot(here);
-    const kept = commitOnState(otherRoot, { 'manifest.json': '{"kept":true}\n' }).commit;
+    const kept = commitOnState(otherRoot, { [layout.projectManifest]: '{"kept":true}\n' }).commit;
     git(bare, ['branch', '-D', STATE_BRANCH]);
-    git(here, ['worktree', 'remove', '--force', '--force', path.join(here, '.leeway')]);
+    git(here, ['worktree', 'remove', '--force', '--force', statePath(here)]);
     git(here, ['branch', '-D', STATE_BRANCH]);
 
     assert.deepStrictEqual(boot(here), { ok: true, state: 'lost', warnings: [] });
@@ -72,7 +68,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
     assert.strictEqual(boot(here).state, 'ready');
 
     assert.strictEqual(tip(here, STATE_BRANCH), kept);
-    assert.strictEqual(readFile(here, '.leeway/manifest.json'), '{"kept":true}\n');
-    assert.deepStrictEqual(placed(path.join(here, '.leeway')), IN_PLACE);
+    assert.strictEqual(readState(here, layout.projectManifest), '{"kept":true}\n');
+    assert.deepStrictEqual(placed(statePath(here)), IN_PLACE);
   });
 });

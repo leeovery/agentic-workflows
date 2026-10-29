@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, statePath, layout } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
 const { datedAt, createFile } = require('./discovery-test-utils.cjs');
@@ -33,7 +33,7 @@ describe('engine boot', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
-    const projManifest = path.join(fix.project, '.leeway/manifest.json');
+    const projManifest = statePath(fix.project, layout.projectManifest);
 
     for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
@@ -63,7 +63,7 @@ describe('engine boot', () => {
   });
 
   it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {
-    const projManifest = path.join(fix.project, '.leeway/manifest.json');
+    const projManifest = statePath(fix.project, layout.projectManifest);
 
     for (const status of ['walked', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough: { status } }));
@@ -104,7 +104,7 @@ describe('engine boot', () => {
       execFileSync('git', ['add', '-A'], { cwd: project });
       execFileSync('git', ['commit', '-q', '--allow-empty', '-m', msg], { cwd: project, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_DATE: at(date), GIT_COMMITTER_DATE: at(date) } });
     };
-    const arrive = (date) => datedAt(at(date), () => createState(path.join(project, '.leeway')));
+    const arrive = (date) => datedAt(at(date), () => createState(statePath(project)));
     return { project, commit, arrive };
   }
 
@@ -225,7 +225,7 @@ describe('engine boot', () => {
     commit('root', '2025-01-01');
     arrive('2025-02-01');
     const fromRoot = runEngine(stubbed, project, ['boot']).baseline_signal;
-    const fromState = runEngine(stubbed, path.join(project, '.leeway'), ['boot']).baseline_signal;
+    const fromState = runEngine(stubbed, statePath(project), ['boot']).baseline_signal;
 
     assert.deepStrictEqual(fromState, fromRoot);
     assert.deepStrictEqual(fromState.history_before, ['2025-01-01  root']);
@@ -233,7 +233,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
     const empty = harness.initRepo(path.join(fix.root, 'empty'));
-    createState(path.join(empty, '.leeway'));
+    createState(statePath(empty));
     // A hook refusing every code commit: boot's plumbing would otherwise
     // make the root commit — the history this test needs absent.
     createFile(empty, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
@@ -261,7 +261,7 @@ describe('engine boot', () => {
   });
 
   it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
-    fs.writeFileSync(path.join(fix.project, '.leeway/manifest.json'), JSON.stringify({ work_units: {}, baseline: {} }));
+    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {}, baseline: {} }));
     const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'none');
@@ -269,7 +269,7 @@ describe('engine boot', () => {
   });
 
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
-    fs.writeFileSync(path.join(fix.project, '.leeway/manifest.json'),
+    fs.writeFileSync(statePath(fix.project, layout.projectManifest),
       JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
     const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');

@@ -47,13 +47,18 @@ const readline = require('readline');
 const { spawn } = require('child_process');
 
 const {
-  STATE_DIR_NAME, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, git, testIdentity, bareRepo, templateFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
+  statePath, stateRelative, layout, writeState, readState, readManifest, createFile,
 } = require('./discovery-test-utils.cjs');
+const { FROZEN_MS, FROZEN_AT, withFrozenClock } = require('./frozen-clock.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { trustLogPath } = require('../../skills/workflow-engine/scripts/domain/trust-log.cjs');
+const {
+  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
+} = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -225,8 +230,91 @@ function tip(dir, ref) {
 
 /** The remote's state branch tip, or '' where it holds none. @param {string} bare */
 function remoteTip(bare) {
-  const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
   return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
+}
+
+/**
+ * `files` written in the state worktree at `root`, each at its
+ * state-relative path, and committed there through the machinery, under the
+ * writer lock — pushed where there is a remote: the commit's outcome.
+ * @param {string} root @param {Record<string, string>} files @param {string} [message]
+ */
+function commitOnState(root, files, message = 'state: a change') {
+  for (const [rel, content] of Object.entries(files)) createFile(root, rel, content);
+  return withStateLock(root, () => commitState(root, Object.keys(files), message));
+}
+
+/** The state branch's commit, as the state worktree has it checked out. @param {string} dir */
+function head(dir) {
+  return stateGit(dir, ['rev-parse', 'HEAD']).trim();
+}
+
+/** The subjects of the state commits made since `from`, oldest first. @param {string} dir @param {string} from */
+function commitsSince(dir, from) {
+  return stateGit(dir, ['log', '--reverse', '--format=%s', `${from}..HEAD`]).split('\n').slice(0, -1);
+}
+
+/** The last state commit's subject. @param {string} dir */
+function lastMessage(dir) {
+  return stateGit(dir, ['log', '-1', '--format=%s']).trim();
+}
+
+/**
+ * Every file in the state as it stands, state-relative, with its text.
+ * @param {string} dir @returns {Record<string, string>}
+ */
+function treeSnapshot(dir) {
+  /** @type {Record<string, string>} */
+  const files = {};
+  /** @param {string} rel */
+  const walk = (rel) => {
+    for (const entry of fs.readdirSync(statePath(dir, rel), { withFileTypes: true })) {
+      const at = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      if (entry.isDirectory()) walk(at);
+      else files[at] = fs.readFileSync(statePath(dir, at), 'utf8');
+    }
+  };
+  walk('');
+  return files;
+}
+
+/**
+ * A call that must refuse, leaving every file of the state as it was and
+ * the state branch where it stood: its refusal.
+ * @param {string} dir @param {string[]} args @param {CallOptions} [opts]
+ */
+function refusedPristine(dir, args, opts) {
+  const before = { tree: treeSnapshot(dir), head: head(dir) };
+  const refused = refuses(dir, args, opts);
+  assert.deepStrictEqual({ tree: treeSnapshot(dir), head: head(dir) }, before, `engine ${args.join(' ')} wrote or committed on refusing`);
+  return refused;
+}
+
+/**
+ * Run `fn` with git tracing every command it runs, in this process and in
+ * every one it starts: its result, and each command traced, its arguments
+ * after `git `.
+ * @template T @param {() => T} fn @returns {{result: T, commands: string[]}}
+ */
+function traced(fn) {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'git-trace-'));
+  const file = path.join(folder, 'trace.log');
+  try {
+    const result = withEnv({ GIT_TRACE: file }, fn);
+    const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    return { result, commands: [...log.matchAll(/trace: built-in: git (.*)$/gm)].map((m) => m[1]) };
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The code tree in `dir` committed whole, its state left as it stands.
+ * @param {string} dir @param {string} message
+ */
+function commitCode(dir, message) {
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '-m', message]);
 }
 
 /**
@@ -339,6 +427,117 @@ function fixtureFrom(prefix, build) {
     }
     return copyWorld(made, dir);
   };
+}
+
+/**
+ * A world of several repositories many tests start from, made once per
+ * process: `build` fills an empty folder at the first call, and every call
+ * copies what it made into `dir`, each repository moved onto the copy's
+ * paths (`copyFolder`) — a remote beside a project among them.
+ * @param {string} prefix the template's temp-directory prefix, so a leftover names its suite
+ * @param {(folder: string) => void} build
+ * @returns {(dir: string) => string} dir, symbolic links resolved
+ */
+function folderFrom(prefix, build) {
+  /** @type {string|null} */
+  let made = null;
+  return (dir) => {
+    if (made === null) {
+      const template = templateFolder(`${prefix}template-`);
+      build(template);
+      made = template;
+    }
+    return copyFolder(made, dir);
+  };
+}
+
+/** A clone of the remote `bare` at `dir`, under the test identity. @param {string} bare @param {string} dir @param {string[]} [args] further `git clone` flags */
+function cloneOf(bare, dir, args = []) {
+  git(path.dirname(dir), ['clone', '-q', ...args, bare, dir]);
+  testIdentity(dir);
+  return dir;
+}
+
+/**
+ * @typedef {object} ProjectShape
+ * @property {string} [name] the project's folder, and its remote's `{name}.git`
+ * @property {boolean} [remote] a bare remote beside it as `origin`, `main` pushed there
+ * @property {boolean} [state] its state worktree made, pushed where there is a remote
+ * @property {'sha1'|'sha256'} [objectFormat]
+ */
+
+/**
+ * A project of `shape` built in `folder`, every commit dated as the
+ * project world's are.
+ * @param {string} folder @param {Required<ProjectShape>} shape
+ */
+function buildProject(folder, shape) {
+  datedAt(TEMPLATE_DATE, () => buildDated(folder, shape));
+}
+
+/** @param {string} folder @param {Required<ProjectShape>} shape */
+function buildDated(folder, { name, remote, state, objectFormat }) {
+  const main = path.join(folder, name);
+  fs.mkdirSync(main);
+  git(main, ['init', '-q', '-b', 'main', `--object-format=${objectFormat}`]);
+  testIdentity(main);
+  createFile(main, 'README.md', `# ${name}\n`);
+  git(main, ['add', 'README.md']);
+  git(main, ['commit', '-q', '-m', 'code']);
+  if (remote) {
+    const bare = bareRepo(path.join(folder, `${name}.git`), [`--object-format=${objectFormat}`]);
+    git(main, ['remote', 'add', 'origin', bare]);
+    git(main, ['push', '-q', 'origin', 'main']);
+  }
+  if (state) createState(path.join(main, STATE_DIR_NAME));
+}
+
+/** @type {Map<string, (dir: string) => string>} */
+const projects = new Map();
+
+/**
+ * A project at `{dir}/{name}` with one code commit on `main` — and, as its
+ * shape asks, a bare remote beside it and its state — each shape made once
+ * per process and copied; its commits dated as the project world's are.
+ * @param {string} dir @param {ProjectShape} [shape]
+ * @returns {{main: string, root: string, bare: string|null}} the main checkout, its state root, and its remote
+ */
+function codeProject(dir, { name = 'project', remote = false, state = false, objectFormat = 'sha1' } = {}) {
+  const shape = { name, remote, state, objectFormat };
+  const key = JSON.stringify(shape);
+  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-`, (folder) => buildProject(folder, shape)));
+  const at = /** @type {(dir: string) => string} */ (projects.get(key))(dir);
+  const main = path.join(at, name);
+  return { main, root: path.join(main, STATE_DIR_NAME), bare: remote ? path.join(at, `${name}.git`) : null };
+}
+
+/** @typedef {{main: string, root: string}} Machine */
+
+/** @type {Map<string, (dir: string) => string>} */
+const machines = new Map();
+
+/**
+ * Two machines on one remote: here, a project, `name`, at `{dir}/{name}`,
+ * its state pushed to the bare remote beside it, `{name}.git`; and there, a
+ * clone of the remote at `{dir}/other-machine`, its state worktree made from
+ * the remote's state branch. Made once per process for each name, copied;
+ * the project's commits dated as the project world's are.
+ * @param {string} dir @param {{name?: string}} [opts]
+ * @returns {{here: Machine, there: Machine, bare: string}}
+ */
+function twoMachines(dir, { name = 'project' } = {}) {
+  if (!machines.has(name)) {
+    machines.set(name, folderFrom(`two-machines-${name}-`, (folder) => {
+      buildProject(folder, { name, remote: true, state: true, objectFormat: 'sha1' });
+      const there = cloneOf(path.join(folder, `${name}.git`), path.join(folder, 'other-machine'));
+      createStateBranchFromRemote(path.join(there, STATE_DIR_NAME));
+      addStateWorktree(path.join(there, STATE_DIR_NAME));
+    }));
+  }
+  const at = /** @type {(dir: string) => string} */ (machines.get(name))(dir);
+  /** @param {string} folder @returns {Machine} */
+  const machine = (folder) => ({ main: path.join(at, folder), root: path.join(at, folder, STATE_DIR_NAME) });
+  return { here: machine(name), there: machine('other-machine'), bare: path.join(at, `${name}.git`) };
 }
 
 /**
@@ -480,13 +679,103 @@ async function contend(n, body, args, env = process.env) {
   return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
+// A migration runner standing in for the real one, its report in the real
+// one's format byte for byte, for boot parses it. STUB_MIGRATE_MODE picks
+// what it does: nothing (unset); `update`, a migration recorded and a state
+// document changed, stopping for review; `update-config`, the project's
+// settings (STUB_MIGRATE_SETTINGS) and .gitignore changed; `record-only`, a
+// migration recorded and nothing changed; `fail`, a crash. Where
+// STUB_MIGRATE_MARK names a file, it records there the state branch's tip as
+// it found it: that it ran, and over what state. STUB_MIGRATE_NOTICES is a
+// notices payload; STUB_MIGRATE_REPORT stands in for the run report's
+// payload, and STUB_MIGRATE_NO_REPORT plays a runner from before the report.
+const STUB_MIGRATE = `#!/usr/bin/env node
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const mode = process.env.STUB_MIGRATE_MODE || '';
+const record = process.argv[process.argv.indexOf('--record') + 1];
+if (process.env.STUB_MIGRATE_MARK) {
+  fs.appendFileSync(process.env.STUB_MIGRATE_MARK, require('child_process').execFileSync('git', ['rev-parse', '${STATE_BRANCH}'], { encoding: 'utf8' }));
+}
+let ran = 1;
+if (mode === 'update') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.mkdirSync(${JSON.stringify(path.join(STATE_DIR_NAME, layout.unit('payments')))}, { recursive: true });
+  fs.appendFileSync(record, '045\\n');
+  fs.writeFileSync(${JSON.stringify(path.join(STATE_DIR_NAME, layout.unit('payments', 'marker.md')))}, 'migrated\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 2 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n' +
+    'Follow the explicit instructions in the migration skill before proceeding.\\n'
+  );
+} else if (mode === 'update-config') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.mkdirSync('.claude', { recursive: true });
+  fs.appendFileSync(record, '046\\n');
+  fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
+  fs.appendFileSync('.gitignore', '.DS_Store\\n');
+  process.stdout.write(
+    '\\n' +
+    '1 migration(s) applied, 3 file(s) updated.\\n' +
+    '\\n' +
+    '---STOP_GATE: FILES_UPDATED---\\n' +
+    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
+  );
+} else if (mode === 'record-only') {
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.appendFileSync(record, '047\\n');
+  process.stdout.write('[SKIP] No changes needed\\n');
+} else if (mode === 'fail') {
+  process.stdout.write('partial output before the failure\\n');
+  process.stderr.write('boom: migration 099 exploded\\n');
+  process.exit(1);
+} else {
+  ran = 0;
+  process.stdout.write('[SKIP] No changes needed\\n');
+}
+if (process.env.STUB_MIGRATE_NOTICES) {
+  process.stdout.write('---MIGRATION_NOTICES---\\n' + process.env.STUB_MIGRATE_NOTICES + '\\n');
+}
+if (!process.env.STUB_MIGRATE_NO_REPORT) {
+  process.stdout.write('---MIGRATIONS_RUN---\\n');
+  process.stdout.write((process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran })) + '\\n');
+}
+`;
+
+/** @type {(ReturnType<typeof harness> & {path: string})|null} */
+let stub = null;
+
+/**
+ * The engine copied, once per process, into a skills folder beside the
+ * stand-in migration runner (`STUB_MIGRATE`) — boot finds the runner beside
+ * its own file, so the copy runs that resolution as installed: its path,
+ * and the shapes bound to it. The copy is never written to; each test
+ * brings its own project.
+ */
+function stubEngine() {
+  if (stub !== null) return stub;
+  const skills = templateFolder('engine-skills-');
+  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'workflow-engine'), { recursive: true });
+  createFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
+  const at = path.join(skills, 'workflow-engine/scripts/engine.cjs');
+  stub = { ...harness(at), path: at };
+  return stub;
+}
+
 const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
 
 module.exports = {
-  ENGINE, harness,
-  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output, holdLock, lockAttempts, contend,
+  ENGINE, harness, stubEngine,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend,
+  FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
+  STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
+  git, stateGit, commitOnState, head, commitsSince, lastMessage, treeSnapshot, traced, ledgerEntries, tip, remoteTip,
+  commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,
-  setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
+  setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,
 };

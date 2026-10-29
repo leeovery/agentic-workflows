@@ -3,9 +3,9 @@
 // The world the boot suites share (test-engine-boot-*.cjs): the project
 // fixture, a git repository with its state worktree and the workflows' own
 // hooks in its settings, made once per process and copied (`bootProject`,
-// `setupProject`); the engine copied beside a stand-in migrate.cjs whose
-// behaviour STUB_MIGRATE_MODE and its siblings pick (`stubbed`), and the
-// repo's real scripts (`real`); the hooks boot installs, as settings read;
+// `setupProject`); the library's stub engine, whose migration runner
+// STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
+// scripts (`real`); the hooks boot installs, as settings read;
 // a knowledge base that reads ready, a completed discussion to index, and
 // the vector fill's launches recorded; and the session-hook helpers over a
 // describe's own fixture (`hookHelpers`).
@@ -16,11 +16,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom } = harness;
-const REAL_SCRIPTS = path.dirname(harness.ENGINE);
-const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
-const { templateFolder, createFile } = require('./discovery-test-utils.cjs');
-const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
+const { git, commitAll, fixtureFrom, layout, statePath, writeState } = harness;
+const { createFile } = require('./discovery-test-utils.cjs');
+const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
 // The session hooks boot keeps in every project's `.claude/settings.json`,
 // and the function-hooks flag migration 065 takes out of it.
@@ -45,9 +43,8 @@ const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: [LAYOUT_GROUP] },
 }, null, 2) + '\n';
 
-/** The knowledge directory's files, from the project root. */
-const KNOWLEDGE_DIR = '.leeway/.knowledge';
-const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
+/** The knowledge directory's files a checkout sets up, state-relative. */
+const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => layout.knowledge(name));
 
 /**
  * A project fixture: a real git repo with its state worktree at `.leeway/`,
@@ -58,7 +55,7 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${
  * about the mod installs it. Made once per process, copied for each test.
  */
 const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
-  createFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+  writeState(project, layout.manifest('payments'), '{"name":"payments"}\n');
   createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
   commitAll(project, 'init');
 });
@@ -79,88 +76,8 @@ function setupProject(root) {
   return projectWorld(path.join(root, 'project'));
 }
 
-// Stub migrate.cjs: env-driven behaviour, mimicking the real report format
-// byte-for-byte (boot parses the report, so the stub must reproduce it).
-const STUB_MIGRATE = `#!/usr/bin/env node
-'use strict';
-const fs = require('fs');
-const path = require('path');
-const mode = process.env.STUB_MIGRATE_MODE || '';
-const record = process.argv[process.argv.indexOf('--record') + 1];
-let ran = 1;
-if (mode === 'update') {
-  fs.mkdirSync(path.dirname(record), { recursive: true });
-  fs.mkdirSync('.leeway/payments', { recursive: true });
-  fs.appendFileSync(record, '045\\n');
-  fs.writeFileSync('.leeway/payments/marker.md', 'migrated\\n');
-  process.stdout.write(
-    '\\n' +
-    '1 migration(s) applied, 2 file(s) updated.\\n' +
-    '\\n' +
-    '---STOP_GATE: FILES_UPDATED---\\n' +
-    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n' +
-    'Follow the explicit instructions in the migration skill before proceeding.\\n'
-  );
-} else if (mode === 'update-config') {
-  fs.mkdirSync(path.dirname(record), { recursive: true });
-  fs.mkdirSync('.claude', { recursive: true });
-  fs.appendFileSync(record, '046\\n');
-  fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
-  fs.appendFileSync('.gitignore', '.DS_Store\\n');
-  process.stdout.write(
-    '\\n' +
-    '1 migration(s) applied, 3 file(s) updated.\\n' +
-    '\\n' +
-    '---STOP_GATE: FILES_UPDATED---\\n' +
-    'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
-  );
-} else if (mode === 'record-only') {
-  // A migration that ran and found nothing to do: the record gains its line,
-  // no document changes, no stop gate.
-  fs.mkdirSync(path.dirname(record), { recursive: true });
-  fs.appendFileSync(record, '047\\n');
-  process.stdout.write('[SKIP] No changes needed\\n');
-} else if (mode === 'fail') {
-  process.stdout.write('partial output before the failure\\n');
-  process.stderr.write('boom: migration 099 exploded\\n');
-  process.exit(1);
-} else {
-  ran = 0;
-  process.stdout.write('[SKIP] No changes needed\\n');
-}
-// STUB_MIGRATE_NOTICES is the notices payload line, emitted under its marker.
-if (process.env.STUB_MIGRATE_NOTICES) {
-  process.stdout.write('---MIGRATION_NOTICES---\\n' + process.env.STUB_MIGRATE_NOTICES + '\\n');
-}
-// The run report every completed run ends with — STUB_MIGRATE_REPORT
-// substitutes the payload line, STUB_MIGRATE_NO_REPORT plays a runner from
-// before the marker existed.
-if (!process.env.STUB_MIGRATE_NO_REPORT) {
-  process.stdout.write('---MIGRATIONS_RUN---\\n');
-  process.stdout.write(
-    (process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran })) + '\\n'
-  );
-}
-`;
-
-/**
- * The engine copied into a temp skills root beside a stub migrate.cjs —
- * boot resolves the migration runner relative to its own file, so the copy
- * is what exercises that resolution exactly as installed. The knowledge base
- * runs in the copy's own process, its chunking configs copied with it. The
- * tree is never written to during the run, so one serves the whole suite;
- * each test brings its own project.
- */
-function stubbedSkillsTree() {
-  const skills = templateFolder('engine-boot-skills-');
-  fs.cpSync(REAL_ENGINE_SKILL, path.join(skills, 'workflow-engine'), { recursive: true });
-  createFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  return path.join(skills, 'workflow-engine/scripts/engine.cjs');
-}
-
-const STUB_ENGINE = stubbedSkillsTree();
-/** The engines a test drives: the copy with the stub migrations, and the repo's real scripts. */
-const stubbed = harness.harness(STUB_ENGINE);
+/** The engines a test drives: the copy beside the stand-in migration runner, and the repo's real scripts. */
+const stubbed = harness.stubEngine();
 const real = harness;
 
 /**
@@ -169,7 +86,7 @@ const real = harness;
  * @param {import('node:test').TestContext} t @returns {string[]}
  */
 function recordStubbedLaunches(t) {
-  const { launcher } = require(path.join(path.dirname(STUB_ENGINE), 'kernel/call.cjs'));
+  const { launcher } = require(path.join(path.dirname(stubbed.path), 'kernel/call.cjs'));
   /** @type {string[]} */
   const launched = [];
   t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => {
@@ -184,9 +101,10 @@ function recordStubbedLaunches(t) {
  * @param {string} project @param {Record<string, unknown>} [settings]  over the keyword-only pin
  */
 function readyKnowledge(project, settings = {}) {
-  createFile(project, '.leeway/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
-  store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
-  store.writeMetadata(path.join(project, '.leeway/.knowledge/metadata.json'), { last_indexed: null });
+  const [storeFile, metadata, config] = STORE_FILES;
+  writeState(project, config, JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
+  store.saveStore(store.createStore(), statePath(project, storeFile));
+  store.writeMetadata(statePath(project, metadata), { last_indexed: null });
 }
 
 /**
@@ -195,12 +113,12 @@ function readyKnowledge(project, settings = {}) {
  * @param {string} project @param {string} body
  */
 function completedDiscussion(project, body) {
-  createFile(project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-  createFile(project, '.leeway/payments/manifest.json', JSON.stringify({
+  writeState(project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+  writeState(project, layout.manifest('payments'), JSON.stringify({
     name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
     phases: { discussion: { items: { payments: { status: 'completed' } } } },
   }, null, 2) + '\n');
-  createFile(project, '.leeway/payments/discussion/payments.md', body);
+  writeState(project, layout.doc('payments', 'discussion', 'payments'), body);
 }
 
 /** A git-repo project carrying the settings every booted project has. */
@@ -252,5 +170,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, KNOWLEDGE_DIR, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, WORKFLOW_HOOKS, LAYOUT_GROUP, OWN_HOOKS, hooked, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
 };

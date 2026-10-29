@@ -35,7 +35,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const { setupFixture, createManifest, statePath, useTempFolder } = require('./discovery-test-utils.cjs');
+const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 const SCRIPTS = path.join(SKILLS, 'workflow-engine/scripts');
@@ -62,7 +62,7 @@ before(() => {
   dir = setupFixture('gate-');
   createManifest(dir, 'pay', { phases: { implementation: { items: { pay: { status: 'in-progress' } } } } });
   createManifest(dir, 'ship', {});
-  const hold = statePath(dir, '.cache', 'ship', 'implementation', 'checkout-flow', 'presence');
+  const hold = statePath(dir, layout.cache('ship', 'implementation', 'checkout-flow', 'presence'));
   fs.mkdirSync(path.dirname(hold), { recursive: true });
   fs.writeFileSync(hold, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer', checkout: dir }) + '\n');
 });
@@ -88,7 +88,7 @@ function events() {
 }
 
 /** The project's key in the trust log. */
-const projectId = () => JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8')).project_id;
+const projectId = () => JSON.parse(fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8')).project_id;
 
 /** Render a surface for the conversation. @param {string[]} args @param {Record<string, string|undefined>} [env] */
 const render = (args, env) => output(dir, ['render', ...args], { env: conversation(env) });
@@ -138,26 +138,6 @@ function gatePayloads(out) {
 
 /** A gate event's own fields, the header the engine sets left out. @param {Record<string, unknown>} event */
 const ownFields = ({ gate, recommended, picked, via, with_text: withText, reading }) => ({ gate, recommended, picked, via, with_text: withText, reading });
-
-/**
- * Run `fn` in this process with `env` over its environment, put back after.
- * @template T @param {Record<string, string|undefined>} env @param {() => T} fn @returns {T}
- */
-function withEnv(env, fn) {
-  const was = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
-  const put = (/** @type {Record<string, string|undefined>} */ values) => {
-    for (const [key, value] of Object.entries(values)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-  };
-  put(env);
-  try {
-    return fn();
-  } finally {
-    put(was);
-  }
-}
 
 /** Run `fn` as a command the conversation runs in this process. @template T @param {() => T} fn @returns {T} */
 const inConversation = (fn) => withEnv(conversation(), fn);
@@ -339,12 +319,12 @@ describe('gate (6.6, 6.S18)', () => {
 
   it('answers with what the picked row leads to, and performs none of it', () => {
     render(['github-rule-gate']);
-    const before = fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8');
 
     assert.deepStrictEqual(answer(['github rule gate', '--pick', 'n']), {
       ok: true, gate: 'github rule gate', picked: 'n', recommended: null, via: 'typed', next: { kind: 'engine', argv: ['github-rule', 'no'] },
     });
-    assert.strictEqual(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8'), before, 'the rule\'s answer is not recorded');
+    assert.strictEqual(fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8'), before, 'the rule\'s answer is not recorded');
   });
 
   it('a typed row, by its key: logged as that row, typed', () => {

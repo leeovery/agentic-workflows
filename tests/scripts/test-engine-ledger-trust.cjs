@@ -30,7 +30,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { NO_SPACE, stateGit, statePath, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
+const { NO_SPACE, head, stateGit, statePath, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -59,7 +59,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { write, ledgerText, entries, stateTip, full, refused, ask, find, decide, change } = ledgerWriteHelpers(() => dir);
+const { write, ledgerText, entries, full, refused, ask, find, decide, change } = ledgerWriteHelpers(() => dir);
 
 /** An event as these tests compare it: its type, the project it is keyed by and its own fields. @param {Record<string, unknown>} event */
 function keyed({ v: _v, id: _id, at: _at, project_name: _name, model: _model, session: _session, ...own }) {
@@ -112,19 +112,19 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
 
   it('tells the trust log under the writer lock, after the ledger\'s append and before its commit', (t) => {
     const question = ask().id;
-    const tip = stateTip();
+    const tip = head(dir);
     const append = fs.appendFileSync;
     /** @type {[boolean, number, string][]} */
     const told = [];
     t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
-      if (file === trustLogPath()) told.push([fs.existsSync(statePath(dir, WRITER_LOCK)), entries().length, stateTip()]);
+      if (file === trustLogPath()) told.push([fs.existsSync(statePath(dir, WRITER_LOCK)), entries().length, head(dir)]);
       return append(file, data);
     });
 
     decide(question);
 
     assert.deepStrictEqual(told, [[true, 2, tip]]);
-    assert.notStrictEqual(stateTip(), tip);
+    assert.notStrictEqual(head(dir), tip);
   });
 
   it('logs a call for Claude\'s replacement of a decision that held the lean, its own or the person\'s, and no reversal: Claude\'s answer is a call however it is written, and a reversal is the person\'s (5.8.19)', () => {
@@ -205,7 +205,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     for (const res of [call, reversal]) {
       assert.deepStrictEqual(res.warnings, [`the trust log was not written: ${NO_SPACE} — the event waits in the conversation, appended first by its next record`]);
     }
-    assert.strictEqual(reversal.committed, stateTip().slice(0, reversal.committed.length));
+    assert.strictEqual(reversal.committed, head(dir).slice(0, reversal.committed.length));
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
     assert.deepStrictEqual(fs.readFileSync(waitingFile, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line).event.type), ['call', 'reversal']);
     assert.deepStrictEqual(logged(), []);

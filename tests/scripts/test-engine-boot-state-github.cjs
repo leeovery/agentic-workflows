@@ -176,8 +176,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
 
 describe('beyond GitHub', () => {
   it('a remote that is not on GitHub is offered nothing, and a yes there is refused', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main } = setUp({ remote: true });
 
     const res = boot(main);
 

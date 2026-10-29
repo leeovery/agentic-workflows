@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
@@ -124,14 +124,14 @@ describe('querySettings', () => {
   });
 
   it('never throws for want of a vector: each conflict runs keyword-only, its note naming the cause and fix', () => {
-    const keyNote = '[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only]';
+    const keyNote = `[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only]`;
     const cases = [
       [OPENAI_BUILT, { provider: 'openai' }, null, keyNote],
       [KEYWORD_ONLY, { provider: 'openai' }, null, keyNote],
       [OPENAI_BUILT, {}, null,
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
+        `[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names no provider; restore it in the config, or run ${ENGINE_COMMAND} knowledge rebuild]`],
       [OPENAI_BUILT, { provider: 'stub' }, new StubProvider({ dimensions: DIMS }),
-        '[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild]'],
+        `[keyword-only mode — the store was embedded with openai (text-embedding-3-small, 1536 dimensions) and the config names stub (stub, 128 dimensions); run ${ENGINE_COMMAND} knowledge rebuild]`],
     ];
     for (const [metadata, cfg, provider, note] of cases) {
       const settings = querySettings(metadata, loaded(cfg), provider);
@@ -387,8 +387,8 @@ describe('queryStore', () => {
         "[keyword-only mode — the embedding provider's rate limit outlasted this command's wait; retry shortly]"],
       [new QuotaError('OpenAI request refused: the account is out of quota (HTTP 429).'),
         '[keyword-only mode — the embedding account is out of quota; add credit to it]'],
-      [new AuthError('OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.'),
-        '[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup` to fix.]'],
+      [new AuthError(`OpenAI request was rejected (HTTP 401). The API key is invalid or expired.\n  Run \`${ENGINE_COMMAND} knowledge setup\` to fix.`),
+        `[keyword-only mode — the query could not be embedded: OpenAI request was rejected (HTTP 401). The API key is invalid or expired. Run \`${ENGINE_COMMAND} knowledge setup\` to fix.]`],
     ];
     for (const [error, note] of cases) {
       const settings = querySettings(STUB_BUILT, loaded({ provider: 'stub' }), failing(error));
@@ -732,16 +732,16 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
     configure({ ...endpoint.config, model: 'another' });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
+      `the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names openai-compatible (another, 8 dimensions); run ${ENGINE_COMMAND} knowledge rebuild`));
 
     configure({});
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild'));
+      `the store was embedded with openai-compatible (stand-in, 8 dimensions) and the config names no provider; restore it in the config, or run ${ENGINE_COMMAND} knowledge rebuild`));
 
     rewriteMetadata({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     assert.deepStrictEqual(await modeAndNote(), keywordOnly(
-      'the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only'));
+      `the openai API key could not be resolved; export OPENAI_API_KEY, or run ${ENGINE_COMMAND} knowledge setup --key-only`));
   });
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
@@ -759,7 +759,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
     assert.strictEqual(missing.stderr,
-      'metadata.json missing but store exists. Run `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge rebuild` to fix.\n');
+      `metadata.json missing but store exists. Run \`${ENGINE_COMMAND} knowledge rebuild\` to fix.\n`);
 
     fs.writeFileSync(path.join(knowledgeDir, 'store.bin'), 'not a store');
     const corrupt = await engineKnowledge(root, ['query', 'token refresh']);

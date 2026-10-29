@@ -5,4 +5,4 @@
 // every Date the child stamps is the fixed one. A preload has nobody to hand
 // an undo to, so it freezes and stays frozen for the child's life.
 
-require('./fake-clock.cjs').freeze();
+require('../../scripts/frozen-clock.cjs').freeze();

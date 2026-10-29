@@ -20,13 +20,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, tip } = harness;
+const { git, tip, statePath, layout, commitOnState } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
+const { useWorld, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -100,17 +100,17 @@ function links(main, worktrees) {
 describe('a project folder moved or copied', () => {
   it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again', () => {
     const { main, root } = setUp();
-    createFile(root, 'manifest.json', '{"kept":true}\n');
+    createFile(root, layout.projectManifest, '{"kept":true}\n');
     const moved = path.join(world(), 'moved');
     fs.renameSync(main, moved);
 
     const res = boot(moved);
 
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
-    const movedRoot = path.join(moved, '.leeway');
+    const movedRoot = statePath(moved);
     assert.deepStrictEqual(placed(movedRoot), IN_PLACE);
-    assert.strictEqual(readFile(movedRoot, 'manifest.json'), '{"kept":true}\n');
-    const out = commitOnState(movedRoot, { 'manifest.json': '{"kept":true}\n' });
+    assert.strictEqual(readFile(movedRoot, layout.projectManifest), '{"kept":true}\n');
+    const out = commitOnState(movedRoot, { [layout.projectManifest]: '{"kept":true}\n' });
     assert.strictEqual(tip(moved, STATE_BRANCH), out.commit);
     bootsWithNothingToDo(moved, null);
   });
@@ -127,14 +127,14 @@ describe('a project folder moved or copied', () => {
 
     assert.strictEqual(res.state, 'ready');
     assert.deepStrictEqual(res.warnings, [`this project is a copy of ${original}: its state worktree was linked to that project's, and is now this one's own — ${original} is untouched`]);
-    const copyRoot = path.join(copy, '.leeway');
+    const copyRoot = statePath(copy);
     assert.deepStrictEqual(placed(copyRoot), IN_PLACE);
     assert.deepStrictEqual(links(original, [root, side]), before, 'the original\'s links were rewritten');
     assert.deepStrictEqual(placed(root), IN_PLACE);
     assert.strictEqual(git(side, ['rev-parse', '--git-common-dir']).trim(), path.join(original, '.git'));
 
-    const theirs = commitOnState(root, { 'manifest.json': '{"original":true}\n' }).commit;
-    const ours = commitOnState(copyRoot, { 'manifest.json': '{"copy":true}\n' }).commit;
+    const theirs = commitOnState(root, { [layout.projectManifest]: '{"original":true}\n' }).commit;
+    const ours = commitOnState(copyRoot, { [layout.projectManifest]: '{"copy":true}\n' }).commit;
     assert.strictEqual(tip(original, STATE_BRANCH), theirs);
     assert.strictEqual(tip(copy, STATE_BRANCH), ours);
     bootsWithNothingToDo(copy, null);
@@ -146,7 +146,7 @@ describe('a project folder moved or copied', () => {
     const copy = path.join(world(), 'copy');
     fs.cpSync(original, copy, { recursive: true, verbatimSymlinks: true });
 
-    assert.match(bootRefused(path.join(copy, '.leeway')), new RegExp(`is in a copy of the worktree at ${root}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it`));
+    assert.match(bootRefused(statePath(copy)), new RegExp(`is in a copy of the worktree at ${root}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it`));
 
     assert.deepStrictEqual({ links: links(original, [root]), refs: git(original, ['for-each-ref']), log: git(root, ['log', '--format=%H']) }, before);
   });

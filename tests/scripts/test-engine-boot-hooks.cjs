@@ -22,7 +22,7 @@ const os = require('os');
 const path = require('path');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 
@@ -37,7 +37,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
   function recordChoice(value) {
-    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
     commitAll(fix.project, 'record the defaults');
   }
 
@@ -104,7 +104,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('a boot from inside the state worktree installs into the main checkout — its settings, committed on its branch — and the state branch gains nothing', () => {
     dropSettings();
-    const state = path.join(fix.project, '.leeway');
+    const state = statePath(fix.project);
     const stateHead = stateGit(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(stubbed, state, ['boot']);
@@ -155,7 +155,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('labels never asked wants the workflows\' own alone too — stale label hooks come back out', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
-    assert.ok(!('defaults' in JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'))), 'no choice recorded');
+    assert.ok(!('defaults' in JSON.parse(fs.readFileSync(statePath(fix.project, layout.projectManifest), 'utf8'))), 'no choice recorded');
     commitSettings(LABELS_ON);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
@@ -164,7 +164,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('the hook sync waits on a live writer lock — the opt-in read and the write are one hold', (t) => {
     dropSettings();
-    const lock = path.join(fix.project, '.leeway', '.lock');
+    const lock = statePath(fix.project, layout.lock);
     const settingsFile = path.join(fix.project, '.claude/settings.json');
     const unlink = fs.unlinkSync;
     // A live peer takes the lock the moment boot's migrations let it go…
@@ -182,8 +182,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const attempts = harness.lockAttempts(t, lock, (taken) => {
       written.push(fs.existsSync(settingsFile));
       if (taken < 2) return;
-      createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-      stateGit(fix.project, ['add', '--', 'manifest.json']);
+      writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+      stateGit(fix.project, ['add', '--', layout.projectManifest]);
       stateGit(fix.project, ['commit', '-q', '-m', 'labels on']);
       unlink(lock);
     });

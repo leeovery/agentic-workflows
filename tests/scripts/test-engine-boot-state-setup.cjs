@@ -23,13 +23,13 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { datedAt, createFile, readFile } = require('./discovery-test-utils.cjs');
-const { git, initRepo, tip, remoteTip } = harness;
+const { TEMPLATE_DATE, createFile, readFile } = require('./discovery-test-utils.cjs');
+const { git, commitCode, initRepo, tip, remoteTip, STATE_DIR_NAME, statePath, layout } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const { useWorld, WORKFLOW_HOOKS, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
+const { useWorld, remoteProject, WORKFLOW_HOOKS, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -41,7 +41,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     const res = boot(main);
 
-    const root = path.join(main, '.leeway');
+    const root = statePath(main);
     assert.deepStrictEqual([res.state, res.github_rule_offer, res.github_squash_offer, res.warnings], ['ready', false, false, []]);
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)], 'one commit, with no parent');
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
@@ -56,8 +56,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('pushes the new branch where the project has a remote', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const main = codeProject({ remote: bare });
+    const { main, bare } = remoteProject();
 
     boot(main);
 
@@ -93,7 +92,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     assert.strictEqual(killed.signal, 'SIGKILL', killed.stderr);
     const made = tip(main, STATE_BRANCH);
-    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.ok(!fs.existsSync(path.join(main, '.gitignore')), 'the trace came before the state was whole');
     assert.ok(!fs.existsSync(path.join(main, '.claude/settings.json')), 'the hooks came before the state was whole');
 
@@ -114,29 +113,28 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(main, '.gitignore')));
     assert.ok(!fs.existsSync(path.join(main, '.claude/settings.json')));
     assert.strictEqual(boot(main).state, 'ready', 'the branch made is checked out at the next boot');
-    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
   });
 
   it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
-    const main = datedAt('2025-03-01T12:00:00Z', () => codeProject());
+    const main = codeProject();
 
     const { baseline_signal: signal } = boot(main);
 
-    assert.deepStrictEqual([signal.commits_total, signal.commits_before, signal.history_before], [3, 1, ['2025-03-01  code']]);
+    assert.deepStrictEqual([signal.commits_total, signal.commits_before, signal.history_before], [3, 1, [`${TEMPLATE_DATE.slice(0, 10)}  code`]]);
     assert.deepStrictEqual([signal.files_at_arrival, signal.tree_at_arrival], [1, ['README.md']]);
   });
 
   it('keeps the line in the .gitignore of a project nested in a larger one, beside its settings, the state at the repository\'s top ignored by the exclude file', () => {
     const top = initRepo(path.join(world(), 'mono'));
     createFile(top, 'app/README.md', '# app\n');
-    git(top, ['add', '-A']);
-    git(top, ['commit', '-q', '-m', 'code']);
+    commitCode(top, 'code');
     const app = path.join(top, 'app');
 
     assert.strictEqual(boot(app).state, 'ready');
 
-    assert.deepStrictEqual(placed(path.join(top, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(placed(statePath(top)), IN_PLACE);
     assert.strictEqual(readFile(app, '.gitignore'), '.leeway/\n');
     assert.ok(fs.existsSync(path.join(app, '.claude/settings.json')), 'the hooks it sits beside');
     assert.ok(!fs.existsSync(path.join(top, '.gitignore')), 'nothing written outside the project');
@@ -172,8 +170,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a fresh clone ignores the state at once, before any commit — even a boot killed as the worktree is locked', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main, bare } = setUp({ remote: true });
     git(bare, ['update-ref', 'refs/heads/main', git(main, ['rev-parse', 'main~2']).trim()]);
     const fresh = cloneOf(bare, 'fresh');
     assert.ok(!fs.existsSync(path.join(fresh, '.gitignore')), 'the clone\'s branch holds no ignore line');
@@ -185,15 +182,14 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const killed = spawnSync('node', [STUB_ENGINE, 'boot'], { cwd: fresh, encoding: 'utf8', env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` } });
 
     assert.strictEqual(killed.signal, 'SIGKILL', killed.stderr);
-    assert.ok(fs.existsSync(path.join(fresh, '.leeway/.gitignore')), 'the state is checked out');
+    assert.ok(fs.existsSync(statePath(fresh, layout.gitignore)), 'the state is checked out');
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     git(fresh, ['add', '-A']);
     assert.strictEqual(git(fresh, ['ls-files', '--stage', '--', '.leeway']), '');
   });
 
   it('a boot from a code worktree commits the line and the hooks on that worktree\'s branch, never on the main checkout\'s', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const main = codeProject({ remote: bare });
+    const { main, bare } = remoteProject();
     const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
     boot(main);
     const code = path.join(world(), 'fresh-feature');
@@ -207,32 +203,29 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
       ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
     assert.strictEqual(readFile(code, '.gitignore'), '.leeway/\n');
-    assert.ok(!fs.existsSync(path.join(code, '.leeway')));
+    assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
   });
 
   it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
     const main = codeProject();
     createFile(main, '.workflows/payments/manifest.json', '{}\n');
     createFile(main, '.claude/settings.json', WORKFLOW_HOOKS);
-    git(main, ['add', '-A']);
-    git(main, ['commit', '-q', '-m', 'the old layout']);
+    commitCode(main, 'the old layout');
     const before = git(main, ['for-each-ref']);
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
 
     assert.strictEqual(git(main, ['for-each-ref']), before);
-    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+    assert.ok(!fs.existsSync(statePath(main)));
     assert.strictEqual(git(main, ['status', '--porcelain']), '');
     assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
   });
 
   it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main } = setUp({ remote: bare });
+    const { main, bare } = setUp({ remote: true });
     const other = cloneOf(bare, 'other');
     createFile(other, '.workflows/payments/manifest.json', '{}\n');
-    git(other, ['add', '-A']);
-    git(other, ['commit', '-q', '-m', 'the old layout']);
+    commitCode(other, 'the old layout');
 
     assert.strictEqual(boot(other).state, 'ready');
     assert.strictEqual(tip(other, STATE_BRANCH), tip(main, STATE_BRANCH));

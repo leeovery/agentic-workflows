@@ -19,26 +19,26 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { git, initRepo, bareRepo, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, bareRepo, tip, remoteTip, layout, commitOnState, traced, codeProject } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
-  STATE_BRANCH, createState, withStateLock, commitState, askStateRemote,
+  STATE_BRANCH, withStateLock, commitState, askStateRemote,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, blobId, parents, status, commitOn, commitUnpushed, twoMachines, ledger, traced, gitWrapper, withPath } = require('./state-merge-world.cjs');
+const { useWorld, twoMachines, blobId, parents, status, commitUnpushed, ledger, gitWrapper, withPath } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
 describe('catching up when one side moved (4.S36)', () => {
   it('fast-forwards the branch and the worktree to the remote\'s tip, with no merge commit, where only the remote moved', () => {
-    const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
+    const { here, there, bare } = twoMachines({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
     createFile(there.root, 'unit/topics/a/log.md', '# a\n\n## a session elsewhere\n');
     fs.rmSync(path.join(there.root, 'unit/old.md'));
-    const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
+    const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
     git(there.root, ['rm', '-q', 'unit/old.md']);
     const removed = withStateLock(there.root, () => commitState(there.root, ['unit/old.md'], 'state: drop old')).commit;
     const before = tip(here.main, STATE_BRANCH);
@@ -52,16 +52,16 @@ describe('catching up when one side moved (4.S36)', () => {
     assert.deepStrictEqual(parents(here.main, removed), [theirs]);
     assert.strictEqual(git(here.main, ['rev-list', '--count', `${before}..${STATE_BRANCH}`]).trim(), '2');
     assert.strictEqual(git(here.main, ['rev-list', '--merges', STATE_BRANCH]), '');
-    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1'));
+    assert.strictEqual(readFile(here.root, layout.ledger), ledger('base', 'b1'));
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## a session elsewhere\n');
     assert.ok(!fs.existsSync(path.join(here.root, 'unit/old.md')));
     assert.strictEqual(status(here.root), '');
   });
 
   it('pushes what a failed push left behind where only this clone moved', () => {
-    const { here, bare } = twoMachines({ '.ledger.jsonl': ledger('base') });
-    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
-    const left = commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1', 'a2') });
+    const { here, bare } = twoMachines({ [layout.ledger]: ledger('base') });
+    commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
+    const left = commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1', 'a2') });
 
     const out = catchUpState(here.root);
 
@@ -70,12 +70,12 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('answers a push that fails again as a warning, keeping what this clone holds', () => {
-    const { here, bare } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const { here, bare } = twoMachines({ [layout.ledger]: ledger('base') });
     const before = remoteTip(bare);
-    const left = commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
+    const left = commitUnpushed(here, { [layout.ledger]: ledger('base', 'a1') });
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
 
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
+    const { result: out, commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.pushed, out.commit], ['pushed', false, left]);
     assert.strictEqual(out.warnings.length, 1);
@@ -84,46 +84,41 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('does nothing where both sides are at one tip, asking the remote once and fetching nothing', () => {
-    const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
     const before = tip(here.main, STATE_BRANCH);
 
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
+    const { result: out, commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.reason, out.commit, out.warnings], ['nothing', 'current', before, []]);
     assert.deepStrictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).map((c) => c.split(' ')[0]), ['ls-remote']);
   });
 
   it('starts from the remote\'s answer boot gives it, asking the remote nothing again', () => {
-    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
-    const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') }).commit;
+    const { here, there } = twoMachines({ [layout.ledger]: ledger('base') });
+    const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') }).commit;
     const listing = askStateRemote(here.root);
 
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { listing }));
+    const { result: out, commands } = traced(() => catchUpState(here.root, { listing }));
 
     assert.deepStrictEqual([out.action, out.commit], ['fast-forwarded', theirs]);
     assert.ok(!commands.some((c) => c.startsWith('ls-remote ')), 'the remote was asked again');
   });
 
   it('takes an answer saying the remote was out of reach as its warning, asking nothing', () => {
-    const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
     const before = tip(here.main, STATE_BRANCH);
     const listing = { remote: 'origin', remotes: ['origin'], unreachable: 'git ls-remote failed: no route' };
 
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { listing }));
+    const { result: out, commands } = traced(() => catchUpState(here.root, { listing }));
 
     assert.deepStrictEqual([out.action, out.commit, out.warnings], ['unreachable', before, ['leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: no route']]);
     assert.ok(!commands.some((c) => /^(ls-remote|fetch|push) /.test(c)), `the network was reached: ${commands}`);
   });
 
   it('does nothing, fetching nothing, where the project has no remote', () => {
-    const main = initRepo(path.join(world(), 'alone'));
-    createFile(main, 'README.md', '# Alone\n');
-    git(main, ['add', 'README.md']);
-    git(main, ['commit', '-q', '-m', 'code']);
-    const root = path.join(main, '.leeway');
-    createState(root);
+    const { root } = codeProject(world(), { name: 'alone', state: true });
 
-    const { result: out, traced: commands } = traced(() => catchUpState(root));
+    const { result: out, commands } = traced(() => catchUpState(root));
 
     assert.deepStrictEqual([out.action, out.reason, out.remote, out.warnings], ['nothing', 'no-remote', null, []]);
     assert.ok(commands.length > 0, 'the trace caught nothing');
@@ -131,17 +126,12 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('does nothing where the remote holds no state branch, and leaves pushing it back to boot', () => {
-    const main = initRepo(path.join(world(), 'fresh'));
-    createFile(main, 'README.md', '# Fresh\n');
-    git(main, ['add', 'README.md']);
-    git(main, ['commit', '-q', '-m', 'code']);
-    const root = path.join(main, '.leeway');
-    createState(root);
+    const { main, root } = codeProject(world(), { name: 'fresh', state: true });
     const bare = bareRepo(path.join(world(), 'fresh-remote.git'));
     git(main, ['remote', 'add', 'origin', bare]);
     git(main, ['update-ref', `refs/remotes/origin/${STATE_BRANCH}`, STATE_BRANCH]);
 
-    const { result: out, traced: commands } = traced(() => catchUpState(root));
+    const { result: out, commands } = traced(() => catchUpState(root));
 
     assert.deepStrictEqual([out.action, out.reason, out.pushed, out.warnings], ['nothing', 'no-remote-branch', false, []]);
     assert.strictEqual(remoteTip(bare), '');
@@ -150,30 +140,30 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('answers a remote it cannot reach with a warning, asking it once, and leaves the state as it was', () => {
-    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
-    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
+    const { here, there, bare } = twoMachines({ [layout.ledger]: ledger('base') });
+    commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     const before = tip(here.main, STATE_BRANCH);
-    fs.renameSync(path.join(world(), 'fumi-remote.git'), path.join(world(), 'moved-away.git'));
+    fs.renameSync(bare, path.join(world(), 'moved-away.git'));
 
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
+    const { result: out, commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['unreachable', before, false]);
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
     assert.strictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).length, 1, 'the remote was asked again after it failed');
-    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base'));
+    assert.strictEqual(readFile(here.root, layout.ledger), ledger('base'));
     assert.strictEqual(status(here.root), '');
   });
 
   it('gives up on a remote that never answers within one timeout, as a warning', () => {
-    const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const { here } = twoMachines({ [layout.ledger]: ledger('base') });
     const silent = path.join(world(), 'silent-ssh');
     fs.writeFileSync(silent, '#!/bin/sh\nexec sleep 5\n', { mode: 0o755 });
     git(here.main, ['remote', 'set-url', 'origin', 'ssh://state.invalid/fumi.git']);
     git(here.main, ['config', 'core.sshCommand', silent]);
 
     const started = Date.now();
-    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { fetchTimeoutMs: 500 }));
+    const { result: out, commands } = traced(() => catchUpState(here.root, { fetchTimeoutMs: 500 }));
 
     assert.ok(Date.now() - started < 4000, `the fetch held boot for ${Date.now() - started}ms`);
     assert.strictEqual(out.action, 'unreachable');
@@ -182,12 +172,12 @@ describe('catching up when one side moved (4.S36)', () => {
   });
 
   it('refuses a state worktree with another branch checked out, moving nothing', () => {
-    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
-    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
+    const { here, there } = twoMachines({ [layout.ledger]: ledger('base') });
+    commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1') });
     git(here.root, ['checkout', '-q', '-b', 'elsewhere']);
 
     assert.throws(() => catchUpState(here.root), /is not checked out on leeway-state/);
-    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base'));
+    assert.strictEqual(readFile(here.root, layout.ledger), ledger('base'));
   });
 });
 
@@ -198,7 +188,7 @@ describe('another session writing while the catch-up runs', () => {
   function racing() {
     const machines = twoMachines({ [LOG]: '# a\n\n## first\n' });
     createFile(machines.here.root, LOG, '# a\n\n## first\n\n## here\n');
-    commitOn(machines.there, { [LOG]: '# a\n\n## first\n\n## elsewhere\n' });
+    commitOnState(machines.there.root, { [LOG]: '# a\n\n## first\n\n## elsewhere\n' });
     return machines;
   }
 

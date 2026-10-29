@@ -22,16 +22,15 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, tip, remoteTip } = harness;
+const { git, tip, remoteTip, commitOnState, statePath, readState, layout } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { record, judgedDepartures } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const { readFile, createFile } = require('./discovery-test-utils.cjs');
-const { useWorld, STUB_ENGINE, engine, codeProject, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
+const { useWorld, STUB_ENGINE, engine, remoteProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');
 const { SESSION, MADE, NOTE } = require('./ledger-world.cjs');
 
 const world = useWorld();
@@ -40,12 +39,11 @@ const world = useWorld();
 
 /** Two clones of one project's state: `there` set up and pushed, `here` a clone of it. */
 function twoClones() {
-  const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-  const there = setUp({ name: 'there', remote: bare });
-  commitOnState(there.root, { 'manifest.json': JSON.stringify({ defaults: { plan_format: 'local' } }, null, 2) + '\n' });
-  const main = cloneOf(bare, 'here');
+  const { bare, ...there } = setUp({ name: 'there', remote: true });
+  commitOnState(there.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'local' } }, null, 2) + '\n' });
+  const main = cloneOf(/** @type {string} */ (bare), 'here');
   boot(main);
-  return { bare, there, here: { main, root: path.join(main, '.leeway') } };
+  return { bare: /** @type {string} */ (bare), there, here: { main, root: statePath(main) } };
 }
 
 describe('the catch-up at boot (4.7.8)', () => {
@@ -65,9 +63,9 @@ describe('the catch-up at boot (4.7.8)', () => {
   it('a merge stopped by a field both clones changed ends boot there, with no migrations run; the screen and the pick answer it, and the next boot carries on', () => {
     const { bare, there, here } = twoClones();
     git(here.main, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
-    commitOnState(here.root, { 'manifest.json': JSON.stringify({ defaults: { plan_format: 'tick' } }, null, 2) + '\n' });
+    commitOnState(here.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'tick' } }, null, 2) + '\n' });
     git(here.main, ['config', '--unset', 'remote.origin.pushurl']);
-    commitOnState(there.root, { 'manifest.json': JSON.stringify({ defaults: { plan_format: 'linear' } }, null, 2) + '\n' });
+    commitOnState(there.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'linear' } }, null, 2) + '\n' });
     const mark = path.join(world(), 'migrated');
 
     assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark }), { ok: true, state: 'merge', warnings: [] });
@@ -82,7 +80,7 @@ describe('the catch-up at boot (4.7.8)', () => {
 
     const res = boot(here.main, { STUB_MIGRATE_MARK: mark });
     assert.strictEqual(res.state, 'ready');
-    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).defaults.plan_format, 'tick');
+    assert.strictEqual(JSON.parse(readState(here.main, layout.projectManifest)).defaults.plan_format, 'tick');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), tip(here.main, STATE_BRANCH));
   });
@@ -101,7 +99,7 @@ describe('the catch-up at boot (4.7.8)', () => {
 
   it('commits the entries a write killed before its commit left in the ledger, warning of them, before the catch-up merges them onto what the other clone pushed meanwhile', () => {
     const { bare, there, here } = twoClones();
-    commitOnState(there.root, { 'fumi/manifest.json': JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
+    commitOnState(there.root, { [layout.manifest('fumi')]: JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
     const ask = (/** @type {string} */ dir, /** @type {string} */ text) => engine.ok(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text }) });
     ask(there.main, 'Asked first?');
     boot(here.main);
@@ -115,45 +113,43 @@ describe('the catch-up at boot (4.7.8)', () => {
       cwd: here.main, encoding: 'utf8', timeout: 20000, input: JSON.stringify({ ...MADE, text: 'Stranded here?' }), env: { ...process.env, ...SESSION, PATH: `${wrapper}:${process.env.PATH}` },
     });
     assert.strictEqual(killed.signal, 'SIGKILL', killed.stderr);
-    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', LEDGER]), ` M ${LEDGER}\n`);
+    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', layout.ledger]), ` M ${layout.ledger}\n`);
     assert.strictEqual(tip(here.main, STATE_BRANCH), committed);
     ask(there.main, 'Written there?');
 
     const res = boot(here.main);
 
     assert.deepStrictEqual([res.state, res.warnings], ['ready', ['committed 1 ledger entry a write left uncommitted']]);
-    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', LEDGER]), '');
+    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', layout.ledger]), '');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
     boot(there.main);
     for (const clone of [here, there]) {
-      assert.deepStrictEqual(readFile(clone.root, LEDGER).trim().split('\n').map((line) => JSON.parse(line).text), ['Asked first?', 'Written there?', 'Stranded here?']);
+      assert.deepStrictEqual(readState(clone.main, layout.ledger).trim().split('\n').map((line) => JSON.parse(line).text), ['Asked first?', 'Written there?', 'Stranded here?']);
     }
   });
 
   it('commits and pushes nothing of a line appended outside the engine, warning of the line every read stops on', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const { main, root } = setUp({ remote: bare });
-    commitOnState(root, { 'fumi/manifest.json': JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
+    const { main, root, bare } = setUp({ remote: true });
+    commitOnState(root, { [layout.manifest('fumi')]: JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
     engine.ok(main, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Asked?' }) });
-    fs.appendFileSync(path.join(root, LEDGER), 'not an entry\n');
+    fs.appendFileSync(statePath(main, layout.ledger), 'not an entry\n');
     const committed = tip(main, STATE_BRANCH);
 
     const res = boot(main);
 
     assert.ok(res.warnings.includes('the ledger\'s uncommitted entries were not committed: line 2 of the ledger is not JSON: not an entry'), res.warnings.join('\n'));
     assert.deepStrictEqual([tip(main, STATE_BRANCH), remoteTip(bare)], [committed, committed]);
-    assert.strictEqual(git(root, ['status', '--porcelain', '--', LEDGER]), ` M ${LEDGER}\n`);
+    assert.strictEqual(git(root, ['status', '--porcelain', '--', layout.ledger]), ` M ${layout.ledger}\n`);
   });
 
   it('keeps the first clone\'s project_id where two clones set the state up before either pushed, never stopping on it; what the second logged under its own id is another project\'s (4.S39)', () => {
-    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
-    const first = codeProject({ remote: bare });
+    const { main: first, bare } = remoteProject();
     const second = cloneOf(bare, 'second');
     git(second, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
     boot(second);
     git(second, ['config', '--unset', 'remote.origin.pushurl']);
     boot(first);
-    const projectIdOf = (/** @type {string} */ main) => JSON.parse(readFile(main, '.leeway/manifest.json')).project_id;
+    const projectIdOf = (/** @type {string} */ main) => JSON.parse(readState(main, layout.projectManifest)).project_id;
     const firstId = projectIdOf(first);
     assert.notStrictEqual(projectIdOf(second), firstId);
     const pinned = process.env.WORKFLOWS_CONFIG_DIR;
@@ -166,7 +162,7 @@ describe('the catch-up at boot (4.7.8)', () => {
       assert.strictEqual(boot(second).state, 'ready');
 
       assert.strictEqual(projectIdOf(second), firstId);
-      assert.deepStrictEqual([...judgedDepartures(path.join(second, '.leeway'))], [onFirst]);
+      assert.deepStrictEqual([...judgedDepartures(statePath(second))], [onFirst]);
     } finally {
       process.env.WORKFLOWS_CONFIG_DIR = pinned;
     }

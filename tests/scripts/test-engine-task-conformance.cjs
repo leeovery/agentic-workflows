@@ -33,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
+const { STATE_DIR_NAME, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
 const { listDrivers, needsRefusal } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const { phaseName, unitName, endedInTracker, FOREIGN_TASK } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
 
@@ -131,7 +131,7 @@ for (const driver of listDrivers('task')) {
 
     it('makes its store in the state root, never in the project\'s own a walk up from it finds, and makes it once', () => {
       const project = path.join(folder(), 'project');
-      const state = path.join(project, '.leeway');
+      const state = path.join(project, STATE_DIR_NAME);
       fs.mkdirSync(state, { recursive: true });
       const held = require(sideOf(driver.name)).projectStore(project);
       const before = held();

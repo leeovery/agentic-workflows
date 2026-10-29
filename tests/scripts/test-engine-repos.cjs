@@ -13,25 +13,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { git, initRepo, setupGitFixture, addSubmodule, cleanupFixture } = require('./engine-harness.cjs');
+const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout } = require('./engine-harness.cjs');
 const { projectRepos, repoOf, commitGroups, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/workflow-engine/scripts/kernel/repos.cjs');
-
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
-}
-
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
-}
 
 /** A repo of its own at `rel` inside `dir`, one commit holding `file`. */
 function nestedRepo(dir, rel, file = 'index.js') {
   const repo = initRepo(path.join(dir, rel));
-  writeFile(repo, file, '1\n');
-  commitAll(repo, 'init');
+  createFile(repo, file, '1\n');
+  commitCode(repo, 'init');
   return repo;
 }
 
@@ -41,16 +30,16 @@ describe('projectRepos: the repos a project holds', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-');
-    writeFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\n');
-    writeFile(dir, 'src/app.js', '1\n');
-    commitAll(dir, 'init');
+    createFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\n');
+    createFile(dir, 'src/app.js', '1\n');
+    commitCode(dir, 'init');
   });
   afterEach(() => cleanupFixture(dir));
 
   it('finds an ignored clone, an untracked repo at any depth, a submodule and a repo inside another — the root first, then by folder', () => {
     const api = nestedRepo(dir, 'api');
     nestedRepo(dir, 'api/lib');
-    writeFile(dir, 'packages/notes.txt', 'a loose file beside the repo\n');
+    createFile(dir, 'packages/notes.txt', 'a loose file beside the repo\n');
     nestedRepo(dir, 'packages/tools/cli');
     addSubmodule(dir, 'vendor/sdk', api);
 
@@ -65,7 +54,7 @@ describe('projectRepos: the repos a project holds', () => {
   });
 
   it('never looks inside an ignored folder that is not a repo, and takes no submodule with nothing checked out', () => {
-    writeFile(dir, 'node_modules/left-pad/index.js', '1\n');
+    createFile(dir, 'node_modules/left-pad/index.js', '1\n');
     nestedRepo(dir, 'node_modules/dep');
     const sha = git(dir, ['rev-parse', 'HEAD']).trim();
     git(dir, ['update-index', '--add', '--cacheinfo', `160000,${sha},libs/absent`]);
@@ -97,8 +86,8 @@ describe('projectRepos: the repos a project holds', () => {
   });
 
   it('takes a folder whose .git git cannot read for no repo — never a failure', () => {
-    writeFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\nstale/\n');
-    commitAll(dir, 'ignore the stale worktree');
+    createFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\nstale/\n');
+    commitCode(dir, 'ignore the stale worktree');
     git(dir, ['worktree', 'add', '-q', '-b', 'stale', path.join(dir, 'stale')]);
     fs.rmSync(path.join(dir, '.git/worktrees/stale'), { recursive: true });
 
@@ -109,8 +98,8 @@ describe('projectRepos: the repos a project holds', () => {
     fs.mkdirSync(path.join(dir, 'node_modules/broken'), { recursive: true });
     fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'node_modules/broken/.git'));
     const api = initRepo(path.join(dir, 'api'));
-    writeFile(api, 'index.js', '1\n');
-    commitAll(api, 'init');
+    createFile(api, 'index.js', '1\n');
+    commitCode(api, 'init');
     const realpathSync = fs.realpathSync;
     fs.realpathSync = /** @type {typeof fs.realpathSync} */ (Object.assign((/** @type {string} */ p, /** @type {any[]} */ ...rest) => {
       if (String(p).endsWith(`${path.sep}api${path.sep}.git`)) throw Object.assign(new Error(`EACCES: permission denied, realpath '${p}'`), { code: 'EACCES' });
@@ -125,8 +114,8 @@ describe('projectRepos: the repos a project holds', () => {
 
   it('a project nested in a larger repository finds only the repos inside it', () => {
     const project = path.join(dir, 'apps/web');
-    writeFile(project, 'src/app.js', '1\n');
-    commitAll(dir, 'the project');
+    createFile(project, 'src/app.js', '1\n');
+    commitCode(dir, 'the project');
     nestedRepo(dir, 'tools');
     nestedRepo(project, 'service');
 
@@ -169,32 +158,32 @@ describe('dirt and history across the repos', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-dirt-');
-    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
-    commitAll(dir, 'chore: ignore the clone');
-    writeFile(dir, 'src/app.js', '1\n');
-    commitAll(dir, 'impl(pay): T1 — the app');
+    createFile(dir, '.gitignore', '.leeway/\napi/\n');
+    commitCode(dir, 'chore: ignore the clone');
+    createFile(dir, 'src/app.js', '1\n');
+    commitCode(dir, 'impl(pay): T1 — the app');
   });
   afterEach(() => cleanupFixture(dir));
 
   it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .leeway/', () => {
     const api = nestedRepo(dir, 'api', 'src/handler.js');
     const cli = nestedRepo(dir, 'tools/cli');
-    writeFile(dir, 'packages/notes.txt', 'loose\n');
+    createFile(dir, 'packages/notes.txt', 'loose\n');
     const kit = nestedRepo(dir, 'packages/kit');
     const sdk = addSubmodule(dir, 'vendor/sdk', api);
-    writeFile(sdk, 'moved.js', '1\n');
-    commitAll(sdk, 'the pointer moves');
-    writeFile(sdk, 'src/handler.js', '2\n');
-    writeFile(sdk, 'src/new/sdk.js', 'new\n');
-    writeFile(dir, 'src/app.js', '2\n');
-    writeFile(dir, 'src/new/a.js', 'new\n');
-    writeFile(dir, 'src/new/b.js', 'new\n');
-    writeFile(api, 'src/handler.js', '2\n');
-    writeFile(api, 'src/new/api.js', 'new\n');
-    writeFile(cli, 'bin/run.js', 'new\n');
-    writeFile(kit, 'lib/kit.js', 'new\n');
-    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
-    writeFile(dir, '.gitignore', 'api/\n');
+    createFile(sdk, 'moved.js', '1\n');
+    commitCode(sdk, 'the pointer moves');
+    createFile(sdk, 'src/handler.js', '2\n');
+    createFile(sdk, 'src/new/sdk.js', 'new\n');
+    createFile(dir, 'src/app.js', '2\n');
+    createFile(dir, 'src/new/a.js', 'new\n');
+    createFile(dir, 'src/new/b.js', 'new\n');
+    createFile(api, 'src/handler.js', '2\n');
+    createFile(api, 'src/new/api.js', 'new\n');
+    createFile(cli, 'bin/run.js', 'new\n');
+    createFile(kit, 'lib/kit.js', 'new\n');
+    writeState(dir, layout.unit('pay', 'notes.md'), 'a doc session\'s own\n');
+    createFile(dir, '.gitignore', 'api/\n');
 
     assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean), [
       ' M .gitignore', ' M src/app.js', ' M vendor/sdk', '?? .leeway/', '?? packages/kit/', '?? packages/notes.txt',
@@ -217,14 +206,14 @@ describe('dirt and history across the repos', () => {
 
   it('a project nested in a larger repository reads only its own folder of it, named from the project', () => {
     const project = path.join(dir, 'apps/web');
-    writeFile(project, 'src/a.js', '1\n');
-    writeFile(dir, 'other/o.js', '1\n');
-    commitAll(dir, 'impl(pay): T3 — the project and its sibling');
-    writeFile(dir, 'other/o.js', '2\n');
-    commitAll(dir, 'impl(pay): T4 — the sibling alone');
-    writeFile(project, 'src/a.js', '2\n');
-    writeFile(dir, 'other/o.js', '3\n');
-    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
+    createFile(project, 'src/a.js', '1\n');
+    createFile(dir, 'other/o.js', '1\n');
+    commitCode(dir, 'impl(pay): T3 — the project and its sibling');
+    createFile(dir, 'other/o.js', '2\n');
+    commitCode(dir, 'impl(pay): T4 — the sibling alone');
+    createFile(project, 'src/a.js', '2\n');
+    createFile(dir, 'other/o.js', '3\n');
+    writeState(dir, layout.unit('pay', 'notes.md'), 'a doc session\'s own\n');
     const repos = projectRepos(project);
 
     assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'src/a.js', status: ' M' }]);
@@ -233,10 +222,10 @@ describe('dirt and history across the repos', () => {
 
   it('reads history across the repos in project paths — a repo with no commits yet has touched nothing', () => {
     const api = nestedRepo(dir, 'api', 'src/routes.js');
-    writeFile(api, 'src/handler.js', '1\n');
-    commitAll(api, 'impl(pay): T2 — the handler');
+    createFile(api, 'src/handler.js', '1\n');
+    commitCode(api, 'impl(pay): T2 — the handler');
     initRepo(path.join(dir, 'fresh'));
-    writeFile(dir, 'fresh/notes.txt', 'nothing committed\n');
+    createFile(dir, 'fresh/notes.txt', 'nothing committed\n');
     const repos = projectRepos(dir);
 
     assert.deepStrictEqual(dirsOf(repos), ['', 'api', 'fresh']);

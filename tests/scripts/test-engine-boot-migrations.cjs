@@ -20,7 +20,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
@@ -39,7 +39,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     assert.strictEqual(res.migrations.output, '1 migration(s) applied, 2 file(s) updated.');
     // The migration landed in the project's .leeway tree.
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/marker.md')));
+    assert.ok(fs.existsSync(statePath(fix.project, layout.unit('payments', 'marker.md'))));
     assert.match(stateGit(fix.project, ['status', '--porcelain']), /marker\.md/);
   });
 
@@ -89,11 +89,11 @@ describe('engine boot', () => {
       ['.claude/settings.json', '.gitignore']);
     assert.deepStrictEqual(
       stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
-      ['.state/migrations']);
+      [layout.migrations]);
   });
 
   it('while a reviewed migration commit follows, boot\'s settings write rides it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
-    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'labels on');
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
@@ -116,7 +116,7 @@ describe('engine boot', () => {
       ['.claude/settings.json', '.gitignore']);
     assert.deepStrictEqual(
       stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
-      ['.state/migrations']);
+      [layout.migrations]);
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', ...OWNED_PATHS]).trim(), '', 'the reviewed commit took it all');
   });
 
@@ -149,7 +149,7 @@ describe('engine boot', () => {
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
     assert.deepStrictEqual(
       stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
-      ['.state/migrations']
+      [layout.migrations]
     );
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '', 'nothing left dirty');
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init', 'and nothing on the code side');
@@ -159,9 +159,9 @@ describe('engine boot', () => {
     // The state this bug leaves behind: a previous boot recorded an ID and
     // never committed it. Those migrations are recorded now, so nothing runs
     // — and the line still has to go.
-    createFile(fix.project, '.leeway/.state/migrations', '045\n');
+    writeState(fix.project, layout.migrations, '045\n');
     commitAll(fix.project, 'record baseline');
-    createFile(fix.project, '.leeway/.state/migrations', '045\n046\n');
+    writeState(fix.project, layout.migrations, '045\n046\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -181,14 +181,14 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations_committed, null);
     // The record's line waits with the rest of the diff for the skill's
     // `commit --migrations`, which the review gate runs on the user's yes.
-    assert.match(stateGit(fix.project, ['status', '--porcelain', '--', '.state/migrations']), /migrations/);
+    assert.match(stateGit(fix.project, ['status', '--porcelain', '--', layout.migrations]), /migrations/);
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
   it('a migrations record with nothing to commit — already clean — is null and silent', () => {
     // Clean: the run recorded nothing new (a re-append restoring what HEAD
     // already holds), so the tracked record matches HEAD.
-    createFile(fix.project, '.leeway/.state/migrations', '045\n');
+    writeState(fix.project, layout.migrations, '045\n');
     commitAll(fix.project, 'record baseline');
 
     const clean = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_REPORT: '{"ran": 2}' });
@@ -209,7 +209,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations_committed, null);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /migrations record commit failed/);
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.state/migrations')), 'the recorded run survives');
+    assert.ok(fs.existsSync(statePath(fix.project, layout.migrations)), 'the recorded run survives');
   });
 
   it('a run report boot cannot read degrades to a warning — ran 0, the migrations record still committed, plumbing still stripped', () => {
@@ -245,11 +245,11 @@ describe('engine boot', () => {
     // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
-    createFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
-    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(fix.project, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'a peer topic');
-    createFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
-    stateGit(fix.project, ['add', '--', 'payments/discussion/topic-a.md']);
+    writeState(fix.project, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nhalf a turn\n');
+    stateGit(fix.project, ['add', '--', layout.doc('payments', 'discussion', 'topic-a')]);
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
@@ -265,7 +265,7 @@ describe('engine boot', () => {
       'a peer topic',
     ]);
     const files = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
-    assert.deepStrictEqual(files, ['.state/migrations'], 'boot swept nothing of a peer session\'s staged state');
+    assert.deepStrictEqual(files, [layout.migrations], 'boot swept nothing of a peer session\'s staged state');
     assert.strictEqual(stateGit(fix.project, ['diff', '--cached', '--name-only']).trim(),
       'payments/discussion/topic-a.md', 'and left it staged exactly as it was');
   });
@@ -273,7 +273,7 @@ describe('engine boot', () => {
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
     readyKnowledge(fix.project);
     completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
-    const knowledge = path.join(fix.project, '.leeway/.knowledge');
+    const knowledge = statePath(fix.project, layout.knowledge());
     const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
 
     const err = runEngineFails(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });

@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, stateGit, tip, initRepo, statePath, commitAll } = require('./engine-harness.cjs');
+const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, commitAll } = require('./engine-harness.cjs');
 const {
   TASKS, TRACKER, openArgs, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
 } = require('./landing-world.cjs');
@@ -39,7 +39,7 @@ const { card } = TASKS;
 const project = useLandingWorld('engine-land-verbs-');
 
 /** The state branch's tip, and whether a project manifest is there. @param {string} dir */
-const stateAt = (dir) => ({ tip: tip(statePath(dir), 'HEAD'), manifest: fs.existsSync(statePath(dir, 'manifest.json')) });
+const stateAt = (dir) => ({ tip: head(dir), manifest: fs.existsSync(statePath(dir, layout.projectManifest)) });
 
 /** The default task driver's side of the suites, what a person might do in its tool. */
 const SIDE = require(path.join(__dirname, '..', 'drivers', TRACKER.name, 'task.cjs'));
@@ -132,7 +132,7 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
 
     const { committed, warnings } = ok(dir, openArgs(card));
 
-    assert.deepStrictEqual([committed, stateGit(dir, ['log', '-1', '--format=%s'])], [tip(statePath(dir), 'HEAD').slice(0, committed.length), 'task(pay): set up the tracker\n']);
+    assert.deepStrictEqual([committed, lastMessage(dir)], [head(dir).slice(0, committed.length), 'task(pay): set up the tracker']);
     assert.deepStrictEqual(warnings.map((warning) => warning.split(' — ')[0]), [`${STATE_BRANCH} is committed here but was not pushed to origin`]);
   });
 
@@ -148,13 +148,13 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
     const lacking = track(tracker, '1.4', 'feat', 'Card limits');
     const unbranched = refuses(tracker, openArgs(lacking)).error;
     assert.ok(unbranched.startsWith(`land: task 1.4 has no branch ${lacking.branch}, the name its type and title in the tracker give it — name its branch so and open it again ${unpushed}`), unbranched);
-    assert.strictEqual(stateGit(tracker, ['log', '-1', '--format=%s']), 'task(pay): set up the tracker\n');
+    assert.strictEqual(lastMessage(tracker), 'task(pay): set up the tracker');
 
     const driver = project();
     git(driver, ['remote', 'add', 'origin', path.join(driver, '..', 'nowhere.git')]);
     const unopened = refuses(driver, ['land', 'phase', 'pay', '3']).error;
     assert.ok(unopened.startsWith(`land: phase 3 of pay has no task opened — open its tasks first ${unpushed}`), unopened);
-    assert.strictEqual(stateGit(driver, ['log', '-1', '--format=%s']), 'chore: the landing driver is local\n');
+    assert.strictEqual(lastMessage(driver), 'chore: the landing driver is local');
   });
 });
 
@@ -162,9 +162,9 @@ describe('land: the landing driver setting (7.1.4, 7.S21)', () => {
   it('is settled by the first verb where none is set — the local driver, with no remote — and its state commit carries it; a GitHub remote added later leaves it', () => {
     const dir = project();
     const opened = ok(dir, openArgs(card));
-    assert.deepStrictEqual([opened.driver, opened.committed], ['local', tip(statePath(dir), 'HEAD').slice(0, opened.committed.length)]);
+    assert.deepStrictEqual([opened.driver, opened.committed], ['local', head(dir).slice(0, opened.committed.length)]);
     assert.strictEqual(stateGit(dir, ['show', '--name-only', '--format=%s', 'HEAD']), 'chore: the landing driver is local\n\nmanifest.json\n');
-    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(dir, 'manifest.json'), 'utf8')).drivers.landing, 'local');
+    assert.strictEqual(JSON.parse(readState(dir, layout.projectManifest)).drivers.landing, 'local');
 
     git(dir, ['remote', 'add', 'origin', 'git@github.com:acme/pay.git']);
     const before = stateAt(dir);
@@ -175,7 +175,7 @@ describe('land: the landing driver setting (7.1.4, 7.S21)', () => {
   it('is committed once settled though the driver then refuses', () => {
     const dir = project();
     assert.strictEqual(refuses(dir, ['land', 'chain', 'pay', '1.1']).error, 'land: task 1.1 is not open — open it first');
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--format=%s']), 'chore: the landing driver is local\n');
+    assert.strictEqual(lastMessage(dir), 'chore: the landing driver is local');
   });
 });
 
