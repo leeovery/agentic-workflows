@@ -68,9 +68,9 @@ const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
-const { ID_FACTS, readFolded, factsOf, standingOf, wordingOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
-const { showerOf } = require('./ledger-read.cjs');
-const { liveness, manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
+const { factsOf, standingOf, wordingOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
+const { readShown } = require('./ledger-read.cjs');
+const { manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
 const { recordFile, recordScope } = require('./knowledge/artifacts.cjs');
@@ -174,9 +174,7 @@ function productText(shower) {
  */
 function copiesOf(root, notes) {
   if (!fs.existsSync(ledgerFile(root))) return new Map();
-  const live = liveness(root);
-  return readFolded(root, ID_FACTS, notes, (facts, entryAt) => {
-    const shower = showerOf({ facts, live }, entryAt);
+  return readShown(root, notes, (shower) => {
     /** @type {Map<string, string>} */
     const copies = new Map();
     for (const { unit, topic, record } of placeRecords(shower.folded)) {

@@ -1,7 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the ledger suites share (test-engine-ledger*.cjs): the unit, the
+// What the ledger suites share (test-engine-ledger*.cjs, and
+// test-engine-verdict.cjs over the ledger's departures): the unit, the
 // session and the topics they write to, the unit's starting phases, and the
 // worlds built from them (`ledgerWorld`, and the copies suites' hook
 // `useCopiesWorld`); one write that must succeed, the ledger's text, lines
@@ -283,7 +284,7 @@ function ledgerReadHelpers(dir) {
 }
 
 // ---------------------------------------------------------------------------
-// The write suites (test-engine-ledger-write.cjs, -links).
+// The write suites (test-engine-ledger-write.cjs, -links, -trust).
 // ---------------------------------------------------------------------------
 
 const ID = /^[0-9A-Za-z]{21}$/;

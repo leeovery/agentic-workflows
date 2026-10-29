@@ -51,6 +51,7 @@ const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
+const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
@@ -173,6 +174,7 @@ Commands:
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
+${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
   workunit import <work-unit> <path> [<path> …] --from <origin>
@@ -513,6 +515,23 @@ function runLedger(call, argv) {
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
     else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
     else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}`);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// verdict — the verdicts on departures (domain/verdict.cjs): `queue` answers
+// the departures waiting on one, a projection of the ledger read as the
+// ledger's reads are, holding no lock; `give` logs one in the trust log,
+// under the writer lock runCli takes, writing nothing the state holds.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runVerdict(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    respond(call, runVerdictVerb(call.cwd, verb, rest));
   } catch (err) {
     failJson(call, err);
   }
@@ -2280,6 +2299,7 @@ const COMMANDS = Object.freeze({
   'github-rule': runGithubRule,
   manifest: runManifest,
   ledger: runLedger,
+  verdict: runVerdict,
   workunit: runWorkunit,
   'discussion-map': runDiscussionMap,
   'research-threads': runResearchThreads,
@@ -2329,6 +2349,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   knowledge: '*',
   boot: '*',
   ledger: '*',
+  verdict: ['queue'],
   presence: '*',
   conversation: '*',
   layout: '*',

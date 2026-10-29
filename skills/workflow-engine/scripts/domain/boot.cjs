@@ -51,7 +51,9 @@
 // the conversations ran in: one goes once its transcript is gone, and no
 // trust log event waits in it. Every boot appends the events any
 // conversation keeps waiting, first of all, so one that stops at the lost
-// state or the merge does too (trust-log.cjs): they need no project state.
+// state or the merge does too (trust-log.cjs): they need no project state,
+// but one a write kept ahead of its entry, which lands, or goes, by this
+// project's ledger, under its writer lock.
 // The start menu is no position, so the calling conversation's own goes
 // first, before the migrations — a boot that fails leaves none.
 //
@@ -253,7 +255,7 @@ function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   /** @type {string[]} */
   const warnings = [];
-  appendWaiting(warnings);
+  appendWaiting(cwd, warnings);
   const placed = placeState(cwd, { startAgain });
   warnings.push(...placed.warnings);
   if ('stop' in placed) return { state: placed.stop, warnings };

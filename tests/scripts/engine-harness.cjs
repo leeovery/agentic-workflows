@@ -51,6 +51,7 @@ const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/sto
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { trustLogPath } = require('../../skills/workflow-engine/scripts/domain/trust-log.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
 
@@ -267,6 +268,24 @@ function failingPs(dir) {
   };
 }
 
+/** What a full disk answers an append with. */
+const NO_SPACE = 'ENOSPC: no space left on device, write';
+
+/**
+ * Fail every append to the trust log the configuration names at the time,
+ * as a full disk does — after writing it, where it `lands` — until the
+ * answered mock is restored.
+ * @param {import('node:test').TestContext} t @param {boolean} [lands]
+ */
+function failingTrustAppends(t, lands = false) {
+  const append = fs.appendFileSync;
+  return t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
+    if (file !== trustLogPath()) return append(file, data);
+    if (lands) append(file, data);
+    throw Object.assign(new Error(NO_SPACE), { code: 'ENOSPC' });
+  });
+}
+
 /**
  * A temp world — the git repo, its state worktree, a test identity and no
  * signing — that an engine commit lands in. Content is the suite's own;
@@ -446,5 +465,6 @@ module.exports = {
   call, callAsync, ok, okSections, refuses, output, holdLock, lockAttempts, contend,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
+  NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };

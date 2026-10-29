@@ -346,7 +346,7 @@ describe('nothing on disk (4.11.9)', () => {
     const answers = [
       ok(dir, ['ledger', 'record', UNIT]).decisions, ok(dir, ['ledger', 'record', UNIT, 'note-window']).decisions,
       ok(dir, ['ledger', 'map', UNIT, 'note-window']).questions, ok(dir, ['ledger', 'product']).findings,
-      ok(dir, ['ledger', 'affected', UNIT]).affected, ok(dir, ['ledger', 'verdicts']).departures,
+      ok(dir, ['ledger', 'affected', UNIT]).affected, ok(dir, ['verdict', 'queue']).departures,
       ok(dir, ['ledger', 'since', UNIT]).calls, ok(dir, ['ledger', 'shown', UNIT]).calls,
     ];
 

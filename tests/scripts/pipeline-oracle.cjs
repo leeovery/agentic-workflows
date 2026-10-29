@@ -17,7 +17,10 @@
 //     and the gate a render's menu states is the one its conversation was
 //     shown, which an answer through `gate` adds one line to the trust log
 //     for,
-//   - the ledger's projections and its copies hold to the events.
+//   - the ledger's projections and its copies hold to the events,
+//   - the trust log holds a line for each call, reversal and verdict the
+//     ledger and the verdicts given call for, and nothing waits in a
+//     conversation, after a refusal too (auditTrust).
 // This is the detector for the silent class of bug: state that writes fine,
 // raises nothing, and only breaks a menu three phases later.
 // ---------------------------------------------------------------------------
@@ -58,7 +61,7 @@ const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 const { SHOWN } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/gate.cjs'));
-const { TRUST_LOG } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/trust-log.cjs'));
+const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/trust-log.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -619,6 +622,58 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
   assert.deepStrictEqual(chunks.flatMap((c) => unshown.filter(([, w]) => c.content.includes(w))), [], ctx('a chunk in the store holds the words of an entry that is not shown'));
 }
 
+// The trust log held to the ledger (16.13.3, 16.13.4, 16.12.1), read from
+// the sim's own config folder, the project's events alone, each once by its
+// id: a call for each of Claude's answers, a decision or its replacement of
+// one; a reversal, naming the entry it reverses, for each of the person's
+// replacements of a decision that held Claude's lean, made for a changed
+// mind or a mistake and carrying no sealed answer of Claude's; neither for
+// anything else; and nothing left waiting in a conversation, as no append
+// fails. Every verdict names a departure, a decision whose answer stood over
+// the lean, and none follows one that is no skip (16.10.1); the verdict a
+// command that `ran` gave has its line, the latest.
+/** @param {Sim} sim @param {string} label @param {string[]} [ran] the command, where it succeeded */
+function auditTrust(sim, label, ran = []) {
+  const ctx = (/** @type {string} */ msg) => `[${label}] ${msg}`;
+  const ledgerFile = statePath(sim.dir, LEDGER);
+  if (!fs.existsSync(ledgerFile)) return;
+  /** @type {Record<string, any>[]} */
+  const entries = fs.readFileSync(ledgerFile, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  const project = JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).project_id;
+  const log = path.join(sim.configDir, TRUST_LOG);
+  /** @type {Record<string, any>[]} */
+  const lines = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)) : [];
+  const events = [...new Map(lines.map((e) => [e.id, e])).values()].filter((e) => e.project === project);
+  const ofType = (/** @type {string} */ type) => events.filter((e) => e.type === type);
+  const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
+
+  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && e.by === 'claude').map((e) => e.id).sort(),
+    ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
+  const reversing = entries.filter((e) => e.event === 'replaced' && e.of === 'decision' && e.by === 'person' && e.sealed === null
+    && ['changed-mind', 'was-wrong'].includes(e.reason) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
+  assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),
+    ctx('the trust log does not hold one reversal for each of the person\'s replacements standing over a lean the entry it replaces held, and no other'));
+  const conversations = path.join(sim.configDir, 'conversations');
+  const waiting = fs.existsSync(conversations) ? fs.readdirSync(conversations).filter((name) => fs.existsSync(path.join(conversations, name, PENDING))) : [];
+  assert.deepStrictEqual(waiting, [], ctx('an event waits in a conversation, though no append failed'));
+  /** @type {Map<string, Record<string, any>[]>} */
+  const given = new Map();
+  for (const v of ofType('verdict')) {
+    assert.ok(isDecision(byId.get(v.entry) ?? {}) && byId.get(v.entry).who_moved_whom === 'person-moved-claude', ctx(`the verdict ${v.id} names ${v.entry}, which is no departure`));
+    given.set(v.entry, [...(given.get(v.entry) ?? []), v]);
+  }
+  for (const [entry, verdicts] of given) {
+    const judged = verdicts.slice(0, -1).filter((v) => v.verdict !== 'skip');
+    assert.deepStrictEqual(judged, [], ctx(`${entry} was given a verdict after one that was no skip`));
+  }
+  if (ran[0] === 'verdict' && ran[1] === 'give') {
+    const [, , prefix, verdict, , point] = ran;
+    const latest = ofType('verdict').at(-1);
+    assert.ok(latest !== undefined && latest.entry.startsWith(prefix) && latest.verdict === verdict && latest.point === point, ctx(`the trust log's latest verdict is not ${ran.slice(2).join(' ')}`));
+  }
+}
+
 // The skills a menu's route reaches in place: another menu, or help.
 const IN_PLACE_SKILLS = ['workflow-continue-linear', 'workflow-help'];
 
@@ -755,5 +810,5 @@ function auditGateAnswer(sim, answered, before, label) {
 }
 
 module.exports = {
-  auditState, auditGatePayload, specDetail, shellWords, trustLines, auditGateAnswer,
+  auditState, auditGatePayload, auditTrust, specDetail, shellWords, trustLines, auditGateAnswer,
 };
