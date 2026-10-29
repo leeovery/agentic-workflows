@@ -10,7 +10,7 @@ npx agntc add leeovery/agentic-workflows
 
 This installs the workflow skills into the project. Commit the installed files to share the workflows with your team and to use them in Claude Code for the Web. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/agentic-workflows` uninstalls. Updates carry themselves forward: the first run after an update brings your existing work into line with the new version automatically, so there is nothing to migrate by hand.
 
-The workflows need Node 18 or newer and, in Claude Code's terminal app or the Desktop app's Code tab, Claude Code 2.1.287 or newer, where the Claude Code mod the workflows come with is on by default (see [buttons above the prompt](#buttons-above-the-prompt)). Your first `/workflow-start` sets everything else up in conversation. That includes the knowledge base, set up once in each copy of the project: it is required, and one of its choices, keyword-only, needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
+The workflows need Node 18 or newer, git 2.40.0 or newer — older, `/workflow-start` stops and says how to get a newer one — and, in Claude Code's terminal app or the Desktop app's Code tab, Claude Code 2.1.287 or newer, where the Claude Code mod the workflows come with is on by default (see [buttons above the prompt](#buttons-above-the-prompt)). Your first `/workflow-start` sets everything else up in conversation. That includes the knowledge base, set up once in each copy of the project: it is required, and one of its choices, keyword-only, needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
 
 ## Settings that fill themselves in
 

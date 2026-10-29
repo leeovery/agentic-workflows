@@ -39,7 +39,7 @@ is to run them before every commit rather than at the end of a branch.
 
 What each layer holds, and how a test in it is written, is `tests/README.md`.
 
-The mods need Claude Code 2.1.287 or newer; a change that relies on a newer Claude Code raises that floor in the same PR.
+The mods need Claude Code 2.1.287 or newer; a change that relies on a newer Claude Code raises that floor in the same PR. The engine needs git 2.40.0 or newer; a change that runs a git command or option a newer git brought raises that floor in the same PR.
 
 **Never pipe a gate's output.** A pipe swallows the exit code, and a
 suite that aborts halfway then reads as green. Redirect to a file and
