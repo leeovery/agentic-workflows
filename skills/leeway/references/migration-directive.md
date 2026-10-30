@@ -20,7 +20,7 @@ The directive's check tells the pieces done from the rest. A piece done is kept.
 node .claude/skills/leeway-engine/scripts/engine.cjs migrate check {directive}
 ```
 
-Each piece in `unfinished` names what it still lacks; where the check itself fails, its refusal names what it tripped on. Once `passed` is `true`, close the directive's checklist, which records the directive as done:
+Each piece in `unfinished` names what it still lacks; where the check itself fails, its refusal names what it tripped on. Once `passed` is `true` and the directive's own steps are done, close the directive's checklist, which records the directive as done:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs checklist close directive {directive}

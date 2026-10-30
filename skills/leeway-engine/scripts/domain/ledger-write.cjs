@@ -64,7 +64,9 @@
 //   current, the write's to replace, and the cause what the reason needs.
 // - What the content says of itself: the person's decision is their own,
 //   never given as "your call", "don't care" or carried over, each of which
-//   is Claude's line (9.2.14, 9.2.16, 21.6.5); a finding says how it is
+//   is Claude's line (9.2.14, 9.2.16, 21.6.5), and a decision is carried
+//   over only while the migration runs — at any other time it is a call of
+//   Claude's, which the trust log is told of; a finding says how it is
 //   known (9.2.12), a measurement — measured, or exploratory, in the
 //   conversation — with the command run and its result (9.9.7), and a
 //   command never comes without its result, nor a result without its
@@ -143,7 +145,7 @@ const { HEADER, REASONS, ROADMAP, entryKind, claudesCall, roadmapItemOf, eventFi
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
+const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
@@ -837,6 +839,18 @@ function checkSaid(said, kind, { by, given, known, command, result }) {
 }
 
 /**
+ * Refuse, in the words of `said`, the command asking, a decision carried
+ * over outside the migration: carried over, it tells the trust log of no
+ * call (21.1.5), so at any other time it would hide one of Claude's.
+ * @param {string} said @param {Address} at @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ */
+function checkCarried(said, at, kind, { given }) {
+  if (kind === 'decision' && given === 'carried' && !migrationRuns(at.root)) {
+    throw new Error(`${said}: the decision is given carried — a decision is carried over only by the migration, while it runs; Claude's own call is given own`);
+  }
+}
+
+/**
  * Refuse, in the words of `said`, the command asking, the person's entry
  * carrying Claude's sealed answer: the person's answer to Claude's lean is
  * a raise's (raise.cjs), which sealed the lean before they answered and
@@ -903,8 +917,9 @@ function writePlaced(cwd, verb, args, said, usage, warnings) {
  * writes, a replacement reading the kind it replaces from the ledger.
  * Refuses argv the verb does not take, a place it cannot write, no session,
  * a value its event cannot hold, stdin holding no JSON object, the person's
- * entry carrying Claude's sealed answer, content the kind does not hold,
- * and who moved whom the departure rule does not allow, which it sets where
+ * entry carrying Claude's sealed answer, content the kind does not hold, a
+ * decision carried over outside the migration, and who moved whom the
+ * departure rule does not allow, which it sets where
  * the writer leaves it out and the rule allows one value alone.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
  * @returns {Request}
@@ -932,6 +947,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const derived = derivedMove(content, kind, reason, replaced);
   const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
   checkSaid(said, kind, fields);
+  checkCarried(said, at, kind, fields);
   const unmoved = movedRefusal(fields, kind, reason, replaced);
   if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   return {
@@ -1136,4 +1152,6 @@ function landRaised(cwd, raised, warnings) {
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, callLogged, staleness };
+module.exports = {
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, callLogged, staleness, phasesOf, contentFields, checkSaid, checkUnsealed,
+};

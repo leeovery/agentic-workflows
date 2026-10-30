@@ -7,9 +7,10 @@
 // worlds built from them (`ledgerWorld`; `writtenWorld`, its entries
 // written once and copied, and `askedWorld`, its questions; and the copies
 // suites' hook `useCopiesWorld`); one write that must succeed, the ledger's
-// text, lines and entries, an entry's full id, and the one-decision check's
-// runs logged (`ledgerHelpers`); the person's answer to Claude's lean, a
-// raise drawn and answered (`answeredRaise`); and over those, the helpers
+// text, lines and entries, an entry's full id, the one-decision check's
+// runs logged, and a decision carried over as the migration alone writes
+// one (`ledgerHelpers`); the person's answer to Claude's lean, a raise
+// drawn and answered (`answeredRaise`); and over those, the helpers
 // each aspect's suites share: the reads and the forms an entry takes
 // in a record and a map (`ledgerReadHelpers`), the written line and a refusal
 // asserted (`ledgerWriteHelpers`), and the rendered copies (`copiesHelpers`).
@@ -27,7 +28,8 @@ const { ok, okSectionsAsync, refusedPristine, stateGit, statePath, layout, setup
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { shortIds, newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
@@ -190,7 +192,23 @@ function ledgerHelpers(dir) {
     return { v: 1, project_id: id, project: path.basename(dir()), unit, verb, rules, outcome, model: outcome === 'unchecked' ? null : 'claude-opus-stub' };
   }
 
-  return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun };
+  /**
+   * Claude's decision carried over, answering `question` at `address`, as
+   * the migration alone writes one (ledger-carry.cjs), appended in process:
+   * its short id.
+   * @param {string} address @param {string} question @param {string} text
+   */
+  function carriedOver(address, question, text) {
+    const [unit, phase, topic] = address.split('.');
+    const id = newId();
+    appendEntry(statePath(dir()), {
+      event: 'decided', unit, topic, phase, session: SESSION_ID, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'carried', cites: [],
+    }, [], id);
+    return /** @type {string} */ (shortIds(entries().map((e) => e.id)).get(id));
+  }
+
+  return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun, carriedOver };
 }
 
 // ---------------------------------------------------------------------------
