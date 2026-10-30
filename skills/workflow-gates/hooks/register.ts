@@ -30,10 +30,10 @@
  * the engine has not marked keeps them untouched.
  *
  * It registers the rest of what the mod does in a workflow conversation as
- * well: the spinner saying the phase (`spinner.ts`), the guard on direct
- * manifest edits (`guard.ts`), the compaction — Claude Code's own, the
- * engine's note appended last (`compaction.ts`) — and the implementation
- * task's executor recorded as it is dispatched (`executor.ts`).
+ * well: the spinner saying the phase (`spinner.ts`), the compaction — Claude
+ * Code's own, the engine's note appended last (`compaction.ts`) — and the
+ * implementation task's executor recorded as it is dispatched
+ * (`executor.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
  * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
@@ -52,7 +52,6 @@ import type {
 import { compaction } from './compaction.ts'
 import { executor } from './executor.ts'
 import { MARKER, folderOf as folderNamed } from './folder.ts'
-import { guard } from './guard.ts'
 import {
   IDLE,
   NO_SENDS,
@@ -1172,7 +1171,6 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   spinner(on)
-  guard(on)
   compaction(on)
   executor(on)
 }

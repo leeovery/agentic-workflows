@@ -483,7 +483,8 @@ describe('pipeline simulation: epic map', () => {
       hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.leeway', rel), content: '' },
     }));
     assert.strictEqual(beforeWrite('.ledger.jsonl').code, 2, 'the ledger is the engine\'s alone');
-    assert.deepStrictEqual(beforeWrite('manifest.json'), { stdout: '', stderr: '', code: 0 });
+    assert.strictEqual(beforeWrite('manifest.json').code, 2, 'and so is the project manifest');
+    assert.deepStrictEqual(beforeWrite(`${wu}/research/alpha.md`), { stdout: '', stderr: '', code: 0 }, 'the research the session writes next is in the layout');
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

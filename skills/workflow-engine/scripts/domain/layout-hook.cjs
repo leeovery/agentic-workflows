@@ -2,71 +2,64 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the layout hook — Claude Code's hook before Write, Edit and
-// NotebookEdit, which refuses Claude's own write to a file the engine alone
-// writes (5.4.2, 6.2, 16.13.2). Boot installs it in the project's settings
-// beside the session hooks (domain/session-label), so it holds with or
-// without the mod.
+// NotebookEdit, which refuses Claude's own write under `.leeway/` outside the
+// layout, and to a file the engine alone writes (5.4.2, 6.2, 16.13.2). Boot
+// installs it in the project's settings beside the session hooks
+// (domain/session-label), so it holds with or without the mod.
 //
-// What it refuses is `REFUSALS`, read against the target as a path in the
-// state of the project the target itself is in — whatever project the
-// conversation sits in — the target landing where Claude Code's tool would
-// write it (kernel/state-root, `resolvedPath`): its `..` read from the text,
-// its links followed, a code worktree's path into the main checkout's state
-// among them. At user level it refuses, in the system config directory,
-// every file whose bytes reach the trust log — the log and its lock, and
-// each conversation's file of events waiting for it and that file's lock;
-// each conversation's two files a gate event is built from, the gate shown
-// and the gate mod's last press, which the mod writes by no tool of
-// Claude's (gate.cjs); each conversation's sealed raises, which hold
-// Claude's lean before the person answers (raise.cjs); every file in each
-// conversation's briefs, which the hook before Agent and SendMessage hands
-// over as issued (brief-guard.cjs), and that hook's refusals; the settings
-// file and the record of the person; and in each project folder of Claude
-// Code's projects directory, the files of its own the trust log reads the
-// model from (conversation.cjs): a conversation's transcript, and a
-// subagent's transcript and its record. Those it judges by the names
-// the target is written with, below the nearest folder above it that is the
-// guarded directory, read with its `..` from the text as the engine joins
-// names to it: the same folder on disk, however it is named — through a
-// link, a firmlink or in another case — or, before the directory is made,
-// one that would be made where it would. No other folder is read. A write
-// named through a link below the directory — a conversation's folder that
-// is one among them — is refused by its names. A write that reaches a
-// refused file under other names — at the place such a link leads, through
-// a link from outside that leads in, or through a link below the directory
-// that leads back to it, where the names start again — is not seen, as a
-// write by Bash is not, and passes. Every other write is allowed — the rest
-// of Claude Code's project folders, their memory among it — and so is every
-// write in a project with no state but those at user level. Where the
-// filesystem the target lands on ignores case, names are compared in lower
-// case (`toLowerCase`), so a refused file's name in another case is refused
-// as it is; a name that filesystem folds to a refused one some other way —
-// `ſ` for `s` on APFS — is not seen, as a write by Bash is not, and passes.
+// In the state it refuses a path the layout has no place for, and a file
+// only the engine writes, naming the verb that writes it where one does
+// (layout.cjs). It reads the target as a path in the state of the project
+// the target itself is in — whatever project the conversation sits in —
+// landing where Claude Code's tool would write it (kernel/state-root,
+// `resolvedPath`): its `..` read from the text, its links followed, a code
+// worktree's path into the main checkout's state among them. At user level
+// it refuses, in the system config directory, every file whose bytes reach
+// the trust log — the log and its lock, and each conversation's file of
+// events waiting for it and that file's lock; each conversation's two files
+// a gate event is built from, the gate shown and the gate mod's last press,
+// which the mod writes by no tool of Claude's (gate.cjs); each
+// conversation's sealed raises, which hold Claude's lean before the person
+// answers (raise.cjs); every file in each conversation's briefs, which the
+// hook before Agent and SendMessage hands over as issued (brief-guard.cjs),
+// and that hook's refusals; the settings file and the record of the person;
+// and in each project folder of Claude Code's projects directory, the files
+// of its own the trust log reads the model from (conversation.cjs): a
+// conversation's transcript, and a subagent's transcript and its record.
+// Those it judges by the names the target is written with, below the
+// nearest folder above it that is the guarded directory, read with its `..`
+// from the text as the engine joins names to it: the same folder on disk,
+// however it is named — through a link, a firmlink or in another case — or,
+// before the directory is made, one that would be made where it would. No
+// other folder is read. A write named through a link below the directory —
+// a conversation's folder that is one among them — is refused by its names.
+// A write that reaches a refused file under other names — at the place such
+// a link leads, through a link from outside that leads in, or through a
+// link below the directory that leads back to it, where the names start
+// again — is not seen, as a write by Bash is not, and passes. Every other
+// write outside the state is allowed — the rest of Claude Code's project
+// folders, their memory among it — and so is every write in a project with
+// no state but those at user level. Where the filesystem the target lands
+// on ignores case, names are compared in lower case (`toLowerCase`), so a
+// refused file's name in another case is refused as it is, and a place in
+// the layout named in another case is that place; a name that filesystem
+// folds to a refused one some other way — `ſ` for `s` on APFS — is not
+// seen, as a write by Bash is not, and passes.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { findStateRoot, stateRelative, resolvedPath, ignoresCase } = require('../kernel/state-root.cjs');
+const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath, ignoresCase } = require('../kernel/state-root.cjs');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { LEDGER } = require('./ledger-events.cjs');
 const { TRUST_LOG, PENDING } = require('./trust-log.cjs');
 const { SHOWN, PRESSED, RAISE_SHOWN } = require('./gate.cjs');
 const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
 const { BRIEFS, BRIEF_REFUSALS } = require('./brief-names.cjs');
+const { AS_WRITTEN, IN_LOWER_CASE, layoutPlace } = require('./layout.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
-
-/**
- * Each refusal: whether it takes a path in the state, named from the state
- * root, and the reason Claude is given. `fold` spells a name as the target's
- * path is spelled — in lower case where the filesystem ignores case.
- * @type {readonly {refuses: (rel: string, fold: (name: string) => string) => boolean, reason: string}[]}
- */
-const REFUSALS = Object.freeze([
-  { refuses: (rel, fold) => rel === fold(LEDGER), reason: `the ledger (${LEDGER}) changes only through the engine's commands` },
-]);
 
 /**
  * Each file at user level the hook refuses: its name, the folder it sits
@@ -119,7 +112,7 @@ function nearestFolder(abs) {
  * @param {string} folder @returns {(name: string) => string}
  */
 function folding(folder) {
-  return ignoresCase(folder) ? (name) => name.toLowerCase() : (name) => name;
+  return ignoresCase(folder) ? IN_LOWER_CASE : AS_WRITTEN;
 }
 
 /** The folder or file at `at` on disk, by device and inode; null where none is. @param {string} at */
@@ -215,9 +208,23 @@ function claudeRefusal(file, fold) {
 }
 
 /**
+ * Why the hook refuses a write to the state-relative `rel`, or null where
+ * the layout has a place for it that is not the engine's alone.
+ * @param {string} rel @param {(name: string) => string} fold
+ * @returns {string|null}
+ */
+function placeRefusal(rel, fold) {
+  const at = layoutPlace(rel, fold);
+  if (at === null) return `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
+  if (at.kind !== 'engine') return null;
+  return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
+}
+
+/**
  * Why the hook refuses a write to `file` in a project's state, or null
- * where it allows it: a write outside any state, one in a state no refusal
- * takes, or any write in a project with no state.
+ * where it allows it: a write outside any state, one to a place in the
+ * layout that is not the engine's alone, or any write in a project with no
+ * state.
  * @param {string} file resolved
  * @returns {string|null}
  */
@@ -225,11 +232,8 @@ function stateRefusal(file) {
   const from = nearestFolder(file);
   const root = findStateRoot(from);
   if (root === null) return null;
-  const fold = folding(root);
   const rel = stateRelative(from, file);
-  if (rel === null) return null;
-  const refusal = REFUSALS.find(({ refuses }) => refuses(fold(rel), fold));
-  return refusal ? refusal.reason : null;
+  return rel === null ? null : placeRefusal(rel, folding(root));
 }
 
 /**
@@ -247,4 +251,4 @@ function layoutRefusal(cwd, input) {
   return userRefusal(written, fold) ?? briefRefusal(written, fold) ?? claudeRefusal(written, fold) ?? stateRefusal(landed);
 }
 
-module.exports = { LAYOUT_HOOK_TOOLS, layoutRefusal };
+module.exports = { LAYOUT_HOOK_TOOLS, layoutRefusal, userFiles };
