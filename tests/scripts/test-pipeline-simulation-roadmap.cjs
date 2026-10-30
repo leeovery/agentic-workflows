@@ -194,12 +194,12 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap');
 
     // A product session that deepens pulled ground flags across the join —
-    // a signal on the live phase item, never a rewrite.
+    // a signal on the live research, never a rewrite, and never on the
+    // discussion, whose conversation reads no flag.
     sim.run(['topic', 'start', 'mvp', 'discussion', 'guest-ordering']);
     const flag = sim.run(['roadmap', 'flag', 'guest-ordering']);
-    assert.deepStrictEqual(flag.flagged, [{ phase: 'discussion', topic: 'guest-ordering' }]);
-    assert.strictEqual(sim.manifest('mvp').phases.discussion.items['guest-ordering'].reconcile_needed, 'roadmap');
-    sim.run(['manifest', 'delete', 'mvp.discussion.guest-ordering', 'reconcile_needed']);
+    assert.deepStrictEqual([flag.flagged, flag.committed], [[], null]);
+    assert.strictEqual(sim.manifest('mvp').phases.discussion.items['guest-ordering'].reconcile_needed, undefined);
 
     // The cancel-revert hop: cancelling the joined topic hands the item back
     // to waiting; reactivation does NOT re-join (the revert is one-way — a

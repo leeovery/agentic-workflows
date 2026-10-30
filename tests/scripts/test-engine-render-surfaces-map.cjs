@@ -53,7 +53,7 @@ const world = fixtureFrom('map-', (dir) => {
   decideIn(dir, askIn(dir, 'How does first run open?'), { ...PERSON, text: 'The tour first.' });
   decideIn(dir, askIn(dir, 'Is pricing mentioned?'), { ...MADE, text: 'No price line anywhere in first run.' });
   decideIn(dir, askIn(dir, 'Which corner does a note open in?'), { ...MADE, given: 'your-call', text: 'Top left.' });
-  decideIn(dir, askIn(dir, 'Does a note dim when idle?'), { ...MADE, given: 'carried', text: 'After a minute.' });
+  ledgerHelpers(() => dir).carriedOver(NOTE, askIn(dir, 'Does a note dim when idle?'), 'After a minute.');
   writeIn(dir, 'move', NOTE, ['--question', askIn(dir, 'Where does a space keep its notes?'), '--to', 'space-homing'], MADE);
   createManifest(dir, UNIT, {
     work_type: 'epic',
