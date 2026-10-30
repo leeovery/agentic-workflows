@@ -61,6 +61,7 @@ const { conversationDir } = require('./conversation.cjs');
 const { idFrom } = require('./ledger-ids.cjs');
 const { gateShown, gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
 const { record } = require('./trust-log.cjs');
+const { SHOWN, RAISE_SHOWN, PRESSED } = require('./user-files.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */
@@ -77,11 +78,6 @@ const { record } = require('./trust-log.cjs');
  */
 /** @typedef {{pick: string} | {typed: string|null}} Answer */
 
-const SHOWN = 'gate-shown.json';
-// The raises a conversation was drawn, sealed (raise.cjs).
-const RAISE_SHOWN = 'raise-shown.json';
-// The gate mod's record of its last press (conversation.cjs).
-const PRESSED = 'pressed.json';
 const ENTRY_SEPARATOR = ' — ';
 const RAISE = 'raise';
 

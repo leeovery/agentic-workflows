@@ -92,9 +92,8 @@ const { idsOf } = require('./ledger-check.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { MODEL, SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
+const { TRUST_LOG, PENDING } = require('./user-files.cjs');
 
-const TRUST_LOG = 'trust.jsonl';
-const PENDING = 'trust-pending.jsonl';
 // The version of a kept line's own shape: what it awaits, beside its event.
 const KEPT_VERSION = 1;
 const NEWLINE = 0x0a;

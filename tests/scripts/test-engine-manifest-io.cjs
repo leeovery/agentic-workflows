@@ -593,6 +593,7 @@ const EXEMPT_CALLS = [
   ['session', 'cleanup', 'sess-1'],
   ['session', 'resume', 'sess-1'],
   ['layout', 'guard'],
+  ['shell', 'guard'],
   ['brief', 'guard'],
   ['render', 'migration-gate'],
   ['gate', 'migration gate', '--pick', 'y'],

@@ -128,6 +128,28 @@ function safeId(sessionId) {
   return sessionId.replace(/[^A-Za-z0-9_-]/g, '');
 }
 
+/** Where a conversation keeps its position (position.cjs). @param {string} sessionId */
+function positionPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'position.json');
+}
+
+/**
+ * The task in flight in the conversation `sessionId` — its unit and the
+ * task's `{phase}.{n}` — as its position records it; null where none is, or
+ * the position cannot be read. The one read of the position that loads
+ * nothing of position.cjs's, for the hook before Bash, which stands before
+ * every shell command (shell-guard.cjs).
+ * @param {string} sessionId @returns {{unit: string, task: string}|null}
+ */
+function taskInFlight(sessionId) {
+  try {
+    const { name, task } = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
+    return typeof name === 'string' && typeof task === 'string' && task !== '' ? { unit: name, task } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Mark the calling conversation as one that runs the workflows — once, only
  * where Claude Code handed the command a session id, and only for a command
@@ -382,4 +404,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, taskInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };

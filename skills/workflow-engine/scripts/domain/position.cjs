@@ -37,7 +37,7 @@ const path = require('path');
 const { PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { conversationDir, isMarked, markConversation } = require('./conversation.cjs');
+const { positionPath, isMarked, markConversation } = require('./conversation.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment.cjs');
@@ -49,8 +49,6 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-
-const FILE = 'position.json';
 
 const COMPACTED = 'The conversation was just compacted.';
 
@@ -82,11 +80,6 @@ function isProjectPlace(name, phase) {
 /** Whether a value reads as an agent id. @param {unknown} value @returns {value is string} */
 function isAgentId(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value);
-}
-
-/** @param {string} sessionId */
-function positionPath(sessionId) {
-  return path.join(conversationDir(sessionId), FILE);
 }
 
 /**

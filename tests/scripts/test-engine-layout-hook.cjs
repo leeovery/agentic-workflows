@@ -18,14 +18,14 @@
 // bytes reach the trust log — the log, its lock, each conversation's file of
 // events waiting for it and that file's lock — the settings file and the
 // record of the person in the system config directory, from anywhere,
-// folders named with no letters among them (16.13.2); refuses a write to any
-// file in a conversation's briefs, and to the brief hook's refusals
-// (6.5.12); refuses a write to the files of Claude Code's own the trust log
-// reads the model from — a conversation's transcript, a subagent's
-// transcript and its record (16.4.4). Those are judged by the names the
-// target is written with below the nearest folder above it that is the
-// guarded directory — by a relative path, through `..`, through a link in
-// the guarded directory's own path or one below it, through macOS's
+// folders named with no letters among them (16.13.2); refuses a write to a
+// conversation's briefs, the folder or any file in it, and to the brief
+// hook's refusals (6.5.12); refuses a write to the files of Claude Code's
+// own the trust log reads the model from — a conversation's transcript, a
+// subagent's transcript and its record (16.4.4). Those are judged by the
+// names the target is written with below the nearest folder above it that
+// is the guarded directory — by a relative path, through `..`, through a
+// link in the guarded directory's own path or one below it, through macOS's
 // firmlink, in another case where the filesystem ignores case — and a write
 // that reaches one under other names, at the place a link leads or through
 // a link to the file, passes, as a write by Bash does. Everything else
@@ -360,7 +360,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     assert.deepStrictEqual(listed(), before, 'nothing made under /Users');
   });
 
-  it('every file in a conversation\'s briefs, at any depth there, is refused — Write and Edit, by a relative path, through `..`, through a link to the conversations folder, in another case where the filesystem ignores case — and a name beside them, or a briefs folder anywhere else, passes', () => {
+  it('every file in a conversation\'s briefs, at any depth there, and the folder itself, is refused — Write and Edit, by a relative path, through `..`, through a link to the conversations folder, in another case where the filesystem ignores case — and a name beside them, or a briefs folder anywhere else, passes', () => {
     const briefs = path.join(config, 'conversations', 'sess-1', 'briefs');
     fs.mkdirSync(briefs, { recursive: true });
     const reason = (/** @type {string} */ name) => `a brief a conversation issued (${name}) changes only through the engine's commands`;
@@ -375,6 +375,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
       assertRefusedInAnotherCase(guard(dir, path.join(config, 'conversations', 'sess-1', 'BRIEFS', name), inConfig), `${name} in another case`, reason(name));
     }
     assertRefused(guard(dir, path.join(briefs, 'deeper', 'b2.md'), inConfig), 'a file deeper in briefs/', reason('b2.md'));
+    assertRefused(guard(dir, briefs, inConfig), 'the briefs folder itself', 'a conversation\'s briefs (briefs/) change only through the engine\'s commands');
     for (const at of [path.join(config, 'conversations', 'sess-1', 'briefs.md'), path.join(config, 'conversations', 'briefs', 'b1.md'), path.join(config, 'briefs', 'b1.md'), path.join(root, layout.cache('briefs', 'b1.md')), path.join(dir, 'briefs', 'b1.md')]) {
       assertAllowed(guard(dir, at, inConfig), at);
     }

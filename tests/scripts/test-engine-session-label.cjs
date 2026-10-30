@@ -6,7 +6,7 @@
 // project-manifest opt-in and the hooks it syncs in the project's settings
 // (SessionEnd: `session cleanup` while labels are on, `presence cleanup` and
 // `conversation end` regardless; SessionStart: `session resume` while labels
-// are on; PreToolUse: the layout and brief hooks' groups regardless), the
+// are on; PreToolUse: the layout, brief and shell hooks' groups regardless), the
 // per-checkout stash, the arrival forms (a work unit alone, the
 // roadmap and baseline identities), phase-hop recomposition, peer-checkout
 // isolation, user-rename adoption, id drift across a server restart (chain
@@ -686,7 +686,7 @@ describe('syncSessionHooks', () => {
   const WORKFLOWS = { session: false, workflows: true };
   const NONE = { session: false, workflows: false };
 
-  it('installs the labels-on set into an absent settings file — one group per matcher, the SessionStart group matched to resume, the layout and brief groups under PreToolUse', () => {
+  it('installs the labels-on set into an absent settings file — one group per matcher, the SessionStart group matched to resume, the layout, brief and shell groups under PreToolUse', () => {
     assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
@@ -722,7 +722,7 @@ describe('syncSessionHooks', () => {
     });
   });
 
-  it('settings holding the layout group alone gain the brief group — ours stripped and landed one group per matcher, every foreign group and its matcher kept', () => {
+  it('settings holding the layout group alone gain the brief and shell groups — ours stripped and landed one group per matcher, every foreign group and its matcher kept, a foreign Bash group beside ours', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({
       hooks: {
@@ -756,9 +756,9 @@ describe('syncSessionHooks', () => {
     assert.strictEqual(settings().hooks.SessionStart.length, 1);
     // Hand-adjusted copies — a different path prefix, a timeout, ours split
     // across groups, a foreign group added after ours, a widened matcher,
-    // the PreToolUse groups swapped round a foreign one and one of ours
-    // sharing a foreign group — still make up the wanted set, so nothing is
-    // rewritten, twinned or moved.
+    // the PreToolUse groups swapped round a foreign one and ours sharing
+    // foreign groups, the shell hook a foreign Bash group's — still make up
+    // the wanted set, so nothing is rewritten, twinned or moved.
     writeSettings({
       hooks: {
         SessionEnd: [
@@ -771,7 +771,7 @@ describe('syncSessionHooks', () => {
         ],
         PreToolUse: [
           { matcher: 'SendMessage|Agent', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" brief guard', timeout: 5 }] },
-          { matcher: 'Bash', hooks: [{ type: 'command', command: 'say goodbye' }] },
+          { matcher: 'Bash', hooks: [{ type: 'command', command: 'say goodbye' }, { type: 'command', command: 'node "/abs/engine.cjs" shell guard', timeout: 5 }] },
           { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'echo first' }, { type: 'command', command: 'node "/abs/engine.cjs" layout guard', timeout: 5 }] },
         ],
       },
