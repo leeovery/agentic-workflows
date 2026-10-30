@@ -1752,12 +1752,10 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(awaitedExperiments(m, 'research', 'pay'), []);
     });
 
-    it('a linear type\'s waiting conversation routes to the experiment — research and discussion alike', () => {
-      for (const phase of ['research', 'discussion']) {
-        const r = computeNextPhase(waiting(phase));
-        assert.strictEqual(r.next_phase, 'experiment');
-        assert.strictEqual(r.phase_label, 'experiment (awaiting evidence)');
-      }
+    it('a linear type\'s waiting conversation routes to the experiment', () => {
+      const r = computeNextPhase(waiting('discussion'));
+      assert.strictEqual(r.next_phase, 'experiment');
+      assert.strictEqual(r.phase_label, 'experiment (awaiting evidence)');
     });
 
     it('the override is linear-work-types-only — an epic\'s next_phase stays phase-coarse', () => {
@@ -1769,13 +1767,13 @@ describe('reads + derivations', () => {
     });
 
     it('a released wait routes the linear type back to its conversation', () => {
-      const m = waiting('research');
-      delete m.phases.research.items.pay.awaiting_experiments;
+      const m = waiting('discussion');
+      delete m.phases.discussion.items.pay.awaiting_experiments;
       m.phases.experiment.items.pay.experiments.E1.status = 'concluded';
       m.phases.experiment.items.pay.status = 'completed';
       const r = computeNextPhase(m);
-      assert.strictEqual(r.next_phase, 'research');
-      assert.strictEqual(r.phase_label, 'research (in-progress)');
+      assert.strictEqual(r.next_phase, 'discussion');
+      assert.strictEqual(r.phase_label, 'discussion (in-progress)');
     });
 
     it('epic ladder: research in-progress is checked before the experiment slots', () => {
@@ -1801,16 +1799,16 @@ describe('reads + derivations', () => {
         name: 'lab', work_type: 'epic',
         phases: {
           discovery: { items: { timing: { routing: 'discussion', summary: 'Timing' } } },
-          research: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
-          discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+          research: { items: { timing: { status: 'in-progress' } } },
+          discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
         },
       };
       const row = buildDiscoveryMap(m, path.join(__dirname, '.no-such-workflows')).map.find((t) => t.name === 'timing');
       assert.deepStrictEqual(row.waits, [
-        { kind: 'experiment', id: 'E2' },
         { kind: 'research', status: 'in-progress' },
         { kind: 'experiment', id: 'E1' },
-      ], 'spawn-phase order, each holder\'s waits in the derivation\'s order');
+        { kind: 'experiment', id: 'E2' },
+      ], 'the discussion\'s waits in the derivation\'s order');
     });
 
     it('the map row names the unit a promoted discussion moved to, and no unit otherwise', () => {
@@ -2092,8 +2090,6 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(topicWaits(world({ status: 'unstarted' }, { status: 'in-progress' }), 'pay'),
         [{ kind: 'research', status: 'unstarted' }]);
       assert.deepStrictEqual(topicWaits(world({ status: 'unstarted' }, { status: 'completed', reconcile_needed: 'research' }), 'pay'), []);
-      assert.deepStrictEqual(topicWaits(world({ status: 'in-progress', awaiting_experiments: ['E1'] }, { status: 'cancelled' }), 'pay'),
-        [{ kind: 'experiment', id: 'E1' }]);
     });
   });
 

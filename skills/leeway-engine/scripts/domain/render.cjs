@@ -3080,8 +3080,8 @@ function resolvePhaseItem(cwd, dotpath, surface, phases, noun) {
 }
 
 /**
- * Resolve a conversation address — a research or discussion item, the two
- * phases that spawn experiments.
+ * Resolve a conversation address — a discussion item, the phase that spawns
+ * experiments.
  * @param {string} cwd @param {string} dotpath @param {string} surface
  * @returns {{phase: string, topic: string, manifest: object}}
  */

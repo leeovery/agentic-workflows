@@ -43,6 +43,7 @@ const { IMPORT_PHASES, isPlainName } = require('../kernel/manifest-schema.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { reaimAbsorbed } = require('./roadmap.cjs');
 const { mailboxDir, mailboxDepth } = require('./derivations.cjs');
+const { seriesDir } = require('./experiment-paths.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
@@ -260,7 +261,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (phaseItems(epicManifest, 'experiment')[topic]) {
         throw new Error(`experiment topic "${topic}" already exists in ${into} — pick a different name`);
       }
-      const experimentDest = statePath(cwd, into, 'experiment', topic);
+      const experimentDest = statePath(cwd, seriesDir(into, topic));
       if (fs.existsSync(experimentDest)) {
         throw new Error(`${experimentDest} already exists — pick a different name`);
       }
@@ -340,12 +341,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // The series directory moves whole — record dirs, data extracts, harness
     // scripts, nested sub-experiments. A series whose spawn crashed before
     // the problem statement landed may have no directory yet.
-    const seriesMoved = Boolean(experimentItem) && fs.existsSync(statePath(cwd, feature, 'experiment', feature));
+    const seriesFrom = seriesDir(feature, feature);
+    const seriesTo = seriesDir(into, topic);
+    const seriesMoved = Boolean(experimentItem) && fs.existsSync(statePath(cwd, seriesFrom));
     if (seriesMoved) {
-      fs.mkdirSync(statePath(cwd, into, 'experiment'), { recursive: true });
-      fs.renameSync(
-        statePath(cwd, feature, 'experiment', feature),
-        statePath(cwd, into, 'experiment', topic));
+      fs.mkdirSync(path.dirname(statePath(cwd, seriesTo)), { recursive: true });
+      fs.renameSync(statePath(cwd, seriesFrom), statePath(cwd, seriesTo));
     }
     if (mailboxPlan !== null) {
       fs.mkdirSync(path.dirname(statePath(cwd, mailboxPlan.dest)), { recursive: true });
@@ -359,7 +360,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     for (const move of researchPlan) relocations.push([`${feature}/research/${move.from}.md`, `${into}/research/${move.target}.md`]);
     for (const move of importPlan) relocations.push([`${feature}/imports/${move.basename}`, `${into}/imports/${move.dest}`]);
     for (const move of seedPlan) relocations.push([`${feature}/seeds/${move.basename}`, `${into}/seeds/${move.dest}`]);
-    if (seriesMoved) relocations.push([`${feature}/experiment/${feature}`, `${into}/experiment/${topic}`]);
+    if (seriesMoved) relocations.push([seriesFrom, seriesTo]);
     if (mailboxPlan !== null) relocations.push([mailboxPlan.from, mailboxPlan.dest]);
 
     // Epic manifest: phase items mirror the feature's statuses; tracked
@@ -474,7 +475,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     warnings,
   };
   if (experimentMove) {
-    result.experiment = { path: statePath(cwd, into, 'experiment', topic), status: experimentMove.status, experiments: experimentMove.ids };
+    result.experiment = { path: statePath(cwd, seriesDir(into, topic)), status: experimentMove.status, experiments: experimentMove.ids };
   }
   if (mailboxMove !== null) result.mail_moved = { path: statePath(cwd, mailboxMove.dest), count: mailboxMove.count };
   if (roadmap.reaimed.length > 0) result.roadmap_reaimed = roadmap.reaimed;

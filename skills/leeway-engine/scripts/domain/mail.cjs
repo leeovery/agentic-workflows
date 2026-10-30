@@ -9,7 +9,9 @@
 // - `topic send <unit> <topic> --from <sender> --content <file> --slug
 //   <kebab>` lands a message, the scratch it was written to consumed. The
 //   sender is a name, never text: a topic of the unit, `{unit}.{topic}` for
-//   another unit's topic, or an experiment of the target topic. It takes the next
+//   another unit's topic, or an experiment of the unit — `E{n}` of the
+//   target topic's series, `{topic}/E{n}` of another topic's, where the
+//   person moved its question (9.1.11). It takes the next
 //   number under the writer lock, so a send racing another takes the one
 //   after it, and parks the topic's conversation as a landing does: created
 //   not started where absent, set back in progress where decided (10.2.7),
@@ -75,23 +77,45 @@ function bodyOf(text) {
 }
 
 /**
- * How the waiting mail titles a message's sender — a topic of the unit, a
- * topic of another unit as `{unit}.{topic}`, or an experiment of the target
- * topic — refused where `from` names none of them.
+ * How the waiting mail titles an experiment sender: `E{n}` in the target
+ * topic's series, `{topic}/E{n}` in another topic's of the unit; null where
+ * `from` names no experiment the series holds, or the target's own by its
+ * topic.
+ * @param {Record<string, any>} manifest @param {string} topic @param {string} from
+ * @returns {string|null}
+ */
+function experimentSender(manifest, topic, from) {
+  const slash = from.indexOf('/');
+  const [series, id] = slash === -1 ? [topic, from] : [from.slice(0, slash), from.slice(slash + 1)];
+  if (!EXPERIMENT_ID_PATTERN.test(id) || (slash !== -1 && series === topic)) return null;
+  if (manifest.phases?.experiment?.items?.[series]?.experiments?.[id] === undefined) return null;
+  return series === topic ? `Experiment ${id}` : `Experiment ${id}, on ${titlecase(series)}`;
+}
+
+/**
+ * How the waiting mail titles a topic sender: a topic of the unit, or
+ * `{unit}.{topic}` of another; null where `from` names no topic held.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} from
+ * @returns {string|null}
+ */
+function topicSender(cwd, manifest, from) {
+  const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
+  const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
+  if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsTopic(sender, held)) return null;
+  return unit === manifest.name || held === unit ? titlecase(held) : `${titlecase(held)}, on ${titlecase(unit)}`;
+}
+
+/**
+ * How the waiting mail titles a message's sender, refused where `from`
+ * names neither an experiment nor a topic it takes.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} from
  */
 function senderTitle(cwd, manifest, topic, from) {
-  if (EXPERIMENT_ID_PATTERN.test(from)) {
-    if (manifest.phases?.experiment?.items?.[topic]?.experiments?.[from] !== undefined) return `Experiment ${from}`;
-  } else {
-    const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
-    const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
-    if (sender && rest.length === 0 && illegalNameReason('topic', held) === null && holdsTopic(sender, held)) {
-      if (unit === manifest.name || held === unit) return titlecase(held);
-      return `${titlecase(held)}, on ${titlecase(unit)}`;
-    }
+  const title = experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
+  if (title === null) {
+    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name}, {unit}.{topic} for another unit's topic, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
   }
-  throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name}, {unit}.{topic} for another unit's topic, or an experiment of ${topic}`);
+  return title;
 }
 
 /** A message as it lands in a mailbox: its title, the line saying who sent it and when, then the rest. @param {string} content @param {string} sender */

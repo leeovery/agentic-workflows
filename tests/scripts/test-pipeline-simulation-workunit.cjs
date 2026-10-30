@@ -145,7 +145,7 @@ describe('pipeline simulation: workunit', () => {
       'the series travels whole — records and derived status intact');
     assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'],
       'the evidence wait rides the moved discussion item');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'experiment', 'stray-topic', 'E1-cutover-cost', 'problem.md')),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'experiments', 'E1-cutover-cost', 'problem.md')),
       'the record directory moved under the topic name');
     sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
     assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),

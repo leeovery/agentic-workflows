@@ -2092,7 +2092,7 @@ describe('engine usage banner', () => {
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
       'topic cancel <work-unit> <discovery|specification> <topic>',
       'topic reactivate <work-unit> <discovery|specification> <topic>',
-      'experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)',
+      'experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)',
       'experiment advance <work-unit> <topic> <id>',
       'experiment approve <work-unit> <topic> <id>',
       'experiment conclude <work-unit> <topic> <id> --verdict <one line>',
@@ -2413,13 +2413,10 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
       /^discussion "refund-policy" awaits research on the topic/);
   });
 
-  it('a released evidence wait refuses the same way — discussion and research alike', () => {
+  it('a released evidence wait refuses the same way', () => {
     withItem('discussion', 'refund-policy', { reconcile_needed: 'experiment' });
     assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
       'discussion "refund-policy" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding');
-    withItem('research', 'auth-flow', { reconcile_needed: 'experiment' });
-    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).error,
-      'research "auth-flow" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding');
   });
 
   it('the session\'s read releases it: clearing the flag lets the conclusion pass', () => {
