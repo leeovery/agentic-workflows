@@ -357,6 +357,16 @@ function movedTo(folded, move) {
 }
 
 /**
+ * The topics the live moves `unit` made of the question `id` is a wording
+ * of took it to, in the ledger's order — a move to the roadmap none.
+ * @param {Folded} folded @param {string} id @param {string} unit
+ * @returns {string[]}
+ */
+function movedToBy(folded, id, unit) {
+  return liveMovesBy(folded, factsOf(folded, id).root, unit).map((move) => movedTo(folded, move)).filter((to) => to !== null);
+}
+
+/**
  * The unit and topic `id` was made on: the ones it was written on, but a
  * question's wording, made on the topic the last live move its unit made of
  * the question to a topic took it to, where there is one (5.3.3).
@@ -364,9 +374,8 @@ function movedTo(folded, move) {
  * @returns {Standing}
  */
 function madeOn(folded, id) {
-  const { unit, topic, root } = factsOf(folded, id);
-  const to = liveMovesBy(folded, root, unit).map((move) => movedTo(folded, move)).filter((moved) => moved !== null).at(-1);
-  return { unit, topic: to ?? topic };
+  const { unit, topic } = factsOf(folded, id);
+  return { unit, topic: movedToBy(folded, id, unit).at(-1) ?? topic };
 }
 
 /**
@@ -1057,4 +1066,5 @@ function productOf(folded) {
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
   keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf,
+  movedToBy,
 };
