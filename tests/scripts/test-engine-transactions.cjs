@@ -2086,7 +2086,7 @@ describe('engine usage banner', () => {
       'topic start <work-unit> <phase> <topic>',
       'topic send <work-unit> <topic> --content <file> --slug <kebab>',
       'topic mailbox <work-unit> <topic>',
-      'topic answered <work-unit> <topic> <NNN> --entry <id>',
+      'topic answered <work-unit> <topic> <NNN-slug> --entry <id>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',

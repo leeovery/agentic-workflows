@@ -431,8 +431,10 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
  * `in-progress` item untouched, and set a `completed` item back to
  * `in-progress` (a landed message reopens the conversation; no
  * knowledge-base action — re-completion re-indexes over the same identity).
- * Terminal states refuse with the same messages start uses. Mutates `items`;
- * the caller saves when `dirty`.
+ * A cancelled item refuses as start refuses it; a promoted one never reaches
+ * here, refused with its topic first (topic-standing.cjs), and a phase a
+ * message waits in has no superseding. Mutates `items`; the caller saves
+ * when `dirty`.
  * @param {Record<string, any>} items the phase's items container
  * @param {string} phase
  * @param {string} topic
@@ -447,13 +449,6 @@ function parkMessageItem(items, phase, topic) {
   const before = existing.status ?? null;
   if (before === 'cancelled') {
     throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-  }
-  if (before === 'superseded') {
-    const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
-    throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
-  }
-  if (before === 'promoted') {
-    throw new Error(promotedRefusal(phase, topic, existing));
   }
   if (before === 'completed') {
     existing.status = 'in-progress';

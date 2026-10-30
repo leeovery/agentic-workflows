@@ -125,7 +125,7 @@ describe('pipeline simulation: epic', () => {
     enterEntry(sim, wu, 'discussion', 'alpha');
     assert.match(sim.sections, /^=== DISPLAY: waiting mail [^\n]*\n1 message waiting — raised before anything else\n\na-decision\n/);
     const raised = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a-decision change alpha?' }));
-    assert.strictEqual(sim.run(['topic', 'answered', wu, 'alpha', '001', '--entry', raised.id]).remaining, 0);
+    assert.strictEqual(sim.run(['topic', 'answered', wu, 'alpha', '001-a-decision', '--entry', raised.id]).remaining, 0);
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion*']]);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
@@ -136,7 +136,7 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
     const lateQuestion = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does the late call hold?' }));
-    sim.run(['topic', 'answered', wu, 'alpha', '001', '--entry', lateQuestion.id]);
+    sim.run(['topic', 'answered', wu, 'alpha', '001-late-call', '--entry', lateQuestion.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
     // A concluded discussion is held while its research reopens beneath it:

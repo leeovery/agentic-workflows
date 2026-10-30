@@ -470,9 +470,9 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
   render walkthrough-home
-  render send-report <work-unit>.<topic> --sent <path>
   render walkthrough-topics
   render walkthrough-topic --name <slug> [--menu-only]
+  render send-report <work-unit>.<topic> --sent <path>
   render migrations-applied --file <payload.json>
   render migration-gate
   render state-lost-gate
@@ -1224,9 +1224,9 @@ function runTopic(call, argv) {
     }
     if (command === 'answered') {
       const { opts, positional } = parseArgs(rest);
-      const [workUnit, topic, number] = positional;
+      const [workUnit, topic, message] = positional;
       if (!workUnit || !topic || positional.length !== 3) throw new Error(`Usage: engine ${ANSWERED_USAGE}`);
-      const answered = answerMessage(call.cwd, workUnit, topic, number, { entry: opts.entry });
+      const answered = answerMessage(call.cwd, workUnit, topic, message, { entry: opts.entry });
       const phase = mailPhaseOf(call.cwd, workUnit);
       if (phase !== null) beatQuietly(call.cwd, workUnit, phase, topic);
       respond(call, answered);

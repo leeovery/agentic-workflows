@@ -1296,7 +1296,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     commitAll(dir, 'a delivered message');
     const question = ok(dir, ['ledger', 'ask', 'payments.discussion.topic-a'], { env: me, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'First?' }) }).id;
     assert.ok(!beaten('discussion', 'topic-a'), 'the question itself beats nothing');
-    ok(dir, ['topic', 'answered', 'payments', 'topic-a', '001', '--entry', question], { env: me });
+    ok(dir, ['topic', 'answered', 'payments', 'topic-a', '001-first', '--entry', question], { env: me });
     assert.ok(beaten('discussion', 'topic-a'), 'answering a message is the session\'s work on its own topic');
 
     // The per-turn mailbox poll on the session's own topic is turn coverage:
@@ -1715,7 +1715,7 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
   });
 
-  it('a foreign-topic tail prescribes a retry that beats no more than the verb did', () => {
+  it('a foreign-topic tail prescribes a retry in the target\'s scope, as a sweep that beats no more than the verb did, and the retry commits what it left', () => {
     // The notes are contract surface: a session follows the command verbatim,
     // so a delivery's retry must carry the same suppression the delivery has.
     writeState(dir, layout.cache('scratch', 'c.md'), 'Q\n');
@@ -1723,7 +1723,10 @@ describe('commit door: transaction-tail degrade', () => {
     const delivered = ok(dir, ['topic', 'send', 'payments', 'topic-b',
       '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q']);
     assert.strictEqual(delivered.committed, null);
-    assert.match(delivered.note, /retry with: engine commit payments --state -m /, 'the delivery\'s retry names no topic, so it never beats the target');
+    assert.match(delivered.note, /retry with: engine commit payments --topic discussion\/topic-b --sweep -m /, 'the delivery\'s retry is a sweep of the target, so it never beats it');
+    fs.unlinkSync(path.join(dir, '.git/refs/heads/leeway-state.lock'));
+    ok(dir, ['commit', 'payments', '--topic', 'discussion/topic-b', '--sweep', '-m', 'the retry']);
+    assert.deepStrictEqual(headFiles(dir), [layout.mailbox('payments', 'topic-b', '001-q.md')]);
   });
 
   it('every narrowed tail prescribes its own scope, never a work-unit sweep', () => {

@@ -128,10 +128,10 @@ function assertFresh(manifest, name, verbPhrase) {
   if (lifecycle === 'fresh' && phaseWork.length === 0) return;
   if (lifecycle === 'fresh') {
     // All-unstarted phase work is not history — it is messages waiting in
-    // the topic's mailbox to drain. Name that instead of the historical-anchor message.
+    // the topic's mailbox. Name that instead of the historical-anchor message.
     if (phaseWork.every((it) => it.status === 'unstarted')) {
       throw new Error(
-        `"${name}" can't be ${verbPhrase} — messages wait in its mailbox; start the topic to drain them, or cancel from the epic menu`,
+        `"${name}" can't be ${verbPhrase} — messages wait in its mailbox; open the topic to answer them, or cancel from the epic menu`,
       );
     }
     throw new Error(

@@ -159,7 +159,7 @@ A recorded status — render nothing.
 
 ### Step 0.7: Direct Open
 
-This skill receives two optional positional arguments: `$0`, a work unit, held as `{work_unit}`, and `$1`, one of its topics, held as `{topic}`. Given both, the person typed `/leeway {work_unit} {topic}` to open that topic directly, as picking it from the menus would.
+This skill receives two optional positional arguments — one not given is unset, whatever an earlier skill in this conversation held under the same name: `$0`, a work unit, held as `{work_unit}`, and `$1`, one of its topics, held as `{topic}`. Given both, the person typed `/leeway {work_unit} {topic}` to open that topic directly, as picking it from the menus would.
 
 #### If `$0` and `$1` are given
 

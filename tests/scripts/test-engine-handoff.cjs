@@ -255,7 +255,23 @@ describe('engine handoff — announced and unannounced', () => {
 
 describe('engine handoff topic — a topic opened by its unit and name, as /leeway {unit} {topic} opens it (10.3.1, 10.S2)', () => {
   let dir;
-  beforeEach(() => { dir = seed(); });
+  /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
+  const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery', ...marks });
+  beforeEach(() => {
+    dir = seed();
+    createManifest(dir, 'fumi', {
+      work_type: 'epic',
+      phases: {
+        discovery: {
+          items: {
+            commercialization: row(1), sync: row(2), export: row(3), removal: row(4, { cancelled: true }),
+            widgets: row(5, { postponed: true }), 'dead-end': row(6, { handled: true }),
+          },
+        },
+        discussion: { items: { sync: { status: 'completed' }, export: { status: 'promoted', promoted_to: 'portability' }, removal: { status: 'cancelled' }, widgets: { status: 'postponed' } } },
+      },
+    });
+  });
   afterEach(() => cleanupFixture(dir));
 
   it('hands off into the conversation the topic is talked through, as the menus\' route does, the work type read from the unit — an epic\'s topic or a feature\'s own in discussion, a bugfix\'s in investigation', () => {
@@ -265,11 +281,36 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });
 
-  it('refuses a call of another shape, a unit the project lacks, and a work type talked through in no conversation', () => {
+  it('refuses a call of another shape, and a quick-fix, which has no topics to open, in words a person reads', () => {
     createManifest(dir, 'typo', { work_type: 'quick-fix' });
     refused(dir, ['topic', 'fumi'], /^Usage: engine handoff topic <work-unit> <topic>$/);
-    refused(dir, ['topic', 'nowhere', 'any'], /^work unit "nowhere" not found$/);
-    refused(dir, ['topic', 'typo', 'typo'], /^the work type must be one of epic\|feature\|cross-cutting — got "quick-fix"$/);
+    refused(dir, ['topic', 'typo', 'typo'], /^typo is a quick-fix, with no topics to open by name — it carries on from the start menu$/);
+  });
+
+  it('refuses, before anything travels, what the topic\'s entry refuses, by its rule: a unit the project lacks, one cancelled or completed, one past its spec, a topic the unit lacks, and one cancelled, postponed, promoted, closed as a dead end or decided', () => {
+    createManifest(dir, 'retired', { status: 'cancelled' });
+    createManifest(dir, 'shipped', { status: 'completed' });
+    createManifest(dir, 'specced');
+    createFile(dir, '.leeway/specced/spec.md', '# Spec\n');
+    const cases = [
+      [['nowhere', 'any'], 'there is no work unit "nowhere" — the start menu lists the work in progress'],
+      [['retired', 'retired'], 'retired is cancelled — reactivating it comes first'],
+      [['shipped', 'shipped'], 'shipped is completed — new work starts from the start menu'],
+      [['specced', 'specced'], 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here'],
+      [['fumi', 'comercialization'], 'fumi has no topic "comercialization" — the epic\'s map holds its topics, and a new one comes through its discovery'],
+      [['fumi', 'removal'], 'the topic "removal" is cancelled — reactivating it goes through the epic menu\'s discovery row'],
+      [['fumi', 'widgets'], 'the topic "widgets" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back'],
+      [['fumi', 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
+      [['fumi', 'dead-end'], 'the topic "dead-end" is closed as a dead end — reopening it goes through the epic menu\'s discovery row'],
+      [['fumi', 'sync'], 'the topic "sync" is decided — it reopens through a message sent to it, or through the epic menu\'s discovery row'],
+    ];
+    assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'topic', ...args]).error), cases.map(([, error]) => error));
+  });
+
+  it('refuses a bugfix\'s topic once its spec is written, the investigation behind it', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix' });
+    createFile(dir, '.leeway/crash/spec.md', '# Spec\n');
+    refused(dir, ['topic', 'crash', 'crash'], /^crash has its spec — a topic exists only before it/);
   });
 });
 

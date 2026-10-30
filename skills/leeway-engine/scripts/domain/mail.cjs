@@ -14,12 +14,20 @@
 //   topic is left as it stands, the message waiting in its mailbox for its
 //   return (10.1.8). A message to a cancelled topic, or a cancelled unit's,
 //   goes to the inbox as an idea instead, its first line the title (10.1.6,
-//   10.1.8). Each send commits what it wrote.
+//   10.1.8). Any other target the entry would refuse is refused, by the
+//   entry's own rule (topic-standing.cjs), the scratch kept: a unit not in
+//   progress, a topic it lacks or has closed, and any topic once the unit
+//   has its spec, from which a change is settled where it is found (10.2.2).
+//   Each send commits what it wrote.
 // - `topic mailbox <unit> <topic>` lists what waits, lock-free, for the
 //   conversation's loop to raise (10.1.5).
-// - `topic answered <unit> <topic> <NNN> --entry <id>` removes a message
-//   once the topic holds the question it raised (5.3.8): the entry a
-//   question standing on this topic. Git keeps the file.
+// - `topic answered <unit> <topic> <NNN-slug> --entry <id>` removes a
+//   message, named whole since a number comes back once the highest is
+//   answered, once the topic holds the question it raised (5.3.8): the entry
+//   a question raised on this topic, wherever it stands since; the unit in
+//   progress, as for any work on it. Git keeps the file.
+// A commit a send to the mailbox or a removal leaves pending is retried in
+// the topic's scope as a sweep, which takes no hold on the topic.
 // The send report and the waiting mail are drawn by projections/mail.cjs.
 // ---------------------------------------------------------------------------
 
@@ -32,15 +40,16 @@ const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
-const { hasTopic, liveness, manifestOf } = require('./ledger-units.cjs');
-const { ID_FACTS, foldLedger, standingOf } = require('./ledger-fold.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
+const { assertInProgress, topicClosure } = require('./topic-standing.cjs');
 const { resolveId, shortId } = require('./ledger-ids.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { sendReport } = require('./projections/mail.cjs');
 
 const SEND_USAGE = 'topic send <work-unit> <topic> --content <file> --slug <kebab>';
 const MAILBOX_USAGE = 'topic mailbox <work-unit> <topic>';
-const ANSWERED_USAGE = 'topic answered <work-unit> <topic> <NNN> --entry <id>';
+const ANSWERED_USAGE = 'topic answered <work-unit> <topic> <NNN-slug> --entry <id>';
 
 /** Where a cancelled topic's mail goes: the inbox's ideas (10.1.6). */
 const INBOX_IDEAS = '.inbox/ideas';
@@ -85,12 +94,6 @@ function unitManifest(cwd, unit) {
   return manifest;
 }
 
-/** Refuses a topic the unit does not hold. @param {Record<string, any>} manifest @param {string} topic */
-function assertUnitTopic(manifest, topic) {
-  const own = topic === manifest.name && manifest.work_type !== 'epic';
-  if (!own && !hasTopic(manifest, topic)) throw new Error(`${manifest.name} has no topic "${topic}" — a message goes to a topic the unit holds`);
-}
-
 /** A topic's next message number, three digits or more. @param {string} cwd @param {string} unit @param {string} topic */
 function nextNumber(cwd, unit, topic) {
   const taken = mailboxFiles(stateRoot(cwd), unit, topic).map((name) => Number(/^(\d+)-/.exec(name)?.[1] ?? 0));
@@ -120,18 +123,20 @@ function toInbox(cwd, unit, topic, content, slug) {
   return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${topic} is cancelled`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
 }
 
+/** The scope a pending commit on a topic's mailbox is retried in. @param {string} unit @param {string|null} phase @param {string} topic */
+function mailboxRetry(unit, phase, topic) {
+  return `${unit} --topic ${phase}/${topic} --sweep`;
+}
+
 /**
  * A message landed in the topic's mailbox, the topic's conversation parked
  * as a landing parks it — a postponed topic left as it stands.
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} content @param {string} slug
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} phase @param {string} topic @param {string} content @param {string} slug
  * @returns {Landed}
  */
-function toMailbox(cwd, manifest, topic, content, slug) {
+function toMailbox(cwd, manifest, phase, topic, content, slug) {
   const unit = manifest.name;
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle === 'handled') throw new Error(`"${topic}" is closed as a dead end — reopen it in discovery first`);
-  const phase = mailPhase(manifest.work_type);
-  if (phase === null) throw new Error(`a ${manifest.work_type} has no conversation for a message to wait in`);
   /** @type {Record<string, unknown>} */
   const fields = {};
   if (lifecycle !== 'postponed') {
@@ -149,9 +154,26 @@ function toMailbox(cwd, manifest, topic, content, slug) {
   fs.mkdirSync(statePath(cwd, mailboxDir(unit, topic)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), content);
   return {
-    rel, paths: [`${unit}/manifest.json`, rel], message: `mail(${unit}): send ${name} to ${topic}`, retry: `${unit} --state`,
+    rel, paths: [`${unit}/manifest.json`, rel], message: `mail(${unit}): send ${name} to ${topic}`, retry: mailboxRetry(unit, phase, topic),
     fields: { message_path: statePath(cwd, rel), ...fields },
   };
+}
+
+/**
+ * Where a message to a topic of a unit in progress lands: the inbox for a
+ * cancelled topic, else its mailbox — refused where the topic takes nothing.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} content @param {string} slug
+ * @returns {Landed}
+ */
+function toTopic(cwd, manifest, topic, content, slug) {
+  assertInProgress(manifest);
+  const phase = mailPhase(manifest.work_type);
+  if (phase === null) throw new Error(`a ${manifest.work_type} has no conversation for a message to wait in`);
+  const closure = topicClosure({ cwd, phase, unit: manifest.name, topic, manifest });
+  if (closure !== null) throw new Error(closure);
+  return computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled'
+    ? toInbox(cwd, manifest.name, topic, content, slug)
+    : toMailbox(cwd, manifest, phase, topic, content, slug);
 }
 
 /**
@@ -168,9 +190,7 @@ function sendMessage(cwd, unit, topic, { contentFile, slug }) {
   const { scratch, content } = messageIn(cwd, contentFile);
   const landed = withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
-    assertUnitTopic(manifest, topic);
-    const cancelled = manifest.status === 'cancelled' || computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled';
-    return cancelled ? toInbox(cwd, unit, topic, content, slug) : toMailbox(cwd, manifest, topic, content, slug);
+    return manifest.status === 'cancelled' ? toInbox(cwd, unit, topic, content, slug) : toTopic(cwd, manifest, topic, content, slug);
   });
   fs.rmSync(scratch, { force: true });
   /** @type {string[]} */
@@ -198,8 +218,8 @@ function mailboxOf(cwd, unit, topic) {
 
 /**
  * The question the message raised, by a prefix of its id: refused where the
- * id names no entry, an entry other than a question, or a question standing
- * on another topic.
+ * id names no entry, an entry other than a question, or a question raised on
+ * another topic.
  * @param {string} cwd @param {string} unit @param {string} topic @param {string} prefix @param {string[]} warnings
  * @returns {string} its short id
  */
@@ -215,30 +235,37 @@ function raisedQuestion(cwd, unit, topic, prefix, warnings) {
   }
   const named = /** @type {import('./ledger-fold.cjs').IdFacts} */ (facts.get(id));
   if (named.kind !== 'question') throw new Error(`topic answered --entry names ${short(id)}, ${named.kind === null ? `a ${named.event} line` : `a ${named.kind}`} — it must name the question the message raised`);
-  const standing = standingOf({ facts, live: liveness(root) }, id);
-  if (standing.unit !== unit || standing.topic !== topic) {
-    throw new Error(`topic answered --entry names ${short(id)}, a question on ${standing.topic ?? 'no topic'} of ${standing.unit} — the question the message raised stands on ${topic}`);
+  const raised = /** @type {import('./ledger-fold.cjs').IdFacts} */ (facts.get(named.root));
+  if (raised.unit !== unit || raised.topic !== topic) {
+    throw new Error(`topic answered --entry names ${short(id)}, a question raised on ${raised.topic ?? 'no topic'} of ${raised.unit} — the question the message raised was raised on ${topic}`);
   }
   return short(id);
 }
 
+/** A message's name, `NNN-{slug}`. @param {string|undefined} name */
+function isMessageName(name) {
+  const [, slug] = /^\d{3,}-(.+)$/.exec(name ?? '') ?? [];
+  return slug !== undefined && KEBAB_SLUG_PATTERN.test(slug);
+}
+
 /**
- * `topic answered`: the message numbered `number` removed from the topic's
- * mailbox once `entry` names the question it raised on the topic, under
- * the writer lock, and the removal committed.
- * @param {string} cwd @param {string} unit @param {string} topic @param {string} number @param {{entry?: string}} opts
+ * `topic answered`: the message `name` removed from the topic's mailbox once
+ * `entry` names the question it raised on the topic, under the writer lock,
+ * and the removal committed.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} message @param {{entry?: string}} opts
  * @returns {Record<string, unknown>}
  */
-function answerMessage(cwd, unit, topic, number, { entry }) {
-  if (!/^\d{3,}$/.test(number ?? '') || !entry) throw new Error(`Usage: engine ${ANSWERED_USAGE}`);
+function answerMessage(cwd, unit, topic, message, { entry }) {
+  if (!isMessageName(message) || !entry) throw new Error(`Usage: engine ${ANSWERED_USAGE}`);
   assertLegalTopicName(topic);
-  unitManifest(cwd, unit);
+  const manifest = unitManifest(cwd, unit);
+  assertInProgress(manifest);
   /** @type {string[]} */
   const warnings = [];
   const { rel, name, question, remaining } = withWorkUnitLock(cwd, unit, () => {
     const files = mailboxFiles(stateRoot(cwd), unit, topic);
-    const file = files.find((f) => f.startsWith(`${number}-`));
-    if (file === undefined) throw new Error(`no message ${number} waits in ${topic}'s mailbox${files.length === 0 ? ' — it is empty' : ` — it holds ${files.join(', ')}`}`);
+    const file = `${message}.md`;
+    if (!files.includes(file)) throw new Error(`no message ${message} waits in ${topic}'s mailbox${files.length === 0 ? ' — it is empty' : ` — it holds ${files.join(', ')}`}`);
     const short = raisedQuestion(cwd, unit, topic, entry, warnings);
     const at = `${mailboxDir(unit, topic)}/${file}`;
     fs.unlinkSync(statePath(cwd, at));
@@ -248,7 +275,7 @@ function answerMessage(cwd, unit, topic, number, { entry }) {
   /** @type {Record<string, unknown>} */
   const result = { unit, topic, answered: name, entry: question, remaining, committed: outcome.committed };
   if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome, `${unit} --state`);
+  noteCommitOutcome(result, outcome, mailboxRetry(unit, mailPhase(manifest.work_type), topic));
   return result;
 }
 

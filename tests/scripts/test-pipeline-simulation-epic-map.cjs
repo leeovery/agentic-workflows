@@ -250,7 +250,7 @@ describe('pipeline simulation: epic map', () => {
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
     const escalation = sim.run(['ledger', 'ask', `${wu}.discussion.beta`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Who gets paged?' }));
-    const answered = sim.run(['topic', 'answered', wu, 'beta', '001', '--entry', escalation.id]);
+    const answered = sim.run(['topic', 'answered', wu, 'beta', '001-escalation-path', '--entry', escalation.id]);
     assert.deepStrictEqual([answered.remaining, Boolean(answered.committed)], [0, true]);
     assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the answered mailbox retires the cue');
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
@@ -303,7 +303,7 @@ describe('pipeline simulation: epic map', () => {
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Second parked\n\nMore.\n');
     sim.run(['topic', 'send', wu, 'delta', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'second-parked']);
     const more = sim.run(['ledger', 'ask', `${wu}.discussion.delta`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'More?' }));
-    const cleared = sim.run(['topic', 'answered', wu, 'delta', '002', '--entry', more.id]);
+    const cleared = sim.run(['topic', 'answered', wu, 'delta', '002-second-parked', '--entry', more.id]);
     assert.strictEqual(cleared.answered, '002-second-parked.md');
     assert.strictEqual(cleared.remaining, 1, 'the answer answers the post-removal count');
     assert.ok(cleared.committed, 'answered self-commits');
@@ -459,7 +459,7 @@ describe('pipeline simulation: epic map', () => {
     const redecided = sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
     assert.strictEqual(redecided.all_decided, true);
     const retry = sim.run(['ledger', 'ask', `${wu}.discussion.beta`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Which retry policy?' }));
-    sim.run(['topic', 'answered', wu, 'beta', '001', '--entry', retry.id]);
+    sim.run(['topic', 'answered', wu, 'beta', '001-retry-policy', '--entry', retry.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // The topic's cancel/reactivate round-trips the stub.
@@ -478,7 +478,7 @@ describe('pipeline simulation: epic map', () => {
     // never buries a message.
     for (const waiting of sim.run(['topic', 'mailbox', wu, 'delta']).files.map((f) => path.basename(f))) {
       const raised = sim.run(['ledger', 'ask', `${wu}.discussion.delta`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: `What does ${waiting} ask?` }));
-      sim.run(['topic', 'answered', wu, 'delta', waiting.slice(0, 3), '--entry', raised.id]);
+      sim.run(['topic', 'answered', wu, 'delta', path.basename(waiting, '.md'), '--entry', raised.id]);
     }
     sim.run(['topic', 'complete', wu, 'research', 'delta']);
 

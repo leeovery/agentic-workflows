@@ -15,6 +15,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
@@ -108,7 +109,7 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
     // The reopened investigation's rows say what waits — the start menu
-    // entry and the bugfix pipeline row — and the drain retires the cue.
+    // entry and the bugfix pipeline row — and answering it retires the cue.
     const startRow = () => startMenu(START_GATEWAY.discover(sim.dir)).keys
       .map((k) => drawLabel(k.label)).find((label) => label.startsWith('Continue "Crash Fix"'));
     const bugfixUnit = () => LIB.detail.activeWorkUnit(sim.dir, wu).unit;
@@ -118,9 +119,9 @@ describe('pipeline simulation: bugfix', () => {
     const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
     assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
-    sim.run(['topic', 'answered', wu, wu, '001', '--entry', gapQuestion.id]);
+    sim.run(['topic', 'answered', wu, wu, '001-retry-semantics', '--entry', gapQuestion.id]);
     assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
-    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the drained mailbox retires the cue');
+    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the answered mailbox retires the cue');
     assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
     sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
@@ -128,5 +129,11 @@ describe('pipeline simulation: bugfix', () => {
 
     sim.run(['workunit', 'complete', wu, '-m', `workflow(${wu}): pipeline complete`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
+    // Completed, the unit takes no message and opens no topic, each refusal
+    // naming the way on, the message's scratch kept.
+    sim.write('.leeway/.cache/scratch/late-message.md', 'A late thought\n');
+    sim.refuses(['topic', 'send', wu, wu, '--content', '.leeway/.cache/scratch/late-message.md', '--slug', 'late-thought'], /^crash-fix is completed — new work starts from the start menu$/);
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/late-message.md')), 'the refused send keeps its scratch');
+    sim.refuses(['handoff', 'topic', wu, wu], /^crash-fix is completed — new work starts from the start menu$/);
   });
 });

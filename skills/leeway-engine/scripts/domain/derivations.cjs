@@ -1149,7 +1149,7 @@ function computeNeedsSequencing(mapItems) {
 // phase item carries a live reconcile flag, so the map row can cue `input
 // moved` — with a map, phase-item rows never render for research/discussion,
 // making this the topic's only surface. Whether mail waits is a fact about
-// the mailbox on disk, never the manifest — `mailQueued` reads it.
+// the mailbox on disk, never the manifest — `mailboxDepth` reads it.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);

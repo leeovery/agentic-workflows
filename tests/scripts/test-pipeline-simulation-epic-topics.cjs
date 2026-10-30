@@ -131,7 +131,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
     sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
     const lifetime = sim.run(['ledger', 'ask', `${wu}.discussion.auth`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'How long does a token live?' }));
-    sim.run(['topic', 'answered', wu, 'auth', '001', '--entry', lifetime.id]);
+    sim.run(['topic', 'answered', wu, 'auth', '001-token-lifetime', '--entry', lifetime.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'auth']);
 
     // The Definition stage: roles specified and planned; billing specified,
@@ -238,7 +238,7 @@ describe('pipeline simulation: epic-topics', () => {
     // backstop for a peer closing the target under a landing; the cancel
     // marker sits over the dead end and lifts off it.
     sim.run(['discovery-map', 'handle', wu, 'export']);
-    sim.refuses(sendArgv(sim, wu, 'export'), /^"export" is closed as a dead end — reopen it in discovery first$/);
+    sim.refuses(sendArgv(sim, wu, 'export'), /^the topic "export" is closed as a dead end — reopening it goes through the epic menu's discovery row$/);
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
     assert.match(sim.run(sendArgv(sim, wu, 'export')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
       'a cancelled topic\'s message goes to the inbox as an idea');

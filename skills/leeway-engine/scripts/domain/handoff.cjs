@@ -10,7 +10,9 @@
 // where the session announced handoff support (`LEEWAY_HANDOFF=1`), and
 // the session invokes the skill in place where it did not. A topic named by
 // its unit and name alone, as `/leeway {unit} {topic}` names it (10.3.1),
-// is handed off into its discussion, as picking it from the menus does.
+// is handed off into its discussion, as picking it from the menus does —
+// refused, before anything travels, where the entry would refuse it
+// (topic-standing.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -23,6 +25,7 @@ const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { mailPhase } = require('./derivations.cjs');
+const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 
@@ -210,15 +213,18 @@ const TOPIC_HANDOFF_USAGE = 'handoff topic <work-unit> <topic>';
 /**
  * The handoff into a topic named by its unit and name alone: into the
  * phase its topics are talked through — a bugfix's investigation, else its
- * discussion — the unit's work type read from its manifest, checked against
- * the table as any handoff is.
+ * discussion — refused where that phase's entry would refuse the topic, or
+ * the unit has no topics to name.
  * @param {string} cwd @param {string[]} args @returns {Handoff}
  */
 function topicHandoff(cwd, args) {
   if (args.length !== 2) throw new Error(`Usage: engine ${TOPIC_HANDOFF_USAGE}`);
   const [unit, topic] = args;
-  const workType = workUnitManifest(cwd, unit).work_type;
-  return resolveHandoff(cwd, phaseSkill(mailPhase(workType) ?? 'discussion'), [workType, unit, topic]);
+  const manifest = unitInProgress(cwd, unit);
+  const phase = mailPhase(manifest.work_type);
+  if (phase === null) throw new Error(`${unit} is a ${manifest.work_type}, with no topics to open by name — it carries on from the start menu`);
+  assertEnterable(cwd, phase, manifest, topic);
+  return resolveHandoff(cwd, phaseSkill(phase), [manifest.work_type, unit, topic]);
 }
 
 /**

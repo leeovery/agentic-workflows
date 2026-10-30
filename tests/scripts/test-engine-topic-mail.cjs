@@ -8,12 +8,22 @@
 // landing parks it — set back in progress where decided (10.S10) — a
 // postponed topic's message waiting in its mailbox and a cancelled topic's
 // gone to the inbox as an idea (10.1.8), each send under the writer lock and
-// committed; `topic mailbox`, what waits, taking no lock (10.S4); `topic
-// answered`, a message removed once the topic holds the question it raised
-// (5.3.8); and `render send-report`, the send report ending with the command
-// that opens the target (10.3.4, 27.S4). The waiting mail raised at a
-// topic's opening is test-engine-enter.cjs's, a closed decided worked afresh
-// after a reopen test-engine-checklist.cjs's.
+// committed, and any other target the entry refuses refused by its rule — a
+// unit completed, or past its spec (10.2.2); `topic mailbox`, what waits,
+// taking no lock (10.S4); `topic answered`, a message named whole removed
+// once the topic holds the question it raised there (5.3.8); a pending
+// commit's retry, in a scope that commits what was left; and `render
+// send-report`, the send report ending with the command that opens the
+// target (10.3.4, 27.S4). The waiting mail raised at a topic's opening is
+// test-engine-enter.cjs's, a closed decided worked afresh after a reopen
+// test-engine-checklist.cjs's. What a message changes in the decisions it
+// touches is the ledger's: a question moved to another topic travels as a
+// message sent there, its standing on the maps test-engine-ledger-map.cjs's
+// (9.S17); another topic's same answer leaving the owner's entry to stand
+// test-engine-ledger-map.cjs's (10.S7); a record showing another topic's
+// current answer test-engine-ledger-read.cjs's (10.S8); and a decided topic
+// relying on a replaced answer waiting on the person
+// test-engine-ledger-affected.cjs's (10.S9).
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, whose map
 // holds `commercialization` under discussion with a question asked on it,
@@ -21,7 +31,8 @@
 // own and sourced by a concluded specification, `widgets` postponed,
 // `removal` cancelled, `dead-end` closed as one, and `export` promoted; a
 // feature, `quick-sync`; a bugfix, `crash`, under investigation; a
-// quick-fix, `typo`; and a cancelled feature, `retired`.
+// quick-fix, `typo`; a cancelled feature, `retired`; a completed one,
+// `shipped`; and one with its spec, `specced`.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -29,12 +40,14 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const path = require('path');
 const {
   ok, output, refusedPristine, statePath, layout, writeState, readState, readManifest, stateGit, lastMessage, commitAll,
   fixtureFrom, cleanupFixture, holdLock, lockAttempts, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { computeTopicLifecycle, buildDiscoveryMap } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { BRANCH_REF } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
 
 const EPIC = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'mail-session' });
@@ -69,6 +82,9 @@ const world = fixtureFrom('engine-mail-', (dir) => {
   createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
   createManifest(dir, 'typo', { work_type: 'quick-fix' });
   createManifest(dir, 'retired', { status: 'cancelled' });
+  createManifest(dir, 'shipped', { status: 'completed' });
+  createManifest(dir, 'specced');
+  writeState(dir, layout.unit('specced', 'spec.md'), '# Spec\n');
   commitAll(dir, 'the world');
   for (const topic of ['commercialization', 'first-run']) {
     asked[topic] = ok(dir, ['ledger', 'ask', `${EPIC}.discussion.${topic}`], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: `What of ${topic}?` }) }).id;
@@ -107,16 +123,41 @@ const shortHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
 /** A topic's discussion item as the unit's manifest holds it. @param {string} topic */
 const discussion = (topic) => readManifest(dir, EPIC).phases.discussion.items[topic];
 
+/** What is uncommitted in the state, each `{XY} {path}`. */
+const dirt = () => stateGit(dir, ['status', '--porcelain', '--untracked-files=all']).trim().split('\n').filter(Boolean);
+
+/** Blocks the state branch, so a commit fails and the state stays saved: the call that frees it. */
+function blockStateBranch() {
+  const lock = path.join(dir, '.git', `${BRANCH_REF}.lock`);
+  fs.writeFileSync(lock, '');
+  return () => fs.unlinkSync(lock);
+}
+
+/**
+ * The retry a pending commit's note prescribes, run as written once the
+ * branch is free: what it committed.
+ * @param {Record<string, any>} res @param {() => void} free
+ */
+function retried(res, free) {
+  const [, scope] = /^commit pending — state saved; retry with: engine commit (.+) -m "<message>"$/.exec(res.note) ?? [];
+  assert.ok(scope, `a retry is prescribed: ${res.note}`);
+  free();
+  ok(dir, ['commit', ...scope.split(' '), '-m', 'the retry']);
+  return changed('HEAD');
+}
+
 describe('topic send (10.1, 10.2.7)', () => {
-  it('lands the message as the next file of the target\'s own mailbox, its path naming no phase, writing no entry, the scratch consumed and the message committed alone (10.S1, 10.S6, 5.S11)', () => {
+  it('lands the message as the next file of the target\'s own mailbox, its path naming no phase, writing no entry, the scratch consumed and the message committed alone, a peer\'s dirt left as it was (10.S1, 10.S6, 5.S11)', () => {
     const ledger = readState(dir, layout.ledger);
+    writeState(dir, layout.doc(EPIC, 'discussion', 'licence'), '# Licence, mid-conversation\n');
+    const peer = dirt();
     const message = scratch();
     const first = ok(dir, ['topic', 'send', EPIC, 'commercialization', '--content', message, '--slug', 'lost-key']);
     assert.deepStrictEqual(first, { ok: true, unit: EPIC, topic: 'commercialization', message_path: at(layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')), committed: shortHead() });
     assert.deepStrictEqual([readState(dir, layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')), fs.existsSync(message)], [MESSAGE, false]);
     assert.deepStrictEqual([lastMessage(dir), changed('HEAD')], [`mail(${EPIC}): send 001-lost-key.md to commercialization`, [`A\t${layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')}`]]);
     assert.strictEqual(send(EPIC, 'commercialization', 'refund-window').message_path, at(layout.mailbox(EPIC, 'commercialization', '002-refund-window.md')));
-    assert.strictEqual(readState(dir, layout.ledger), ledger);
+    assert.deepStrictEqual([readState(dir, layout.ledger), dirt()], [ledger, peer]);
   });
 
   it('takes the next number under the writer lock: a send racing another lands after it', (t) => {
@@ -198,17 +239,19 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('refuses a target it cannot land on, writing nothing: a unit the project lacks, a topic the unit lacks, one closed as a dead end, one promoted out of the unit, a quick-fix', () => {
+  it('refuses a target the entry refuses, by its rule, writing nothing and keeping the scratch: a unit the project lacks, one completed, one past its spec — a change from there settled where it is found (10.2.2) — a topic the unit lacks, one closed as a dead end, one promoted out of the unit, a quick-fix', () => {
     const cases = [
-      [['nowhere', 'nowhere'], /^there is no work unit "nowhere"$/],
-      [[EPIC, 'billing'], /^fumi has no topic "billing" — a message goes to a topic the unit holds$/],
-      [[EPIC, 'dead-end'], /^"dead-end" is closed as a dead end — reopen it in discovery first$/],
-      [[EPIC, 'export'], /portability/],
-      [['typo', 'typo'], /^a quick-fix has no conversation for a message to wait in$/],
+      [['nowhere', 'nowhere'], 'there is no work unit "nowhere"'],
+      [['shipped', 'shipped'], 'shipped is completed — new work starts from the start menu'],
+      [['specced', 'specced'], 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here'],
+      [[EPIC, 'billing'], 'fumi has no topic "billing" — the epic\'s map holds its topics, and a new one comes through its discovery'],
+      [[EPIC, 'dead-end'], 'the topic "dead-end" is closed as a dead end — reopening it goes through the epic menu\'s discovery row'],
+      [[EPIC, 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
+      [['typo', 'typo'], 'a quick-fix has no conversation for a message to wait in'],
     ];
-    for (const [[unit, topic], error] of cases) {
-      assert.match(refused(['topic', 'send', unit, topic, '--content', scratch(), '--slug', 'lost-key']), error, `${unit} ${topic}`);
-    }
+    const message = scratch();
+    assert.deepStrictEqual(cases.map(([[unit, topic]]) => refused(['topic', 'send', unit, topic, '--content', message, '--slug', 'lost-key'])), cases.map(([, error]) => error));
+    assert.strictEqual(fs.existsSync(message), true);
   });
 });
 
@@ -236,13 +279,13 @@ describe('topic answered (P4, 5.3.8)', () => {
   it('removes the message once the topic holds the question it raised, committing the removal alone, and git keeps the file — the mailbox then reads empty', () => {
     send(EPIC, 'commercialization', 'lost-key');
     send(EPIC, 'commercialization', 'refund-window');
-    const res = ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001', '--entry', asked.commercialization]);
+    const res = ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]);
     assert.deepStrictEqual(res, { ok: true, unit: EPIC, topic: 'commercialization', answered: '001-lost-key.md', entry: asked.commercialization, remaining: 1, committed: shortHead() });
     const file = layout.mailbox(EPIC, 'commercialization', '001-lost-key.md');
     assert.deepStrictEqual([fs.existsSync(at(file)), lastMessage(dir), changed('HEAD'), stateGit(dir, ['show', `HEAD~1:${file}`])], [
       false, `mail(${EPIC}): commercialization answered 001-lost-key.md`, [`D\t${file}`], MESSAGE,
     ]);
-    ok(dir, ['topic', 'answered', EPIC, 'commercialization', '002', '--entry', asked.commercialization]);
+    ok(dir, ['topic', 'answered', EPIC, 'commercialization', '002-refund-window', '--entry', asked.commercialization]);
     const item = ok(dir, ['checklist', 'show', 'decided', EPIC, 'commercialization']).items.find((/** @type {{key: string}} */ i) => i.key === 'mailbox-empty');
     assert.strictEqual(item.state, 'done');
   });
@@ -256,25 +299,78 @@ describe('topic answered (P4, 5.3.8)', () => {
       whileHeld.push(fs.existsSync(at(layout.mailbox(EPIC, 'commercialization', '001-lost-key.md'))));
       fs.unlinkSync(lock);
     });
-    ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001', '--entry', asked.commercialization]);
+    ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]);
     assert.deepStrictEqual([attempts.slice(0, 2), whileHeld], [['taken', 'made'], [true]]);
   });
 
-  it('refuses, writing nothing: a call of another shape, a number no message holds, an id no entry begins, an entry that is no question, a question standing on another topic', () => {
+  it('takes the message by its whole name, since a number comes back once the highest is answered: the name of one answered refuses where a later one took its number', () => {
+    send(EPIC, 'commercialization', 'lost-key');
+    ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]);
+    assert.strictEqual(send(EPIC, 'commercialization', 'refund-window').message_path, at(layout.mailbox(EPIC, 'commercialization', '001-refund-window.md')));
+    assert.strictEqual(refused(['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]),
+      'no message 001-lost-key waits in commercialization\'s mailbox — it holds 001-refund-window.md');
+  });
+
+  it('takes the question the message raised on the topic wherever it stands since: moved to another topic, or later to the roadmap', () => {
+    send(EPIC, 'commercialization', 'lost-key');
+    send(EPIC, 'commercialization', 'refund-window');
+    const address = `${EPIC}.discussion.commercialization`;
+    const made = { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none' }) };
+    const later = ok(dir, ['ledger', 'ask', address], { ...made, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Is a refund window owed?' }) }).id;
+    ok(dir, ['ledger', 'move', address, '--question', asked.commercialization, '--to', 'licence'], made);
+    assert.strictEqual(ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]).remaining, 1);
+    ok(dir, ['roadmap', 'add', 'refunds', '--horizon', 'v2', '--summary', 'Refunds']);
+    ok(dir, ['ledger', 'move', address, '--question', later, '--to', 'roadmap:refunds'], made);
+    assert.strictEqual(ok(dir, ['topic', 'answered', EPIC, 'commercialization', '002-refund-window', '--entry', later]).remaining, 0);
+  });
+
+  it('refuses a unit no longer in progress, writing nothing, its message left waiting', () => {
+    send(EPIC, 'commercialization', 'lost-key');
+    const manifest = readManifest(dir, EPIC);
+    writeState(dir, layout.manifest(EPIC), JSON.stringify({ ...manifest, status: 'cancelled' }, null, 2) + '\n');
+    assert.strictEqual(refused(['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]), 'fumi is cancelled — reactivating it comes first');
+  });
+
+  it('refuses, writing nothing: a call of another shape — a message named by its number alone, or as its file — a name no message holds, an id no entry begins, an entry that is no question, a question raised on another topic', () => {
     send(EPIC, 'commercialization', 'lost-key');
     const finding = ok(dir, ['ledger', 'find', `${EPIC}.discussion.commercialization`], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'A finding.', how: 'Read it.', known: 'read' }) }).id;
     const answered = (/** @type {string[]} */ args) => refused(['topic', 'answered', EPIC, 'commercialization', ...args]);
+    const usage = 'Usage: engine topic answered <work-unit> <topic> <NNN-slug> --entry <id>';
     assert.deepStrictEqual([
-      answered(['001']), answered(['1', '--entry', asked.commercialization]), answered(['002', '--entry', asked.commercialization]), answered(['001', '--entry', 'ffffffff']),
-      answered(['001', '--entry', finding]), answered(['001', '--entry', asked['first-run']]),
+      answered(['001-lost-key']), answered(['001', '--entry', asked.commercialization]), answered(['1-lost-key', '--entry', asked.commercialization]),
+      answered(['001-lost-key.md', '--entry', asked.commercialization]), answered(['002-lost-key', '--entry', asked.commercialization]),
+      answered(['001-lost-key', '--entry', 'ffffffff']), answered(['001-lost-key', '--entry', finding]), answered(['001-lost-key', '--entry', asked['first-run']]),
     ], [
-      'Usage: engine topic answered <work-unit> <topic> <NNN> --entry <id>',
-      'Usage: engine topic answered <work-unit> <topic> <NNN> --entry <id>',
-      'no message 002 waits in commercialization\'s mailbox — it holds 001-lost-key.md',
+      usage, usage, usage, usage,
+      'no message 002-lost-key waits in commercialization\'s mailbox — it holds 001-lost-key.md',
       'topic answered --entry: no ledger entry\'s id begins "ffffffff"',
       `topic answered --entry names ${finding}, a finding — it must name the question the message raised`,
-      `topic answered --entry names ${asked['first-run']}, a question on first-run of ${EPIC} — the question the message raised stands on commercialization`,
+      `topic answered --entry names ${asked['first-run']}, a question raised on first-run of ${EPIC} — the question the message raised was raised on commercialization`,
     ]);
+  });
+});
+
+describe('a pending commit\'s retry', () => {
+  it('retries a send to the mailbox and a removal in the topic\'s scope, as a sweep, and an inbox landing in the inbox\'s — each committing what was left', () => {
+    let free = blockStateBranch();
+    const sent = send(EPIC, 'licence', 'lost-key');
+    assert.match(sent.note, / commit fumi --topic discussion\/licence --sweep -m /);
+    assert.deepStrictEqual(retried(sent, free), [`M\t${layout.manifest(EPIC)}`, `A\t${layout.mailbox(EPIC, 'licence', '001-lost-key.md')}`]);
+
+    send(EPIC, 'commercialization', 'refund-window');
+    free = blockStateBranch();
+    const answered = ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-refund-window', '--entry', asked.commercialization]);
+    assert.deepStrictEqual(retried(answered, free), [`D\t${layout.mailbox(EPIC, 'commercialization', '001-refund-window.md')}`]);
+
+    free = blockStateBranch();
+    const idea = withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
+    assert.match(idea.note, / commit --inbox -m /);
+    assert.deepStrictEqual(retried(idea, free), [`A\t${layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--lost-key.md`)}`]);
+  });
+
+  it('retries a bugfix\'s send in its investigation\'s scope', () => {
+    const free = blockStateBranch();
+    assert.deepStrictEqual(retried(send('crash', 'crash', 'repro'), free), [`A\t${layout.mailbox('crash', 'crash', '001-repro.md')}`]);
   });
 });
 
