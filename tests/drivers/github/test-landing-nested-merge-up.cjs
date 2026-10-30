@@ -11,8 +11,10 @@
 // its own subject and the default branch pointing the submodule at the
 // submodule's (7.2.17, 7.2.18); refused before anything is pushed where a
 // merge conflicts in a file or a branch here is checked out with changes;
-// and landed, once, by landing again where its merges were pushed but never
-// moved here, each branch here brought to its pull request's head; and a
+// its merge refused where GitHub has not worked out by the driver's wait's
+// end that each pull request pushed to can merge; and landed, once, by
+// landing again where its merges were pushed but never moved here, each
+// branch here brought to its pull request's head, once GitHub has; and a
 // default branch on GitHub pointing the submodule at a commit the
 // submodule's own there does not hold — one on a branch of its own — refused
 // before anything merges, naming it, and landed past it once the
@@ -31,7 +33,7 @@ const path = require('path');
 const { git, tip } = require('../../scripts/engine-harness.cjs');
 const { NESTED, NESTED_TASKS, openArgs, track, cutTask, commitFiles, useNestedWorld } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
-const { github, bareOf, tipOnGithub, ok, refused } = require('./world.cjs');
+const { github, bareOf, calls, lagOnGithub, tipOnGithub, ok, refused } = require('./world.cjs');
 
 const { rates, show } = NESTED_TASKS;
 const project = useNestedWorld('github-landing-merge-up-', (dir) => {
@@ -43,7 +45,7 @@ const project = useNestedWorld('github-landing-merge-up-', (dir) => {
 const pullStates = (dir) => github(dir).pulls.map(({ state }) => state);
 
 describe('GitHub\'s landing driver bringing a stack up to date across nested repositories (7.2.17)', () => {
-  it('brings a stack up to date with the default branch on GitHub where a squash of its bottom pull request, or of one above it, would meet a pointer both sides moved — the default branch merged into the bottom, each branch into the one above — refused before anything is pushed where a merge conflicts in a file or a branch here is checked out with changes; and lands, once, a stack whose merge-up was pushed and never moved here', () => {
+  it('brings a stack up to date with the default branch on GitHub where a squash of its bottom pull request, or of one above it, would meet a pointer both sides moved — the default branch merged into the bottom, each branch into the one above — refused before anything is pushed where a merge conflicts in a file or a branch here is checked out with changes; its merge refused where GitHub has not worked out by the wait\'s end that each pull request pushed to can merge; and lands, once, a stack whose merge-up was pushed and never moved here, once GitHub has', () => {
     const at = project();
     const fix = cutTask(at.dir, '3.1', 'fix', 'Fix the app', show.branch, { 'fix.txt': 'fix\n' });
     const lower = cutTask(at.dir, '4.1', 'fix', 'Fix the rest', show.branch, { 'rest.txt': 'rest\n' });
@@ -81,13 +83,22 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     assert.deepStrictEqual(beside.map((task) => tipOnGithub(at.dir, task.branch)), opened);
 
     git(held, ['reset', '-q', '--', NESTED.ext.folder]);
-    assert.match(refused(at.dir, ['land', 'phase', 'pay', '5'], { GH_STUB_FAULT: 'unmergeable@stack merge' }), /^land: gh could not merge phase 5's stack: /);
+    lagOnGithub(at.dir, 8);
+    const reads = () => calls(at.dir).filter((call) => /^(pr view|stack merge) /.test(call)).map((call) => call.split(' --')[0]);
+    const before = reads().length;
+    assert.strictEqual(
+      refused(at.dir, ['land', 'phase', 'pay', '5']),
+      'land: GitHub has not finished checking whether #6 (task 5.1), #7 (task 5.2) can merge, so phase 5\'s stack was not merged — land again in a moment',
+    );
+    assert.deepStrictEqual(reads().slice(before), Array(7).fill(['pr view 6', 'pr view 7']).flat(), 'each pull request pushed to is read through the wait, and nothing merges');
     const pushed = beside.map((task) => tipOnGithub(at.dir, task.branch));
     assert.deepStrictEqual(pushed.map((made) => git(top, ['log', '-1', '--format=%s', made]).trim()), [`chore(pay): merge main into ${page.branch}`, `chore(pay): merge ${page.branch} into ${again.branch}`]);
     git(held, ['reset', '-q', '--hard', opened[0]]);
     git(at.dir, ['update-ref', `refs/heads/${again.branch}`, opened[1]]);
 
+    const rerun = reads().length;
     ok(at.dir, ['land', 'phase', 'pay', '5']);
+    assert.deepStrictEqual(reads().slice(rerun), ['pr view 6', 'pr view 7', 'pr view 6', 'pr view 7', 'stack merge 7'], 'merged once GitHub has worked them out');
     assert.deepStrictEqual(beside.map((task) => tip(at.dir, task.branch)), pushed);
     assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), [
       'feat(pay): Add rates', 'feat(pay): Show rates', 'fix(pay): Fix the app', 'fix(pay): Fix the page', 'fix(pay): Fix ext again',

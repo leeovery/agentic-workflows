@@ -8,11 +8,15 @@
 // 29.2's fake GitHub remote (engine-harness.cjs, `githubOffline`): a GitHub
 // URL rewritten to port 0, so a git call the stand-in ssh misses fails
 // closed, never reaching github.com. Every call runs under `GH_ENV`, the
-// stand-in first on the PATH, so the developer's gh is never reached; the
-// hermetic environment keeps their login out (hermetic-env.cjs).
+// stand-in first on the PATH, so the developer's gh is never reached, and
+// the driver's pauses between reads of whether a pull request can merge
+// cut to nothing; the hermetic environment keeps their login out
+// (hermetic-env.cjs).
 // What a person might do by hand on GitHub — close a pull request, merge
 // one, change GitHub's default branch or its squash default — is done to
-// the fake's state here. The fake starts with GitHub's own squash default.
+// the fake's state here, as is how many reads GitHub takes to work out
+// whether a pull request can merge once it moves. The fake starts with
+// GitHub's own squash default, and works it out at once.
 // The verbs its suites call go through and refuse under `GH_ENV` (`ok`,
 // `refused`), and a phase of two is built the one way (`stackOfTwo`).
 
@@ -27,7 +31,7 @@ const stub = require('./gh-stub.cjs');
 const REPOSITORY = 'acme/portal';
 const SSH = path.join(__dirname, 'ssh');
 /** The environment every call runs under, as a call's overlay. */
-const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}` });
+const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}`, LEEWAY_MERGEABLE_PAUSE_MS: '0' });
 
 /** `GH_ENV` over the process's own, as a spawned shell takes it. @param {Record<string, string|undefined>} [more] */
 function ghEnv(more = {}) {
@@ -114,6 +118,18 @@ function squashFromPullRequests(dir) {
   });
 }
 
+/**
+ * GitHub made to take `reads` reads to work out whether a pull request can
+ * merge once it moves — `stale`, answering meanwhile, after a push, for the
+ * head before it.
+ * @param {string} dir @param {number} reads @param {{stale?: boolean}} [opts]
+ */
+function lagOnGithub(dir, reads, { stale = false } = {}) {
+  onGithub(dir, (state) => {
+    Object.assign(state, { lag: reads, stale });
+  });
+}
+
 /** A branch's tip on GitHub, or '' where GitHub has none. @param {string} dir @param {string} branch */
 const tipOnGithub = (dir, branch) => git(bareOf(dir), ['for-each-ref', '--format=%(objectname)', `refs/heads/${branch}`]).trim();
 
@@ -136,6 +152,6 @@ function stackOfTwo(dir) {
 }
 
 module.exports = {
-  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, tipOnGithub,
-  pulls, ok, refused, stackOfTwo,
+  REPOSITORY, GH_ENV, ghEnv, githubWorld, github, onGithub, bareOf, calls, closeByHand, mergeByHand, defaultOnGithub, squashFromPullRequests, lagOnGithub,
+  tipOnGithub, pulls, ok, refused, stackOfTwo,
 };

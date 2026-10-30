@@ -43,7 +43,13 @@
 //   and `github-squash yes` sets it wherever it is not, so a refusal names
 //   that verb (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
-//   first where it stood on another phase's task. A task's branch here
+//   first where it stood on another phase's task. Either merges only once
+//   GitHub has worked out that each of its pull requests can, at the head
+//   the driver last pushed or read — GitHub works it out again after
+//   anything moves one: a push to its head, its base changed, a retarget —
+//   read again after each pause, half a minute in all: one conflicting is
+//   refused before anything merges, naming it, and one still not worked
+//   out is refused, to land again. A task's branch here
 //   behind its pull request's head — a push of the driver's that went before
 //   the branch here moved — is brought to it first, refused where it is
 //   checked out and cannot move; one anywhere else stops the phase, with the
@@ -96,6 +102,7 @@
 const names = require('../../../domain/landing-names.cjs');
 const lg = require('../../../domain/landing-git.cjs');
 const { taskId, shownTask, sameTask } = require('../../../domain/task-id.cjs');
+const { sleepSync } = require('../../../kernel/process.cjs');
 const { gh, ghVersion, stackVersion, setOnGithub } = require('./gh.cjs');
 
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
@@ -105,6 +112,7 @@ const { gh, ghVersion, stackVersion, setOnGithub } = require('./gh.cjs');
 /** Where the driver lands: the project's remote, and the repository on GitHub it names, `{owner}/{repo}`. @typedef {{remote: string, repo: string}} Host */
 /** A task's pull request as GitHub holds it. @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, oid: string, title: string, body: string, ref: TaskRef}} Pull */
 /** A phase's stack: its tasks' pull requests, bottom first. @typedef {{phase: number, pulls: Pull[]}} Stack */
+/** Pull requests' heads moved to new commits, pushed. @typedef {{pull: Pull, commit: string}[]} Pushed */
 /** The chain's tip, and the host `open` lands on. @typedef {import('../../../domain/landing.cjs').ChainTip & {host: Host}} ChainTip */
 
 // A remote on GitHub, as a URL (https, ssh, git) or scp-like (`git@github.com:o/r`).
@@ -112,6 +120,15 @@ const GITHUB_URL = /^(?:(?:https?|ssh|git):\/\/(?:[^@/]+@)?github\.com(?::\d+)?\
 const PULL_FIELDS = 'number,state,headRefName,baseRefName,headRefOid,title,body';
 // The unit's pull requests are among the repository's latest; past this many, the oldest are not read.
 const PULL_LIMIT = '1000';
+const MERGEABLE_FIELDS = 'mergeable,headRefOid,baseRefName';
+// The pauses between reads of whether a stack's pull requests can merge: half a minute in all.
+const CHECK_PAUSES_MS = Object.freeze([500, 1000, 2000, 4000, 8000, 15000]);
+
+// Test hook: LEEWAY_MERGEABLE_PAUSE_MS overrides each pause.
+function checkPauseMs(/** @type {number} */ planned) {
+  const env = process.env.LEEWAY_MERGEABLE_PAUSE_MS;
+  return env !== undefined && /^\d+$/.test(env) ? Number(env) : planned;
+}
 
 /**
  * The GitHub repository a remote URL names, or null where it is not on
@@ -522,11 +539,13 @@ function meetsMove(paths, base, onto, heads) {
  * before GitHub merges it (see the header): the stack brought up to date
  * with the default branch on GitHub where a squash would meet a pointer
  * both sides moved, else the top's pointers recorded where they are not the
- * rule's — against the default branch on GitHub as `fetched` found it.
+ * rule's — against the default branch on GitHub as `fetched` found it:
+ * each pull request's head it pushed.
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack @param {{commit: string}|{failed: string}} fetched
+ * @returns {Pushed}
  */
 function settlePointers(ctx, host, stacks, stack, fetched) {
-  if (ctx.gitlinks.length === 0) return;
+  if (ctx.gitlinks.length === 0) return [];
   const into = defaultOn(ctx, fetched);
   const moves = movesOf(ctx, stacks, stack, into);
   const heads = stack.pulls.map(({ oid }) => oid);
@@ -535,15 +554,13 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
   const own = held[held.length - 1];
   const recorded = new Map(moves.flatMap((moved) => [...moved]));
   const pointed = new Map([...recorded].filter(([at, sha]) => sha !== (own.get(at) ?? null)));
-  if (meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) {
-    bringUp(ctx, host, stack, into, moves);
-  } else if (pointed.size > 0) {
-    const listed = [...pointed.keys()].map(lg.plain).join(', ');
-    const message = `chore(${ctx.unit}): point ${listed} at ${pointed.size === 1 ? 'its' : 'their'} landing\n`;
-    const tree = lg.treeWithPointers(ctx.root, top.oid, pointed);
-    const commit = lg.commitTree(ctx.root, { tree, parent: top.oid, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
-    pushUp(ctx, host, [{ pull: top, commit }], `${listed}'s pointer was not recorded`);
-  }
+  if (meetsMove(ctx.gitlinks, base, onto, [...held.slice(0, -1), new Map([...own, ...pointed])])) return bringUp(ctx, host, stack, into, moves);
+  if (pointed.size === 0) return [];
+  const listed = [...pointed.keys()].map(lg.plain).join(', ');
+  const message = `chore(${ctx.unit}): point ${listed} at ${pointed.size === 1 ? 'its' : 'their'} landing\n`;
+  const tree = lg.treeWithPointers(ctx.root, top.oid, pointed);
+  const commit = lg.commitTree(ctx.root, { tree, parent: top.oid, message, signed: lg.signs(ctx.root) }, `${listed}'s pointer on ${top.head}`, 'land again');
+  return pushUp(ctx, host, [{ pull: top, commit }], `${listed}'s pointer was not recorded`);
 }
 
 /**
@@ -552,6 +569,7 @@ function settlePointers(ctx, host, stacks, stack, fetched) {
  * pull request's `moves` set on its merge (see the header) — refused, before
  * anything is pushed, where a merge conflicts in a file.
  * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {string} into @param {Map<string, string|null>[]} moves
+ * @returns {Pushed}
  */
 function bringUp(ctx, host, stack, into, moves) {
   const signed = lg.signs(ctx.root);
@@ -570,20 +588,55 @@ function bringUp(ctx, host, stack, into, moves) {
     below = { commit, name: pull.head };
     return { pull, commit };
   });
-  pushUp(ctx, host, made, `phase ${stack.phase}'s branches were not brought up to date with ${ctx.into}`);
+  return pushUp(ctx, host, made, `phase ${stack.phase}'s branches were not brought up to date with ${ctx.into}`);
 }
 
 /**
  * Each pull request's head moved to its new commit: refused, before
  * anything is pushed, where its branch here is checked out and cannot move;
  * then all pushed at once, and each branch here moved.
- * @param {LandingContext} ctx @param {Host} host @param {{pull: Pull, commit: string}[]} made @param {string} then what did not happen, where the push fails
+ * @param {LandingContext} ctx @param {Host} host @param {Pushed} made @param {string} then what did not happen, where the push fails
+ * @returns {Pushed}
  */
 function pushUp(ctx, host, made, then) {
   refuseBlocked(ctx, made.map(({ pull, commit }) => ({ branch: pull.head, from: pull.oid, to: commit })));
   lg.pushBranches(ctx.root, host.remote, made.map(({ pull, commit }) => ({ branch: pull.head, commit })), `${then} and nothing merged — clear what git names, and land again`);
   const here = lg.branches(ctx.root);
   for (const { pull, commit } of made) if (here.has(pull.head)) lg.moveBranch(ctx.root, pull.head, pull.oid, commit);
+  return made;
+}
+
+/**
+ * Whether GitHub has worked out that a pull request can merge, as it
+ * stands at `head`: false while it is still working it out, or its answer
+ * is of another head; refused where it conflicts with its base.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Pull} pull @param {string} head
+ */
+function canMerge(ctx, host, stack, pull, head) {
+  /** @type {{mergeable: 'MERGEABLE'|'CONFLICTING'|'UNKNOWN', headRefOid: string, baseRefName: string}} */
+  const read = JSON.parse(ghAt(ctx, host, ['pr', 'view', String(pull.number), '--json', MERGEABLE_FIELDS], `read whether pull request #${pull.number} can merge`));
+  if (read.headRefOid !== head || read.mergeable === 'UNKNOWN') return false;
+  if (read.mergeable !== 'CONFLICTING') return true;
+  const theirs = `${host.remote}/${read.baseRefName}`;
+  throw new Error(`land: task ${shownTask(pull.ref)}'s pull request #${pull.number} conflicts with ${read.baseRefName} on GitHub, so phase ${stack.phase}'s stack was not merged — `
+    + `merge ${theirs} into ${pull.head}, settling the conflict, push it, and land again`);
+}
+
+/**
+ * Wait, before a stack merges, until GitHub has worked out whether each of
+ * its pull requests can merge as it stands at its head in `heads`, read
+ * again after each pause (`CHECK_PAUSES_MS`); refused where one conflicts,
+ * or GitHub has not worked one out by the last read.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Map<number, string>} heads
+ */
+function awaitMergeable(ctx, host, stack, heads) {
+  let unchecked = stack.pulls;
+  for (const pause of [...CHECK_PAUSES_MS, null]) {
+    unchecked = unchecked.filter((pull) => !canMerge(ctx, host, stack, pull, heads.get(pull.number) ?? pull.oid));
+    if (unchecked.length === 0) return;
+    if (pause !== null) sleepSync(checkPauseMs(pause));
+  }
+  throw new Error(`land: GitHub has not finished checking whether ${pullsNamed(unchecked)} can merge, so phase ${stack.phase}'s stack was not merged — land again in a moment`);
 }
 
 /**
@@ -591,7 +644,8 @@ function pushUp(ctx, host, made, then) {
  * linked first, so a pull request chained late is in it, its submodules'
  * pointers settled (`settlePointers`), and merged by the extension; a lone
  * one merged alone, under the subject and body a squash makes, onto the
- * default branch. The default branch here is then brought to the merge.
+ * default branch — either once GitHub has worked out that it can
+ * (`awaitMergeable`). The default branch here is then brought to the merge.
  * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
  */
 function mergeStack(ctx, host, stacks, stack) {
@@ -611,7 +665,8 @@ function mergeStack(ctx, host, stacks, stack) {
   } else if (lone.base !== ctx.into) {
     ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
   }
-  settlePointers(ctx, host, stacks, stack, fetched);
+  const pushed = settlePointers(ctx, host, stacks, stack, fetched);
+  awaitMergeable(ctx, host, stack, new Map(pushed.map(({ pull, commit }) => [pull.number, commit])));
   if (more.length > 0) ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
   else ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
   const { stack: tasks, pull_requests } = answered(stack);
