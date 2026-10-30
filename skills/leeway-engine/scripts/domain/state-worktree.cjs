@@ -43,6 +43,11 @@
 //   is pushed wherever the project has a remote, never forced; a push that
 //   fails, runs out of time, or finds no remote chosen among several is a
 //   warning, and the commit stands.
+// - While the migration runs: the migration checks the state worktree out
+//   on a `leeway-state` with no commit yet, and the migration's commit makes
+//   its first (21.9.3). Until then every commit is held — held to the
+//   layout as ever, the writes stay in the worktree, nothing is committed or
+//   pushed, for that commit to take.
 // - The backstop: every state commit is the engine's, so a commit reads the
 //   state worktree's changes once, untracked files among them, ignored ones
 //   not, and holds each against the layout (layout.cjs), its names spelled
@@ -158,7 +163,7 @@ const NETWORK_ENV = Object.freeze({ GIT_TERMINAL_PROMPT: '0' });
 
 /** @typedef {{pushed: boolean, warnings: string[]}} PushOutcome */
 
-/** @typedef {{commit: string|null, pushed: boolean, warnings: string[]}} CommitOutcome */
+/** @typedef {{commit: string|null, pushed: boolean, held?: true, warnings: string[]}} CommitOutcome */
 
 /**
  * A change a state commit makes to a file as the branch holds it: given
@@ -169,13 +174,15 @@ const NETWORK_ENV = Object.freeze({ GIT_TERMINAL_PROMPT: '0' });
 
 /**
  * The state worktree as git opens it: its root, a runner bound to it, the
- * ref its HEAD names (`HEAD` when detached), where its private index goes,
- * its own git dir, and the hash its objects are named by.
+ * ref its HEAD names (`HEAD` when detached), whether that branch has a
+ * commit yet, where its private index goes, its own git dir, and the hash
+ * its objects are named by.
  * @typedef {{
  *   opened: true,
  *   root: string,
  *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   head: string,
+ *   born: boolean,
  *   index: string,
  *   gitDir: string,
  *   objectFormat: string,
@@ -240,6 +247,19 @@ function registeredWorktree(git, root) {
   };
 }
 
+const OPENING = ['rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--show-object-format'];
+
+/**
+ * The branch HEAD names where that branch has no commit yet, else null.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git
+ * @returns {string|null}
+ */
+function unbornHead(git) {
+  const ref = git.tryRun(['symbolic-ref', '--quiet', 'HEAD'])?.trim();
+  if (!ref) return null;
+  return git.tryRun(['rev-parse', '--quiet', '--verify', `${ref}^{commit}`]) === null ? ref : null;
+}
+
 /**
  * Open the folder at `root` as git sees it: opened only where its top is
  * the root and its common directory the main checkout's `.git`. A folder
@@ -251,21 +271,35 @@ function registeredWorktree(git, root) {
 function openWorktree(root) {
   const git = isolatedGit(root);
   let out;
+  let born = true;
   try {
-    out = git.run([
-      'rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--show-object-format',
-      '--symbolic-full-name', 'HEAD',
-    ]);
+    out = git.run([...OPENING, '--symbolic-full-name', 'HEAD']);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    return { opened: false, why: err.message };
+    const unborn = unbornHead(git);
+    if (unborn === null) return { opened: false, why: err.message };
+    out = `${git.run(OPENING).trimEnd()}\n${unborn}`;
+    born = false;
   }
   const [top, common, index, gitDir, objectFormat, head] = out.split('\n');
   const repository = realpathOrSelf(path.resolve(root, common));
   if (realpathOrSelf(top) !== root || repository !== path.join(mainOf(root), '.git')) {
     return { opened: false, why: `git reads it as part of ${top}, whose repository is ${repository}` };
   }
-  return { opened: true, root, git, head, index: path.resolve(root, index), gitDir, objectFormat };
+  return { opened: true, root, git, head, born, index: path.resolve(root, index), gitDir, objectFormat };
+}
+
+/**
+ * Whether the migration runs in the state at `root`: its worktree there,
+ * checked out on a `leeway-state` with no commit yet, the first of which
+ * the migration's commit makes (21.9.3).
+ * @param {string} root
+ * @returns {boolean}
+ */
+function migrationRuns(root) {
+  if (!fs.existsSync(path.join(root, '.git'))) return false;
+  const git = isolatedGit(root);
+  return git.tryRun(['rev-parse', '--quiet', '--verify', 'HEAD^{commit}']) === null && unbornHead(git) === BRANCH_REF;
 }
 
 /** @param {string} root @returns {StateFolder} */
@@ -857,12 +891,14 @@ function push(git, timeoutMs) {
  * holds once any landing is finished — over whatever `paths` gives of it —
  * the working file's own changes left as they are, uncommitted; a file the
  * branch holds that git cannot read, or that its change cannot be made of,
- * refuses the commit.
+ * refuses the commit. While the migration runs — `leeway-state` with no
+ * commit yet — the commit is held, once the layout holds every file: the
+ * writes stay as they are, for the migration's commit to take (21.9.3).
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
  * @param {{contents?: Record<string, Change>}} [opts] `contents` by path as `paths` gives one
- * @returns {{commit: string|null, warnings: string[]}}
+ * @returns {{commit: string|null, held?: true, warnings: string[]}}
  */
 function commitHere(root, paths, message, { contents = {} } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
@@ -876,6 +912,10 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
   }
   const taken = [...specs, ...Object.keys(given)];
   if (taken.length === 0) return { commit: null, warnings: [] };
+  if (!worktree.born) {
+    refuseOutsideLayout(root, placedChanges(worktree));
+    return { commit: null, held: true, warnings: [] };
+  }
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
@@ -894,8 +934,8 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
  * @returns {CommitOutcome}
  */
 function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {} } = {}) {
-  const { commit, warnings } = commitHere(root, paths, message, { contents });
-  if (commit === null) return { commit: null, pushed: false, warnings };
+  const { commit, held, warnings } = commitHere(root, paths, message, { contents });
+  if (commit === null) return { commit: null, pushed: false, ...(held ? { held } : {}), warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
 }
@@ -923,6 +963,7 @@ module.exports = {
   noRemoteChosen,
   stateRemote,
   openWorktree,
+  migrationRuns,
   inspectState,
   createState,
   addStateWorktree,

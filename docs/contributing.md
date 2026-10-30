@@ -88,6 +88,29 @@ verification addendum and notice.
   stubs, and covers the happy path, the skip, idempotency (run twice),
   content preservation, and every defensive guard.
 
+A **directive** is a migration whose work is judgment: the runner stops
+at it, and the start session carries it out. The same header states its
+format and its check's contract.
+
+- A directive is `migrations/NNN-slug.md` in the same sequence, its head
+  first: its title, then `## Touches`, the files it may touch, and
+  `## Asks`, what it asks the person (`- Nothing.` where it asks
+  nothing), each a list alone, an item wrapped onto indented lines;
+  its instructions follow under headings of their own. It names the
+  roster's agents, never a model or an effort.
+- Its check sits beside it, `NNN-slug.check.cjs`, exporting
+  `{ counts, done, check({ projectDir, stateDir }) }`: what one of its
+  pieces is called and many (`{ one: 'topic', many: 'topics' }`), what
+  a piece done has (`'have their records'`), and each piece with what
+  it still lacks. The stop's screen says them as "12 of Fumi's 19
+  topics have their records". `engine migrate check` runs it; the
+  directive is recorded only when
+  `engine checklist close directive NNN-slug` finds it passing.
+- `tests/scripts/test-migration-directives.cjs` lints every directive's
+  head and holds its check beside it; a directive's own suite drives its
+  check over a project the migration is under way in
+  (`tests/scripts/migration-world.cjs`).
+
 ## Prose tests
 
 `tests/prose/` walks the skill prose with real agents against real
