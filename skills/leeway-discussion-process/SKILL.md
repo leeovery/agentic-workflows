@@ -56,7 +56,7 @@ Ask in the conversation; each answer lands through `ledger` as it is given.
 - A changed mind is a replacement, never an edit, its cause named: the finding for a new fact, the other topic's decision, the question a message raised. The log says why.
 - A question another topic's current decision already answers merges into it; a decision is never written twice.
 - Nothing waits half-decided. A question closes by the person's decision, your call, don't care, a move to another topic (**Other Topics**), or later on the roadmap: park it through **Backlogging**, then move it to its item.
-- The person signing off with questions open is a pause, never a done-signal: bring the log up to date, fetch `render wait-agents {work_unit}.{topic}`, emitting any MENU verbatim per its marker, and end the turn.
+- The person signing off with questions open is a pause, never a done-signal: bring the log up to date and fetch `render wait-agents {work_unit}.{topic}`. Where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then end the turn.
 
 ### Calls
 
@@ -107,7 +107,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - Mail → `topic mailbox`, `topic answered`; a message out → `topic send`.
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
-- An experiment → `experiment create`.
+- An experiment → `experiment create`, then `render experiment-spawn-gate`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`.
 - A gate's answer → `gate "{name}" --pick {key}`.
 
@@ -115,9 +115,9 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 
 When nothing of the person's is open, the topic closes on its `decided` checklist; `checklist show decided {work_unit} {topic}` lists its items.
 
-1. Fetch `render wait-agents {work_unit}.{topic}`. It answers nothing where none of the topic's agents is running; otherwise emit its MENU verbatim per its marker. Where the person chose to wait, take in each report as it lands before going on.
+1. Fetch `render wait-agents {work_unit}.{topic}`. Where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then go on.
 2. Load **[closing-pass.md](references/closing-pass.md)** and follow its instructions as written: the closing pass and the reads beside it.
-3. `product-lines-shown`: write the decided screen's payload to `.leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "candidates": [{"name", "reason"}]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, and for an epic each candidate, work no topic owns, named as a topic with its reason. The screen shows them once the checklist closes.
+3. `product-lines-shown` — the product-record lines and any candidates written for the decided screen. Write its payload to `.leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "candidates": [{"name", "reason"}]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, and for an epic each candidate, work no topic owns, named as a topic with its reason. Once it is written, mark the item done.
 4. Close it: `checklist close decided {work_unit} {topic}`.
 5. Stage the payload and draw the screen, emitting its sections verbatim per their markers:
 
@@ -145,7 +145,7 @@ The person shares a file, a path or an image. Load **[spikes-and-assets.md](refe
 
 ## An Experiment
 
-A number about to bear a decision — a controlled measurement would settle a choice being weighed, not merely inform it — is the laboratory's. A sighting short of that bar stays here, its finding `exploratory`. Load **[experiment-spawn.md](../leeway-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, question = the id of the question on the map it measures.
+A number about to bear a decision — a controlled measurement would settle a choice being weighed, not merely inform it — is the laboratory's. A sighting short of that bar stays here, its finding `exploratory`. Load **[spawning-an-experiment.md](references/spawning-an-experiment.md)** and follow its instructions as written.
 
 ## A Message to Another Topic
 

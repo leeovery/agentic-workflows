@@ -1291,8 +1291,8 @@ function runTopic(call, argv) {
 // (domain/experiment.cjs): create is the spawn (id + item + the spawning
 // item's evidence lock — or a sub-experiment under a running parent);
 // advance/approve/conclude/abandon record one experiment's design-before-data
-// walk. Manifest writes with no git commit — the session's commit cadence
-// picks the change up.
+// walk. The spawn commits what it wrote; every other write is left to the
+// session's commit cadence.
 //
 // Beats follow the acting session: `create --from` is the spawning
 // discussion session recording the spawn on its own item, so it beats

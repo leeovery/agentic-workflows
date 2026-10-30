@@ -2967,21 +2967,21 @@ function experimentNextGateSurface(cwd, { dotpath }) {
  * @param {string} cwd @param {string} dotpath @param {string} surface
  * @param {string[]} phases  the phases the surface serves
  * @param {string} noun      what the address names, for the refusal
- * @returns {{phase: string, topic: string, manifest: object}}
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
  */
 function resolvePhaseItem(cwd, dotpath, surface, phases, noun) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
-  if (!phases.includes(phase)) {
-    throw new Error(`render ${surface}: address must be <work_unit>.<${phases.join('|')}>.<topic> — ${noun}; got phase "${phase}"`);
+  const address = resolveAddress(cwd, dotpath, surface);
+  if (!phases.includes(address.phase)) {
+    throw new Error(`render ${surface}: address must be <work_unit>.<${phases.join('|')}>.<topic> — ${noun}; got phase "${address.phase}"`);
   }
-  return { phase, topic, manifest };
+  return address;
 }
 
 /**
  * Resolve a conversation address — a discussion item, the phase that spawns
  * experiments.
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{phase: string, topic: string, manifest: object}}
+ * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
  */
 function resolveConversation(cwd, dotpath, surface) {
   return resolvePhaseItem(cwd, dotpath, surface, EXPERIMENT_SPAWN_PHASES, "the conversation's own item");
@@ -2995,12 +2995,12 @@ function resolveConversation(cwd, dotpath, surface) {
  * @returns {string}
  */
 function experimentSpawnGateSurface(cwd, { dotpath, id }) {
-  const { phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-spawn-gate');
+  const { workUnit, phase, topic, manifest } = resolveConversation(cwd, dotpath, 'experiment-spawn-gate');
   if (!isFilled(id)) throw new Error('render experiment-spawn-gate: --id is required (E1, E2, …)');
   if (!awaitedExperiments(manifest, phase, topic).includes(/** @type {string} */ (id))) {
     throw new Error(`render experiment-spawn-gate: ${phase} "${topic}" holds no evidence wait on ${id} — the gate follows the recorded spawn (experiment create)`);
   }
-  return experimentSpawnGate(phase, /** @type {string} */ (id), manifest.work_type === 'epic');
+  return experimentSpawnGate({ phase, id: /** @type {string} */ (id), unit: workUnit, topic, workType: manifest.work_type });
 }
 
 // The phases the wait gate serves: planning alone. A discussion's waits are

@@ -30,6 +30,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs brief deep-dive {work_unit}
 
 `agent scan {work_unit} discussion {topic}` lists it as `pending`. Read the report in full, then `agent ack {work_unit} discussion {topic} {id} --clean`. What it learnt lands as findings, each saying how it is known as the report does, and the log keeps what came back.
 
-At the next natural pause the person hears it. A dive that answered its question — a `read`, a `feasibility`, a `verify` — gives its answers in full: every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used. A `survey` or a `landscape` gives a short digest: what was asked, what came back, what it opened.
+At the next natural pause the person hears it: what was asked, what came back, what it opened, and its answers in full — every condition, threshold and alternative, scoped as the report scoped it, told as what the product does before any symbol the report used.
 
 Each line under its Opened is judged: a new question on the map, a point another topic owns, a number a decision would rest on — the laboratory's cue — or nothing worth carrying.
