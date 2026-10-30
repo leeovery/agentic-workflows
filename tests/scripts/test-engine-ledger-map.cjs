@@ -240,7 +240,7 @@ describe('a question moved to the roadmap (9.5.4)', () => {
 });
 
 describe('a question an experiment measures (9.1.11)', () => {
-  it('marks an open question waiting on the experiment of its unit that names it, in any wording, until the discussion writes the result: running or concluded, never abandoned, and no longer once the question is answered', () => {
+  it('marks an open question waiting on the experiment of its unit that names it, in any wording, until the discussion writes the result: running or concluded, told apart, never abandoned, and no longer once the question is answered', () => {
     const timing = ask(NOTE, 'How fast does a panel open?');
     const snapping = ask(NOTE, 'Does a note snap to the grid?');
     /** The unit's manifest with experiment E1 at `status`, measuring the question. @param {string} status */
@@ -252,9 +252,9 @@ describe('a question an experiment measures (9.1.11)', () => {
     measuring('running');
 
     const reworded = reword(NOTE, timing, 'How fast does a panel open, cold?');
-    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, 'E1']]);
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, { experiment: 'E1', running: true }]]);
     measuring('concluded');
-    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, 'E1']], 'the result is the discussion\'s to write');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, { experiment: 'E1', running: false }]], 'the result is the discussion\'s to write');
     measuring('abandoned');
     assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]], 'an abandoned experiment leaves its question open');
     measuring('concluded');

@@ -9,8 +9,11 @@
 //   that spawns the experiment. The record keeps its full id, where the map
 //   projection reads it (ledger-units.cjs, ledger-read.cjs).
 // - At the experiment's conclusion, whether the question still stands open
-//   decides where the report goes: open, the discussion reads the report and
-//   writes the result; closed, the report reaches the topic as a message.
+//   on the spawning topic's map decides where the report goes: open, the
+//   discussion reads the report and writes the result; otherwise the report
+//   reaches as a message the topic the question stands on now — the one it
+//   was moved to, or the spawning topic where it was closed there or moved
+//   to the roadmap as later.
 // - A question matches across its wordings, by the first entry of its
 //   chain, as the map matches it.
 // ---------------------------------------------------------------------------
@@ -18,7 +21,7 @@
 const { messageOf } = require('../kernel/call.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { resolveId, shortId } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, isCurrent, mapOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, isCurrent, mapOf, standingOf } = require('./ledger-fold.cjs');
 const { liveness } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -71,11 +74,20 @@ function measuredQuestion(cwd, unit, topic, prefix, warnings) {
 }
 
 /**
- * Whether the question `id` still stands open on `topic`'s map.
+ * The topic the report of an experiment `topic` spawned, measuring the
+ * question `id`, reaches as a message: none while the question stands open
+ * on `topic`'s map; else the live topic of the unit it stands on now, or
+ * `topic` itself.
  * @param {string} cwd @param {string} unit @param {string} topic @param {string} id @param {string[]} warnings
+ * @returns {string|null}
  */
-function questionOpen(cwd, unit, topic, id, warnings) {
-  return withMap(cwd, unit, topic, warnings, (folded, rows) => folded.facts.has(id) && standsOpen(folded, rows, id));
+function reportRoute(cwd, unit, topic, id, warnings) {
+  return withMap(cwd, unit, topic, warnings, (folded, rows) => {
+    if (!folded.facts.has(id)) return topic;
+    if (standsOpen(folded, rows, id)) return null;
+    const now = standingOf(folded, id);
+    return now.topic !== null && folded.live(unit, now.topic) === null ? now.topic : topic;
+  });
 }
 
-module.exports = { measuredQuestion, questionOpen };
+module.exports = { measuredQuestion, reportRoute };

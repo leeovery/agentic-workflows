@@ -1069,9 +1069,7 @@ function staleSources(cwd, workUnit, discussion, opts = {}) {
  * list. The absorbing topic must already exist in the same phase (every
  * supersession runs after the superseding item completed). A proposed item is
  * refused — it has no artifact; reconcile deletes it instead — and a
- * cancelled item must go through reactivate. An item holding live evidence
- * waits refuses: a superseded holder is terminal, and the lock would strand
- * with live records and no consumer. No git commit — supersession is
+ * cancelled item must go through reactivate. No git commit — supersession is
  * batch-oriented; the calling flow commits the whole set.
  * @param {string} cwd project root
  * @param {string} workUnit

@@ -414,12 +414,13 @@ function auditLedger(dir, ctx) {
     const last = movesOf(id, standing(id).unit).at(-1);
     return last === undefined || toTopic(last) ? null : last.to;
   };
-  /** The last experiment of `unit` not abandoned that names any wording of `id`'s question, or null. @param {string} unit @param {string} id */
+  /** The last experiment of `unit` not abandoned that names any wording of `id`'s question, and whether it still runs, or null. @param {string} unit @param {string} id */
   const waitingOn = (unit, id) => {
     const items = manifests.get(unit)?.phases?.experiment?.items ?? {};
     const named = Object.values(items).flatMap((item) => Object.entries(item?.experiments ?? {}))
       .filter(([, r]) => byId.has(r.question) && r.status !== 'abandoned' && firstOf(r.question).id === firstOf(id).id);
-    return named.at(-1)?.[0] ?? null;
+    const last = named.at(-1);
+    return last === undefined ? null : { experiment: last[0], running: last[1].status !== 'concluded' };
   };
   /** What the late check last found of each entry it judged. @type {Map<string, string>} */
   const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [e.entry, e.rules]));
@@ -560,7 +561,7 @@ function auditLedger(dir, ctx) {
     assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
     for (const row of map.questions) {
-      assert.strictEqual(row.waiting_on, row.stands === 'open' ? waitingOn(unit, full(row.id)) : null, ctx(`${place}'s map does not mark ${row.id} waiting on the experiment of its unit measuring it alone`));
+      assert.deepStrictEqual(row.waiting_on, row.stands === 'open' ? waitingOn(unit, full(row.id)) : null, ctx(`${place}'s map does not mark ${row.id} waiting on the experiment of its unit measuring it alone`));
       if (row.stands === 'question-set-aside') assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(row.id)), ctx(`${place}'s record does not show ${row.id}, which its map shows as a row of its own`));
       for (const { id: answer } of row.answers) {
         assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));

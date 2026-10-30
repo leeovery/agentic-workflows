@@ -403,8 +403,9 @@ describe('refusals', () => {
     write('ask', SPACE, [], content);
   });
 
-  it('refuses Claude\'s own close of a question an experiment still running measures — a decision, a move or a merge — while the person closes it, their own answer or one handed over, and once it concludes Claude writes the result (9.1.11)', () => {
-    const [timing, placing, sizing, sharing] = ['How fast does a note open?', 'Where does a note open?', 'How big is a note?', 'Is a note shared?'].map((text) => ask(text).id);
+  it('refuses Claude\'s own close of a question an experiment still running measures — a decision, a move or a merge — while the person closes it, their own answer or one handed over, a move or a merge, and once it concludes Claude writes the result (9.1.11)', () => {
+    const [timing, placing, sizing, moving, merging, sharing] = ['How fast does a note open?', 'Where does a note open?', 'How big is a note?', 'Does a note follow its space?', 'Can a note be sent?', 'Is a note shared?']
+      .map((text) => ask(text).id);
     const shared = decide(sharing).id;
     /** The unit's manifest, its experiments at `status`, measuring `questions`. @param {string} status @param {string[]} questions */
     const measuring = (status, ...questions) => createManifest(dir, UNIT, {
@@ -413,12 +414,14 @@ describe('refusals', () => {
     });
     const held = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb}: ${timing} is measured by experiment E1, still running — Claude never closes a question its experiment measures; the person may, and once it ends the discussion writes the result$`);
 
-    measuring('running', timing, placing, sizing);
+    measuring('running', timing, placing, sizing, moving, merging);
     refused('decide', NOTE, ['--answers', timing], { ...MADE, text: 'In 4 ms.', why: 'Measured.' }, held('decide'));
     refused('move', NOTE, ['--question', timing, '--to', 'space-homing'], MADE, held('move'));
     refused('merge', NOTE, ['--question', timing, '--into', shared], MADE, held('merge'));
     decide(placing, { by: 'person', given: 'own' });
     decide(sizing, { given: 'your-call' });
+    write('move', NOTE, ['--question', moving, '--to', 'space-homing'], { by: 'person', who_moved_whom: 'none' });
+    write('merge', NOTE, ['--question', merging, '--into', shared], { by: 'person', who_moved_whom: 'none' });
     measuring('concluded', timing);
     decide(timing, { text: 'In 4 ms.', why: 'E1 measured it.' });
   });

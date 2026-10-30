@@ -212,15 +212,15 @@ function rowHead(shower, row) {
 
 /**
  * The questions the unit's experiments measure, none abandoned, by the
- * first entry of each question's chain, with the experiment's id: a
- * question the ledger lacks is passed over.
+ * first entry of each question's chain, with the experiment's id and
+ * whether it still runs: a question the ledger lacks is passed over.
  * @param {Folded} folded @param {string} root @param {string} unit
- * @returns {Map<string, string>}
+ * @returns {Map<string, {experiment: string, running: boolean}>}
  */
 function waitingOn(folded, root, unit) {
   const manifest = /** @type {Record<string, any>} */ (manifestOf(root, unit));
   return new Map(experimentWaits(manifest).filter(({ question }) => folded.facts.has(question))
-    .map(({ experiment, question }) => [factsOf(folded, question).root, experiment]));
+    .map(({ experiment, question, running }) => [factsOf(folded, question).root, { experiment, running }]));
 }
 
 /**

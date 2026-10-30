@@ -6,7 +6,8 @@
 // domain/experiment-question.cjs): the spawn from a discussion and its lock,
 // the records in the topic's folder (4.11.15), the walk to verdict, splits,
 // the release edges, the question on the map an experiment measures and the
-// report that reaches the topic as a message once that question has closed
+// report that reaches as a message the topic that question stands on once it
+// has left the spawning topic's open questions, its relative links rebased
 // (9.1.11), the topic's cancel, and the field surface's guards.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
@@ -411,7 +412,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     const full = ledgerIds().find((id) => id.startsWith(placement));
     assert.deepStrictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1,
       { slug: 'window-placement', status: 'conceived', question: full });
-    assert.deepStrictEqual(map(), [[placement, 'open', 'E1'], [sizing, 'open', null]]);
+    assert.deepStrictEqual(map(), [[placement, 'open', { experiment: 'E1', running: true }], [sizing, 'open', null]]);
   });
 
   it('refuses a question that is no open question of the topic, writing nothing', () => {
@@ -437,7 +438,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     walkTo(dir, 'E1', 'running');
     const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
     assert.strictEqual(res.report_sent, undefined, 'an open question takes the report in the discussion, never as a message');
-    assert.deepStrictEqual(map(), [[placement, 'open', 'E1']]);
+    assert.deepStrictEqual(map(), [[placement, 'open', { experiment: 'E1', running: false }]]);
     write('decide', ['--answers', placement], { ...MADE, text: 'Top left.', why: 'E1 measured it.' });
     assert.deepStrictEqual(map().map(([id, stands, waiting]) => [id, stands, waiting]), [[placement, 'answered', null]]);
   });
@@ -454,10 +455,74 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), report);
     const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
     const message = statePath(dir, layout.mailbox('lab', 'discussion', 'timing', '001-e1-report.md'));
-    assert.deepStrictEqual(res.report_sent, { message_path: message, reopened: true, committed: res.report_sent.committed });
+    assert.deepStrictEqual(res.report_sent, { topic: 'timing', message_path: message, reopened: true, committed: res.report_sent.committed });
     assert.strictEqual(fs.readFileSync(message, 'utf8'), report, 'the report reaches the topic as written');
-    assert.strictEqual(lastMessage(dir), "discussion(lab/timing): E1's report, its question closed before it landed");
+    assert.strictEqual(lastMessage(dir), "discussion(lab/timing): timing's E1 report, its question no longer open there when it landed");
     assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.status, 'in-progress', 'the decided topic reopens');
+  });
+
+  it('a report whose question the person moved to another topic reaches that topic, whose map waits on the experiment until it writes the result', () => {
+    const m = readManifest(dir, 'lab');
+    m.phases.discovery.items.sizing = { routing: 'discussion', summary: 'Window sizing', order: 2 };
+    m.phases.discussion.items.sizing = { status: 'completed' };
+    writeManifest(dir, 'lab', m);
+    commitAll(dir, 'sizing');
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    walkTo(dir, 'E1', 'running');
+    engine(dir, ['ledger', 'move', 'lab.discussion.timing', '--question', placement, '--to', 'sizing'], { env: SESSION, stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none' }) });
+    const sizingMap = () => engine(dir, ['ledger', 'map', 'lab', 'sizing']).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.waiting_on]);
+    assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: true }]]);
+    fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), '# Report — E1\n');
+    const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
+    assert.deepStrictEqual(res.report_sent, {
+      topic: 'sizing', message_path: statePath(dir, layout.mailbox('lab', 'discussion', 'sizing', '001-e1-report.md')), reopened: true, committed: res.report_sent.committed,
+    });
+    assert.strictEqual(lastMessage(dir), "discussion(lab/sizing): timing's E1 report, its question no longer open there when it landed");
+    assert.ok(!fs.existsSync(statePath(dir, layout.mailbox('lab', 'discussion', 'timing'))), 'the topic the question left gets nothing');
+    const items = readManifest(dir, 'lab').phases.discussion.items;
+    assert.deepStrictEqual([items.timing.status, items.sizing.status], ['in-progress', 'in-progress'], 'the decided destination reopens');
+    assert.deepStrictEqual(sizingMap(), [[placement, 'open', { experiment: 'E1', running: false }]], 'the result is the destination\'s to write');
+    engine(dir, ['ledger', 'decide', 'lab.discussion.sizing', '--answers', placement], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Top left.', why: 'E1 measured it.' }) });
+    assert.deepStrictEqual(sizingMap(), [[placement, 'answered', null]]);
+  });
+
+  it('a report whose question the person moved to the roadmap as later reaches the spawning topic', () => {
+    engine(dir, ['roadmap', 'add', 'placement', '--horizon', 'v2', '--summary', 'Window placement']);
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    walkTo(dir, 'E1', 'running');
+    write('move', ['--question', placement, '--to', 'roadmap:placement'], { by: 'person', who_moved_whom: 'none' });
+    fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), '# Report — E1\n');
+    const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
+    assert.deepStrictEqual([res.report_sent.topic, res.report_sent.message_path], ['timing', statePath(dir, layout.mailbox('lab', 'discussion', 'timing', '001-e1-report.md'))]);
+  });
+
+  it('the report sent as a message has each relative link rebased to resolve from the mailbox, every other link and fenced code as written', () => {
+    const placement = ask('Where does a new window open?');
+    measure(placement);
+    walkTo(dir, 'E1', 'running');
+    personDecides(placement);
+    const record = layout.experiment('lab', 'timing', 'E1-window-placement');
+    fs.mkdirSync(statePath(dir, `${record}/data`), { recursive: true });
+    fs.writeFileSync(statePath(dir, `${record}/data/run.csv`), 'ms\n4\n');
+    fs.writeFileSync(statePath(dir, `${record}/report.md`), [
+      '# Report — E1', '',
+      'Runs in [the data](data/run.csv#L2) and ![the chart](./data/run.csv "timings"), as [the problem](<problem.md>) set.',
+      'See [the docs](https://example.com/a.md), [above](#method) and [the root](/abs/path.md).',
+      '[raw]: data/run.csv',
+      '```', '[kept](data/run.csv)', '```', '',
+    ].join('\n'));
+    const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
+    const back = path.posix.relative(layout.mailbox('lab', 'discussion', 'timing'), record);
+    assert.strictEqual(fs.readFileSync(res.report_sent.message_path, 'utf8'), [
+      '# Report — E1', '',
+      `Runs in [the data](${back}/data/run.csv#L2) and ![the chart](${back}/data/run.csv "timings"), as [the problem](<${back}/problem.md>) set.`,
+      'See [the docs](https://example.com/a.md), [above](#method) and [the root](/abs/path.md).',
+      `[raw]: ${back}/data/run.csv`,
+      '```', '[kept](data/run.csv)', '```', '',
+    ].join('\n'));
+    assert.ok(fs.existsSync(path.resolve(path.dirname(res.report_sent.message_path), `${back}/data/run.csv`)), 'a rebased link resolves to the file it named');
   });
 
   it('a report owed as a message and not written refuses the conclusion, writing nothing', () => {
@@ -466,7 +531,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     walkTo(dir, 'E1', 'running');
     personDecides(placement);
     const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
-    assert.match(res.error, /experiment E1 \("timing"\) has no report\.md — its question closed while it ran/);
+    assert.match(res.error, /experiment E1 \("timing"\) has no report\.md — its question left the topic's open questions while it ran, so the report reaches "timing" as a message/);
   });
 });
 

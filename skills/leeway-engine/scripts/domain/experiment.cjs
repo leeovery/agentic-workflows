@@ -48,9 +48,10 @@ const {
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
-const { settleItemStatus } = require('./derivations.cjs');
+const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
 const { flagDownstream, releaseExperimentWaits, assertLegalTopicName, sendMessage } = require('./transitions.cjs');
-const { measuredQuestion, questionOpen } = require('./experiment-question.cjs');
+const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
+const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { statePath, stateRelative } = require('../kernel/state-root.cjs');
 
@@ -150,7 +151,7 @@ function liveSubs(item, parentId) {
  * @property {string} [question]  the question the spawn measures, by its short id
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
  * @property {{phase: string, topic: string}[]} [reconcile_flagged]
- * @property {{message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent to the topic, its question closed before it landed
+ * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
  * @property {string[]} [warnings]
  */
 
@@ -364,46 +365,49 @@ function approveExperiment(cwd, workUnit, topic, id) {
 }
 
 /**
- * The report a top-level conclusion owes the topic as a message, by its
- * path: owed where the running record measures a question that no longer
- * stands open on the topic's map — the person closed it while the
- * experiment ran. Null where none is owed; refused where one is owed and the
- * record holds no report to send.
+ * The report a top-level conclusion owes as a message: its record's folder
+ * and the topic it goes to. Owed where the running record measures a
+ * question that no longer stands open on the spawning topic's map — the
+ * person closed or moved it while the experiment ran — to the topic the
+ * question stands on now (`reportRoute`). Null where none is owed; refused
+ * where one is owed and the record holds no report to send.
  * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {string[]} warnings
- * @returns {string|null}
+ * @returns {{record: string, to: string}|null}
  */
 function reportOwed(cwd, workUnit, topic, id, warnings) {
   if (!isParentExperimentId(id)) return null;
   const item = experimentItem(loadWorkUnitManifest(cwd, workUnit), topic);
   const record = seriesRecord(item, topic, id);
   if (record.status !== 'running' || record.question === undefined) return null;
-  if (questionOpen(cwd, workUnit, topic, record.question, warnings)) return null;
-  const experiments = /** @type {Record<string, ExperimentRecord>} */ (item.experiments);
-  const report = path.join(statePath(cwd, recordDir(workUnit, topic, id, experiments)), 'report.md');
-  if (!fs.existsSync(report)) {
-    throw new Error(`experiment ${id} ("${topic}") has no report.md — its question closed while it ran, so the report reaches the topic as a message; write the report first`);
+  const to = reportRoute(cwd, workUnit, topic, record.question, warnings);
+  if (to === null) return null;
+  const dir = recordDir(workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments));
+  if (!fs.existsSync(statePath(cwd, `${dir}/report.md`))) {
+    throw new Error(`experiment ${id} ("${topic}") has no report.md — its question left the topic's open questions while it ran, so the report reaches "${to}" as a message; write the report first`);
   }
-  return report;
+  return { record: dir, to };
 }
 
 /**
- * Send the report to the topic's discussion as a message is sent (9.1.11,
- * 10.2.7), through `topic send`: copied to a cache scratch, which the send
- * consumes, and delivered to the topic's mailbox — a decided topic reopened,
- * the delivery committed.
- * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {string} report
+ * Send the report to the discussion of the topic it is owed to as a message
+ * is sent (9.1.11, 10.2.7), through `topic send`: copied to a cache scratch,
+ * which the send consumes, each relative link rebased to resolve from the
+ * mailbox, and delivered there — a decided topic reopened, the delivery
+ * committed.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {{record: string, to: string}} owed
  * @returns {NonNullable<ExperimentOpResult['report_sent']>}
  */
-function sendReport(cwd, workUnit, topic, id, report) {
+function sendReport(cwd, workUnit, topic, id, { record, to }) {
   const scratch = statePath(cwd, `.cache/${workUnit}/experiment/${topic}/${id}-report.md`);
   fs.mkdirSync(path.dirname(scratch), { recursive: true });
-  fs.copyFileSync(report, scratch);
-  const sent = sendMessage(cwd, workUnit, 'discussion', topic, {
+  const report = fs.readFileSync(statePath(cwd, `${record}/report.md`), 'utf8');
+  fs.writeFileSync(scratch, rebaseLinks(report, record, mailboxDir(workUnit, 'discussion', to)));
+  const sent = sendMessage(cwd, workUnit, 'discussion', to, {
     contentFile: scratch,
     slug: `${id.toLowerCase()}-report`,
-    message: `discussion(${workUnit}/${topic}): ${id}'s report, its question closed before it landed`,
+    message: `discussion(${workUnit}/${to}): ${topic}'s ${id} report, its question no longer open there when it landed`,
   });
-  return { message_path: sent.message_path, reopened: sent.reopened === true, committed: sent.committed ?? null };
+  return { topic: to, message_path: sent.message_path, reopened: sent.reopened === true, committed: sent.committed ?? null };
 }
 
 /**
@@ -416,8 +420,9 @@ function sendReport(cwd, workUnit, topic, id, report) {
  * decision must surface before the record is trusted; a sub-experiment's
  * conclusion moves neither — the parent's carries them. The item's derived
  * status settles after every terminal transition. Where the question the
- * experiment measures closed while it ran, the report then reaches the topic
- * as a message (`reportOwed`, `sendReport`).
+ * experiment measures left the open questions of the spawning topic while
+ * it ran, the report then reaches as a message the topic the question
+ * stands on now (`reportOwed`, `sendReport`).
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{verdict: string}} opts
