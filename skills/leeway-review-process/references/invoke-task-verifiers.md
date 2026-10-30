@@ -1,10 +1,10 @@
 # Invoke Task Verifiers
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
-This step dispatches `workflow-review-task-verifier` agents in batches to verify the plan's tasks. Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
+This step dispatches `leeway-review-task-verifier` agents in batches to verify the plan's tasks. Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
 
 ---
 
@@ -13,7 +13,7 @@ This step dispatches `workflow-review-task-verifier` agents in batches to verify
 The implementation files are the `files` of the topic's task commits, read across every repo in the project:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs code log {work_unit} {topic}
 ```
 
 → Proceed to **B. Extract All Tasks**.
@@ -25,7 +25,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {top
 Read the work type:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 Using the format reading adapter loaded in Step 2, extract every task across all phases from the plan — excluding tasks the backend marks skipped or cancelled (deliberately discarded work is not reviewed; note the excluded ids — they are recorded as covered after the verifiers run, and the report discloses them):
@@ -70,12 +70,12 @@ mkdir -p .workflows/{work_unit}/review/{topic}
 
 Dispatch verifiers in **batches of 5** via the Task tool.
 
-- **Agent path**: `.claude/agents/workflow-review-task-verifier.md`
+- **Agent path**: `.claude/agents/leeway-review-task-verifier.md`
 
 Before the first batch, read the recorded coverage once and hold it as a local set — `push` appends unconditionally, so a crash-resume re-run must never double-record (empty stdout means none):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 ```
 
 1. Group tasks into batches of 5 — no task to verify is no batch, and the step falls through to the excluded tasks and the aggregation, which re-reads the reports already on disk
@@ -85,7 +85,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
    - Record statuses
    - Push the internal ID of each task whose verifier returned and that is not already in the set, and add it to the set — coverage lands per batch, so a crash mid-verification resumes from the batch it lost, never from the start; a failed verifier's task stays unrecorded, so the next session picks it up:
      ```bash
-     node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
+     node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
      ```
 3. After all batches complete, proceed to the excluded tasks
 
@@ -95,7 +95,7 @@ Each verifier receives:
 2. **Specification path** — from the manifest (if available)
 3. **Plan path** — the full plan for phase context
 4. **Project skill paths** — from Step 3 discovery
-5. **Review checklist path** — `.claude/skills/workflow-review-process/references/review-checklist.md`
+5. **Review checklist path** — `.claude/skills/leeway-review-process/references/review-checklist.md`
 6. **Work unit** — the work unit name (for path construction)
 7. **Topic** — the plan topic name (used for output directory)
 8. **Task suffix** — the `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
@@ -123,7 +123,7 @@ Full findings are written to `.workflows/{work_unit}/review/{topic}/report-{phas
 Push the ids excluded as skipped/cancelled at extraction — excluded-by-design is covered; without this, the resume gate counts them unreviewed forever. `push` appends unconditionally: skip any id already in the set.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} reviewed_tasks "{internal_id}"
 ```
 
 → Proceed to **G. Aggregate Findings**.

@@ -1,6 +1,6 @@
 # Linter Setup
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ Discover and configure project linters for use during the TDD cycle's LINT step.
 Read topic-level `linters` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
 ```
 
 #### If the output is an array
@@ -27,7 +27,7 @@ The set was confirmed when this topic stored it — `[]` included — use it wit
 Read the project-level default `linters` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.linters
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.linters
 ```
 
 **If output is empty (never set):**
@@ -43,7 +43,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 Fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --variant skipped
+node .claude/skills/leeway-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --variant skipped
 ```
 
 **STOP.** Wait for user response.
@@ -52,7 +52,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 Store empty array at topic level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
 ```
 
 → Return to caller.
@@ -68,7 +68,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Write the linter names from the project default to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `{"linters": ["{name}", ...]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant confirm
+node .claude/skills/leeway-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant confirm
 ```
 
 **STOP.** Wait for user response.
@@ -77,7 +77,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 Copy to topic level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[{project-level values}]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[{project-level values}]'
 ```
 
 → Return to caller.
@@ -106,8 +106,8 @@ No linters found for this project. Proceeding without linting during TDD.
 
 Store empty array at topic and project level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linters '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.linters '[]'
 ```
 
 → Return to caller.
@@ -117,7 +117,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/linters.json` with the Write tool — `installed` is what the check above actually found, and `recommendations` (omit it when there are none) carries any install commands as one line: `{"linters": [{"name": "{tool}", "detail": "{command}", "installed": true|false}], "recommendations": "{suggested tools with their install commands}"}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs render linters {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/linters.json --variant discovery
 ```
 
 **STOP.** Wait for user response.
@@ -126,8 +126,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render linters {work_unit
 
 Store at topic and project level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[...]'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linters '[...]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[...]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.linters '[...]'
 ```
 
 → Return to caller.
@@ -142,8 +142,8 @@ Adjust based on user input.
 
 Store empty array at topic and project level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linters '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} linters '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.linters '[]'
 ```
 
 → Return to caller.

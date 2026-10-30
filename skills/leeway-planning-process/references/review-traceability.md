@@ -19,7 +19,7 @@ Re-read the specification in full before starting. Don't rely on memory — read
 
 ---
 
-→ Load **[finding-floor.md](../../workflow-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
+→ Load **[finding-floor.md](../../leeway-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
 
 ## Direction 1: Specification → Plan (completeness)
 

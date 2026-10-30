@@ -6,7 +6,7 @@
 // itself on arrival: a process skill's Step 0 applies `{original} ·
 // {work-unit} · {phase} · {topic}`, a navigation skill and the bridge
 // `{original} · {work-unit}`, the roadmap and the baseline `{original} ·
-// roadmap` / `{original} · baseline`, and workflow-start puts the original
+// roadmap` / `{original} · baseline`, and leeway puts the original
 // back through boot's `repair`. Leaving a place is never an event: the name
 // changes on arrival, and at session end, where `session cleanup` restores
 // it. A resumed session gets its label back: `session resume`, a
@@ -20,7 +20,7 @@
 // authoring bug, not an environment condition.)
 //
 // Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
-// means never asked, which is what workflow-start's one-time prompt keys on
+// means never asked, which is what leeway's one-time prompt keys on
 // (boot reports it via `labelConfigStatus`); a prose-test world stamps
 // `false` so a walk never labels the terminal the suite runs in.
 //
@@ -77,7 +77,7 @@ const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
 const { SHELL_HOOK_TOOLS } = require('./shell-guard.cjs');
 
-const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
 const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
 const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
@@ -286,7 +286,7 @@ function commitSessionHooks(cwd, want, message, failure, warnings) {
 }
 
 /**
- * workflow-start's one-time answer: record the opt-in, sync the session
+ * leeway's one-time answer: record the opt-in, sync the session
  * hooks to match (the workflows' own stay whatever the answer), and commit
  * each where it lives — the project manifest in the state, the settings in
  * the code tree. The choice is recorded either way: a settings file the
@@ -310,7 +310,7 @@ function recordLabelChoice(cwd, value) {
 }
 
 /**
- * Boot's report for workflow-start's one-time prompt: `no-tmux` (never
+ * Boot's report for leeway's one-time prompt: `no-tmux` (never
  * prompt, never label), `on`/`off` (recorded on the project manifest),
  * `prompt` (in tmux and never asked).
  * @param {string} cwd
@@ -628,7 +628,7 @@ function restoreSessionLabel(cwd, sessionId) {
 }
 
 /**
- * Boot's pass over the current terminal — workflow-start is the place
+ * Boot's pass over the current terminal — leeway is the place
  * whose label is the original name, and no position: the calling
  * conversation's own position comes off first, labels on or off, while a
  * dead owner's stays — that session may yet be resumed. When the tmux

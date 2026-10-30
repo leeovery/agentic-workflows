@@ -1,7 +1,7 @@
 ---
-name: workflow-investigation-process
+name: leeway-investigation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 # Investigation Process
@@ -30,7 +30,7 @@ Positional arguments:
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -38,7 +38,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Read the investigation file** at `.workflows/{work_unit}/investigation/{topic}.md` — this is your source of truth for what's been discovered. The hypothesis ledger in its Analysis section shows exactly where the analysis stands.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
@@ -61,7 +61,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 - Fix direction is agreed
 - Each significant finding
 
-**After writing, commit** (`node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}" --topic investigation/{topic}`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
+**After writing, commit** (`node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): {what changed}" --topic investigation/{topic}`). Commits let you track and recover after compaction. Don't batch — commit each time you write.
 
 **Draft decisions to cache.** Anything still under discussion — fix options, validation output — lives in `.workflows/.cache/{work_unit}/investigation/{topic}/` until agreed. The investigation file records only what is agreed; a crash mid-discussion loses nothing.
 
@@ -73,7 +73,7 @@ The investigation file is your memory. Context compaction is lossy — what's no
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -81,7 +81,7 @@ The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it",
 
 ## Postponing the Topic
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -89,7 +89,7 @@ The user pushes a topic back to the roadmap — "postpone this", "move the loyal
 
 ## Cancelling the Topic
 
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -100,13 +100,13 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} investigation {topic}
 ```
 
 Read the phase status, storing it as `phase_status`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
 ```
 
 #### If `phase_status` is empty or `unstarted`
@@ -114,7 +114,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 A first start — an `unstarted` stub's messages wait in the topic's mailbox, raised at symptom gathering. Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
 ```
 
 Set `resumed` = `false`.
@@ -126,13 +126,13 @@ Set `resumed` = `false`.
 Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} investigation {topic}
 ```
 
 Render the phase note — `Reopening` for an investigation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb {Reopening|Resuming}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb {Reopening|Resuming}
 ```
 
 **If no file exists at `.workflows/{work_unit}/investigation/{topic}.md`:**
@@ -145,7 +145,7 @@ Set `resumed` = `false`.
 
 **Otherwise:**
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
+Load **[resume-detection.md](../leeway-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
 
 Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's symptoms still standing; `false` for **Step 1**, its file deleted and rebuilt.
 
@@ -163,7 +163,7 @@ Load **[initialize-investigation.md](references/initialize-investigation.md)** a
 
 ## Step 2: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 3**.
 
@@ -171,13 +171,13 @@ Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** 
 
 ## Step 3: Symptom Gathering
 
-Load **[landing-shared-files.md](../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` — a protocol, not a step: a path the user offers in this step enters its **A. Land It**; nothing runs at load time.
+Load **[landing-shared-files.md](../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` — a protocol, not a step: a path the user offers in this step enters its **A. Land It**; nothing runs at load time.
 
 #### If `resumed` is `true`
 
 An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
 
-Then read the mailbox — a gap a paused specification sent here arrives as a message; an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+Then read the mailbox — a gap a paused specification sent here arrives as a message; an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 → On return, proceed to **Step 4**.
 
@@ -201,7 +201,7 @@ Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its que
 
 Document symptoms in the investigation file as you gather them: what an answer gave goes into the file before the next question is asked. Commit after each significant addition. The Symptoms section's fields are prompts, not a form: it holds only what the carrier and the user said. What they don't know goes in as not known, in their words; a Symptoms field the interview never reached is dropped, never filled in. The other sections stay as the template left them.
 
-Then read the mailbox — an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+Then read the mailbox — an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 When symptoms are sufficiently understood to begin code analysis:
 
@@ -211,7 +211,7 @@ When symptoms are sufficiently understood to begin code analysis:
 
 ## Step 4: Contextual Query
 
-Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** with work_unit = `{work_unit}` and follow its instructions as written.
+Load **[contextual-query.md](../leeway-shared/references/contextual-query.md)** with work_unit = `{work_unit}` and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 
@@ -251,7 +251,7 @@ Load **[investigation-plan.md](references/investigation-plan.md)** and follow it
 > Tracing the bug through the codebase — following code paths, checking state, and narrowing down the root cause.
 ```
 
-Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques, **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol, and **[landing-shared-files.md](../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` for the files the user shares — all three govern this step.
+Load **[analysis-patterns.md](references/analysis-patterns.md)** for tracing techniques, **[analysis-checkpoints.md](references/analysis-checkpoints.md)** for the collaboration protocol, and **[landing-shared-files.md](../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `investigation/{topic}` for the files the user shares — all three govern this step.
 
 Trace the bug through the code along the agreed plan. Document findings in the investigation file as you analyze, keep the hypothesis ledger current, and commit after each significant finding.
 
@@ -286,7 +286,7 @@ Do not draft fix direction here — it is explored with the user after the findi
 
 Document in the investigation file and commit.
 
-*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — if the root cause pattern feels familiar, query the knowledge base before moving on. A matching prior investigation can confirm the diagnosis or surface a related bug. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
 
 → Proceed to **Step 8**.
 
@@ -374,7 +374,7 @@ Load **[fix-validation.md](references/fix-validation.md)** and follow its instru
 
 ## Step 12: Compliance Self-Check
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 13**.
 

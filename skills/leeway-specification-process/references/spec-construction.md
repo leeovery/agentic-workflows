@@ -1,6 +1,6 @@
 # Spec Construction
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -38,7 +38,7 @@ If it does: summarize what's changing in the chat — the summary is for discuss
 Read the current approved content from the specification file. Prepare the updated version. Write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
 ```
 
 > **CHECKPOINT**: Even when resurfacing content, you MUST NOT update the specification until the user explicitly approves the change.
@@ -84,7 +84,7 @@ Here's what I understand about [topic] based on the reference material. This is 
 Then fetch the gate — it reads `construction_gate_mode` from the manifest and answers with the approval menu or the auto announcement:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render construction-gate {work_unit}.specification.{topic}
 ```
 
 #### If the response carried `DISPLAY: construction auto-approved`
@@ -107,7 +107,7 @@ Emit the section verbatim per its marker.
 
 **If `auto`:**
 
-Set `construction_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode auto`).
+Set `construction_gate_mode` to `auto` via `engine manifest` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} construction_gate_mode auto`).
 
 → Proceed to **E. Log and Commit**.
 
@@ -147,10 +147,10 @@ If you are uncertain whether the user approved, **ASK**: "Ready to log it, or do
 ## E. Log and Commit
 
 1. Write to the specification — **verbatim** as presented and approved. No silent modifications. Before extracting a `pending` source, re-read the specification for content already logged from it (a crash can leave content written with the status still `pending`) — never double-log.
-2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`). `{source-name}` is the registered key — read the existing `sources` map and flip that row, never invent a new name (for a bugfix it is `{topic}`). See **[specification-format.md](specification-format.md)** for source status details.
+2. After completing exhaustive extraction from a source (all relevant content presented and logged), update that source's status to `incorporated` via `engine manifest` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`). `{source-name}` is the registered key — read the existing `sources` map and flip that row, never invent a new name (for a bugfix it is `{topic}`). See **[specification-format.md](specification-format.md)** for source status details.
 3. Commit at natural breaks — after significant exchanges, after each major topic, and before any context refresh:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what changed}" --topic specification/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what changed}" --topic specification/{topic}
    ```
 
 → Proceed to **F. Topic Complete**.

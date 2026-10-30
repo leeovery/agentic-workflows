@@ -1,13 +1,13 @@
 # Code Session Gate
 
-*Shared reference. Loaded by `workflow-implementation-process` and `workflow-review-process` where each starts.*
+*Shared reference. Loaded by `leeway-implementation-process` and `leeway-review-process` where each starts.*
 
 ---
 
 The caller passes `work_type`, `work_unit`, `topic`, and `phase`. Implementation and review run one session at a time per checkout, whatever work unit or topic the other session sits in — so the check reads the whole project, not this work unit. An empty response means the slot is free.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render code-gate {work_unit}.{phase}.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render code-gate {work_unit}.{phase}.{topic}
 ```
 
 #### If the response is empty
@@ -30,7 +30,7 @@ Emit both sections verbatim per their markers — the blocking fact, then the me
 > Left as it is — come back once that session has finished, or release its hold if you know it is done.
 ```
 
-→ Load **[handing-off.md](handing-off.md)** with route = `/workflow-continue-epic {work_unit}`.
+→ Load **[handing-off.md](handing-off.md)** with route = `/leeway-continue-epic {work_unit}`.
 
 **If `back` and `work_type` is not `epic`:**
 
@@ -40,7 +40,7 @@ Emit both sections verbatim per their markers — the blocking fact, then the me
 > Left as it is — come back once that session has finished, or release its hold if you know it is done.
 ```
 
-→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+→ Load **[start-menu.md](../../leeway/references/start-menu.md)**.
 
 **If `yes`:**
 

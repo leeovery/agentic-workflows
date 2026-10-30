@@ -32,10 +32,10 @@ describe('engine knowledge setup', () => {
   let endpoint;
 
   /** `setup` with the flags, under the test's system config. @param {...string} flags */
-  const setup = (...flags) => engineKnowledge(root, ['setup', ...flags], { WORKFLOWS_CONFIG_DIR: system });
+  const setup = (...flags) => engineKnowledge(root, ['setup', ...flags], { LEEWAY_CONFIG_DIR: system });
   /** @param {string} file */
   const readJson = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
-  const check = async () => (await engineKnowledge(root, ['check'], { WORKFLOWS_CONFIG_DIR: system })).stdout;
+  const check = async () => (await engineKnowledge(root, ['check'], { LEEWAY_CONFIG_DIR: system })).stdout;
   const systemConfig = () => path.join(system, 'config.json');
   refuseLaunches();
 
@@ -95,7 +95,7 @@ describe('engine knowledge setup', () => {
       fs.rmSync(knowledgeAt(root).store);
       fs.rmSync(knowledgeAt(root).metadata);
       assert.strictEqual(await check(), 'buildable\n');
-      assert.strictEqual((await engineKnowledge(root, ['index'], { WORKFLOWS_CONFIG_DIR: system })).code, 0);
+      assert.strictEqual((await engineKnowledge(root, ['index'], { LEEWAY_CONFIG_DIR: system })).code, 0);
       assert.strictEqual(knowledgeMetadata(root).provider, null);
       assert.strictEqual(await check(), 'ready\n');
     });

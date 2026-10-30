@@ -1,6 +1,6 @@
 # Project Skills Discovery
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -9,7 +9,7 @@
 Read topic-level `project_skills` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills
 ```
 
 #### If the output is an array
@@ -23,8 +23,8 @@ The set was confirmed when this topic stored it — `[]` included — use it wit
 Check whether a project-level default `project_skills` exists and read its value via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists project.defaults.project_skills
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.project_skills
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists project.defaults.project_skills
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.project_skills
 ```
 
 **If `false`:**
@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 Fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --variant skipped
+node .claude/skills/leeway-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --variant skipped
 ```
 
 **STOP.** Wait for user response.
@@ -49,7 +49,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 Store empty array at topic level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
 ```
 
 → Return to caller.
@@ -65,7 +65,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Write the skill names from the project default — each path's last segment — to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — `{"skills": ["{skill-name}", ...]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant confirm
+node .claude/skills/leeway-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant confirm
 ```
 
 **STOP.** Wait for user response.
@@ -74,7 +74,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 Copy to topic level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[{project-level values}]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[{project-level values}]'
 ```
 
 → Return to caller.
@@ -87,7 +87,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 ## C. Discovery
 
-Scan `.claude/skills/` for project-specific skill directories — skills carrying this project's own conventions and patterns (e.g. golang-pro, react-patterns). The workflow system's own skills (`workflow-*`) are never project skills. A missing or empty `.claude/skills/` finds nothing.
+Scan `.claude/skills/` for project-specific skill directories — skills carrying this project's own conventions and patterns (e.g. golang-pro, react-patterns). The workflow system's own skills (`leeway-*`) are never project skills. A missing or empty `.claude/skills/` finds nothing.
 
 #### If the scan finds no project skills
 
@@ -99,8 +99,8 @@ No project skills found. Proceeding without project-specific conventions.
 
 Store empty array at topic and project level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.project_skills '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.project_skills '[]'
 ```
 
 → Return to caller.
@@ -110,7 +110,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 Write the findings to `.workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json` with the Write tool — one entry per skill, its `detail` a one-line description of what the skill governs: `{"skills": [{"name": "{skill-name}", "detail": "{what it governs}"}]}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs render project-skills {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/project-skills.json --variant discovery
 ```
 
 **STOP.** Wait for user response.
@@ -119,8 +119,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render project-skills {wo
 
 Store empty array at topic and project level:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.project_skills '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} project_skills '[]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.project_skills '[]'
 ```
 
 → Return to caller.
@@ -129,9 +129,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defa
 
 Store the selected skill paths via `engine manifest`, pushing each path individually to topic level and setting the project default:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} project_skills "{path1}"
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} project_skills "{path2}"
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.project_skills '["{path1}","{path2}"]'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} project_skills "{path1}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} project_skills "{path2}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.project_skills '["{path1}","{path2}"]'
 ```
 
 → Return to caller.

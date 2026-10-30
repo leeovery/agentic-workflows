@@ -7,10 +7,10 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS, CHUNKER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
+const { chunk, sourceLines, lineStarts, lineHolding, MAX_CHUNK_CHARS, CHUNKER_VERSION } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
 
 const FIXTURE_DIR = path.resolve(__dirname, '..', 'fixtures', 'knowledge');
-const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'knowledge', 'chunking');
+const CHUNKING_DIR = path.resolve(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'knowledge', 'chunking');
 
 function loadFixture(name) {
   return fs.readFileSync(path.join(FIXTURE_DIR, name), 'utf8');
@@ -561,7 +561,7 @@ describe('phase chunking configs', () => {
 
   // Every indexable phase ships a validated config — driven from the source
   // of truth so a new phase cannot land without one.
-  const { INDEXED_PHASES } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
+  const { INDEXED_PHASES } = require('../../skills/leeway-engine/scripts/domain/knowledge/artifacts.cjs');
   const phases = INDEXED_PHASES;
 
   for (const phase of phases) {
@@ -1312,7 +1312,7 @@ describe('knowledge chunker — version', () => {
           { content: '## Rotation\n\nWeekly.', headings: ['Auth', 'Rotation'] },
         ],
       },
-      'what a chunk records changed: bump CHUNKER_VERSION in skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs, then update this golden to the new version and chunks',
+      'what a chunk records changed: bump CHUNKER_VERSION in skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs, then update this golden to the new version and chunks',
     );
   });
 });

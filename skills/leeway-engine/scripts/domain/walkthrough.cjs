@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the walkthrough — the one home for reading the project
-// manifest's `walkthrough` object. Boot's status field and workflow-start's
+// manifest's `walkthrough` object. Boot's status field and leeway's
 // one-time offer both derive from this state, so the vocabulary exists
 // exactly once. The answer write lives here too, one confined transaction:
 // the offer is answered once and the answer is the record. Nothing else is
@@ -53,7 +53,7 @@ function walkthroughState(cwd) {
 }
 
 /**
- * Record the answer to workflow-start's one-time offer — `walked` (the eight
+ * Record the answer to leeway's one-time offer — `walked` (the eight
  * screens were opened) or `skipped` (the offer was declined) — and commit it
  * confined to the project manifest. Refuses any other value, and refuses
  * once anything is recorded: the offer is answered once.

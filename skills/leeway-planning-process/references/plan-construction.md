@@ -1,6 +1,6 @@
 # Plan Construction
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -53,7 +53,7 @@ Work through each phase in order. Check the current phase's state.
 Write the task-list payload to `.workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json` with the Write tool (`{"phase": {N}, "phase_name": "{Phase Name}", "tasks": [{"name": "…", "summary": "…", "edge_cases": ["…"]}]}` from the planning file's task table), render, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-list {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json --variant existing
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-list {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json --variant existing
 ```
 
 The response carries the task-list display plus the surface for the current gate mode.
@@ -92,12 +92,12 @@ Tasks are authored in a single batch per phase. One sub-agent authors all tasks 
 
 All tasks already authored. Check via manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 If the manifest still carries a `staging.author-p{N}` subtree for this phase (check with `manifest exists {work_unit}.planning.{topic} staging.author-p{N}` — a crash landed the last task but not the clear), delete it — the plan's tasks are the record:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} staging.author-p{N}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} staging.author-p{N}
 ```
 
 Say `Phase {N}: {Phase Name} — all tasks already authored.`
@@ -124,12 +124,12 @@ Do not advance the manifest position — the phase is unauthored and remains the
 
 Advance the manifest planning position to the next phase — one batched write:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase={N+1} task='~'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase={N+1} task='~'
 ```
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete Phase {N} tasks" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete Phase {N} tasks" --topic planning/{topic}
 ```
 
 Say `Phase {N}: {Phase Name} — complete ({M} task(s) authored).`, `{M}` the tasks in the phase's task list.
@@ -147,7 +147,7 @@ Say `Phase {N}: {Phase Name} — complete ({M} task(s) authored).`, `{M}` the ta
 ## E. Loop Complete
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant construction-complete
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant construction-complete
 ```
 
 Emit the call's DISPLAY section verbatim per its marker.

@@ -1,6 +1,6 @@
 ---
-name: workflow-implementation-analysis-synthesizer
-description: Synthesizes analysis findings into task proposals. Reads findings files, deduplicates, groups, folds them into proposals, and writes a staging file for the orchestrator's approval walk. Invoked by workflow-implementation-process skill after analysis agents complete.
+name: leeway-implementation-analysis-synthesizer
+description: Synthesizes analysis findings into task proposals. Reads findings files, deduplicates, groups, folds them into proposals, and writes a staging file for the orchestrator's approval walk. Invoked by leeway-implementation-process skill after analysis agents complete.
 tools: Read, Write, Glob, Bash
 model: opus
 ---

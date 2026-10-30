@@ -1,6 +1,6 @@
 # Inbox Archived
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ View and manage items archived out of the inbox. Pick one item, then restore it,
 Render the archived snapshot — re-run on every entry so prior actions are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs archived
+node .claude/skills/leeway/scripts/gateway.cjs archived
 ```
 
 The output is one snapshot in demarcated sections:
@@ -50,7 +50,7 @@ Store the selected item's path from its `ITEMS` row as `item.path`.
 Fetch the menu over the selected item and emit its `MENU: archived actions` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions --path {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render archived-actions --path {item.path}
 ```
 
 **STOP.** Wait for user response.
@@ -60,7 +60,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions -
 Fetch the item in full and emit the call's DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --path {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-content --path {item.path}
 ```
 
 → Return to **B. Action Menu**.
@@ -70,13 +70,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --pa
 Move the file back into its inbox folder and commit — one command:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox restore {item.path}
 ```
 
 Fetch the receipt over the response's `restored` path and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-restore-receipt --path {restored_path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-restore-receipt --path {restored_path}
 ```
 
 → Return to **A. Select**.
@@ -86,7 +86,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-restore-rece
 Confirm before deleting — fetch the gate and emit its `MENU: archived delete gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-gate --path {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render archived-delete-gate --path {item.path}
 ```
 
 **STOP.** Wait for user response.
@@ -98,13 +98,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-ga
 **If user chose `y/yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox delete {item.path}
 ```
 
 Fetch the receipt and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-delete-receipt --path {item.path}
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-delete-receipt --path {item.path}
 ```
 
 → Return to **A. Select**.

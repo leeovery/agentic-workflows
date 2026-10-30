@@ -15,7 +15,7 @@ The **never-dump rules apply in full** — they live with the surfacing itself, 
 ## A. Check Review State
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
 ```
 
 Take the highest-numbered row of kind `review`.
@@ -37,7 +37,7 @@ Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{top
 **If the report has no findings:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
+node .claude/skills/leeway-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
 Say `Background review returned — nothing new beyond what we've already covered.`
@@ -47,7 +47,7 @@ Say `Background review returned — nothing new beyond what we've already covere
 **Otherwise:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --findings {F1,F2,…}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --findings {F1,F2,…}
 ```
 
 → Proceed to **B. Render Menu** with the response's row.
@@ -61,13 +61,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {ph
 Conclusion is a decision point every time — whether the drain started mid-session or at a prior conclusion attempt, the user chooses between continuing the walk-through and concluding with the rest on record. Fetch the gate and emit its MENU section verbatim per its marker — the count is the row's own:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-findings-gate {work_unit}.{phase}.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-findings-gate {work_unit}.{phase}.{topic}
 ```
 
 Record the announce:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
 ```
 
 **STOP.** Wait for user response.
@@ -83,7 +83,7 @@ Follow **D. Route by Lane** in **[background-agent-surfacing.md](background-agen
 #### If `skip`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
 ```
 
 The declined ids stay recorded unsurfaced, and the content file is preserved on disk for the record.

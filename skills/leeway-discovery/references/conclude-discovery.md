@@ -1,6 +1,6 @@
 # Conclude Discovery
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -18,7 +18,7 @@ Two anti-patterns (all work types):
 Commit any residual changes (e.g. an endpoint's Conclusion write or marker clear) — a clean tree reports `committed: null` and is fine:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log" --discovery
 ```
 
 → Proceed to **B. Bridge**.
@@ -33,4 +33,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 
 `next_phase` is the destination the endpoint supplied, or the literal `none` when it supplied nothing — an epic, which the bridge returns to its menu.
 
-Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.
+Invoke `/leeway-bridge {work_unit} discovery {next_phase}` via the Skill tool.

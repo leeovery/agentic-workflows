@@ -1,6 +1,6 @@
 # Discussion Guidelines
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -22,11 +22,11 @@ The conversation follows the thinking, not a checklist. Subtopics emerge, get ex
 
 **Follow threads**: When a tangent surfaces something important, follow it. Add it to the map and explore. You can always navigate back.
 
-**Challenge and probe**: Push back on assumptions, surface edge cases, propose alternatives. The goal is depth of understanding, not speed of coverage. A challenge lands where the record leaves a genuine choice — a point it settles is called and queued (**[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**), never presented for ratification.
+**Challenge and probe**: Push back on assumptions, surface edge cases, propose alternatives. The goal is depth of understanding, not speed of coverage. A challenge lands where the record leaves a genuine choice — a point it settles is called and queued (**[ask-or-decide.md](../../leeway-shared/references/ask-or-decide.md)**), never presented for ratification.
 
-→ Load **[devils-advocate.md](../../workflow-shared/references/devils-advocate.md)** and follow its instructions as written.
+→ Load **[devils-advocate.md](../../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.
 
-**Edge cases at product altitude** ([altitude.md](../../workflow-shared/references/altitude.md), in context): an edge case is raised as the situation the user meets and what the product does there, never as a code path. Mechanism enters only where the decision turns on it — the rest is the implementer's, and the specification will say what, not how.
+**Edge cases at product altitude** ([altitude.md](../../leeway-shared/references/altitude.md), in context): an edge case is raised as the situation the user meets and what the product does there, never as a code path. Mechanism enters only where the decision turns on it — the rest is the implementer's, and the specification will say what, not how.
 
 **Facts are measured before they're asserted**: A fact-shaped statement about the codebase or toolchain — a count, a name, what something does, whether a pattern holds — is run before it enters the conversation, not when it reaches the document: state the measured truth and quote the command, so the document can carry both. A figure attributed to a document is a citation; measure it before adopting it as this session's fact. Ideas are free; facts get run first. A conversation reasoned over a false premise stays poisoned however well the document is corrected later.
 

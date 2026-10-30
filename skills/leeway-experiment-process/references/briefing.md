@@ -1,6 +1,6 @@
 # The Briefing
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Present the design conversationally in plain terms, in paragraphs as markdown (n
 Then fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}
 ```
 
 **STOP.** Wait for user response.
@@ -21,8 +21,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-approva
 Record the freeze and commit — from here the design changes only by **[amendment-protocol.md](amendment-protocol.md)**:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs experiment approve {work_unit} {topic} {id}
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} approved — design frozen"
+node .claude/skills/leeway-engine/scripts/engine.cjs experiment approve {work_unit} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} approved — design frozen"
 ```
 
 **If the engine refused the approve:**

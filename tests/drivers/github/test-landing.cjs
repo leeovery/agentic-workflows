@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (workflow-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
 // on its own ground, past what every driver does (the landing conformance
 // suite's): the calls it makes on gh and the stack extension for a stack of
 // three tasks — each branch pushed as its pull request opens, each pull
@@ -25,7 +25,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
-const { loadDriver } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');

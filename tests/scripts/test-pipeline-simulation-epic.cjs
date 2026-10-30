@@ -19,10 +19,10 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
-const { epicMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
+const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, sessionLog, send, mappedEpic, arrive, menuEntry, handoffEntry, handoff, arriveAtEpicMenu, epicPick, walkDeliveryPhases,
 } = require('./pipeline-world.cjs');
@@ -150,7 +150,7 @@ describe('pipeline simulation: epic', () => {
   it('epic: the d and r doors name the new topic and land its map row before the handoff carries it — a name on the map puts the menu back', () => {
     const wu = 'lumen';
     mappedEpic(sim, wu, ['alpha']);
-    handoff(sim, `/workflow-continue-epic ${wu}`);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
 
     // The doors are the menu's own flows: rows with no route, never handed to
@@ -161,7 +161,7 @@ describe('pipeline simulation: epic', () => {
     assert.deepStrictEqual(doors.map((k) => [k.key, k.route]), [['d', null], ['r', null]]);
     for (const [phase, action] of [['discussion', 'new_discussion'], ['research', 'new_research']]) {
       sim.refuses(['render', 'epic-soft-gate', wu, '--action', action], new RegExp(`unknown --action "${action}"`));
-      sim.refuses(['handoff', `/workflow-${phase}-process`, 'epic', wu], new RegExp(`^an epic enters ${phase} at a topic`));
+      sim.refuses(['handoff', `/leeway-${phase}-process`, 'epic', wu], new RegExp(`^an epic enters ${phase} at a topic`));
     }
 
     // A name already on the map is refused before anything lands.
@@ -177,7 +177,7 @@ describe('pipeline simulation: epic', () => {
       assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`]), '');
       sim.run(['discovery-map', 'add', wu, topic, phase, '--source', 'direct-start',
         '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--force-dismissed']);
-      const route = `/workflow-${phase}-process epic ${wu} ${topic}`;
+      const route = `/leeway-${phase}-process epic ${wu} ${topic}`;
       assert.strictEqual(handoff(sim, route).args, `epic ${wu} ${topic}`);
       assert.strictEqual(epicPick(sim, wu, `start_${phase}`, topic).text, `Invoke \`${route}\`.`);
       assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`, 'source']), 'direct-start');
@@ -213,7 +213,7 @@ describe('pipeline simulation: epic', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
-    handoff(sim, `/workflow-continue-epic ${wu} discussion completed`);
+    handoff(sim, `/leeway-continue-epic ${wu} discussion completed`);
     arrive(sim, wu);
     assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), ['beta']);
     // The stub has no file to draft from: the batch, then the unsourced gate,
@@ -284,8 +284,8 @@ describe('pipeline simulation: epic', () => {
     assert.match(sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' }),
       /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.match(sim.render(['revisit-phases', wu], { expect: 'content' }), /\*\*`1`\*\* +→ Discussion — \*completed\*/);
-    assert.match(dump, new RegExp(`^revisit_routes: /workflow-discussion-process feature ${wu}$`, 'm'));
-    handoff(sim, `/workflow-discussion-process feature ${wu}`);
+    assert.match(dump, new RegExp(`^revisit_routes: /leeway-discussion-process feature ${wu}$`, 'm'));
+    handoff(sim, `/leeway-discussion-process feature ${wu}`);
     sim.refuses(['topic', 'start', wu, 'discussion', wu], /reopen/);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.render(['phase-note', `${wu}.discussion.${wu}`, '--verb', 'Reopening'], { expect: 'content' });

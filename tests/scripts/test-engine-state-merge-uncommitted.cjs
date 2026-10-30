@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The working tree's uncommitted state through a catch-up
-// (workflow-engine/scripts/domain/state-merge-worktree.cjs): an uncommitted
+// (leeway-engine/scripts/domain/state-merge-worktree.cjs): an uncommitted
 // file merged in place with the update and never committed, a field it and
 // the update changed differently asked of the person, and a file and a
 // folder at one path set beside each other.
@@ -21,7 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(MERGE);

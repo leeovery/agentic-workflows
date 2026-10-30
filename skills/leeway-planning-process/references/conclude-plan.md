@@ -1,6 +1,6 @@
 # Conclude the Plan
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -9,7 +9,7 @@
 The plan's waits gate the conclusion — a plan does not close over a specification that is not settled, and the engine would refuse the completion anyway. Fetch the gate (empty when nothing is owed):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.planning.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render wait-gate {work_unit}.planning.{topic}
 ```
 
 **If sections are returned:**
@@ -23,7 +23,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 Commit the session's work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): pause — the specification is unsettled" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): pause — the specification is unsettled" --topic planning/{topic}
 ```
 
 Then invoke the pipeline bridge as a pause:
@@ -34,7 +34,7 @@ Then invoke the pipeline bridge as a pause:
 > Paused on the specification — the plan concludes once the specification has settled and the plan is reconciled against it.
 ```
 
-Invoke `/workflow-bridge {work_unit} planning none paused`.
+Invoke `/leeway-bridge {work_unit} planning none paused`.
 
 **If `keep`:**
 
@@ -55,7 +55,7 @@ Nothing blocks the conclusion.
 ## A. Conclude Gate
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.planning.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render conclude-gate {work_unit}.planning.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -76,19 +76,19 @@ Answer from the record the session already holds — the plan and the specificat
 
 1. **Mark the plan completed** — the engine sets the status, and refuses while the specification is unsettled, naming what is owed:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
    ```
 2. **Re-baseline `spec_commit`** — the completion stands, so the plan reflects the specification as of this point; stamp the baseline spec-change detection will diff against on any later resume:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} spec_commit $(git rev-parse HEAD)
    ```
 3. **Final commit** — Commit the completed plan:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan" --topic planning/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan" --topic planning/{topic}
    ```
 4. **Present completion summary** — fetch it and emit the call's DISPLAY section verbatim per its marker:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant concluded
+   node .claude/skills/leeway-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant concluded
    ```
 
 5. **Pipeline continuation**:
@@ -99,4 +99,4 @@ Answer from the record the session already holds — the plan and the specificat
 > Planning complete. The implementation phase will execute these tasks using TDD — tests first, then code.
 ```
 
-Invoke `/workflow-bridge {work_unit} planning`.
+Invoke `/leeway-bridge {work_unit} planning`.

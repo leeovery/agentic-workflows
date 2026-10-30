@@ -1,6 +1,6 @@
 # Research Document Template
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 

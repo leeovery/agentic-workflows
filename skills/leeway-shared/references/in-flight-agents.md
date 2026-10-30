@@ -13,13 +13,13 @@ After return, the caller reads `result` from conversation memory: `leave` — no
 Read the store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
 ```
 
 Its `in_flight` list holds the agents dispatched and not yet returned. An agent an earlier session dispatched cannot still be running — each row's `created` timestamp tells you which those are. Close those the phase's way:
 
-- **Research** — enter **C. Land and Fold** in **[deep-dive-agent.md](../../workflow-research-process/references/deep-dive-agent.md)** — it closes the dead rows and folds what landed.
-- **Discussion** — close each (`agent incorporate`). A dead `synthesis` row is the exception: handle it per **D. Check and Surface** in **[perspective-agents.md](../../workflow-discussion-process/references/perspective-agents.md)** — closed *and* re-dispatched, so the council's tensions aren't lost.
+- **Research** — enter **C. Land and Fold** in **[deep-dive-agent.md](../../leeway-research-process/references/deep-dive-agent.md)** — it closes the dead rows and folds what landed.
+- **Discussion** — close each (`agent incorporate`). A dead `synthesis` row is the exception: handle it per **D. Check and Surface** in **[perspective-agents.md](../../leeway-discussion-process/references/perspective-agents.md)** — closed *and* re-dispatched, so the council's tensions aren't lost.
 
 Then re-scan and count this session's `in_flight` rows alone.
 
@@ -46,7 +46,7 @@ The wait is already chosen — no second ask.
 Fetch the gate — with `--pause` when `exit` is `pause`, so its rows name the pause:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render in-flight-agents-gate {work_unit}.{phase}.{topic} --count {N} [--pause]
+node .claude/skills/leeway-engine/scripts/engine.cjs render in-flight-agents-gate {work_unit}.{phase}.{topic} --count {N} [--pause]
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -67,8 +67,8 @@ Set `result = leave`.
 
 Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, take in what came back — the session leaving is the natural break, so the break check will pass:
 
-- **Research** — fold each per **C. Land and Fold** in **[deep-dive-agent.md](../../workflow-research-process/references/deep-dive-agent.md)**.
-- **Discussion** — delegate surfacing to the surfacing protocol loaded by **[review-agent.md](../../workflow-discussion-process/references/review-agent.md)** and **[perspective-agents.md](../../workflow-discussion-process/references/perspective-agents.md)**. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time.
+- **Research** — fold each per **C. Land and Fold** in **[deep-dive-agent.md](../../leeway-research-process/references/deep-dive-agent.md)**.
+- **Discussion** — delegate surfacing to the surfacing protocol loaded by **[review-agent.md](../../leeway-discussion-process/references/review-agent.md)** and **[perspective-agents.md](../../leeway-discussion-process/references/perspective-agents.md)**. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time.
 
 Set `result = stay`.
 

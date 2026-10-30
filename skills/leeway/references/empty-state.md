@@ -1,6 +1,6 @@
 # Empty State
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ No active work found. Offer to start something new, with option to view complete
 Render the workflow overview snapshot — with no active work it carries the empty-state display and start menu:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs view
+node .claude/skills/leeway/scripts/gateway.cjs view
 ```
 
 The output is one snapshot in three demarcated sections:
@@ -41,15 +41,15 @@ Match the user's input to its `ACTIONS` entry — a command option's letter by `
 
 #### If `action` is `open_baseline`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
 
 #### If `action` is `open_roadmap`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-roadmap open`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-roadmap open`.
 
 #### If `action` is `open_help`
 
-Invoke `/workflow-help` — it opens the help home.
+Invoke `/leeway-help` — it opens the help home.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

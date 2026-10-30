@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A project being set up (workflow-engine/scripts/domain/boot.cjs with
+// A project being set up (leeway-engine/scripts/domain/boot.cjs with
 // domain/state-checks.cjs and domain/code-trace.cjs): the orphan state
 // branch checked out at .leeway/ and locked, pushed where there is a remote,
 // then the ignore line committed through the code door; a boot cut short

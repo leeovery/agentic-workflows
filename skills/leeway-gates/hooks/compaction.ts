@@ -40,12 +40,12 @@ const isNotes = (value: unknown): value is Notes =>
  * null for any other.
  */
 async function workflowFolder($: EngineInterface): Promise<string | null> {
-  if ((await $.env.get('WORKFLOWS_GATE_SURFACE')) !== '1') {
+  if ((await $.env.get('LEEWAY_GATE_SURFACE')) !== '1') {
     return null
   }
 
   const folder = folderOf(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     await $.session.id(),
   )

@@ -1,6 +1,6 @@
 # Sending a Message
 
-*Shared reference. Loaded by `workflow-discussion-process` (off-topic points), `workflow-research-process` (topic awareness), and `workflow-specification-process`, `workflow-planning-process`, and `workflow-implementation-process` (gaps and resolutions sent to a source discussion) when something must be sent to a different topic.*
+*Shared reference. Loaded by `leeway-discussion-process` (off-topic points), `leeway-research-process` (topic awareness), and `leeway-specification-process`, `leeway-planning-process`, and `leeway-implementation-process` (gaps and resolutions sent to a source discussion) when something must be sent to a different topic.*
 
 ---
 
@@ -49,7 +49,7 @@ Carry **everything** worked out about the message — as many paragraphs as it t
 Resolution is computed against the **live** state at landing time, never cached — a target created earlier in the same session must resolve correctly:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Find the row whose name is `{target}`.
@@ -95,7 +95,7 @@ One engine transaction owns the whole delivery: `topic send` handles the item st
 3. Deliver:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {landing_phase} {target} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): send message to {target}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {landing_phase} {target} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): send message to {target}"
    ```
 
 **If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
@@ -119,7 +119,7 @@ Set `landed_topic = {target}` and `result = landed`. When the response carries `
 Never stub over a concluded artefact, and never send a message no session will raise. Present the state and let the user decide — the surface derives which closed state the target is in and words the reopen row for it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render send-closed-target {work_unit}.discovery.{target}
+node .claude/skills/leeway-engine/scripts/engine.cjs render send-closed-target {work_unit}.discovery.{target}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -131,13 +131,13 @@ Emit the call's MENU section verbatim per its marker.
 Reopen the topic — for `handled`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
 ```
 
 For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; every research and discussion item cancelled under its name returns with it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}
 ```
 
 If the response is `ok: false`, surface the engine's error verbatim and re-fetch the gate above — the message is still unsent. Otherwise re-resolve against the fresh state — the response's `restored` names what came back:

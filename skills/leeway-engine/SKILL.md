@@ -1,7 +1,7 @@
 ---
-name: workflow-engine
+name: leeway-engine
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 # Workflow Engine
@@ -25,11 +25,11 @@ Two doors:
 
 Output sections are one-directional: `DATA` is for reasoning and is never displayed; `DISPLAY` and `MENU` are emitted to the user, each verbatim per its marker, and never parsed for decisions.
 
-`GATE` is for code alone: one line of JSON stating the gate the `MENU` directly below it draws, so a surface can draw that gate without reading the markdown. It is present only while `WORKFLOWS_GATE_SURFACE=1` is in the environment, always sits immediately above the `MENU` it describes, and is never displayed.
+`GATE` is for code alone: one line of JSON stating the gate the `MENU` directly below it draws, so a surface can draw that gate without reading the markdown. It is present only while `LEEWAY_GATE_SURFACE=1` is in the environment, always sits immediately above the `MENU` it describes, and is never displayed.
 
 `POSITION` is for code alone too: `conversation position`'s one line of JSON, carrying the note its `DATA` section holds, for the gate mod to read. It is never displayed.
 
-`HANDOFF` is for code alone as well: one line of JSON closing `engine handoff`'s answer — the skill, its arguments, the continuation and the line naming where the work goes — for the gate mod to carry. It is present only while `WORKFLOWS_HANDOFF=1` is in the environment and is never displayed.
+`HANDOFF` is for code alone as well: one line of JSON closing `engine handoff`'s answer — the skill, its arguments, the continuation and the line naming where the work goes — for the gate mod to carry. It is present only while `LEEWAY_HANDOFF=1` is in the environment and is never displayed.
 
 **Sessions run concurrently, so every write is confined.** A command's writes and its commit hold the state's one writer lock; cache state is partitioned per topic, bar a few stores of wider scope, each written atomically or under a lock of its own — per unit the last-looked mark (`.cache/.marks/{unit}.json`), and project-wide the session-label store, keyed per tmux session, and the late check's claim (`.cache/.late-check`); the conversation folders beside the system config are keyed per Claude session id, and each concern writes a file of its own there; and every engine commit — the `commit` helper and every transaction tail — commits the paths its action wrote and nothing else: a pathspec commit, never the shared index. A state commit is made on `leeway-state` from a private index and pushed, taking along the layout's logs changed since, and refused while a file the layout has no place for sits in the state. The migration commit (`commit --migrations`) takes the whole state on the state side; its code side, which records a removal a migration staged, is built from a scratch index holding HEAD with the owned paths as the index records them, so it too carries nothing it did not name. Session liveness rides the same principle: heartbeats are stamped by the engine as a side effect of the verbs a session runs on its own topic (`presence`), never by prose.
 

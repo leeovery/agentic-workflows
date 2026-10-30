@@ -17,7 +17,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/059-backfill-import-origins.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/059-backfill-import-origins.cjs');
 
 let dir, updates, skips;
 

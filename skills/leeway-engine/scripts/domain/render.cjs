@@ -3316,7 +3316,7 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
   const { manifest, topic } = resolvePlanning(cwd, dotpath, 'external-dependency-gate');
   const deps = blockingDependencies(manifest, topic, blocking);
   if (variant === 'exit') {
-    return blocker(`"${titlecase(topic)}" is blocked until these dependencies are resolved`, 'Use /workflow-start to navigate to the blocking work.');
+    return blocker(`"${titlecase(topic)}" is blocked until these dependencies are resolved`, 'Use /leeway to navigate to the blocking work.');
   }
   if (variant === 'pick' && deps.length === 1) {
     return section('DISPLAY: auto-select', CONTINUE_INSTRUCTION, autoSelectLine(deps[0].name));
@@ -5408,7 +5408,7 @@ function entryGate(cwd, { dotpath, own }) {
       if (!names.some((n) => items[n] && items[n].status === 'completed')) {
         return blocker(
           `No completed discussions found for "${wu}"`,
-          'At least one completed discussion is required before specification can begin. Run /workflow-start to continue an in-progress discussion.',
+          'At least one completed discussion is required before specification can begin. Run /leeway to continue an in-progress discussion.',
         );
       }
       // The topic's own sources must be settled: a source discussion back
@@ -6480,7 +6480,7 @@ function shapeGateSurface(_cwd, _args) {
 }
 
 /**
- * workflow-start's migration summary — the payload is the session's summary,
+ * leeway's migration summary — the payload is the session's summary,
  * the notices the run handed back for the person, and, where the run updated
  * files, its two counts.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
@@ -6643,7 +6643,7 @@ function legacySplitSources(cwd, { dotpath }) {
   const sections = [];
   if (sources.stranded_sentinels.length > 0) {
     sections.push(section('DISPLAY: legacy split interrupted', CONTINUE_INSTRUCTION, [
-      legacySplitFlag('Interrupted split(s) detected — a prior apply crashed mid-flight.', 'Clear each, then reopen the epic via /workflow-start to retry:'),
+      legacySplitFlag('Interrupted split(s) detected — a prior apply crashed mid-flight.', 'Clear each, then reopen the epic via /leeway to retry:'),
       '',
       ...sources.stranded_sentinels.flatMap((name) => bulletRow(name, { indent: '    ' })),
       '',
@@ -6690,14 +6690,14 @@ function legacySplitProcessing(cwd, { dotpath, source }) {
  */
 function legacySplitOutcome({ applied, abandoned, errored }) {
   if (errored > 0) {
-    return `${errored} source file(s) aborted mid-apply; ${applied} decomposed; ${abandoned} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.`;
+    return `${errored} source file(s) aborted mid-apply; ${applied} decomposed; ${abandoned} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /leeway.`;
   }
   if (applied === 0 && abandoned === 0) return 'No legacy source files needed decomposition.';
   if (abandoned === 0) return 'Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.';
   if (applied > 0) {
-    return `${applied} source file(s) decomposed; ${abandoned} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.`;
+    return `${applied} source file(s) decomposed; ${abandoned} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /leeway.`;
   }
-  return 'No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.';
+  return 'No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /leeway.';
 }
 
 /** The split's conclusion. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
@@ -7020,7 +7020,7 @@ function baselineDocPickSurface(cwd, _args) {
 // ---------------------------------------------------------------------------
 
 /**
- * workflow-start's one-time offer, standing before the walk. `--menu-only`
+ * leeway's one-time offer, standing before the walk. `--menu-only`
  * serves the return from a question.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
@@ -7070,7 +7070,7 @@ function walkthroughTopicSurface(_cwd, args) {
 const KNOWLEDGE_GATE_FLAGS = { reuse: ['provider', 'model'], retry: ['provider'] };
 
 /**
- * workflow-start's knowledge gate menus. A reuse provider stands without a
+ * leeway's knowledge gate menus. A reuse provider stands without a
  * model (the provider defaults it); a model without a provider names
  * nothing. The retry variant names the provider its key is for.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}

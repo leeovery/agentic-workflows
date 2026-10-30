@@ -9,7 +9,7 @@ The caller provides `work_type`, `work_unit`, `topic`, and the `point` with its 
 Write the offer payload to `.workflows/.cache/{work_unit}/discussion/{topic}/off-topic-offer.json` with the Write tool (`{"title": "…"}` — the point's short title), then render it (the pivot row is derived from the work type; the discussion variant carries the roadmap park):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render off-topic-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/off-topic-offer.json --variant discussion
+node .claude/skills/leeway-engine/scripts/engine.cjs render off-topic-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/off-topic-offer.json --variant discussion
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -18,7 +18,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `log`:**
 
-Capture the point via the `workflow-log-idea` skill so it lands in the inbox for later triage.
+Capture the point via the `leeway-log-idea` skill so it lands in the inbox for later triage.
 
 → Return to caller for **B. Session Loop**.
 
@@ -27,7 +27,7 @@ Capture the point via the `workflow-log-idea` skill so it lands in the inbox for
 Confirm the horizon in conversation (propose from the user's own staging words when they placed it; ask when they didn't), then park it as its `{kind}` — `bug` for something broken, `quick-fix` for a small mechanical change, `idea` for anything else, an idea at capability grain. The roadmap is born at the first park, and the verb validates and self-commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
 ```
 
 Note the park in the Summary so the discussion records where the point went.
@@ -36,11 +36,11 @@ Note the park in the Summary so the discussion records where the point went.
 
 **If `pivot`:**
 
-1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
+1. Load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
 
 2. Derive `proposed_name` — a kebab-case topic name for the point.
 
-3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, message = `{point}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the point in the Summary so it isn't lost; otherwise the message is in the new `{landed_topic}` topic's mailbox and the delivery committed itself.
+3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, message = `{point}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the point in the Summary so it isn't lost; otherwise the message is in the new `{landed_topic}` topic's mailbox and the delivery committed itself.
 
 > *Output the next fenced block as markdown (not a code block):*
 

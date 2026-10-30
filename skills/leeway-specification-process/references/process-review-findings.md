@@ -39,7 +39,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic
 Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render findings-summary {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
 ```
 
 → Proceed to **B. Dispose Every Finding**.
@@ -104,7 +104,7 @@ Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/findin
 Render the payload — the response carries the screen in the shape the gate mode earns:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding-batch {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json
 ```
 
 #### If the response carried `DISPLAY: finding batch auto-approved`
@@ -130,7 +130,7 @@ Land the screen's findings per **Landing a Settled Finding**, in the order they 
 Record the mode — every remaining screen documents itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto
 ```
 
 Then land this screen as `yes` does — its findings per **Landing a Settled Finding**, in the order they read — and confirm in one line — `All {N} documented.`
@@ -151,7 +151,7 @@ Land every other finding on the screen as `yes` does, then raise the named one i
 Write that finding's payload per **The Finding Payload** with `move` = `settled`, then render it and emit each returned section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
 A finding carrying whole proposed content returns its wording beneath the report. Expanding is not objecting — nothing resolved, so the screen re-renders unchanged. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:
@@ -183,7 +183,7 @@ On return, land by what the reference did:
 When every finding on the screen is disposed, commit the specification and the tracking file together:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the screen settled}" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the screen settled}" --topic specification/{topic}
 ```
 
 ### The Finding Payload
@@ -214,7 +214,7 @@ The user decides from the presentation alone — they have not read the specific
 Take the next one. Write its payload per **The Finding Payload** with `move` = `choice`, then render it and emit each returned section verbatim per its marker — the stop holds whatever the gate mode, and over `auto` the menu opens on the engine's override line:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
 
 **STOP.** Wait for user response.
@@ -228,7 +228,7 @@ The numbered options render recommended-first, so the number the user typed inde
 On return, land by what the reference did — the three outcomes **Landing a Settled Finding** names. Where the decision landed, compose the specification's content from the pick and write it, re-derived against the live document: the wording follows from the choice, so it lands without a second gate. Update the tracking file — Resolution `Routed`, Notes naming the document and the option chosen — and commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the choice settled}" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the choice settled}" --topic specification/{topic}
 ```
 
 Say `Finding {n} of {total}: {title} — {chosen option, one clause}.`
@@ -281,7 +281,7 @@ Then update the tracking file — Resolution `Routed` with a note naming what la
 
 ## F. After All Findings Processed
 
-1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
+1. **Mark the tracking file complete** — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
 Say `{review_label} complete — {N} finding(s) processed.`, `{review_label}` the stream's name as **A** maps it and `{N}` the count of **A**'s summary items.

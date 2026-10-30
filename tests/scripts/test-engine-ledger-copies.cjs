@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's rendered copies (workflow-engine/scripts/domain/ledger-copies.cjs
+// The ledger's rendered copies (leeway-engine/scripts/domain/ledger-copies.cjs
 // and domain/projections/ledger-copy.cjs) and their indexing: after a ledger
 // write, and after a lifecycle change that sets a topic or unit aside or
 // brings it back, the copies in the gitignored `.knowledge/` are rendered
@@ -24,7 +24,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');

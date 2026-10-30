@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Contract suite for the engine's manifest field surface (`engine manifest …`,
-# skills/workflow-engine/scripts/domain/fields.cjs).
+# skills/leeway-engine/scripts/domain/fields.cjs).
 # Validates get, set, list, push, pull, delete, exists, key-of, resolve.
 # Uses dot-path syntax: <work-unit>[.<phase>[.<topic>]]
 #
@@ -13,7 +13,7 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENGINE_JS="$SCRIPT_DIR/../../skills/workflow-engine/scripts/engine.cjs"
+ENGINE_JS="$SCRIPT_DIR/../../skills/leeway-engine/scripts/engine.cjs"
 
 # Colors for output
 RED='\033[0;31m'

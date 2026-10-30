@@ -1,6 +1,6 @@
 # Analysis Loop
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -56,7 +56,7 @@ The cycle came back clean — the analysis has converged.
 
 Record the cycle via the engine (increments the topic's lifetime counter):
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs task analysis-cycle {work_unit} {topic}
 ```
 
 `{N}` throughout this loop refers to the response's `cycle_total`; **F. Process Task**'s `{analysis_gate_mode}` is the response's `analysis_gate_mode`.
@@ -72,15 +72,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task analysis-cycle {work
 Fetch and emit the `DISPLAY: cycle limit` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-limit {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render cycle-limit {work_unit}.implementation.{topic}
 ```
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `analysis`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
+→ Load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** with loop_type = `analysis`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 Fetch the cycle gate and emit its `MENU: cycle gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render cycle-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render cycle-gate
 ```
 
 You MUST NOT choose on the user's behalf.
@@ -102,7 +102,7 @@ You MUST NOT choose on the user's behalf.
 Ensure clean code before analysis. Read the uncommitted code across every repo in the project, `.workflows/` held out:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code status
+node .claude/skills/leeway-engine/scripts/engine.cjs code status
 ```
 
 #### If `files` is empty
@@ -114,7 +114,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs code status
 The checkpoint is a code commit — name the files, each single-quoted (a single quote inside a path written `'\''`), and the engine confines the commit to them. Read which dirty code files are which: the render's DATA names the `implementation_files` (touched by `impl({work_unit}):` commits) and the `unexpected_files` (not touched during implementation).
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}
 ```
 
 **If `unexpected_files` is empty:**
@@ -122,7 +122,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-g
 The response carries no gate. Name the `implementation_files`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implementation file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{implementation file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -136,7 +136,7 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implementation file}' … '{unexpected file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{implementation file}' … '{unexpected file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -146,7 +146,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implemen
 Name only the `implementation_files`, and make no commit where there are none. The unexpected ones stay uncommitted, and come back in the response's `left_dirty`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implementation file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{implementation file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -156,7 +156,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implemen
 Confirm your reading of the comment with the person before anything acts on it, then name the `implementation_files` plus the ones the user specified.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implementation file}' … '{named file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{implementation file}' … '{named file}' … -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -172,7 +172,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{implemen
 Commit the analysis findings — the scoped commit covers the findings files and the manifest's cycle counter:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — findings" --topic implementation/{topic}
 ```
 
 #### If all three agents returned `STATUS: clean`
@@ -194,7 +194,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 Commit the synthesis output — the scoped commit covers the report, any staging file, and the manifest's gate state:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — synthesis" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — synthesis" --topic implementation/{topic}
 ```
 
 #### If `STATUS` is `clean`
@@ -213,11 +213,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
    **If the report carries a `## Spec Defects` section** — once per entry:
 
-   → Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
+   → Load **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `implementation/{topic}`.
 
    A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) becomes one whose Solution says what is settled and whose **Decision** carries the question, a **Stakes** line arguing the stop (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. An entry the reference returns unsettled (the item back in its own phase, or held by another session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Analysis Tasks: {Topic} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and where there is one the **Decision** with its **Stakes** and sides — and initialise its row:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} pending
    ```
 
    An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
@@ -225,7 +225,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
    **Otherwise:** nothing to settle — continue.
 2. **Apply the comment corrections** — each `## Comment Corrections` entry with the Edit tool: its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose NEW text is already in place was applied by an earlier run — skip it silently; one whose OLD text is otherwise absent is dropped — name the dropped ones in one line. Commit the files a correction changed as a code commit, each path single-quoted (a single quote inside a path written `'\''`); nothing when none changed:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{corrected file}' … -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{corrected file}' … -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
    ```
 
 #### If the cycle stages no proposal
@@ -241,7 +241,7 @@ Read the staging file from `.workflows/{work_unit}/implementation/{topic}/analys
 Write the overview payload to `.workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json` with the Write tool (`{"label": "Analysis cycle {N}", "tasks": [{"title": "…", "severity": "…", "status": "…"}]}` — each task's `status` is its `staging.c{N}.tasks.{n}` value: `pending`, `approved`, or `skipped`), render, and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render tasks-overview {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/tasks-overview.json
 ```
 
 → Proceed to **F. Process Task**.
@@ -258,7 +258,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 
 #### If the next pending proposal carries a Decision
 
-→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{analysis_gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`, findings_paths = the cycle's `analysis-report-c{N}.md` and the `analysis-duplication-c{N}.md`, `analysis-standards-c{N}.md` and `analysis-architecture-c{N}.md` files that exist.
+→ Load **[raising-a-decision.md](../../leeway-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.implementation.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/analysis-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json`, gate_mode = `{analysis_gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Provide feedback to adjust`, findings_paths = the cycle's `analysis-report-c{N}.md` and the `analysis-duplication-c{N}.md`, `analysis-standards-c{N}.md` and `analysis-architecture-c{N}.md` files that exist.
 
 → On return, return to **F. Process Task**.
 
@@ -267,12 +267,12 @@ Each pass reads the next pending proposal from the staging file as it now stands
 Present it plain. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{analysis_gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate} --comment-hint "Provide feedback to adjust"
+node .claude/skills/leeway-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate} --comment-hint "Provide feedback to adjust"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`), then emit the section verbatim per its marker.
+Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`), then emit the section verbatim per its marker.
 
 → Return to **F. Process Task**.
 
@@ -282,23 +282,23 @@ Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs man
 
 **If `yes`:**
 
-Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
+Record the approval: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
 
 → Return to **F. Process Task**.
 
 **If `auto`:**
 
-Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
+Record the approval: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} approved`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} analysis_gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} analysis_gate_mode auto
 ```
 
 → Return to **F. Process Task**.
 
 **If `decline`:**
 
-Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
+Record the decline: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`.
 
 → Return to **F. Process Task**.
 
@@ -321,7 +321,7 @@ Revise the staged proposal in the staging file based on the user's feedback (con
 Nothing is approved — the cycle's proposals were declined, or it staged none. Commit the cycle's decisions (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — no tasks approved" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — no tasks approved" --topic implementation/{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 8**.
@@ -348,7 +348,7 @@ Nothing was authored. State the author's reason plainly; the staging stays untou
 
 **If the user abandons the tasks:**
 
-Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`).
+Mark each remaining `approved` row `skipped` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.c{N}.tasks.{n} skipped`).
 
 → Return to **G. Route on Results**.
 
@@ -361,8 +361,8 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 Commit the staging file with this topic's implementation artifacts, then the tasks — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — staged tasks" --topic implementation/{topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis cycle {N} — {K} task(s)" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): analysis cycle {N} — staged tasks" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add analysis cycle {N} — {K} task(s)" --plan {topic}
 ```
 
 → Return to caller.

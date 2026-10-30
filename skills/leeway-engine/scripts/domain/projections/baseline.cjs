@@ -47,7 +47,7 @@ function baselineAreaGate(d, area) {
     `**${titlecase(area)}** is documented. ${d.remaining} area(s) remain.`,
     [
       cmdOption('y', 'yes', 'Interview the next area'),
-      cmdOption('p', 'pause', 'Stop here — resume any time from workflow-start'),
+      cmdOption('p', 'pause', 'Stop here — resume any time from leeway'),
     ],
     { question: 'Keep going?' },
   );
@@ -68,7 +68,7 @@ function baselinePaused(d) {
       { width: displayWidth() },
     ),
     '',
-    'Resume from the workflow-start menu.',
+    'Resume from the leeway menu.',
   ];
   return section('DISPLAY: baseline paused', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
@@ -220,7 +220,7 @@ function baselineDocPick(d) {
 }
 
 /**
- * The one-time boot offer — workflow-start's Step 0.6 gate.
+ * The one-time boot offer — leeway's Step 0.6 gate.
  * @returns {string}
  */
 function baselineOfferGate() {
@@ -228,7 +228,7 @@ function baselineOfferGate() {
     '',
     [
       cmdOption('y', 'yes', 'Start the assessment now'),
-      cmdOption('n', 'no', 'Skip — you can start it later from the workflow-start menus'),
+      cmdOption('n', 'no', 'Skip — you can start it later from the leeway menus'),
     ],
     { question: 'Run a baseline assessment?' },
   );

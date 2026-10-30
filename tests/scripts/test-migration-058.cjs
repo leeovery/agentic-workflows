@@ -18,7 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/058-restore-cancelled-delivery-items.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/058-restore-cancelled-delivery-items.cjs');
 
 let dir, updates, skips;
 

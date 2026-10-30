@@ -1,6 +1,6 @@
 # TDD Workflow
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 

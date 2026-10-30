@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/023-clear-research-analysis-cache.sh"
+MIGRATION="$REPO_DIR/skills/leeway-migrate/scripts/migrations/023-clear-research-analysis-cache.sh"
 
 PASS=0
 FAIL=0

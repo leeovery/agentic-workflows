@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The rules each state file merges by
-// (workflow-engine/scripts/domain/state-merge-rules.cjs): which rule a path
+// (leeway-engine/scripts/domain/state-merge-rules.cjs): which rule a path
 // takes, the ledger's lines added by id, the migrations record's ids, a
 // manifest merged field by field against its ancestor, and how a choice is
 // named and labelled.
@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { layout } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const {
   linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));

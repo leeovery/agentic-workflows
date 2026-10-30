@@ -1,7 +1,7 @@
 /**
  * The conversation's folder, as the engine names it (domain/conversation.cjs):
- * in the workflows' system config directory — `WORKFLOWS_CONFIG_DIR`, else
- * `.config/workflows` in the home directory — by the session id's safe
+ * in the workflows' system config directory — `LEEWAY_CONFIG_DIR`, else
+ * `.config/leeway` in the home directory — by the session id's safe
  * characters alone, so a `cd` or a resume elsewhere finds it all the same.
  *
  * No `$` here: a hook's `$` is never followed across an import, so each
@@ -15,21 +15,21 @@ export const MARKER = 'workflow'
 export const POSITION = 'position.json'
 
 /** The engine, where a project installs it, from the project's root. */
-export const ENGINE = '.claude/skills/workflow-engine/scripts/engine.cjs'
+export const ENGINE = '.claude/skills/leeway-engine/scripts/engine.cjs'
 
 /** How long a hook waits on the engine. */
 export const ENGINE_TIMEOUT_MS = 15_000
 
 /**
  * The folder of the conversation `id`, from the process's
- * `WORKFLOWS_CONFIG_DIR` and `HOME`; null where they name neither directory.
+ * `LEEWAY_CONFIG_DIR` and `HOME`; null where they name neither directory.
  */
 export function folderOf(
   configDir: string | undefined,
   home: string | undefined,
   id: string,
 ): string | null {
-  const config = configDir || (home ? `${home}/.config/workflows` : null)
+  const config = configDir || (home ? `${home}/.config/leeway` : null)
 
   return config === null
     ? null

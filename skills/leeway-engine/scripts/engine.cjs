@@ -1511,12 +1511,12 @@ function runInbox(call, argv) {
 // ---------------------------------------------------------------------------
 // baseline, walkthrough — the project's two one-time records
 // (domain/baseline.cjs, domain/walkthrough.cjs). Each answers a question
-// workflow-start asks once, writes one field on the project manifest, and
+// leeway asks once, writes one field on the project manifest, and
 // commits it confined in the same call.
 // ---------------------------------------------------------------------------
 
 /**
- * `baseline record <native|skipped>` — workflow-start's one-time verdict,
+ * `baseline record <native|skipped>` — leeway's one-time verdict,
  * written and committed in one confined transaction.
  * @param {Call} call @param {string[]} argv
  */
@@ -1536,7 +1536,7 @@ function runBaseline(call, argv) {
 }
 
 /**
- * `walkthrough record <walked|skipped>` — the answer to workflow-start's
+ * `walkthrough record <walked|skipped>` — the answer to leeway's
  * one-time offer, written and committed in one confined transaction.
  * @param {Call} call @param {string[]} argv
  */

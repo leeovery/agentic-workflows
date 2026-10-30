@@ -1,6 +1,6 @@
 ---
-name: workflow-planning-phase-designer
-description: Designs implementation phases from a specification. Invoked by workflow-planning-process skill during plan construction.
+name: leeway-planning-phase-designer
+description: Designs implementation phases from a specification. Invoked by leeway-planning-process skill during plan construction.
 tools: Read, Glob, Grep
 model: opus
 ---

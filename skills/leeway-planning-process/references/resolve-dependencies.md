@@ -1,6 +1,6 @@
 # Resolve External Dependencies
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -31,7 +31,7 @@ This topic has no external dependencies. Other topics may still have unresolved 
 Read existing `external_dependencies` from the manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_dependencies
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_dependencies
 ```
 
 #### If output is empty (no existing entries)
@@ -57,7 +57,7 @@ Read the specification's Dependencies section. For each dependency, derive the m
 Preserve the existing state — only update the description:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
 ```
 
 → Proceed to **C. Remove Stale Entries**.
@@ -67,8 +67,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Set as unresolved:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.description "{description}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep_topic}.state unresolved
 ```
 
 → Proceed to **C. Remove Stale Entries**.
@@ -84,7 +84,7 @@ Compare the manifest's dependency topics against the specification's Dependencie
 Delete each one:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} external_dependencies.{dep_topic}
 ```
 
 → Proceed to **D. Resolve Current Plan's Dependencies**.
@@ -101,7 +101,7 @@ Nothing to remove.
 
 For each unresolved dependency, check if the planning entry exists in the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{dep_topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{dep_topic}
 ```
 
 #### If the plan does not exist
@@ -127,7 +127,7 @@ Add the resolution to the working list — persisted in one batch at **E**'s end
 For each other topic with a planning phase in the same work unit, read their external dependencies:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{other_topic} external_dependencies
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{other_topic} external_dependencies
 ```
 
 #### If output is empty (no external dependencies for this topic)
@@ -160,7 +160,7 @@ When all topics have been checked, persist the working list — if it is non-emp
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/planning/{topic}/dependency-ops.json
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/planning/{topic}/dependency-ops.json
 ```
 
 → Proceed to **F. Summary and Commit**.
@@ -190,7 +190,7 @@ No external dependencies for this topic. No reverse resolutions needed.
 Render the plan's external dependencies and the reverse resolutions onto its tasks, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant resolution
+node .claude/skills/leeway-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant resolution
 ```
 
 **STOP.** Wait for user response.
@@ -199,7 +199,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approva
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): resolve external dependencies" --topic planning/{topic}
 ```
 
 → Return to caller.

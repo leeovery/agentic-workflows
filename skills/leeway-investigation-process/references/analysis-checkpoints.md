@@ -1,6 +1,6 @@
 # Analysis Checkpoints
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -25,7 +25,7 @@ Only at `check-ins` depth. When a hypothesis resolves — `confirmed` or `ruled-
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, `resolved_now` naming the ones that resolved at this check-in, and one row per thing the ledger holds about it. Row labels are yours to choose and name what the row carries (`Evidence`, `Measured`, `Gap`, `Ruled out by`); a hypothesis with more to say takes more rows, each one line. Detail too long for a row stays in the investigation file — the board cites it, never reproduces it: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "resolved_now": ["{id}"], "next": "{what will be traced next}"}` — then fetch the board, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant check-in
+node .claude/skills/leeway-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant check-in
 ```
 
 **STOP.** Wait for user response.
@@ -41,7 +41,7 @@ Any depth. When a finding invalidates the agreed plan — the root cause is clea
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — the hypotheses the new direction rests on, each under its ledger id: `{"changed": "{finding that invalidated the plan}", "hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "trace_lines": ["{code path or area to trace, in intended order}"]}` — then fetch the pivot, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant pivot
+node .claude/skills/leeway-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant pivot
 ```
 
 **STOP.** Wait for user response.
@@ -52,7 +52,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {
 
 ## Files the User Shares
 
-Any depth. A path the user offers — a screenshot of the failure, a log, an exported trace — lands before the trace moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. What the file shows enters the ledger and the trace lines like any other evidence.
+Any depth. A path the user offers — a screenshot of the failure, a log, an exported trace — lands before the trace moves on: follow **A. Land It** in **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)**. What the file shows enters the ledger and the trace lines like any other evidence.
 
 ## Asking the User
 

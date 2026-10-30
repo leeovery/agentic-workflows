@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Departures and their verdicts (workflow-engine/scripts/domain/verdict.cjs,
+// Departures and their verdicts (leeway-engine/scripts/domain/verdict.cjs,
 // over the departure rule and the queue's projection in
 // domain/ledger-verdicts.cjs, and the evidence this machine logged in
 // domain/trust-evidence.cjs): `engine verdict queue`, every departure this
@@ -45,7 +45,7 @@ const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
 const { trustLogHelpers } = require('./trust-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { TRUST_LOG, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
@@ -85,12 +85,12 @@ beforeEach(() => {
   dir = world();
   asked = new Map();
   open = Object.values(raisable);
-  pinned = process.env.WORKFLOWS_CONFIG_DIR;
-  process.env.WORKFLOWS_CONFIG_DIR = config();
+  pinned = process.env.LEEWAY_CONFIG_DIR;
+  process.env.LEEWAY_CONFIG_DIR = config();
 });
 
 afterEach(() => {
-  process.env.WORKFLOWS_CONFIG_DIR = pinned;
+  process.env.LEEWAY_CONFIG_DIR = pinned;
   cleanupFixture(dir);
 });
 
@@ -400,8 +400,8 @@ describe('the departures this machine logged (16.13.1, 16.13.5, 16.13.6)', () =>
     const judged = await answered('A sheet.');
     const unjudged = await answered('A frameless window.');
     give(judged, 'loss', 'decided');
-    const second = { WORKFLOWS_CONFIG_DIR: path.join(config(), 'second-machine') };
-    const secondLog = path.join(second.WORKFLOWS_CONFIG_DIR, TRUST_LOG);
+    const second = { LEEWAY_CONFIG_DIR: path.join(config(), 'second-machine') };
+    const secondLog = path.join(second.LEEWAY_CONFIG_DIR, TRUST_LOG);
 
     const { decisions } = ok(dir, ['ledger', 'record', UNIT, 'note-window'], { env: second });
     assert.deepStrictEqual(decisions.filter((/** @type {{who_moved_whom: string}} */ d) => d.who_moved_whom === 'person-moved-claude').map((/** @type {{id: string}} */ d) => d.id), [judged, unjudged]);

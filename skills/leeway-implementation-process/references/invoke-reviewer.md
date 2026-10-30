@@ -1,25 +1,25 @@
 # Invoke Reviewer
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
-This step invokes the `workflow-implementation-task-reviewer` agent (`.claude/agents/workflow-implementation-task-reviewer.md`) to independently verify a completed task.
+This step invokes the `leeway-implementation-task-reviewer` agent (`.claude/agents/leeway-implementation-task-reviewer.md`) to independently verify a completed task.
 
 ---
 
 ## A. Invoke the Agent
 
-Every review dispatches a **fresh** `workflow-implementation-task-reviewer` agent — including the re-review after a fix round. Never continue a previous reviewer: the review is independent verification, and a continued reviewer checks the fix against its own prior findings instead of reading the result fresh. The numbered payload is the reviewer's complete input — prior review findings and fix history stay out; they would anchor the fresh read.
+Every review dispatches a **fresh** `leeway-implementation-task-reviewer` agent — including the re-review after a fix round. Never continue a previous reviewer: the review is independent verification, and a continued reviewer checks the fix against its own prior findings instead of reading the result fresh. The numbered payload is the reviewer's complete input — prior review findings and fix history stay out; they would anchor the fresh read.
 
-Invoke `workflow-implementation-task-reviewer` with:
+Invoke `leeway-implementation-task-reviewer` with:
 
 1. **Specification path**: same path given to the executor
 2. **Task content**: same normalised task content the executor received
-3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
+3. **Project skill paths**: from `project_skills` in the manifest (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
 4. **Work type**: `work_type` from session context, read once at the task loop's entry — `quick-fix` switches the reviewer to completeness-based criteria and verification-workflow checks
-5. **code-quality.md path**: `.claude/skills/workflow-implementation-process/references/code-quality.md` — the standards the executor worked to, including the comment discipline
-6. **finding-floor.md path**: `.claude/skills/workflow-implementation-process/references/finding-floor.md` — the floor every BANK entry clears
+5. **code-quality.md path**: `.claude/skills/leeway-implementation-process/references/code-quality.md` — the standards the executor worked to, including the comment discipline
+6. **finding-floor.md path**: `.claude/skills/leeway-implementation-process/references/finding-floor.md` — the floor every BANK entry clears
 7. **Executor's report**: the structured result the executor returned for this attempt — the claims under review, to be verified against the code, never trusted
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.` — `{phase}.{task}` the plan phase and task numbers the internal id ends in (`{topic}-{phase}-{task}`), never the id itself or the topic.
@@ -67,7 +67,7 @@ NOTES:
 
 ## C. Confirmation Review
 
-Dispatched from the fix gate when the user challenges a finding rather than directing a fix. Invoke a **fresh** `workflow-implementation-task-reviewer` agent — never the reviewer whose finding is under challenge, which would defend its own work, and never a continuation. Pass items 1–7 of **A. Invoke the Agent**, plus:
+Dispatched from the fix gate when the user challenges a finding rather than directing a fix. Invoke a **fresh** `leeway-implementation-task-reviewer` agent — never the reviewer whose finding is under challenge, which would defend its own work, and never a continuation. Pass items 1–7 of **A. Invoke the Agent**, plus:
 
 8. **Challenged findings** — the disputed ISSUES, verbatim from the review under challenge
 9. **The user's challenge** — their argument, verbatim

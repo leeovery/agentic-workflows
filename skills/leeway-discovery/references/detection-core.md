@@ -1,6 +1,6 @@
 # Detection Core
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -79,7 +79,7 @@ You are confident-enough-to-**surface** a tentative read when: multiple convergi
 
 Below the threshold, keep exploring. **Every turn must earn its place** — it must be verifying or resolving shape. A shape-confirm turn earns its place; ceremony turns (a standalone import gate, a synthesis loop with nothing to synthesise) do not.
 
-**Pre-seeded vs open start.** A `workflow-start` menu pick pre-seeds the work type — trust it. You start *above* the threshold above, so this is a light confirm, not a re-derivation: head for the commit as soon as the description fits the pick. Reconsider only if a *clear, strong* signal says it's something else (per F) — don't go looking for one. `s/start` pre-seeds nothing — the loop *establishes* the type before it can commit. Same discipline; depth differs.
+**Pre-seeded vs open start.** A `leeway` menu pick pre-seeds the work type — trust it. You start *above* the threshold above, so this is a light confirm, not a re-derivation: head for the commit as soon as the description fits the pick. Reconsider only if a *clear, strong* signal says it's something else (per F) — don't go looking for one. `s/start` pre-seeds nothing — the loop *establishes* the type before it can commit. Same discipline; depth differs.
 
 **Inbox seeds.** A start from the inbox takes the largest shape among its seeds' kinds, and the pre-seed carries the mechanical part: quick-fixes alone pre-seed a quick-fix, any bug and no idea a bugfix — trust it as any pick. Where ideas are among the seeds the pre-seed is none and the ideas decide the type through **B**; the bugs and quick-fixes ride along as material and never set or enlarge it — a feature with a bug riding along stays a feature, never an epic.
 
@@ -107,7 +107,7 @@ When a tangential concern surfaces that doesn't fit the current shape, offer to 
 
 > *"You mentioned X — that feels separate from what we're shaping. Surface to inbox for later?"*
 
-If the user accepts, invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"`) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
+If the user accepts, invoke the matching capture skill (`/leeway-log-idea`, `/leeway-log-bug`, or `/leeway-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now (`node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"`) — it's a side-excursion from the main work, easy to leave uncommitted otherwise, and committing it means the capture survives even if this discovery session is abandoned. Note the surfacing so it's recoverable, then continue with the original work, now without scope creep. If the user says it's actually part of this work, fold it in. Soft, conversational — no structured gate.
 
 **The stated placement is the ticket.** When the user *places the tangent on the timeline* (*"that's a v2 thing"*, *"fix that before launch"*), it parks on the roadmap instead, whatever its kind — a capability as an idea, something broken as a bug, a small mechanical change as a quick-fix: confirmed placement, then `engine roadmap add {name} --horizon "{h}" --summary "{one-liner}" --kind {idea|bug|quick-fix} --origin park:discovery` (self-commits; the roadmap is born at the first park). A thought the user has not decided on stays the inbox's — when ambiguous, inbox: grooming promotes cheaply later, while a wrong horizon reads as a decision someone made.
 
@@ -138,7 +138,7 @@ The forming work may already have a home the user forgot: a waiting roadmap item
 - **A waiting roadmap item holds this ground** — an idea, a bug or a quick-fix. A fresh work unit beside the item would strand its record and twin it. Offer the pull instead: *"Loyalty is already on your roadmap (v1) — start it from there so the notes come along?"* On decline, continue shaping; never create the twin silently — a deliberate fresh start renames.
 - **A live inbox item captured this thought** — *"You logged 'checkout race' on 12 Jul — read it in as the seed?"* On accept, add the item's path to `inbox_seeds` and read it — it becomes the work's seed through the normal confirm-trigger landing. On decline, continue.
 
-**If the user accepts a pull offer:** invoke `/workflow-roadmap pull` via the Skill tool. This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+**If the user accepts a pull offer:** invoke `/leeway-roadmap pull` via the Skill tool. This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 **Otherwise** — no match, a declined offer, or an inbox seed read in:
 

@@ -10,7 +10,7 @@ import { positionOf, wordFor } from './position.ts'
 
 /** The engine calls that move the conversation's position. */
 const MOVES =
-  /\.claude\/skills\/workflow-engine\/scripts\/engine\.cjs"?\s+(?:boot|session\s+(?:label|repair)|task\s+(?:start|done|close|complete))\b/
+  /\.claude\/skills\/leeway-engine\/scripts\/engine\.cjs"?\s+(?:boot|session\s+(?:label|repair)|task\s+(?:start|done|close|complete))\b/
 
 /** The Desktop app's spinner word while its row names no step of its own. */
 const DESKTOP_IDLE = 'Working'
@@ -25,12 +25,12 @@ type Said = { id: string; word: string | null }
 async function sayNow($: EngineInterface): Promise<Said> {
   const id = await $.session.id()
 
-  if ((await $.env.get('WORKFLOWS_GATE_SURFACE')) !== '1') {
+  if ((await $.env.get('LEEWAY_GATE_SURFACE')) !== '1') {
     return { id, word: null }
   }
 
   const folder = folderOf(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     id,
   )

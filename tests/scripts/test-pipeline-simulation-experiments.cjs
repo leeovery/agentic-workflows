@@ -20,11 +20,11 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const {
   epicMenu, epicDashboard,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, sessionLog, carryOn, menuEntry, handoffEntry, handoff, bridgeTo, arriveAtEpicMenu, pauseCheck, startKeys,
 } = require('./pipeline-world.cjs');
@@ -92,7 +92,7 @@ describe('pipeline simulation: experiments', () => {
     assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
       [['1', 'timing'], ['2', 'layout']]);
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
-    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-process epic ${wu} timing$`));
+    assert.match(expEntries[0].route, new RegExp(`^/leeway-experiment-process epic ${wu} timing$`));
     assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
@@ -184,7 +184,7 @@ describe('pipeline simulation: experiments', () => {
     // user, and a back out of it hands the work to the epic menu with no
     // banner — nothing ended.
     assert.match(sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' }), /b\/back/);
-    handoff(sim, `/workflow-continue-epic ${wu}`);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
     // Reached from the return leg's gate instead, the same pick's back puts
     // that gate back — the person came to the picker through it.
     const offer = sim.render(['experiment-next-gate', `${wu}.experiment.timing`], { expect: 'content' });

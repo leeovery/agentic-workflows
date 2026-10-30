@@ -1,6 +1,6 @@
 # Apply Do-Now
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
@@ -21,7 +21,7 @@ Read the `do-now` actions from `.workflows/.cache/{work_unit}/review/{topic}/act
 Fetch the step's opening and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.review.{topic} --step do-now
+node .claude/skills/leeway-engine/scripts/engine.cjs render step-opening {work_unit}.review.{topic} --step do-now
 ```
 
 This is an announcement, not a gate: the user reads it while the work proceeds.
@@ -35,7 +35,7 @@ This is an announcement, not a gate: the user reads it while the work proceeds.
 Ensure the working tree is clean before the first batch — nothing uncommitted in any repo of the project, the call's `files` empty. A dirty tree makes the verification unattributable.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code status
+node .claude/skills/leeway-engine/scripts/engine.cjs code status
 ```
 
 Group the actions by **connected file sets**: any two actions sharing a file belong to the same set, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a set never holds half of anything.
@@ -44,7 +44,7 @@ A batch is one or more whole sets. Bundle small sets together — many single-fi
 
 Dispatch appliers **one batch at a time, in sequence**. Never in parallel: concurrent appliers see each other's half-finished edits, and a build check taken mid-flight proves nothing about the tree.
 
-- **Agent path**: `.claude/agents/workflow-review-fix-applier.md`
+- **Agent path**: `.claude/agents/leeway-review-fix-applier.md`
 
 Each applier receives:
 
@@ -66,7 +66,7 @@ Record each applier's status — a skip or a revert is a result, carried forward
 
 The corrections were each made alone; nobody has yet seen them together. Dispatch the verifier over the whole uncommitted body of work.
 
-- **Agent path**: `.claude/agents/workflow-review-fix-verifier.md`
+- **Agent path**: `.claude/agents/leeway-review-fix-verifier.md`
 
 It receives the action list and the guard inventory, reads the complete diff itself, repairs damage, normalises the artefacts of piecemeal editing, and runs the project's suite. It never commits; anything it cannot repair it reverts and reports, and a reverted action returns to the record as still owed.
 
@@ -83,7 +83,7 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 **The record is the outcome.** Before anything is written forward, confirm it: the uncommitted change across every repo in the project shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code diff
+node .claude/skills/leeway-engine/scripts/engine.cjs code diff
 ```
 
 #### If nothing was applied
@@ -97,7 +97,7 @@ Every action was skipped or reverted — there is nothing to commit. Carry that 
 Commit the work as one body, naming the paths the fixes touched, each single-quoted (a single quote inside a path written `'\''`) — the code commit validates each and answers with `left_dirty`. `{N}` is this review cycle's number, as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{file a fix touched}' … -m "review({work_unit}): {topic} cycle {N} — apply do-now findings" --for {work_unit} review/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{file a fix touched}' … -m "review({work_unit}): {topic} cycle {N} — apply do-now findings" --for {work_unit} review/{topic}
 ```
 
 Anything in `left_dirty` that these fixes touched is a path you forgot: commit it now with a second `--paths` call, each path single-quoted, carrying the same message, so the report's read of the apply commit finds it, before carrying the outcome forward.

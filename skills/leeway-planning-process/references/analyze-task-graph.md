@@ -1,10 +1,10 @@
 # Analyze Task Graph
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
-This step uses the `workflow-planning-dependency-grapher` agent (`.claude/agents/workflow-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `leeway-planning-dependency-grapher` agent (`.claude/agents/leeway-planning-dependency-grapher.md`) to analyze all authored tasks, establish internal dependencies, assign priorities, and detect cycles. You invoke the agent, present its output, and handle the approval gate.
 
 ---
 
@@ -12,18 +12,18 @@ This step uses the `workflow-planning-dependency-grapher` agent (`.claude/agents
 
 Read the `format`, the plan's `external_id`, and the `task_map` from the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 Load the format's **[reading.md](output-formats/{format}/reading.md)** and **[graph.md](output-formats/{format}/graph.md)**.
 
-Invoke `workflow-planning-dependency-grapher` with these inputs:
+Invoke `leeway-planning-dependency-grapher` with these inputs:
 
 1. **Planning file path**: `.workflows/{work_unit}/planning/{topic}/planning.md`
-2. **reading.md**: `.claude/skills/workflow-planning-process/references/output-formats/{format}/reading.md`
-3. **graph.md**: `.claude/skills/workflow-planning-process/references/output-formats/{format}/graph.md`
+2. **reading.md**: `.claude/skills/leeway-planning-process/references/output-formats/{format}/reading.md`
+3. **graph.md**: `.claude/skills/leeway-planning-process/references/output-formats/{format}/graph.md`
 4. **Plan external ID**: the `external_id` value read above
 5. **Task map**: the `task_map` value read above
 
@@ -50,14 +50,14 @@ The `no-changes` and `complete` branches write the grapher's report to `.workflo
 The natural task order is already correct. Write the grapher's `NOTES` as the payload — `{"notes": "…"}` — then render and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph --file .workflows/.cache/{work_unit}/planning/{topic}/task-graph.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant graph --file .workflows/.cache/{work_unit}/planning/{topic}/task-graph.json
 ```
 
 **STOP.** Wait for user response.
 
 **If the user provides feedback:**
 
-Re-invoke `workflow-planning-dependency-grapher` with all original inputs PLUS:
+Re-invoke `leeway-planning-dependency-grapher` with all original inputs PLUS:
 - **Previous output**: the current analysis
 - **User feedback**: what to change
 
@@ -70,7 +70,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
 ```
 
 → Return to caller.
@@ -96,14 +96,14 @@ Dependencies and priorities have already been written to the task files. Write t
 Render and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph --file .workflows/.cache/{work_unit}/planning/{topic}/task-graph.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant updated-graph --file .workflows/.cache/{work_unit}/planning/{topic}/task-graph.json
 ```
 
 **STOP.** Wait for user response.
 
 **If the user provides feedback:**
 
-Re-invoke `workflow-planning-dependency-grapher` with all original inputs PLUS:
+Re-invoke `leeway-planning-dependency-grapher` with all original inputs PLUS:
 - **Previous output**: the current analysis
 - **User feedback**: what to change
 
@@ -116,7 +116,7 @@ The agent will clear all existing graph data and re-analyze from scratch.
 Commit — `--plan` stages the planning topic, the manifests, and the plan's declared storage in one scoped call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): analyze task dependencies and priorities" --plan {topic}
 ```
 
 → Return to caller.

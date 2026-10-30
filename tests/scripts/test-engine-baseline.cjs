@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
-const { createState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { createState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
 const { git, stateGit, commitAll } = harness;
 
@@ -117,7 +117,7 @@ function bareProject(prefix) {
 }
 
 describe('the baseline signal across the project\'s repos', () => {
-  const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/baseline.cjs');
   let dir;
   let api;
   beforeEach(() => {
@@ -205,8 +205,8 @@ describe('the baseline signal across the project\'s repos', () => {
 });
 
 describe('the baseline signal\'s failures', () => {
-  const reposModule = require.resolve('../../skills/workflow-engine/scripts/kernel/repos.cjs');
-  const baselineModule = require.resolve('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+  const reposModule = require.resolve('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+  const baselineModule = require.resolve('../../skills/leeway-engine/scripts/domain/baseline.cjs');
 
   it('throws a failure that is no git read — only a failed git read nulls the signal', () => {
     const dir = harness.setupGitFixture('engine-baseline-bug-');
@@ -227,7 +227,7 @@ describe('the baseline signal\'s failures', () => {
 });
 
 describe('the baseline signal of a project inside a larger repository', () => {
-  const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/baseline.cjs');
   let dir;
   beforeEach(() => {
     dir = bareProject('engine-baseline-nested-');

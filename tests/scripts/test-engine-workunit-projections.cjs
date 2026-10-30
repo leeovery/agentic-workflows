@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { activeWorkUnit, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
-const { workUnitStatus, workUnitMenu, workUnitData, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
+const { activeWorkUnit, typeConfig } = require('../../skills/leeway-engine/scripts/domain/workunit-detail.cjs');
+const { workUnitStatus, workUnitMenu, workUnitData, revisitPhasesSection } = require('../../skills/leeway-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display
 // and proceed/revisit menu, across all four single-topic types. Fixtures go
@@ -99,7 +99,7 @@ describe('workunit projections: status display', () => {
     });
     const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
     assert.strictEqual(keys[0].action, 'continue');
-    assert.strictEqual(keys[0].route, '/workflow-experiment-process feature pay');
+    assert.strictEqual(keys[0].route, '/leeway-experiment-process feature pay');
     assert.strictEqual(keys[0].label, 'Proceed to experiment');
   });
 
@@ -140,7 +140,7 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(unit.next_phase, 'specification');
     assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
     const menu = workUnitMenu('feature', unit);
-    assert.strictEqual(menu.keys[0].route, '/workflow-specification-process feature auth-flow');
+    assert.strictEqual(menu.keys[0].route, '/leeway-specification-process feature auth-flow');
     assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
   });
 
@@ -330,10 +330,10 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
       [
-        ['y', 'continue', 'auth-flow', null, '/workflow-specification-process feature auth-flow'],
+        ['y', 'continue', 'auth-flow', null, '/leeway-specification-process feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
         ['b', 'back', 'auth-flow', null, null],
-        ['1', 'revisit_phase', 'auth-flow', 'discussion', '/workflow-discussion-process feature auth-flow'],
+        ['1', 'revisit_phase', 'auth-flow', 'discussion', '/leeway-discussion-process feature auth-flow'],
       ]
     );
   });
@@ -344,7 +344,7 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-discussion-process feature dark-mode']]
+      [['y', 'continue', '/leeway-discussion-process feature dark-mode']]
     );
   });
 
@@ -367,10 +367,10 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-specification-process bugfix login-crash'],
+        ['y', 'continue', null, '/leeway-specification-process bugfix login-crash'],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'investigation', '/workflow-investigation-process bugfix login-crash'],
+        ['1', 'revisit_phase', 'investigation', '/leeway-investigation-process bugfix login-crash'],
       ]
     );
   });
@@ -397,10 +397,10 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-implementation-process quick-fix hotfix-logs'],
+        ['y', 'continue', null, '/leeway-implementation-process quick-fix hotfix-logs'],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'scoping', '/workflow-scoping-process quick-fix hotfix-logs'],
+        ['1', 'revisit_phase', 'scoping', '/leeway-scoping-process quick-fix hotfix-logs'],
       ]
     );
   });
@@ -414,7 +414,7 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-scoping-process quick-fix rename-api']]
+      [['y', 'continue', '/leeway-scoping-process quick-fix rename-api']]
     );
   });
 
@@ -445,11 +445,11 @@ describe('workunit projections: menu', () => {
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'discussion', '/workflow-discussion-process feature auth-flow'],
-        ['2', 'revisit_phase', 'specification', '/workflow-specification-process feature auth-flow'],
-        ['3', 'revisit_phase', 'planning', '/workflow-planning-process feature auth-flow'],
-        ['4', 'revisit_phase', 'implementation', '/workflow-implementation-process feature auth-flow'],
-        ['5', 'revisit_phase', 'review', '/workflow-review-process feature auth-flow'],
+        ['1', 'revisit_phase', 'discussion', '/leeway-discussion-process feature auth-flow'],
+        ['2', 'revisit_phase', 'specification', '/leeway-specification-process feature auth-flow'],
+        ['3', 'revisit_phase', 'planning', '/leeway-planning-process feature auth-flow'],
+        ['4', 'revisit_phase', 'implementation', '/leeway-implementation-process feature auth-flow'],
+        ['5', 'revisit_phase', 'review', '/leeway-review-process feature auth-flow'],
       ]
     );
   });
@@ -470,7 +470,7 @@ describe('workunit projections: menu', () => {
     assert.ok(!menu.keys.some((k) => k.action === 'finalise'), 'no finalise entry mid-revisit');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-discussion-process feature auth-flow']]
+      [['y', 'continue', '/leeway-discussion-process feature auth-flow']]
     );
     assert.strictEqual(menu.rendered, '');
   });
@@ -497,11 +497,11 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-specification-process cross-cutting caching'],
+        ['y', 'continue', null, '/leeway-specification-process cross-cutting caching'],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'research', '/workflow-research-process cross-cutting caching'],
-        ['2', 'revisit_phase', 'discussion', '/workflow-discussion-process cross-cutting caching'],
+        ['1', 'revisit_phase', 'research', '/leeway-research-process cross-cutting caching'],
+        ['2', 'revisit_phase', 'discussion', '/leeway-discussion-process cross-cutting caching'],
       ]
     );
   });
@@ -538,9 +538,9 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
         ['y', 'finalise', 'fees', null, null],
         ['r', 'revisit', 'fees', null, null],
         ['b', 'back', 'fees', null, null],
-        ['1', 'revisit_phase', 'fee-rules', 'discussion', '/workflow-discussion-process cross-cutting fees fee-rules'],
-        ['2', 'revisit_phase', 'fee-display', 'discussion', '/workflow-discussion-process cross-cutting fees fee-display'],
-        ['3', 'revisit_phase', 'fees', 'specification', '/workflow-specification-process cross-cutting fees'],
+        ['1', 'revisit_phase', 'fee-rules', 'discussion', '/leeway-discussion-process cross-cutting fees fee-rules'],
+        ['2', 'revisit_phase', 'fee-display', 'discussion', '/leeway-discussion-process cross-cutting fees fee-display'],
+        ['3', 'revisit_phase', 'fees', 'specification', '/leeway-specification-process cross-cutting fees'],
       ]
     );
   });
@@ -563,7 +563,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     const unit = promoted({ discussion: { 'fee-rules': { status: 'in-progress' } } });
     assert.strictEqual(unit.next_phase, 'discussion');
     assert.strictEqual(unit.next_topic, 'fee-rules');
-    assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/workflow-discussion-process cross-cutting fees fee-rules');
+    assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/leeway-discussion-process cross-cutting fees fee-rules');
   });
 
   it('cues a message waiting on a moved discussion as mail waiting', () => {
@@ -587,7 +587,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     const parked = unitOf(dir, 'cross-cutting', 'fees');
     assert.strictEqual(parked.phase_label, 'research (parked — feeds the discussion)');
     assert.strictEqual(parked.next_topic, 'fee-rules');
-    assert.strictEqual(workUnitMenu('cross-cutting', parked).keys[0].route, '/workflow-research-process cross-cutting fees fee-rules');
+    assert.strictEqual(workUnitMenu('cross-cutting', parked).keys[0].route, '/leeway-research-process cross-cutting fees fee-rules');
   });
 
   it('continues into the item whose input moved by name where nothing is in flight or parked', () => {
@@ -595,7 +595,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.strictEqual(unit.phase_label, 'discussion (input moved — reconcile)');
     assert.strictEqual(unit.next_topic, 'fee-display');
     const [cont] = workUnitMenu('cross-cutting', unit).keys;
-    assert.deepStrictEqual([cont.topic, cont.route], ['fee-display', '/workflow-discussion-process cross-cutting fees fee-display'],
+    assert.deepStrictEqual([cont.topic, cont.route], ['fee-display', '/leeway-discussion-process cross-cutting fees fee-display'],
       'the continue row names the item its route names');
   });
 
@@ -604,10 +604,10 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
     assert.strictEqual(unit.next_topic, null);
     const menu = workUnitMenu('cross-cutting', unit);
-    assert.strictEqual(menu.keys[0].route, '/workflow-specification-process cross-cutting fees');
+    assert.strictEqual(menu.keys[0].route, '/leeway-specification-process cross-cutting fees');
     assert.deepStrictEqual(menu.keys.filter((k) => k.action === 'revisit_phase').map((k) => k.route), [
-      '/workflow-discussion-process cross-cutting fees fee-rules',
-      '/workflow-discussion-process cross-cutting fees fee-display',
+      '/leeway-discussion-process cross-cutting fees fee-rules',
+      '/leeway-discussion-process cross-cutting fees fee-display',
     ]);
   });
 
@@ -622,8 +622,8 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     const unit = unitOf(dir, 'cross-cutting', 'naming');
     assert.deepStrictEqual(unit.revisit, [{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]);
     assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.filter((k) => k.route).map((k) => k.route), [
-      '/workflow-discussion-process cross-cutting naming',
-      '/workflow-specification-process cross-cutting naming',
+      '/leeway-discussion-process cross-cutting naming',
+      '/leeway-specification-process cross-cutting naming',
     ]);
   });
 });
@@ -656,10 +656,10 @@ describe('workunit projections: data body', () => {
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth-flow  → /workflow-specification-process feature auth-flow',
+      '  y  yes  continue  auth-flow  → /leeway-specification-process feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
       '  b  back  back  auth-flow  → (internal)',
-      '  1  —  revisit_phase  auth-flow  → /workflow-discussion-process feature auth-flow',
+      '  1  —  revisit_phase  auth-flow  → /leeway-discussion-process feature auth-flow',
     ].join('\n'));
   });
 
@@ -678,7 +678,7 @@ describe('workunit projections: data body', () => {
       'mail_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  login-crash  → /workflow-investigation-process bugfix login-crash',
+      '  y  yes  continue  login-crash  → /leeway-investigation-process bugfix login-crash',
     ].join('\n'));
   });
 
@@ -707,9 +707,9 @@ describe('workunit projections: data body', () => {
       '  y  yes  finalise  hotfix-logs  → (internal)',
       '  r  revisit  revisit  hotfix-logs  → (internal)',
       '  b  back  back  hotfix-logs  → (internal)',
-      '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-process quick-fix hotfix-logs',
-      '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-process quick-fix hotfix-logs',
-      '  3  —  revisit_phase  hotfix-logs  → /workflow-review-process quick-fix hotfix-logs',
+      '  1  —  revisit_phase  hotfix-logs  → /leeway-scoping-process quick-fix hotfix-logs',
+      '  2  —  revisit_phase  hotfix-logs  → /leeway-implementation-process quick-fix hotfix-logs',
+      '  3  —  revisit_phase  hotfix-logs  → /leeway-review-process quick-fix hotfix-logs',
     ].join('\n'));
   });
 });

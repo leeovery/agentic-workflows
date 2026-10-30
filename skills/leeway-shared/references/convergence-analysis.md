@@ -75,7 +75,7 @@ For each cycle, read the `## Findings` section only — `## Observations` is nev
 - Plan Reference field (which plan area is affected)
 - Resolution (Fixed/Declined — legacy files write Skipped, read it as Declined)
 
-Also read the document-growth pair — the baseline (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_baseline_words`) and the live count as `live_words` over the plan and its phase task files (`cat .workflows/{work_unit}/planning/{topic}/planning.md .workflows/{work_unit}/planning/{topic}/phase-*-tasks.md | wc -w`). An absent baseline skips the growth line and its note.
+Also read the document-growth pair — the baseline (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_baseline_words`) and the live count as `live_words` over the plan and its phase task files (`cat .workflows/{work_unit}/planning/{topic}/planning.md .workflows/{work_unit}/planning/{topic}/phase-*-tasks.md | wc -w`). An absent baseline skips the growth line and its note.
 
 → Proceed to **B. Classify Findings**.
 
@@ -95,7 +95,7 @@ For each cycle, read the `## Findings` section only — `## Observations` is nev
 - Category
 - Resolution (Approved/Adjusted/Declined/Routed — legacy files write Skipped, read it as Declined)
 
-Also read the document-growth pair — the construction baseline (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_baseline_words`) and the live count as `live_words` (`wc -w < .workflows/{work_unit}/specification/{topic}/specification.md`). An absent baseline skips the growth line and its note.
+Also read the document-growth pair — the construction baseline (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_baseline_words`) and the live count as `live_words` (`wc -w < .workflows/{work_unit}/specification/{topic}/specification.md`). An absent baseline skips the growth line and its note.
 
 → Proceed to **B. Classify Findings**.
 
@@ -153,7 +153,7 @@ Write the payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/convergence-
 Fetch the diagnostic and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render convergence-diagnostic {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/convergence-diagnostic.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render convergence-diagnostic {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/convergence-diagnostic.json
 ```
 
 → Return to caller.

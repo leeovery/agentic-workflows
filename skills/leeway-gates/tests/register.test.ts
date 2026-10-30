@@ -55,7 +55,7 @@ const BENEATH: RenderElement = { type: 'Text', children: ['? for shortcuts'] }
 const GATE_LINE = '=== GATE (json for a gate surface — never display) ==='
 
 /** A process whose session announced the gate surface before the mod loaded. */
-const ANNOUNCING = { WORKFLOWS_GATE_SURFACE: '1' }
+const ANNOUNCING = { LEEWAY_GATE_SURFACE: '1' }
 
 /**
  * The person's home directory, as the process names it — under `/Users`,
@@ -85,12 +85,12 @@ const OLDEST = '2.1.287'
  * the gate surface, and the handoff beside it.
  */
 const ANNOUNCEMENTS = [
-  { name: 'WORKFLOWS_GATE_SURFACE', value: '1' },
-  { name: 'WORKFLOWS_HANDOFF', value: '1' },
+  { name: 'LEEWAY_GATE_SURFACE', value: '1' },
+  { name: 'LEEWAY_HANDOFF', value: '1' },
 ]
 
 /** The workflows' system config directory, in the person's home. */
-const CONFIG = `${HOME}/.config/workflows`
+const CONFIG = `${HOME}/.config/leeway`
 
 /** A file in the folder of the conversation `id`, in the directory `config`. */
 const inFolder = (id: string, file: string, config = CONFIG) =>
@@ -256,7 +256,7 @@ const MENU_SECTION = [
 
 const DRAWN_MENU = [
   '=== MENU: task gate (drawn above the prompt — do NOT emit it; stop and wait) ===',
-  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row.",
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the leeway-gates plugin when they press a row.",
   '',
 ]
 
@@ -296,13 +296,13 @@ function announced(stated: Stated = {}, after: readonly string[] = []): string {
  * alone where it did not.
  */
 const engineGate = (environment: ReadonlyMap<string, string>) =>
-  environment.get('WORKFLOWS_GATE_SURFACE') === '1' ? announced() : TEXT_MENU
+  environment.get('LEEWAY_GATE_SURFACE') === '1' ? announced() : TEXT_MENU
 
 /** The call the workflows make at a gate; the mod never reads the command. */
 const ENGINE_CALL = {
   tool: 'Bash' as const,
   command:
-    'node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate auth.implementation.auth-flow',
+    'node .claude/skills/leeway-engine/scripts/engine.cjs render task-gate auth.implementation.auth-flow',
 }
 
 /** The same call made inside a subagent's loop. */
@@ -314,10 +314,10 @@ const READ_CALL = { tool: 'Read' as const, file_path: '/work/README.md' }
 /** The same read made inside a subagent's loop. */
 const SUBAGENT_READ = { ...READ_CALL, agentId: 'a1' }
 
-/** The engine's boot, as `/workflow-start` runs it. */
+/** The engine's boot, as `/leeway` runs it. */
 const BOOT_CALL = {
   tool: 'Bash' as const,
-  command: 'node .claude/skills/workflow-engine/scripts/engine.cjs boot',
+  command: 'node .claude/skills/leeway-engine/scripts/engine.cjs boot',
 }
 
 /** The same boot run inside a subagent's loop. */
@@ -354,7 +354,7 @@ const OWN = {
 const harnessHeld = (environment: ReadonlyMap<string, string>) =>
   Object.fromEntries(
     [...environment].filter(
-      ([name]) => name.startsWith('WORKFLOWS_HARNESS') || name in OWN,
+      ([name]) => name.startsWith('LEEWAY_HARNESS') || name in OWN,
     ),
   )
 
@@ -372,14 +372,14 @@ const CLEARED = {
 const AFTER_CLEAR = 's1'
 
 /** What a handoff sends, and the line naming where the work goes. */
-const CONTINUATION = 'Invoke `/workflow-discussion-process feature note-window`.'
+const CONTINUATION = 'Invoke `/leeway-discussion-process feature note-window`.'
 const WHERE = '→ Discussion · note-window'
 
 /** What the model reads of a handoff: which way the work goes, and the line. */
 const HANDOFF_SECTIONS = [
   '=== DATA (reason from this — never display or parse the sections below) ===',
   'handoff: mod',
-  'skill: workflow-discussion-process',
+  'skill: leeway-discussion-process',
   'args: feature note-window',
   '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
   WHERE,
@@ -390,7 +390,7 @@ const HANDED_OFF = [
   ...HANDOFF_SECTIONS,
   '=== HANDOFF (json for the gate mod — never display) ===',
   JSON.stringify({
-    skill: 'workflow-discussion-process',
+    skill: 'leeway-discussion-process',
     args: 'feature note-window',
     text: CONTINUATION,
     line: WHERE,
@@ -402,7 +402,7 @@ const HANDED_OFF = [
 const HANDOFF_CALL = {
   tool: 'Bash' as const,
   command:
-    'node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-discussion-process feature note-window',
+    'node .claude/skills/leeway-engine/scripts/engine.cjs handoff leeway-discussion-process feature note-window',
 }
 
 /** The same call made inside a subagent's loop. */
@@ -467,7 +467,7 @@ const called = (
 
 /** A conversation at the task gate: its call, then the model's word at the stop. */
 const AT_GATE = [
-  said('user', '/workflow-start'),
+  said('user', '/leeway'),
   ...called('toolu_1'),
   said('assistant', TURN_END.answer),
 ]
@@ -512,14 +512,14 @@ const CALLS_WHILE_SAYING_NO_RESPONSE: SessionMessage = {
 
 /** Another conversation, at a gate of its own, stopped on the same words. */
 const ELSEWHERE_AT_GATE = [
-  said('user', '/workflow-start'),
+  said('user', '/leeway'),
   ...called('toolu_9'),
   said('assistant', TURN_END.answer),
 ]
 
 /** A conversation that ran the engine's boot, then came to the task gate. */
 const BOOTED = [
-  said('user', '/workflow-start'),
+  said('user', '/leeway'),
   ...called('toolu_0', BOOT_CALL.command),
   ...called('toolu_1'),
   said('assistant', TURN_END.answer),
@@ -555,7 +555,7 @@ const PRESSED = {
 
 /** The band above the prompt, and the `Client` in it, as the surface mounts them. */
 const MOUNT = {
-  plugin: 'workflow-gates',
+  plugin: 'leeway-gates',
   surface: 'terminal' as const,
   component: 'AbovePrompt' as const,
   requestId: 'band',
@@ -922,7 +922,7 @@ const OBSERVED = {
         on('tool.call', async ($, e, next) => {
           const result = await next(e)
           const outcomes = next.trace
-            .filter(link => link.plugin === 'workflow-gates')
+            .filter(link => link.plugin === 'leeway-gates')
             .map(link => link.outcome)
 
           await $.fs.write('trace.json', JSON.stringify(outcomes))
@@ -2486,7 +2486,7 @@ describe('register', () => {
       { kind: 'composer' },
       { kind: 'bridge' },
       { kind: 'sdk' },
-      { kind: 'plugin', name: 'workflow-gates' },
+      { kind: 'plugin', name: 'leeway-gates' },
     ]
 
     await $.session.start(SESSION)
@@ -2573,7 +2573,7 @@ describe('register', () => {
       { kind: 'composer' },
       { kind: 'bridge' },
       { kind: 'sdk' },
-      { kind: 'plugin', name: 'workflow-gates' },
+      { kind: 'plugin', name: 'leeway-gates' },
     ]
 
     for (const [n, origin] of theirs.entries()) {
@@ -3402,7 +3402,7 @@ describe('register', () => {
 
   const unannounced: Record<string, string>[] = [
     {},
-    { WORKFLOWS_GATE_SURFACE: '0' },
+    { LEEWAY_GATE_SURFACE: '0' },
   ]
 
   for (const env of unannounced) {
@@ -3663,13 +3663,13 @@ describe('register', () => {
 
   const configs = [
     {
-      where: 'the directory WORKFLOWS_CONFIG_DIR names',
-      env: { WORKFLOWS_CONFIG_DIR: `${HOME}/elsewhere` },
+      where: 'the directory LEEWAY_CONFIG_DIR names',
+      env: { LEEWAY_CONFIG_DIR: `${HOME}/elsewhere` },
       config: `${HOME}/elsewhere`,
     },
     {
-      where: 'the home’s .config/workflows while WORKFLOWS_CONFIG_DIR is empty',
-      env: { WORKFLOWS_CONFIG_DIR: '' },
+      where: 'the home’s .config/leeway while LEEWAY_CONFIG_DIR is empty',
+      env: { LEEWAY_CONFIG_DIR: '' },
       config: CONFIG,
     },
   ]
@@ -3729,7 +3729,7 @@ describe('register', () => {
   })
 
   for (const [how, home] of [['unset', undefined], ['empty', '']] as const) {
-    test(`a process whose home is ${how}, with no WORKFLOWS_CONFIG_DIR, gives the conversation no folder: no mark read, nothing kept or recorded — and a press still sends`, async ($, on) => {
+    test(`a process whose home is ${how}, with no LEEWAY_CONFIG_DIR, gives the conversation no folder: no mark read, nothing kept or recorded — and a press still sends`, async ($, on) => {
       const { calls, files, reads, written, submitted } = world($, on, announced(), {
         env: { HOME: home },
         marked: ['s0'],
@@ -3760,7 +3760,7 @@ describe('register', () => {
     await $.session.start(SESSION)
     await $.tool.call({
       tool: 'Bash',
-      command: 'grep -n "engine.cjs boot" .claude/skills/workflow-start/SKILL.md',
+      command: 'grep -n "engine.cjs boot" .claude/skills/leeway/SKILL.md',
     })
     await $.tool.call(BOOT_CALL)
 

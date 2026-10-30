@@ -1,6 +1,6 @@
 # Backfill Checks
 
-*Reference for **[workflow-continue-epic](../SKILL.md)***
+*Reference for **[leeway-continue-epic](../SKILL.md)***
 
 ---
 
@@ -17,12 +17,12 @@ The caller provides via context:
 
 #### If `qualifying_sources` is non-empty
 
-Invoke the **[workflow-legacy-research-split](../../workflow-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written.
+Invoke the **[leeway-legacy-research-split](../../leeway-legacy-research-split/SKILL.md)** skill with work_unit = `{work_unit}`. Follow its instructions as written.
 
 On return, re-run discovery so **B** sees the post-split map state:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 Re-filter `discovery_map` for rows where `summary=absent` or `description=absent`. Overwrite `items_to_recover` with this fresh list — legacy-split creates themes with full metadata and removes the source's discovery item, so the caller's pre-split filter is stale.
@@ -69,6 +69,6 @@ Mutations from A and B are already committed, and the backfill pass — particul
 > Backfill work is recorded and committed — legacy research files decomposed and missing discovery summaries drafted from source content. The epic picks up from here.
 ```
 
-Set `route` = `/workflow-continue-epic {work_unit} {completed_phase} {outcome}` where `completed_phase` and `outcome` are set, else `/workflow-continue-epic {work_unit}`.
+Set `route` = `/leeway-continue-epic {work_unit} {completed_phase} {outcome}` where `completed_phase` and `outcome` are set, else `/leeway-continue-epic {work_unit}`.
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `{route}`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `{route}`.

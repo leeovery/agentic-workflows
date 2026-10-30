@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-discussion-process. Thin by design:
+// Adapter (read gateway) for leeway-discussion-process. Thin by design:
 // map state, rendering, and the agent-store derivations live in the engine;
 // this script selects the answers the session flow needs and sections the
 // output.
@@ -11,7 +11,7 @@
 //       + DISPLAY (the Discussion Map block)
 // ---------------------------------------------------------------------------
 
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 
 function map(workUnit, topic) {
   if (!workUnit || !topic) {

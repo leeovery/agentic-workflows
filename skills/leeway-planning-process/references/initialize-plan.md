@@ -1,6 +1,6 @@
 # Initialize Plan
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -9,7 +9,7 @@
 Render the offer to add what has changed since the specification completed:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-context-gate {work_unit}.planning.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-context-gate {work_unit}.planning.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -43,7 +43,7 @@ Hold the user's response as the plan context.
 Read the project default `plan_format` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.plan_format
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.plan_format
 ```
 
 #### If output is empty (no project default)
@@ -55,7 +55,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 The surface reads the default itself and names it in both the label and the accept row:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-format-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-format-gate
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -84,24 +84,24 @@ Emit the call's MENU section verbatim per its marker.
 
 ## E. Register Plan
 
-1. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `planning`, topic = `{topic}`.
+1. Load **[format-version-check.md](../../leeway-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `planning`, topic = `{topic}`.
 2. Capture the current git commit hash: `git rev-parse HEAD`
 3. Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md` with the title `# Plan: {topic:(titlecase)}`, then a section for each input **A** and **B** gathered — written only where it has content, and read from here for the rest of the plan:
    - `## Plan Context` — the context the user added at **A**, in their words.
    - `## Cross-Cutting References` — one bullet per specification **B** held: its work unit in bold, its specification path, and its summary.
 4. Start the planning item — the engine creates it with `status: in-progress`:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
    ```
 5. Set the planning metadata — every same-path field in one batched write, then the project default (a different path, so its own call). `storage_paths` is the fenced JSON array in the format's **[authoring.md](output-formats/{chosen-format}/authoring.md)** → Storage Pathspecs — copy the array exactly as declared:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated review_cycle=0 phase=1 task='~' task_map='{}' storage_paths='{format storage pathspecs}'
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=gated author_gate_mode=gated finding_gate_mode=gated review_cycle=0 phase=1 task='~' task_map='{}' storage_paths='{format storage pathspecs}'
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
    ```
 
 6. Commit — `--plan` stages the planning topic, the work-unit manifest, the project manifest, and the plan's declared storage in one scoped call:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): initialize plan" --plan {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): initialize plan" --plan {topic}
    ```
 
 → Return to caller.

@@ -1,6 +1,6 @@
 # Continuity Load
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 

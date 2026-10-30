@@ -1,6 +1,6 @@
 # Task Normalisation
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -30,5 +30,5 @@ The `{internal_id}` in the template is always the **internal ID** (format: `{top
 
 If the format adapter returns an external ID, resolve the internal ID via `engine manifest`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest key-of {work_unit}.planning.{topic} task_map {external_id}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest key-of {work_unit}.planning.{topic} task_map {external_id}
 ```

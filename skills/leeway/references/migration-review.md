@@ -1,6 +1,6 @@
 # Migration Review
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -26,13 +26,13 @@ Files were updated, a migration handed over checks its code could not perform, o
 4. Write the summary to `.leeway/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render migrations-applied --file .leeway/.cache/migrations-applied.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render migrations-applied --file .leeway/.cache/migrations-applied.json
 ```
 
 5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render migration-gate
 ```
 
 **STOP.** Wait for user response.
@@ -42,7 +42,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
 Commit the migration changes — one commit on each side that changed:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
 ```
 
 → Return to caller.

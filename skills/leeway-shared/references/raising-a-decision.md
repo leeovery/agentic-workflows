@@ -75,7 +75,7 @@ The fork is below the bar by construction — composition is the test. Settle it
 Write the task's payload to `{payload_path}` with the Write tool — the base fields from the staging proposal exactly as the caller's plain path prescribes (never `outcome`: the engine refuses it beside a decision — the raise carries what the change would look like), plus `"stakes": "…"` (the staged Stakes line) and `"decision": {"question": "…", "options": […]}` — sides in the staged order, the `(recommended)`-marked side as `{"summary": "{side}", "recommended": true}` with the marker stripped, the rest plain strings; the engine orders the recommended side first, so staged order is rendered order and the number the user types indexes it. Then render:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
+node .claude/skills/leeway-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
 ```
 
 Emit the response in order, in the same turn as the call: the `DISPLAY: proposed task` section verbatim per its marker; then the raise composed at **B**, between the two sections; then the `MENU: task decision` section verbatim per its marker. The raise is conversational, as markdown (not a code block).
@@ -91,7 +91,7 @@ Emit the response in order, in the same turn as the call: the `DISPLAY: proposed
 Rewrite the proposal in `{staging_file}` — Solution becomes the settled direction carrying the chosen side, and the Decision and Stakes lines go — then record the approval:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {dotpath} {row_address} approved
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {dotpath} {row_address} approved
 ```
 
 → Return to caller.
@@ -101,7 +101,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {dotpath} {r
 Record the decline:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {dotpath} {row_address} skipped
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {dotpath} {row_address} skipped
 ```
 
 → Return to caller.
@@ -121,7 +121,7 @@ Then re-run the render at **C. Emission** — the same command, the payload unto
 Revise the staged proposal in `{staging_file}` per the user's words (content only; the marked side stays listed first), and rewrite the payload from it. A decision menu stops for an explicit choice at either gate mode, so the walk's own mode carries — re-render:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
+node .claude/skills/leeway-engine/scripts/engine.cjs render proposed-task {dotpath} --file {payload_path} --gate {gate_mode} --comment-hint "{comment_hint}"
 ```
 
 Emit the `DISPLAY: proposed task` section verbatim per its marker; then one line reading back how the fork now stands — the exchange that revised it is the ground, and the raise is not re-composed; then the `MENU: task decision` section verbatim per its marker.

@@ -7,12 +7,12 @@ const { spawnSync } = require('child_process');
 
 const { validate } = require('./validate.cjs');
 
-const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
-const { commitStateScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
-const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
-const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'call.cjs'));
-const { stateRoot } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'state-root.cjs'));
-const { isolatedGit } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'isolated-git.cjs'));
+const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'engine.cjs');
+const { commitStateScoped } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'domain', 'commit.cjs'));
+const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
+const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'kernel', 'call.cjs'));
+const { stateRoot } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'kernel', 'state-root.cjs'));
+const { isolatedGit } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'kernel', 'isolated-git.cjs'));
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -207,7 +207,7 @@ function apply(cwd, workUnit, currentSource) {
         `theme application failed mid-flight. Source file renamed to ${supersededFile}; ` +
         `source discovery item already deleted. Some themes may have been partially written. ` +
         `Inspect ${researchDir} and manifest items, clean up partial themes manually, ` +
-        `then reopen the epic via /workflow-start.`,
+        `then reopen the epic via /leeway.`,
     };
   }
 

@@ -1,6 +1,6 @@
 # Epic Research Session
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -10,9 +10,9 @@ One kind of background agent operates during research — the deep dive — and 
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
 
-→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
-→ Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
+→ Load **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
 ---
 
@@ -30,7 +30,7 @@ When a point surfaces that belongs to a *different* topic — raised in conversa
 
 When a point reads as off-topic, hold it with the full context discussed about it:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the point, with its discussed context}`, reason = `off-topic`.
+→ Load **[off-topic-epic.md](../../leeway-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the point, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 
@@ -46,7 +46,7 @@ Either the session's written material keeps deepening ground that deserves a map
 
 Hold the thread with the full context worked out about it — its children's questions travel in that context — and name its slug: once the message is sent, the reference drops its rows; on `keep` they stay:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the thread, with its worked-out context}`, reason = `grown-thread`, slug = `{slug}`.
+→ Load **[off-topic-epic.md](../../leeway-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the thread, with its worked-out context}`, reason = `grown-thread`, slug = `{slug}`.
 
 → On return, proceed as the reference directed.
 
@@ -68,6 +68,6 @@ Stepping away for the day, picking it up next time — a pause, not a done-signa
 
 When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
 
-→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+→ Load **[experiment-spawn.md](../../leeway-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
 
 → On return, proceed as the reference directed.

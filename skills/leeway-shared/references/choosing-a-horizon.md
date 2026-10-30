@@ -1,6 +1,6 @@
 # Choosing a Horizon
 
-*Shared reference. Loaded by [backlogging.md](backlogging.md), [postponing-the-topic.md](postponing-the-topic.md), and workflow-start's [inbox-working-set.md](../../workflow-start/references/inbox-working-set.md).*
+*Shared reference. Loaded by [backlogging.md](backlogging.md), [postponing-the-topic.md](postponing-the-topic.md), and leeway's [inbox-working-set.md](../../leeway/references/inbox-working-set.md).*
 
 ---
 
@@ -11,7 +11,7 @@ The caller needs a horizon for what it is about to land. Set `{horizon}` and ret
 The horizon is the user's, never yours to pick, and it is a label — launch, v1, someday; a reason or an aside the user gives with it is not part of it. They have not named one, so the map decides how to ask for it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
 ```
 
 #### If `horizons` is non-empty
@@ -19,7 +19,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
 Render the pick over them (its numbering follows the `horizons` order):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render horizon-pick
+node .claude/skills/leeway-engine/scripts/engine.cjs render horizon-pick
 ```
 
 Emit the call's MENU section verbatim per its marker.

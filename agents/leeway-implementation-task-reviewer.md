@@ -1,6 +1,6 @@
 ---
-name: workflow-implementation-task-reviewer
-description: Reviews a single implemented task for spec conformance, acceptance criteria, and architectural quality. Invoked by workflow-implementation-process skill after each task.
+name: leeway-implementation-task-reviewer
+description: Reviews a single implemented task for spec conformance, acceptance criteria, and architectural quality. Invoked by leeway-implementation-process skill after each task.
 tools: Read, Glob, Grep, Bash
 model: opus
 ---
@@ -28,7 +28,7 @@ You receive via the orchestrator's prompt:
 ## Your Process
 
 1. **Read the specification** for relevant context — understand the broader design intent
-2. **Check uncommitted changes** — `node .claude/skills/workflow-engine/scripts/engine.cjs code status` and `node .claude/skills/workflow-engine/scripts/engine.cjs code diff` read them across every repo in the project, to identify files changed by the executor
+2. **Check uncommitted changes** — `node .claude/skills/leeway-engine/scripts/engine.cjs code status` and `node .claude/skills/leeway-engine/scripts/engine.cjs code diff` read them across every repo in the project, to identify files changed by the executor
 3. **Read all changed files** — implementation code and test code
 4. **Read project skills** — understand framework conventions, testing patterns, architecture patterns
 5. **Read code-quality.md and finding-floor.md** — the quality standards the executor worked to, including its comment discipline, and the floor every BANK entry clears

@@ -34,9 +34,9 @@ const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 
 const REPO = path.join(__dirname, '../..');
-const ENGINE = path.join(REPO, 'skills/workflow-engine/scripts/engine.cjs');
+const ENGINE = path.join(REPO, 'skills/leeway-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
-const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
+const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
 
 /** A feature work unit with one research item to write to. */
 function seed(dir, name = 'payments') {
@@ -172,7 +172,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
     createFile(dir, 'payload.json', JSON.stringify({ missing: ['notes/one.md'] }));
     const ambient = displayWidth();
     const rendered = (w) => engine.run(['render', 'import-reprompt', '--file', 'payload.json'],
-      { cwd: dir, env: { WORKFLOWS_DISPLAY_WIDTH: w } }).stdout;
+      { cwd: dir, env: { LEEWAY_DISPLAY_WIDTH: w } }).stdout;
     const narrow = rendered('40');
     assert.notStrictEqual(rendered('100'), narrow, 'the width a call carries is the width it renders at');
     assert.strictEqual(rendered('40'), narrow, 'and no memo carries the last call\'s width into this one');
@@ -226,7 +226,7 @@ describe('no uninstall in the release (27.2.3)', () => {
 
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]\n\nCommands:\n {2}boot /);
-    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('workflow-start') && shipped.includes('workflow-baseline-researcher.md'));
+    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('leeway') && shipped.includes('leeway-baseline-researcher.md'));
     assert.deepStrictEqual([...Object.keys(engine.COMMANDS), res.stderr, ...shipped].filter((name) => /uninstall/i.test(name)), []);
   });
 });
@@ -250,19 +250,19 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('holds the call\'s environment until the answer settles, then restores it', async () => {
-    delete process.env.WORKFLOWS_PROBE;
-    const pending = engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { WORKFLOWS_PROBE: 'held' } });
-    assert.strictEqual(process.env.WORKFLOWS_PROBE, 'held', 'held while the query waits');
+    delete process.env.LEEWAY_PROBE;
+    const pending = engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEEWAY_PROBE: 'held' } });
+    assert.strictEqual(process.env.LEEWAY_PROBE, 'held', 'held while the query waits');
     await pending;
-    assert.ok(!('WORKFLOWS_PROBE' in process.env), 'and gone once it answered');
+    assert.ok(!('LEEWAY_PROBE' in process.env), 'and gone once it answered');
   });
 
   it('overlapping calls each hold their own environment, and leave none behind', async () => {
-    delete process.env.WORKFLOWS_PROBE;
+    delete process.env.LEEWAY_PROBE;
     const answers = await Promise.all(['first', 'second', 'third'].map((probe) =>
-      engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { WORKFLOWS_PROBE: probe } })));
+      engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEEWAY_PROBE: probe } })));
     for (const res of answers) assert.strictEqual(res.code, 0, res.stderr);
-    assert.ok(!('WORKFLOWS_PROBE' in process.env), `left behind: ${process.env.WORKFLOWS_PROBE}`);
+    assert.ok(!('LEEWAY_PROBE' in process.env), `left behind: ${process.env.LEEWAY_PROBE}`);
   });
 
   it('answers a command that never waits exactly as run does', async () => {
@@ -285,13 +285,13 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     const knowledge = path.join(dir, '.leeway', '.knowledge');
     fs.rmSync(path.join(knowledge, 'store.bin'));
     fs.rmSync(path.join(knowledge, 'metadata.json'));
-    const conversations = path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations');
-    delete process.env.WORKFLOWS_PROBE;
+    const conversations = path.join(process.env.LEEWAY_CONFIG_DIR, 'conversations');
+    delete process.env.LEEWAY_PROBE;
     assert.throws(
-      () => engine.run(['knowledge', 'index'], { cwd: dir, env: { WORKFLOWS_PROBE: 'held', CLAUDE_CODE_SESSION_ID: 'refused-before-acting' } }),
+      () => engine.run(['knowledge', 'index'], { cwd: dir, env: { LEEWAY_PROBE: 'held', CLAUDE_CODE_SESSION_ID: 'refused-before-acting' } }),
       /engine knowledge index answers asynchronously — call runAsync/,
     );
-    assert.ok(!('WORKFLOWS_PROBE' in process.env));
+    assert.ok(!('LEEWAY_PROBE' in process.env));
     assert.ok(!fs.existsSync(path.join(knowledge, 'store.bin')), 'no store built');
     assert.ok(!fs.existsSync(path.join(conversations, 'refused-before-acting')), 'no conversation marked');
   });
@@ -309,7 +309,7 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
-    const { runKnowledge, knowledgeWaits } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
+    const { runKnowledge, knowledgeWaits } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
       ['index'], ['index', '.leeway/payments/research/payments.md'], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],

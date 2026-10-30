@@ -1,6 +1,6 @@
 # Resolve Source Incoherence
 
-*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) and [process-review-findings.md](process-review-findings.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption — and by the review walk to land a settled call or a pick the user made.*
+*Reference for **[leeway-specification-process](../SKILL.md)** — loaded by [spec-construction.md](spec-construction.md) and [process-review-findings.md](process-review-findings.md) when source material disagrees — with itself, another source, or the codebase it describes — or cannot be extracted without assumption — and by the review walk to land a settled call or a pick the user made.*
 
 ---
 
@@ -30,7 +30,7 @@ A repair the record supports. Tell the user in one line what was measured and ho
 
 **Otherwise** — the corrected value unseats a product conclusion and no record-supported repair exists: every way it could re-land commits something the record never did — new scope, a requirement, a pick between live alternatives:
 
-**This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it, and why no record-supported repair holds — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
+**This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the measurement to the user in conversation — what the document asserts, what the command measured, which conclusion leans on it, and why no record-supported repair holds — and take a stance on whether the conclusion survives. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
@@ -53,7 +53,7 @@ One side is acknowledged supersession — a dated Decision-block entry, or prose
 The sources decide incompatibly, or frame the alternatives, and the user picking a side settles it. A collision a measurement or a trace can break, or one the record settles, belongs to the branches above, never here. The sides are quoted from the documents, never composed here: where you would have to write the alternatives yourself, they are not documented and this is not the branch. `category` = `Unsourced decision` excludes it outright — a point no source decides has no documented sides — and so does any material whose collision you cannot cite. Take a stance — one side carries `recommended`. **This stop overrides `auto`** — no choice is ever made without the user. Write the raise-and-gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{doc}", "lane": "{lane}", "title": "{the collision, one line}", "context": "{what collides and how the documents drifted}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim}"}, …], "stakes": "{what breaks if extraction proceeds anyway}", "sides": [{"summary": "{one line}", "recommended": true}, {"summary": "{one line}"}]}` — one entry per side, at most one recommended — and fetch the gate, emitting each section verbatim per its marker (the numbered options render recommended-first; the branches below key on that order):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
+node .claude/skills/leeway-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant conflict
 ```
 
 **STOP.** Wait for user response.
@@ -92,7 +92,7 @@ Tell the user in one line what was derived and from what — where the record do
 
 **Otherwise** — the derivation runs out; the tie-break is product intent — appetite, or a fact only the user holds — which is never invented here:
 
-**This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the question to the user in conversation — what the topic needs, what was searched and where the record ran out, what the answer unlocks — and take a stance at the firmness the record has earned: your lean and the one reason it rests on, or, where the record gives nothing to lean on, that plainly and what an answer would need. What was searched is what you searched; a search a review finding records is credited to the finding, never told as yours. No engine surface: this is an exchange, not a gate.
+**This stop overrides `auto`.** Where `{lane}`'s gate mode holds `auto` — re-read it if it is not current in context (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} {construction_gate_mode|finding_gate_mode}`) — open with the announcement verbatim — **Auto is on — stopping anyway:** this is one of the calls auto never makes for you. Then put the question to the user in conversation — what the topic needs, what was searched and where the record ran out, what the answer unlocks — and take a stance at the firmness the record has earned: your lean and the one reason it rests on, or, where the record gives nothing to lean on, that plainly and what an answer would need. What was searched is what you searched; a search a review finding records is credited to the finding, never told as yours. No engine surface: this is an exchange, not a gate.
 
 **STOP.** Wait for user response.
 
@@ -115,7 +115,7 @@ Settling it needs real discussion work — exploration the sources never did, mo
 First check the specification is still live — a parallel session can collapse it from under this one:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
 ```
 
 #### If the status is `cancelled`, `superseded`, or `promoted`
@@ -129,7 +129,7 @@ The specification collapsed while this session held it. Tell the user what happe
 Raise the gap and its acknowledgement gate — a confirm, not a debate: there is no `no` here — the gate exists so the stop is seen before anything moves, and on an epic it settles which of the three homes a gap can have takes it. Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool — `{"doc": "{the owning source's topic}", "lane": "{lane}", "title": "{what is missing, one line}", "context": "{what the topic needs, what was searched for an answer — context, logic, sibling artifacts, measurement — and where the record ran out}", "quotes": [{"doc": "{name}", "section": "{section}", "quote": "{verbatim, where sources frame the adjacent ground}"}, …], "stakes": "{what cannot be written until this is decided}"}` (`quotes` and `stakes` where they exist) — and fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
+node .claude/skills/leeway-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant gap-route
 ```
 
 **STOP.** Wait for user response.
@@ -140,7 +140,7 @@ Send the gap to the owning document's mailbox — its item reopens and the messa
 
 **If the work type is `epic`:**
 
-→ Load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
+→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
 
 On return, read `result`.
 
@@ -156,10 +156,10 @@ Re-read the spec item's status as at the top of this section; a terminal status 
 
 **If the work type is not `epic`:**
 
-Write the message in the message shape pinned in [sending-a-message.md](../../workflow-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
+Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {source phase} {doc} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {source phase} {doc} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
 ```
 
 → Proceed to **D. Pause the Specification**.
@@ -168,7 +168,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {s
 
 Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Its name is the one the user gave in the exchange, or a kebab-case name derived from the gap where they gave none.
 
-→ Load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{the name}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap in the new topic's discussion mailbox.
+→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{the name}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap in the new topic's discussion mailbox.
 
 On return, read `result`.
 
@@ -177,7 +177,7 @@ On return, read `result`.
 Add `{landed_topic}` to this specification's sources — the `pending` row is what holds the specification shut until that discussion concludes, and what makes construction extract it when the specification resumes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{landed_topic}.status pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{landed_topic}.status pending
 ```
 
 → Proceed to **D. Pause the Specification**.
@@ -201,7 +201,7 @@ Offered on an epic alone. The gap is a capability beyond this specification's sc
 Park it — `{name}` is a kebab-case capability name derived from the gap; the map is born at the first park, and the verb validates and self-commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name:(kebabcase)} --horizon "{horizon}" --summary "{the gap in one line}" --origin park:{work_unit} --source {work_unit}/specification/{topic}/specification.md
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name:(kebabcase)} --horizon "{horizon}" --summary "{the gap in one line}" --origin park:{work_unit} --source {work_unit}/specification/{topic}/specification.md
 ```
 
 Tell the user in one line what was parked and where. Nothing reopens — the roadmap item, sourced to this specification, is the record that the ground is not its to fill; a review caller removes what its finding indicted, construction extracts nothing for it.
@@ -214,23 +214,23 @@ The objection is the conversation. A caller that entered at **A** works it per t
 
 ## C. Landing a Resolution
 
-The resolution lands in the owning source document, which another session may hold. Check presence first: `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
+The resolution lands in the owning source document, which another session may hold. Check presence first: `node .claude/skills/leeway-engine/scripts/engine.cjs presence scan {work_unit}` — read the `sessions` rows only; the response's deferral section is scoped to the analysis dispatch and is not emitted here.
 
 #### If a row matches `{doc}`'s phase and topic with `held` true
 
 Another session owns that document, however long it has idled. Do not edit. Write `{"doc": "{doc}", "lane": "{lane}"}` to `.workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json` with the Write tool and fetch the gate, emitting its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
+node .claude/skills/leeway-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
 ```
 
-**STOP.** Wait for user response. Either answer first sends the agreed resolution to the held session's mailbox — epic: load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic send` transaction shown in **B**, message = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the send delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is waiting in a mailbox, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
+**STOP.** Wait for user response. Either answer first sends the agreed resolution to the held session's mailbox — epic: load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic send` transaction shown in **B**, message = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the send delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is waiting in a mailbox, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
 
 #### Otherwise
 
 No row holds `{doc}`.
 
-→ Load **[../../workflow-shared/references/landing-a-resolution.md](../../workflow-shared/references/landing-a-resolution.md)** with work_unit = `{work_unit}`, topic = `{topic}`, doc = `{doc}`, source_phase = `{the source's own phase}`, resolution = `{resolution}`.
+→ Load **[../../leeway-shared/references/landing-a-resolution.md](../../leeway-shared/references/landing-a-resolution.md)** with work_unit = `{work_unit}`, topic = `{topic}`, doc = `{doc}`, source_phase = `{the source's own phase}`, resolution = `{resolution}`.
 
 The caller continues against the updated source.
 
@@ -255,9 +255,9 @@ The specification continues as it was; a review caller records the finding `Decl
 An `incorporated` row for each routed source has flipped to `stale` and reconciles at re-entry; a still-`pending` row — a source mid-extraction, or a topic this exit opened — simply extracts the document when construction resumes. Either way the engine refuses to conclude this spec, and its entry blocks, until every routed topic concludes. Commit the session's work:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {the topic it went to}" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): pause — gap routed to {the topic it went to}" --topic specification/{topic}
 ```
 
 Tell the user: this specification is blocked until the routed work concludes — name every one of them, the sources reopened and the topics opened for a gap alike. Do not run document dependencies, review, or conclusion.
 
-Invoke `/workflow-bridge {work_unit} specification none paused`.
+Invoke `/leeway-bridge {work_unit} specification none paused`.

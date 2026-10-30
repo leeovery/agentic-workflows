@@ -1,5 +1,5 @@
 /**
- * workflow-gates — the agentic-workflows engine's gates drawn above the
+ * leeway-gates — the agentic-workflows engine's gates drawn above the
  * prompt instead of printed by the model.
  *
  * The engine states each gate as data beside the menu it composed. This
@@ -138,7 +138,7 @@ const OLDEST = [2, 1, 287]
 const RELEASE = /^(\d+)\.(\d+)\.(\d+)$/
 
 const STOP_NOTE =
-  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the workflow-gates plugin when they press a row."
+  "The options are on screen as buttons. The user's answer arrives as their next message — typed by them, or sent for them by the leeway-gates plugin when they press a row."
 
 /**
  * What the band holds of the conversation's gates. A turn the person starts
@@ -314,7 +314,7 @@ async function isApplicable($: EngineInterface): Promise<boolean> {
  * loaded into after it started — never gets either.
  */
 async function isAnnounced($: EngineInterface): Promise<boolean> {
-  return (await $.env.get('WORKFLOWS_GATE_SURFACE')) === '1'
+  return (await $.env.get('LEEWAY_GATE_SURFACE')) === '1'
 }
 
 /** Whether an event is the conversation's own, not a subagent's loop. */
@@ -566,7 +566,7 @@ async function folderOf(
   id: string,
 ): Promise<string | null> {
   return folderNamed(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     id,
   )
@@ -653,8 +653,8 @@ async function harnessOn($: EngineInterface) {
     ),
   }
 
-  if ((await $.env.get('WORKFLOWS_HARNESS_REPLACED')) === undefined) {
-    await $.env.set('WORKFLOWS_HARNESS_REPLACED', JSON.stringify(replaced))
+  if ((await $.env.get('LEEWAY_HARNESS_REPLACED')) === undefined) {
+    await $.env.set('LEEWAY_HARNESS_REPLACED', JSON.stringify(replaced))
   }
 
   await $.env.set('CLAUDE_CODE_THINKING_DISPLAY_UPDATES', 'false')
@@ -666,7 +666,7 @@ async function harnessOn($: EngineInterface) {
  * value, or none. Where the harness is not on, nothing is touched.
  */
 async function harnessOff($: EngineInterface) {
-  const kept = await $.env.get('WORKFLOWS_HARNESS_REPLACED')
+  const kept = await $.env.get('LEEWAY_HARNESS_REPLACED')
 
   if (kept === undefined) {
     return
@@ -682,7 +682,7 @@ async function harnessOff($: EngineInterface) {
     'CLAUDE_CODE_SILENT_TURN_REMINDER',
     replaced.CLAUDE_CODE_SILENT_TURN_REMINDER,
   )
-  await $.env.set('WORKFLOWS_HARNESS_REPLACED', undefined)
+  await $.env.set('LEEWAY_HARNESS_REPLACED', undefined)
 }
 
 /**
@@ -853,8 +853,8 @@ export const register: Register = on => {
       return next(e)
     }
 
-    await $.env.set('WORKFLOWS_GATE_SURFACE', '1')
-    await $.env.set('WORKFLOWS_HANDOFF', '1')
+    await $.env.set('LEEWAY_GATE_SURFACE', '1')
+    await $.env.set('LEEWAY_HANDOFF', '1')
 
     // Claude Code builds its tool catalogue just after this hook, so only
     // here does the switch that gives the session SendUserMessage count.

@@ -1,7 +1,7 @@
-# workflow-gates-rows
+# leeway-gates-rows
 
 A Claude Code mod that draws the transcript row of an answer the
-`workflow-gates` mod sent as the question and the answer —
+`leeway-gates` mod sent as the question and the answer —
 `Approve this task? → yes · Commit and continue to next task` — and the row of
 a handoff's continuation as the line naming where the work went —
 `→ Discussion · note-window` — in place of Claude Code's framing of a plugin's
@@ -13,8 +13,8 @@ handoff's; a row it cannot pair shows the answer alone. It changes only the draw
 Code's framing, and ctrl+o shows the message in full.
 
 Each line it draws for a row the mod sent is kept in that folder,
-`~/.config/workflows/conversations/{session-id}/rows.json` (under
-`WORKFLOWS_CONFIG_DIR` where that is set, beside the workflows' system
+`~/.config/leeway/conversations/{session-id}/rows.json` (under
+`LEEWAY_CONFIG_DIR` where that is set, beside the workflows' system
 config), under the row's message id, so scrolling back and a resumed
 conversation draw the row the same way, wherever the session's working
 directory has moved. The folder goes once Claude Code has deleted the
@@ -23,10 +23,10 @@ conversation whose end the session-end hook never saw — the session that first
 installed the hook, or one that crashed — keeps its folder. The mod names the
 folder the way the workflows' engine does. A conversation that
 does not run the workflows has no folder, nor does one in a process that names
-neither a home directory nor `WORKFLOWS_CONFIG_DIR`: there the mod writes
+neither a home directory nor `LEEWAY_CONFIG_DIR`: there the mod writes
 nothing and draws the row as Claude Code does.
 
-It also draws the row of the note `workflow-gates` appends to a compaction —
+It also draws the row of the note `leeway-gates` appends to a compaction —
 which Claude Code stores as an ordinary user row — as one dim line cut to the
 row's width: `⟳ Compacted · carrying on in fumi › discussion ›
 management-window`. It knows the row by the record the mod keeps in the

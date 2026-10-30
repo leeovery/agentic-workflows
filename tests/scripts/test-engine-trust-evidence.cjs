@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The evidence this machine logged on a project (workflow-engine/scripts/
+// The evidence this machine logged on a project (leeway-engine/scripts/
 // domain/trust-evidence.cjs, over trust-log.cjs's read): each answer the
 // trust log holds and where it stands — a raise answered with Claude's
 // sealed answer an agreement, with another row or the person's own words a
@@ -28,7 +28,7 @@ const path = require('path');
 const { statePath, layout, failingTrustAppends } = require('./engine-harness.cjs');
 const { idOf, PROJECT_ID, lines, from, waitingPath, inConversation, useTrustWorld } = require('./trust-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { newEvent, keepEvent, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));

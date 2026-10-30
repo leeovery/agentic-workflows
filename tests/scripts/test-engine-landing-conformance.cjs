@@ -30,7 +30,7 @@ const harness = require('./engine-harness.cjs');
 
 const { git, tip, fixtureFrom, cleanupFixture } = harness;
 const { TASKS, openArgs, own, commitFiles, mergeBack, buildLanding, followRemedy } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const { card, total, notes, loudNotes, rounding, currency } = TASKS;
 

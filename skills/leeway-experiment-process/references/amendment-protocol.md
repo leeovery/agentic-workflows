@@ -1,6 +1,6 @@
 # Amendment Protocol
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -20,7 +20,7 @@ The design can change — as a recorded amendment, never a silent edit:
 The amendment stands. Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — design amended"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — design amended"
 ```
 
 → Return to caller.
@@ -30,7 +30,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 It doesn't stand — strike its entry (dated); the design holds as approved. Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — amendment struck"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} — amendment struck"
 ```
 
 → Return to caller.

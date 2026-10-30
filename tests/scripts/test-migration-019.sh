@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MIGRATION="$REPO_DIR/skills/workflow-migrate/scripts/migrations/019-status-rename.sh"
+MIGRATION="$REPO_DIR/skills/leeway-migrate/scripts/migrations/019-status-rename.sh"
 
 PASS=0
 FAIL=0

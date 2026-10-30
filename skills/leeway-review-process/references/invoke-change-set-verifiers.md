@@ -1,10 +1,10 @@
 # Invoke Change-Set Verifiers
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
-This step dispatches `workflow-review-change-set-verifier` agents once per review cycle, after every verifier batch, over the whole delivered change-set — split by the specification's sections, one agent per section plus one over the test surface. Each holds its section's intent against the product, executing what the project's own conventions let it execute, takes the criteria the task verifiers could not settle as items to measure, and writes its findings and coverage map to one file per section.
+This step dispatches `leeway-review-change-set-verifier` agents once per review cycle, after every verifier batch, over the whole delivered change-set — split by the specification's sections, one agent per section plus one over the test surface. Each holds its section's intent against the product, executing what the project's own conventions let it execute, takes the criteria the task verifiers could not settle as items to measure, and writes its findings and coverage map to one file per section.
 
 ---
 
@@ -45,10 +45,10 @@ Every agent receives the same project conventions, and reads the change-set itse
 
 1. **The linters** — the names the implementation declared (empty stdout or `[]` means none); each is run the way the project's own conventions say it is run:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
    ```
 2. **The project conventions** — the project's `CLAUDE.md` when one exists at the project root, and the project skill paths from Step 3
-3. **The finding floor** — the path `.claude/skills/workflow-implementation-process/references/finding-floor.md`, handed on unread; the agents load it
+3. **The finding floor** — the path `.claude/skills/leeway-implementation-process/references/finding-floor.md`, handed on unread; the agents load it
 4. **The unsettled criteria** — `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt`; absent means the task verifiers settled every criterion by reading, and the agents are told so
 
 → Proceed to **C. Dispatch**.
@@ -59,7 +59,7 @@ Every agent receives the same project conventions, and reads the change-set itse
 
 Dispatch one agent per missing section, all in parallel via the Task tool.
 
-- **Agent path**: `.claude/agents/workflow-review-change-set-verifier.md`
+- **Agent path**: `.claude/agents/leeway-review-change-set-verifier.md`
 
 Each agent receives:
 
@@ -98,7 +98,7 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 The agents measure inside the working tree and must leave it as they found it. The review's own artifacts — the reports, this cycle's section files, the manifest — sit uncommitted under `.workflows/` until prep commits them, so the check reads everything else:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render change-set-tree {work_unit}.review.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render change-set-tree {work_unit}.review.{topic}
 ```
 
 #### If the output is empty

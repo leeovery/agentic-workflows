@@ -1,6 +1,6 @@
 # Map Operations
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -8,7 +8,7 @@ Per-operation handling for **edits to existing map items**. Loaded by [session-l
 
 New topics are not added here — they are synthesised at the harvest from the exploration as a whole. See [topic-synthesis.md](topic-synthesis.md).
 
-State for validation comes from `skills/workflow-discovery/scripts/gateway.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
+State for validation comes from `skills/leeway-discovery/scripts/gateway.cjs` — invoke it via Bash and read the structured output. Never invoke the underlying Node helpers inline.
 
 After all of the user's operations have been processed, return to caller.
 
@@ -17,7 +17,7 @@ After all of the user's operations have been processed, return to caller.
 Re-run discovery to pick up state changes since the last invocation (operations applied earlier in the session, or the parent's initial discovery):
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Read `discovery_map` (per-topic `tier`, `lifecycle`, `routing`, `summary`, `source`) and `dismissed`. These drive validation in **B**.
@@ -61,7 +61,7 @@ A gate's confirm does not guarantee a Remove, Rename, or Change routing will suc
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
 
-→ Load **[topic-name-validation.md](../../workflow-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{name}`.
+→ Load **[topic-name-validation.md](../../leeway-shared/references/topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{name}`.
 
 Branch on `result`:
 
@@ -124,7 +124,7 @@ Walk the validated operation groups in user order. For the next pending group:
 One gate covers the whole batch. Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"items": [{"name": "…", "summary": "…"}]}` — one entry per edit in user order, each carrying the new summary verbatim), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-summary --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-summary --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.
@@ -142,7 +142,7 @@ Skip the batch. No manifest writes, no session-log entry, no commit.
 For each:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map edit {work_unit} {name} --summary "{new summary}"
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map edit {work_unit} {name} --summary "{new summary}"
 ```
 
 Append a single batch entry to the session log under **Edits**. The session log may not exist yet (lazy creation — see [template.md](template.md)) — if it doesn't, create it first using the template and the session metadata held since Step 8. If **Edits** currently reads `(none)`, replace it with the bullets:
@@ -155,7 +155,7 @@ Append a single batch entry to the session log under **Edits**. The session log 
 Single commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): edit {N} summary(ies)" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): edit {N} summary(ies)" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -165,7 +165,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op remove --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op remove --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's sections, each verbatim per its marker.
@@ -191,7 +191,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 Hard-delete the discovery item and add the name to the dismissed list:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map remove {work_unit} {name}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map remove {work_unit} {name}
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
@@ -203,7 +203,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): remove {name} from map" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): remove {name} from map" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -213,7 +213,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "{old}", "new_name": "{new}"}`), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op rename --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op rename --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's sections, each verbatim per its marker.
@@ -239,7 +239,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 Move the item to the new name — every field carries across:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map rename {work_unit} {old} {new}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map rename {work_unit} {old} {new}
 ```
 
 If the command fails, surface the error and skip the commit — the engine validates before writing, so nothing changed.
@@ -253,7 +253,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): rename {old} → {new}" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): rename {old} → {new}" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -263,7 +263,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…", "from": "{old routing}", "to": "{new routing}"}`), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reroute --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reroute --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's sections, each verbatim per its marker.
@@ -287,7 +287,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|discussion}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|discussion}
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
@@ -299,7 +299,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): re-route {name} to {new routing}" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): re-route {name} to {new routing}" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -311,7 +311,7 @@ One gate covers the whole batch. Description may span paragraphs — carry a tru
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"items": [{"name": "…", "description": "…"}]}` — one entry per edit in user order, each carrying the truncated preview), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-description --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op edit-description --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.
@@ -329,7 +329,7 @@ Skip the batch. No manifest writes, no session-log entry, no commit.
 For each, write the full description verbatim (not the truncated preview):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map edit {work_unit} {name} --description "{new description}"
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map edit {work_unit} {name} --description "{new description}"
 ```
 
 Append a single batch entry to the session log under **Edits**. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullets:
@@ -342,7 +342,7 @@ Append a single batch entry to the session log under **Edits**. If the log doesn
 Single commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): edit {N} description(s)" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): edit {N} description(s)" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -352,7 +352,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op close --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op close --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's sections, each verbatim per its marker.
@@ -376,7 +376,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {name}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map handle {work_unit} {name}
 ```
 
 If the command fails, surface the error and skip the commit — the engine validates before writing, so nothing changed.
@@ -390,7 +390,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): close {name} as dead end" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): close {name} as dead end" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -400,7 +400,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reopen --file .workflows/.cache/{work_unit}/discovery/map-op.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reopen --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
 Emit the call's sections, each verbatim per its marker.
@@ -424,7 +424,7 @@ Skip this operation. No manifest writes, no session-log entry, no commit.
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {name}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {name}
 ```
 
 Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
@@ -436,7 +436,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 Per-item commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): reopen {name}" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): reopen {name}" --discovery
 ```
 
 → Return to **C. Apply** for the next group.
@@ -451,7 +451,7 @@ All operation groups have been processed.
 
 The horizon, the confirm, the transaction, and the receipt are the shared door's. It returns having sent the topic to the roadmap, or having left it where it is.
 
-→ Load **[postponing-the-topic.md](../../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `discovery`, topic = `none`.
+→ Load **[postponing-the-topic.md](../../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `discovery`, topic = `none`.
 
 **If the topic was postponed:**
 
@@ -464,7 +464,7 @@ Append an Edits entry to the session log. If the log doesn't exist yet, create i
 The verb committed both manifests itself, so this commit carries the log alone:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): postpone {name} to {horizon}" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): postpone {name} to {horizon}" --discovery
 ```
 
 → Return to **C. Apply** for the next group.

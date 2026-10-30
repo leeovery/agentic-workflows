@@ -9,7 +9,7 @@ Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the 
 Read the reconcile flag on the item:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 `get` returns empty on an absent field.
@@ -25,7 +25,7 @@ The common case. No output.
 Research feeds this work. The topic's research moved after this work began — a message arrived in its mailbox, or it reopened — and what it finds may unseat decisions here. Whether it landed, closed, or was parked again decides what happens here; read its status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
 **If `completed`:**
@@ -43,7 +43,7 @@ The research has landed. Surface the advisory, read the topic's research file fr
 Read `.workflows/{work_unit}/research/{topic}.md` in full, then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -75,7 +75,7 @@ Nothing moved beneath this work after all. Surface the one-line advisory, then c
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -96,13 +96,13 @@ An evidence wait this topic's conversation held has released since this item las
 Render the series register and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
 ```
 
 Read the series — each record's `{id}` and `{slug}` come from this read, never from the rendered register:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
 
 Then read the evidence: every terminal top-level row (`concluded` or `abandoned`, id without a dot — a parent's verdict synthesises its subs, so sub reports are the parent's business) gets its report read in full at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/report.md`. Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register — a partial report, or none at all, is what abandonment leaves — and its waiting point reverts to open: the conversation settles it another way or spawns a successor. When a waiting point settles, its awaiting note in the document is updated with a dated entry recording how — an awaiting line never stands in present tense over the settlement that closed it.
@@ -110,7 +110,7 @@ Then read the evidence: every terminal top-level row (`concluded` or `abandoned`
 Clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -130,10 +130,10 @@ The investigation reopened after this specification concluded — the root cause
 Read `.workflows/{work_unit}/investigation/{topic}.md` in full, then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
-The reopen also flipped the spec's source row to `stale`; the specification session reconciles it (**[../../workflow-specification-process/references/reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, with `{source phase}` = `investigation`) at its setup or conclusion — sign-off waits on it.
+The reopen also flipped the spec's source row to `stale`; the specification session reconciles it (**[../../leeway-specification-process/references/reconcile-stale-sources.md](../../leeway-specification-process/references/reconcile-stale-sources.md)**, with `{source phase}` = `investigation`) at its setup or conclusion — sign-off waits on it.
 
 → Return to caller.
 
@@ -142,10 +142,10 @@ The reopen also flipped the spec's source row to `stale`; the specification sess
 A discussion this specification extracted was re-decided after extraction. The spec's `sources` rows record which — every row whose status is `stale`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[reconcile-stale-sources.md](../../workflow-specification-process/references/reconcile-stale-sources.md)**, and only re-incorporation clears a row.
+Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[reconcile-stale-sources.md](../../leeway-specification-process/references/reconcile-stale-sources.md)**, and only re-incorporation clears a row.
 
 > *Output the next fenced block as a text code block (```text fence):*
 
@@ -159,7 +159,7 @@ Surface the advisory. The `stale` rows themselves stay — the session reconcile
 Read each stale source's discussion file (`.workflows/{work_unit}/discussion/{source-name}.md`) in full, then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -179,7 +179,7 @@ The specification was revised after this plan completed. Surface the advisory an
 Clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -199,7 +199,7 @@ Scoping was revisited after this implementation completed — the spec and plan 
 Read `.workflows/{work_unit}/planning/{topic}/planning.md` in full, then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -219,7 +219,7 @@ The plan was revised after this implementation completed. Surface the advisory, 
 Read `.workflows/{work_unit}/planning/{topic}/planning.md` in full, then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -239,7 +239,7 @@ The implementation reopened and changed after this review concluded. Surface the
 Clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -258,13 +258,13 @@ A roadmap session materially deepened this item's ground after the work started.
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
 ```
 
 Read the newest log the item's `sources` names (paths are relative to `.workflows/`), then clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.
@@ -286,7 +286,7 @@ A discovery brief was written or regenerated after this work started. Surface th
 Clear the flag:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
 → Return to caller.

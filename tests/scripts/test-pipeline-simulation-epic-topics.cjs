@@ -19,11 +19,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
+const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const {
   epicMenu, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { Sim, sessionLog, sendArgv, send, mappedEpic, presenceRow, arriveAtEpicMenu } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic-topics', () => {

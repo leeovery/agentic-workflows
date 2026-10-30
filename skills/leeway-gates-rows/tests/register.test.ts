@@ -10,7 +10,7 @@ tier('user')
 const HOME = '/Users/person'
 
 /** The workflows' system config directory, in the person's home. */
-const CONFIG = `${HOME}/.config/workflows`
+const CONFIG = `${HOME}/.config/leeway`
 
 /** The folder of the conversation the engine names `name`, in the directory `config`. */
 const folderOf = (name: string, config = CONFIG) => `${config}/conversations/${name}`
@@ -28,10 +28,10 @@ const QUESTION = 'Approve this task?'
 const COMMIT = 'Commit and continue to next task'
 const PAIRED = `${QUESTION} → yes · ${COMMIT}`
 
-const MOD: PromptOrigin = { kind: 'plugin', name: 'workflow-gates' }
+const MOD: PromptOrigin = { kind: 'plugin', name: 'leeway-gates' }
 
 /** The row's text as the engine stores a prompt a plugin submitted. */
-const framed = (answer: string, plugin = 'workflow-gates') =>
+const framed = (answer: string, plugin = 'leeway-gates') =>
   [
     `The ${plugin} plugin sent a message:`,
     answer,
@@ -60,7 +60,7 @@ const recordOf = (answer = 'yes', question = QUESTION, label = COMMIT) =>
   JSON.stringify({ answer, question, label })
 
 /** What a handoff sends, and the line naming where the work goes. */
-const CONTINUATION = 'Invoke `/workflow-discussion-process feature note-window`.'
+const CONTINUATION = 'Invoke `/leeway-discussion-process feature note-window`.'
 const WHERE = '→ Discussion · note-window'
 
 /** The record a handoff leaves: its continuation, and its line. */
@@ -305,13 +305,13 @@ describe('register', () => {
 
   const configs = [
     {
-      where: 'the directory WORKFLOWS_CONFIG_DIR names',
-      env: { WORKFLOWS_CONFIG_DIR: `${HOME}/elsewhere` },
+      where: 'the directory LEEWAY_CONFIG_DIR names',
+      env: { LEEWAY_CONFIG_DIR: `${HOME}/elsewhere` },
       config: `${HOME}/elsewhere`,
     },
     {
-      where: 'the home’s .config/workflows while WORKFLOWS_CONFIG_DIR is empty',
-      env: { WORKFLOWS_CONFIG_DIR: '' },
+      where: 'the home’s .config/leeway while LEEWAY_CONFIG_DIR is empty',
+      env: { LEEWAY_CONFIG_DIR: '' },
       config: CONFIG,
     },
   ]
@@ -340,7 +340,7 @@ describe('register', () => {
   })
 
   for (const [how, home] of [['unset', undefined], ['empty', '']] as const) {
-    test(`a process whose home is ${how}, with no WORKFLOWS_CONFIG_DIR, gives the conversation no folder: nothing read or written, the row drawn as Claude Code does`, async ($, on) => {
+    test(`a process whose home is ${how}, with no LEEWAY_CONFIG_DIR, gives the conversation no folder: nothing read or written, the row drawn as Claude Code does`, async ($, on) => {
       const { calls, files } = world(on, recordOf(), { env: { HOME: home } })
 
       expect(await drawn($, rowOf('m1'))).toBe(framed('yes'))
@@ -493,7 +493,7 @@ describe('register', () => {
 
   test('a row of the mod not in the framing passes through', async ($, on) => {
     const { calls } = world(on, recordOf())
-    const text = 'The workflow-gates plugin said something else.'
+    const text = 'The leeway-gates plugin said something else.'
 
     expect(await drawn($, rowOf('m0', { text }))).toBe(text)
     expect(calls).toEqual([])

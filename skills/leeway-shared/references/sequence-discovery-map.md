@@ -1,6 +1,6 @@
 # Sequence Discovery Map
 
-*Shared reference. Loaded by `workflow-continue-epic`.*
+*Shared reference. Loaded by `leeway-continue-epic`.*
 
 ---
 
@@ -19,7 +19,7 @@ The caller provides this via context before loading:
 A discovery map only exists for epics.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If the work type is `epic`
@@ -37,7 +37,7 @@ Take the live topic names from the caller's most recent discovery output — eve
 For richer context, read the whole discovery subtree once — every topic's `summary` and `description` arrive in one call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery
 ```
 
 → Proceed to **C. Assign and Write Order**.
@@ -49,7 +49,7 @@ Analyse the live set holistically and decide a suggested execution order — whi
 Assign contiguous integers `1..N` over the live topics — `1` is the suggested first topic. Full renumber every time: close any gaps, ignore any prior `order` values. Record the whole assignment in one call — it sets each topic's `order` and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map sequence {work_unit} {topic}={N} {topic}={N}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map sequence {work_unit} {topic}={N} {topic}={N}
 ```
 
 → Return to caller.

@@ -1,6 +1,6 @@
 ---
-name: workflow-planning-task-designer
-description: Breaks a single phase into a task list with edge cases. Invoked by workflow-planning-process skill during plan construction.
+name: leeway-planning-task-designer
+description: Breaks a single phase into a task list with edge cases. Invoked by leeway-planning-process skill during plan construction.
 tools: Read, Glob, Grep
 model: opus
 ---

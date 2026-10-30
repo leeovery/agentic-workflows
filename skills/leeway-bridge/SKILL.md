@@ -1,7 +1,7 @@
 ---
-name: workflow-bridge
+name: leeway-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-bridge/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 Decide where the work goes when a phase concludes or pauses, then hand it off.
@@ -21,13 +21,13 @@ This skill receives positional arguments:
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit}
 ```
 
 Read work type from the manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If completed phase is `discovery`
@@ -47,7 +47,7 @@ An epic returns to its menu, which reads the epic's state itself.
 Run the discovery script with the work unit:
 
 ```bash
-node .claude/skills/workflow-bridge/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-bridge/scripts/gateway.cjs {work_unit}
 ```
 
 The output contains `next_phase`, `completed_phases` (in pipeline order), and `revisitable_phases` — the completed phases before `next_phase`, filtered to the work type's pipeline, a phase whose items carry names of their own listed once per completed item as `{phase}/{item}` — with `next_route` and `revisit_routes`, the routes `next_phase` and each revisitable entry are entered by, in that order.

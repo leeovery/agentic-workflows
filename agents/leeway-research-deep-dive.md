@@ -1,6 +1,6 @@
 ---
-name: workflow-research-deep-dive
-description: Answers a research brief in the background — a survey, a read, a feasibility check, a landscape, or a verification against sources — and reports material for the research session to fold. Invoked by workflow-research-process.
+name: leeway-research-deep-dive
+description: Answers a research brief in the background — a survey, a read, a feasibility check, a landscape, or a verification against sources — and reports material for the research session to fold. Invoked by leeway-research-process.
 tools: Read, Write, WebSearch, WebFetch, Bash, Grep, Glob
 model: opus
 ---

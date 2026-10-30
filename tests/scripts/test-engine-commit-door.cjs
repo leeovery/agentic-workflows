@@ -17,8 +17,8 @@ const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
-const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
+const { commitStaged } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
+const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
 const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState } = harness;
 
@@ -1135,7 +1135,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
     const before = codeHead();
 
-    const res = refuses(dir, ['commit', '--migrations', '-m', 'x'], { env: { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = refuses(dir, ['commit', '--migrations', '-m', 'x'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
     assert.strictEqual(codeHead(), before);
@@ -1551,7 +1551,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
   it('surfaces the git error once the retry budget is exhausted, and releases the commit lock', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
-    const res = refuses(dir, task, { env: { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = refuses(dir, task, { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
     assert.ok(!fs.existsSync(path.join(dir, '.git', 'workflows-commit.lock')), 'commit lock released on failure');
@@ -1573,7 +1573,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
     writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nprogress\n');
 
-    const res = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a'], { env: { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
   });

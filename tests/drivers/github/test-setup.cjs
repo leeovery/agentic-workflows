@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What setup sets on GitHub through GitHub's landing driver
-// (workflow-engine/scripts/domain/github-setup.cjs), each offer answered by
+// (leeway-engine/scripts/domain/github-setup.cjs), each offer answered by
 // its own verb, alike in shape and refusals: the GitHub rule on the state
 // branch (`github-rule`, 4.4.6, 4.S10, 4.S30) and the squash default the
 // landing needs (`github-squash`, 7.2.18). Each is offered until answered,
@@ -29,7 +29,7 @@ const { execFileSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useLandingWorld, setLandingDriver } = require('../../scripts/landing-world.cjs');
-const { githubRuleOffered, githubSquashOffered } = require('../../../skills/workflow-engine/scripts/domain/github-setup.cjs');
+const { githubRuleOffered, githubSquashOffered } = require('../../../skills/leeway-engine/scripts/domain/github-setup.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { githubWorld, github, calls, ok, refused } = require('./world.cjs');
 

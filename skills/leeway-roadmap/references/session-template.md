@@ -1,6 +1,6 @@
 # Roadmap Session Log Template
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[leeway-roadmap](../SKILL.md)***
 
 ---
 
@@ -70,7 +70,7 @@ and rejected paths with why, the threads left open. Not verbatim.}
 On the `open` path the log is **not created at session start** — it is conjured on the first state change: an Exploration pause, or an op recorded under **Edits**, conjured before the op runs. Genesis creates it at Step 2, Exploration backfilled. To create it, draft the complete log at `.workflows/.cache/roadmap/session-draft.md` (header, **Imports**, **Map State at Start**, the Exploration so far; other sections `(none)` — an op's **Edits** entry lands after the op runs), then open:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md
 ```
 
 The engine allocates the number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log, and sets `roadmap.active_session`. The response's `session` is authoritative — set `session_number` from it. Later writes edit the installed file directly; commit with `engine commit --roadmap`. Browse-and-bail produces no file.

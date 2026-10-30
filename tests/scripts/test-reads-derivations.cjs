@@ -12,7 +12,7 @@ const {
   fileExists, listFiles, listDirs, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
-} = require('../../skills/workflow-engine/scripts/domain/reads.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const {
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
@@ -24,7 +24,7 @@ const {
   specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
   postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
   openSources, specUnsettled, specUnsettledPhrase,
-} = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
 describe('reads + derivations', () => {
   let dir;
@@ -866,7 +866,7 @@ describe('reads + derivations', () => {
       // Insert items in non-alphabetical order. The analysis writes its cache
       // checksum over a SORTED file list. The read side in
       // computeAnalysisCacheStatus must sort identically — otherwise the cache
-      // always reports stale on every workflow-continue-epic, firing the
+      // always reports stale on every leeway-continue-epic, firing the
       // analysis + KB re-indexes for no reason.
       createFile(dir, '.leeway/alpha/research/zebra.md', 'rz');
       createFile(dir, '.leeway/alpha/research/auth.md', 'ra');

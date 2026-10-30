@@ -1,10 +1,10 @@
 # Define Tasks
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
-This step uses the `workflow-planning-task-designer` agent (`.claude/agents/workflow-planning-task-designer.md`) to design a task list for a single phase. You invoke the agent, present its output, and handle the approval gate.
+This step uses the `leeway-planning-task-designer` agent (`.claude/agents/leeway-planning-task-designer.md`) to design a task list for a single phase. You invoke the agent, present its output, and handle the approval gate.
 
 ---
 
@@ -14,16 +14,16 @@ This step uses the `workflow-planning-task-designer` agent (`.claude/agents/work
 
 Read `work_type` from the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-Invoke `workflow-planning-task-designer` with these file paths:
+Invoke `leeway-planning-task-designer` with these file paths:
 
-1. **read-specification.md**: `.claude/skills/workflow-planning-process/references/read-specification.md`
+1. **read-specification.md**: `.claude/skills/leeway-planning-process/references/read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: the specification paths the planning file's `## Cross-Cutting References` section lists, if any
-4. **task-design.md**: `.claude/skills/workflow-planning-process/references/task-design.md`
-5. **Context guidance**: `.claude/skills/workflow-planning-process/references/task-design/{work_type}.md` (default to `epic` if `work_type` is empty)
+4. **task-design.md**: `.claude/skills/leeway-planning-process/references/task-design.md`
+5. **Context guidance**: `.claude/skills/leeway-planning-process/references/task-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **All approved phases**: the complete phase structure from the planning file
 7. **Target phase number**: the phase being broken into tasks
 
@@ -43,7 +43,7 @@ The agent returns a task overview and task table.
 
 When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
 
-Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-task-designer` through its amendment path with the corrections and that work as the feedback, and take the revised task list forward. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
+Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `leeway-planning-task-designer` through its amendment path with the corrections and that work as the feedback, and take the revised task list forward. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
 
 **Otherwise:** nothing to settle — continue.
 
@@ -51,13 +51,13 @@ Write the task table to the planning file under the phase. Where the overview na
 
 Update the manifest planning position:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase {N}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase {N}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task '~'
 ```
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft Phase {N} task list" --topic planning/{topic}
 ```
 
 Write the task-list payload for the render surface to the phase cache — one entry per task, each summary a single line, the specification's decided edges as short phrases:
@@ -76,7 +76,7 @@ Use the Write tool for the payload — never a shell heredoc.
 ## B. Render the Gate
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-list {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-list {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
 ```
 
 The response carries the task-list display plus the surface for the current gate mode. Emit each section verbatim per its marker.
@@ -91,7 +91,7 @@ The response carries the task-list display plus the surface for the current gate
 
 #### If the user provides feedback
 
-Re-invoke `workflow-planning-task-designer` with all original inputs PLUS:
+Re-invoke `leeway-planning-task-designer` with all original inputs PLUS:
 - **Previous output**: the current task list
 - **User feedback**: what the user wants changed
 
@@ -106,7 +106,7 @@ Where a landing changed the specification, re-invoke the designer once more with
 #### If `auto`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_list_gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_list_gate_mode auto
 ```
 
 → Proceed to **C. Finalize Approval**.
@@ -127,14 +127,14 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 **If the task list is new or was amended:**
 
-1. Record the approval — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.tasks.p{N} $(date +%Y-%m-%d)`
+1. Record the approval — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.tasks.p{N} $(date +%Y-%m-%d)`
 2. Advance the planning position in the manifest to the first task in this phase:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task {first_task_id}
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task {first_task_id}
    ```
 3. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list" --topic planning/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve Phase {N} task list" --topic planning/{topic}
    ```
 
 If the manifest already carries `approvals.tasks.p{N}` and the list is unchanged, no updates are needed.

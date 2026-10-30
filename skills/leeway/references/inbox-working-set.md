@@ -1,6 +1,6 @@
 # Inbox Working Set
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -17,7 +17,7 @@ For each item in the set, read its file and synthesise a short summary — one o
 Fetch the working-set snapshot — pass every held item's inbox path, in set order, plus the payload:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path} …] --summaries .workflows/.cache/working-set-summaries.json
+node .claude/skills/leeway/scripts/gateway.cjs working-set {path} [{path} …] --summaries .workflows/.cache/working-set-summaries.json
 ```
 
 The response carries demarcated sections:
@@ -92,7 +92,7 @@ Match each named item against the `ADDABLE` table — by title, or by the number
 Fetch the add gate over the current set and emit its `MENU: add gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs working-set-add-gate {path} [{path} …]
+node .claude/skills/leeway/scripts/gateway.cjs working-set-add-gate {path} [{path} …]
 ```
 
 **STOP.** Wait for user response.
@@ -126,7 +126,7 @@ Resolve each named item against the working set by title or description. If any 
 Fetch the drop gate over the current set and emit its `MENU: drop gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs working-set-drop-gate {path} [{path} …]
+node .claude/skills/leeway/scripts/gateway.cjs working-set-drop-gate {path} [{path} …]
 ```
 
 **STOP.** Wait for user response.
@@ -144,7 +144,7 @@ Resolve each chosen number to its `SET` row and remove that item from the workin
 Archive every item in the working set out of the inbox — one command moves each file into `.archived/` under its inbox folder and commits the whole set:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs inbox archive {path} [{path} …]
+node .claude/skills/leeway-engine/scripts/engine.cjs inbox archive {path} [{path} …]
 ```
 
 Say `Archived {N} item(s) from the inbox.`, `{N}` the count of the response's `archived` paths.
@@ -158,7 +158,7 @@ The working set is now empty.
 Build `set_paths` — the set items' inbox paths, comma-joined, in set order. Fetch every item in full and emit the call's DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --path {set_paths}
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-content --path {set_paths}
 ```
 
 → Return to **A. Render the Working Set**.
@@ -183,7 +183,7 @@ That label is `{horizon}`.
 
 #### Otherwise
 
-→ Load **[choosing-a-horizon.md](../../workflow-shared/references/choosing-a-horizon.md)** and follow its instructions as written.
+→ Load **[choosing-a-horizon.md](../../leeway-shared/references/choosing-a-horizon.md)** and follow its instructions as written.
 
 → On return, proceed to **H. Compose the Roadmap Items**.
 
@@ -209,7 +209,7 @@ Write the entries to `.workflows/.cache/inbox-roadmap.json` with the Write tool,
 Render the confirm — it states every item with its kind, and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. It refuses whatever the landing would refuse:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
 ```
 
 #### If the call refuses a name
@@ -261,7 +261,7 @@ The comment names what to change — an item's name or summary, or the horizon. 
 Land the file the confirm rendered — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap.json
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap.json
 ```
 
 #### If the response is `ok: false`

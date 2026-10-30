@@ -7,7 +7,7 @@ const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { stem } = require('../../skills/workflow-engine/scripts/kernel/knowledge/stemmer.cjs');
+const { stem } = require('../../skills/leeway-engine/scripts/kernel/knowledge/stemmer.cjs');
 
 /** Words of Snowball's English vocabulary, each beside the stem its reference output gives. */
 const SAMPLE = path.resolve(__dirname, '..', 'fixtures', 'knowledge', 'porter2', 'sample.txt');

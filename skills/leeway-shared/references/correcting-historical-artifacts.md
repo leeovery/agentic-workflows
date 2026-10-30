@@ -27,7 +27,7 @@ Corrections flow through the owning phase: re-entering that topic's specificatio
 Read the unit's status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {owning_work_unit} status
 ```
 
 #### If `in-progress`
@@ -47,7 +47,7 @@ Cancellation removed the unit's chunks from the knowledge base, and reactivation
 Present the wrong claim, the evidence, and the proposed correction in the conversation, then confirm — editing another work unit's record is never silent. Present a large correction set as its shape — what moved, which sections, counts — with the full list available on request.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render correction-gate {owning_work_unit}.specification.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render correction-gate {owning_work_unit}.specification.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -77,13 +77,13 @@ Present the full correction list — each wrong claim, its evidence, and its pro
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks: tell the user in one line that the next start retries it, and continue:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index {specification path}
+   node .claude/skills/leeway-engine/scripts/engine.cjs knowledge index {specification path}
    ```
 
 4. **Commit.** Scoped to the corrected topic in the owning unit — one specification file, nothing else of a unit this session is not working in. `--sweep` says the topic is somebody else's:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_work_unit}" --topic specification/{topic} --sweep
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_work_unit}" --topic specification/{topic} --sweep
    ```
 
 The owning unit's manifest is never touched — no reopen, no status change; the unit stays completed.
@@ -95,8 +95,8 @@ The owning unit's manifest is never touched — no reopen, no status change; the
 A downstream phase found the defect. The route edits a golden record with no gate, so it verifies its ground first — read the item's status and scan presence, then check in order:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {owning_work_unit}.specification.{topic} status
-node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {owning_work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {owning_work_unit}.specification.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs presence scan {owning_work_unit}
 ```
 
 #### If the status is anything but `completed`
@@ -134,13 +134,13 @@ Apply it silently — no gate, no raise. This is the one place a downstream phas
 3. **Re-index.** Replaces the file's existing chunks in one idempotent call. A failed index never blocks — continue, and the next start retries it:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs knowledge index {specification path}
+   node .claude/skills/leeway-engine/scripts/engine.cjs knowledge index {specification path}
    ```
 
 4. **Commit.** Scoped to the corrected topic — one specification file. `--sweep` always rides here — the session's working topic sits under its own downstream phase, never under this specification:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_phase}" --topic specification/{topic} --sweep
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {owning_work_unit} -m "specification({owning_work_unit}): corrigendum from {correcting_phase}" --topic specification/{topic} --sweep
    ```
 
 The specification item is never touched — no reopen, no status change.

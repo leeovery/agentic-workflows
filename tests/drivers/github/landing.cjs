@@ -15,8 +15,8 @@
 const path = require('path');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
-const names = require('../../../skills/workflow-engine/scripts/domain/landing-names.cjs');
-const { taskId } = require('../../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
 const { GH_ENV, githubWorld, github, bareOf, squashFromPullRequests } = require('./world.cjs');
 
 module.exports = {

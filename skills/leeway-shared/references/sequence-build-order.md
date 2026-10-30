@@ -1,6 +1,6 @@
 # Sequence Build Order
 
-*Shared reference. Loaded by `workflow-continue-epic` — its Step 5 and its menu's `o/order`.*
+*Shared reference. Loaded by `leeway-continue-epic` — its Step 5 and its menu's `o/order`.*
 
 ---
 
@@ -19,7 +19,7 @@ The caller provides this via context before loading:
 A build order only exists for epics.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If the work type is `epic`
@@ -35,7 +35,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 Read the specification subtree — every topic's status and sources arrive in one call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification
 ```
 
 The live set is every topic whose status is not `cancelled`, `superseded`, or `promoted` — completed topics stay and keep a number. For grouped topics, the `sources` entries name the member discussions; read a discussion document or a completed specification where the grouping alone leaves a topic's ground unclear.
@@ -51,7 +51,7 @@ Analyse the live set holistically and decide the build order — which topic to 
 Assign contiguous integers `1..N` over the live topics — `1` is the suggested first build. Full renumber every time: cover every live topic, close any gaps, ignore any prior `order` values. Record the whole assignment in one call — it sets each topic's `order`, clears the stale flag, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs build-order sequence {work_unit} {topic}={N} {topic}={N}
+node .claude/skills/leeway-engine/scripts/engine.cjs build-order sequence {work_unit} {topic}={N} {topic}={N}
 ```
 
 The engine refuses a partial assignment (naming the missing topics) and a non-contiguous numbering — re-issue with the whole live set.

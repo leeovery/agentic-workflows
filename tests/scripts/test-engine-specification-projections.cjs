@@ -11,15 +11,15 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const {
   specificationDiscovery, specificationDetail, discoverySpec, specConfirmation, incorporations,
-} = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
-const { specIncorporations } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
-const { startTopic, supersedeTopic } = require('../../skills/workflow-engine/scripts/domain/transitions.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/specification.cjs');
+const { specIncorporations } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { startTopic, supersedeTopic } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
 const {
   specificationDisplay, specificationMenu, specificationCompletedMenu,
-} = require('../../skills/workflow-engine/scripts/domain/projections/specification.cjs');
-const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/projections/specification.cjs');
+const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/leeway-continue-epic/scripts/gateway.cjs');
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
@@ -1001,7 +1001,7 @@ describe('specification projections: menu goldens', () => {
     assert.deepStrictEqual(row.sources.map((s) => s.tag).sort(), ['pending', 'stale']);
     // A stale row whose discussion is back in flight shows both facts;
     // "reopened" means in-progress alone — a cancelled discussion is settled.
-    const { sourceTag } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+    const { sourceTag } = require('../../skills/leeway-engine/scripts/domain/specification.cjs');
     assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'in-progress' }), 'stale, reopened');
     assert.strictEqual(sourceTag({ name: 'a', status: 'stale', discussion_status: 'completed' }), 'stale');
     assert.strictEqual(sourceTag({ name: 'a', status: 'incorporated', discussion_status: 'cancelled' }), 'extracted');

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Merges crossing each other (workflow-engine/scripts/domain/ledger-fold.cjs,
+// Merges crossing each other (leeway-engine/scripts/domain/ledger-fold.cjs,
 // read through domain/ledger-read.cjs): the later holds and the earlier not,
 // whichever entry or merge is read first, a merge leading on through an
 // earlier one taken once the earlier is, and a merge that set aside another
@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { ok, refuses, statePath, cleanupFixture } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const {
   ID_FACTS, foldLedger, isCurrent, currentsOf, mergeHolds,
 } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));

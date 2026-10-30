@@ -15,14 +15,14 @@ type Surface = (typeof SURFACES)[number]
 const HOME = '/Users/person'
 
 /** The workflows' system config directory where the process names none. */
-const DEFAULT_CONFIG = `${HOME}/.config/workflows`
+const DEFAULT_CONFIG = `${HOME}/.config/leeway`
 
-const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs'
+const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs'
 
 type Position = { name: string; phase?: string; topic?: string; task?: string }
 
 /** The announcement a session the mod applies to carries from its start. */
-const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' }
+const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' }
 
 /**
  * The world beneath the mod: the process's environment (announced unless
@@ -116,7 +116,7 @@ function world(
     async handsOffAs(engine: Engine, id: string) {
       await engine.session.end({ reason: 'clear', sessionId, resume: { id: sessionId } })
       sessionId = id
-      files.set(`${folderOf(id)}/sent.json`, JSON.stringify({ answer: 'Invoke `/workflow-roadmap open`.', line: '→ Roadmap' }))
+      files.set(`${folderOf(id)}/sent.json`, JSON.stringify({ answer: 'Invoke `/leeway-roadmap open`.', line: '→ Roadmap' }))
     },
   }
 }
@@ -161,7 +161,7 @@ describe('the spinner', () => {
       const config = '/Users/person/state/workflows'
 
       world(on, {
-        env: { ...ANNOUNCED, WORKFLOWS_CONFIG_DIR: config },
+        env: { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config },
         markedIn: config,
         positions: { s0: { name: 'pay', phase: 'discussion', topic: 'ledger' } },
       })
@@ -317,7 +317,7 @@ describe('the spinner', () => {
     })
   }
 
-  for (const env of [{}, { WORKFLOWS_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
+  for (const env of [{}, { LEEWAY_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
     test(`keeps Claude Code's word in a session that did not announce, reading nothing — ${JSON.stringify(env)}`, async ($, on) => {
       const { counts, places } = world(on, { env, positions: { s0: { name: 'pay', phase: 'discussion', topic: 'ledger' } } })
 

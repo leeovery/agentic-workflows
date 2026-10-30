@@ -1,6 +1,6 @@
 # Initialize Investigation
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -11,12 +11,12 @@ The durable inputs live in the manifest and at fixed paths — read them here.
 The carrier discovery left has two halves — read both. First the manifest `description`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
 Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`.
 
-→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../leeway-shared/references/seed-context.md)** and follow its instructions as written.
 
 → On return, proceed to **B. Create and Register**.
 
@@ -27,7 +27,7 @@ Then the discovery session log's **Exploration** — single-phase work has exact
 3. Populate the Symptoms section from the inputs just read and anything already in conversation
 4. Register investigation in manifest:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} investigation {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} investigation {topic}
    ```
 5. Commit the initial file
 

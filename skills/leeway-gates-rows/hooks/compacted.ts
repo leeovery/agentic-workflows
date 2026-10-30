@@ -1,5 +1,5 @@
 /**
- * The row of the note the `workflow-gates` mod appends to a compaction, drawn
+ * The row of the note the `leeway-gates` mod appends to a compaction, drawn
  * as one dim line in place of a prompt row the person never typed. Claude
  * Code stores that note as an ordinary user row, so the row is known by its
  * text: the gates mod records every note it hands up in the conversation's
@@ -32,7 +32,7 @@ export const noteOf = (place: string) => `⟳ Compacted · carrying on in ${plac
  */
 async function noteFor($: EngineInterface, text: string): Promise<string | null> {
   const folder = folderOf(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     await $.session.id(),
   )

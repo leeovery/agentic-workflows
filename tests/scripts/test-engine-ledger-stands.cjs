@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where an entry stands (workflow-engine/scripts/domain/ledger-fold.cjs,
+// Where an entry stands (leeway-engine/scripts/domain/ledger-fold.cjs,
 // read through domain/ledger-read.cjs, `engine ledger record|map`): where
 // the earliest entry of its chain in a live place was made. A replacement
 // made from the spec or by another unit stays on the topic's record and

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-discovery. Thin by design: the scoped
+// Adapter (read gateway) for leeway-discovery. Thin by design: the scoped
 // discovery dump plus the map-view projection over one epic's discovery map.
 //
 //   gateway.cjs {work_unit}            → labelled dump (thin reasoning surface)
@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 const { loadManifest } = engine.reads;
 const { stateRoot } = engine.state;
 const { computeAnalysisCacheStatus, buildDiscoveryMap } = engine.derivations;

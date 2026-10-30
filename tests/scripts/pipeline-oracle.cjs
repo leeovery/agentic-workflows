@@ -32,37 +32,37 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const engine = require(path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs'));
-const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
-const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/derivations.cjs'));
-const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
-const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
-const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
+const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
+const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
+const { roadmapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/roadmap.cjs'));
+const { mapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/discussion-map.cjs'));
+const { registerState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/research-threads.cjs'));
 const {
   RECORDS_DIR, PRODUCT_FILE, knowledgeFiles,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
-const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/store.cjs'));
-const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
-const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
-const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
-const { isId } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-ids.cjs'));
-const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
+const knowledgeStore = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/store.cjs'));
+const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs'));
+const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
+const { LEDGER } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
+const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
+const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-linear/scripts/gateway.cjs'));
+const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const {
   specificationDiscovery, specificationDetail,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
-const { openGate } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/specification.cjs'));
+const { openGate } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   resolveHandoff, HANDOFF_TARGETS,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 const { ledgerEntries } = require('./engine-harness.cjs');
-const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
-const { SHOWN } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/gate.cjs'));
-const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/trust-log.cjs'));
+const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -694,7 +694,7 @@ function auditTrust(sim, label, ran = []) {
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
-const IN_PLACE_SKILLS = ['workflow-continue-linear', 'workflow-help'];
+const IN_PLACE_SKILLS = ['leeway-continue-linear', 'leeway-help'];
 
 // A route the engine builds into a work skill hands off as it stands, so the
 // handoff table must take it whole and carry it unchanged — a route and the
@@ -780,7 +780,7 @@ function announcedRender(render) {
 // directly above the markdown, and that data has to be the whole menu.
 /** @param {Sim} sim @param {string[]} args @param {Record<string,string>|null} identity @returns {void} */
 function auditGatePayload(sim, args, identity) {
-  const env = { ...sim.envOf(identity), WORKFLOWS_GATE_SURFACE: '1' };
+  const env = { ...sim.envOf(identity), LEEWAY_GATE_SURFACE: '1' };
   const stated = auditGate(engine.run(['render', ...args], { cwd: sim.dir, env }).stdout, `render ${args.join(' ')} — gate payload`);
   auditGateShown(sim, stated, identity, `render ${args.join(' ')}`);
 }

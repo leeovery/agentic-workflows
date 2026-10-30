@@ -61,8 +61,8 @@ const CLEARED = Object.freeze([
   'CLAUDE_CODE_PEWTER_OWL_TOOL', 'CLAUDE_CODE_THINKING_DISPLAY_UPDATES', 'CLAUDE_CODE_SILENT_TURN_REMINDER',
 ]);
 
-/** The workflows' and Leeway's own variables. */
-const CLEARED_PREFIXES = Object.freeze(['WORKFLOWS_', 'LEEWAY_']);
+/** Leeway's own variables. */
+const CLEARED_PREFIXES = Object.freeze(['LEEWAY_']);
 
 /** Hooks and auto-memory off, whatever any settings file says. */
 const SETTINGS = JSON.stringify({ disableAllHooks: true, autoMemoryEnabled: false });

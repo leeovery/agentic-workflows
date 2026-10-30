@@ -1,6 +1,6 @@
 # Document Review
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -83,7 +83,7 @@ Single-topic work has no sibling to route to. Surface each note now, one sentenc
 Every note set aside in **B** has been gated (or none existed). When any send record was written, commit it — each send already committed itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): document review — send carry-notes as messages"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): document review — send carry-notes as messages"
 ```
 
 → Proceed to **D. Brief the User**.
@@ -92,10 +92,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a sent note reads as a send record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is nothing to send — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim per its marker:
+Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/carry-note.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render carry-note-gate {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/carry-note.json
 ```
 
 **STOP.** Wait for user response.
@@ -104,7 +104,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {w
 
 Build the message from the note *plus* the session context it stems from — the finding, the reasoning, what the target needs to know — the target resolves it from cold.
 
-→ Load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the note's full context}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Load **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the note's full context}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`.
 
 On return: if `result` is `landed`, the note is handled — replace the stranded prose with a send record in place, `Sent to {landed_topic}'s mailbox ({date}).`, and when the send response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents; dropping it for good is the `skip` arm's job.
 

@@ -21,7 +21,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/066-remove-user-function-hooks-flag.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/066-remove-user-function-hooks-flag.cjs');
 
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const HOOKS = { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo hi' }] }] };

@@ -1,6 +1,6 @@
 # Specification Format
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -24,13 +24,13 @@ Specification metadata is stored in the work-unit manifest, not in file frontmat
 
 ```bash
 # Read fields
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.{source-name}.status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} review_cycle
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.{source-name}.status
 
 # Write fields
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
 ```
 
 Lifecycle `status` transitions go through the engine, not `set` — `engine topic start` on creation, `engine topic complete` (which also indexes the artifact) at conclusion.
@@ -49,7 +49,7 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 
 ## Body
 
-→ Load **[specification-body.md](../../workflow-shared/references/specification-body.md)** and follow its instructions as written.
+→ Load **[specification-body.md](../../leeway-shared/references/specification-body.md)** and follow its instructions as written.
 
 ---
 
@@ -60,10 +60,10 @@ Lifecycle `status` transitions go through the engine, not `set` — `engine topi
 Track each source with its incorporation status via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.auth-flow.status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.auth-flow.status
 # → incorporated
 
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.api-design.status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources.api-design.status
 # → pending
 ```
 
@@ -74,8 +74,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 **When to update source status:**
 
-1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending`
-2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
+1. **When creating the specification**: All sources start as `pending` — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status pending`
+2. **After completing exhaustive extraction from a source**: Mark that source as `incorporated` — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated`
 3. **When adding a new source to an existing spec**: Add it with `status: pending` via the same command
 4. **After reconciling a `stale` source** (see **[reconcile-stale-sources.md](reconcile-stale-sources.md)**): mark it `incorporated` — the same command as extraction
 
@@ -86,7 +86,7 @@ A source is `incorporated` when you have:
 - Presented and logged all relevant content from that source
 - No more content from that source needs to be extracted
 
-**IMPORTANT**: The specification should only be marked `completed` (via `node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
+**IMPORTANT**: The specification should only be marked `completed` (via `node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}`) when:
 - All sources are marked as `incorporated` — neither `pending` nor `stale`
 - All three review phases are complete
 - User has signed off
@@ -97,7 +97,7 @@ If a new source is added to a completed specification (via grouping analysis), o
 
 ## Cross-Cutting Concerns
 
-Cross-cutting concerns (caching strategies, rate-limiting policies, work conventions) are a separate work type with their own pipeline: Research (optional) → Experiment (optional) → Discussion → Specification (terminal). They are created via `/workflow-start` or promoted from epic specifications at completion time.
+Cross-cutting concerns (caching strategies, rate-limiting policies, work conventions) are a separate work type with their own pipeline: Research (optional) → Experiment (optional) → Discussion → Specification (terminal). They are created via `/leeway` or promoted from epic specifications at completion time.
 
 During planning for any work type, a fresh plan surfaces completed cross-cutting specifications as context, ensuring features and bugfixes incorporate validated architectural decisions.
 

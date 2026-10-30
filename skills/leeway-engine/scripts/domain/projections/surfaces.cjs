@@ -174,7 +174,7 @@ function alignOptions(lines, { width = displayWidth(), skip = 0 } = {}) {
   return out;
 }
 
-const GATE_SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
+const GATE_SURFACE_ENV = 'LEEWAY_GATE_SURFACE';
 
 const GATE_INSTRUCTION = 'json for a gate surface — never display';
 

@@ -1,6 +1,6 @@
 # Promote to Cross-Cutting Work Unit
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ Derive the new work unit name: `cc_work_unit = {topic}`. The original `{topic}` 
 Check if a work unit with this name already exists:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {cc_work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {cc_work_unit}
 ```
 
 #### If `true`
@@ -31,7 +31,7 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/` with its manifest item, as a source of its specification, copies the imports the moved documents link and the moved sources attached into the new unit's `imports/`, marks the epic's spec item and each moved discussion `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"
 ```
 
 → Proceed to **C. Display**.
@@ -41,9 +41,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_un
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--imports` carries `{N}`, the length of the response's `imports` (omit the flag when the list is empty), and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit} [--imports {N}] [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render promote-receipt {work_unit}.specification.{topic} --to {cc_work_unit} [--imports {N}] [--warn]
 ```
 
 Invoke the bridge for the EPIC (not the cc work unit — the epic continues its pipeline):
 
-Invoke `/workflow-bridge {work_unit} specification`.
+Invoke `/leeway-bridge {work_unit} specification`.

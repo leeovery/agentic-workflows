@@ -1,6 +1,6 @@
 # Landing Shared Files
 
-*Shared reference. Loaded by the session wrappers of `workflow-research-process` and `workflow-discussion-process` (whose session loops enter **A. Land It** when the user offers a path), by `workflow-investigation-process` at its code-analysis step and its symptom interview, and by `workflow-discovery`'s session loop.*
+*Shared reference. Loaded by the session wrappers of `leeway-research-process` and `leeway-discussion-process` (whose session loops enter **A. Land It** when the user offers a path), by `leeway-investigation-process` at its code-analysis step and its symptom interview, and by `leeway-discovery`'s session loop.*
 
 ---
 
@@ -38,7 +38,7 @@ Nothing lands. Carry on with what vision read.
 Land every path offered in one call. Single-quote every path — an image's filename carries spaces and capitals, and unquoted each word becomes its own positional — write a `~` path out in full, since the quotes stop the shell expanding it, and write a single quote inside a path as `'\''`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit import {work_unit} '{path}' ['{path}' …] --from {origin}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit import {work_unit} '{path}' ['{path}' …] --from {origin}
 ```
 
 The verb copies, records, indexes what the store can read, and commits itself.
@@ -48,7 +48,7 @@ The verb copies, records, indexes what the store can read, and commits itself.
 Nothing landed — one bad path refuses the whole batch. Write the payload to the session's cache with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order); the cache path is `.workflows/.cache/{work_unit}/{origin}/import-reprompt.json`, `origin` being the directory shape already (`{phase}/{topic}`, or `discovery` for the bare origin). Then render the re-prompt:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/{origin}/import-reprompt.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/{origin}/import-reprompt.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.

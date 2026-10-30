@@ -49,7 +49,7 @@ Write the proposed set to `.workflows/.cache/roadmap/proposed-items.json` — a 
 Then render the proposal:
 
 ```bash
-node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/roadmap/proposed-items.json
+node .claude/skills/leeway-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/roadmap/proposed-items.json
 ```
 
 Read `=== DATA` to reason from (never display it) — a per-name flag row for each proposed item:
@@ -64,7 +64,7 @@ Emit the `=== DISPLAY` section verbatim per its marker — the proposed items ov
 Then fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-harvest-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-harvest-gate
 ```
 
 **STOP.** Wait for user response.
@@ -90,13 +90,13 @@ Apply the named adjustments to the set — move between horizons, split, merge, 
 Land the whole set in one transaction (horizons are created JIT in entry order; the file's `sources` land on each item, `origin` defaults to `harvest`):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/roadmap/proposed-items.json
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/roadmap/proposed-items.json
 ```
 
 Apply any horizon re-ordering the conversation's staging stated (`roadmap horizon reorder {name} {name} …` — the complete order; the user's words are the order, never the display's append order). Then write the log's **Items Sorted** section (one subsection per item: horizon + one-line why) and any **Edits** entries the harvest produced, and commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "roadmap: harvest — session-{session_number}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --roadmap -m "roadmap: harvest — session-{session_number}"
 ```
 
 Outcome: `confirmed`.

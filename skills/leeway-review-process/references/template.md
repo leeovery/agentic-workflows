@@ -1,6 +1,6 @@
 # Review Template
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 

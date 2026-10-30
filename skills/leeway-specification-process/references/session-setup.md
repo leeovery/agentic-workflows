@@ -1,6 +1,6 @@
 # Session Setup
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -9,7 +9,7 @@
 Reset `finding_gate_mode` and `construction_gate_mode` to `gated` in one batched write:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode=gated construction_gate_mode=gated
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode=gated construction_gate_mode=gated
 ```
 
 ## Hold the Sources
@@ -17,13 +17,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Read the sources map:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
 Each row names a source document — `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise `.workflows/{work_unit}/discussion/{source-name}.md`. Where the work type is `cross-cutting`, its research is reference material once completed:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
 `completed` → `.workflows/{work_unit}/research/{topic}.md`.
@@ -39,7 +39,7 @@ Read any `**Tension**` lines for this specification's grouping from `.workflows/
 Read the started specifications this one incorporates — each sources one of its discussions, and its completion supersedes each:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
 ```
 
 Hold the response's `incorporations` in session (an empty list holds nothing): each one's `path`, and the discussions among this specification's sources it `covers`. Construction extracts and adapts each one's content alongside those discussions — the result is one specification, not a merge.

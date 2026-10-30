@@ -1,6 +1,6 @@
 # Session Loop
 
-*Reference for **[workflow-legacy-research-split](../SKILL.md)***
+*Reference for **[leeway-legacy-research-split](../SKILL.md)***
 
 ---
 
@@ -17,7 +17,7 @@ Drive the per-source iteration: read source, identify themes, early sanity gate,
 Pop the next name from `remaining`. Set `current_source = name`, then fetch its opening and emit the DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant processing --source {current_source}
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant processing --source {current_source}
 ```
 
 → Proceed to **B. Read Source**.
@@ -34,7 +34,7 @@ apply.cjs renames the source to `{source}-superseded-{datetime}.md` when the pla
 
 Identify themes from the source's natural structure: its top-level headings, the distinct subjects it discusses, the seams where focus shifts. A long, multi-subject file legitimately produces many themes; a short, single-subject file is one theme. Small fragments that don't justify a standalone theme get merged into the most closely related one — never dropped.
 
-→ Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)**.
+→ Load **[topic-granularity.md](../../leeway-shared/references/topic-granularity.md)**.
 
 Legacy-decomposition specifics:
 
@@ -42,7 +42,7 @@ Legacy-decomposition specifics:
 
 - **Name reuse is fine** for the source's own name (e.g. an `auth` source decomposed into one `auth` theme, or into `auth` + `caching`). The source is renamed to `{source}-superseded-{datetime}.md` before themes are created, so the original name is always available for reuse.
 
-- **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing discovery item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `workflow-continue-epic` Step 1; consult it before naming.
+- **Avoid collisions with other active topics.** Theme `kebab_name` must not match any *other* existing discovery item on the map (besides the source itself). `validate.cjs` enforces this — if a candidate name clashes with an existing topic, pick a different name. The current map is in the discovery output already in context from `leeway-continue-epic` Step 1; consult it before naming.
 
 - **Dismissed names are allowed.** If a candidate name matches an entry on the work unit's `dismissed[]` list (topics the user previously removed from the map), that's fine — `apply.cjs` pulls the name from `dismissed` before re-adding. User-driven legacy-split bypasses the dismissed gate (which only blocks automatic re-adds).
 
@@ -71,13 +71,13 @@ Write the candidate list to `.workflows/.cache/{work_unit}/legacy-split/{current
 Fetch the display and emit its `DISPLAY: legacy split candidates` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant candidates --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/candidates.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display --variant candidates --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/candidates.json
 ```
 
 Fetch the gate and emit its `MENU: legacy split themes gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant themes
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-gate --variant themes
 ```
 
 **STOP.** Wait for user response.
@@ -175,13 +175,13 @@ For each theme in `plan.json`, read the cache file, count paragraphs (blank-line
 Fetch the display and emit its `DISPLAY: legacy split plan` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant plan --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/plan-display.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display --variant plan --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/plan-display.json
 ```
 
 Fetch the gate and emit its `MENU: legacy split plan gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant plan
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-gate --variant plan
 ```
 
 **STOP.** Wait for user response.
@@ -225,7 +225,7 @@ Dispatch to the matching operation based on the user's request. Every operation 
 ## H. Validate
 
 ```bash
-node .claude/skills/workflow-legacy-research-split/scripts/validate.cjs {work_unit} {current_source}
+node .claude/skills/leeway-legacy-research-split/scripts/validate.cjs {work_unit} {current_source}
 ```
 
 Parse the JSON output.
@@ -245,7 +245,7 @@ Write the errors to `.workflows/.cache/{work_unit}/legacy-split/{current_source}
 Fetch the display and emit its `DISPLAY: legacy split errors` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant errors --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/errors.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display --variant errors --file .workflows/.cache/{work_unit}/legacy-split/{current_source}/errors.json
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -259,7 +259,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-displ
 ## I. Apply
 
 ```bash
-node .claude/skills/workflow-legacy-research-split/scripts/apply.cjs {work_unit} {current_source}
+node .claude/skills/leeway-legacy-research-split/scripts/apply.cjs {work_unit} {current_source}
 ```
 
 Parse the JSON output. Write `.workflows/.cache/{work_unit}/legacy-split/apply.json` with the Write tool — the source, and the JSON exactly as it came back under `result`:
@@ -271,7 +271,7 @@ Parse the JSON output. Write `.workflows/.cache/{work_unit}/legacy-split/apply.j
 Fetch the outcome — the themes landed and any knowledge-base cleanup warnings (cleanup is best-effort, so the index may need reconciling), or the stage the apply stopped at with its recovery — and emit its DISPLAY sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant apply --file .workflows/.cache/{work_unit}/legacy-split/apply.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display --variant apply --file .workflows/.cache/{work_unit}/legacy-split/apply.json
 ```
 
 #### If `ok` is true
@@ -359,7 +359,7 @@ User specifies `kebab_name`, summary, description, and the content for the new c
 User specifies `theme_name`. Confirm before destructive removal — fetch the gate — what the removal drops above the confirm — and emit its DISPLAY and MENU sections, each verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove --theme {theme_name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-gate --variant remove --theme {theme_name}
 ```
 
 **STOP.** Wait for user response.

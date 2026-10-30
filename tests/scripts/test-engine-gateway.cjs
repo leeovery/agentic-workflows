@@ -17,11 +17,11 @@ const {
   displayBlock,
   menuBlock,
   SECTION,
-} = require('../../skills/workflow-engine/scripts/gateway.cjs');
+} = require('../../skills/leeway-engine/scripts/gateway.cjs');
 
-const lib = require('../../skills/workflow-engine/scripts/lib.cjs');
-const { dataSection, titleSection } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { SCHEMA } = require('../../skills/workflow-engine/scripts/domain/trust-events.cjs');
+const lib = require('../../skills/leeway-engine/scripts/lib.cjs');
+const { dataSection, titleSection } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { SCHEMA } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
 
@@ -78,7 +78,7 @@ describe('gateway: verb dispatch', () => {
 
   it('with no fallback, an inherited name is an unknown-verb usage error — never [object Object]', () => {
     const { spawnSync } = require('child_process');
-    const gw = require.resolve('../../skills/workflow-engine/scripts/gateway.cjs');
+    const gw = require.resolve('../../skills/leeway-engine/scripts/gateway.cjs');
     const res = spawnSync(
       'node',
       ['-e', `require(${JSON.stringify(gw)}).runGateway({ view: (w) => 'v:' + w }, ['toString']);`],
@@ -173,7 +173,7 @@ describe('gateway: each menu states a gate of its own', () => {
   });
 
   it('no two menus share a name, none takes a name an engine render declares, and each, the engine\'s among them, is a name the trust log keys', () => {
-    const engine = new Set(declared(path.join(SKILLS, 'workflow-engine/scripts')));
+    const engine = new Set(declared(path.join(SKILLS, 'leeway-engine/scripts')));
     const gate = SCHEMA.events.gate.fields.find((f) => f.name === 'gate');
 
     assert.ok(engine.size > 0, 'no engine render declares a menu — the guard would pass vacuously');
@@ -237,7 +237,7 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
     return [...section.matchAll(COMMAND)].map((m) => ({ skill, command: m[0].trim() }));
   });
 
-  const ENGINE = path.join(SKILLS, 'workflow-engine/scripts/engine.cjs');
+  const ENGINE = path.join(SKILLS, 'leeway-engine/scripts/engine.cjs');
 
   let dir;
   beforeEach(() => {
@@ -283,7 +283,7 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   });
 
   it('the world holds what a gate would be owed over', () => {
-    const map = spawnSync('node', [path.join(SKILLS, 'workflow-discussion-process/scripts/gateway.cjs'), 'map', 'wu', 't'], { cwd: dir, encoding: 'utf8' });
+    const map = spawnSync('node', [path.join(SKILLS, 'leeway-discussion-process/scripts/gateway.cjs'), 'map', 'wu', 't'], { cwd: dir, encoding: 'utf8' });
     assert.match(map.stdout, /^all_decided: false$/m);
     assert.match(map.stdout, /^unresolved: \["token-refresh"\]$/m);
     const defer = spawnSync('node', [ENGINE, 'render', 'defer-gate', 'wu.discussion.t'], { cwd: dir, encoding: 'utf8' });
@@ -299,7 +299,7 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   for (const { skill, command } of recoveries) {
     it(`${skill}: \`${command}\` answers without a MENU, DISPLAY or TITLE section`, () => {
       const argv = command
-        .replace(/^engine render /, 'node .claude/skills/workflow-engine/scripts/engine.cjs render ')
+        .replace(/^engine render /, 'node .claude/skills/leeway-engine/scripts/engine.cjs render ')
         .replaceAll('{work_unit}', 'wu')
         .replaceAll('{topic}', 't')
         .split(' ');
@@ -378,23 +378,23 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
 
   /** @type {[string, string[], keyof typeof WORLDS][]} */
   const CALLS = [
-    ['workflow-start', ['view'], 'live'],
-    ['workflow-start', ['view'], 'quiet'],
-    ['workflow-start', ['manage', 'live-feature'], 'live'],
-    ['workflow-continue-epic', ['view', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['completed-menu', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['cancel-menu', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['postpone-menu', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['pull-forward-menu', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['unblock-menu', 'live-epic'], 'live'],
-    ['workflow-continue-linear', ['view', 'live-feature'], 'live'],
-    ['workflow-continue-linear', ['view', 'live-bugfix'], 'live'],
-    ['workflow-continue-linear', ['view', 'live-quickfix'], 'live'],
-    ['workflow-continue-linear', ['view', 'live-policy'], 'live'],
-    ['workflow-continue-epic', ['spec-view', 'live-epic'], 'live'],
-    ['workflow-continue-epic', ['spec-completed-menu', 'live-epic'], 'live'],
-    ['workflow-roadmap', ['view'], 'live'],
+    ['leeway', ['view'], 'live'],
+    ['leeway', ['view'], 'quiet'],
+    ['leeway', ['manage', 'live-feature'], 'live'],
+    ['leeway-continue-epic', ['view', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['completed-menu', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['cancel-menu', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['reactivate-menu', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['postpone-menu', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['pull-forward-menu', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['unblock-menu', 'live-epic'], 'live'],
+    ['leeway-continue-linear', ['view', 'live-feature'], 'live'],
+    ['leeway-continue-linear', ['view', 'live-bugfix'], 'live'],
+    ['leeway-continue-linear', ['view', 'live-quickfix'], 'live'],
+    ['leeway-continue-linear', ['view', 'live-policy'], 'live'],
+    ['leeway-continue-epic', ['spec-view', 'live-epic'], 'live'],
+    ['leeway-continue-epic', ['spec-completed-menu', 'live-epic'], 'live'],
+    ['leeway-roadmap', ['view'], 'live'],
   ];
 
   /** @param {string} out @param {string} marker @returns {string} */

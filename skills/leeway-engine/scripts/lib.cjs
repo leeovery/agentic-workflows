@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Engine library entry — the single require() for adapters and skills' scripts.
 //
-//   const engine = require('../../workflow-engine/scripts/lib.cjs');
+//   const engine = require('../../leeway-engine/scripts/lib.cjs');
 //
 // Rings:
 //   engine.render         kernel — pure layout (no workflow vocabulary)

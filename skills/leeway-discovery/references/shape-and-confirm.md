@@ -1,6 +1,6 @@
 # Shape and Confirm the Work Type
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -17,7 +17,7 @@ Gather all signal flavours simultaneously (work-type cues and topic seeds co-eme
 Make the commit move. State the read as plain prose first — bucket name folded in, plus the signals that drove it — held above the gate, never inside it. Then fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render shape-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render shape-gate
 ```
 
 **STOP.** Wait for user response.
@@ -28,7 +28,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render shape-gate
 
 Product-altitude work creates no work unit — the roadmap owns the conversation from here. Hold any import paths surfaced during shaping as `import_paths` (the roadmap lands them).
 
-Invoke `/workflow-roadmap genesis` via the Skill tool.
+Invoke `/leeway-roadmap genesis` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
@@ -48,7 +48,7 @@ Take the user's call as authoritative — adjust the read without re-litigating 
 
 Hold any import paths surfaced during shaping as `import_paths`.
 
-Invoke `/workflow-roadmap genesis` via the Skill tool.
+Invoke `/leeway-roadmap genesis` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's copies made good (workflow-engine/scripts/domain/ledger-copies.cjs,
+// The ledger's copies made good (leeway-engine/scripts/domain/ledger-copies.cjs,
 // run by `engine boot`): boot renders each copy that is missing or stale
 // against the ledger before its knowledge pass, removes one no record holds,
 // and indexes them; a render or an index that fails after an entry changed
@@ -21,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { UNIT, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
 const manifestIo = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { ok, indexedFiles, statePath, stateGit } = require('./engine-harness.cjs');

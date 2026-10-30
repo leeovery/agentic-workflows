@@ -1,6 +1,6 @@
 ---
-name: workflow-review-finding-guards
-description: Judges whether applying each review finding would breach an architectural invariant the project asserts. Builds an inventory of the codebase's guards first, then assesses every finding against it. Invoked by workflow-review-process during findings prep.
+name: leeway-review-finding-guards
+description: Judges whether applying each review finding would breach an architectural invariant the project asserts. Builds an inventory of the codebase's guards first, then assesses every finding against it. Invoked by leeway-review-process during findings prep.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

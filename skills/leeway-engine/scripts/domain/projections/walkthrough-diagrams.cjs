@@ -292,7 +292,7 @@ function fixtureDir(surface) {
   return dir;
 }
 
-/** The start overview and the menu beneath it, as a first `/workflow-start` of the day shows them. @returns {string} */
+/** The start overview and the menu beneath it, as a first `/leeway` of the day shows them. @returns {string} */
 function startSample() {
   const dir = fixtureDir('start-menu');
   const detail = startDetail(dir);

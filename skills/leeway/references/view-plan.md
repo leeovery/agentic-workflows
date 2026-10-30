@@ -19,7 +19,7 @@ Set `topic` = `selected.name`.
 Read `planning_topics` from the caller's `manage {selected.name}` snapshot DATA, then fetch the topic pick — the auto-select line when the epic has one plan, the selection menu when it has several — and emit the call's section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-topics {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-topics {selected.name}
 ```
 
 **If the response carried `DISPLAY: plan topic auto-select`:**
@@ -43,13 +43,13 @@ Resolve the number against `planning_topics` and set `topic` to the selected top
 Read the `format` and `external_id` from the manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}.planning.{topic} format
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {selected.name}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {selected.name}.planning.{topic} format
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {selected.name}.planning.{topic} external_id
 ```
 
 Use `external_id` as the plan-level parent identifier when following the format adapter's instructions below.
 
-→ Load **[reading.md](../../workflow-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
+→ Load **[reading.md](../../leeway-planning-process/references/output-formats/{format}/reading.md)** and follow its instructions as written.
 
 → On return, proceed to **C. Display Summary**.
 
@@ -66,7 +66,7 @@ Write the plan's phases and tasks, as the format's reading gives them, to `.work
 Render the summary and emit the call's DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-summary {selected.name}.planning.{topic} --file .workflows/.cache/{selected.name}/planning/{topic}/plan-summary.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-summary {selected.name}.planning.{topic} --file .workflows/.cache/{selected.name}/planning/{topic}/plan-summary.json
 ```
 
 → Return to caller.

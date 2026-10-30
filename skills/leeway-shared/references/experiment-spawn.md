@@ -31,7 +31,7 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
 2. Derive a kebab-case slug from the problem, then allocate the record — the create installs the scratch as the record's `problem.md`, and the response's `id` is the experiment (`E{n}`) and `dir` its directory. The same transaction locks this conversation's item: `awaiting_experiments` gains the id, and the topic cannot conclude until the wait releases:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from {phase} --problem .workflows/.cache/{work_unit}/{phase}/{topic}/problem.md
+   node .claude/skills/leeway-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from {phase} --problem .workflows/.cache/{work_unit}/{phase}/{topic}/problem.md
    ```
 
    A refused create records nothing — no id, no lock, and the scratch survives. Say why in one line and skip the note and both commits:
@@ -41,13 +41,13 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
 3. Note the handed-off question in the session's own document — a dated entry at the waiting point the evidence returns to, named as awaiting `{id}` — and commit with the session's cadence:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): spawn {id} {slug}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{topic} -m "{phase}({work_unit}/{topic}): spawn {id} {slug}"
    ```
 
 4. Commit the record — `--sweep`, because the experiment topic is the laboratory's, not this session's: the spawn hands the question over, it never claims the slot:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} --sweep -m "experiment({work_unit}/{topic}): {id} problem statement"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} --sweep -m "experiment({work_unit}/{topic}): {id} problem statement"
    ```
 
 → Proceed to **C. Now or Later**.
@@ -57,7 +57,7 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.{phase}.{topic} --id {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.{phase}.{topic} --id {id}
 ```
 
 **STOP.** Wait for user response.
@@ -78,7 +78,7 @@ The conversation continues with `{id}` queued — as after `later`, the session 
 
 Everything is already committed, and the pipeline bridge takes the session as a pause. Say, as a blockquote, `Paused with {id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands.`
 
-Invoke `/workflow-bridge {work_unit} {phase} none paused`.
+Invoke `/leeway-bridge {work_unit} {phase} none paused`.
 
 #### If `later`
 

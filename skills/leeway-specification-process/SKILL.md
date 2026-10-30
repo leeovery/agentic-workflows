@@ -1,7 +1,7 @@
 ---
-name: workflow-specification-process
+name: leeway-specification-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *)
 ---
 
 # Specification Process
@@ -37,7 +37,7 @@ In your own words, say what in the source material is incomplete or unclear, and
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -45,10 +45,10 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Read all tracking and state files** for the current topic — the specification file, review tracking files, or any working documents this skill creates. These are your source of truth for progress. Hold the source material again as **[session-setup.md](references/session-setup.md)** holds it — the sources, the grouping's tensions, the incorporated specifications — without its gate-mode reset.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Check `finding_gate_mode` and `construction_gate_mode`** via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode` and `... construction_gate_mode`) — if either is `auto`, the user previously opted in during this session. Preserve that value.
+4. **Check `finding_gate_mode` and `construction_gate_mode`** via `engine manifest` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode` and `... construction_gate_mode`) — if either is `auto`, the user previously opted in during this session. Preserve that value.
 5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
@@ -61,14 +61,14 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 2. **Log verbatim** — when approved, write exactly what was presented. No silent modifications.
 3. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Commits go through the scoped helper, action-scoped to this topic — the specification directory and the work-unit manifest, never a sibling session's files:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic specification/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic specification/{topic}
    ```
 
 ---
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
+The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -76,7 +76,7 @@ The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it",
 
 ## Postponing the Topic
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -84,7 +84,7 @@ The user pushes a topic back to the roadmap — "postpone this", "move the loyal
 
 ## Cancelling the Topic
 
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -97,7 +97,7 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 Check the source-material prerequisite — the engine derives the verdict from manifest state (work-type-aware: the discussion for feature and cross-cutting, the investigation for bugfix; for an epic, at least one completed discussion and none of this specification's own sources still open — back in progress, or opened by the gap exit and parked):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic}
 ```
 
 #### If the response is empty
@@ -117,13 +117,13 @@ Emit both sections verbatim per their markers — the red blocker line, then its
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} specification {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} specification {topic}
 ```
 
 Read the phase status, storing it as `phase_status`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
 ```
 
 #### If `phase_status` is empty or `proposed`
@@ -137,16 +137,16 @@ A first start — an epic's grouping lands its specification `proposed`, and ini
 Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} specification {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} specification {topic}
 ```
 
 Render the phase note — `Reopening` for a specification just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb {Reopening|Resuming}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb {Reopening|Resuming}
 ```
 
-Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `specification`.
+Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `specification`.
 
 **If no file exists at `.workflows/{work_unit}/specification/{topic}/specification.md`:**
 
@@ -156,7 +156,7 @@ A restart that never reached initialization — the earlier session's file is al
 
 **Otherwise:**
 
-Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 2`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted — and the tracking subtree and review_baseline_words deleted where present (engine manifest delete {work_unit}.specification.{topic} tracking, then the same for review_baseline_words — an absent field's delete errors and is skipped) to match the deleted tracking files`, commit = `spec({work_unit}): restart specification`.
+Load **[resume-detection.md](../leeway-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 2`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted — and the tracking subtree and review_baseline_words deleted where present (engine manifest delete {work_unit}.specification.{topic} tracking, then the same for review_baseline_words — an absent field's delete errors and is skipped) to match the deleted tracking files`, commit = `spec({work_unit}): restart specification`.
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
@@ -165,7 +165,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic} --own
+node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic} --own
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -201,7 +201,7 @@ Load **[specification-principles.md](references/specification-principles.md)** a
 Read the sources map:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
 #### If no source row reads `pending`
@@ -284,7 +284,7 @@ Load **[spec-review.md](references/spec-review.md)** and follow its instructions
 
 ## Step 7: Compliance Self-Check
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 8**.
 
@@ -295,7 +295,7 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 Fetch the step's opening and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.specification.{topic} --step conclude
+node .claude/skills/leeway-engine/scripts/engine.cjs render step-opening {work_unit}.specification.{topic} --step conclude
 ```
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.

@@ -18,7 +18,7 @@ function selectionNotFound(noun, workUnit) {
   return section(
     'DISPLAY: not found',
     emitAs('text', ', then STOP — terminal condition'),
-    `No active ${noun} named "${workUnit}" found.\n\nRun /workflow-start to see available ${noun}s or begin a new one.`,
+    `No active ${noun} named "${workUnit}" found.\n\nRun /leeway to see available ${noun}s or begin a new one.`,
   );
 }
 

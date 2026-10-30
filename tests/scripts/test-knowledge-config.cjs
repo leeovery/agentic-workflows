@@ -20,8 +20,8 @@ const {
   credentialsPath,
   DEFAULTS,
   PROVIDER_ENV_VARS,
-} = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+} = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
+const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
 const {
   buildSystemConfigOpenAI,
   buildSystemConfigStub,
@@ -29,10 +29,10 @@ const {
   detectSystemConfig,
   detectProjectInit,
   describeValidationError,
-} = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
-const { resolveSimilarityThreshold } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/knowledge/setup.cjs');
+const { resolveSimilarityThreshold } = require('../../skills/leeway-engine/scripts/domain/knowledge/query.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { QuotaError, RateLimitError, WaitBudget } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 
 let tmpDir;
 
@@ -953,16 +953,16 @@ describe('detectSystemConfig', () => {
   });
 });
 
-describe('systemConfigPath — WORKFLOWS_CONFIG_DIR override', () => {
+describe('systemConfigPath — LEEWAY_CONFIG_DIR override', () => {
   it('resolves the config and credentials paths from the override, like the engine', () => {
-    const prev = process.env.WORKFLOWS_CONFIG_DIR;
-    process.env.WORKFLOWS_CONFIG_DIR = '/tmp/wf-elsewhere';
+    const prev = process.env.LEEWAY_CONFIG_DIR;
+    process.env.LEEWAY_CONFIG_DIR = '/tmp/wf-elsewhere';
     try {
       assert.strictEqual(systemConfigPath(), path.join('/tmp/wf-elsewhere', 'config.json'));
       assert.strictEqual(credentialsPath(), path.join('/tmp/wf-elsewhere', 'credentials.json'));
     } finally {
-      if (prev === undefined) delete process.env.WORKFLOWS_CONFIG_DIR;
-      else process.env.WORKFLOWS_CONFIG_DIR = prev;
+      if (prev === undefined) delete process.env.LEEWAY_CONFIG_DIR;
+      else process.env.LEEWAY_CONFIG_DIR = prev;
     }
   });
 });
@@ -1013,7 +1013,7 @@ describe('describeValidationError', () => {
 });
 
 describe('metadataMissing — the store left without its metadata', () => {
-  const { metadataMissing } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
+  const { metadataMissing } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
   beforeEach(setup);
   afterEach(teardown);
 

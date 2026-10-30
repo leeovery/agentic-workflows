@@ -15,7 +15,7 @@ const assert = require('node:assert');
 
 const invariants = require('../prose/lib/invariants.cjs');
 
-const ENGINE = 'cd . && node .claude/skills/workflow-engine/scripts/engine.cjs';
+const ENGINE = 'cd . && node .claude/skills/leeway-engine/scripts/engine.cjs';
 
 /** Rows in the shape worlds.readActionRows produces. */
 const bash = (detail) => ({ event: 'PreToolUse', tool: 'Bash', detail });
@@ -29,7 +29,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
 
   it('passes a walk that consulted the engine before writing state', () => {
     const rows = [
-      read('./.claude/skills/workflow-implementation-process/SKILL.md'),
+      read('./.claude/skills/leeway-implementation-process/SKILL.md'),
       bash(`${ENGINE} task init pay pay`),
       wrote('./.workflows/.state/environment-setup.md'),
     ];
@@ -38,7 +38,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
 
   it('fails a walk that wrote workflow state having never called the engine', () => {
     const rows = [
-      read('./.claude/skills/workflow-implementation-process/SKILL.md'),
+      read('./.claude/skills/leeway-implementation-process/SKILL.md'),
       wrote('./.workflows/pay/discussion/pay.md'),
     ];
     const [result] = invariants.check(rows, declared);
@@ -57,7 +57,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
   });
 
   it('passes a read-only walk, which writes no state to justify', () => {
-    const rows = [read('./.claude/skills/workflow-start/SKILL.md'), bash(`${ENGINE} boot`)];
+    const rows = [read('./.claude/skills/leeway/SKILL.md'), bash(`${ENGINE} boot`)];
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
@@ -108,7 +108,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
 
   it('counts a gateway call as consulting state, as the prose does', () => {
     const rows = [
-      bash('cd . && node .claude/skills/workflow-start/scripts/gateway.cjs view'),
+      bash('cd . && node .claude/skills/leeway/scripts/gateway.cjs view'),
       wrote('./.workflows/pay/manifest.json'),
     ];
     assert.equal(invariants.check(rows, declared)[0].ok, true);
@@ -186,7 +186,7 @@ describe('calls_include / calls_exclude', () => {
   });
 
   it('reads commands only — a file whose name matches is not a call', () => {
-    const rows = [read('./.claude/skills/workflow-engine/task-start-notes.md')];
+    const rows = [read('./.claude/skills/leeway-engine/task-start-notes.md')];
     assert.equal(invariants.check(rows, { calls_exclude: ['task start'] })[0].ok, true);
     assert.equal(invariants.check(rows, { calls_include: ['task start'] })[0].ok, false);
   });
@@ -567,7 +567,7 @@ describe('dispatches — what a held dispatch carried', () => {
     tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt },
   });
   const run = (records, dispatches) => invariants.check([], { dispatches }, records)[0];
-  const FLOOR = '.claude/skills/workflow-implementation-process/references/finding-floor.md';
+  const FLOOR = '.claude/skills/leeway-implementation-process/references/finding-floor.md';
 
   it('passes a dispatch that carried every declared input', () => {
     const result = run([call('input-review', 'Source: .workflows/pay/discussion/pay.md\nCycle: 1')],
@@ -631,14 +631,14 @@ describe('dispatches — what a held dispatch carried', () => {
   });
 
   it('matches an agent by its subagent_type exactly', () => {
-    assert.equal(run([call('workflow-planning-review-traceability', 'x')], [{ agent: 'workflow-planning-review' }]).ok, false);
+    assert.equal(run([call('leeway-planning-review-traceability', 'x')], [{ agent: 'leeway-planning-review' }]).ok, false);
   });
 });
 
 describe('dispatches — the sends that continued an agent', () => {
   // A held dispatch's id is its tool_use_id; a send continues the agent
   // whose dispatch was given the id it went to.
-  const EXECUTOR = 'workflow-implementation-task-executor';
+  const EXECUTOR = 'leeway-implementation-task-executor';
   const dispatched = (id, agent = EXECUTOR) => ({
     tool_use_id: id, tool_name: 'Agent', tool_input: { subagent_type: agent, description: 'd', prompt: 'task content' },
   });
@@ -654,7 +654,7 @@ describe('dispatches — the sends that continued an agent', () => {
       { agent: EXECUTOR, send: true, count: 1, carries: ['Next attempt'] },
     ]);
     assert.equal(result.ok, true, result.detail);
-    assert.match(result.detail, /sends to workflow-implementation-task-executor \(1 send\)/);
+    assert.match(result.detail, /sends to leeway-implementation-task-executor \(1 send\)/);
   });
 
   it('fails a retry made as a second fresh dispatch — it is no send', () => {
@@ -663,14 +663,14 @@ describe('dispatches — the sends that continued an agent', () => {
       { agent: EXECUTOR, send: true, count: 1 },
     ]);
     assert.equal(result.ok, false);
-    assert.match(result.detail, /workflow-implementation-task-executor was dispatched 2 times, not 1; workflow-implementation-task-executor was sent to 0 times, not 1/);
+    assert.match(result.detail, /leeway-implementation-task-executor was dispatched 2 times, not 1; leeway-implementation-task-executor was sent to 0 times, not 1/);
   });
 
   it('attributes a send to no agent when no dispatch was given the id it went to', () => {
     const records = [dispatched('toolu_d1'), sent('toolu_s1', EXECUTOR, 'Next attempt')];
     const result = run(records, [{ agent: EXECUTOR, send: true }]);
     assert.equal(result.ok, false);
-    assert.match(result.detail, /workflow-implementation-task-executor was never sent to/);
+    assert.match(result.detail, /leeway-implementation-task-executor was never sent to/);
   });
 
   it('attributes a send to the agent its target dispatch named, never another', () => {
@@ -687,10 +687,10 @@ describe('dispatches — the sends that continued an agent', () => {
     ];
     const every = run(records, [{ agent: EXECUTOR, send: true, carries: ['Next attempt'] }]);
     assert.equal(every.ok, false);
-    assert.match(every.detail, /send #2 to workflow-implementation-task-executor does not carry: Next attempt/);
+    assert.match(every.detail, /send #2 to leeway-implementation-task-executor does not carry: Next attempt/);
     assert.equal(run(records, [{ agent: EXECUTOR, send: true, nth: 1, carries: ['Next attempt'] }]).ok, true);
     const lacking = run(records, [{ agent: EXECUTOR, send: true, nth: 2, lacks: ['review notes'] }]);
-    assert.match(lacking.detail, /send #2 to workflow-implementation-task-executor carries what it must not: review notes/);
+    assert.match(lacking.detail, /send #2 to leeway-implementation-task-executor carries what it must not: review notes/);
     assert.match(run(records, [{ agent: EXECUTOR, send: true, nth: 3 }]).detail, /sent to 2 times — there is no send #3/);
   });
 
@@ -777,41 +777,41 @@ describe('entry points — where a walk may begin', () => {
   const cases = require('../prose/lib/cases.cjs');
 
   it('accepts the user entry point', () => {
-    assert.deepEqual(cases.entryErrors('workflow-start'), []);
+    assert.deepEqual(cases.entryErrors('leeway'), []);
   });
 
   it('accepts a phase\'s skill, where a handoff lands it in a fresh context', () => {
-    assert.deepEqual(cases.entryErrors('workflow-implementation-process'), []);
-    assert.deepEqual(cases.entryErrors('workflow-specification-process'), []);
-    assert.deepEqual(cases.entryErrors('workflow-discussion-process'), []);
-    assert.deepEqual(cases.entryErrors('workflow-experiment-process'), []);
+    assert.deepEqual(cases.entryErrors('leeway-implementation-process'), []);
+    assert.deepEqual(cases.entryErrors('leeway-specification-process'), []);
+    assert.deepEqual(cases.entryErrors('leeway-discussion-process'), []);
+    assert.deepEqual(cases.entryErrors('leeway-experiment-process'), []);
   });
 
   it('accepts the epic menu, where a handoff lands an epic phase\'s conclusion', () => {
-    assert.deepEqual(cases.entryErrors('workflow-continue-epic'), []);
+    assert.deepEqual(cases.entryErrors('leeway-continue-epic'), []);
   });
 
   it('accepts discovery, the roadmap and the baseline, where a handoff lands their own work', () => {
-    assert.deepEqual(cases.entryErrors('workflow-discovery'), []);
-    assert.deepEqual(cases.entryErrors('workflow-roadmap'), []);
-    assert.deepEqual(cases.entryErrors('workflow-baseline'), []);
+    assert.deepEqual(cases.entryErrors('leeway-discovery'), []);
+    assert.deepEqual(cases.entryErrors('leeway-roadmap'), []);
+    assert.deepEqual(cases.entryErrors('leeway-baseline'), []);
   });
 
   it('rejects help — only ever opened in place, from the start menu\'s own row', () => {
-    assert.match(cases.entryErrors('workflow-help')[0], /not somewhere a session starts/);
+    assert.match(cases.entryErrors('leeway-help')[0], /not somewhere a session starts/);
   });
 
-  it('rejects any other navigation skill — always invoked by workflow-start, never cold', () => {
-    const [error] = cases.entryErrors('workflow-continue-linear');
+  it('rejects any other navigation skill — always invoked by leeway, never cold', () => {
+    const [error] = cases.entryErrors('leeway-continue-linear');
     assert.match(error, /not somewhere a session starts/);
   });
 
   it('rejects a skill only ever opened in place — the legacy research split, from the epic menu', () => {
-    assert.match(cases.entryErrors('workflow-legacy-research-split')[0], /not somewhere a session starts/);
+    assert.match(cases.entryErrors('leeway-legacy-research-split')[0], /not somewhere a session starts/);
   });
 
   it('rejects the bridge — always invoked as a phase ends', () => {
-    assert.match(cases.entryErrors('workflow-bridge')[0], /not somewhere a session starts/);
+    assert.match(cases.entryErrors('leeway-bridge')[0], /not somewhere a session starts/);
   });
 
   it('rejects a reference, which is never entered directly', () => {
@@ -819,7 +819,7 @@ describe('entry points — where a walk may begin', () => {
   });
 
   it('rejects a plausible name the handoff table does not hold', () => {
-    assert.match(cases.entryErrors('workflow-imaginary-process')[0], /not somewhere a session starts/);
+    assert.match(cases.entryErrors('leeway-imaginary-process')[0], /not somewhere a session starts/);
   });
 
   it('requires one at all', () => {
@@ -832,18 +832,18 @@ describe('undeclared prose — the case list against what the walk opened', () =
 
   it('names prose the walk opened that the case never declared', () => {
     const rows = [
-      rd('./.claude/skills/workflow-specification-process/SKILL.md'),
-      rd('./.claude/skills/workflow-specification-process/references/session-setup.md'),
+      rd('./.claude/skills/leeway-specification-process/SKILL.md'),
+      rd('./.claude/skills/leeway-specification-process/references/session-setup.md'),
     ];
     assert.deepEqual(
-      invariants.undeclaredProse(rows, ['skills/workflow-specification-process/SKILL.md']),
-      ['skills/workflow-specification-process/references/session-setup.md'],
+      invariants.undeclaredProse(rows, ['skills/leeway-specification-process/SKILL.md']),
+      ['skills/leeway-specification-process/references/session-setup.md'],
     );
   });
 
   it('is quiet when the list already covers the walk', () => {
-    const rows = [rd('./.claude/skills/workflow-review-process/SKILL.md')];
-    assert.deepEqual(invariants.undeclaredProse(rows, ['skills/workflow-review-process/SKILL.md']), []);
+    const rows = [rd('./.claude/skills/leeway-review-process/SKILL.md')];
+    assert.deepEqual(invariants.undeclaredProse(rows, ['skills/leeway-review-process/SKILL.md']), []);
   });
 
   it('ignores files that are not prose — a walk reads world state too', () => {
@@ -852,14 +852,14 @@ describe('undeclared prose — the case list against what the walk opened', () =
   });
 
   it('ignores commands — only what was opened counts', () => {
-    const rows = [bash('cd . && cat .claude/skills/workflow-start/SKILL.md')];
+    const rows = [bash('cd . && cat .claude/skills/leeway/SKILL.md')];
     assert.deepEqual(invariants.undeclaredProse(rows, []), []);
   });
 
   it('reports each file once however often it was reopened', () => {
-    const f = './.claude/skills/workflow-start/references/active-work.md';
+    const f = './.claude/skills/leeway/references/active-work.md';
     assert.deepEqual(invariants.undeclaredProse([rd(f), rd(f)], []),
-      ['skills/workflow-start/references/active-work.md']);
+      ['skills/leeway/references/active-work.md']);
   });
 
   it('ignores a read that failed — a guessed path is not prose the walk opened', () => {
@@ -867,10 +867,10 @@ describe('undeclared prose — the case list against what the walk opened', () =
     const rows = [
       { event: 'PreToolUse', tool: 'Read', detail: guess },
       { event: 'PostToolUseFailure', tool: 'Read', detail: guess, outcome: 'FAILED' },
-      { event: 'PreToolUse', tool: 'Read', detail: './.claude/skills/workflow-shared/references/instructions.md' },
-      rd('./.claude/skills/workflow-shared/references/instructions.md'),
+      { event: 'PreToolUse', tool: 'Read', detail: './.claude/skills/leeway-shared/references/instructions.md' },
+      rd('./.claude/skills/leeway-shared/references/instructions.md'),
     ];
     assert.deepEqual(invariants.undeclaredProse(rows, []),
-      ['skills/workflow-shared/references/instructions.md']);
+      ['skills/leeway-shared/references/instructions.md']);
   });
 });

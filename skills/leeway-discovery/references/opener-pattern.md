@@ -1,6 +1,6 @@
 # Opener Pattern
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -12,7 +12,7 @@ Inputs held from Step 1: `work_type` pre-seed (or none), `inbox_seeds` — a lis
 
 If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient context about the product the workflows were installed into (the baseline's other docs surface per-topic through the knowledge base). Never narrate it back.
 
-Read the recognition indexes silently for the detection core's **J** (skip either that is empty): the roadmap state (`node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state` — `exists: false` means no roadmap) and the live inbox filenames (Glob `.workflows/.inbox/{ideas,bugs,quickfixes}/*.md`). Hold both; never narrate them.
+Read the recognition indexes silently for the detection core's **J** (skip either that is empty): the roadmap state (`node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state` — `exists: false` means no roadmap) and the live inbox filenames (Glob `.workflows/.inbox/{ideas,bugs,quickfixes}/*.md`). Hold both; never narrate them.
 
 #### If `inbox_seeds` is non-empty
 
@@ -39,7 +39,7 @@ Render the opener matching what the caller told us.
 Give one combined sketch across the seeds — where ideas are among them, the sketch is the ideas' shape, the bugs and quick-fixes in it as material — and a targeted opening question that pulls on the shape. Write both to `.workflows/.cache/discovery-opener.json` with the Write tool — `{"sketch": "…", "question": "…"}`, the sketch one line. The opener names the seeds by kind and invites related files itself. Build `seed_paths` — `inbox_seeds`, comma-joined — and render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render opener --variant inbox --path {seed_paths} --file .workflows/.cache/discovery-opener.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render opener --variant inbox --path {seed_paths} --file .workflows/.cache/discovery-opener.json
 ```
 
 Emit the call's DISPLAY section verbatim per its marker.

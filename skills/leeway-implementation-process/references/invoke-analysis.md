@@ -1,6 +1,6 @@
 # Invoke Analysis Agents
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ This step dispatches the three analysis agents in parallel to evaluate the compl
 The implementation files are the `files` of this topic's task commits, read across every repo in the project:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs code log {work_unit} {topic}
 ```
 
 ---
@@ -26,26 +26,26 @@ Dispatch **all three in parallel** via the Task tool. Each agent receives the sa
 
 1. **Implementation files** — the file list from scope identification
 2. **Specification path** — from the specification (if available)
-3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
-4. **code-quality.md path** — `.claude/skills/workflow-implementation-process/references/code-quality.md`
+3. **Project skill paths** — from `project_skills` in the manifest (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} project_skills`)
+4. **code-quality.md path** — `.claude/skills/leeway-implementation-process/references/code-quality.md`
 5. **Work unit** — the work unit name (for path construction)
 6. **Topic name** — the implementation topic
-7. **Cycle number** — from `analysis_cycle_total` in the manifest: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} analysis_cycle_total`
-8. **finding-floor.md path** — `.claude/skills/workflow-implementation-process/references/finding-floor.md`
+7. **Cycle number** — from `analysis_cycle_total` in the manifest: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} analysis_cycle_total`
+8. **finding-floor.md path** — `.claude/skills/leeway-implementation-process/references/finding-floor.md`
 
 Each agent knows its own output path convention and writes findings independently.
 
 ### Agent 1: Duplication
 
-- **Agent path**: `.claude/agents/workflow-implementation-analysis-duplication.md`
+- **Agent path**: `.claude/agents/leeway-implementation-analysis-duplication.md`
 
 ### Agent 2: Standards
 
-- **Agent path**: `.claude/agents/workflow-implementation-analysis-standards.md`
+- **Agent path**: `.claude/agents/leeway-implementation-analysis-standards.md`
 
 ### Agent 3: Architecture
 
-- **Agent path**: `.claude/agents/workflow-implementation-analysis-architecture.md`
+- **Agent path**: `.claude/agents/leeway-implementation-analysis-architecture.md`
 
 ---
 

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: the workflows' system config directory — one per user, beside no
-// project: `WORKFLOWS_CONFIG_DIR` when set, else `~/.config/workflows` — and
+// project: `LEEWAY_CONFIG_DIR` when set, else `~/.config/leeway` — and
 // the settings file in it.
 // ---------------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ const SETTINGS_FILE = 'config.json';
 
 /** @returns {string} */
 function systemConfigDir() {
-  return process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
+  return process.env.LEEWAY_CONFIG_DIR || path.join(os.homedir(), '.config', 'leeway');
 }
 
 module.exports = { SETTINGS_FILE, systemConfigDir };

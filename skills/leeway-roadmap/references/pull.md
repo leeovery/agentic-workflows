@@ -1,6 +1,6 @@
 # Pull
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[leeway-roadmap](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ The commitment point. Select waiting items, shape them into a work unit, create 
 Render the pull working set:
 
 ```bash
-node .claude/skills/workflow-roadmap/scripts/gateway.cjs pull-set
+node .claude/skills/leeway-roadmap/scripts/gateway.cjs pull-set
 ```
 
 The output arrives in demarcated sections: read `=== DATA` to reason from (the `ITEMS` table resolves selection numbers — never display it); emit the DISPLAY and MENU sections verbatim per their markers.
@@ -22,7 +22,7 @@ The output arrives in demarcated sections: read `=== DATA` to reason from (the `
 
 **If `$0` is `pull`:**
 
-→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+→ Load **[start-menu.md](../../leeway/references/start-menu.md)**.
 
 **Otherwise:**
 
@@ -47,7 +47,7 @@ Compile a one-line `description` for the unit from the pulled items' summaries a
 Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-shape-gate
 ```
 
 **STOP.** Wait for user response.
@@ -56,7 +56,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-shape-gate
 
 Hold `work_type` (`epic`, `feature`, `bugfix` or `quick-fix`).
 
-Load **[name-resolution.md](../../workflow-discovery/references/name-resolution.md)** and follow its instructions as written — `inbox_seeds` is `none`; the name derives from the `description`, or from the horizon where the selection is a whole one. On return, `work_unit` holds the derived kebab-case name.
+Load **[name-resolution.md](../../leeway-discovery/references/name-resolution.md)** and follow its instructions as written — `inbox_seeds` is `none`; the name derives from the `description`, or from the horizon where the selection is a whole one. On return, `work_unit` holds the derived kebab-case name.
 
 → On return, proceed to **C. Read the Record**.
 
@@ -76,7 +76,7 @@ An item that was once a topic has a second record — the epic that postponed it
 
 ## D. Author the Backfill
 
-Draft the unit's first discovery session log at `.workflows/.cache/{work_unit}/discovery/session-001.md`, following the discovery template ([template.md](../../workflow-discovery/references/template.md)): header, **Description (as of session)** (the compiled `description`), **Seed** `(none)`, **Imports** `(none)`, **Map State at Start** — `(empty — first session)` for an epic, `(n/a — single-topic work)` for the other types. Backfill **Exploration** with the pulled items' slice of the record — their threads, the soft decisions and rejected paths with why, the open questions — drawn from the logs and prior records read in **C** and the live conversation, and each note among the sources carried whole — under a `###` heading of its title in place of its own H1, any heading inside it nested beneath that. **The fence governs the backfill**: only the pulled items' ground crosses; the rest of the product record stays where it is, reachable by query. Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
+Draft the unit's first discovery session log at `.workflows/.cache/{work_unit}/discovery/session-001.md`, following the discovery template ([template.md](../../leeway-discovery/references/template.md)): header, **Description (as of session)** (the compiled `description`), **Seed** `(none)`, **Imports** `(none)`, **Map State at Start** — `(empty — first session)` for an epic, `(n/a — single-topic work)` for the other types. Backfill **Exploration** with the pulled items' slice of the record — their threads, the soft decisions and rejected paths with why, the open questions — drawn from the logs and prior records read in **C** and the live conversation, and each note among the sources carried whole — under a `###` heading of its title in place of its own H1, any heading inside it nested beneath that. **The fence governs the backfill**: only the pulled items' ground crosses; the rest of the product record stays where it is, reachable by query. Leave **Edits**, **Topics Identified**, and **Conclusion** as `(none)`.
 
 → Proceed to **E. Create and Join**.
 
@@ -85,7 +85,7 @@ Draft the unit's first discovery session log at `.workflows/.cache/{work_unit}/d
 Create the unit (self-commits):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md
 ```
 
 #### If the response is `ok: false` refusing the name — it already exists, is reserved, or names a phase
@@ -99,13 +99,13 @@ The derived name is one the engine cannot take, and nothing was created. Derive 
 Join the items (self-commits):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull {item} {item} --into {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap pull {item} {item} --into {work_unit}
 ```
 
 A partial pull is never silent — render the post-pull roadmap so the joins and the remainder are visible, emitting the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-view
+node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-view
 ```
 
 → Proceed to **F. Route Into Delivery**.
@@ -116,7 +116,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-view
 
 The conversation continues into the epic's discovery — a continuation, not a cold open. Hold `pull_continuation` = true and `session_number` = the created log's number (`001`).
 
-Invoke `/workflow-discovery none {work_unit} none` via the Skill tool.
+Invoke `/leeway-discovery none {work_unit} none` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
@@ -128,7 +128,7 @@ This skill ends. The invoked skill will load into context and provide additional
 > Feature created from the roadmap — handing it to its first phase.
 ```
 
-Invoke `/workflow-bridge {work_unit} discovery {routing}` via the Skill tool.
+Invoke `/leeway-bridge {work_unit} discovery {routing}` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
@@ -140,7 +140,7 @@ This skill ends. The invoked skill will load into context and provide additional
 > Bugfix created from the roadmap — handing it to its investigation.
 ```
 
-Invoke `/workflow-bridge {work_unit} discovery investigation` via the Skill tool.
+Invoke `/leeway-bridge {work_unit} discovery investigation` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
@@ -152,6 +152,6 @@ This skill ends. The invoked skill will load into context and provide additional
 > Quick-fix created from the roadmap — handing it to its scoping.
 ```
 
-Invoke `/workflow-bridge {work_unit} discovery scoping` via the Skill tool.
+Invoke `/leeway-bridge {work_unit} discovery scoping` via the Skill tool.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

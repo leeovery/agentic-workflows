@@ -1,6 +1,6 @@
 ---
-name: workflow-review-finding-relationships
-description: Finds the relationships between review findings — duplicates, findings competing for the same site, findings bound across files by a guard, and findings asking for opposite outcomes. Invoked by workflow-review-process during findings prep.
+name: leeway-review-finding-relationships
+description: Finds the relationships between review findings — duplicates, findings competing for the same site, findings bound across files by a guard, and findings asking for opposite outcomes. Invoked by leeway-review-process during findings prep.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

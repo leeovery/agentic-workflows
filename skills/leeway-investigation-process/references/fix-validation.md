@@ -1,6 +1,6 @@
 # Fix Validation
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -11,10 +11,10 @@ An independent agent pressure-tests the agreed fix direction — does it actuall
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {topic} --kind fix-validation
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {topic} --kind fix-validation
 ```
 
-**Agent path**: `.claude/agents/workflow-investigation-fix-validation.md`
+**Agent path**: `.claude/agents/leeway-investigation-fix-validation.md`
 
 > *Output the next fenced block as a text code block (```text fence):*
 
@@ -47,8 +47,8 @@ SUMMARY: {1 sentence}
 The agent ran in the foreground, so its report has landed. Promote and read it, then close the row — the verdict is consumed inline, never surfaced finding-by-finding:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} investigation {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} investigation {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} investigation {topic} {id}
 ```
 
 Read the report at the row's content file.
@@ -68,7 +68,7 @@ Do not dump the full output; the analysis path carries the reader there.
 Fetch the report, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render validation-report {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/validation.json --variant fix
+node .claude/skills/leeway-engine/scripts/engine.cjs render validation-report {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/validation.json --variant fix
 ```
 
 #### If `validated`

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A state branch missing from the remote
-// (workflow-engine/scripts/domain/state-checks.cjs, domain/boot.cjs): pushed
+// (leeway-engine/scripts/domain/state-checks.cjs, domain/boot.cjs): pushed
 // back, never to a remote out of reach, and restored through another clone
 // where it is gone here and there.
 //

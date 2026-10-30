@@ -1,12 +1,12 @@
 # Roadmap Guidelines
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[leeway-roadmap](../SKILL.md)***
 
 ---
 
 The product session runs on discovery's exploration stance — the register, the curatorial moves, the convergence reading, and the hard rules are the same craft one level up.
 
-→ Load **[discovery-guidelines.md](../../workflow-discovery/references/discovery-guidelines.md)** and hold its guidance, reading "topics" as "items" and "the map" as "the roadmap". Then apply the deltas below — where they differ, the delta wins.
+→ Load **[discovery-guidelines.md](../../leeway-discovery/references/discovery-guidelines.md)** and hold its guidance, reading "topics" as "items" and "the map" as "the roadmap". Then apply the deltas below — where they differ, the delta wins.
 
 ## A. Altitude
 
@@ -27,7 +27,7 @@ Items joined to work units are windows, not material:
 - **An idea's add fetches the add gate first** — a direct add, or an inbox idea groomed on ([session-loop.md](session-loop.md) **B**). A bug or a quick-fix is always a plain add: pull-forward takes ideas alone. Fetch the gate over the horizon the idea is going to:
 
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-add-gate --horizon "{h}"
+  node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-add-gate --horizon "{h}"
   ```
 
   Empty output means no member of the horizon is in an epic underway: land the idea there, with no stop. Otherwise reason from its DATA, emit its MENU section verbatim per its marker, and **STOP.** Wait for user response.
@@ -40,6 +40,6 @@ Items joined to work units are windows, not material:
 
 ## D. Tangents
 
-A non-product tangent (a bug spotted mid-chat, an operational thought) goes where the user puts it. Placed on a horizon (*"fix that before launch"*), it lands as its kind — a direct add with `--kind bug` or `--kind quick-fix` ([session-loop.md](session-loop.md) **B**). Left undecided, it takes the inbox scope-down: offer the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, `/workflow-log-quickfix`), commit the capture (`engine commit --inbox`), and carry on. Product-shaped material never parks — at this altitude it is all in scope; it lands at the harvest.
+A non-product tangent (a bug spotted mid-chat, an operational thought) goes where the user puts it. Placed on a horizon (*"fix that before launch"*), it lands as its kind — a direct add with `--kind bug` or `--kind quick-fix` ([session-loop.md](session-loop.md) **B**). Left undecided, it takes the inbox scope-down: offer the matching capture skill (`/leeway-log-idea`, `/leeway-log-bug`, `/leeway-log-quickfix`), commit the capture (`engine commit --inbox`), and carry on. Product-shaped material never parks — at this altitude it is all in scope; it lands at the harvest.
 
 → Return to caller.

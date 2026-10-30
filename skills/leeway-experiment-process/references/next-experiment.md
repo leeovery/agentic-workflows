@@ -1,6 +1,6 @@
 # The Next Experiment, or the Menu
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -9,13 +9,13 @@
 A record ended, or moved beneath the session. Re-render the register — the series moved — and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
 ```
 
 When the series still holds live experiments the session can work the next one without leaving — the fresh-context control guards the spawning conversation's hopes, not sibling records. Read the series:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
 
 #### If no top-level record is live (every status `concluded` or `abandoned`)
@@ -28,7 +28,7 @@ Nothing remains to work.
 > The spawning conversation picks the evidence up at its next entry — the menu is the router.
 ```
 
-Invoke `/workflow-bridge {work_unit} experiment`.
+Invoke `/leeway-bridge {work_unit} experiment`.
 
 #### Otherwise
 
@@ -39,7 +39,7 @@ Invoke `/workflow-bridge {work_unit} experiment`.
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-next-gate {work_unit}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-next-gate {work_unit}.experiment.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -68,4 +68,4 @@ Nothing was picked — put the gate back.
 > The spawning conversation picks the evidence up at its next entry — the menu is the router.
 ```
 
-Invoke `/workflow-bridge {work_unit} experiment`.
+Invoke `/leeway-bridge {work_unit} experiment`.

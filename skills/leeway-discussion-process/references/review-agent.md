@@ -1,6 +1,6 @@
 # Review Agent
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -41,7 +41,7 @@ At natural conversational breaks, check for completed results.
 The surfacing protocol reads this declaration when presenting this phase's findings.
 
 - `ask` — the walked lane.
-- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**; never the template's revision shape. The confirmation says amended, never removed.
+- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)**; never the template's revision shape. The confirmation says amended, never removed.
 - `decide` — approving documents each call as a decision: write it into the subtopic that owns it — the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists — with the Decision block carrying the template's derivation marker (**Settled by derivation** — what determined it, the finding id). When no subtopic on the Discussion Map owns the call, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`).
 - `route` — approving sends each finding to its owning topic's mailbox.
 
@@ -50,7 +50,7 @@ The surfacing protocol reads this declaration when presenting this phase's findi
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). `--final` rides a user-requested dispatch only:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review [--final]
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review [--final]
 ```
 
 **If the response is `ok: false`:** a peer session moved the ground between the check and the dispatch — a message arrived in the mailbox, or its own review re-anchored the movement gate. Surface the engine's error verbatim — the refusal names what owns the close — and continue with the session loop; the next check re-evaluates.
@@ -60,10 +60,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
 ```
 
-**Agent path**: `.claude/agents/workflow-discussion-review.md`
+**Agent path**: `.claude/agents/leeway-discussion-review.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
 
@@ -99,7 +99,7 @@ Delegate all check-for-results and presentation behaviour to the surfacing proto
 
 → Load **[background-agent-surfacing.md](background-agent-surfacing.md)** with agent_type = `review`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
-**Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
+**Deriving subtopics during presentation**: When the user engages with a raised finding, reframe it as a practical concern tied to project constraints and record it on the Discussion Map as a `pending` subtopic (`node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Findings the user rejects**: nothing lands in the discussion file either way — **Rejecting a raise** in **[background-agent-surfacing.md](background-agent-surfacing.md)** owns both exits, dropping a *not now* and recording a dismissal's ground on the topic.
 

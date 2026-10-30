@@ -1,6 +1,6 @@
 'use strict';
 
-// The workflow-roadmap adapter: the home snapshot, the pull working set, and
+// The leeway-roadmap adapter: the home snapshot, the pull working set, and
 // the harvest proposal overlay — sections, flags, and refusals.
 
 require('./hermetic-env.cjs');
@@ -12,7 +12,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-roadmap/scripts/gateway.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/leeway-roadmap/scripts/gateway.cjs');
 
 function writeRoadmap(dir, roadmap) {
   const p = path.join(dir, '.leeway', 'manifest.json');
@@ -31,7 +31,7 @@ const MAP = {
   },
 };
 
-describe('workflow-roadmap gateway: view', () => {
+describe('leeway-roadmap gateway: view', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -90,7 +90,7 @@ describe('workflow-roadmap gateway: view', () => {
   });
 });
 
-describe('workflow-roadmap gateway: pull-set', () => {
+describe('leeway-roadmap gateway: pull-set', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -136,7 +136,7 @@ describe('workflow-roadmap gateway: pull-set', () => {
   });
 });
 
-describe('workflow-roadmap gateway: proposal', () => {
+describe('leeway-roadmap gateway: proposal', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

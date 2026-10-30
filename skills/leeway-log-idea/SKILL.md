@@ -1,5 +1,5 @@
 ---
-name: workflow-log-idea
+name: leeway-log-idea
 description: Capture an idea as a markdown file in the workflow inbox. Use when the user wants to log, note, or save an idea for later.
 ---
 

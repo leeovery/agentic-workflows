@@ -16,7 +16,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('render spec-review-gate', () => {

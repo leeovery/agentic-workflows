@@ -20,8 +20,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
-const { TASK_VERBS } = require('../../skills/workflow-engine/scripts/domain/task-verbs.cjs');
+const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { TASK_VERBS } = require('../../skills/leeway-engine/scripts/domain/task-verbs.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -37,14 +37,14 @@ function literal(rel, name) {
 let dir;
 let config;
 
-const env = () => ({ WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined });
+const env = () => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined });
 
 /** The engine's answer for a conversation at a discussion: its whole output, and its POSITION line parsed. */
 function answer() {
   harness.ok(dir, ['session', 'label', 'pay', 'discussion', 'ledger'], { env: env() });
   const out = harness.output(dir, ['conversation', 'position'], { env: env() });
   const lines = out.split('\n');
-  const at = lines.findIndex((line) => line.startsWith(literal('skills/workflow-gates/hooks/compaction.ts', 'POSITION_MARKER')));
+  const at = lines.findIndex((line) => line.startsWith(literal('skills/leeway-gates/hooks/compaction.ts', 'POSITION_MARKER')));
   assert.notStrictEqual(at, -1, out);
   return { out, json: JSON.parse(lines[at + 1]) };
 }
@@ -55,7 +55,7 @@ beforeEach(() => {
   for (const [rel, content] of [
     ['.leeway/pay/manifest.json', JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} })],
     ['.leeway/pay/discussion/ledger.md', '# ledger\n'],
-    ['.claude/skills/workflow-discussion-process/SKILL.md', '# discussion\n'],
+    ['.claude/skills/leeway-discussion-process/SKILL.md', '# discussion\n'],
   ]) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), content);
@@ -69,17 +69,17 @@ afterEach(() => {
 describe('the mods read conversation position as the engine writes it', () => {
   it('the gate mod knows a workflow conversation by the file the engine marks it with', () => {
     answer();
-    const mark = literal('skills/workflow-gates/hooks/folder.ts', 'MARKER');
+    const mark = literal('skills/leeway-gates/hooks/folder.ts', 'MARKER');
     assert.ok(fs.existsSync(path.join(config, 'conversations', 'sess-1', mark)), `the engine marks the conversation "${mark}"`);
   });
 
   it('the gate mod finds the POSITION line by the marker the engine opens it with', () => {
-    const marker = literal('skills/workflow-gates/hooks/compaction.ts', 'POSITION_MARKER');
+    const marker = literal('skills/leeway-gates/hooks/compaction.ts', 'POSITION_MARKER');
     assert.ok(answer().out.split('\n').some((line) => line.startsWith(marker)));
   });
 
   it('the gate mod reads the keys the engine writes — the note, the skill and the place', () => {
-    const read = /const \{ (\w+), (\w+), (\w+) \} = JSON\.parse/.exec(source('skills/workflow-gates/hooks/compaction.ts'));
+    const read = /const \{ (\w+), (\w+), (\w+) \} = JSON\.parse/.exec(source('skills/leeway-gates/hooks/compaction.ts'));
     assert.ok(read, 'the gate mod destructures the POSITION line');
     const { json } = answer();
     assert.deepStrictEqual(read.slice(1).sort(), ['place', 'skill', 'text']);
@@ -90,10 +90,10 @@ describe('the mods read conversation position as the engine writes it', () => {
   });
 
   it('both mods name the record of the notes handed up alike, keyed by the note the row shows, valued by the engine\'s place', () => {
-    const gates = literal('skills/workflow-gates/hooks/compaction.ts', 'COMPACTED');
-    assert.strictEqual(literal('skills/workflow-gates-rows/hooks/compacted.ts', 'COMPACTED'), gates);
-    assert.match(source('skills/workflow-gates/hooks/compaction.ts'), /\[text\.trim\(\)\]: place/, 'the gate mod keys each note by its text, trimmed, and values it by the place');
-    assert.match(source('skills/workflow-gates-rows/hooks/compacted.ts'), /notes\[text\]/, 'the rows mod looks the row\'s trimmed text up');
+    const gates = literal('skills/leeway-gates/hooks/compaction.ts', 'COMPACTED');
+    assert.strictEqual(literal('skills/leeway-gates-rows/hooks/compacted.ts', 'COMPACTED'), gates);
+    assert.match(source('skills/leeway-gates/hooks/compaction.ts'), /\[text\.trim\(\)\]: place/, 'the gate mod keys each note by its text, trimmed, and values it by the place');
+    assert.match(source('skills/leeway-gates-rows/hooks/compacted.ts'), /notes\[text\]/, 'the rows mod looks the row\'s trimmed text up');
     const { json } = answer();
     assert.strictEqual(json.text, json.text.trim(), 'the note is the key the row\'s trimmed text finds');
   });
@@ -104,21 +104,21 @@ describe('the mods read conversation position as the engine writes it', () => {
       phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
     }));
     harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
-    const file = path.join(config, 'conversations', 'sess-1', literal('skills/workflow-gates/hooks/folder.ts', 'POSITION'));
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
     assert.ok(fs.existsSync(file), 'the engine keeps the position under the name the mod reads');
     const written = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
-    const type = /export type Position = \{([^}]*)\}/.exec(source('skills/workflow-gates/hooks/position.ts'));
+    const type = /export type Position = \{([^}]*)\}/.exec(source('skills/leeway-gates/hooks/position.ts'));
     assert.ok(type, 'the spinner declares the position it reads');
     const keys = [...type[1].matchAll(/(\w+)\??: string/g)].map((m) => m[1]);
     assert.deepStrictEqual(Object.keys(written).sort(), [...keys].sort(), 'the spinner reads every key the engine writes');
-    assert.match(source('skills/workflow-gates/hooks/position.ts'), /`\$\{word\} task \$\{task\}`/, 'the spinner says the task as the engine writes it');
+    assert.match(source('skills/leeway-gates/hooks/position.ts'), /`\$\{word\} task \$\{task\}`/, 'the spinner says the task as the engine writes it');
   });
 
   it('the spinner reads the position again after each task verb that moves it — the tracker\'s start, done and close, and the plan\'s complete', () => {
-    const moves = /const MOVES =\s*\/(.+)\/\n/.exec(source('skills/workflow-gates/hooks/spinner.ts'));
+    const moves = /const MOVES =\s*\/(.+)\/\n/.exec(source('skills/leeway-gates/hooks/spinner.ts'));
     assert.ok(moves, 'the spinner declares the calls that move the position');
-    const engine = literal('skills/workflow-gates/hooks/folder.ts', 'ENGINE');
+    const engine = literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE');
     for (const verb of ['start', 'done', 'close']) {
       assert.ok(Object.hasOwn(TASK_VERBS, verb), `the engine dispatches task ${verb}`);
       assert.match(`node ${engine} task ${verb} pay 1.1`, new RegExp(moves[1]), `task ${verb}`);
@@ -128,7 +128,7 @@ describe('the mods read conversation position as the engine writes it', () => {
 
   it('the spinner has a word for every phase and project-level place the engine records', () => {
     const words = (name) => {
-      const map = new RegExp(`const ${name}[^=]*= new Map\\(\\[([\\s\\S]*?)\\]\\)`).exec(source('skills/workflow-gates/hooks/position.ts'));
+      const map = new RegExp(`const ${name}[^=]*= new Map\\(\\[([\\s\\S]*?)\\]\\)`).exec(source('skills/leeway-gates/hooks/position.ts'));
       assert.ok(map, `the spinner declares ${name}`);
       return [...map[1].matchAll(/\['([^']+)', '[^']+'\]/g)].map((m) => m[1]).sort();
     };
@@ -137,13 +137,13 @@ describe('the mods read conversation position as the engine writes it', () => {
   });
 
   it('the gate mod records the executor the implementation dispatches, through the verb the engine answers', () => {
-    const type = literal('skills/workflow-gates/hooks/executor.ts', 'EXECUTOR');
+    const type = literal('skills/leeway-gates/hooks/executor.ts', 'EXECUTOR');
     assert.ok(fs.existsSync(path.join(ROOT, 'agents', `${type}.md`)), `the workflows ship the agent "${type}"`);
-    assert.ok(source('skills/workflow-implementation-process/references/invoke-executor.md').includes(`\`${type}\``),
+    assert.ok(source('skills/leeway-implementation-process/references/invoke-executor.md').includes(`\`${type}\``),
       'the implementation dispatches the agent the mod watches for');
-    const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId\]/.exec(source('skills/workflow-gates/hooks/executor.ts'));
+    const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId\]/.exec(source('skills/leeway-gates/hooks/executor.ts'));
     assert.ok(call, 'the gate mod runs the engine with the session id and the agent id');
-    const engine = literal('skills/workflow-gates/hooks/folder.ts', 'ENGINE');
+    const engine = literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE');
     assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
     fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
@@ -151,12 +151,12 @@ describe('the mods read conversation position as the engine writes it', () => {
     }));
     harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
     assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() }), { ok: true, recorded: true });
-    const file = path.join(config, 'conversations', 'sess-1', literal('skills/workflow-gates/hooks/folder.ts', 'POSITION'));
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
     assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).executor, 'aa76bd7f82a2ef3e4');
   });
 
   it('the rows mod knows the note by the words the engine opens it with', () => {
-    const opening = literal('skills/workflow-gates-rows/hooks/compacted.ts', 'OPENING');
+    const opening = literal('skills/leeway-gates-rows/hooks/compacted.ts', 'OPENING');
     assert.ok(answer().json.text.startsWith(opening), `the note opens "${opening}"`);
   });
 });

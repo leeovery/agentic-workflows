@@ -6,7 +6,7 @@
 
 The register for the task loop's report moments — the task brief, the executor block, the executor failure, the findings summary, the result summary, the technical retells, and the show-me diagrams. A report is sectioned facts, not narrative: the user takes the state of the work in at a glance, and depth is pulled, not pushed — the technical retell and **Ask** sit one option away at the gate. The record files stay fully technical and remain authoritative — a report presents them, never replaces them.
 
-The register governs report blocks only — within one, it composes with **[voice.md](../../workflow-shared/references/voice.md)** rather than competing: this file governs the report's shape and sentence form, voice governs the manner. Conversational turns inside the loop — Ask answers, comment exchanges, blocker discussion — follow voice.md alone. Engine-emitted `DISPLAY`/`MENU` sections sit outside it entirely — each emitted verbatim per its marker, never paraphrased or restated. Agent reports and records are never written in it — the register applies when composing for the user, never to what lands on disk. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — the brief's `summary` and `watch` lines — takes the register at authoring time.
+The register governs report blocks only — within one, it composes with **[voice.md](../../leeway-shared/references/voice.md)** rather than competing: this file governs the report's shape and sentence form, voice governs the manner. Conversational turns inside the loop — Ask answers, comment exchanges, blocker discussion — follow voice.md alone. Engine-emitted `DISPLAY`/`MENU` sections sit outside it entirely — each emitted verbatim per its marker, never paraphrased or restated. Agent reports and records are never written in it — the register applies when composing for the user, never to what lands on disk. The boundary governs emission, not authorship: judgment content written into an engine payload for a section to render — the brief's `summary` and `watch` lines — takes the register at authoring time.
 
 ## Rules
 
@@ -55,7 +55,7 @@ As markdown (not a code block). Issues in severity order. Per issue, a labeled s
 
 ## Product Summary
 
-As markdown (not a code block). Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the task's uncommitted change across every repo in the project (`node .claude/skills/workflow-engine/scripts/engine.cjs code diff`) — never the executor's SUMMARY alone.
+As markdown (not a code block). Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the task's uncommitted change across every repo in the project (`node .claude/skills/leeway-engine/scripts/engine.cjs code diff`) — never the executor's SUMMARY alone.
 
 - **Changed since last gate** — leads, and only after a fix round: what the fix round changed.
 - **Before** — what this part of the product did before the task.

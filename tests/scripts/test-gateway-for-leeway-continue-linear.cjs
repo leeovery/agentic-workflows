@@ -7,15 +7,15 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { activeWorkUnit } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
-const { view } = require('../../skills/workflow-continue-linear/scripts/gateway.cjs');
+const { activeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-detail.cjs');
+const { view } = require('../../skills/leeway-continue-linear/scripts/gateway.cjs');
 
 /** One item per phase, all under the unit's own name. @param {string} name @param {string[]} phases @param {string} status @returns {object} */
 function items(name, phases, status) {
   return Object.fromEntries(phases.map((phase) => [phase, { items: { [name]: { status } } }]));
 }
 
-describe('workflow-continue-linear discovery', () => {
+describe('leeway-continue-linear discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -166,7 +166,7 @@ describe('workflow-continue-linear discovery', () => {
   });
 });
 
-describe('workflow-continue-linear view', () => {
+describe('leeway-continue-linear view', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -194,10 +194,10 @@ describe('workflow-continue-linear view', () => {
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth  → /workflow-specification-process feature auth',
+      '  y  yes  continue  auth  → /leeway-specification-process feature auth',
       '  r  revisit  revisit  auth  → (internal)',
       '  b  back  back  auth  → (internal)',
-      '  1  —  revisit_phase  auth  → /workflow-discussion-process feature auth',
+      '  1  —  revisit_phase  auth  → /leeway-discussion-process feature auth',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
       '# **`■ Auth`**',
@@ -232,7 +232,7 @@ describe('workflow-continue-linear view', () => {
     assert.ok(out.includes('revisit_available: false'));
     assert.doesNotMatch(out, /^=== MENU/m, 'no gate, so no MENU section');
     assert.doesNotMatch(out, /\bback\b/, 'no menu, so no way back to offer');
-    assert.ok(out.includes('  y  yes  continue  crash  → /workflow-investigation-process bugfix crash'));
+    assert.ok(out.includes('  y  yes  continue  crash  → /leeway-investigation-process bugfix crash'));
   });
 
   it('routes each type by the work_type its manifest names', () => {
@@ -244,8 +244,8 @@ describe('workflow-continue-linear view', () => {
       createManifest(dir, name, { work_type: type, phases: { [done]: { items: { [name]: { status: 'completed' } } } } });
       const out = view(dir, name);
       assert.ok(out.includes(`work_type: ${type}\n`), out);
-      assert.ok(out.includes(`  y  yes  continue  ${name}  → /workflow-${next}-process ${type} ${name}\n`), out);
-      assert.ok(out.includes(`  1  —  revisit_phase  ${name}  → /workflow-${done}-process ${type} ${name}\n`), out);
+      assert.ok(out.includes(`  y  yes  continue  ${name}  → /leeway-${next}-process ${type} ${name}\n`), out);
+      assert.ok(out.includes(`  1  —  revisit_phase  ${name}  → /leeway-${done}-process ${type} ${name}\n`), out);
       assert.ok(out.includes('**`b/back`**    → Return to the start menu'), out);
     }
   });
@@ -272,15 +272,15 @@ describe('workflow-continue-linear view', () => {
         '=== DISPLAY: not found (emit verbatim as a text code block (```text fence), then STOP — terminal condition) ===',
         'No active work unit named "ghost" found.',
         '',
-        'Run /workflow-start to see available work units or begin a new one.',
+        'Run /leeway to see available work units or begin a new one.',
         '',
       ].join('\n'));
     });
   }
 });
 
-describe('workflow-continue-linear CLI dispatch', () => {
-  const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-linear/scripts/gateway.cjs');
+describe('leeway-continue-linear CLI dispatch', () => {
+  const GATEWAY = path.join(__dirname, '../../skills/leeway-continue-linear/scripts/gateway.cjs');
   const USAGE = 'Usage: gateway.cjs view {work_unit}\n';
 
   let dir;

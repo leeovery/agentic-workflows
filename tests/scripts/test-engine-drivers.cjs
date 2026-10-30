@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The driver seam (workflow-engine/scripts/domain/drivers.cjs, with the task
+// The driver seam (leeway-engine/scripts/domain/drivers.cjs, with the task
 // id's shape in domain/task-id.cjs): the loader reading a drivers' folder and
 // refusing a driver whose folder or declaration is amiss; each kind's
 // default among its drivers, landing's turning on the remote a driver
@@ -22,9 +22,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { pinStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
-const { loadDriver, listDrivers, defaultDriver, resolveDriver, needsRefusal } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
-const { taskId, stepOfId, parseTaskId, shownTask, parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const { pinStateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { loadDriver, listDrivers, defaultDriver, resolveDriver, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { taskId, stepOfId, parseTaskId, shownTask, parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures', 'drivers');
 const SHIPPED = path.join(FIXTURES, 'shipped');

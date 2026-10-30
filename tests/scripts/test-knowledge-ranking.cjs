@@ -9,8 +9,8 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../skills/workflow-engine/scripts/kernel/knowledge/ranking.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../skills/leeway-engine/scripts/kernel/knowledge/ranking.cjs');
 
 /** A feature's discussion chunk, `n` its ordinal, embedded as `embedding`. */
 function doc(n, content, embedding) {

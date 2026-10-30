@@ -3,7 +3,7 @@
 
 // Every command a walker runs in a world announces the handoff stand-in.
 //
-// A live session with the gate mod loaded carries `WORKFLOWS_HANDOFF=1`, so
+// A live session with the gate mod loaded carries `LEEWAY_HANDOFF=1`, so
 // `engine handoff` answers `mod`, and the mod cuts the answer's HANDOFF
 // section from the result as it takes the handoff: the prose ends the turn
 // there and the mod carries the work into a fresh conversation. A walk runs
@@ -24,7 +24,7 @@
 const fs = require('fs');
 
 const WALKER = 'prose-walker';
-const ANNOUNCEMENT = 'export WORKFLOWS_HANDOFF=1; ';
+const ANNOUNCEMENT = 'export LEEWAY_HANDOFF=1; ';
 const HANDOFF_CALL = /\bengine\.cjs\s+handoff\b/;
 const TAKE_OPEN = 'set -o pipefail; { ';
 const TAKE_CLOSE = "\n} | sed '/^=== HANDOFF /{N;d;}'";

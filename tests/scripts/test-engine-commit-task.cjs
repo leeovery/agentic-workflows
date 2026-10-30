@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The commit door's task (workflow-engine/scripts/domain/commit-task.cjs,
+// The commit door's task (leeway-engine/scripts/domain/commit-task.cjs,
 // with environment.cjs, and `commit --paths … --task` in engine.cjs): a
 // code commit lands only for the task in flight in the calling conversation,
 // its message Claude's with the trailer naming the task, joining the
@@ -36,7 +36,7 @@ const BUILDING = 'commit-task-building';
 const ELSEWHERE = 'commit-task-elsewhere';
 const CLEARED = 'commit-task-cleared';
 const REFUNDING = 'commit-task-refunding';
-const CONFIG = /** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const MESSAGE = 'feat(pay): take a card';
 const TASK = [
   '# Take a card', '', '## Type', 'feat', '', '## Problem', 'A card cannot be taken.', '', '## Solution', 'Add the card form.', '',

@@ -49,7 +49,7 @@ Commands:
               setup --provider openai-compatible --base-url <u> --model <m> --dimensions <d>
               setup --key-only [--provider <id>]
             The API key is never a flag — it resolves from the provider env
-            var or ~/.config/workflows/credentials.json (see --key-only)
+            var or ~/.config/leeway/credentials.json (see --key-only)
 
 Filter options (hard filters — non-matching chunks excluded):
   --work-type <type>        Filter by work type

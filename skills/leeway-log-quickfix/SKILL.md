@@ -1,5 +1,5 @@
 ---
-name: workflow-log-quickfix
+name: leeway-log-quickfix
 description: Capture a quick-fix as a markdown file in the workflow inbox. Use when the user wants to log a trivially scoped mechanical change for later.
 ---
 

@@ -1,6 +1,6 @@
 ---
-name: workflow-specification-review-claims
-description: Verifies the specification's empirical claims about the codebase and toolchain against the working tree. Invoked by workflow-specification-process skill during review cycle.
+name: leeway-specification-review-claims
+description: Verifies the specification's empirical claims about the codebase and toolchain against the working tree. Invoked by leeway-specification-process skill during review cycle.
 tools: Read, Write, Grep, Bash
 model: opus
 ---

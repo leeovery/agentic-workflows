@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-continue-epic. Thin by design: detail
+// Adapter (read gateway) for leeway-continue-epic. Thin by design: detail
 // building lives in the engine's domain ring; this script selects which
 // engine answers the skill's flow needs and sections the output.
 //
@@ -24,8 +24,8 @@
 // exit 1) — never a silent first-epic render.
 // ---------------------------------------------------------------------------
 
-const engine = require('../../workflow-engine/scripts/lib.cjs');
-const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
+const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { loadActiveManifests } = engine.reads;
 
 // The gate each of the epic's menus states, named for what it asks: a key of
@@ -42,7 +42,7 @@ const GATES = Object.freeze({
   specRefine: 'spec refine pick',
 });
 
-/** @typedef {import('../../workflow-engine/scripts/domain/epic-detail.cjs').EpicDetail} EpicDetail */
+/** @typedef {import('../../leeway-engine/scripts/domain/epic-detail.cjs').EpicDetail} EpicDetail */
 
 /**
  * The detail of the active epic `workUnit` names, or null where none does.
@@ -264,8 +264,8 @@ function subView(workUnit, gate, projection) {
 // ring; these verbs section the output.
 // ---------------------------------------------------------------------------
 
-/** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').DiscoveryResult} SpecDiscovery */
-/** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').SpecificationDetail} SpecDetail */
+/** @typedef {import('../../leeway-engine/scripts/domain/specification.cjs').DiscoveryResult} SpecDiscovery */
+/** @typedef {import('../../leeway-engine/scripts/domain/specification.cjs').SpecificationDetail} SpecDetail */
 
 /** @param {string} cwd @param {string} workUnit @returns {{result: SpecDiscovery, detail: SpecDetail}} */
 function specDetail(cwd, workUnit) {

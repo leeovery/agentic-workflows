@@ -38,9 +38,9 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const cases = require('./cases.cjs');
 const { withFrozenClock } = require('../../scripts/frozen-clock.cjs');
-const { syncSessionHooks } = require('../../../skills/workflow-engine/scripts/domain/session-label.cjs');
-const { KNOWLEDGE_DIR } = require('../../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { MOD_DIR } = require('../../../skills/workflow-engine/scripts/domain/gate-surface.cjs');
+const { syncSessionHooks } = require('../../../skills/leeway-engine/scripts/domain/session-label.cjs');
+const { KNOWLEDGE_DIR } = require('../../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { MOD_DIR } = require('../../../skills/leeway-engine/scripts/domain/gate-surface.cjs');
 
 // Every tree this module removes goes through one call: concurrent suites
 // share a machine, and a directory another process is still walking answers
@@ -51,7 +51,7 @@ function removeTree(dir) {
 }
 
 const ROOT = cases.ROOT;
-const ENGINE = path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs');
+const ENGINE = path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
 const MAINLINES_DIR = path.join(cases.PROSE_DIR, 'mainlines');
 const CLOCK = path.join(__dirname, 'fake-clock-preload.cjs');
@@ -149,7 +149,7 @@ function recipeOverlay() {
     // Boot installs the session hooks into `.claude/settings.json` — a file
     // a snapshot holds as world state. The engine's test-only switch keeps a
     // recipe's boot out of it.
-    WORKFLOWS_HOLD_PROJECT_SETTINGS: '1',
+    LEEWAY_HOLD_PROJECT_SETTINGS: '1',
     // Session labels read the real tmux identity — a recipe's engine calls
     // must never rename the terminal session the suite happens to run in.
     TMUX: undefined,
@@ -296,8 +296,8 @@ function hashPaths(paths) {
  *  migrations among it, since every recipe's boot runs them. */
 const SHARED_INPUTS = [
   MAINLINES_DIR,
-  path.join(ROOT, 'skills/workflow-engine/scripts'),
-  path.join(ROOT, 'skills/workflow-migrate/scripts'),
+  path.join(ROOT, 'skills/leeway-engine/scripts'),
+  path.join(ROOT, 'skills/leeway-migrate/scripts'),
 ];
 
 let sharedDigest = null;
@@ -452,7 +452,7 @@ function stampHarnessState(dir) {
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
-  // A world grows up on the workflows, and workflow-start's one-time
+  // A world grows up on the workflows, and leeway's one-time
   // baseline judgment would record exactly that — a manifest write and a
   // commit in every start case's delta. `native` pins the branch shut; a
   // case about the judgment itself stamps its own state in
@@ -460,7 +460,7 @@ function stampHarnessState(dir) {
   // wins here.
   const baseline = manifest.baseline === undefined;
   if (baseline) manifest.baseline = { status: 'native' };
-  // The same shape for the same reason: workflow-start's Step 0.3 offers
+  // The same shape for the same reason: leeway's Step 0.3 offers
   // the walkthrough while nothing is recorded, so an unstamped world would
   // meet the offer in every start case that has no business with it.
   // `skipped` is the declined answer — the offer never repeats, and the
@@ -644,7 +644,7 @@ function buildWorld(caseId) {
   }
   // Every skill but the gate mod. A walk runs inside the developer's own
   // Claude session, which never loads a world's mod, so a world carrying it
-  // would boot to workflow-start's stop for a mod that is not running;
+  // would boot to leeway's stop for a mod that is not running;
   // without it the mod reads as not installed, and boot leaves it be. The
   // declarations Claude Code lays into a mod's folder for development never
   // ship, so no world carries them either.
@@ -722,7 +722,7 @@ function buildWorld(caseId) {
 
   // The world's own checkout-local knowledge setup — never committed. Like
   // a recipe's calls, it belongs to no conversation.
-  const worldEngine = path.join(dir, '.claude/skills/workflow-engine/scripts/engine.cjs');
+  const worldEngine = path.join(dir, '.claude/skills/leeway-engine/scripts/engine.cjs');
   const setupEnv = { ...process.env };
   delete setupEnv.CLAUDE_CODE_SESSION_ID;
   const setup = spawnSync('node', [worldEngine, 'knowledge', 'setup', '--keyword-only'], { cwd: dir, encoding: 'utf8', env: setupEnv });

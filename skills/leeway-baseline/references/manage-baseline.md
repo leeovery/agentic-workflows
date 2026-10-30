@@ -1,6 +1,6 @@
 # Manage the Baseline
 
-*Reference for **[workflow-baseline](../SKILL.md)***
+*Reference for **[leeway-baseline](../SKILL.md)***
 
 ---
 
@@ -11,13 +11,13 @@ The assessment is complete. Show what exists and offer the ways back in.
 Fetch the doc list and emit its `DISPLAY: baseline progress` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-progress
 ```
 
 Fetch the gate and emit its `MENU: baseline manage gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-manage-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-manage-gate
 ```
 
 **STOP.** Wait for user response.
@@ -37,7 +37,7 @@ Ask what ground to add or deepen if the user hasn't already said. Set mode = `ex
 Fetch the picker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-doc-pick
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-doc-pick
 ```
 
 Read the `DATA` section to reason from — its `DOCS` table gives one `key  area` row per doc. Never display that section. Then emit the `MENU: baseline doc pick` section verbatim per its marker.
@@ -56,4 +56,4 @@ Set `area` from that key's `DOCS` row, and render `.workflows/.baseline/{area}.m
 
 #### If `back`
 
-→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+→ Load **[start-menu.md](../../leeway/references/start-menu.md)**.

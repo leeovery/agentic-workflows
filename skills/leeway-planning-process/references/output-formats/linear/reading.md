@@ -5,8 +5,8 @@
 `{project_id}` is the plan's `external_id` in the manifest; phase and task issue UUIDs are recorded in `task_map` (internal ID → issue UUID):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 ## Display Identifier

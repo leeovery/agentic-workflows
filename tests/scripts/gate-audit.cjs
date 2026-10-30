@@ -11,10 +11,10 @@
 // among them, is held to the gate event's rule wherever it renders.
 
 const assert = require('node:assert');
-const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { SCHEMA } = require('../../skills/workflow-engine/scripts/domain/trust-events.cjs');
+const { RENDER_FORMS: FORMS, emitAs, openGate } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { SCHEMA } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
 
-const SURFACE_ENV = 'WORKFLOWS_GATE_SURFACE';
+const SURFACE_ENV = 'LEEWAY_GATE_SURFACE';
 const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
 const MENU_RULE = '· · · · · · · · · · · ·';
 const CONTINUATION = /^ +/;

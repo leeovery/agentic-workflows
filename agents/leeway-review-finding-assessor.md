@@ -1,6 +1,6 @@
 ---
-name: workflow-review-finding-assessor
-description: Assesses a batch of review findings for truth, standards compliance, and whether a comment remedy answers for the defect it names. Checks each finding against the code as it stands and against the project's code standard, writing structured verdicts to file. Invoked by workflow-review-process during findings prep.
+name: leeway-review-finding-assessor
+description: Assesses a batch of review findings for truth, standards compliance, and whether a comment remedy answers for the defect it names. Checks each finding against the code as it stands and against the project's code standard, writing structured verdicts to file. Invoked by leeway-review-process during findings prep.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

@@ -1,10 +1,10 @@
 # Name Derivation
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
-Derive the work unit's name. Loaded by [confirm-trigger.md](confirm-trigger.md) and by the roadmap pull ([pull.md](../../workflow-roadmap/references/pull.md)). On return, `work_unit` holds a kebab-case name.
+Derive the work unit's name. Loaded by [confirm-trigger.md](confirm-trigger.md) and by the roadmap pull ([pull.md](../../leeway-roadmap/references/pull.md)). On return, `work_unit` holds a kebab-case name.
 
 Inputs held from earlier steps: `work_type`, `inbox_seeds` (the promoted inbox file path(s), if the work came from the inbox), and the shaped one-line `description`.
 

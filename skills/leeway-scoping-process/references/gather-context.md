@@ -1,6 +1,6 @@
 # Gather Context
 
-*Reference for **[workflow-scoping-process](../SKILL.md)***
+*Reference for **[leeway-scoping-process](../SKILL.md)***
 
 ---
 
@@ -8,10 +8,10 @@ Gather targeted context about the mechanical change. Read the work's seed and th
 
 ## A. Read Existing Context
 
-→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../leeway-shared/references/seed-context.md)** and follow its instructions as written.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
 Read the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`; discovery's shaped context is the carrier's second half.
@@ -29,7 +29,7 @@ Read the discovery session log's **Exploration** — single-phase work has exact
 Four questions scope the change — `what` is being changed (pattern, syntax, API), `where` in the codebase, `why`, and any `exclusions`. The carrier has already answered some of them. Set `open_questions` = the keys of the ones it leaves open, comma-separated, dropping any it already covers — a question the user has already answered reads as not having listened. Fetch the ask and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render scoping-questions {work_unit} --open {open_questions}
+node .claude/skills/leeway-engine/scripts/engine.cjs render scoping-questions {work_unit} --open {open_questions}
 ```
 
 **STOP.** Wait for user response.

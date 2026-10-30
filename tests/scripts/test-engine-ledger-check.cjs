@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The one-decision check (workflow-engine/scripts/domain/ledger-one-decision
+// The one-decision check (leeway-engine/scripts/domain/ledger-one-decision
 // .cjs) and its late check (domain/ledger-late-check.cjs): every decision
 // `ledger decide` writes, and every one `ledger replace` writes in place of
 // a decision, judged by the separate Claude call before the writer lock,
@@ -29,7 +29,7 @@ const path = require('path');
 const { holdLock, lockAttempts, ok, refuses, refusedPristine, head, stateGit, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));

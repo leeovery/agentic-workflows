@@ -22,7 +22,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { GIT_TIMEOUT_MS } = require('./discovery-test-utils.cjs');
-const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+const io = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
 } = harness;

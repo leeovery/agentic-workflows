@@ -1,6 +1,6 @@
 # Deep-Dive Agent
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -25,13 +25,13 @@ Offer a dive where the conversation reaches a question neither party can answer 
 The register is the anchor: the offer names a thread. A question that reshapes a thread already on the register is that thread, reframed first — never a second row beside it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads reframe {work_unit} {topic} {slug} --question "{the question, as it now stands}"
+node .claude/skills/leeway-engine/scripts/engine.cjs research-threads reframe {work_unit} {topic} {slug} --question "{the question, as it now stands}"
 ```
 
 A question new to the register is added first — origin `user` when the user raised it, `conversation` otherwise:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {user|conversation} [--parent {slug}]
+node .claude/skills/leeway-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin {user|conversation} [--parent {slug}]
 ```
 
 #### If the user asked for the dive
@@ -45,7 +45,7 @@ Skip the offer — the user already asked.
 Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json` with the Write tool (`{"thread": "…"}` — the thread's question as it should open the offer), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render deep-dive-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render deep-dive-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/deep-dive-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -67,7 +67,7 @@ The thread stays on the register as it stands — the conversation covers it.
 Count the rows in flight first, excluding rows an earlier session dispatched (dead — **C. Land and Fold** closes them). Three to four in flight is the limit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
 ```
 
 #### If the limit is reached
@@ -91,16 +91,16 @@ Compose the brief — self-contained, the agent has no conversation history:
 Record the dispatch — the engine allocates the id and answers with the content-file path; no file is created (the file's later existence is the completion signal). The label is the thread's slug:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {slug}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} research {topic} --kind deep-dive --label {slug}
 ```
 
 Mark the thread:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} digging
+node .claude/skills/leeway-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} digging
 ```
 
-**Agent path**: `.claude/agents/workflow-research-deep-dive.md`
+**Agent path**: `.claude/agents/leeway-research-deep-dive.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
 
@@ -131,7 +131,7 @@ The research session continues — do not wait for the agent to return.
 Entered from the session loop's check at natural breaks — a thread's pause, a synthesis moment, the user's done-signal, and the first loop iteration of a resumed session — and from the in-flight check as the session leaves, at a conclusion or a pause. Read the store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
 ```
 
 #### If a row is `in_flight` and its `created` predates this session
@@ -139,8 +139,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} re
 No agent can still be running — the dive is dead. Close the row and return its thread to `open` — the conversation offers it again when it reaches the question:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
-node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} open
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} research {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} open
 ```
 
 A thread that left the register while the dive ran — merged or sent to another topic — has no row to reopen; the row closes and that is all.
@@ -172,8 +172,8 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
 3. **Mark the thread learned** and close the row — a report carries material, never findings to surface:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} learned
-   node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} research {topic} {id} --clean
+   node .claude/skills/leeway-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {slug} learned
+   node .claude/skills/leeway-engine/scripts/engine.cjs agent ack {work_unit} research {topic} {id} --clean
    ```
 
    A thread merged away while the dive ran has no row to mark — the survivor that took its question goes `learned` instead.
@@ -181,7 +181,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
 4. **Judge each Opened line.** A question this topic will carry becomes a thread — origin the dive's id, parent the folded thread (or, when that thread is itself a child, its parent — two levels, like the map):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
+   node .claude/skills/leeway-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
    ```
 
    A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and raised through the session wrapper's off-topic route at the next break — **C. Topic Awareness** on an epic, **D. Off-Topic Points** on a single-topic work type. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step, in this same turn when step 5 asks nothing; a fold entered from the in-flight check makes no offer — the thread stays open on the register, which a conclusion carries into Open Threads, where the discussion's own laboratory offer meets it.
@@ -189,7 +189,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): fold {the thread, in a few words} (deep-dive-{NNN})"
    ```
 
 5. **Speak to the user** — prose, as markdown (not a code block), one authored line per paragraph, never a menu. When the brief asked questions, the Answers in full — every answer's substance whole, each condition, threshold, and alternative the report gave included and scoped as the report scoped it (what one system does is never told as what all of them do), told at product altitude: what the product does or the user sees before any symbol, path, or snippet the report used to say it. Otherwise a digest: what was asked, what came back, what it opened — as long as the return needs, never the report pasted. A question only the user holds — their environment, their intent for the product — is asked here, once, with your lean beside it; anything wanting a decision or more digging is a thread on the register, never a question in the room.
@@ -197,7 +197,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
 6. **Render the register:**
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
    ```
 
    Emit the call's DISPLAY section verbatim per its marker.

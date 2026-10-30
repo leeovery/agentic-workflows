@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[workflow-start](../SKILL.md)** — loaded by the back of the roadmap, the baseline, help and the continue menus, of the laboratory's record picker on a single-topic unit, and of the code-session gate outside an epic.*
+*Reference for **[leeway](../SKILL.md)** — loaded by the back of the roadmap, the baseline, help and the continue menus, of the laboratory's record picker on a single-topic unit, and of the code-session gate outside an epic.*
 
 ---
 
@@ -11,7 +11,7 @@ Render the start menu from inside another place: the arrival recorded, the state
 Record that this session is working nowhere — the call also puts the original tmux session name back where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session repair
+node .claude/skills/leeway-engine/scripts/engine.cjs session repair
 ```
 
 → Proceed to **B. Display and Route**.
@@ -21,7 +21,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session repair
 Read the current workflow state — this dump is the index, not the display surface; the display and the menu derive from the `view` snapshot the loaded reference renders:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs
+node .claude/skills/leeway/scripts/gateway.cjs
 ```
 
 #### If `state.has_any_work` is false

@@ -19,8 +19,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { titlecase } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { titlecase } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 /** A string matched literally inside a regular expression. */
@@ -2263,16 +2263,16 @@ describe('render phase-completed --paths', () => {
 });
 
 describe('selection not-found display', () => {
-  const { selectionNotFound } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
+  const { selectionNotFound } = require('../../skills/leeway-engine/scripts/domain/projections/selection.cjs');
   it('renders the terminal byte-exactly, in the noun the menu continues', () => {
     assert.strictEqual(selectionNotFound('work unit', 'ghost'), [
       '=== DISPLAY: not found (emit verbatim as a text code block (```text fence), then STOP — terminal condition) ===',
       'No active work unit named "ghost" found.',
       '',
-      'Run /workflow-start to see available work units or begin a new one.',
+      'Run /leeway to see available work units or begin a new one.',
       '',
     ].join('\n'));
-    assert.ok(selectionNotFound('epic', 'x').includes('No active epic named "x" found.\n\nRun /workflow-start to see available epics'));
+    assert.ok(selectionNotFound('epic', 'x').includes('No active epic named "x" found.\n\nRun /leeway to see available epics'));
   });
 });
 
@@ -2777,9 +2777,9 @@ describe('the boot and knowledge gate surfaces', () => {
       'No OpenAI API key was found. Store one without it touching this',
       'chat — run ONE of these in your terminal, then come back:',
       '',
-      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only',
+      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --key-only',
       '      Private prompt, input hidden. Stored at',
-      '      ~/.config/workflows/credentials.json (mode 0600).',
+      '      ~/.config/leeway/credentials.json (mode 0600).',
       '',
       '  export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that',
       '      Shell environment — takes precedence over the stored key.',
@@ -2802,9 +2802,9 @@ describe('the boot and knowledge gate surfaces', () => {
       'The endpoint requires an API key. Store one without it touching',
       'this chat — run this in your terminal, then come back:',
       '',
-      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible',
+      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible',
       '      Private prompt, input hidden. Stored at',
-      '      ~/.config/workflows/credentials.json (mode 0600).',
+      '      ~/.config/leeway/credentials.json (mode 0600).',
       '',
       "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
     ].join('\n')), out);
@@ -2816,7 +2816,7 @@ describe('the boot and knowledge gate surfaces', () => {
       '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
       '',
-      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup',
+      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup',
       '',
       'It configures system defaults, initialises the project store, and',
       'runs the initial indexing pass.',
@@ -2962,7 +2962,7 @@ describe('render — the adopted cross-flow static gates', () => {
       "  provider it can't use, or a store that can't be read or has",
       '  lost its metadata. Run this to diagnose:',
       '',
-      '    node .claude/skills/workflow-engine/scripts/engine.cjs knowledge status',
+      '    node .claude/skills/leeway-engine/scripts/engine.cjs knowledge status',
       '',
       "=== MENU: query failure gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
@@ -3636,7 +3636,7 @@ describe('render — the adopted phase gates', () => {
       '⚑ "Checkout" is blocked until these dependencies are resolved',
       '',
       '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
-      '> Use /workflow-start to navigate to the blocking work.',
+      '> Use /leeway to navigate to the blocking work.',
       '',
     ].join('\n'));
   });

@@ -588,8 +588,8 @@ describe('engine agent — discussion review arming', () => {
   });
 
   it('SUBTOPIC_RANK covers the map\'s whole state vocabulary', () => {
-    const { SUBTOPIC_RANK } = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
-    const { SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
+    const { SUBTOPIC_RANK } = require('../../skills/leeway-engine/scripts/domain/agent-state.cjs');
+    const { SUBTOPIC_STATES } = require('../../skills/leeway-engine/scripts/domain/discussion-map.cjs');
     assert.deepStrictEqual(Object.keys(SUBTOPIC_RANK).sort(), [...SUBTOPIC_STATES].sort(),
       'a state outside the rank map would silently score 0');
   });

@@ -15,7 +15,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/048-strip-discovery-item-status.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/048-strip-discovery-item-status.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-048-'));

@@ -1,6 +1,6 @@
 # Perspective Agents
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -39,7 +39,7 @@ Match the decision topic against the polarity-pair table below. Pick the pair wh
 Write the offer payload to `.workflows/.cache/{work_unit}/discussion/{topic}/perspective-offer.json` with the Write tool (`{"tension": "…"}` — the tension description as it opens the offer), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render perspective-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/perspective-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render perspective-offer {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/perspective-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -63,10 +63,10 @@ Continue the discussion without perspectives.
 Record the pair in one dispatch — the engine allocates a shared set number and answers with the `set` and each lens's content-file path; no files are created (a file's later existence is that agent's completion signal). Labels are slash- and dot-free: drop any dots a lens name carries.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens-a:(kebabcase)} --label {lens-b:(kebabcase)}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind perspective --label {lens-a:(kebabcase)} --label {lens-b:(kebabcase)}
 ```
 
-**Agent path**: `.claude/agents/workflow-discussion-perspective.md`
+**Agent path**: `.claude/agents/leeway-discussion-perspective.md`
 
 Dispatch **all perspective agents in parallel** via the Task tool with `run_in_background: true`.
 
@@ -99,22 +99,22 @@ This section is reached when all perspective agents in a set have completed. The
 Record the dispatch against the completed set — the engine joins the synthesis to its perspectives by the set number and refuses a second live synthesis for the same set (re-dispatch over a closed one replaces it — the engine discards the stale report):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis --set {set}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind synthesis --set {set}
 ```
 
 Then close out the consumed perspective rows — synthesis has read them; they are never surfaced. One call per perspective id in the set still `pending` (a re-dispatch for a dead synthesis arrives with the lenses already closed — skip them):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {perspective_id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {perspective_id}
 ```
 
 Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
 ```
 
-**Agent path**: `.claude/agents/workflow-discussion-synthesis.md`
+**Agent path**: `.claude/agents/leeway-discussion-synthesis.md`
 
 Dispatch **one agent** via the Task tool with `run_in_background: true`.
 
@@ -151,6 +151,6 @@ This section handles two responsibilities: promoting completed perspective sets 
 
 → Load **[background-agent-surfacing.md](background-agent-surfacing.md)** with agent_type = `synthesis`, work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`.
 
-**Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and record it on the Discussion Map as `pending` (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
+**Deriving subtopics during presentation**: When the user engages with a raised tension, reframe it as a practical subtopic tied to project constraints and record it on the Discussion Map as `pending` (`node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic}`). Commit the update.
 
 **Perspective files**: The surfacing protocol handles the synthesis file only. The individual perspective files remain available for reference if the user wants to drill into a specific angle — mention their existence during presentation if relevant, but do not read them out.

@@ -1,6 +1,6 @@
 # Ad Hoc Plan Changes
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -8,7 +8,7 @@ Folds conversationally-surfaced unplanned work into the plan through the same in
 
 The caller is whatever flow the conversation interrupted. On `→ Return to caller.`, resume that flow exactly where it stopped; a gate menu that was pending when the conversation interrupted was set aside — once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes re-fetch it from its surface.
 
-Context to hold before acting: `{format}` is the plan's output format, read at Step 2 — if it is not in session context (an early or post-refresh entry), read it now (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format`).
+Context to hold before acting: `{format}` is the plan's output format, read at Step 2 — if it is not in session context (an early or post-refresh entry), read it now (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format`).
 
 ## A. Frame the Work
 
@@ -28,10 +28,10 @@ The work is absorbable now.
 
 **If the user rules the work out of scope:**
 
-Invoke the matching capture skill (`/workflow-log-idea`, `/workflow-log-bug`, or `/workflow-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now:
+Invoke the matching capture skill (`/leeway-log-idea`, `/leeway-log-bug`, or `/leeway-log-quickfix` — default to idea if unsure). The capture skill writes the inbox file but does not commit it, so commit it now:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
 ```
 
 → Return to caller.
@@ -71,21 +71,21 @@ The work was never absorbed — treat it as unlanded.
 
 ## D. Amend a Pending Task
 
-Read the plan format's updating adapter — `../../workflow-planning-process/references/output-formats/{format}/updating.md`, **Updating Task Content** — and apply the change: edit the description or append to it, whichever the format supports and the change warrants. Where the format's commands take an external id, resolve it from the manifest (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}` — the internal id comes from the plan read that identified the task). The task carries the addition when its turn comes.
+Read the plan format's updating adapter — `../../leeway-planning-process/references/output-formats/{format}/updating.md`, **Updating Task Content** — and apply the change: edit the description or append to it, whichever the format supports and the change warrants. Where the format's commands take an external id, resolve it from the manifest (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}` — the internal id comes from the plan read that identified the task). The task carries the addition when its turn comes.
 
 Confirm the wording with the user before writing when the change is more than mechanical — soft, conversational, no structured gate.
 
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): amend task {internal_id}" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): amend task {internal_id}" --plan {topic}
 ```
 
 → Return to caller.
 
 ## E. Draft the Tasks
 
-**Placement first.** Read the format's graph adapter — `../../workflow-planning-process/references/output-formats/{format}/graph.md` — before settling placement: ordering defaults differ per format (some surface a new task by priority and creation date, not phase position), and placement is expressed through the adapter's own mechanics. Read the plan via the format's reading adapter where the conversation needs the actual phase numbers and task ids. Then settle in conversation where the work surfaces — it usually falls out of the problem: a bug blocking the user's testing comes up next; deferred polish tails the plan; work belonging to an upcoming phase joins it. Per task, the choices are:
+**Placement first.** Read the format's graph adapter — `../../leeway-planning-process/references/output-formats/{format}/graph.md` — before settling placement: ordering defaults differ per format (some surface a new task by priority and creation date, not phase position), and placement is expressed through the adapter's own mechanics. Read the plan via the format's reading adapter where the conversation needs the actual phase numbers and task ids. Then settle in conversation where the work surfaces — it usually falls out of the problem: a bug blocking the user's testing comes up next; deferred polish tails the plan; work belonging to an upcoming phase joins it. Per task, the choices are:
 
 - an existing **open** phase, or a new phase at the tail — never a completed phase
 - a priority, in the format's own vocabulary, when the default ordering would surface it too late or too early
@@ -115,7 +115,7 @@ depends_on: {internal_id or task {n}, ...}
 Initialise the gate state — one batched write, one `pending` row per drafted task:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode=gated staging.ad-hoc-{n}.tasks.1=pending … staging.ad-hoc-{n}.tasks.{K}=pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode=gated staging.ad-hoc-{n}.tasks.1=pending … staging.ad-hoc-{n}.tasks.{K}=pending
 ```
 
 → Proceed to **F. Approve Each Task**.
@@ -131,12 +131,12 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Present the next pending task. Write its payload to `.workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "problem": "…", "solution": "…", "outcome": "…", "criteria": […]}` from the staging file, `"steps": […]` when the task carries a **Do**, plus `"placement"`, `"priority"`, and `"depends_on"` when the staged task carries them — then render with the gate mode from the manifest's `staging.ad-hoc-{n}` subtree, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate_mode} --comment-hint "Provide feedback to adjust"
+node .claude/skills/leeway-engine/scripts/engine.cjs render proposed-task {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/proposed-task.json --gate {gate_mode} --comment-hint "Provide feedback to adjust"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`), then emit the section verbatim per its marker.
+Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`), then emit the section verbatim per its marker.
 
 → Return to **F. Approve Each Task**.
 
@@ -146,23 +146,23 @@ Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs man
 
 **If `yes`:**
 
-Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
+Record the approval: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
 
 → Return to **F. Approve Each Task**.
 
 **If `auto`:**
 
-Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
+Record the approval: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} approved`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.gate_mode auto
 ```
 
 → Return to **F. Approve Each Task**.
 
 **If `decline`:**
 
-Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} skipped`.
+Record the decline: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} staging.ad-hoc-{n}.tasks.{k} skipped`.
 
 → Return to **F. Approve Each Task**.
 
@@ -179,7 +179,7 @@ Revise the staged task in the staging file based on the user's feedback (content
 Commit the staging record:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): ad hoc tasks declined" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): ad hoc tasks declined" --topic implementation/{topic}
 ```
 
 → Return to caller.
@@ -188,7 +188,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 Invoke the task-writer agent.
 
-**Agent path**: `.claude/agents/workflow-implementation-task-writer.md`
+**Agent path**: `.claude/agents/leeway-implementation-task-writer.md`
 
 Pass via the orchestrator's prompt:
 
@@ -196,11 +196,11 @@ Pass via the orchestrator's prompt:
 2. **Topic name** — the implementation topic (scopes tasks to the correct plan)
 3. **Staging file path** — `.workflows/{work_unit}/implementation/{topic}/ad-hoc-tasks-{n}.md`, the file from **E**
 4. **Planning file path** — `.workflows/{work_unit}/planning/{topic}/planning.md`
-5. **Plan format reading adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/reading.md`
-6. **Plan format authoring adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/authoring.md`
+5. **Plan format reading adapter path** — `.claude/skills/leeway-planning-process/references/output-formats/{format}/reading.md`
+6. **Plan format authoring adapter path** — `.claude/skills/leeway-planning-process/references/output-formats/{format}/authoring.md`
 7. **Phase placement** — `per-task`
 8. **Approved task numbers** — the task numbers whose staging rows are `approved`
-9. **Plan format graph adapter path** — `.claude/skills/workflow-planning-process/references/output-formats/{format}/graph.md`, when any approved task carries a `priority:` or `depends_on:` line
+9. **Plan format graph adapter path** — `.claude/skills/leeway-planning-process/references/output-formats/{format}/graph.md`, when any approved task carries a `priority:` or `depends_on:` line
 
 The agent creates exactly the approved tasks; a crash-resume re-invocation is safe (it creates only those not yet present). It returns:
 
@@ -217,8 +217,8 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 Commit the staging file with this topic's implementation artifacts, then the tasks — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add {K} ad hoc task(s) — staged" --topic implementation/{topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add {K} ad hoc task(s)" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add {K} ad hoc task(s) — staged" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): add {K} ad hoc task(s)" --plan {topic}
 ```
 
 Any task totals held in session context are stale — the plan changed; re-derive them at the next display.

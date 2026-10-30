@@ -1,6 +1,6 @@
 # Review Actions Loop
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
@@ -100,12 +100,12 @@ No actionable tasks synthesized — closing the review.
 
 Settle the spec defects first — each `## Spec Defects` entry in `review-report-c{N}.md` is classified before the overview renders, so the tasks are authored against a correct specification. Once per entry:
 
-→ Load **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `review/{topic}`.
+→ Load **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** for **B. This Work Unit's Specification** and follow its instructions, with specification path = `.workflows/{work_unit}/specification/{topic}/specification.md`, correcting_phase = `review/{topic}`.
 
 A record-settled entry lands there silently — a derivable gap included, its derivation in the corrigendum. A code-wrong verdict becomes a staged proposal — the tree owes the change; an open verdict (a product-intent gap, or a call the reference could not stand behind — the only classes it returns open) becomes one whose Solution says what is settled and whose **Decision** carries the question, a **Stakes** line arguing the stop (each side's product consequence, why no investigation settles the tie, and the grounds for the recommendation where a side is marked), and two to four sides, each written as the product end state chosen — what the product *is* if that side wins, never the work to do — the recommended side first and marked `(recommended)`; only an honest no-lean fork carries no marker. An entry the reference returns unsettled (the item back in its own phase, or held by another session) is left exactly as reported — never re-classified here. Add each staged verdict under the next `## Task {n}` heading in `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md` — a synthesis that staged none wrote no file: create it with its `# Review Tasks: {topic:(titlecase)} (Cycle {N})` header — shaped like the proposals beside it: a `severity:` line carrying the defect's grade (`high`, `medium`, `low` — never a refactor class), a `sources:` line naming the report entry, then **Problem**, **Solution**, and where there is one the **Decision** with its **Stakes** and sides — and initialise its row:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} pending
 ```
 
 An entry an earlier run already settled — its corrigendum present in the specification, or its proposal already in the staging file — is skipped; a proposal already in the staging file whose `staging.c{N}` row is missing is a crashed landing — initialise the row and move on, never re-append. When at least one correction landed — nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
@@ -123,7 +123,7 @@ Read the staging file from `.workflows/{work_unit}/implementation/{topic}/review
 Write the overview payload to `.workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json` with the Write tool (`{"label": "Review synthesis cycle {N}", "tasks": [{"title": "…", "severity": "…", "status": "…"}]}` — each task's `status` is its `staging.c{N}.tasks.{n}` value: `pending`, `approved`, or `skipped`), render, and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-overview {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render tasks-overview {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/tasks-overview.json
 ```
 
 → Proceed to **D. Process Task**.
@@ -140,7 +140,7 @@ Each pass reads the next pending proposal from the staging file as it now stands
 
 #### If the next pending proposal carries a Decision
 
-→ Load **[raising-a-decision.md](../../workflow-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`, findings_paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`.
+→ Load **[raising-a-decision.md](../../leeway-shared/references/raising-a-decision.md)** with dotpath = `{work_unit}.review.{topic}`, staging_file = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, payload_path = `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json`, gate_mode = `{gate_mode}`, row_address = `staging.c{N}.tasks.{n}`, comment_hint = `Tell me what to change`, findings_paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`.
 
 → On return, return to **D. Process Task**.
 
@@ -149,12 +149,12 @@ Each pass reads the next pending proposal from the staging file as it now stands
 Present it plain. Write its payload to `.workflows/.cache/{work_unit}/review/{topic}/proposed-task.json` with the Write tool — `{"current": …, "total": …, "title": "…", "severity": "…", "sources": "…", "problem": "…", "solution": "…"}` from the staging proposal, adding `"outcome": "…"` when it carries one. `{gate}` is `{gate_mode}` — except a proposal whose fork a Comment on its raise settled this session, which renders `gated` whatever the mode: the settled direction interprets the user's words, so it lands with an explicit approval. Render, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render proposed-task {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/proposed-task.json --gate {gate} --comment-hint "Tell me what to change"
+node .claude/skills/leeway-engine/scripts/engine.cjs render proposed-task {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/proposed-task.json --gate {gate} --comment-hint "Tell me what to change"
 ```
 
 #### If the response carried `DISPLAY: task auto-approved`
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} approved`), then emit the section verbatim per its marker.
+Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} approved`), then emit the section verbatim per its marker.
 
 → Return to **D. Process Task**.
 
@@ -164,19 +164,19 @@ Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs man
 
 **If `yes`:**
 
-Record the approval: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} approved`.
+Record the approval: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} approved`.
 
 → Return to **D. Process Task**.
 
 **If `auto`:**
 
-Record both in one write: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n}=approved staging.c{N}.gate_mode=auto`.
+Record both in one write: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n}=approved staging.c{N}.gate_mode=auto`.
 
 → Return to **D. Process Task**.
 
 **If `decline`:**
 
-Record the decline: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`.
+Record the decline: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`.
 
 → Return to **D. Process Task**.
 
@@ -206,7 +206,7 @@ Nothing is approved — the cycle's proposals were declined, or it staged none.
 
 The approved proposals carry no bodies — the author expands exactly those, in the staging file, before the writer transcribes them:
 
-→ Load **[invoke-task-author.md](../../workflow-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
+→ Load **[invoke-task-author.md](../../leeway-implementation-process/references/invoke-task-author.md)** and follow its instructions as written, with staging file path = `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`, findings file paths = the cycle's `review-report-c{N}.md`, the per-task `report-*.md` files and the `change-set-c{N}-*.md` files in `.workflows/{work_unit}/review/{topic}/`, approved task numbers = the task numbers whose `staging.c{N}` rows are `approved`.
 
 > **CHECKPOINT**: Do not proceed until the task author has returned.
 
@@ -222,7 +222,7 @@ Nothing was authored. State the author's reason plainly; the staging stays untou
 
 **If the user abandons the tasks:**
 
-Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`).
+Mark each remaining `approved` row `skipped` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.tasks.{n} skipped`).
 
 → Return to **E. Route on Results**.
 
@@ -237,8 +237,8 @@ Filter to the tasks the manifest's `staging.c{N}.tasks` marks `approved`, taking
 Commit the staging file with this topic's implementation artifacts, then the plan tasks and `task_map` updates — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): stage review remediation" --topic implementation/{topic} --sweep
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation — {K} task(s)" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): stage review remediation" --topic implementation/{topic} --sweep
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): add review remediation — {K} task(s)" --plan {topic}
 ```
 
 → On return, proceed to **G. Re-open Implementation**.
@@ -248,18 +248,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 ## G. Re-open Implementation
 
 1. Update the manifest via CLI:
-   - `node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}`
-   - `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} updated {today's date}`
+   - `node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}`
+   - `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} updated {today's date}`
 2. Commit tracking changes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking" --topic review/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking" --topic review/{topic}
 ```
 
 Resolve `{work_type}` from the manifest when not already in context:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-implementation-process {work_type} {work_unit} {topic}`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-implementation-process {work_type} {work_unit} {topic}`.

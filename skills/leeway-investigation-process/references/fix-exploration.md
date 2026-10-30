@@ -1,6 +1,6 @@
 # Fix Exploration & Discussion
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -31,7 +31,7 @@ Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/fix-di
 `recommended` and `recommendation` travel together and only where options are compared; omit `open_question` when nothing is open. Then fetch the display, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render fix-direction {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/fix-direction.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render fix-direction {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/fix-direction.json
 ```
 
 **STOP.** Wait for user response.

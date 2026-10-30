@@ -1,6 +1,6 @@
 # Session Label Prompt
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -19,7 +19,7 @@
 Fetch the opt-in and emit its `MENU: label gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render label-gate
 ```
 
 **STOP.** Wait for user response.
@@ -29,7 +29,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
 Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
+node .claude/skills/leeway-engine/scripts/engine.cjs session label-config true
 ```
 
 → Return to caller.
@@ -39,7 +39,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
 Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
+node .claude/skills/leeway-engine/scripts/engine.cjs session label-config false
 ```
 
 → Return to caller.

@@ -1,6 +1,6 @@
 # Discovery Gap Analysis
 
-*Shared reference. Loaded by `workflow-shared/references/topic-discovery.md`.*
+*Shared reference. Loaded by `leeway-shared/references/topic-discovery.md`.*
 
 ---
 
@@ -79,8 +79,8 @@ A single analysis may emit a mix of routings — apply the criteria per candidat
 Read filter inputs from the work unit's manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery items
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery dismissed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery items
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery dismissed
 ```
 
 `items` is the active map (an object keyed by topic name). `dismissed` is the array of names previously removed from the map by the user.
@@ -96,7 +96,7 @@ Check if the existing item's `source` field already includes `gap-analysis`. If 
 Read the existing source:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{name} source
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{name} source
 ```
 
 **If the existing source is empty or the literal string `null`:**
@@ -104,7 +104,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 `engine manifest get` prints `"null"` for fields that exist with a JSON null value (intentional — `exists` is the way to distinguish missing from null). Treat both empty and `"null"` as "no real source" and set the new value alone:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "gap-analysis"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "gap-analysis"
 ```
 
 **Otherwise:**
@@ -112,7 +112,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Set source to `{existing},gap-analysis` (comma-joined):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "{existing},gap-analysis"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{name} source "{existing},gap-analysis"
 ```
 
 Do not change the existing item's routing. Do not stage a candidate.
@@ -143,7 +143,7 @@ gap_type: {cross-artifact|emergent|integration|uncovered}
 Once all candidates have been evaluated, register the gate state — one batched write, one row per staged candidate (skip the call when nothing was staged):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.gate_mode=gated analysis_staging.discovery-gap-analysis.candidates.{name}.status=pending …
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.gate_mode=gated analysis_staging.discovery-gap-analysis.candidates.{name}.status=pending …
 ```
 
 → Return to caller.
@@ -183,7 +183,7 @@ List every topic from **C**, even those that filtered out in **D** — the cache
 Stamp the manifest's gap_analysis_cache — one command checksums the completed research plus completed discussion files, writes `checksum`, `generated`, and `input_files`, and indexes the cache file into the knowledge base so its content surfaces in future contextual queries:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs cache stamp {work_unit} gap-analysis
+node .claude/skills/leeway-engine/scripts/engine.cjs cache stamp {work_unit} gap-analysis
 ```
 
 If the response carries `warnings`, surface them to the user but do not abort — the cache file is already on disk and the manifest is updated; the next start retries the indexing.

@@ -9,7 +9,7 @@ The passage from conversation to conclusion runs two gates: the **review gate** 
 The mailbox precedes both gates — a waiting message is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
 ```
 
 **If `count` is non-zero and this entry is the user's signal:**
@@ -17,7 +17,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit}
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
 ```
 
 → Return to caller for **B. Session Loop**.
@@ -37,7 +37,7 @@ The map settled, or the ceremony resumed, over a waiting message — it is raise
 Read the agent store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
 ```
 
 Classify what the final-review step still owes — first match wins:
@@ -75,7 +75,7 @@ No review to offer — the conclude gate is next.
 A review has already run and drained; declining another forfeits nothing owed. Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant re-review
+node .claude/skills/leeway-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant re-review
 ```
 
 **STOP.** Wait for user response.
@@ -103,7 +103,7 @@ At least one full review pass belongs to every discussion — this one cannot be
 Nothing new runs on `yes` — background findings have already come back, and Step 6 walks them. The gate says that plainly, so "another review" is never the reading the user answers to. Fetch it and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant findings-owed
+node .claude/skills/leeway-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant findings-owed
 ```
 
 **STOP.** Wait for user response.
@@ -121,7 +121,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 Nothing new runs on `yes` — the pass in flight is the mandatory one, and `yes` is the decision to wait for it. The gate says that plainly, so "another review" is never the reading the user answers to. Fetch it and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant review-running
+node .claude/skills/leeway-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant review-running
 ```
 
 **STOP.** Wait for user response.
@@ -141,7 +141,7 @@ The wait is chosen here — **E** asks no second time.
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant final-review
+node .claude/skills/leeway-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant final-review
 ```
 
 **STOP.** Wait for user response.
@@ -159,7 +159,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant wrap-up
+node .claude/skills/leeway-engine/scripts/engine.cjs render closing-gate {work_unit}.discussion.{topic} --variant wrap-up
 ```
 
 **STOP.** Wait for user response.
@@ -176,7 +176,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 The last gate before leaving the session, whichever path led here.
 
-→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `conclude`.
+→ Load **[in-flight-agents.md](../../leeway-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `conclude`.
 
 #### If `result` is `leave`
 

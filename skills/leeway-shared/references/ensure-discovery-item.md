@@ -1,6 +1,6 @@
 # Ensure Discovery Item
 
-*Shared reference. Loaded by the epic menu's `d`/`r` doors (`workflow-continue-epic`), `workflow-research-process`, and `workflow-discussion-process`.*
+*Shared reference. Loaded by the epic menu's `d`/`r` doors (`leeway-continue-epic`), `leeway-research-process`, and `leeway-discussion-process`.*
 
 ---
 
@@ -34,7 +34,7 @@ The discovery *map* is epic-only — a multi-topic map only makes sense when the
 ## B. Check Existence
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic}
 ```
 
 #### If output is non-empty (item exists)
@@ -52,7 +52,7 @@ The topic is already on the map. Nothing to do — fall through to the caller's 
 Create the item with its routing and `source: direct-start` — `--force-dismissed` clears any matching dismissed entry (user-explicit creations bypass dismissal):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {routing} --source direct-start --summary "{summary}" --description "{description}" --force-dismissed
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add {work_unit} {topic} {routing} --source direct-start --summary "{summary}" --description "{description}" --force-dismissed
 ```
 
 Assemble the call as follows:

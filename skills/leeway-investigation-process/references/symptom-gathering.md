@@ -1,6 +1,6 @@
 # Symptom Gathering
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -101,7 +101,7 @@ Questions to ask when gathering bug symptoms.
 
 ## Reference Gathering
 
-**If the user offers a path in answer to any of these** — a log, an export, a screenshot: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**, then carry on with the interview. It lands as an import rather than being read where it sits.
+**If the user offers a path in answer to any of these** — a log, an export, a screenshot: follow **A. Land It** in **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)**, then carry on with the interview. It lands as an import rather than being read where it sits.
 
 ### Do you have error logs?
 

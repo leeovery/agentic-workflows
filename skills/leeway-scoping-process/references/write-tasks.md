@@ -1,6 +1,6 @@
 # Write Tasks
 
-*Reference for **[workflow-scoping-process](../SKILL.md)***
+*Reference for **[leeway-scoping-process](../SKILL.md)***
 
 ---
 
@@ -34,7 +34,7 @@ If a second task is needed (e.g., separate pass for config files, test file upda
 
 ## B. Write Task Files
 
-Load the chosen format's **[authoring.md](../../workflow-planning-process/references/output-formats/{format}/authoring.md)** and follow its task storage instructions.
+Load the chosen format's **[authoring.md](../../leeway-planning-process/references/output-formats/{format}/authoring.md)** and follow its task storage instructions.
 
 **Task content** — each task file includes:
 
@@ -59,31 +59,31 @@ Load the chosen format's **[authoring.md](../../workflow-planning-process/refere
 
 **Do not include acceptance criteria.** Mechanical changes are verified by test baselines and completeness checks, not acceptance criteria.
 
-**No task edits another work unit's artifact under `.workflows/`** — the executor writes code and tests alone. A completed unit's specification the fix shows wrong is corrected here, through **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)**, never folded into a task; another unit's non-spec artifacts are superseded by current work, never corrected.
+**No task edits another work unit's artifact under `.workflows/`** — the executor writes code and tests alone. A completed unit's specification the fix shows wrong is corrected here, through **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)**, never folded into a task; another unit's non-spec artifacts are superseded by current work, never corrected.
 
 ## C. Register Plan in Manifest
 
 Commit the scoping work on disk first — the baseline hash must name a commit that contains the specification:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification baseline"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): specification baseline"
 ```
 
 Capture the resulting commit hash: `git rev-parse HEAD`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} planning {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.plan_format {chosen-format}
 ```
 
 Then register everything — settings, position, and the whole task map — in ONE batched set (one lock, one write): the fixed fields, the phase mapping (`task_map.{topic}-1` = the phase's external ID), one `task_map.{internal_id}={external_id}` pair per task, and `storage_paths` — the fenced JSON array in the format's authoring.md → Storage Pathspecs, copied exactly as declared:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} format={chosen-format} spec_commit={commit-hash} task_list_gate_mode=auto author_gate_mode=auto finding_gate_mode=auto review_cycle=0 phase=1 task='~' external_id={plan_external_id} task_map.{topic}-1={phase_external_id} task_map.{internal_id}={external_id} storage_paths='{format storage pathspecs}'
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} planning {topic}
 ```
 
 The plan-level `external_id`, the phase external ID, and per-task external IDs are all determined by the format's authoring instructions (see the Plan Structure, Phase Structure, and Task Storage sections).
@@ -91,14 +91,14 @@ The plan-level `external_id`, the phase external ID, and per-task external IDs a
 ## D. Mark Scoping Complete
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
 ```
 
 Commit all scoping artifacts — `--plan` stages the planning topic, the work-unit manifest, the project manifest, and the plan's declared storage in one scoped call:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): register plan" --plan {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): register plan" --plan {topic}
 ```
 
 → Return to caller.

@@ -1,6 +1,6 @@
 # Banner and Completion Offer
 
-*Reference for **[workflow-continue-epic](../SKILL.md)***
+*Reference for **[leeway-continue-epic](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ What the menu leads with: the banner for a phase that just concluded or paused, 
 Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {work_unit} --phase {completed_phase}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-completed {work_unit} --phase {completed_phase}
 ```
 
 → Proceed to **B. Completion Offer**.
@@ -23,7 +23,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-completed {w
 The phase left on a wait — the banner names what it awaits, never a completion. Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-paused {work_unit} --phase {completed_phase}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-paused {work_unit} --phase {completed_phase}
 ```
 
 → Proceed to **B. Completion Offer**.
@@ -55,7 +55,7 @@ Read `all_done` from the most recent discovery output — true once every topic 
 Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render epic-all-done-gate {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render epic-all-done-gate {work_unit}
 ```
 
 **STOP.** Wait for user response.
@@ -65,13 +65,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render epic-all-done-gate
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete epic pipeline"
 ```
 
 Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
 ```
 
 **STOP.** Do not proceed — terminal condition.

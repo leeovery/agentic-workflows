@@ -9,7 +9,7 @@ The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` �
 **If the point is staged beyond this epic** — the user placed it there (*"that's a v2 thing"*, *"fix that after launch"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic, whatever its kind. A surfaced point parks; a topic already on the map postpones instead — the postponing door. Park it as its `{kind}` — `bug` for something broken, `quick-fix` for a small mechanical change, `idea` for anything else, an idea at capability grain. The roadmap is born at the first park, and the verb validates and self-commits. Note the park in the session's running record and continue — capture-weight, never shaping:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
 ```
 
 → Return to caller for **B. Session Loop**.
@@ -23,7 +23,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind
 Read the live map:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The point's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the point; hold the derived name whichever way the read lands. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](sending-a-message.md)** — the point's nature decides, so the judgement holds whatever the target.
@@ -53,7 +53,7 @@ Two or more plausible homes and the conversation doesn't settle it. Set `resolut
 Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/send-offer.json` with the Write tool (`{"title": "…", "target": "…", "landing_phase": "…", "new_target": true, "grown": true}` — the point's short title, with `target` and `landing_phase` only when `resolution` is `clear`; add `new_target` when the **A** map read showed no such topic, since sending creates it, and `grown` when `reason` is `grown-thread`, which implies it), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render send-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render send-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -77,7 +77,7 @@ A phase appended to the reply overrides `landing_phase`.
 Write the candidates payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/send-candidates.json` with the Write tool (`{"title": "…", "landing_phase": "…", "candidates": [{"name": "…", "lifecycle": "…"}]}` — every plausible home, lifecycle from the map read), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render send-candidates {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-candidates.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render send-candidates {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-candidates.json
 ```
 
 Emit the call's MENU section verbatim per its marker.

@@ -1,8 +1,8 @@
 'use strict';
 
 const path = require('path');
-const engine = require('../../workflow-engine/scripts/lib.cjs');
-const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
+const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { stateRoot } = engine.state;
 const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;

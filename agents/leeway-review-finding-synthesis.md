@@ -1,6 +1,6 @@
 ---
-name: workflow-review-finding-synthesis
-description: Merges the prep pipeline's assessments into one action list — discarding what is not wrong, amending what is right but misstated, collapsing collisions into single edits, routing each survivor, and deriving the verdict. Invoked by workflow-review-process after findings prep.
+name: leeway-review-finding-synthesis
+description: Merges the prep pipeline's assessments into one action list — discarding what is not wrong, amending what is right but misstated, collapsing collisions into single edits, routing each survivor, and deriving the verdict. Invoked by leeway-review-process after findings prep.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
@@ -45,7 +45,7 @@ No → `discard`, with the reason. Something merely tidier is not wrong. This is
 
 A discard that rests on a claim is verified like any other claim. "A stronger neighbour pins the property" — open the neighbour and confirm it pins *the same property*, not a sibling. "Behaviour is identical either way" — false wherever the finding describes a race, a tear, or any window with observable state. The discard reason is a verdict you are signing, not a label you are choosing.
 
-**2. Is it inside the delivered change-set?** Scope is what the implementation touched — its task commits across every repo in the project, read through `node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}` and `node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic}` — never what the spec's text happens to mention. A defect in code this feature built or modified is in scope however absent from the spec; territory the work never touched is out of scope however improvable. When in doubt, check provenance at the level of behaviour, not files: did the change-set introduce or alter this behaviour? A touched file is not enough — behaviour inherited from an earlier feature, in a file this work merely brushed, belongs to its own feature and goes out of scope.
+**2. Is it inside the delivered change-set?** Scope is what the implementation touched — its task commits across every repo in the project, read through `node .claude/skills/leeway-engine/scripts/engine.cjs code log {work_unit} {topic}` and `node .claude/skills/leeway-engine/scripts/engine.cjs code diff {work_unit} {topic}` — never what the spec's text happens to mention. A defect in code this feature built or modified is in scope however absent from the spec; territory the work never touched is out of scope however improvable. When in doubt, check provenance at the level of behaviour, not files: did the change-set introduce or alter this behaviour? A touched file is not enough — behaviour inherited from an earlier feature, in a file this work merely brushed, belongs to its own feature and goes out of scope.
 
 **In scope**, and `[contained]` → `do-now`. One edit at one site, the suite settles it. Low value is no reason to route it elsewhere: a stale comment is wrong, so fix it. Finishing the feature is not backlog work.
 

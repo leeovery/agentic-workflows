@@ -1,6 +1,6 @@
 # Topic Name Validation
 
-*Shared reference. Loaded by `workflow-discovery`, `workflow-research-process`, `workflow-discussion-process`, and any flow that proposes a new topic name for the discovery map.*
+*Shared reference. Loaded by `leeway-discovery`, `leeway-research-process`, `leeway-discussion-process`, and any flow that proposes a new topic name for the discovery map.*
 
 ---
 
@@ -42,7 +42,7 @@ Re-derive a kebab-case form for `proposed_name` — lowercase, split on spaces/u
 Re-run discovery to pick up state changes since the caller's last invocation (writes earlier in the session, prior creations in the same batch):
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Read:

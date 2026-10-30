@@ -1,6 +1,6 @@
 # Manage Work Unit
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Manage an in-progress work unit's lifecycle.
 Render the manage selection snapshot:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs manage
+node .claude/skills/leeway/scripts/gateway.cjs manage
 ```
 
 The output is one snapshot in three demarcated sections:
@@ -30,7 +30,7 @@ Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
 #### If user chose `a/baseline`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
 
 #### If user chose a number
 
@@ -43,7 +43,7 @@ Store the selected work unit's `UNITS` row — its name and work type.
 Render the selected work unit's manage snapshot:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs manage {selected.name}
+node .claude/skills/leeway/scripts/gateway.cjs manage {selected.name}
 ```
 
 The response carries demarcated sections:
@@ -68,32 +68,32 @@ A branch below can only be chosen when the menu offered its option.
 Run the complete transaction — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {selected.name} -m "workflow({selected.name}): mark as completed"
 ```
 
 Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb complete
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb complete
 ```
 
 → Return to caller.
 
 #### If user chose `p/pivot`
 
-→ Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
+→ Load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{selected.name}`.
 
 On return, fetch and emit the `MENU: pivot continuation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render pivot-continuation {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render pivot-continuation {selected.name}
 ```
 
 **STOP.** Wait for user response.
 
 **If user chose `c/continue`:**
 
-Invoke `/workflow-continue-epic {selected.name}`.
+Invoke `/leeway-continue-epic {selected.name}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
@@ -118,13 +118,13 @@ This skill ends. The invoked skill will load into context and provide additional
 Run the cancel transaction — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn]
 ```
 
 → Return to caller.

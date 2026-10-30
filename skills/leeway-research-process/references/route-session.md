@@ -1,13 +1,13 @@
 # Route Research Session
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
 Read `work_type` from the manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If work_type is `feature` or `cross-cutting`

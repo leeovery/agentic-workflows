@@ -23,18 +23,18 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const engine = require(path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs'));
-const schema = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/manifest-schema.cjs'));
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
-const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
-const { epicMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
-const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
-const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
+const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
+const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
+const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
+const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
+const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit } = require('./engine-harness.cjs');
-const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
 
@@ -86,7 +86,7 @@ class Sim {
     // The sim's own identity: this process, alive with a real start time, so
     // the rows its verbs beat read `held`.
     this.env = {
-      WORKFLOWS_CONFIG_DIR: this.configDir,
+      LEEWAY_CONFIG_DIR: this.configDir,
       CLAUDE_CODE_SESSION_ID: 'sim-session',
       CLAUDE_PID: String(process.pid),
       TMUX: undefined,
@@ -334,7 +334,7 @@ function arrive(sim, name) {
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
   if (schema.PROJECT_IDENTITIES.includes(name)) {
-    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', `workflow-${name}`, 'SKILL.md'), `the ${name} carries on in its own skill`);
+    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', `leeway-${name}`, 'SKILL.md'), `the ${name} carries on in its own skill`);
   } else {
     assert.strictEqual(here.skill, null, 'a work unit\'s menu carries nothing on');
     assert.match(here.text, /outside any phase, so there is nothing to carry on from\.$/);
@@ -381,7 +381,7 @@ function handoff(sim, route) {
   assert.ok(!inline.stdout.includes('=== HANDOFF'), 'the payload is the mod\'s, present only announced');
   const data = (/** @type {string} */ field) => inline.stdout.match(new RegExp(`^${field}: (.*)$`, 'm'))?.[1];
   assert.strictEqual([`/${data('skill')}`, data('args')].filter(Boolean).join(' '), route, 'invoked in place, the skill takes the route as it stands');
-  const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, WORKFLOWS_HANDOFF: '1' } });
+  const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, LEEWAY_HANDOFF: '1' } });
   assert.match(carried.stdout, /^handoff: mod$/m);
   const payload = JSON.parse(carried.stdout.split(/^=== HANDOFF .*$/m)[1].trim());
   assert.strictEqual(payload.text, `Invoke \`${route}\`.`, 'nothing travels but the route');
@@ -405,7 +405,7 @@ function bridgeTo(sim, wu, phase) {
 // all done. Answers the banner rendered, empty when none is.
 /** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
 function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
-  handoff(sim, `/workflow-continue-epic ${wu} ${phase} ${outcome}`);
+  handoff(sim, `/leeway-continue-epic ${wu} ${phase} ${outcome}`);
   arrive(sim, wu);
   const banner = { completed: 'phase-completed', paused: 'phase-paused' }[outcome];
   const shown = banner ? sim.render([banner, wu, '--phase', phase], { expect: 'content' }) : '';
@@ -496,7 +496,7 @@ function backToStart(sim, keys) {
 // pre-seed, no work unit, and its inbox seeds quoted — `none` where it has none.
 /** @param {Sim} sim @param {string} workType @param {string} seeds */
 function toDiscovery(sim, workType, seeds) {
-  return handoff(sim, `/workflow-discovery ${workType} none "${seeds}"`);
+  return handoff(sim, `/leeway-discovery ${workType} none "${seeds}"`);
 }
 
 // The start menu's new-work row builds no route — it goes to discovery with
@@ -728,7 +728,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'the first plan task banks — the deposits below are made while its phase is still open');
   const onTask = carryOn(sim);
   assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, task: '1.1' });
-  assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/workflow-implementation-process/SKILL.md'));
+  assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/leeway-implementation-process/SKILL.md'));
   assert.match(onTask.text, new RegExp(`^The conversation was just compacted\\. This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
   // The executor's dispatch: the gate mod hands the engine its agent id, which
   // rides on the position with the task — through the recovery steps' re-run

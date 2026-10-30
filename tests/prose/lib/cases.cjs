@@ -38,12 +38,12 @@
 //
 // `entry` names where the walk starts, and it may only be somewhere a
 // real session starts — one of the engine's OPENING_SKILLS:
-// `workflow-start` (the user's way in) or a skill a handoff lands the work
+// `leeway` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap, the baseline. Nothing else is a legitimate opening — help, the
 // linear continue menu, the bridge and the legacy research split are only
 // ever opened in place, mid-session, and a reference is never entered
-// directly. A case about help enters at workflow-start and picks the start
+// directly. A case about help enters at leeway and picks the start
 // menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
@@ -65,7 +65,7 @@
 const fs = require('fs');
 const path = require('path');
 const invariants = require('./invariants.cjs');
-const { OPENING_SKILLS } = require('../../../skills/workflow-engine/scripts/domain/handoff.cjs');
+const { OPENING_SKILLS } = require('../../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
@@ -183,7 +183,7 @@ function headingExists(absPath, anchor) {
 }
 
 /**
- * Where a walk may begin: a skill a conversation opens on — workflow-start or
+ * Where a walk may begin: a skill a conversation opens on — leeway or
  * wherever a handoff lands the work — never anywhere else.
  */
 function entryErrors(entry) {

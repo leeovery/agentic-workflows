@@ -23,7 +23,7 @@ Multiple queries from different angles are expected and encouraged. One query fo
 
 ## B. How to construct queries
 
-A query is `node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<term>" ["<term>" …]` with any of the flags below. Each term is **natural language** describing what you're looking for, phrased the way the original author would have written about it — descriptive and specific. Not topic slugs, which are weak semantic signal, and nothing so broad it matches the whole area:
+A query is `node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query "<term>" ["<term>" …]` with any of the flags below. Each term is **natural language** describing what you're looking for, phrased the way the original author would have written about it — descriptive and specific. Not topic slugs, which are weak semantic signal, and nothing so broad it matches the whole area:
 
 - Good: `"OAuth2 PKCE flow for mobile clients"`, `"why we ruled out email as a primary identity field"`
 - Poor: `"auth-flow"` (a slug), `"auth"` (too broad)
@@ -60,7 +60,7 @@ A `[roadmap | …]` hit is the product-level record — a roadmap session's expl
 If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `{session_cache}/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — where `{session_cache}` is the calling session's cache: `.workflows/.cache/{work_unit}/{phase}/{topic}` in a phase session, `.workflows/.cache/{work_unit}/discovery` in a discovery session, `.workflows/.cache/roadmap` in a roadmap session. Then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render query-failure-gate --file {session_cache}/query-failure.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render query-failure-gate --file {session_cache}/query-failure.json
 ```
 
 **STOP.** Wait for user response.

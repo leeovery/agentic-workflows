@@ -10,17 +10,17 @@ tier('user')
 const HOME = '/Users/person'
 
 /** The workflows' system config directory where the process names none. */
-const DEFAULT_CONFIG = `${HOME}/.config/workflows`
+const DEFAULT_CONFIG = `${HOME}/.config/leeway`
 
 /** The session's project. */
 const ROOT = '/Users/person/app'
 
-const ENGINE = `${ROOT}/.claude/skills/workflow-engine/scripts/engine.cjs`
+const ENGINE = `${ROOT}/.claude/skills/leeway-engine/scripts/engine.cjs`
 
-const EXECUTOR = 'workflow-implementation-task-executor'
+const EXECUTOR = 'leeway-implementation-task-executor'
 
 /** The announcement a session the mod applies to carries from its start. */
-const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' }
+const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' }
 
 /** A foreground dispatch's answer: the agent ran to its end. */
 const COMPLETED = {
@@ -154,7 +154,7 @@ describe('the task executor, recorded as it is dispatched', () => {
 
   test('finds the conversation in the config directory the process names, never under the home directory', async ($, on) => {
     const config = '/Users/person/state/workflows'
-    const { runs, clock } = world(on, { env: { ...ANNOUNCED, WORKFLOWS_CONFIG_DIR: config }, markedIn: config })
+    const { runs, clock } = world(on, { env: { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config }, markedIn: config })
 
     await dispatched($, clock, dispatchOf(EXECUTOR))
 
@@ -170,7 +170,7 @@ describe('the task executor, recorded as it is dispatched', () => {
 })
 
 describe('what records nothing, the dispatch\'s result as Claude Code answered it', () => {
-  for (const type of ['workflow-implementation-task-reviewer', 'general-purpose', undefined]) {
+  for (const type of ['leeway-implementation-task-reviewer', 'general-purpose', undefined]) {
     test(`another agent — ${type ?? 'no type named'}`, async ($, on) => {
       const { runs, clock } = world(on)
 
@@ -195,7 +195,7 @@ describe('what records nothing, the dispatch\'s result as Claude Code answered i
     expect(runs).toEqual([])
   })
 
-  for (const env of [{}, { WORKFLOWS_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
+  for (const env of [{}, { LEEWAY_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
     test(`a session that did not announce — ${JSON.stringify(env)}`, async ($, on) => {
       const { runs, clock } = world(on, { env })
 

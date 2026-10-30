@@ -1,6 +1,6 @@
 ---
-name: workflow-review-findings-synthesizer
-description: Synthesizes review findings into task proposals. Reads QA verification files, deduplicates, groups, folds them into proposals, and writes a staging file for the orchestrator's approval walk. Invoked by workflow-review-process skill after review actions are initiated.
+name: leeway-review-findings-synthesizer
+description: Synthesizes review findings into task proposals. Reads QA verification files, deduplicates, groups, folds them into proposals, and writes a staging file for the orchestrator's approval walk. Invoked by leeway-review-process skill after review actions are initiated.
 tools: Read, Write, Glob, Bash
 model: opus
 ---

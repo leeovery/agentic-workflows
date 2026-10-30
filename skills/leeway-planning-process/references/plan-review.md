@@ -1,6 +1,6 @@
 # Plan Review
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -14,7 +14,7 @@ Before opening a cycle, read `manifest get {work_unit}.planning.{topic} tracking
 
 Check the `review_cycle` field in the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
 ```
 
 #### If `review_cycle` is `0`
@@ -22,7 +22,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 Set `review_cycle` to 1 and record the baseline — the word count of the plan and its phase task files, which review growth is measured against at the diagnostic:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle=1 review_baseline_words=$(cat .workflows/{work_unit}/planning/{topic}/planning.md .workflows/{work_unit}/planning/{topic}/phase-*-tasks.md | wc -w)
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle=1 review_baseline_words=$(cat .workflows/{work_unit}/planning/{topic}/planning.md .workflows/{work_unit}/planning/{topic}/phase-*-tasks.md | wc -w)
 ```
 
 Record the current cycle number — passed to both review agents for tracking file naming (`c{N}`).
@@ -30,7 +30,7 @@ Record the current cycle number — passed to both review agents for tracking fi
 Commit the updated manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): begin review cycle {N}" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): begin review cycle {N}" --topic planning/{topic}
 ```
 
 → Proceed to **C. Traceability Review**.
@@ -39,7 +39,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 Increment `review_cycle` by 1:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle {N+1}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} review_cycle {N+1}
 ```
 
 Record the current cycle number — passed to both review agents for tracking file naming (`c{N}`).
@@ -52,7 +52,7 @@ Record the current cycle number — passed to both review agents for tracking fi
 
 Check `finding_gate_mode` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
 ```
 
 #### If `review_cycle` <= 3
@@ -67,10 +67,10 @@ Auto mode is active — pass through to review. Section E concludes the review o
 
 #### If `review_cycle` > 3 and `finding_gate_mode` is `gated` (or not set)
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
+→ Load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant continue
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant continue
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -95,10 +95,10 @@ List the earlier cycles' tracking files beside the plan — every `.workflows/{w
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): traceability review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -115,10 +115,10 @@ List the earlier cycles' tracking files beside the plan — every `.workflows/{w
 
 > **CHECKPOINT**: Do not proceed until the agent has returned its result.
 
-**If the agent created a tracking file**, record it in progress (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
+**If the agent created a tracking file**, record it in progress (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} in-progress`) and commit it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): integrity review cycle {N}" --topic planning/{topic}
 ```
 
 → Load **[process-review-findings.md](process-review-findings.md)** and follow its instructions as written.
@@ -131,8 +131,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 Check `finding_gate_mode` and `review_cycle` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} finding_gate_mode
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} review_cycle
 ```
 
 #### If no findings were surfaced in this cycle
@@ -145,7 +145,7 @@ From the second cycle onward the trend decides whether the loop runs again: a ch
 
 **If `review_cycle` is 2, 3, or 4:**
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `churning`.
+→ Load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `churning`.
 
 **If `review_cycle` is 1, or the analysis classified no `churning` trend:**
 
@@ -161,7 +161,7 @@ Say `Findings are churning — concluding the review.`
 
 #### If findings were surfaced and `finding_gate_mode` is `auto` and `review_cycle` >= 5
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
+→ Load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 Say `Cycle cap reached — concluding the review.`
 
@@ -169,7 +169,7 @@ Say `Cycle cap reached — concluding the review.`
 
 #### If findings were surfaced and `finding_gate_mode` is `gated`
 
-→ Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
+→ Load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -178,7 +178,7 @@ Say `Cycle cap reached — concluding the review.`
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-review-gate {work_unit}.planning.{topic} --variant reloop
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -205,7 +205,7 @@ Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-p
 
 2. **Commit** all review tracking files:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})" --topic planning/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})" --topic planning/{topic}
    ```
 
 Say `Plan review complete — {N} cycle(s), all tracking files finalised.`

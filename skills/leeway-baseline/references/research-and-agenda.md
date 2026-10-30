@@ -1,6 +1,6 @@
 # Research and Agenda
 
-*Reference for **[workflow-baseline](../SKILL.md)***
+*Reference for **[leeway-baseline](../SKILL.md)***
 
 ---
 
@@ -11,12 +11,12 @@ Fan researcher agents out over the pending areas, then synthesise their dossiers
 Read the area map and collect every area whose status is `pending`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline.areas
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.baseline.areas
 ```
 
 Dispatch **one agent per pending area, all in parallel** via the Task tool.
 
-- **Agent path**: `.claude/agents/workflow-baseline-researcher.md`
+- **Agent path**: `.claude/agents/leeway-baseline-researcher.md`
 
 Each agent receives:
 
@@ -64,13 +64,13 @@ For each area dispatched in A, read `.workflows/.baseline/.state/dossier-{area}.
 Mark each dispatched area:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} researched
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} researched
 ```
 
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: research dossiers and interview agendas"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "baseline: research dossiers and interview agendas"
 ```
 
 → Return to caller.

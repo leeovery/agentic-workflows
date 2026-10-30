@@ -10,8 +10,8 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { stateGit, commitAll, cleanupFixture, ok: engine, refuses: engineFails } = harness;
-const { computeBuildOrderNeedsSequencing, buildOrderLive } = require('../../skills/workflow-engine/scripts/domain/build-order.cjs');
-const { epicDetail } = require('../../skills/workflow-engine/scripts/domain/epic-detail.cjs');
+const { computeBuildOrderNeedsSequencing, buildOrderLive } = require('../../skills/leeway-engine/scripts/domain/build-order.cjs');
+const { epicDetail } = require('../../skills/leeway-engine/scripts/domain/epic-detail.cjs');
 
 const setupGitFixture = () => harness.setupGitFixture('engine-bo-');
 

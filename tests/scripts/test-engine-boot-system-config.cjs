@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot's system-config detection (workflow-engine/scripts/domain/boot.cjs):
+// Boot's system-config detection (leeway-engine/scripts/domain/boot.cjs):
 // what a not-ready boot reports of the machine's knowledge config under ~,
 // absent, valid or invalid, never key material.
 //
@@ -27,19 +27,19 @@ describe('engine boot system-config detection', () => {
   beforeEach(() => {
     fix = bootProject();
     // Hermetic home: system-config detection resolves ~ via $HOME, so the
-    // developer's real ~/.config/workflows never leaks into assertions.
+    // developer's real ~/.config/leeway never leaks into assertions.
     home = path.join(fix.root, 'home');
     fs.mkdirSync(home, { recursive: true });
   });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   function writeSystemConfig(content) {
-    createFile(home, '.config/workflows/config.json', content);
+    createFile(home, '.config/leeway/config.json', content);
   }
 
   // The suite's hermetic config directory answers ahead of $HOME, so it comes
   // off every child environment here — this describe is about the ~ path.
-  const underHome = (extra = {}) => ({ HOME: home, WORKFLOWS_CONFIG_DIR: undefined, ...extra });
+  const underHome = (extra = {}) => ({ HOME: home, LEEWAY_CONFIG_DIR: undefined, ...extra });
 
   it('not-ready with no system config reports absent', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], underHome());
@@ -53,7 +53,7 @@ describe('engine boot system-config detection', () => {
       knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 },
     }));
     // Both key sources present on disk/env — neither may reach the response.
-    createFile(home, '.config/workflows/credentials.json', JSON.stringify({
+    createFile(home, '.config/leeway/credentials.json', JSON.stringify({
       credentials: { openai: { api_key: 'sk-STORED-SECRET' } },
     }));
 

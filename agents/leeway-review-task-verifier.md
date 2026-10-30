@@ -1,6 +1,6 @@
 ---
-name: workflow-review-task-verifier
-description: Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality against the task's acceptance criteria and spec context. Writes structured findings to file, returns brief status to orchestrator. Invoked by workflow-review-process skill for each task in scope.
+name: leeway-review-task-verifier
+description: Verifies a single plan task was implemented correctly. Checks implementation, tests, and code quality against the task's acceptance criteria and spec context. Writes structured findings to file, returns brief status to orchestrator. Invoked by leeway-review-process skill for each task in scope.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
@@ -16,7 +16,7 @@ You receive:
 2. **Specification path**: For loading context about this task's feature/requirement
 3. **Plan path**: The full plan for additional context
 4. **Project skill paths**: Relevant `.claude/skills/` paths for framework conventions
-5. **Review checklist path**: Path to the review checklist (`.claude/skills/workflow-review-process/references/review-checklist.md`) — read this for detailed verification criteria
+5. **Review checklist path**: Path to the review checklist (`.claude/skills/leeway-review-process/references/review-checklist.md`) — read this for detailed verification criteria
 6. **Work unit**: The work unit name (for path construction)
 7. **Topic**: The plan topic name (used for output directory)
 8. **Task suffix**: The `{phase_id}-{task_id}` portion of the internal ID (for output file naming, e.g., `1-1`)
@@ -120,7 +120,7 @@ Filter hard. A short report of real problems is worth more than a long one nobod
 
 Then record two things about each finding.
 
-**Its scope.** The boundary is the **delivered change-set** — everything this feature's implementation built or modified: the implementation files you were given, and, only where a finding's scope turns on what the work changed inside one of them, the change itself (`node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic}`) — never the spec's table of contents. Code moves at implementation, legitimately and without the spec following, so what was touched decides scope, not what was written down.
+**Its scope.** The boundary is the **delivered change-set** — everything this feature's implementation built or modified: the implementation files you were given, and, only where a finding's scope turns on what the work changed inside one of them, the change itself (`node .claude/skills/leeway-engine/scripts/engine.cjs code diff {work_unit} {topic}`) — never the spec's table of contents. Code moves at implementation, legitimately and without the spec following, so what was touched decides scope, not what was written down.
 
 - **`[in-scope]`** — inside the delivered change-set: a defect in behaviour the work introduced or altered (whether or not the spec mentions it), something the plan required in substance and did not get, a claim in the code that is false. A pre-existing defect in a file the work merely brushed is not in scope — it belongs to the feature that built the behaviour.
 - **`[out-of-scope]`** — territory the work never touched: an improvement to a neighbouring feature, another spec's document, code this feature only reads. Rare, since you are assessing one task against its criteria. An out-of-scope finding is never fixed here — it is the user's to take or leave.

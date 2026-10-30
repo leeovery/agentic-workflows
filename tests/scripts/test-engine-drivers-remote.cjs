@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The landing default read from the project's real remote
-// (workflow-engine/scripts/domain/drivers.cjs `resolveDriver`, through
+// (leeway-engine/scripts/domain/drivers.cjs `resolveDriver`, through
 // domain/remote.cjs): the landing driver serving the remote where it is on
 // GitHub, the one flagged default where it is elsewhere, and the default
 // written once, so a remote changed afterwards changes no driver (22.4.3,
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
-const { resolveDriver } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { resolveDriver } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const SHIPPED = path.join(__dirname, '..', 'fixtures', 'drivers', 'shipped');
 const ON_GITHUB = 'https://github.com/acme/pay.git';

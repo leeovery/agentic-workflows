@@ -1,6 +1,6 @@
 ---
-name: workflow-specification-review-gap-analysis
-description: Reviews specification as a standalone document for internal completeness, clarity, ambiguity, and planning readiness. Invoked by workflow-specification-process skill during review cycle.
+name: leeway-specification-review-gap-analysis
+description: Reviews specification as a standalone document for internal completeness, clarity, ambiguity, and planning readiness. Invoked by leeway-specification-process skill during review cycle.
 tools: Read, Write, Bash
 model: opus
 ---

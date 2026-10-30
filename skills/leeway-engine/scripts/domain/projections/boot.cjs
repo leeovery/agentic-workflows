@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: workflow-start's boot gates — the menus Step 0 puts to the
+// Domain ring: leeway's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
 // offer, the migration confirm, the label opt-in — the stop on a git below
 // the engine's floor, and the knowledge gate's displays. Pure renderers;
@@ -175,7 +175,7 @@ function keyCommand(command, note) {
   return [`  ${command}`, ...wrapWithPrefix(note, { width: displayWidth(), prefix: '      ' })];
 }
 
-const KEY_ONLY_NOTE = 'Private prompt, input hidden. Stored at ~/.config/workflows/credentials.json (mode 0600).';
+const KEY_ONLY_NOTE = 'Private prompt, input hidden. Stored at ~/.config/leeway/credentials.json (mode 0600).';
 
 /** @type {Record<string, () => string[]>} */
 const KEY_INSTRUCTIONS = {

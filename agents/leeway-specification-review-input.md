@@ -1,6 +1,6 @@
 ---
-name: workflow-specification-review-input
-description: Compares specification against all source material to catch missed content, edge cases, and decisions. Invoked by workflow-specification-process skill during review cycle.
+name: leeway-specification-review-input
+description: Compares specification against all source material to catch missed content, edge cases, and decisions. Invoked by leeway-specification-process skill during review cycle.
 tools: Read, Write, Grep, Bash
 model: opus
 ---

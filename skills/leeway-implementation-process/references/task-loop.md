@@ -1,6 +1,6 @@
 # Task Loop
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
@@ -31,7 +31,7 @@ J. Consolidation pass (phase boundary) → consolidation-pass.md
 Read `work_type` once here at loop entry — it selects the executor's workflow reference (TDD vs verification) and the reviewer's criteria for every task and never changes mid-loop, so **[invoke-executor.md](invoke-executor.md)** and **[invoke-reviewer.md](invoke-reviewer.md)** consume it from session context rather than re-reading it per invocation:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 ---
@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Read the plan's `external_id` via `engine manifest`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 
 Follow the format's **reading.md** instructions to determine the next available task.
@@ -62,7 +62,7 @@ Follow the format's **reading.md** instructions to determine the next available 
 Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/blocked-tasks.json` with the Write tool — every blocked task in plan order, each with what blocks it as the format's reading gives it: `{"tasks": [{"id": "{internal_id}", "name": "{Task Name}", "blockers": [{"id": "{blocker_id}", "status": "{blocker status}"}]}]}` — then fetch the blocked tasks and their stop, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render blocked-tasks {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/blocked-tasks.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render blocked-tasks {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/blocked-tasks.json
 ```
 
 **STOP.** Wait for user response.
@@ -95,7 +95,7 @@ Stage A re-detects any remaining blocked tasks on the loop back.
 2. Note the task's position for the task presentations (**[display-task-brief.md](display-task-brief.md)**, **[display-task-result.md](display-task-result.md)**): list every task in plan order via the format's **reading.md** listing procedure — completed and skipped included — and record this task's ordinal and the total across the plan (`{task_number}` of `{task_total}`) and within its plan phase (`{phase_task_number}` of `{phase_task_total}`). When the format's listing cannot yield the counts, skip them — the presentations render without.
 3. Start the task via the engine (records the task as `current_task`; a fresh task gets a clean slate — `fix_attempts` reset, fix tracking cache file cleared; re-starting the in-flight task — already `current_task` with its tracking file on disk — preserves both, so a re-run is safe):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
+   node .claude/skills/leeway-engine/scripts/engine.cjs task start {work_unit} {topic} {internal_id}
    ```
    The response's `gates` carry `task_gate_mode` and `fix_gate_mode` — `gated`, `auto` (the rest of this session), or `bounded` (to the end of the current plan phase — the engine returns it to `gated` as the phase records complete). Stages E and G branch on these values. Do not re-read them mid-task: an `a/auto` or `b/bounded` opt-in is made by this flow itself, so you already know the current mode. The response's `do_banking` says whether the task's phase still takes BANK deposits — stages B, D and F branch on it; hold it in session context for the task.
 4. Mark the task as in-progress — follow the format's **updating.md** status transition.
@@ -148,7 +148,7 @@ The turn does not end here — the executor dispatch follows in the same turn.
 
 The executor stops on intent alone — a product question the task, the specification sections it cites, and the code do not answer. The question takes the same three tiers a spec gap takes in planning, one hop further down, and the classification runs before anything renders:
 
-→ Load **[../../workflow-planning-process/references/resolve-spec-gap.md](../../workflow-planning-process/references/resolve-spec-gap.md)** with lane = `implementation`, gap = `{the product question the executor reported, what it found, and what goes wrong for the product's user if it guesses}`, task = `{internal_id}`.
+→ Load **[../../leeway-planning-process/references/resolve-spec-gap.md](../../leeway-planning-process/references/resolve-spec-gap.md)** with lane = `implementation`, gap = `{the product question the executor reported, what it found, and what goes wrong for the product's user if it guesses}`, task = `{internal_id}`.
 
 Read the `verdict` it returns.
 
@@ -189,7 +189,7 @@ Write the sides to `.workflows/.cache/{work_unit}/implementation/{topic}/block-s
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result blocked --file .workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result blocked --file .workflows/.cache/{work_unit}/implementation/{topic}/block-sides.json
 ```
 
 **STOP.** Wait for user response.
@@ -223,7 +223,7 @@ Read what the failure touches before composing — the files and lines the ISSUE
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result failed
+node .claude/skills/leeway-engine/scripts/engine.cjs render executor-block-gate {work_unit}.implementation.{topic} --result failed
 ```
 
 **STOP.** Wait for user response.
@@ -293,7 +293,7 @@ NOTES:
 
 Record the attempt via the engine (increments `fix_attempts` and appends the findings to the task's fix tracking file under a `## Attempt {N}` section):
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
+node .claude/skills/leeway-engine/scripts/engine.cjs task fix-attempt {work_unit} {topic} {internal_id} --findings-file .workflows/.cache/{work_unit}/implementation/{topic}/attempt-findings.md
 ```
 
 #### If the response's `threshold_reached` is `true`
@@ -313,7 +313,7 @@ Present the reviewer's findings as the register's findings summary (**[report-re
 After the findings summary, fetch the fix gate and emit its `DISPLAY: fix gate auto-accepted` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
 ```
 
 The turn does not end here — the executor dispatch follows in the same turn.
@@ -332,14 +332,14 @@ Any arrival but the first re-runs the gate fetch below alone — the presentatio
 
 → Load **[display-task-result.md](display-task-result.md)** with result = `needs-changes`.
 
-When **E**'s fix attempt reached its threshold, load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** beneath the header with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`, render_when = `always`.
+When **E**'s fix attempt reached its threshold, load **[convergence-analysis.md](../../leeway-shared/references/convergence-analysis.md)** beneath the header with loop_type = `fix`, work_unit = `{work_unit}`, topic = `{topic}`, internal_id = `{internal_id}`, render_when = `always`.
 
 Present the findings as the register's findings summary (**[report-register.md](report-register.md)** → Findings Summary) — the reviewer's, or, for a task resumed at **A**, the last `## Attempt` section of `.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`: the session that wrote them is gone, and the record is what the user answers the gate on.
 
 Fetch the fix gate and emit its `MENU: fix gate` section verbatim per its marker (the `a/auto` and `b/bounded` options render only while the fix gate is `gated` — a threshold-forced gate in an auto mode omits them):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render fix-gate {work_unit}.implementation.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -351,7 +351,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render fix-gate {work_uni
 #### If `auto`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode auto
 ```
 
 → Return to **B. Execute Task**.
@@ -359,7 +359,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 #### If `bounded`
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode bounded
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} fix_gate_mode bounded
 ```
 
 → Return to **B. Execute Task**.
@@ -441,7 +441,7 @@ Branch on the `task_gate_mode` carried by this task's `start` response.
 After the result summary, fetch the task gate and emit its `DISPLAY: task gate auto-approved` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
 ```
 
 The turn does not end here — the commit follows in the same turn.
@@ -453,7 +453,7 @@ The turn does not end here — the commit follows in the same turn.
 Fetch the task gate and emit its `MENU: task gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-gate {work_unit}.implementation.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -465,7 +465,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render task-gate {work_un
 **If `auto`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode auto
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode auto
 ```
 
 → Proceed to **H. Update Progress and Commit**.
@@ -473,7 +473,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 **If `bounded`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode bounded
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.implementation.{topic} task_gate_mode bounded
 ```
 
 → Proceed to **H. Update Progress and Commit**.
@@ -526,7 +526,7 @@ Confirm your reading of the comment with the person before anything acts on it, 
 
 **Record progress via the engine** — add `--phase-complete` only when `{disposition}` is `completing`, and `--skipped` when the task was skipped rather than implemented; at `boundary`, pass `--next-task '~'`:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]
+node .claude/skills/leeway-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {N} --next-task '{next_task_id or ~}' [--skipped] [--phase-complete]
 ```
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
@@ -536,25 +536,25 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 1. **The plan's task state** — the files the format's **updating.md** touched, the `storage_paths` recorded on the planning item for storage outside the work unit, and the work unit's manifest:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id}" --plan {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id}" --plan {topic}
    ```
 
 2. **The task's fix tracking**, when the task took a fix round (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id} fix rounds" --topic implementation/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id} fix rounds" --topic implementation/{topic}
    ```
 
 3. **The task's code and tests** — read the uncommitted code, across every repo in the project:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs code status
+   node .claude/skills/leeway-engine/scripts/engine.cjs code status
    ```
 
    Name, from its `files`, every file the task wrote, each single-quoted (a single quote inside a path written `'\''`); the engine validates each path, commits confined to them, and answers with `left_dirty`:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{code or test file}' … -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths '{code or test file}' … -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
    ```
 
    The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review reads task commits by this token through `engine code log`, and the task's commits alone are what it reads the task's file list from, so nothing but code and tests belongs in them. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call, each path single-quoted, carrying the same message, so `code log` selects it with the task's commit, before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.

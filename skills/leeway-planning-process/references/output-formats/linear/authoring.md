@@ -13,9 +13,9 @@ Inform the user that authoring cannot proceed without Linear MCP access. Suggest
 `{team_id}` is the project default `linear_team_id` (persisted during setup — see about.md); `{project_id}` is the plan's `external_id`; phase and task issue UUIDs are recorded in `task_map`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.linear_team_id
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.linear_team_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map
 ```
 
 ## Storage Pathspecs

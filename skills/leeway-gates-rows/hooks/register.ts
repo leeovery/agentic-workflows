@@ -4,7 +4,7 @@ import type { EngineInterface, RenderPropsOf, Register } from 'claude-code'
 import { compacted } from './compacted.ts'
 import { folderOf } from './folder.ts'
 
-const SENDER = 'workflow-gates'
+const SENDER = 'leeway-gates'
 
 const SENT = 'sent.json'
 const SPENT = 'null'
@@ -36,7 +36,7 @@ const isRows = (value: unknown): value is Rows =>
 
 async function conversationFolder($: EngineInterface): Promise<string | null> {
   return folderOf(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     await $.session.id(),
   )

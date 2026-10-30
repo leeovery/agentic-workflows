@@ -1,6 +1,6 @@
 # Prep Findings
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
@@ -41,13 +41,13 @@ Dispatch all three agents in parallel — they are independent and none writes t
 
 Split the findings across assessor and guards invocations in batches of roughly 100, each batch its own payload file and its own output path. **Relationships is never split** — it exists to see the whole set at once, and a partial view cannot find a collision.
 
-- **Agent path**: `.claude/agents/workflow-review-finding-assessor.md` — one per batch
-  1. Findings path (its batch) · 2. Code standard path: `.claude/skills/workflow-implementation-process/references/code-quality.md` · 3. Output path: `.workflows/.cache/{work_unit}/review/{topic}/assess-{n}.jsonl` · 4. Work unit and topic
+- **Agent path**: `.claude/agents/leeway-review-finding-assessor.md` — one per batch
+  1. Findings path (its batch) · 2. Code standard path: `.claude/skills/leeway-implementation-process/references/code-quality.md` · 3. Output path: `.workflows/.cache/{work_unit}/review/{topic}/assess-{n}.jsonl` · 4. Work unit and topic
 
-- **Agent path**: `.claude/agents/workflow-review-finding-guards.md` — one per batch
+- **Agent path**: `.claude/agents/leeway-review-finding-guards.md` — one per batch
   1. Findings path (its batch) · 2. Output path: `.workflows/.cache/{work_unit}/review/{topic}/guards-{n}.jsonl` · 3. Work unit and topic
 
-- **Agent path**: `.claude/agents/workflow-review-finding-relationships.md` — exactly one
+- **Agent path**: `.claude/agents/leeway-review-finding-relationships.md` — exactly one
   1. Index path: `.workflows/.cache/{work_unit}/review/{topic}/findings-index.txt` · 2. Output path: `.workflows/.cache/{work_unit}/review/{topic}/relationships.json` · 3. Work unit and topic
 
 Keep the guard inventory each guards agent returns in its status — the synthesis stage receives it, and the do-now apply works against it.
@@ -66,7 +66,7 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 
 Dispatch the synthesis agent once.
 
-- **Agent path**: `.claude/agents/workflow-review-finding-synthesis.md`
+- **Agent path**: `.claude/agents/leeway-review-finding-synthesis.md`
 
 1. **Findings path** — `.workflows/.cache/{work_unit}/review/{topic}/findings.txt`
 2. **Assessment paths** — every `assess-*.jsonl`, every `guards-*.jsonl`, and `relationships.json` in `.workflows/.cache/{work_unit}/review/{topic}/`
@@ -89,13 +89,13 @@ Read `actions.json`. It is the input to the review document and to every step th
 **Bank the out-of-scope findings.** They are decided when the review closes, which may be cycles away, and the cache does not survive that long — the manifest does. Push each `out-of-scope` action (its id, summary, kind, fails, and files) onto the durable set:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} out_of_scope '{action json}'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.review.{topic} out_of_scope '{action json}'
 ```
 
 Commit the durable dirt of verification and prep — the per-task reports, the change-set files, and the manifest — so the apply that follows starts from a clean tree and a crash from here forward loses nothing expensive:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep" --topic review/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): verification and prep" --topic review/{topic}
 ```
 
 The findings are never rewritten or deleted — the per-task reports and the change-set files stand as the record of what was raised. What prep produces is the layer above them: what survived, what merged, what was corrected, and what was discarded with its reason.

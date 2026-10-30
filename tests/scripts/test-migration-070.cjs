@@ -25,7 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/070-record-promoted-discussions.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/070-record-promoted-discussions.cjs');
 
 let dir, updates, skips;
 

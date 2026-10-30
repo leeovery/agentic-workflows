@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/047-discussion-map-to-manifest.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/047-discussion-map-to-manifest.cjs');
 
 function setup() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'migration-047-'));

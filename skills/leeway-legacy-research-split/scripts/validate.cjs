@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { stateRoot } = require('../../workflow-engine/scripts/kernel/state-root.cjs');
+const { stateRoot } = require('../../leeway-engine/scripts/kernel/state-root.cjs');
 
 // Cache-shape contract validated here:
 //

@@ -1,7 +1,7 @@
 ---
-name: workflow-help
+name: leeway-help
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
 ---
 
 # Help
@@ -10,7 +10,7 @@ Explain how the workflows work: the walk through the system, the reference cards
 
 ## Purpose in the Workflow
 
-Project-level and outside the pipeline — no work unit, no phases, no session label. Invoked from the `h/help` row on both start menus. The first-run offer is workflow-start's, and taking it is the same walk reached a different way: workflow-start loads **[walk.md](references/walk.md)** across the skill boundary, without invoking this skill.
+Project-level and outside the pipeline — no work unit, no phases, no session label. Invoked from the `h/help` row on both start menus. The first-run offer is leeway's, and taking it is the same walk reached a different way: leeway loads **[walk.md](references/walk.md)** across the skill boundary, without invoking this skill.
 
 **Stay in your lane**: explain the system, never do the work. Nothing here reads or writes a work unit, and a question about what the user should build belongs to the phase that holds it.
 
@@ -18,7 +18,7 @@ Project-level and outside the pipeline — no work unit, no phases, no session l
 
 ## Step 0: Initialisation
 
-Nothing to initialise: migrations and the knowledge base are workflow-start's, and help is no place to work, so it takes no session label. Any argument is ignored — the entry is the home.
+Nothing to initialise: migrations and the knowledge base are leeway's, and help is no place to work, so it takes no session label. Any argument is ignored — the entry is the home.
 
 → Proceed to **Step 1**.
 

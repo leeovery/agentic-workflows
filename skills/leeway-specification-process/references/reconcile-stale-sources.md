@@ -1,6 +1,6 @@
 # Reconcile Stale Sources
 
-*Reference for **[workflow-specification-process](../SKILL.md)** — loaded by [session-setup.md](session-setup.md), [spec-completion.md](spec-completion.md), and the shared reconcile advisory.*
+*Reference for **[leeway-specification-process](../SKILL.md)** — loaded by [session-setup.md](session-setup.md), [spec-completion.md](spec-completion.md), and the shared reconcile advisory.*
 
 ---
 
@@ -21,15 +21,15 @@ The revision is not final — defer: leave the row `stale` and tell the user rec
 3. Diff the two in judgment: content the revision left standing stays untouched. For each piece the revision contradicts or extends, summarize what's changing in the chat, then write the gate payload to `.workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json` with the Write tool — `{"section": "{section name}", "diff": {"context_above": […], "current": […], "proposed": […], "context_below": […]}, "full": [the full updated section's lines]}` (2 context lines each side) — and fetch the gate, emitting each section verbatim per its marker (this gate stays gated even when `construction_gate_mode` is `auto`):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
+   node .claude/skills/leeway-engine/scripts/engine.cjs render resurface-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/resurface-gate.json
    ```
 
    **STOP.** Wait for user response. On `yes`, write the clean replacement to the specification verbatim — no silent modifications; on `view full`, re-fetch with `--view full`, emit its sections verbatim per their markers, and **STOP** again for the same answers; on feedback, revise and re-present the gate.
 4. When every changed decision is reconciled, mark the source `incorporated` and commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile stale source {source-name}" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{source-name}.status incorporated
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): reconcile stale source {source-name}" --topic specification/{topic}
 ```
 
 → Return to caller.

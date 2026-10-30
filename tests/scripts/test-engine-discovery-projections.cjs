@@ -9,10 +9,10 @@ const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-discovery/scripts/gateway.cjs');
-const { discoveryMapView, discoverySynthesisView } = require('../../skills/workflow-engine/scripts/domain/projections/discovery-map.cjs');
+const { discover, format } = require('../../skills/leeway-discovery/scripts/gateway.cjs');
+const { discoveryMapView, discoverySynthesisView } = require('../../skills/leeway-engine/scripts/domain/projections/discovery-map.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-discovery/scripts/gateway.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/leeway-discovery/scripts/gateway.cjs');
 
 // Golden tests: byte-exact expected strings for the discovery-session map
 // renders. Fixtures go through real manifests in temp dirs and the adapter's

@@ -13,7 +13,7 @@ From inside a phase the park is one verb. The roadmap skill is the product sessi
 The roadmap holds what the user has decided to do, waiting under a horizon; the inbox holds what is not decided yet. Their own words usually say which, and a word can be a horizon's name, so read the map's horizons first:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
 ```
 
 #### If the words name a horizon
@@ -39,7 +39,7 @@ A label in `horizons`, or a new one in their own words — "under Next", "that's
 The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, never a shell heredoc or redirect, then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -77,7 +77,7 @@ A source is recorded only once it is on disk. Before this session's record exist
 **The confirm** — it states the item and its summary, marking a bug or a quick-fix as one, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render park-gate --name {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" [--source {source}]
+node .claude/skills/leeway-engine/scripts/engine.cjs render park-gate --name {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" [--source {source}]
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -89,7 +89,7 @@ Emit the call's MENU section verbatim per its marker.
 Park it — the verb validates, births the map and any new horizon, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
 ```
 
 Tell the user in one line what was parked and where, then note the park where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
@@ -110,10 +110,10 @@ The comment names what to change — the name, the kind, the horizon, or the sum
 
 ## D. Capture
 
-It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matching capture skill: `/workflow-log-bug` for something broken, `/workflow-log-quickfix` for a small mechanical change, `/workflow-log-idea` for anything else and whenever it is unclear. The capture skill writes the inbox file but does not commit it, so commit it now:
+It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matching capture skill: `/leeway-log-bug` for something broken, `/leeway-log-quickfix` for a small mechanical change, `/leeway-log-idea` for anything else and whenever it is unclear. The capture skill writes the inbox file but does not commit it, so commit it now:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
 ```
 
 Tell the user in one line that it is in the inbox, then note it where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing; the other phases keep none.

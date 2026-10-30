@@ -21,7 +21,7 @@ Only an epic's map rows carry `prior` — nothing to read here.
 Read the pointer:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} prior
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} prior
 ```
 
 **If the read is empty:**

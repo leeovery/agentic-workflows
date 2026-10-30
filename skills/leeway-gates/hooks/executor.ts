@@ -12,19 +12,19 @@ import type { EngineInterface, On, ToolCallResult } from 'claude-code'
 
 import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 
-const EXECUTOR = 'workflow-implementation-task-executor'
+const EXECUTOR = 'leeway-implementation-task-executor'
 
 /**
  * Whether the session announced and the engine has marked its conversation
  * as one that runs the workflows.
  */
 async function isWorkflow($: EngineInterface): Promise<boolean> {
-  if ((await $.env.get('WORKFLOWS_GATE_SURFACE')) !== '1') {
+  if ((await $.env.get('LEEWAY_GATE_SURFACE')) !== '1') {
     return false
   }
 
   const folder = folderOf(
-    await $.env.get('WORKFLOWS_CONFIG_DIR'),
+    await $.env.get('LEEWAY_CONFIG_DIR'),
     await $.env.get('HOME'),
     await $.session.id(),
   )

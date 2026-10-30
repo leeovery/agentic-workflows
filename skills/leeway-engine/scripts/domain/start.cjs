@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the workflow-start detail — the one structured object the
+// Domain ring: the leeway detail — the one structured object the
 // start overview, menu, and reasoning surfaces derive from.
 //
 // Collates every active work unit by type (with next-phase state), the inbox
@@ -200,7 +200,7 @@ function discoverInbox(cwd) {
 }
 
 /**
- * Build the full workflow-start detail for one project.
+ * Build the full leeway detail for one project.
  * @param {string} cwd
  * @returns {StartDetail}
  */

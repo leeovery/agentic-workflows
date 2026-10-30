@@ -1,6 +1,6 @@
 # Knowledge Gate
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -30,13 +30,13 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 Fetch the gate and emit its `MENU: knowledge reuse gate` section verbatim per its marker. When `system_config` names a provider, pass it — and its model when one is named:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant reuse --provider {system_config.provider} --model {system_config.model}
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant reuse --provider {system_config.provider} --model {system_config.model}
 ```
 
 When it names no provider (keyword-only), pass neither:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant reuse
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant reuse
 ```
 
 **STOP.** Wait for user response.
@@ -46,7 +46,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 Run:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --from-system
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --from-system
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `B`.
@@ -58,7 +58,7 @@ A per-project deviation never touches the system-wide configuration. Keyword-onl
 Fetch the gate and emit its `MENU: knowledge deviate gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant deviate
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant deviate
 ```
 
 **STOP.** Wait for user response.
@@ -86,7 +86,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 Fetch the gate and emit its `MENU: knowledge mode gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant mode
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant mode
 ```
 
 **STOP.** Wait for user response.
@@ -106,7 +106,7 @@ Which OpenAI embedding model?
 Run with the chosen model (`text-embedding-3-small` for "default"):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai --model {model}
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --provider openai --model {model}
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `C-openai`.
@@ -128,7 +128,7 @@ Where is the embeddings endpoint?
 Run with the collected values:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --provider openai-compatible --base-url {base_url} --model {model} --dimensions {dimensions}
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --provider openai-compatible --base-url {base_url} --model {model} --dimensions {dimensions}
 ```
 
 Keyless endpoints are fine — a key stored in the credentials file is picked up automatically.
@@ -140,7 +140,7 @@ Keyless endpoints are fine — a key stored in the credentials file is picked up
 Run:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword-only
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --keyword-only
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `keyword`.
@@ -156,7 +156,7 @@ The setup command refused or was rejected because no working API key is availabl
 Fetch the gate for the provider the setup command targeted — `system_config.provider` for origin `B`, `openai` for `C-openai`, `openai-compatible` for `C-compatible`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant retry --provider {provider}
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant retry --provider {provider}
 ```
 
 Emit its `DISPLAY: knowledge retry` section verbatim per its marker, then the signpost below, then its `MENU: knowledge retry gate` section verbatim per its marker.
@@ -190,7 +190,7 @@ Re-run the setup command whose key failure routed here — `origin` names it —
 Run:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword-only
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --keyword-only
 ```
 
 → Proceed to **G. Handle Setup Result** with origin = `keyword`.
@@ -200,7 +200,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword
 Fetch the confirmation — it names the configuration this checkout's store was built with — and emit its `DISPLAY: knowledge ready` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-ready
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-ready
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 0.6**.
@@ -222,7 +222,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-ready
 Fetch the gate and emit its `DISPLAY: knowledge wizard` and `MENU: knowledge wizard gate` sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant wizard
+node .claude/skills/leeway-engine/scripts/engine.cjs render knowledge-gate --variant wizard
 ```
 
 **STOP.** Wait for user response.
@@ -232,7 +232,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --v
 Re-run the boot check:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs boot
+node .claude/skills/leeway-engine/scripts/engine.cjs boot
 ```
 
 **If `knowledge` is `ready`:**

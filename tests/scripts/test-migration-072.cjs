@@ -28,7 +28,7 @@ const os = require('os');
 const path = require('path');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/072-roadmap-kinds-and-notes.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/072-roadmap-kinds-and-notes.cjs');
 
 let dir, updates, skips;
 

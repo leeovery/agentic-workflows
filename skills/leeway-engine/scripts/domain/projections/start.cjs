@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: workflow-start projections — the Workflow Overview display and
+// Domain ring: leeway projections — the Workflow Overview display and
 // the unified continue/start menu over one StartDetail (see ../start.cjs),
 // plus the skill's state-derived sub-views: the empty state, the inbox pickup
 // and archived lists, the working set, the manage flow, and the completed &
@@ -61,7 +61,7 @@ const SECTIONS = [
 
 /** The continue menu a work unit of `type` opens on. @param {TypeSection['type']} type */
 function continueSkill(type) {
-  return type === 'epic' ? 'workflow-continue-epic' : 'workflow-continue-linear';
+  return type === 'epic' ? 'leeway-continue-epic' : 'leeway-continue-linear';
 }
 
 // ---------------------------------------------------------------------------
@@ -109,11 +109,11 @@ function roadmapMenuRow(detail) {
   const label = detail.roadmap.active_session !== null
     ? { head: 'Resume the product session', tail: 'roadmap, in progress' }
     : 'Open the product roadmap';
-  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/workflow-roadmap open', label };
+  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/leeway-roadmap open', label };
 }
 
 /** @type {StartMenuKey} */
-const HELP_ROW = { key: 'h', word: 'help', action: 'open_help', route: '/workflow-help', label: 'How the workflows work' };
+const HELP_ROW = { key: 'h', word: 'help', action: 'open_help', route: '/leeway-help', label: 'How the workflows work' };
 
 // ---------------------------------------------------------------------------
 // Overview
@@ -213,7 +213,7 @@ function startMenu(detail) {
   /** @type {StartMenuKey[]} */
   const options = [];
   if (detail.baseline.status === 'in-progress') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: baselineResumeLabel(detail) });
   }
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);
@@ -289,15 +289,15 @@ function emptyMenu(detail) {
   /** @type {StartMenuKey[]} */
   const options = [];
   if (detail.baseline.status === 'in-progress') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: baselineResumeLabel(detail) });
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: baselineResumeLabel(detail) });
   } else if (detail.baseline.status === 'completed') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'View or expand the project baseline' });
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: 'View or expand the project baseline' });
   } else if (detail.baseline.status === 'skipped') {
     // A declined offer stays reachable here — the empty state has no manage
     // row, and this is the only surface a work-free project renders. `none`
     // and `native` stay hidden: a project that grew up on the workflows
     // never sees a baseline row.
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/workflow-baseline', label: 'Start the project baseline assessment' });
+    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: 'Start the project baseline assessment' });
   }
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);

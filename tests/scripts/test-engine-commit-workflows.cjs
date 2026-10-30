@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine commit --workflows` (workflow-engine/scripts/domain/commit.cjs):
+// `engine commit --workflows` (leeway-engine/scripts/domain/commit.cjs):
 // the whole state staged and committed on the state branch, a clean tree
 // committing nothing, and mixed scopes refused.
 //

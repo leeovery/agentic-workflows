@@ -1,6 +1,6 @@
 # Conclude the Experiment
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -17,7 +17,7 @@ Walk the user through what was measured and what the rule says it means — the 
 Record the verdict — one line, the decision rule's outcome:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs experiment conclude {work_unit} {topic} {id} --verdict "{one line}"
+node .claude/skills/leeway-engine/scripts/engine.cjs experiment conclude {work_unit} {topic} {id} --verdict "{one line}"
 ```
 
 #### If the engine refused over a live sub-experiment
@@ -37,7 +37,7 @@ Nothing was recorded — no verdict, no commit, no release to narrate. Say why i
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} concluded"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} concluded"
 ```
 
 When the conclude response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carried `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles.

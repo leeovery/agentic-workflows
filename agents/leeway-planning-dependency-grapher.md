@@ -1,6 +1,6 @@
 ---
-name: workflow-planning-dependency-grapher
-description: Analyzes authored tasks to establish internal dependencies and priorities. Invoked by workflow-planning-process skill after plan construction.
+name: leeway-planning-dependency-grapher
+description: Analyzes authored tasks to establish internal dependencies and priorities. Invoked by leeway-planning-process skill after plan construction.
 tools: Read, Glob, Grep, Edit, Bash, mcp__linear__list_issues, mcp__linear__get_issue, mcp__linear__update_issue, mcp__linear__create_issue_relation
 model: opus
 ---

@@ -1,10 +1,10 @@
 # Invoke Review Synthesizer
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
-This step dispatches a `workflow-review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposals for the approval walk.
+This step dispatches a `leeway-review-findings-synthesizer` agent to read review findings, deduplicate, group, and normalize them into proposals for the approval walk.
 
 ---
 
@@ -20,7 +20,7 @@ ls .workflows/{work_unit}/implementation/{topic}/review-report-c*.md 2>/dev/null
 
 ## Invoke the Agent
 
-**Agent path**: `.claude/agents/workflow-review-findings-synthesizer.md`
+**Agent path**: `.claude/agents/leeway-review-findings-synthesizer.md`
 
 Dispatch **one agent** via the Task tool.
 
@@ -49,13 +49,13 @@ If the agent fails (error, timeout), record the failure and report "synthesis fa
 **If `STATUS` is `tasks_proposed`**, initialise the cycle's gate state — one batched write, `gate_mode` plus one `pending` per task from `TASKS_PROPOSED`. A spec-defect-only synthesis proposes none: write `gate_mode` alone, and the approval overview initialises whatever its spec-defect settling stages.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.gate_mode=gated staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.review.{topic} staging.c{N}.gate_mode=gated staging.c{N}.tasks.1=pending … staging.c{N}.tasks.{TASKS_PROPOSED}=pending
 ```
 
 Commit the report and staging file (if created) — both sit under the implementation topic, which this session is reviewing rather than working, so the commit carries `--sweep`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — findings" --topic implementation/{topic} --sweep
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): synthesis cycle {N} — findings" --topic implementation/{topic} --sweep
 ```
 
 ---

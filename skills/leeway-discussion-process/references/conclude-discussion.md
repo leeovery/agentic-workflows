@@ -1,13 +1,13 @@
 # Conclude Discussion
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
 When the discussion session returns here (the map settled, or the user signalled conclusion), first check the topic's mailbox:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
 ```
 
 **If `count` is non-zero:**
@@ -15,17 +15,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit}
 A message is still waiting — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 
 **If `count` is `0`:**
 
-→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[closing-recap.md](../../leeway-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render conclude-gate {work_unit}.discussion.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -38,17 +38,17 @@ Emit the call's MENU section verbatim per its marker.
 2. Check for landed input once more — follow **L. Landed Input** in **[discussion-session.md](discussion-session.md)**: a landing since the close's own check is read and put to the user, and its landed branches return the conversation to the session loop — the conclusion re-enters at the next signal; every other return continues here.
 3. Mark the discussion completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} discussion {topic}
    ```
 4. Final commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}): complete {topic} discussion"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}): complete {topic} discussion"
    ```
 
    When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discussion.{topic} --verb complete --warn
+   node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discussion.{topic} --verb complete --warn
    ```
 
 5. Sweep for leavings:
@@ -57,7 +57,7 @@ Emit the call's MENU section verbatim per its marker.
    git status --porcelain -- .workflows/{work_unit}
    ```
 
-   **If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Read the `sessions` rows only — the response's deferral section is the analysis dispatch's and is not emitted here. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} --sweep -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
+   **If dirt remains under another topic's paths:** run `node .claude/skills/leeway-engine/scripts/engine.cjs presence scan {work_unit}`. Read the `sessions` rows only — the response's deferral section is the analysis dispatch's and is not emitted here. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} --sweep -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
 
    **Otherwise:** nothing to sweep — continue.
 
@@ -69,7 +69,7 @@ Emit the call's MENU section verbatim per its marker.
 > Discussion complete. The specification phase will synthesise your decisions into a formal document.
 ```
 
-Invoke `/workflow-bridge {work_unit} discussion`.
+Invoke `/leeway-bridge {work_unit} discussion`.
 
 #### If `no`
 

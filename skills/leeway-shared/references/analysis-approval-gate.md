@@ -24,7 +24,7 @@ Read the staging file (candidate content) and the gate state: `manifest get {wor
 Fetch the announcement — the pending count, or that there is nothing new to review — and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render candidate-gate {work_unit} --variant announce
+node .claude/skills/leeway-engine/scripts/engine.cjs render candidate-gate {work_unit} --variant announce
 ```
 
 #### If `K` is `0`
@@ -34,7 +34,7 @@ Nothing to review (the analysis staged nothing, every candidate was pre-resolved
 A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Clear the state — skip the call when the gate-state read found no `analysis_staging.discovery-gap-analysis` subtree (the analysis staged nothing, so there is no state to clear):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
 ```
 
 → Return to caller.
@@ -52,7 +52,7 @@ Walk the candidate blocks in staging-file order. For the next candidate the mani
 A processed gate's state is spent — approved candidates live on the map, skipped names on the dismissed list. Clear it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
 ```
 
 → Return to caller.
@@ -64,7 +64,7 @@ Set `postpone_after` = `false`; the `postpone` arm below is the only thing that 
 Write the candidate payload to `.workflows/.cache/{work_unit}/discovery/candidate.json` with the Write tool (`{"name": "…", "routing": "…", "summary": "…"}` — the block's stored fields), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render candidate-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/candidate.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render candidate-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/candidate.json
 ```
 
 Emit the response's sections verbatim per their markers. The surface reads `gate_mode` from the `analysis_staging.discovery-gap-analysis` subtree and branches for you — an `auto` mode answers with the approval line, a `gated` mode with the menu.
@@ -83,16 +83,16 @@ Emit the response's sections verbatim per their markers. The surface reads `gate
 
 **If `auto`:**
 
-Record it (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.gate_mode auto`) so subsequent candidates approve without a stop.
+Record it (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.gate_mode auto`) so subsequent candidates approve without a stop.
 
 → Proceed to **C. Write Approved Candidate**.
 
 **If `skip`:**
 
-Record the skip (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status skipped`) and add the name to the dismissed list:
+Record the skip (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status skipped`) and add the name to the dismissed list:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.discovery dismissed "{name}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.discovery dismissed "{name}"
 ```
 
 → Return to **B. Gate Each Candidate**.
@@ -111,10 +111,10 @@ Revise this block's `routing`, `summary`, or `description` in the staging file p
 
 ## C. Write Approved Candidate
 
-Record the approval (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section verbatim per its marker. Then write the discovery item from the block's stored fields, pointing at the brief **D** writes:
+Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section verbatim per its marker. Then write the discovery item from the block's stored fields, pointing at the brief **D** writes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}" --brief-path "discovery/briefs/{name}.md"
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}" --brief-path "discovery/briefs/{name}.md"
 ```
 
 #### If the response is `ok: false`
@@ -123,7 +123,7 @@ The map can change between staging and this write — a prior session's gate run
 
 **If refused as an active duplicate** (the topic landed on the map via another path since staging):
 
-Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes `gap-analysis`, extend it comma-joined. Record `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status resolved`; nothing is added to `tracker`.
+Merge provenance instead, following the already-on-map branch of the analysis's **D. Filter and Stage** — read the item's `source` and, unless it already includes `gap-analysis`, extend it comma-joined. Record `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status resolved`; nothing is added to `tracker`.
 
 The row is on the map under another path's provenance, so there is still a whole topic for the postpone to take: when `postpone_after` is `true`, load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none` and follow its instructions as written before returning.
 

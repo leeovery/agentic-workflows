@@ -22,7 +22,7 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 Render and emit its `DISPLAY: task result` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-result {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-result.json --result {result}
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-result {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-result.json --result {result}
 ```
 
 The verdict line — approved with its fix rounds, needs-changes with its attempt count and any reached escalation threshold, blocked, failed — derives from engine state; the payload above is all the session supplies.

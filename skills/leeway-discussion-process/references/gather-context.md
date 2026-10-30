@@ -23,7 +23,7 @@ Ask each question below **one at a time**. After each, stop and wait for the use
 ## A. Core Problem
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render opener {work_unit}.discussion.{topic} --variant discussion
+node .claude/skills/leeway-engine/scripts/engine.cjs render opener {work_unit}.discussion.{topic} --variant discussion
 ```
 
 Emit the call's DISPLAY section verbatim per its marker.

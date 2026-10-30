@@ -1,6 +1,6 @@
 # First-Phase Routing
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -18,7 +18,7 @@ Propose research-vs-discussion from the shaping cues, then let the user confirm 
 Write your one-line read and its reason to `.workflows/.cache/{work_unit}/discovery/first-phase.json` with the Write tool — e.g. `{"read": "The shape's clear and the open questions are trade-offs — I'd start with discussion."}` — then render the choice:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/first-phase.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/discovery/first-phase.json
 ```
 
 Emit the call's MENU section verbatim per its marker.

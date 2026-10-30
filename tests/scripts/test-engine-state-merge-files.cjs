@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Any other state file both sides changed, and how the merge reads and
-// writes them (workflow-engine/scripts/domain/state-merge-paths.cjs,
+// writes them (leeway-engine/scripts/domain/state-merge-paths.cjs,
 // domain/state-merge-blobs.cjs): text merged by place or both sides' lines
 // kept, a file that is not text kept whole beside, a file and a folder kept
 // apart; the state byte for byte whatever line endings the person's git
@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, layout, commitOnState, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pickStateMerge } = require(MERGE);

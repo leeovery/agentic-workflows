@@ -1,6 +1,6 @@
 # Complexity Check
 
-*Reference for **[workflow-scoping-process](../SKILL.md)***
+*Reference for **[leeway-scoping-process](../SKILL.md)***
 
 ---
 
@@ -27,7 +27,7 @@ Assess whether this change is genuinely quick-fix material. Evaluate against the
 Write the failing criteria to `.workflows/.cache/{work_unit}/scoping/{topic}/complexity.json` with the Write tool — `{"concerns": ["{concern}", …]}`, one line each (e.g. "Requires design decisions about the new API surface") — then render the warning:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render complexity-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/complexity.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render complexity-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/complexity.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.
@@ -43,14 +43,14 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 Update the work type in the work-unit manifest and the project registry:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type feature
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type feature
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit} work_type feature
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type feature
 ```
 
 Commit both manifests:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
 ```
 
 → Proceed to **C. First Phase**.
@@ -60,14 +60,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "wo
 Update the work type in the work-unit manifest and the project registry:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit} work_type bugfix
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type bugfix
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit} work_type bugfix
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.work_units.{work_unit}.work_type bugfix
 ```
 
 Commit both manifests:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to bugfix"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to bugfix"
 ```
 
 Set `next_phase` = `investigation`.
@@ -84,7 +84,7 @@ Propose research-vs-discussion — the concerns that triggered promotion are the
 Write your one-line read and its reason to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool — e.g. `{"read": "The concern is an open unknown — I'd start with research."}` — then render the choice:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -105,4 +105,4 @@ The promoted work unit re-enters the pipeline the way discovery hands off single
 > Work type updated — handing the work to its first phase.
 ```
 
-Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.
+Invoke `/leeway-bridge {work_unit} discovery {next_phase}` via the Skill tool.

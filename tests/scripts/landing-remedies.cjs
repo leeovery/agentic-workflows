@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The remedy table of the local landing driver (workflow-engine/scripts/
+// The remedy table of the local landing driver (leeway-engine/scripts/
 // drivers/landing/local/driver.cjs, with landing-git.cjs's remedies): one
 // row per state of the repository a `land` verb refuses, each giving the
 // verb, its refusal word for word, how its remedy is taken where that is

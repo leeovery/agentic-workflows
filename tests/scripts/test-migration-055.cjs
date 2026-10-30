@@ -20,7 +20,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/055-corrigenda-to-section.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/055-corrigenda-to-section.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-055-'));

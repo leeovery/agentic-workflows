@@ -1,6 +1,6 @@
 # Discussion Session
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -12,9 +12,9 @@ Two types of background agent operate during the discussion, and two protocol fi
 
 → Load **[perspective-agents.md](perspective-agents.md)** and follow its instructions as written.
 
-→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
-→ Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discussion/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
+→ Load **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discussion/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
 ---
 
@@ -24,7 +24,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 1. **Check for findings** — anything waiting is surfaced before the conversation moves on. Each check below reads fresh every iteration — an answer from an earlier read, resume detection's included, is not this iteration's.
 
-   Check the mailbox first: follow **A. Check** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
+   Check the mailbox first: follow **A. Check** in **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
    Then check for landed input: follow **L. Landed Input**. Its landed branches end the turn on what they read — the agent checks below wait for a later iteration.
 
@@ -37,17 +37,17 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
    **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the wait for agents still running as the session leaves — at the closing gates or the wait gate's pause — and the walk of what came back, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened, or one with nothing on it, ends it at **H. The Map Gate**. Nothing else ends it.
-2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new questions are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
+2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../leeway-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new questions are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
+   node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A point that doesn't belong under this topic is not a subtopic — take it through **F. Off-Topic Points**. A point the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no message; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. A topic the user calls off is none of these — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
+   A point that doesn't belong under this topic is not a subtopic — take it through **F. Off-Topic Points**. A point the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no message; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)**. A topic the user calls off is none of these — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
+   node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
    ```
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Route on it: `all_decided: true` is the map settling — finish this iteration's document and commit (steps 4–5), then follow **G. Concluding**. Otherwise guide the user to what's still open (**D. Navigation**) — don't force transitions, suggest them; the user can follow your suggestion or go wherever they want.
@@ -55,13 +55,13 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
    ```
 
    Then immediately evaluate agent dispatch — **CHECKPOINT**: Do not respond to the user until this check is complete. Evaluate the trigger conditions defined in the review agent and perspective agent instructions loaded above. If conditions are met, dispatch before continuing. If not, proceed.
 6. **Repeat** — Continue with the next subtopic or follow where the conversation leads.
 
-**A request to see or revisit what's been ruled out** — *"what have I ruled out?"* — reads the topic's dismissed grounds back (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds`); an entry the user wants back in play comes off with `manifest pull` on the same field, and later reviews stop carrying it.
+**A request to see or revisit what's been ruled out** — *"what have I ruled out?"* — reads the topic's dismissed grounds back (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds`); an entry the user wants back in play comes off with `manifest pull` on the same field, and later reviews stop carrying it.
 
 ---
 
@@ -120,7 +120,7 @@ If a subtopic was partially explored and the conversation moved on, remember it 
 At natural breaks — after a decision, when transitioning between subtopics, or when the user asks — render the current Discussion Map. This gives the user visibility into where the discussion stands.
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
+node .claude/skills/leeway-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 The output is one snapshot in two demarcated sections:
@@ -139,12 +139,12 @@ During organic discussion a point may surface that doesn't belong under the curr
 When a point reads as off-topic, hold it with the full context discussed about it, and resolve the work type deterministically:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If `work_type` is `epic`
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, point = `{the point, with its discussed context}`, reason = `off-topic`.
+→ Load **[off-topic-epic.md](../../leeway-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, point = `{the point, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 
@@ -160,7 +160,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 One ceremony, two ways in — enter when either, or both at once, holds:
 
-- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a mailbox fold (**D. Fold** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A waiting message meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
+- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a mailbox fold (**D. Fold** in **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A waiting message meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
 Every entry runs the ceremony from here — a re-entry included, however recently it last ran: the calls flush, the landed-input check, the wait gate, the map gate, then the closing gates, none skipped. A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and the ceremony resumes once `pulled` drains — the session loop's check re-enters here. An unlanded call is undocumented knowledge.
@@ -170,7 +170,7 @@ Landed input is read next — follow **L. Landed Input**: a landing between the 
 The topic's waits gate the ceremony next, before anything is deferred — a point blocked on a wait is never written `deferred` by the sweep below, because deferral is a choice and this point is blocked pending input. Fetch the gate (empty when nothing is owed; the engine would refuse the completion anyway):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render wait-gate {work_unit}.discussion.{topic}
 ```
 
 #### If sections are returned
@@ -200,7 +200,7 @@ Nothing blocks the ceremony.
 Run the map call:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
+node .claude/skills/leeway-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted. First match wins.
@@ -228,7 +228,7 @@ Nothing is on the map yet — no subtopic has been recorded, so there is nothing
 Fetch the defer gate — the map, then the consent to set aside what it still holds undecided:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render defer-gate {work_unit}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render defer-gate {work_unit}.discussion.{topic}
 ```
 
 Emit its sections verbatim per their markers.
@@ -240,7 +240,7 @@ Emit its sections verbatim per their markers.
 Defer every `unresolved` subtopic in one write — the batch form takes uniform pairs:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic}=deferred [{subtopic}=deferred …]
+node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic}=deferred [{subtopic}=deferred …]
 ```
 
 Note them in the Summary → Open Threads section of the discussion file, then commit with a `(deferral)` marker in the subject — `discussion({work_unit}/{topic}): note deferred threads (deferral)`. The marker tells the classifier in **[closing-gates.md](closing-gates.md)** that this write is the conclusion's own bookkeeping, not movement it should weigh.
@@ -263,7 +263,7 @@ The map moved since the close opened — ground an interruption re-opened, or a 
 
 ## I. Settled Calls
 
-The conversation's own derivable decisions — points **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks (**J. Flush the Calls Queue**): never one-by-one asks, never silent writes.
+The conversation's own derivable decisions — points **[ask-or-decide.md](../../leeway-shared/references/ask-or-decide.md)** puts on your side — accumulate in a queue and land through a batch screen at natural breaks (**J. Flush the Calls Queue**): never one-by-one asks, never silent writes.
 
 The moment a call is made, add it to the `items` of `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` (Write tool; the file is `{"items": […], "pulled": […]}` — create it with the new entry when absent, and always write the whole file back). An entry's `title` states the call as a decision; `detail` is one or two sentences naming the problem and what determined it. The file is the queue's only home — conversation memory does not survive compaction — and it is durable: commits are the record of what landed, the file holds only what hasn't. Then continue the thread. From **G. Concluding** onward, queue nothing — a call made during the closing ceremony is documented as part of the engagement that produced it.
 
@@ -300,7 +300,7 @@ The screens have landed; each pulled call is owed its raise — one per turn. Ra
 Write the first five of `items` as the screen payload with the Write tool — `{"lane": "decide", "items": […], "remaining": N}`, the queued entries as written, `remaining` counting those beyond the screen — to `.workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json`, then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/calls-batch.json
 ```
 
 Emit the call's DISPLAY and MENU sections, each verbatim per its marker — except on a re-entry after an answered question that changed nothing, where the list on screen is still current: emit the MENU section alone. A re-entry whose screen did change (a pull left survivors) rewrites the payload and re-renders both sections, renumbered.
@@ -339,7 +339,7 @@ Nothing lands; the queue survives on disk. Follow them — the next natural brea
 
 When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
 
-→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+→ Load **[experiment-spawn.md](../../leeway-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
 
 → On return, proceed as the reference directed.
 
@@ -350,7 +350,7 @@ When a number is about to bear a decision — a controlled measurement would set
 Entered from the session loop's check and from **G. Concluding**. Research this discussion stands on, or evidence it awaited, may have landed since the last check — the engine flags the item when its upstream moves, and refuses the completion while the flag stands. Read it (empty when nothing moved):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} reconcile_needed
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} reconcile_needed
 ```
 
 #### If output is `research`
@@ -358,7 +358,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 The topic's research moved beneath this discussion. Whether it has landed decides what happens here — read its status:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
 **If `in-progress` or `unstarted`:**
@@ -369,7 +369,7 @@ Research still outstanding is the wait gate's business at the close — the flag
 
 **If `completed`:**
 
-→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
+→ Load **[reconcile-advisory.md](../../leeway-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 **If the advisory read the research in:** put what it re-examines to the user now — the decisions it bears on, what it now owes — and nothing on the map moves until they answer. The advisory's flag delete rides the next cadence commit.
 
@@ -383,7 +383,7 @@ Research still outstanding is the wait gate's business at the close — the flag
 
 **Otherwise (`cancelled`, `superseded`, or no research item — the lineage closed with nothing landed):**
 
-→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
+→ Load **[reconcile-advisory.md](../../leeway-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 Its closed-lineage callout is the whole of what reaches the user, and its flag delete rides the next cadence commit.
 
@@ -393,7 +393,7 @@ Its closed-lineage callout is the whole of what reaches the user, and its flag d
 
 An evidence wait released — the flag is the whole signal.
 
-→ Load **[reconcile-advisory.md](../../workflow-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
+→ Load **[reconcile-advisory.md](../../leeway-shared/references/reconcile-advisory.md)** with downstream_phase = `discussion`.
 
 Put what the read weighs to the user now — each verdict as evidence, the waiting point it settles or reopens. The advisory's flag delete rides the next cadence commit.
 
@@ -413,7 +413,7 @@ Nothing landed. No output.
 
 Entered from the wait gate's `yes` in **G. Concluding**.
 
-→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `pause`.
+→ Load **[in-flight-agents.md](../../leeway-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `pause`.
 
 #### If `result` is `stay`
 
@@ -426,7 +426,7 @@ The ceremony stays open: once what came back is walked, the session loop's check
 Commit any uncommitted session work with the session's cadence commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
 ```
 
 Then invoke the pipeline bridge as a pause — what this discussion waits on is entered first, and its own door stays shut until it lands:
@@ -437,4 +437,4 @@ Then invoke the pipeline bridge as a pause — what this discussion waits on is 
 > Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed, and this discussion concludes once every wait releases.
 ```
 
-Invoke `/workflow-bridge {work_unit} discussion none paused`.
+Invoke `/leeway-bridge {work_unit} discussion none paused`.

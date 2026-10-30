@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const migration = require('../../skills/workflow-migrate/scripts/migrations/051-frontmatter-state-to-stores.cjs');
+const migration = require('../../skills/leeway-migrate/scripts/migrations/051-frontmatter-state-to-stores.cjs');
 
 let dir, updates, skips;
 const hooks = () => ({ projectDir: dir, reportUpdate: () => updates++, reportSkip: () => skips++ });

@@ -3,9 +3,9 @@
 
 const path = require('path');
 
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 const { loadManifest } = engine.reads;
-const { legacySources } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'legacy-split.cjs'));
+const { legacySources } = require(path.resolve(__dirname, '..', '..', 'leeway-engine', 'scripts', 'domain', 'legacy-split.cjs'));
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);

@@ -1,6 +1,6 @@
 # Select the Record
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -45,13 +45,13 @@ Every row is terminal — the series is finished.
 Render the register and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
 ```
 
 Fetch the picker and emit its MENU section verbatim per its marker, directly beneath the register:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-pick {work_unit}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-pick {work_unit}.experiment.{topic}
 ```
 
 **STOP.** Wait for user response.
@@ -91,7 +91,7 @@ Branch on `{record_status}` — no re-read. The note is the record's one announc
 A fresh record — the spawn conceived it and no laboratory session has run. Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Starting --noun {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Starting --noun {id}
 ```
 
 → Return to caller.
@@ -101,7 +101,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_u
 A record in flight (`designed`, `approved`, or `running`). Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming --noun {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming --noun {id}
 ```
 
 → Return to caller.

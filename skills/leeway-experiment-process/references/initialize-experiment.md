@@ -1,6 +1,6 @@
 # Initialize the Experiment
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -29,9 +29,9 @@ The provenance names the phase and topic the question came from. That document i
 
 Then the linked inputs:
 
-→ Load **[seed-context.md](../../workflow-shared/references/seed-context.md)** and follow its instructions as written.
+→ Load **[seed-context.md](../../leeway-shared/references/seed-context.md)** and follow its instructions as written.
 
-→ Load **[read-brief-context.md](../../workflow-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[read-brief-context.md](../../leeway-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 **If the provenance names `discussion` and the topic's research is completed** (read `{work_unit}.research.{topic} status` via `engine manifest get`): read `.workflows/{work_unit}/research/{topic}.md` in full — its sightings are the hunches this experiment turns into dependable numbers, never evidence in their own right.
 

@@ -1,6 +1,6 @@
 ---
-name: workflow-discussion-review
-description: Periodically reviews a discussion file for gaps, shallow coverage, and missing edge cases. Invoked in the background by workflow-discussion-process skill during the session loop.
+name: leeway-discussion-review
+description: Periodically reviews a discussion file for gaps, shallow coverage, and missing edge cases. Invoked in the background by leeway-discussion-process skill during the session loop.
 tools: Read, Write, Bash
 model: opus
 ---

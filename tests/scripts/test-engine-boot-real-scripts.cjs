@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot through the repo's real scripts (workflow-engine/scripts/domain/boot.cjs
-// with workflow-migrate/scripts/migrate.cjs and the knowledge base): the
+// Boot through the repo's real scripts (leeway-engine/scripts/domain/boot.cjs
+// with leeway-migrate/scripts/migrate.cjs and the knowledge base): the
 // real migrations and index against an isolated project, a migration's
 // checks handed back, and its notices told once.
 //
@@ -24,7 +24,7 @@ const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrate.cjs'));
+const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrate.cjs'));
 const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot (real scripts)', () => {
@@ -52,7 +52,7 @@ describe('engine boot (real scripts)', () => {
     // The code-tree fleet has no `.workflows/` to upgrade: every one is
     // recorded unrun, none creates the folder, and the settings stay as found;
     // the migrations past it run and find nothing to do.
-    const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrations'))
+    const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrations'))
       .map((f) => (f.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
     assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION).length);
     assert.deepStrictEqual(fs.readFileSync(statePath(project, layout.migrations), 'utf8').trim().split('\n').sort(), fleet);

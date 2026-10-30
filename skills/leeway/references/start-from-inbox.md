@@ -1,6 +1,6 @@
 # Start from Inbox
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Triage the inbox — start items now, put them on the roadmap, or archive them �
 Render the inbox pickup snapshot — re-run on every entry so archive and unarchive changes are reflected:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs inbox
+node .claude/skills/leeway/scripts/gateway.cjs inbox
 ```
 
 The output is one snapshot in demarcated sections:

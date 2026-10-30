@@ -1,6 +1,6 @@
 # Summary Backfill
 
-*Reference for **[workflow-continue-epic](../SKILL.md)***
+*Reference for **[leeway-continue-epic](../SKILL.md)***
 
 ---
 
@@ -49,7 +49,7 @@ Write the drafted summaries to `.workflows/.cache/{work_unit}/discovery/summarie
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch --file .workflows/.cache/{work_unit}/discovery/summaries.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch --file .workflows/.cache/{work_unit}/discovery/summaries.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.
@@ -99,7 +99,7 @@ The number counts the batch display's rows. Ask for that row's new summary — s
 Set `item.derived_summary` and the item's entry in `summaries.json` to the user's response, and where `item.needs_description` is true and `item.derived_description` is null, set `item.derived_description` to a description drawn from it. Then fetch the batch display alone and emit its DISPLAY section verbatim per its marker — the prompt at the top of this section takes the next answer:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant proposed --file .workflows/.cache/{work_unit}/discovery/summaries.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant proposed --file .workflows/.cache/{work_unit}/discovery/summaries.json
 ```
 
 → Return to **C. Edit Loop**.
@@ -109,7 +109,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-g
 **If any item's needed field is still null** (source file missing, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever. Write the names to `.workflows/.cache/{work_unit}/discovery/unsourced.json` with the Write tool (`{"names": ["{item.name}", …]}` — every item whose derived field is still null), then render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant unsourced --file .workflows/.cache/{work_unit}/discovery/unsourced.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant unsourced --file .workflows/.cache/{work_unit}/discovery/unsourced.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -131,13 +131,13 @@ Write the batch to `.workflows/.cache/{work_unit}/discovery/backfill-ops.json` w
 Persist every item in one atomic call — a failing entry means nothing was written. Skip the call when no item produced a write (every candidate null and left, or dismissed to `leave`):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/backfill-ops.json
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/backfill-ops.json
 ```
 
 Single commit covering all writes:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery summary field(s)" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): backfill {N} discovery summary field(s)" --discovery
 ```
 
 → Return to caller.

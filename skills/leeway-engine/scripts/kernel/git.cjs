@@ -36,9 +36,9 @@ const { sleepSync } = require('./process.cjs');
 const INDEX_RETRY_MS = 100;
 const INDEX_BUDGET_MS = 5000;
 
-// Test hook: WORKFLOWS_GIT_LOCK_BUDGET_MS overrides the retry budget.
+// Test hook: LEEWAY_GIT_LOCK_BUDGET_MS overrides the retry budget.
 function indexBudgetMs() {
-  const env = Number(process.env.WORKFLOWS_GIT_LOCK_BUDGET_MS);
+  const env = Number(process.env.LEEWAY_GIT_LOCK_BUDGET_MS);
   return Number.isFinite(env) && env > 0 ? env : INDEX_BUDGET_MS;
 }
 

@@ -1,6 +1,6 @@
 ---
-name: workflow-review-fix-verifier
-description: Verifies the uncommitted do-now corrections as one body of work — reads the complete diff, repairs damage and normalises artefacts of piecemeal editing, runs the suite, and never commits. Invoked by workflow-review-process after the appliers finish.
+name: leeway-review-fix-verifier
+description: Verifies the uncommitted do-now corrections as one body of work — reads the complete diff, repairs damage and normalises artefacts of piecemeal editing, runs the suite, and never commits. Invoked by leeway-review-process after the appliers finish.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 ---
@@ -18,8 +18,8 @@ A batch of small corrections has just been applied to the working tree, uncommit
 The working tree itself is your real input: read every uncommitted change, across every repo in the project.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code status
-node .claude/skills/workflow-engine/scripts/engine.cjs code diff
+node .claude/skills/leeway-engine/scripts/engine.cjs code status
+node .claude/skills/leeway-engine/scripts/engine.cjs code diff
 ```
 
 The diff is the truth — the action list is only what was intended. A revert, wherever this file asks for one, edits the change back to the lines the diff shows it replaced, deletes a file the diff shows added, and restores a file the diff shows deleted from the lines it shows removed — never through git.

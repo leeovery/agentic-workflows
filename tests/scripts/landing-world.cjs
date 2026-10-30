@@ -39,9 +39,9 @@ const {
   ok, git, statePath, layout, readState, writeState, commitAll, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
-const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
-const names = require('../../skills/workflow-engine/scripts/domain/landing-names.cjs');
+const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'pay';
 const BASE = 'landing-base';
@@ -50,7 +50,7 @@ const IDENTITY = 'Test <test@example.com>';
 // The phases the world writes into the tracker, before any task of them.
 const PHASES = 5;
 // The tracker a project has unless it names another: the default task driver, its real tool.
-const TRACKER = /** @type {import('../../skills/workflow-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
+const TRACKER = /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
   listDrivers('task').filter((driver) => driver.isDefault)[0]
 );
 

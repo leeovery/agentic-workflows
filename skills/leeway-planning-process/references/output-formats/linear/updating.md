@@ -22,7 +22,7 @@ list_issue_statuses(teamId: "{team_id}")
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.linear_team_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.linear_team_id
 ```
 
 ## Updating Task Content

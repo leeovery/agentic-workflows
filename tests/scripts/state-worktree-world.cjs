@@ -13,7 +13,7 @@ require('./hermetic-env.cjs');
 const path = require('path');
 const { git, initRepo, createFile, tip } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { WRITER_LOCK_TIMEOUT_MS } = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+const { WRITER_LOCK_TIMEOUT_MS } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 
 // Past twice the writer lock's wait, a child of these suites still running
 // has hung: it is killed, and its test fails.

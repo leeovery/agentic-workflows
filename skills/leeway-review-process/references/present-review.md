@@ -1,12 +1,12 @@
 # Present Review
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
 ## A. Build the Presentation
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written.
+→ Load **[product-lens.md](../../leeway-shared/references/product-lens.md)** and follow its instructions as written.
 
 By this point the do-now corrections are applied, verified and committed; what remains is the verdict and whatever needs the user. Build the payload from `actions.json` and the apply outcome — on a resume where the cache is gone, rebuild it from the report at `.workflows/{work_unit}/review/{topic}/report.md`, whose sections carry the same content.
 
@@ -37,7 +37,7 @@ Any arrival but the first re-runs the gate fetch below alone — the verdict and
 Render and emit every section verbatim per its marker — the title, the verdict, and the findings:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-presentation {work_unit}.review.{topic} --file .workflows/.cache/{work_unit}/review/{topic}/presentation.json
 ```
 
 Then render the review summary as markdown (not a code block), one paragraph — a product-lens narrative: what was reviewed, where it stands, and what the outcome means for the product.
@@ -45,7 +45,7 @@ Then render the review summary as markdown (not a code block), one paragraph —
 A pass closes the review, so findings banked outside this spec are decided here — before the gate, never as an option on it. A fail decides nothing: its findings carry to the next cycle. On a pass, read whether anything is banked:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} out_of_scope
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.review.{topic} out_of_scope
 ```
 
 Where it reads `true`, load **[decide-out-of-scope.md](decide-out-of-scope.md)** and follow its instructions as written before the gate.
@@ -53,7 +53,7 @@ Where it reads `true`, load **[decide-out-of-scope.md](decide-out-of-scope.md)**
 Render the gate — `--replan` with the count on a fail:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-gate {work_unit}.review.{topic} --verdict {pass|fail} [--replan {N}]
+node .claude/skills/leeway-engine/scripts/engine.cjs render review-gate {work_unit}.review.{topic} --verdict {pass|fail} [--replan {N}]
 ```
 
 Emit the call's MENU section verbatim per its marker.

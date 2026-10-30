@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
-const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
-const { moveFiles } = require('../../skills/workflow-engine/scripts/domain/inbox.cjs');
+const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { moveFiles } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
 
@@ -1123,7 +1123,7 @@ describe('unstarted guards across the other verbs', () => {
 });
 
 describe('pipeline completion banner matrix', () => {
-  const { workunitReceipt } = require('../../skills/workflow-engine/scripts/domain/projections/transactions.cjs');
+  const { workunitReceipt } = require('../../skills/leeway-engine/scripts/domain/projections/transactions.cjs');
   const banner = (wt, opts) => workunitReceipt('complete', 'pay-x', wt, { pipeline: true, ...opts });
 
   it('every work-type label and both body variants render', () => {
@@ -2434,7 +2434,7 @@ describe('the knowledge store never rides an engine commit', () => {
 });
 
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
-  const { VALID_PHASE_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+  const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
   it('discovery is not a lifecycle phase — start/send/complete/reopen refuse it; cancel addresses the unit', () => {
     const dir = setupGitFixture();
@@ -2458,7 +2458,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
   it('the enforcement table IS the kernel schema (shared module, no mirror)', () => {
     assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, []);  // map items carry no status — empty vocabulary refuses every write
     const src = fs.readFileSync(
-      path.join(__dirname, '../../skills/workflow-engine/scripts/domain/transitions.cjs'), 'utf8');
+      path.join(__dirname, '../../skills/leeway-engine/scripts/domain/transitions.cjs'), 'utf8');
     assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'transitions must require the shared schema, not mirror it');
     assert.ok(!/VALID_PHASE_STATUSES\s*=\s*{/.test(src), 'no local copy of the status table');

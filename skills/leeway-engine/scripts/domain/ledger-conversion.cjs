@@ -6,7 +6,7 @@
 // writing a converted copy of the whole stream, and this is its one door.
 // Only a migration passes it: the door refuses any caller but a migration's
 // own file, a numbered `.cjs` in a `migrations` folder as the runner finds
-// them (workflow-migrate), so no verb reaches it.
+// them (leeway-migrate), so no verb reaches it.
 //
 // Lines an earlier write left uncommitted are committed first, so every
 // line the conversion rewrites is in git as it was written — where each is

@@ -18,7 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/065-remove-project-function-hooks-flag.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/065-remove-project-function-hooks-flag.cjs');
 
 const FLAG = 'CLAUDE_CODE_ENABLE_FUNCTION_HOOKS';
 const HOOKS = { SessionEnd: [{ hooks: [{ type: 'command', command: 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup' }] }] };

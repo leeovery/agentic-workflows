@@ -6,12 +6,12 @@
 
 Read `{file}`.
 
-**If `artifact` is `research`, `discussion`, or `investigation`**, read the topic's mailbox — `node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} {artifact} {topic}`. When `count` is non-zero, the entries are messages other topics sent here — their origin sessions recorded them as sent. Restart preserves the mailbox (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--mail {N}` below. Omit the flag when the count is zero or the artifact has no mailbox.
+**If `artifact` is `research`, `discussion`, or `investigation`**, read the topic's mailbox — `node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {artifact} {topic}`. When `count` is non-zero, the entries are messages other topics sent here — their origin sessions recorded them as sent. Restart preserves the mailbox (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--mail {N}` below. Omit the flag when the count is zero or the artifact has no mailbox.
 
 Render the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.{artifact}.{topic} [--mail {N}]
+node .claude/skills/leeway-engine/scripts/engine.cjs render resume-gate {work_unit}.{artifact}.{topic} [--mail {N}]
 ```
 
 Emit each returned section verbatim per its marker — the mail warning (when present) directly above the menu.
@@ -29,7 +29,7 @@ Emit each returned section verbatim per its marker — the mail warning (when pr
 3. Commit the deletions and the reset on the topic's own scope:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {artifact}/{topic} -m "{commit}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic {artifact}/{topic} -m "{commit}"
    ```
 
 → Return to caller for **Step 1**.

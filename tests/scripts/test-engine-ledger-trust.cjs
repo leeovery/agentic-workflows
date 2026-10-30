@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The ledger's write verbs telling the trust log
-// (workflow-engine/scripts/domain/ledger-write.cjs, the departure rule in
+// (leeway-engine/scripts/domain/ledger-write.cjs, the departure rule in
 // domain/ledger-verdicts.cjs, the log in domain/trust-log.cjs): the event
 // built and kept in the conversation before the ledger's append, so a
 // project manifest holding no project_id refuses the write whole, and
@@ -34,7 +34,7 @@ const path = require('path');
 const { NO_SPACE, head, stateGit, statePath, killedAt, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { TRUST_LOG, PENDING, trustLogPath, appendWaiting, readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -52,12 +52,12 @@ let pinned;
 
 beforeEach(() => {
   dir = ledgerWorld('ledger-trust-', WRITE_PHASES);
-  pinned = process.env.WORKFLOWS_CONFIG_DIR;
-  process.env.WORKFLOWS_CONFIG_DIR = config();
+  pinned = process.env.LEEWAY_CONFIG_DIR;
+  process.env.LEEWAY_CONFIG_DIR = config();
 });
 
 afterEach(() => {
-  process.env.WORKFLOWS_CONFIG_DIR = pinned;
+  process.env.LEEWAY_CONFIG_DIR = pinned;
   cleanupFixture(dir);
 });
 

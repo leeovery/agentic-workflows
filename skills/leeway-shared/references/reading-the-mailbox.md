@@ -1,6 +1,6 @@
 # Reading the Mailbox
 
-*Shared reference. Loaded by the session wrappers of `workflow-discussion-process` and `workflow-research-process` (whose session loops enter **A. Check** from their mailbox check each iteration) and by `workflow-investigation-process` at its resumed-session check and conclusion gate.*
+*Shared reference. Loaded by the session wrappers of `leeway-discussion-process` and `leeway-research-process` (whose session loops enter **A. Check** from their mailbox check each iteration) and by `leeway-investigation-process` at its resumed-session check and conclusion gate.*
 
 ---
 
@@ -19,7 +19,7 @@ The caller provides these via context before loading:
 List the topic's mailbox — a fresh read at every consult, never a count carried from resume detection or an earlier iteration; a peer session may have sent a message since:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {phase} {topic}
 ```
 
 Route on the response and the session's state — first match wins.
@@ -55,7 +55,7 @@ Waiting messages may bear on the ground the session is about to build on: the of
 The topic has no conversational ground yet, and an agenda of other topics' messages would seed the session away from its own material. Announce without offering — one line, count only, no titles:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-announce {work_unit}.{phase}.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-announce {work_unit}.{phase}.{topic}
 ```
 
 Emit its `DISPLAY: mail announce` section verbatim per its marker, then open the session from its own material. The first offer waits for a genuine break in the session's own thread — or the user asking for the mailbox; the natural-breaks checklist's just-opened signal never satisfies this deferral.
@@ -93,7 +93,7 @@ Read the first two lines only of each mailbox file — the `### {title}` heading
 Render the offer:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/mail-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/mail-offer.json
 ```
 
 **If the response is `ok: false`** — the mailbox moved beneath the payload (a peer session sent a message): re-run **A. Check**'s mailbox command, rebuild the payload over the fresh mailbox, and render again.
@@ -121,7 +121,7 @@ Take the lowest-numbered message still waiting — or whichever the user asks fo
 **If the entry's ask is owed the topic's other phase-side** — `phase` is `research` or `discussion`, and the ask calls for what the pair's other phase does: a decision owed, or a correction to material the other side's document records, while this session explores; an open question needing exploration while this session decides — offer to forward it before any raise, once per message (a declined or refused offer never re-renders). Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/forward-offer.json` with the Write tool — `{"file": "{NNN-slug}.md", "title": "…", "reason": "…"}`, the reason one sentence naming why the ask belongs the other side — then render:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render forward-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/forward-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render forward-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/forward-offer.json
 ```
 
 Emit its `MENU: forward offer` section verbatim per its marker.
@@ -139,7 +139,7 @@ The ask is worked here after all. Continue with the raise below.
 **If `phase` is `discussion`, arm the Discussion Map before raising** — the map tells the truth while the message is live, and routing a correction needs the body just read. Read the subtopic states:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} subtopics
 ```
 
 Route on the ground the message reopens — the subtopic its title names (`{title:(kebabcase)}`), or, when its title names no subtopic, the subtopic whose recorded content its ask would rewrite: an ask that corrects or re-decides what a block records routes to that block. An ask that only stands near a recorded decision — whether something more is owed, whether the decision already covers it, what follows from it — rewrites nothing and is new ground of its own, however much its answer leans on that decision. Note the prior state for the fold; `{subtopic}` is the routed ground's name:
@@ -147,14 +147,14 @@ Route on the ground the message reopens — the subtopic its title names (`{titl
 - Not on the map — new ground. Add it, then arm it:
 
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
+  node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {title:(kebabcase)}
+  node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
   ```
 
 - `decided` or `deferred` — settled ground is reopening — or `pending` — open ground coming under discussion. Arm it:
 
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
+  node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} exploring
   ```
 
 - `exploring` or `converging` — already live. Leave it.
@@ -202,7 +202,7 @@ Then set the map state — the fold corrects the record, it never advances the s
 - **The session's own open ground** (was `pending`, `exploring`, or `converging` before any raise of this message): leave it where the arming put it — never `decided` from a fold, however settled the exchange felt. Deciding the session's ground is its own work after the mailbox empties.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
+node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}
 ```
 
 → Proceed to **E. Absorb**.
@@ -213,12 +213,12 @@ Fold the message into the freeform body as a `### {title}` section opening with 
 
 - **The fold holds the answer** — enter it and mark it learned:
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the message's question}" --origin "{origin}"
-  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {title:(kebabcase)} learned
+  node .claude/skills/leeway-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the message's question}" --origin "{origin}"
+  node .claude/skills/leeway-engine/scripts/engine.cjs research-threads set {work_unit} {topic} {title:(kebabcase)} learned
   ```
 - **Research is still owed** — enter it and leave it open:
   ```bash
-  node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the message's question}" --origin "{origin}"
+  node .claude/skills/leeway-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {title:(kebabcase)} --question "{the message's question}" --origin "{origin}"
   ```
 - **The slug is already on the register** — nothing enters twice; `research-threads set {work_unit} {topic} {title:(kebabcase)} learned` when the fold holds the answer, otherwise leave it as it stands.
 
@@ -235,7 +235,7 @@ Fold the message into the investigation file in its own idiom: revise the passag
 Absorb the message — one engine transaction deletes its mailbox file and commits the fold action-scoped under its name, bracketing the message's life in history with the send commit that delivered it. A discussion absorb also names the message's ground — `--subtopic {subtopic}`, the subtopic the raise armed: the engine settles it into the review anchor, so the fold never counts toward review arming and a sitting that only drained the mailbox arms no review (its review duty belongs to the concluding flow). Omit the flag for the other phases. The response answers `remaining` — route on it; never recap the absorbed message on either branch:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md [--subtopic {subtopic}] -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md [--subtopic {subtopic}] -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
 #### If `remaining` is non-zero
@@ -269,7 +269,7 @@ The map settled on that fold — the closing gates are the offer.
 Set `other_phase` to the pair's other phase (`research` ↔ `discussion`). One engine transaction owns the forward: it renumbers the file into the other phase's mailbox, parks or reopens that side's item exactly as a send would, and commits action-scoped:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic forward {work_unit} {phase} {other_phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): forward {NNN-slug} to {other_phase}"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic forward {work_unit} {phase} {other_phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): forward {NNN-slug} to {other_phase}"
 ```
 
 #### If the response is `ok: false`

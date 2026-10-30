@@ -1,6 +1,6 @@
 # Document Review
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[leeway-roadmap](../SKILL.md)***
 
 ---
 
@@ -51,7 +51,7 @@ Read `.workflows/.roadmap/sessions/session-{session_number}.md` in full — don'
 Apply corrections directly to the file, then commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "docs(roadmap): reconcile session log with conversation"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --roadmap -m "docs(roadmap): reconcile session log with conversation"
 ```
 
 → Proceed to **C. Brief the User**.

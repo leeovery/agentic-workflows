@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state commit held to the layout (workflow-engine/scripts/domain/
+// The state commit held to the layout (leeway-engine/scripts/domain/
 // state-worktree.cjs, `commitHere`): a commit reads the state worktree's
 // changes in one `status`. A file on disk the layout has no place for
 // refuses it, naming the file and the way on, with nothing committed — a
@@ -31,9 +31,9 @@ const {
   ok, refusedPristine, git, createFile, layout, touched, traced, codeProject, twoMachines, commitOnState, tip, remoteTip,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { STATE_BRANCH, withStateLock, commitState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
-const { catchUpState } = require('../../skills/workflow-engine/scripts/domain/state-merge.cjs');
-const { ignoresCase } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const { STATE_BRANCH, withStateLock, commitState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { catchUpState } = require('../../skills/leeway-engine/scripts/domain/state-merge.cjs');
+const { ignoresCase } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
 
 const folder = useTempFolder('state-commit-layout-');
 

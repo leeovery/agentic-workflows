@@ -11,7 +11,7 @@ const path = require('path');
 const {
   git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
 } = require('./engine-harness.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);

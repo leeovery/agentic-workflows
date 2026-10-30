@@ -1,6 +1,6 @@
 # Final Gap Review
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -17,7 +17,7 @@ The **never-dump rules apply in full**. Findings are raised one at a time via th
 Read the store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}
 ```
 
 Councils resolve first — a landed set promotes to synthesis, then synthesis findings drain; tensions that never finished surfacing during the session would otherwise be dropped at conclusion.
@@ -121,7 +121,7 @@ Watch for `agent scan` to promote the row to `pending`.
 Close the abandoned row, then dispatch fresh:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} discussion {topic} {id}
 ```
 
 → Proceed to **C. Dispatch Final Review**.
@@ -157,7 +157,7 @@ Findings from the current review are still being drained.
 Record the dispatch — the engine allocates the id and answers with the content-file path; `--final` marks the mandatory closing pass:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review --final
+node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review --final
 ```
 
 **If the response is `ok: false` naming the mailbox** — a message arrived after the mailbox gate (a peer session's send): surface the engine's error verbatim; the mailbox owns the close now.
@@ -169,10 +169,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit
 Read the topic's dismissed grounds — the user's standing rulings on what not to report. Empty output means none:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion.{topic} dismissed_grounds
 ```
 
-**Agent path**: `.claude/agents/workflow-discussion-review.md`
+**Agent path**: `.claude/agents/leeway-discussion-review.md`
 
 Dispatch **one agent** as a foreground task (pass `run_in_background: false` — results are needed before continuing).
 

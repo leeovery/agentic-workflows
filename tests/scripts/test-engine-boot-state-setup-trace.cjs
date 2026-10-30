@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The setup's trace (workflow-engine/scripts/domain/code-trace.cjs): the
+// The setup's trace (leeway-engine/scripts/domain/code-trace.cjs): the
 // commit of the ignore line and the hooks, owed until it lands, and setup
 // while git is in the middle of a bisect or a rebase.
 //

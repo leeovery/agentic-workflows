@@ -78,10 +78,10 @@ Advisory only — never a gate, never resolved here; the specification session h
 Before finalizing groupings, run one query per grouping to surface sibling changes the read missed:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
 ```
 
-Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** → **B. How to construct queries**).
+Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[knowledge-usage.md](../../leeway-shared/references/knowledge-usage.md)** → **B. How to construct queries**).
 
 Treat hits as **candidate** tension lines — a hit from a discussion outside this grouping that changed something the grouping depends on is worth recording on it. **Advisory only**: never auto-add, never gate. You decide which candidates to record.
 
@@ -97,7 +97,7 @@ Work through these steps in order:
 
 1. **Snapshot existing items.** Read the current specification items and their sources:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.specification.*' status
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get '{work_unit}.specification.*' status
    ```
    Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`) and **existing-proposed** (`proposed`). The **cancelled** set is the DATA section's `cancelled_specifications:` list — the one **B** read — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item and a `delete` of it), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
 
@@ -120,7 +120,7 @@ Work through these steps in order:
 8. **Assign the build order.** The analysis just read every grouping holistically — the same read decides which topic to build first. Over the whole live set (every `in-progress` or `completed` anchor, plus every surviving target), assign contiguous integers `1..N` weighing what must physically exist before what: foundational scaffolding first, a topic whose deliverable other groupings assume ahead of the topics that assume it. Ignore the discovery map's `order` — it ranks what to explore, assigned before any discussion concluded. Collect one `set` field per topic — a bare number, never quoted:
    - `{work_unit}.specification.{name}` → `order: {N}` (fold into the topic's existing op where one is already collected; a topic with no op yet — an anchor whose sources are unchanged — gets its own `set` op)
 
-   Check whether a completed specification has flagged the order stale (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`). When `true`, collect one more op — this reconcile is the sequencing, so the flag clears with it:
+   Check whether a completed specification has flagged the order stale (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`). When `true`, collect one more op — this reconcile is the sequencing, so the flag clears with it:
    - `{work_unit}.specification` → delete `build_order_stale`
 
 9. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes, order sets, the flag delete), to `.workflows/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
@@ -130,7 +130,7 @@ Work through these steps in order:
    ```
    Persist the whole reconcile in one atomic call — a failing op means the manifest is untouched, never half-reconciled:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
    ```
 
 → Proceed to **D. Write the Cache**.
@@ -179,14 +179,14 @@ List sources under each grouping as bullets. `**Tension**` lines are per-groupin
 
 Write the cache metadata to the manifest last:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discussion analysis_cache.checksum "{discussions_checksum from the DATA section}"
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.discussion analysis_cache.generated "{ISO date}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discussion analysis_cache.checksum "{discussions_checksum from the DATA section}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discussion analysis_cache.generated "{ISO date}"
 ```
 
 Commit the whole reconcile as one commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
 
 When a grouping resembles a cancelled specification (**B**), tell the user in one line: it resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back.

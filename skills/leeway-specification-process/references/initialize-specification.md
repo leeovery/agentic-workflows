@@ -1,6 +1,6 @@
 # Initialize Specification
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -21,7 +21,7 @@ Write the file **before** any manifest change. If a crash interrupts here the it
 Start the phase item — the engine creates it with `status: in-progress` when absent, or flips an existing proposed (or restarted) item to in-progress:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
 ```
 
 Branch on the response's `created` flag:
@@ -31,7 +31,7 @@ Branch on the response's `created` flag:
 The item is genuinely new (a feature, bugfix, or cross-cutting unit — an epic's specification starts from the proposed grouping its menu landed). Add its one source with `status: pending` — the unit's discussion, or a bugfix's investigation, named `{topic}` either way; the same name is used when marking it incorporated:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{topic}.status pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} sources.{topic}.status pending
 ```
 
 → Proceed to **C. Set Review State**.
@@ -49,13 +49,13 @@ The item already existed (a proposed grouping, or a restart) and already carries
 Set review state and gate modes (both branches) — one batched write, all same-path fields:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle=0 finding_gate_mode=gated construction_gate_mode=gated date=$(date +%Y-%m-%d)
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} review_cycle=0 finding_gate_mode=gated construction_gate_mode=gated date=$(date +%Y-%m-%d)
 ```
 
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): initialize specification" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): initialize specification" --topic specification/{topic}
 ```
 
 → Return to caller.

@@ -7,12 +7,12 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, formatScoped } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
-const { specificationDiscovery } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+const { discover, formatScoped } = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
+const { specificationDiscovery } = require('../../skills/leeway-engine/scripts/domain/specification.cjs');
 
-const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const GATEWAY = path.join(__dirname, '../../skills/leeway-continue-epic/scripts/gateway.cjs');
 
-describe('workflow-continue-epic discovery', () => {
+describe('leeway-continue-epic discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -246,7 +246,7 @@ describe('workflow-continue-epic discovery', () => {
     });
 
     it('discovery_map exposes source, summary text, and presence booleans per item for legacy-recovery filter', () => {
-      // workflow-continue-epic Step 2 (Backfill) filters discovery_map by
+      // leeway-continue-epic Step 2 (Backfill) filters discovery_map by
       // (!summary_present || !description_present) — source-agnostic. Any
       // write path that lands an item with missing fields surfaces for
       // review:
@@ -1363,7 +1363,7 @@ describe('workflow-continue-epic discovery', () => {
   });
 });
 
-describe('workflow-continue-epic formatScoped (state dump)', () => {
+describe('leeway-continue-epic formatScoped (state dump)', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -1701,7 +1701,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
   });
 });
 
-describe('workflow-continue-epic detail counts (imports/seeds)', () => {
+describe('leeway-continue-epic detail counts (imports/seeds)', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -1742,7 +1742,7 @@ describe('workflow-continue-epic detail counts (imports/seeds)', () => {
   });
 });
 
-describe('workflow-continue-epic CLI dispatch', () => {
+describe('leeway-continue-epic CLI dispatch', () => {
   const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu|spec-scenario|spec-view|spec-completed-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}\n';
 
   let dir;
@@ -1870,7 +1870,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
       "=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="
     ), gate.stdout);
     const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
-    assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
+    assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
     assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`y/yes`'), 'back leads the family\'s options');
     const unheld = run(['in-session-gate', 'v1', 'r']);
     assert.ok(unheld.stdout.includes('is not held by another session'), unheld.stdout);
@@ -1900,8 +1900,8 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
     const res = run(['view', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /workflow-research-process epic v1 auth  (recommended)'), res.stdout);
-    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /workflow-discussion-process epic v1 auth  (in session: last active 4m ago)'), res.stdout);
+    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /leeway-research-process epic v1 auth  (recommended)'), res.stdout);
+    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /leeway-discussion-process epic v1 auth  (in session: last active 4m ago)'), res.stdout);
     assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
     const gate = run(['in-session-gate', 'v1', '2']);
     assert.strictEqual(gate.status, 0, gate.stderr);
@@ -2104,7 +2104,7 @@ function cancelledSpecsManifest() {
   };
 }
 
-describe('workflow-continue-epic specification discovery', () => {
+describe('leeway-continue-epic specification discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -2492,7 +2492,7 @@ describe('workflow-continue-epic specification discovery', () => {
   });
 });
 
-describe('workflow-continue-epic specification ordering and counts', () => {
+describe('leeway-continue-epic specification ordering and counts', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

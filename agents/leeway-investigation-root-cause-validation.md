@@ -1,6 +1,6 @@
 ---
-name: workflow-investigation-root-cause-validation
-description: Independently validates a root cause hypothesis by tracing code and checking symptom coverage. Invoked synchronously by workflow-investigation-process after root cause synthesis.
+name: leeway-investigation-root-cause-validation
+description: Independently validates a root cause hypothesis by tracing code and checking symptom coverage. Invoked synchronously by leeway-investigation-process after root cause synthesis.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

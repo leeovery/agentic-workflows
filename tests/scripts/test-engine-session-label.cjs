@@ -25,8 +25,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { syncSessionHooks } = require('../../skills/workflow-engine/scripts/domain/session-label.cjs');
+const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { syncSessionHooks } = require('../../skills/leeway-engine/scripts/domain/session-label.cjs');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
@@ -73,12 +73,12 @@ function setup() {
   dir = world('engine-label-', ['pay']);
   stubDir = installTmuxStub();
   configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-config-'));
-  pinnedConfigDir = process.env.WORKFLOWS_CONFIG_DIR;
-  process.env.WORKFLOWS_CONFIG_DIR = configDir;
+  pinnedConfigDir = process.env.LEEWAY_CONFIG_DIR;
+  process.env.LEEWAY_CONFIG_DIR = configDir;
 }
 
 function teardown() {
-  process.env.WORKFLOWS_CONFIG_DIR = pinnedConfigDir;
+  process.env.LEEWAY_CONFIG_DIR = pinnedConfigDir;
   for (const d of [dir, stubDir, configDir]) harness.cleanupFixture(d);
 }
 
@@ -565,7 +565,7 @@ describe('engine session label — the manifest stamp', () => {
     const configDir = path.join(dir, '.wf-config');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(path.join(configDir, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
-    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { WORKFLOWS_CONFIG_DIR: configDir } });
+    const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { LEEWAY_CONFIG_DIR: configDir } });
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
 });
@@ -668,8 +668,8 @@ describe('engine session label-config', () => {
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
 
-  it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_HOLD_PROJECT_SETTINGS: '1' } });
+  it('LEEWAY_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
+    const res = engine(['session', 'label-config', 'true'], { extraEnv: { LEEWAY_HOLD_PROJECT_SETTINGS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
@@ -782,7 +782,7 @@ describe('syncSessionHooks', () => {
   });
 
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
-    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs' presence cleanup" }] }] } });
+    writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs' presence cleanup" }] }] } });
     assert.deepStrictEqual(syncSessionHooks(dir, WORKFLOWS), { changed: true });
     assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });

@@ -1,7 +1,7 @@
 ---
-name: workflow-continue-epic
+name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs *), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
+allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -10,7 +10,7 @@ Continue an in-progress epic. Shows full phase-by-phase state and routes to the 
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -36,7 +36,7 @@ This skill receives positional arguments — one not given is unset, whatever an
 Run the scoped discovery for the epic and hold its output as **the most recent discovery output** — Steps 2–6 read `discovery_map`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, and `all_done` from it; display and routing come from the `view` snapshot at Step 6:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
@@ -46,7 +46,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
 Fetch the terminal display — the `view` snapshot for a name with no active epic behind it carries it:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit}
+node .claude/skills/leeway-continue-epic/scripts/gateway.cjs view {work_unit}
 ```
 
 Emit its `DISPLAY: not found` section verbatim per its marker.
@@ -64,13 +64,13 @@ Emit its `DISPLAY: not found` section verbatim per its marker.
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit}
 ```
 
 Run the legacy research-split detector:
 
 ```bash
-node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
+node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs {work_unit}
 ```
 
 Parse `qualifying_sources` from the JSON output.
@@ -93,7 +93,7 @@ backfill-checks is terminal when recovery work landed — it commits and hands t
 
 ## Step 3: Topic Discovery
 
-Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../workflow-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
+Read `analysis_caches` from the most recent discovery output. Load **[topic-discovery-dispatch.md](../leeway-shared/references/topic-discovery-dispatch.md)** with work_unit = `{work_unit}`, analysis_caches = `{analysis_caches}`.
 
 On return, `new_arrivals` is populated for Step 6 to render the callout.
 
@@ -119,12 +119,12 @@ Read `needs_sequencing` from the most recent discovery output.
 > Assigning a suggested execution order to the map's topics.
 ```
 
-Load **[sequence-discovery-map.md](../workflow-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
+Load **[sequence-discovery-map.md](../leeway-shared/references/sequence-discovery-map.md)** with work_unit = `{work_unit}`.
 
 On return, re-run discovery so the display sees the new order:
 
 ```bash
-node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 Hold the refreshed output as the most recent discovery output.
@@ -155,7 +155,7 @@ Read `build_order_needs_sequencing` from the most recent discovery output.
 > Assigning the build order across the specification topics.
 ```
 
-Load **[sequence-build-order.md](../workflow-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
+Load **[sequence-build-order.md](../leeway-shared/references/sequence-build-order.md)** with work_unit = `{work_unit}`.
 
 → On return, proceed to **Step 6**.
 
@@ -189,6 +189,6 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 
 ## Step 7: Route Selection
 
-The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/workflow-discussion-process epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
+The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/leeway-discussion-process epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
 
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.
+Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `{route}`.

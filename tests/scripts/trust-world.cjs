@@ -21,7 +21,7 @@ const path = require('path');
 const { STATE_DIR_NAME, layout, statePath } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { pinStateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { conversationDir, markConversation } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -68,11 +68,11 @@ function useTrustWorld(prefix) {
   /** @type {string|undefined} */
   let pinned;
   beforeEach(() => {
-    pinned = process.env.WORKFLOWS_CONFIG_DIR;
-    process.env.WORKFLOWS_CONFIG_DIR = path.join(folder(), 'config');
+    pinned = process.env.LEEWAY_CONFIG_DIR;
+    process.env.LEEWAY_CONFIG_DIR = path.join(folder(), 'config');
   });
   afterEach(() => {
-    process.env.WORKFLOWS_CONFIG_DIR = pinned;
+    process.env.LEEWAY_CONFIG_DIR = pinned;
   });
 
   /** This test's trust log. */

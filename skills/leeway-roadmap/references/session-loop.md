@@ -1,6 +1,6 @@
 # Session Loop
 
-*Reference for **[workflow-roadmap](../SKILL.md)***
+*Reference for **[leeway-roadmap](../SKILL.md)***
 
 ---
 
@@ -72,20 +72,20 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **Grooming an inbox item on** — one transaction moves each note into the roadmap's notes and adds its item, the kind, origin and source derived from the note. An idea takes the guidelines-**C** add gate over its horizon first, its arm deciding the horizon its entry carries; a bug or a quick-fix goes where the user places it. Write the entries to `.workflows/.cache/roadmap/inbox-items.json` with the Write tool — a JSON array, one `{"name": "{name}", "horizon": "{h}", "summary": "{one-liner}", "note": "{path}"}` per item, `{path}` the note's live inbox path (`.workflows/.inbox/{folder}/{file}`) and `{name}` its slug unless the user names it — then `roadmap add-batch --file .workflows/.cache/roadmap/inbox-items.json`. A refusal naming an item already on the roadmap moved nothing: derive another name and run it again.
    - **Shared files** — paths offered in conversation land via `engine roadmap import '{path}' …`, all of them in one call (each path single-quoted — a shared filename carries spaces and capitals; a `~` path written out in full, since the quotes stop the shell expanding it; a single quote inside a path written `'\''`; self-commits). A refusal carrying `missing_imports` is met by **A refused landing** below. Read what landed for the conversation and record it under **Edits**.
    - **A request to see the map** — *"show roadmap"*. Render it with `engine render roadmap-view` and emit its DISPLAY section verbatim per its marker. No STOP; render and continue.
-   - **A KB query for prior context** — when a thread would benefit from what shipped work recorded, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../workflow-shared/references/contextual-query.md) for the pattern).
+   - **A KB query for prior context** — when a thread would benefit from what shipped work recorded, invoke `knowledge query` with a query derived from the thread (see [contextual-query.md](../../leeway-shared/references/contextual-query.md) for the pattern).
    - **A request to lay it out** — *"lay it out"*, *"that covers it"*, *"let's sort it"*, *"done"*. Route to **C. Harvest**.
 3. **Continue the exploration.** One thread at a time.
-4. **Read the arc for convergence.** When the conversation converges (the guidelines' proxies), surface the ambient nudge — a light aside offering the harvest, once, never a gate (see [harvest-nudge.md](../../workflow-discovery/references/harvest-nudge.md), reading "topics" as "the roadmap sort") — then stay in **B**.
+4. **Read the arc for convergence.** When the conversation converges (the guidelines' proxies), surface the ambient nudge — a light aside offering the harvest, once, never a gate (see [harvest-nudge.md](../../leeway-discovery/references/harvest-nudge.md), reading "topics" as "the roadmap sort") — then stay in **B**.
 5. **Keep the running record.** Write the **Exploration** section at natural pauses — the intent, the staging language, the soft decisions and rejected paths with why. Append-forward, prose not transcript; lossiness defeats the point. The lazy-creation rule applies (see [session-template.md](session-template.md)). After writing, commit:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "roadmap: exploration notes — session-{session_number}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit --roadmap -m "roadmap: exploration notes — session-{session_number}"
    ```
 
 **A refused landing** — `roadmap import` answering `ok: false` with `missing_imports` landed nothing at all: one bad path refuses the whole batch. Write the payload to `.workflows/.cache/roadmap/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt and emit its DISPLAY and MENU sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/roadmap/import-reprompt.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/roadmap/import-reprompt.json
 ```
 
 **STOP.** Wait for user response.

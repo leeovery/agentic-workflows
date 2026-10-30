@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Lost state (workflow-engine/scripts/domain/state-checks.cjs,
+// Lost state (leeway-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs, domain/code-trace.cjs): the workflows' trace in the code
 // read across the repository, the stop with nothing written — the trust
 // log's waiting events landed all the same — its screen, and the fresh
@@ -99,7 +99,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
     createFile(path.join(config, 'conversations', session), 'trust-pending.jsonl', waiting);
 
-    assert.deepStrictEqual(boot(main, { WORKFLOWS_CONFIG_DIR: config }), { ok: true, state: 'lost', warnings: [] });
+    assert.deepStrictEqual(boot(main, { LEEWAY_CONFIG_DIR: config }), { ok: true, state: 'lost', warnings: [] });
 
     assert.strictEqual(fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8'), waiting);
     assert.ok(!fs.existsSync(path.join(config, 'conversations', session, 'trust-pending.jsonl')));

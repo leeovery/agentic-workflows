@@ -17,12 +17,12 @@ type Surface = (typeof SURFACES)[number]
 const HOME = '/Users/person'
 
 /** The conversation's folder, in the workflows' system config directory. */
-const FOLDER = `${HOME}/.config/workflows/conversations/s0`
+const FOLDER = `${HOME}/.config/leeway/conversations/s0`
 
 const COMPACTED = `${FOLDER}/compacted.json`
 
 const NOTE = [
-  'The conversation was just compacted. This conversation is working in the discussion of "management-window" in the epic "fumi". Follow the workflow-discussion-process skill\'s "Resuming After Context Refresh" steps now, before anything else: re-read /Users/person/fumi/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:',
+  'The conversation was just compacted. This conversation is working in the discussion of "management-window" in the epic "fumi". Follow the leeway-discussion-process skill\'s "Resuming After Context Refresh" steps now, before anything else: re-read /Users/person/fumi/.claude/skills/leeway-discussion-process/SKILL.md and its framework in full, then re-read these in full:',
   '- /Users/person/fumi/.leeway/fumi/discussion/management-window.md',
 ].join('\n')
 
@@ -59,7 +59,7 @@ function world(
     files.set(`${folder}/compacted.json`, record)
   }
 
-  const environment: Record<string, string | undefined> = { HOME, WORKFLOWS_CONFIG_DIR: configDir }
+  const environment: Record<string, string | undefined> = { HOME, LEEWAY_CONFIG_DIR: configDir }
 
   on('session.id', () => ({ value: 's0' }))
   on('env.get', ($, e) => ({ value: environment[e.name] }))
@@ -135,7 +135,7 @@ describe('a compaction\'s row', () => {
       world(on)
 
       const { requestId, props, viewport } = rowOf('m1', surface)
-      const row = await $.ui.mount({ plugin: 'workflow-gates-rows', surface, component: 'UserMessage', requestId, props, viewport })
+      const row = await $.ui.mount({ plugin: 'leeway-gates-rows', surface, component: 'UserMessage', requestId, props, viewport })
 
       expect(await row.find({ type: 'Text', text: /^⟳ Compacted · carrying on in / })).toBeDefined()
     })
@@ -218,7 +218,7 @@ describe('a compaction\'s row', () => {
 })
 
 describe('beside the rows of what the gates mod sends', () => {
-  const CONTINUATION = 'Invoke `/workflow-discussion-process feature note-window`.'
+  const CONTINUATION = 'Invoke `/leeway-discussion-process feature note-window`.'
   const WHERE = '→ Discussion · note-window'
   const SENT = `${FOLDER}/sent.json`
   const ROWS = `${FOLDER}/rows.json`
@@ -226,7 +226,7 @@ describe('beside the rows of what the gates mod sends', () => {
   /** A prompt the gates mod submitted, as Claude Code frames it on its row. */
   const framed = (answer: string) =>
     [
-      'The workflow-gates plugin sent a message:',
+      'The leeway-gates plugin sent a message:',
       answer,
       '',
       "This is how Claude Code surfaces a prompt a plugin submits between turns — it starts this turn in the user's place. Address the message above.",
@@ -240,7 +240,7 @@ describe('beside the rows of what the gates mod sends', () => {
 
       const handoff = await drawn($, rowOf('m1', surface, {
         text: framed(CONTINUATION),
-        origin: { kind: 'plugin', name: 'workflow-gates' },
+        origin: { kind: 'plugin', name: 'leeway-gates' },
       }))
       const compaction = await drawn($, rowOf('m2', surface))
       const prompt = await drawn($, rowOf('m3', surface, { text: 'carry on', origin: { kind: 'composer' } as PromptOrigin }))

@@ -264,8 +264,8 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
 
   it('the recipe env carries the engine\'s test-only settings hold, so a recipe\'s boot never writes a world\'s settings', () => {
     const env = worlds.recipeEnv();
-    assert.strictEqual(env.WORKFLOWS_HOLD_PROJECT_SETTINGS, '1');
-    assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
+    assert.strictEqual(env.LEEWAY_HOLD_PROJECT_SETTINGS, '1');
+    assert.strictEqual(env.LEEWAY_DISPLAY_WIDTH, '65');
     assert.ok(!('TMUX' in env), 'and no tmux identity');
   });
 });
@@ -297,7 +297,7 @@ describe('a recipe\'s calls belong to no conversation', () => {
     let dir;
     try {
       dir = inSession(() => worlds.runRecipe(id, 'fixtureState'));
-      assert.ok(!fs.existsSync(path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations')));
+      assert.ok(!fs.existsSync(path.join(process.env.LEEWAY_CONFIG_DIR, 'conversations')));
     } finally {
       removeScratchCase(id);
       if (dir) fs.rmSync(dir, { recursive: true, force: true });
@@ -331,8 +331,8 @@ describe('the recipe hash: what a world is built from', () => {
   it('every world\'s hash covers the mainlines, the engine tree — the knowledge base\'s code among it — and the migrations every boot runs', () => {
     assert.deepStrictEqual(worlds.SHARED_INPUTS, [
       worlds.MAINLINES_DIR,
-      path.join(worlds.ROOT, 'skills/workflow-engine/scripts'),
-      path.join(worlds.ROOT, 'skills/workflow-migrate/scripts'),
+      path.join(worlds.ROOT, 'skills/leeway-engine/scripts'),
+      path.join(worlds.ROOT, 'skills/leeway-migrate/scripts'),
     ]);
     // Taken once per process and reused by every case — so it has to be the
     // real digest of those inputs, or an engine change would skip past a
@@ -449,14 +449,14 @@ describe('the verify pool: a thread per core, a world at a time', () => {
     // the developer's config.
     const worker = new Worker(
       `require(${JSON.stringify(require.resolve('../prose/lib/worlds.cjs'))});\n`
-      + "require('worker_threads').parentPort.postMessage(process.env.WORKFLOWS_CONFIG_DIR);\n",
+      + "require('worker_threads').parentPort.postMessage(process.env.LEEWAY_CONFIG_DIR);\n",
       { eval: true });
     try {
       const inThread = await new Promise((resolve, reject) => {
         worker.once('message', resolve);
         worker.once('error', reject);
       });
-      assert.strictEqual(inThread, process.env.WORKFLOWS_CONFIG_DIR);
+      assert.strictEqual(inThread, process.env.LEEWAY_CONFIG_DIR);
     } finally {
       await worker.terminate();
     }

@@ -1,6 +1,6 @@
 ---
-name: workflow-implementation-consolidation-finder
-description: Sweeps one implementation phase's combined surface at the phase boundary for cross-task consolidation — duplication, near-miss helpers, drift, accretion complexity, dead code, behaviour-changing improvements the phase made owed — each finding naming the failure it prevents; records comment corrections against the final state, confirms or drops every banked opportunity against that state, and reports specification claims the landed work reveals as defective. Invoked by workflow-implementation-process at each phase boundary.
+name: leeway-implementation-consolidation-finder
+description: Sweeps one implementation phase's combined surface at the phase boundary for cross-task consolidation — duplication, near-miss helpers, drift, accretion complexity, dead code, behaviour-changing improvements the phase made owed — each finding naming the failure it prevents; records comment corrections against the final state, confirms or drops every banked opportunity against that state, and reports specification claims the landed work reveals as defective. Invoked by leeway-implementation-process at each phase boundary.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
@@ -28,7 +28,7 @@ You receive via the orchestrator's prompt:
 ## Your Process
 
 1. **Read code-quality.md, finding-floor.md and project skills** — the standards the phase's code should meet, and the floor
-2. **Read the phase's commits and diff** — `node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic} --phase {phase}` lists the phase's task commits and their subjects, which task wrote what; `node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic} --phase {phase}` is what they changed, across every repo in the project. Read both, then read the phase files in their final state
+2. **Read the phase's commits and diff** — `node .claude/skills/leeway-engine/scripts/engine.cjs code log {work_unit} {topic} --phase {phase}` lists the phase's task commits and their subjects, which task wrote what; `node .claude/skills/leeway-engine/scripts/engine.cjs code diff {work_unit} {topic} --phase {phase}` is what they changed, across every repo in the project. Read both, then read the phase files in their final state
 3. **Verdict every bank entry** against the final state — a later task may have already absorbed or removed what an earlier report saw. An entry is **confirmed** when it is still real and this phase's changes caused it: it becomes (part of) a finding. Anything else is dropped, and nothing is written for it
 4. **Sweep for the finding classes** (below) across the phase's surface
 5. **Check the comments against the final state** — record each one the phase falsified or that fails the comment bar under `## Comment Corrections` (see Comment Corrections)

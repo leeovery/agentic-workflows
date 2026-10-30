@@ -1,6 +1,6 @@
 # Confirm Trigger
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -33,7 +33,7 @@ One engine transaction persists everything: the manifest, imports copied into `i
 Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. A shared path is single-quoted — an image's filename carries spaces, and unquoted each word becomes its own positional — a `~` path is written out in full, since the quotes stop the shell expanding it, and a single quote inside a path is written `'\''`. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import '{path}' --seed {path}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md --import '{path}' --seed {path}
 ```
 
 #### If the response is `ok: false` with `missing_imports`
@@ -41,7 +41,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_uni
 One or more import paths have nothing behind them, or name a folder rather than a file — nothing was created. Write the payload to `.workflows/.cache/{work_unit}/discovery/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/discovery/import-reprompt.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render import-reprompt --file .workflows/.cache/{work_unit}/discovery/import-reprompt.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.

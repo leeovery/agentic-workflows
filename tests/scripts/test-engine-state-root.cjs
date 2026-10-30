@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where the state lives (workflow-engine/scripts/kernel/state-root.cjs): the
+// Where the state lives (leeway-engine/scripts/kernel/state-root.cjs): the
 // one `.leeway/` in the main checkout, found from any folder of the
 // repository or any of its worktrees, symbolic links resolved and memoised
 // per folder; a root pinned for a world no repository holds; the nullable
@@ -23,7 +23,7 @@ const path = require('path');
 const { git, initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const {
   STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState, ignoresCase,
-} = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+} = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
 
 /** @type {string} */
 let dir;

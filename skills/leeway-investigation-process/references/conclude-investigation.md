@@ -1,15 +1,15 @@
 # Conclude Investigation
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
 The user has already reviewed findings and agreed on fix direction. This step confirms the investigation is complete and handles pipeline continuation.
 
-→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `investigation`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[closing-recap.md](../../leeway-shared/references/closing-recap.md)** with phase = `investigation`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.investigation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render conclude-gate {work_unit}.investigation.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -25,7 +25,7 @@ Emit the call's MENU section verbatim per its marker.
 First check the topic's mailbox — a waiting message must be worked before concluding:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} investigation {topic}
 ```
 
 **If the response's `files` is non-empty:**
@@ -33,10 +33,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit}
 Render the blocker and emit both its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.investigation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-block {work_unit}.investigation.{topic}
 ```
 
-→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+→ Load **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 On return:
 
@@ -46,17 +46,17 @@ On return:
 
 1. Mark the investigation completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} investigation {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} investigation {topic}
    ```
 2. Final commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): complete {topic} investigation" --topic investigation/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "investigation({work_unit}): complete {topic} investigation" --topic investigation/{topic}
    ```
 
    When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.investigation.{topic} --verb complete --warn
+   node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.investigation.{topic} --verb complete --warn
    ```
 
 3. Closure signpost:
@@ -67,4 +67,4 @@ On return:
 > Investigation complete. The specification phase will formalise the fix approach into a document that drives planning.
 ```
 
-4. Invoke `/workflow-bridge {work_unit} investigation`.
+4. Invoke `/leeway-bridge {work_unit} investigation`.

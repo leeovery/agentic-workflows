@@ -1,6 +1,6 @@
 # Discovery Session Log Template
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -102,7 +102,7 @@ Browse-and-bail produces no file.
 To create it, draft the complete log at the staging path `.workflows/.cache/{work_unit}/discovery/session-draft.md`: populate the header, **Description (as of session)**, **Seed**, **Imports**, and **Map State at Start**, plus the first content. Other sections start as `(none)`. Then open the session:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session open {work_unit} --session-log-file .workflows/.cache/{work_unit}/discovery/session-draft.md
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session open {work_unit} --session-log-file .workflows/.cache/{work_unit}/discovery/session-draft.md
 ```
 
 The engine allocates the session number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log as `discovery/sessions/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.

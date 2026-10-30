@@ -244,8 +244,8 @@ function dropPosition(sessionId) {
  * @param {string} name @param {string} [phase] @returns {string|null}
  */
 function skillAt(name, phase) {
-  if (phase === undefined) return PROJECT_IDENTITIES.includes(name) ? `workflow-${name}` : null;
-  return phase === 'discovery' ? 'workflow-discovery' : phaseSkill(phase);
+  if (phase === undefined) return PROJECT_IDENTITIES.includes(name) ? `leeway-${name}` : null;
+  return phase === 'discovery' ? 'leeway-discovery' : phaseSkill(phase);
 }
 
 /** @param {string} skill */
@@ -362,7 +362,7 @@ function workAt(cwd, position, manifest) {
       if (internalId === null) return { skill, documents: [] };
       const format = itemOf(manifest, 'planning', topic)?.format;
       const reading = typeof format === 'string' && illegalNameReason('format', format) === null
-        ? [`.claude/skills/workflow-planning-process/references/output-formats/${format}/reading.md`]
+        ? [`.claude/skills/leeway-planning-process/references/output-formats/${format}/reading.md`]
         : [];
       return { skill, documents: [...reading, ...taskFile(plan, internalId)] };
     }

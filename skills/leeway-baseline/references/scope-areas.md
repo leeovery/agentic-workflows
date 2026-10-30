@@ -1,6 +1,6 @@
 # Scope the Assessment
 
-*Reference for **[workflow-baseline](../SKILL.md)***
+*Reference for **[leeway-baseline](../SKILL.md)***
 
 ---
 
@@ -36,7 +36,7 @@ Compose the proposed areas:
 Write the proposal payload to `.workflows/.cache/baseline/scope.json` with the Write tool — `{"mode": "{fresh|expand}", "areas": [{"name": "{area:(kebabcase)}", "detail": "{one line: what it covers and why it earns a doc}"}]}` — then fetch the gate and emit its `DISPLAY: baseline scope` and `MENU: baseline scope gate` sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-scope-gate --file .workflows/.cache/baseline/scope.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-scope-gate --file .workflows/.cache/baseline/scope.json
 ```
 
 **STOP.** Wait for user response.
@@ -57,7 +57,7 @@ Nothing is persisted.
 
 Nothing is persisted.
 
-→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+→ Load **[start-menu.md](../../leeway/references/start-menu.md)**.
 
 **If `yes`:**
 
@@ -68,8 +68,8 @@ Nothing is persisted.
 Register each newly approved area, then set the status — the status write is last, so an interrupted session never claims an in-progress baseline with unregistered areas (one call per field):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} pending
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.baseline.status in-progress
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} pending
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.baseline.status in-progress
 ```
 
 A deepened area is set back to `pending` the same way — its agenda and doc survive and are extended downstream.
@@ -79,7 +79,7 @@ Hold each area's one-line coverage description in context — the research dispa
 Commit with the message matching the mode — `baseline: open the assessment ({N} areas)`, or for expand `baseline: expand the assessment (+{N} areas)`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "{message}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "{message}"
 ```
 
 → Return to caller.

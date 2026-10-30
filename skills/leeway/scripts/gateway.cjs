@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-start. Thin by design: collation lives
+// Adapter (read gateway) for leeway. Thin by design: collation lives
 // in the engine's domain ring; this script selects which engine answers the
 // skill's flow needs and sections the output.
 //
@@ -16,7 +16,7 @@
 //   gateway.cjs completed             → completed & cancelled snapshot
 // ---------------------------------------------------------------------------
 
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 
 // The gate each of the start's menus states, named for what it asks: a key
 // of the trust log forever (16.11.9), so never another menu's.

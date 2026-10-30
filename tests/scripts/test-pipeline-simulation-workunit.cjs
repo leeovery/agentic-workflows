@@ -19,8 +19,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const { epicDashboard } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, handoff, literal } = require('./pipeline-world.cjs');
 
@@ -349,7 +349,7 @@ describe('pipeline simulation: workunit', () => {
     // the handoff clears into a fresh conversation, whose first engine call
     // is the assessment's label: it marks the conversation and records the
     // place, so the conversation carries on there.
-    assert.strictEqual(handoff(sim, '/workflow-baseline').line, '→ Baseline');
+    assert.strictEqual(handoff(sim, '/leeway-baseline').line, '→ Baseline');
     sim.handOver();
     assert.ok(!fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID)), 'no call has marked the fresh conversation');
     arrive(sim, 'baseline');

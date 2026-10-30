@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state commit (workflow-engine/scripts/domain/state-worktree.cjs):
+// The state commit (leeway-engine/scripts/domain/state-worktree.cjs):
 // exactly the paths given committed on `leeway-state`, the working tree taken
 // as it stands over whatever its index was left in; a file given a change
 // committed as it makes it of the branch's own, refused where git cannot
@@ -27,9 +27,9 @@ const { execFileSync, spawnSync } = require('child_process');
 const { git, bareRepo, layout, createFile, touched, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, elsewhereRepo, snapshot, childStderr } = require('./state-worktree-world.cjs');
 
-const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const STATE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
-const { stateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const { stateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
 
 const {
   STATE_BRANCH, STATE_GITIGNORE, createState, addStateWorktree, createStateBranchFromRemote, withStateLock, commitState, pushState,

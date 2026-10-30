@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Whose entries a ledger write's links name, and how they relate
-// (workflow-engine/scripts/domain/ledger-write.cjs with domain/ledger-fold.cjs
+// (leeway-engine/scripts/domain/ledger-write.cjs with domain/ledger-fold.cjs
 // and domain/ledger-units.cjs): what follows from a link set by the engine;
 // a write made on a live unit and topic alone, another unit's or topic's
 // entries refused where they go to their owner; a question read where it was
@@ -22,7 +22,7 @@ const path = require('path');
 const { ok, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { ID_FACTS, foldLedger, standingOf } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 

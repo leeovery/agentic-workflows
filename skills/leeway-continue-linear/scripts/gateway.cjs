@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-continue-linear. Thin by design: the
+// Adapter (read gateway) for leeway-continue-linear. Thin by design: the
 // unit's entry and its projections live in the engine's domain ring; this
 // script finds the unit — its type read from its manifest — and sections the
 // output.
@@ -16,7 +16,7 @@
 // bare positional, or excess arguments is a usage error (stderr, exit 1).
 // ---------------------------------------------------------------------------
 
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 
 // The gate the unit's menu states, named for what it asks: a key of the
 // trust log forever (16.11.9), so never another menu's.

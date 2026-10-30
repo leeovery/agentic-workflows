@@ -6,15 +6,15 @@ tier('user')
 
 describe('folderOf', () => {
   test('the folder the engine names: the system config directory, by the session id', () => {
-    expect(folderOf(undefined, '/Users/person', 's0')).toBe('/Users/person/.config/workflows/conversations/s0')
+    expect(folderOf(undefined, '/Users/person', 's0')).toBe('/Users/person/.config/leeway/conversations/s0')
   })
 
-  test('the directory WORKFLOWS_CONFIG_DIR names, over the home', () => {
+  test('the directory LEEWAY_CONFIG_DIR names, over the home', () => {
     expect(folderOf('/Users/person/elsewhere', '/Users/person', 's0')).toBe('/Users/person/elsewhere/conversations/s0')
   })
 
-  test('the home\'s .config/workflows while WORKFLOWS_CONFIG_DIR is empty', () => {
-    expect(folderOf('', '/Users/person', 's0')).toBe('/Users/person/.config/workflows/conversations/s0')
+  test('the home\'s .config/leeway while LEEWAY_CONFIG_DIR is empty', () => {
+    expect(folderOf('', '/Users/person', 's0')).toBe('/Users/person/.config/leeway/conversations/s0')
   })
 
   test('the session id\'s safe characters alone, so no id escapes the store', () => {

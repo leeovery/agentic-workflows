@@ -17,20 +17,20 @@ const childProcess = require('child_process');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { fillVectors, fill } = require('../../skills/workflow-engine/scripts/domain/knowledge/vectors.cjs');
-const { launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
-const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowledge/indexing.cjs');
-const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
-const { syncKnowledge } = require('../../skills/workflow-engine/scripts/domain/knowledge/sync.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { fillVectors, fill } = require('../../skills/leeway-engine/scripts/domain/knowledge/vectors.cjs');
+const { launcher } = require('../../skills/leeway-engine/scripts/kernel/call.cjs');
+const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
+const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
+const { syncKnowledge } = require('../../skills/leeway-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
-const ENGINE_CJS = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const ENGINE_CJS = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
 
 function writeJson(p, obj) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -250,7 +250,7 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
       async embedBatch(/** @type {string[]} */ texts) {
         calls += 1;
         if (texts.some((text) => text.includes('beta'))) {
-          const { InvalidRequestError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+          const { InvalidRequestError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
           throw new InvalidRequestError('HTTP 400: input refused');
         }
         return stub.embedBatch(texts);

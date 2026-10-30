@@ -5,9 +5,9 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { withRetry, isPermanentError, UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
-const { AuthError, InvalidRequestError, QuotaError, ConfigError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
-const { RateLimitError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { withRetry, isPermanentError, UserError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/retry.cjs');
+const { AuthError, InvalidRequestError, QuotaError, ConfigError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { RateLimitError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 
 describe('withRetry', () => {
   it('succeeds on first attempt', async () => {

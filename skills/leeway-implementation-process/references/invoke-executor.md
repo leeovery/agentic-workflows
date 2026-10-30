@@ -1,10 +1,10 @@
 # Invoke Executor
 
-*Reference for **[workflow-implementation-process](../SKILL.md)***
+*Reference for **[leeway-implementation-process](../SKILL.md)***
 
 ---
 
-This step invokes the `workflow-implementation-task-executor` agent (`.claude/agents/workflow-implementation-task-executor.md`) to implement one task.
+This step invokes the `leeway-implementation-task-executor` agent (`.claude/agents/leeway-implementation-task-executor.md`) to implement one task.
 
 ---
 
@@ -14,13 +14,13 @@ Use `work_type` from session context — read once at the task loop's entry (**[
 
 #### If `work_type` is `quick-fix`
 
-Use **verification-workflow.md** (`.claude/skills/workflow-implementation-process/references/verification-workflow.md`) as the workflow reference (item 1 below).
+Use **verification-workflow.md** (`.claude/skills/leeway-implementation-process/references/verification-workflow.md`) as the workflow reference (item 1 below).
 
 → Proceed to **Invoke the Agent**.
 
 #### Otherwise
 
-Use **tdd-workflow.md** (`.claude/skills/workflow-implementation-process/references/tdd-workflow.md`) as the workflow reference (item 1 below).
+Use **tdd-workflow.md** (`.claude/skills/leeway-implementation-process/references/tdd-workflow.md`) as the workflow reference (item 1 below).
 
 → Proceed to **Invoke the Agent**.
 
@@ -32,15 +32,15 @@ Every dispatch below runs in the background (`run_in_background: true`), and eve
 
 #### If this is the current task's first executor dispatch
 
-Dispatch a **fresh** `workflow-implementation-task-executor` agent via the Task tool. Never continue an executor from an earlier task — the task content below is this task's complete framing, and an executor still carrying the previous task's context erodes that boundary.
+Dispatch a **fresh** `leeway-implementation-task-executor` agent via the Task tool. Never continue an executor from an earlier task — the task content below is this task's complete framing, and an executor still carrying the previous task's context erodes that boundary.
 
 The dispatch result names the new agent's id — keep it in session context; after a compaction, the note naming the task names it too. The task's later rounds (fix, retry, gate comment, answered block) continue this executor by that id.
 
 The dispatch includes these file paths:
 
 1. **Workflow reference**: the file determined above
-2. **code-quality.md**: `.claude/skills/workflow-implementation-process/references/code-quality.md`
-3. **finding-floor.md**: `.claude/skills/workflow-implementation-process/references/finding-floor.md`
+2. **code-quality.md**: `.claude/skills/leeway-implementation-process/references/code-quality.md`
+3. **finding-floor.md**: `.claude/skills/leeway-implementation-process/references/finding-floor.md`
 4. **Specification path**: the record the task was built from (if available)
 5. **Project skill paths**: from session context — the `project_skills` discovered in Step 3 (Project Skills Discovery)
 6. **Task content**: normalised task content (see [task-normalisation.md](task-normalisation.md))
@@ -48,7 +48,7 @@ The dispatch includes these file paths:
 
 A fresh dispatch starts with no memory — this payload is everything the executor sees.
 
-Context the task needs that its content lacks is landed on the task first — [ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C, marked as an addition from the orchestrator — and a specification the work has shown wrong is corrected through [correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md). Nothing rides beside the enumerated items, on a fresh dispatch or a continuation's send: the executor proceeds on them alone and reports anything else.
+Context the task needs that its content lacks is landed on the task first — [ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C, marked as an addition from the orchestrator — and a specification the work has shown wrong is corrected through [correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md). Nothing rides beside the enumerated items, on a fresh dispatch or a continuation's send: the executor proceeds on them alone and reports anything else.
 
 → Proceed to **Expected Result**.
 

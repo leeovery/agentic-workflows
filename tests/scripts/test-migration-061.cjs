@@ -21,7 +21,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/061-conversation-positions.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/061-conversation-positions.cjs');
 
 let dir, config, pinned, updates, skips;
 
@@ -77,7 +77,8 @@ describe('migration 061: label positions move into the conversation folders', ()
     skips = 0;
   });
   afterEach(() => {
-    process.env.WORKFLOWS_CONFIG_DIR = pinned;
+    if (pinned === undefined) delete process.env.WORKFLOWS_CONFIG_DIR;
+    else process.env.WORKFLOWS_CONFIG_DIR = pinned;
     for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 

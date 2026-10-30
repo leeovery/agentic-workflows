@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The brief filled and issued (workflow-engine/scripts/domain/brief.cjs, its
+// The brief filled and issued (leeway-engine/scripts/domain/brief.cjs, its
 // records domain/brief-records.cjs, the templates content/briefs/): `engine
 // brief <role> [<unit> <task>] [--{flag} <value> …]`. Its answer, the id,
 // the role, the agent and the pointer; the brief stored in the calling
@@ -49,7 +49,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { OURS, ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -57,7 +57,7 @@ const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/workflow-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
 
 const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
 const UNIT = 'pay';

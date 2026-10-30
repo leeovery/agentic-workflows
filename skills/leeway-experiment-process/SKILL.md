@@ -1,7 +1,7 @@
 ---
-name: workflow-experiment-process
+name: leeway-experiment-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
 ---
 
 # Experiment Process
@@ -27,7 +27,7 @@ The record — its id held as `{id}`, its directory as `{dir}` — resolves from
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -35,8 +35,8 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read the record's state.** Re-derive `{dir}` when it is lost: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments` gives the id and slug — the record lives at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`. Read the record's documents under `{dir}` — `problem.md`, `design.md`, `report.md` where each exists, sub-experiment directories included. The record files are the source of truth for where the experiment stands — a frozen design is frozen whatever the conversation remembered.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+2. **Read the record's state.** Re-derive `{dir}` when it is lost: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments` gives the id and slug — the record lives at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`. Read the record's documents under `{dir}` — `problem.md`, `design.md`, `report.md` where each exists, sub-experiment directories included. The record files are the source of truth for where the experiment stands — a frozen design is frozen whatever the conversation remembered.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
 
@@ -49,7 +49,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 Read the series, storing the `experiments` subtree — empty when the topic holds no series:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
 
 #### If the output is empty
@@ -80,7 +80,7 @@ Load **[select-record.md](references/select-record.md)** and follow its instruct
 > Nothing entered — the series stands as it is.
 ```
 
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `/workflow-continue-epic {work_unit}`.
+Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-continue-epic {work_unit}`.
 
 **If the resolve returned no record and `work_type` is not `epic`:**
 
@@ -90,7 +90,7 @@ Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with rou
 > Nothing entered — the series stands as it is.
 ```
 
-Load **[start-menu.md](../workflow-start/references/start-menu.md)** and follow its instructions as written.
+Load **[start-menu.md](../leeway/references/start-menu.md)** and follow its instructions as written.
 
 → On return, proceed as the reference directed.
 
@@ -101,7 +101,7 @@ Derive `{dir}` = `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`.
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} experiment {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} experiment {topic}
 ```
 
 → Proceed to **Step 1**.

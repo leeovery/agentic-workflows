@@ -20,9 +20,9 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit } = require('./engine-harness.cjs');
-const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, handoff } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
@@ -601,7 +601,7 @@ describe('pipeline simulation: sessions', () => {
       'the gate names who holds the slot, where, and for how long');
     assert.match(gate, /Code phases run one at a time/);
     // Backing out of the gate on an epic hands the work to the epic menu.
-    handoff(sim, `/workflow-continue-epic ${wu}`);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
     codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
 
     // --- a document session commits while the code session holds ------------
@@ -686,7 +686,7 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'implementation', 'dispatch'), undefined,
       'the close released the slot, and the commit after it did not take it back');
     assert.strictEqual(
-      require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
+      require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
       'so the next code session walks straight in');
   });
 });

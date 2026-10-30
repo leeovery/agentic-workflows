@@ -1,6 +1,6 @@
 # Assess Cross-Cutting & Conclude
 
-*Reference for **[workflow-specification-process](../SKILL.md)***
+*Reference for **[leeway-specification-process](../SKILL.md)***
 
 ---
 
@@ -23,7 +23,7 @@ Before asking for sign-off, assess whether this specification defines cross-cutt
 Write your assessment to `.workflows/.cache/{work_unit}/specification/{topic}/assessment.json` with the Write tool — `{"cross_cutting": {true|false}, "rationale": "{brief rationale}"}`, the rationale a sentence or two (e.g. "It defines a caching strategy that will inform how multiple features handle data retrieval, rather than being a standalone piece of functionality to build.") — then fetch the assessment and its gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment --file .workflows/.cache/{work_unit}/specification/{topic}/assessment.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment --file .workflows/.cache/{work_unit}/specification/{topic}/assessment.json
 ```
 
 **STOP.** Wait for user response.
@@ -59,7 +59,7 @@ If any entry is `in-progress`, that file's findings were not fully processed —
 Also confirm every source is incorporated:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
 If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Exhaustive Extraction — extract the source's relevant content into the specification through the construction cycle, then mark it `incorporated`.
@@ -77,7 +77,7 @@ If any show `status: stale`, the source discussion was re-decided after extracti
 Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant signoff
+node .claude/skills/leeway-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant signoff
 ```
 
 **STOP.** Wait for user response.
@@ -99,8 +99,8 @@ Discuss the user's context, and apply a change it leads to once the person confi
 Mark the specification completed — the engine sets the status and indexes the artifact into the knowledge base — then stamp the date:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
+node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} date $(date +%Y-%m-%d)
 ```
 
 Specification is complete when:
@@ -114,13 +114,13 @@ Specification is complete when:
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification" --topic specification/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): conclude specification" --topic specification/{topic}
 ```
 
 When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{topic} --verb complete --warn
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{topic} --verb complete --warn
 ```
 
 → Proceed to **E. Supersede Incorporated Specifications**.
@@ -132,7 +132,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {wor
 Read the started specifications this one incorporated — their content is now consolidated into it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
 ```
 
 #### If the response's `incorporations` is empty
@@ -143,19 +143,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {wor
 
 1. Supersede each incorporated specification (`{incorporated}`, each entry's `topic`) — one command sets `status: superseded` and `superseded_by`, and removes its chunks from the knowledge base:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {incorporated} --by {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic supersede {work_unit} specification {incorporated} --by {topic}
    ```
 
    When the JSON response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks; the supersession is already recorded:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{incorporated} --verb supersede --warn
+   node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{incorporated} --verb supersede --warn
    ```
 
 2. Inform the user which specifications were superseded
 3. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark incorporated specifications as superseded" --topic specification/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark incorporated specifications as superseded" --topic specification/{topic}
    ```
 
 → Proceed to **F. Pipeline Continuation**.
@@ -176,7 +176,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {wor
 > Specification complete. The specification is the final artifact for a cross-cutting concern — the pipeline completes here.
 ```
 
-Invoke `/workflow-bridge {work_unit} specification`.
+Invoke `/leeway-bridge {work_unit} specification`.
 
 #### Otherwise
 
@@ -186,4 +186,4 @@ Invoke `/workflow-bridge {work_unit} specification`.
 > Specification complete. The planning phase will break this into implementable tasks with dependencies and acceptance criteria.
 ```
 
-Invoke `/workflow-bridge {work_unit} specification`.
+Invoke `/leeway-bridge {work_unit} specification`.

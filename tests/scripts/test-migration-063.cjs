@@ -19,7 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/063-retire-store-msp.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/063-retire-store-msp.cjs');
 
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
 const RETIRED = `${KNOWLEDGE_DIR}/store.msp`;

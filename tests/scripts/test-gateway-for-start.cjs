@@ -8,11 +8,11 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-start/scripts/gateway.cjs');
+const { discover, format } = require('../../skills/leeway/scripts/gateway.cjs');
 
-const ADAPTER = path.join(__dirname, '../../skills/workflow-start/scripts/gateway.cjs');
+const ADAPTER = path.join(__dirname, '../../skills/leeway/scripts/gateway.cjs');
 
-describe('workflow-start discovery', () => {
+describe('leeway discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -426,7 +426,7 @@ describe('workflow-start discovery', () => {
   });
 });
 
-describe('workflow-start format', () => {
+describe('leeway format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -537,7 +537,7 @@ describe('workflow-start format', () => {
   });
 });
 
-describe('workflow-start sub-view sections', () => {
+describe('leeway sub-view sections', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -611,7 +611,7 @@ describe('workflow-start sub-view sections', () => {
 
     const out = run(['view']);
     assert.ok(out.includes('baseline: in-progress'), out);
-    assert.ok(out.includes('a  baseline  open_baseline  —  → /workflow-baseline'), out);
+    assert.ok(out.includes('a  baseline  open_baseline  —  → /leeway-baseline'), out);
     assert.ok(out.includes(`Resume the baseline interview — *1 area*\n${'\u00a0'.repeat(18)}*remaining*`), out);
   });
 
@@ -631,7 +631,7 @@ describe('workflow-start sub-view sections', () => {
 
     writeProject({ status: 'skipped' });
     const skipped = run(['view']);
-    assert.ok(skipped.includes('a  baseline  open_baseline  —  → /workflow-baseline'), skipped);
+    assert.ok(skipped.includes('a  baseline  open_baseline  —  → /leeway-baseline'), skipped);
     assert.ok(skipped.includes('Start the project baseline assessment'), skipped);
 
     // Manage carries the row for every status — the one way in for a native

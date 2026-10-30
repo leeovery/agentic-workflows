@@ -1,6 +1,6 @@
 # Resume Detection
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ Detect an interrupted prior shaping session before re-shaping an existing epic's
 **Otherwise:** read the active-session marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery active_session
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery active_session
 ```
 
 The marker is set when a session writes its log (lazy creation) and deleted when the session concludes. Its presence is the authoritative in-progress signal.
@@ -43,7 +43,7 @@ The output is the in-progress session number string (e.g. `002`) — the prior s
 Render the resume menu and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit} --variant session
+node .claude/skills/leeway-engine/scripts/engine.cjs render resume-gate {work_unit} --variant session
 ```
 
 **STOP.** Wait for user response.
@@ -60,8 +60,8 @@ Delete the in-progress log, clear the marker, and commit:
 
 ```bash
 rm .workflows/{work_unit}/discovery/sessions/session-{active_session}.md
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery active_session
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): restart interrupted session" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.discovery active_session
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): restart interrupted session" --discovery
 ```
 
 `session_number` will be set at Step 7 from discovery's `next_session_number`.

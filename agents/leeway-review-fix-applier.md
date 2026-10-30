@@ -1,6 +1,6 @@
 ---
-name: workflow-review-fix-applier
-description: Applies a batch of prepped review actions to the codebase, reconciling nothing and inventing nothing — the actions arrive already merged, corrected and constrained. Invoked by workflow-review-process during the do-now apply.
+name: leeway-review-fix-applier
+description: Applies a batch of prepped review actions to the codebase, reconciling nothing and inventing nothing — the actions arrive already merged, corrected and constrained. Invoked by leeway-review-process during the do-now apply.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 ---

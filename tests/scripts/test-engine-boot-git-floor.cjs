@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The git floor at boot (workflow-engine/scripts/domain/git-floor.cjs,
+// The git floor at boot (leeway-engine/scripts/domain/git-floor.cjs,
 // domain/boot.cjs): a git on the PATH below the engine's floor, or none,
 // stops boot before anything runs, with nothing written, and `render
 // git-floor-stop` draws the stop; a git at the floor or above passes.
@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { ok, output, refuses } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { conversationDir } = require('../../skills/workflow-engine/scripts/domain/conversation.cjs');
+const { conversationDir } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 
 const folder = useTempFolder('engine-boot-git-floor-');
 

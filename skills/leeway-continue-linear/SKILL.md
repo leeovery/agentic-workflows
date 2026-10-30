@@ -1,7 +1,7 @@
 ---
-name: workflow-continue-linear
+name: leeway-continue-linear
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-linear/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-continue-linear/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 Continue an in-progress feature, bugfix, quick-fix or cross-cutting concern. Determines the current phase and hands the work off to its phase skill.
@@ -16,7 +16,7 @@ This skill receives one positional argument:
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit}
 ```
 
 Load **[display-and-menu.md](references/display-and-menu.md)** and follow its instructions as written.
@@ -27,6 +27,6 @@ Load **[display-and-menu.md](references/display-and-menu.md)** and follow its in
 
 ## Step 2: Route Selection
 
-The user's selection carries its `route` — the selected `ACTIONS` entry's route from display-and-menu.md, e.g. `/workflow-specification-process feature {work_unit}`.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from display-and-menu.md, e.g. `/leeway-specification-process feature {work_unit}`.
 
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.
+Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `{route}`.

@@ -1,6 +1,6 @@
 # Task Design
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -45,7 +45,7 @@ A deferral is a phase-level fact. When a task defers work to another phase, the 
 
 ## Historical Artifacts Are Not Task Content
 
-No task edits another work unit's artifact under `.workflows/` — the executor writes code and tests alone. A completed unit's specification the planned work shows wrong is noted in the task's Context, never folded into the task: the session corrects it through **[correcting-historical-artifacts.md](../../workflow-shared/references/correcting-historical-artifacts.md)** — in-place edit, corrigenda entry, knowledge re-index, scoped commit, behind its gate. Non-spec artifacts of another work unit are superseded by current work, never corrected.
+No task edits another work unit's artifact under `.workflows/` — the executor writes code and tests alone. A completed unit's specification the planned work shows wrong is noted in the task's Context, never folded into the task: the session corrects it through **[correcting-historical-artifacts.md](../../leeway-shared/references/correcting-historical-artifacts.md)** — in-place edit, corrigenda entry, knowledge re-index, scoped commit, behind its gate. Non-spec artifacts of another work unit are superseded by current work, never corrected.
 
 ---
 

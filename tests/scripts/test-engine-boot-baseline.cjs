@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What boot reads of the project for the start menu
-// (workflow-engine/scripts/domain/boot.cjs): the baseline's status, the
+// (leeway-engine/scripts/domain/boot.cjs): the baseline's status, the
 // walkthrough's recorded answer, and the baseline signal — the code history
 // from before the workflows arrived; and no worktree include written.
 //

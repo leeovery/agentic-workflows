@@ -1,6 +1,6 @@
 # Show Dismissed
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -9,7 +9,7 @@ Surfaces topic names previously removed from the map and offers re-add. Loaded b
 Fetch the dismissed list:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render dismissed-topics {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render dismissed-topics {work_unit}
 ```
 
 Emit the response's sections verbatim per their markers.

@@ -9,12 +9,12 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
-const { discussionMap } = require('../../skills/workflow-engine/scripts/domain/projections/discussion-map.cjs');
-const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/workflow-engine/scripts/kernel/manifest.cjs');
+const { addSubtopic, setSubtopicState, mapState, SUBTOPIC_STATES } = require('../../skills/leeway-engine/scripts/domain/discussion-map.cjs');
+const { discussionMap } = require('../../skills/leeway-engine/scripts/domain/projections/discussion-map.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../../skills/leeway-engine/scripts/kernel/manifest.cjs');
 
 const harness = require('./engine-harness.cjs');
-const ADAPTER = path.join(__dirname, '../../skills/workflow-discussion-process/scripts/gateway.cjs');
+const ADAPTER = path.join(__dirname, '../../skills/leeway-discussion-process/scripts/gateway.cjs');
 
 /** A manifest with one in-progress discussion item, optionally pre-seeded subtopics. */
 function manifestWith(subtopics) {
@@ -487,7 +487,7 @@ describe('discussion adapter: map verb', () => {
 });
 
 describe('discussion-map domain: subtopicStatuses', () => {
-  const { subtopicStatuses } = require('../../skills/workflow-engine/scripts/domain/discussion-map.cjs');
+  const { subtopicStatuses } = require('../../skills/leeway-engine/scripts/domain/discussion-map.cjs');
 
   it('answers {} for a topic with no discussion item — absence is empty, never an error', () => {
     assert.deepStrictEqual(subtopicStatuses({ phases: {} }, 'ghost'), {});

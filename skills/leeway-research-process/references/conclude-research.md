@@ -1,6 +1,6 @@
 # Conclude Research
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@
 First check the topic's mailbox:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
 ```
 
 **If `count` is non-zero:**
@@ -19,7 +19,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit}
 A message is still waiting — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
@@ -28,7 +28,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_u
 
 1. Write the hand-off. Read the thread register:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} threads
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} threads
    ```
 
    **If any thread is `open`, `digging`, or `parked`:** write them into the research file's `## Open Threads` section — the file's closing section, created here or replaced whole when an earlier conclusion wrote one — one line per thread: the question as it stands, its state, a parked thread's note carried (`- {question} — parked: {note}`), a `digging` thread named as a dive that never landed. The discussion reads this section in full; a `learned` thread's answer is already in the body.
@@ -38,17 +38,17 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_u
 2. Check for landed evidence once more — follow **Landed Evidence** in **[session-loop.md](session-loop.md)**: a release since the completion's own check is read and put to the user, and its landed branch returns the conversation to the rhythm — the conclusion re-enters at the next done-signal; every other return continues here.
 3. Mark the research completed — the engine sets the status and indexes the artifact into the knowledge base:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic complete {work_unit} research {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} research {topic}
    ```
 4. Final commit — the Open Threads write rides it:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}): complete {topic} research"
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}): complete {topic} research"
    ```
 
    When the `complete` response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
+   node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.research.{topic} --verb complete --warn
    ```
 
 5. Sweep for leavings:
@@ -57,7 +57,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_u
    git status --porcelain -- .workflows/{work_unit}
    ```
 
-   **If dirt remains under another topic's paths:** run `node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}`. Read the `sessions` rows only — the response's deferral section is the analysis dispatch's and is not emitted here. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} --sweep -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
+   **If dirt remains under another topic's paths:** run `node .claude/skills/leeway-engine/scripts/engine.cjs presence scan {work_unit}`. Read the `sessions` rows only — the response's deferral section is the analysis dispatch's and is not emitted here. Dirt under a `held` row's topic belongs to that session — leave it, however long it has idled. For each dirty topic with no held presence — a dead session's leavings — commit it action-scoped: `node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic {phase}/{dirty_topic} --sweep -m "chore({work_unit}/{dirty_topic}): sweep session leavings"`.
 
    **Otherwise:** nothing to sweep — continue.
 
@@ -79,4 +79,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_u
 > Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
-7. Invoke `/workflow-bridge {work_unit} research`.
+7. Invoke `/leeway-bridge {work_unit} research`.

@@ -1,6 +1,6 @@
 # Route to Discovery
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,4 +11,4 @@ Parameters the caller provides via context before loading:
 - `work_type` — `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none`.
 - `inbox_seeds` — comma-joined path(s) of the chosen inbox file(s), one or more, or `none`.
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-discovery {work_type} none "{inbox_seeds}"`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery {work_type} none "{inbox_seeds}"`.

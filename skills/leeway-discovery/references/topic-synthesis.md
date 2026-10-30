@@ -1,6 +1,6 @@
 # Topic Synthesis
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -30,7 +30,7 @@ If the exploration touched on a surface only in passing and didn't develop it, n
 
 ## C. Apply Granularity Rules
 
-→ Load **[topic-granularity.md](../../workflow-shared/references/topic-granularity.md)** and follow its instructions as written.
+→ Load **[topic-granularity.md](../../leeway-shared/references/topic-granularity.md)** and follow its instructions as written.
 
 Apply the independence test and anti-patterns. Two surfaces that share a domain, data model, user journey, or decision space should merge into one topic. One surface that has independent stakeholders or genuinely separate concerns can split — but resist splitting one product surface into its implementation concerns. The map item is the unit of *future research or discussion*, not the unit of *implementation*.
 
@@ -79,7 +79,7 @@ Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topi
 Then render the proposal:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs map-view {work_unit} --proposed-file .workflows/.cache/{work_unit}/discovery/proposed-topics.json
+node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view {work_unit} --proposed-file .workflows/.cache/{work_unit}/discovery/proposed-topics.json
 ```
 
 The output arrives in demarcated sections. Read `=== DATA` to reason from (never display it) — it carries a per-name flag row for each proposed topic:
@@ -100,13 +100,13 @@ Emit the `=== DISPLAY` section verbatim per its marker — it shows the proposed
 Then render the roadmap overlay beneath the topic proposal, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow the same rules — `exists_on_roadmap=true` folds into the existing item or renames):
 
 ```bash
-node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
+node .claude/skills/leeway-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
 Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render synthesis-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render synthesis-gate
 ```
 
 **STOP.** Wait for user response.
@@ -152,13 +152,13 @@ Reached from **C** when the harvest produced parks and no topics. Write the park
 Render the roadmap overlay, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow **E**'s park rules):
 
 ```bash
-node .claude/skills/workflow-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
+node .claude/skills/leeway-roadmap/scripts/gateway.cjs proposal --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
 Fetch the gate and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-parks-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-parks-gate
 ```
 
 **STOP.** Wait for user response.

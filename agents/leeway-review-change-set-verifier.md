@@ -1,6 +1,6 @@
 ---
-name: workflow-review-change-set-verifier
-description: Holds the whole delivered change-set against one section of the specification's intent — measuring where the project's own conventions give a way to, reading where they do not — and measures the criteria per-task verification could not settle. Writes findings in the verifier's format plus a coverage map to file, returns brief status to orchestrator. Invoked by workflow-review-process after per-task verification, one per section.
+name: leeway-review-change-set-verifier
+description: Holds the whole delivered change-set against one section of the specification's intent — measuring where the project's own conventions give a way to, reading where they do not — and measures the criteria per-task verification could not settle. Writes findings in the verifier's format plus a coverage map to file, returns brief status to orchestrator. Invoked by leeway-review-process after per-task verification, one per section.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---
@@ -46,8 +46,8 @@ Read the section in full, then the corrigenda. From it: what must the product do
 The scope is the topic's task commits, read across every repo in the project with paths named from the project:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs code log {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs code diff {work_unit} {topic}
 ```
 
 `code log` answers the commits, the `files` they touched — the boundary of everything you judge — and each repo's `base`, the parent of its earliest task commit; `code diff` is the change from each repo's base to its `HEAD`, confined to those files. Read both, then the files in their final state. Read every file the section's requirements touch; follow the behaviour into files the list does not name where the delivered code calls into them, because scope is decided at the level of behaviour, not files.

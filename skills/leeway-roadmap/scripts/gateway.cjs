@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Adapter (read gateway) for workflow-roadmap. Thin by design: derivation
+// Adapter (read gateway) for leeway-roadmap. Thin by design: derivation
 // lives in the engine's domain ring (roadmap state — lifecycle by join);
 // this script selects which view the skill's flow needs and sections it.
 //
@@ -16,7 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const engine = require('../../workflow-engine/scripts/lib.cjs');
+const engine = require('../../leeway-engine/scripts/lib.cjs');
 
 // The gate each of the roadmap's menus states, named for what it asks: a key
 // of the trust log forever (16.11.9), so never another menu's.

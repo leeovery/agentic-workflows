@@ -1,6 +1,6 @@
 # Brief Synthesis
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -49,7 +49,7 @@ rm -f .workflows/{work_unit}/discovery/briefs/{parent}.md .workflows/{work_unit}
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/brief-cleanup-ops.json
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/brief-cleanup-ops.json
 ```
 
 New topics with no prior brief need no cleanup. A `delete` op fails the whole batch when the field is absent — include only topics that actually carried a `brief_path` (committed map topics with a prior brief); the `rm -f` paths are safe to include unconditionally.
@@ -57,7 +57,7 @@ New topics with no prior brief need no cleanup. A `delete` op fails the whole ba
 **Pointer backfill** — the write direction of the same bookkeeping: a brief written in **A** for an existing committed topic whose map item lacks `brief_path` has a file but no pointer (new working-list topics get theirs from the persist batch). Keying on the pointer, not the file, also heals briefs orphaned by an interrupted prior harvest. Read each written committed topic's pointer (`get` prints nothing when absent) and add one set op per lacking topic to the same ops file:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} brief_path
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} brief_path
 ```
 
 ```json
@@ -81,8 +81,8 @@ Flag downstream work, never overwrite it.
 Read both downstream phases once — every topic's items in two calls, however many briefs were written:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discussion
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion
 ```
 
 For each brief written in **A**, check the subtrees for that topic's item — a topic routes to one of the two. A hit is in-flight downstream work the fresh brief post-dates: a regenerated brief changed content the phase may have read; a first-written brief covers work that started brief-less and has never been read at all. Skip items whose status is `unstarted` — a stub holding messages has read nothing; its first start reads the fresh brief anyway. Collect a flag op for every hit, then persist them in one call (skip when none; write the ops file with the Write tool):
@@ -92,7 +92,7 @@ For each brief written in **A**, check the subtrees for that topic's item — a 
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/reconcile-ops.json
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/reconcile-ops.json
 ```
 
 This is a signal, not a rewrite — it never touches the downstream artifact's content. Soft can prompt re-examination; it can never overwrite hard. The downstream phase surfaces the flag when it next runs.

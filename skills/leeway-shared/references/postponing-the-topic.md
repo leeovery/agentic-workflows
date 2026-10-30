@@ -17,7 +17,7 @@ Three neighbours it is not:
 Postpone is topic-level over the Discovery unit — the map row with its research, discussion, and experiments together. Read the work type:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If work type is `epic`
@@ -55,7 +55,7 @@ Write into the document what this sitting discussed and has not yet recorded, as
 Either way, fetch the confirm — its statement names what goes, which is the whole unit and not only the document in front of the user, and where it lands. The gate is the confirmation: the request is never put back to the user in conversation first.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"
+node .claude/skills/leeway-engine/scripts/engine.cjs render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"
 ```
 
 #### If the call refuses
@@ -93,13 +93,13 @@ The horizon is all the comment can change — the name is the topic's and the su
 Close this session's background agents first. Read the store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
 ```
 
 For each `in_flight` row, stop its running task with the TaskStop tool on the task id this session dispatched it under, then close the row — `agent scan` never promotes an incorporated row, so a report that lands later is ignored:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
 ```
 
 Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
@@ -107,7 +107,7 @@ Rows in any other status stay as they are, and a scan holding no `in_flight` row
 Either way, run the postpone — one command takes the unit (the map row marked, every live research and discussion item under its name stashed and postponed, any proposed grouping over its discussion discarded, the experiment series left as it stands), removes the postponed artifacts' knowledge-base chunks, births or re-waits the roadmap item under the horizon, and commits both manifests:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic postpone {work_unit} {name} --horizon "{horizon}"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic postpone {work_unit} {name} --horizon "{horizon}"
 ```
 
 #### If the response is `ok: false`
@@ -121,12 +121,12 @@ Surface the engine's error verbatim in one line — nothing was written.
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when its `roadmap.reverted_join` is true, say in one line that the topic's own roadmap item is waiting again rather than a new one standing beside it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]
 ```
 
 **If `own`:**
 
-Invoke `/workflow-bridge {work_unit} {phase} none postponed`.
+Invoke `/leeway-bridge {work_unit} {phase} none postponed`.
 
 **Otherwise:**
 

@@ -140,7 +140,7 @@ function detectColumns() {
 function resolveDisplayWidth() {
   // Floor rather than reject a fractional override — an explicit ask, even a
   // sloppy one, should never lose to detection.
-  const override = Math.floor(Number(process.env.WORKFLOWS_DISPLAY_WIDTH));
+  const override = Math.floor(Number(process.env.LEEWAY_DISPLAY_WIDTH));
   if (Number.isFinite(override) && override > 0) return clamp(override);
   const cols = detectColumns();
   if (cols) return clamp(cols - GUTTER - HEADROOM);

@@ -47,14 +47,14 @@ Kebab-case the name the response gives, store as `{topic}`.
 A name already on the map is not a new topic — its menu row is the way in. Fetch the gate:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.{phase}.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.{phase}.{topic}
 ```
 
 **If the output is empty:**
 
 Silently derive `summary` (one line) and `description` (one or two paragraphs) from the user's response — values for the map row, never rendered; the derivation is part of the turn that took the name, with no stop of its own.
 
-→ Load **[ensure-discovery-item.md](../../workflow-shared/references/ensure-discovery-item.md)** with work_type = `epic`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `{phase}`, summary = `{summary}`, description = `{description}`.
+→ Load **[ensure-discovery-item.md](../../leeway-shared/references/ensure-discovery-item.md)** with work_type = `epic`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `{phase}`, summary = `{summary}`, description = `{description}`.
 
 → On return, return to caller.
 

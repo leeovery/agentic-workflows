@@ -15,7 +15,7 @@ const { isObject } = require('./manifest-io.cjs');
 const { findStateRoot } = require('./state-root.cjs');
 
 /** The command a person types at the project root to run the engine. */
-const ENGINE_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
+const ENGINE_COMMAND = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
 
 const ENGINE_CJS = path.join(__dirname, '..', 'engine.cjs');
 

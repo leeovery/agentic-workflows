@@ -1,6 +1,6 @@
 # Quick-Fix Continuation
 
-*Reference for **[workflow-bridge](../SKILL.md)***
+*Reference for **[leeway-bridge](../SKILL.md)***
 
 ---
 
@@ -15,13 +15,13 @@ Quick-fix pipeline: Scoping → Implementation → Review
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline"
 ```
 
 Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -37,7 +37,7 @@ Set `route` = `next_route`.
 The engine derives the offer from manifest state — the skip-review row on the review hop, the revisit row where an earlier phase is completed. An empty response means continuing is the only way forward:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render next-phase-gate {work_unit} --prev {completed_phase} --next {next_phase}
+node .claude/skills/leeway-engine/scripts/engine.cjs render next-phase-gate {work_unit} --prev {completed_phase} --next {next_phase}
 ```
 
 #### If the response is empty
@@ -59,13 +59,13 @@ Emit the section verbatim per its marker.
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete quick-fix pipeline (review skipped)"
 ```
 
 Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline --skipped-review
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline --skipped-review
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -79,7 +79,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 Fetch and emit the `MENU: revisit phases` section verbatim per its marker (its numbering follows `revisitable_phases` order — already filtered to quick-fix pipeline phases: specification and planning, written by scoping, are never revisit targets):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render revisit-phases {work_unit}
 ```
 
 **STOP.** Wait for user response.
@@ -96,4 +96,4 @@ Set `route` = the number's entry in `revisit_routes`.
 
 ## D. Hand Off
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `{route}`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `{route}`.

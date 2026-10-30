@@ -21,7 +21,7 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 
 /** The statuses a project manifest records; `none` is their absence. */
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
-/** The two verdicts workflow-start's judgment can record. */
+/** The two verdicts leeway's judgment can record. */
 const VERDICTS = /** @type {const} */ (['native', 'skipped']);
 
 /** @typedef {'none' | typeof RECORDED_STATUSES[number]} BaselineStatus */
@@ -337,7 +337,7 @@ const VERDICT_MESSAGES = {
 };
 
 /**
- * Record workflow-start's one-time verdict — `native` (the project grew up
+ * Record leeway's one-time verdict — `native` (the project grew up
  * on the workflows) or `skipped` (the offer was declined) — and commit it
  * confined to the project manifest. Refuses any other value, and refuses
  * once anything is recorded: the judgment happens once.

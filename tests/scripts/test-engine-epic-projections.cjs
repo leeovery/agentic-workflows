@@ -9,14 +9,14 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { discover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const { discover } = require('../../skills/leeway-continue-epic/scripts/gateway.cjs');
 const {
   epicDashboard, epicKey, epicMenu, epicInSessionGate, epicCompletedMenu, epicCancelMenu, epicReactivateMenu, epicPostponeMenu, epicPullForwardMenu, epicUnblockMenu,
-} = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
-const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
-const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
+const { TREE_WIDTH } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
+const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
-const ADAPTER = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const ADAPTER = path.join(__dirname, '../../skills/leeway-continue-epic/scripts/gateway.cjs');
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
@@ -621,12 +621,12 @@ describe('epic projections: menu', () => {
     assert.deepStrictEqual(
       keys.map((k) => [k.key, k.action, k.topic, k.route]),
       [
-        ['1', 'start_specification', 'billing-grouping', '/workflow-specification-process epic quiz-competition-v1 billing-grouping'],
-        ['2', 'continue_specification', 'auth-spec', '/workflow-specification-process epic quiz-competition-v1 auth-spec'],
+        ['1', 'start_specification', 'billing-grouping', '/leeway-specification-process epic quiz-competition-v1 billing-grouping'],
+        ['2', 'continue_specification', 'auth-spec', '/leeway-specification-process epic quiz-competition-v1 auth-spec'],
         ['s', 'analyze_discussions', null, null],
         ['d', 'new_discussion', null, null],
         ['r', 'new_research', null, null],
-        ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
+        ['i', 'continue_discovery', null, '/leeway-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
         ['p', 'postpone_topic', null, null],
@@ -779,7 +779,7 @@ describe('epic projections: menu', () => {
     const entry = keys.find((k) => k.topic === 'parked');
     assert.strictEqual(entry.action, 'start_research');
     assert.strictEqual(drawLabel(entry.label), 'Start research for "Parked" — *mail waiting*');
-    assert.strictEqual(entry.route, '/workflow-research-process epic v1 parked');
+    assert.strictEqual(entry.route, '/leeway-research-process epic v1 parked');
     assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
   });
 
@@ -884,7 +884,7 @@ describe('epic projections: presence join', () => {
     assert.strictEqual(epicInSessionGate('v1', marked), [
       '=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
+      '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
       '',
       '**`◆ Proceed anyway?`**',
       '',
@@ -1056,10 +1056,10 @@ describe('epic projections: selection sub-views', () => {
     assert.deepStrictEqual(
       view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
       [
-        ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-process epic quiz-competition-v1 kitchen-hardware'],
-        ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 auth-flow'],
-        ['3', 'resume', 'session-storage', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 session-storage'],
-        ['4', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-process epic quiz-competition-v1 roles-and-permissions'],
+        ['1', 'resume', 'kitchen-hardware', 'research', '/leeway-research-process epic quiz-competition-v1 kitchen-hardware'],
+        ['2', 'resume', 'auth-flow', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 auth-flow'],
+        ['3', 'resume', 'session-storage', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 session-storage'],
+        ['4', 'resume', 'roles-and-permissions', 'specification', '/leeway-specification-process epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
       ]
     );
@@ -1521,7 +1521,7 @@ describe('epic projections: selection sub-views', () => {
     const menu = epicMenu('v1', d);
     const unblock = menu.keys.find((k) => k.action === 'unblock_plan');
     assert.ok(unblock, 'unblock option present for the live blocked plan');
-    const { epicUnblockMenu: unblockMenu } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
+    const { epicUnblockMenu: unblockMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
     const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
     assert.deepStrictEqual(rows.map((r) => r.topic), ['blocked'], 'the cancelled plan takes no row');
   });
@@ -1541,7 +1541,7 @@ describe('epic projections: selection sub-views', () => {
         },
       },
     });
-    const { epicUnblockMenu: unblockMenu } = require('../../skills/workflow-engine/scripts/domain/projections/epic.cjs');
+    const { epicUnblockMenu: unblockMenu } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
     const rows = unblockMenu(d).keys.filter((k) => k.action === 'unblock');
     assert.deepStrictEqual(rows.map((r) => r.topic), ['zeta', 'alpha']);
   });
@@ -1757,8 +1757,8 @@ describe('epic projections: selection sub-views', () => {
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'work_unit: quiz-competition-v1',
       'ACTIONS (key  word  action  topic  phase  → route):',
-      '  1  —  resume  kitchen-hardware  research  → /workflow-research-process epic quiz-competition-v1 kitchen-hardware',
-      '  2  —  resume  auth-flow  discussion  → /workflow-discussion-process epic quiz-competition-v1 auth-flow',
+      '  1  —  resume  kitchen-hardware  research  → /leeway-research-process epic quiz-competition-v1 kitchen-hardware',
+      '  2  —  resume  auth-flow  discussion  → /leeway-discussion-process epic quiz-competition-v1 auth-flow',
       '  b  back  back  —  —  → (internal)',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
@@ -1823,7 +1823,7 @@ describe('epic projections: the topic-grain experiment entry', () => {
     assert.strictEqual(first.key, '1');
     assert.strictEqual(first.action, 'continue_experiment');
     assert.strictEqual(first.topic, 'timing');
-    assert.strictEqual(first.route, '/workflow-experiment-process epic lab timing');
+    assert.strictEqual(first.route, '/leeway-experiment-process epic lab timing');
     // 1 queued: the concluded E2 and the sub-experiment E1.1 stay out of the
     // count — terminal rows have retired and a split is worked through its
     // parent.
@@ -1947,7 +1947,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys, rendered } = epicMenu('v1', d);
     assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
-    assert.strictEqual(keys[0].route, '/workflow-research-process epic v1 billing');
+    assert.strictEqual(keys[0].route, '/leeway-research-process epic v1 billing');
     assert.strictEqual(keys[0].recommended, true, 'the research row is first when its topic is first');
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
@@ -2252,7 +2252,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       ],
     );
     assert.deepStrictEqual(keys[1].blocked_by, ['research'], 'the struck row carries what holds its entry shut');
-    assert.strictEqual(keys[1].route, '/workflow-discussion-process epic v1 billing');
+    assert.strictEqual(keys[1].route, '/leeway-discussion-process epic v1 billing');
     assert.strictEqual(keys[1].session_age, 240);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
@@ -2289,7 +2289,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.strictEqual(epicInSessionGate('v1', keys.find((k) => k.in_session)), [
       '=== MENU: in-session gate — 2 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      '"Billing" is open in another session — last active 4m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Its entry is also held shut — research on "Billing" is outstanding — so proceeding meets that gate next. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear v1 discussion billing`.',
+      '"Billing" is open in another session — last active 4m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Its entry is also held shut — research on "Billing" is outstanding — so proceeding meets that gate next. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion billing`.',
       '',
       '**`◆ Proceed anyway?`**',
       '',

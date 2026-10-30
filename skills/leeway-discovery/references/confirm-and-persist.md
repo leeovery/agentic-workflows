@@ -1,6 +1,6 @@
 # Confirm and Persist
 
-*Reference for **[workflow-discovery](../SKILL.md)***
+*Reference for **[leeway-discovery](../SKILL.md)***
 
 ---
 
@@ -33,7 +33,7 @@ Set `"force_dismissed": true` on an entry whose name the synthesis DATA flagged 
 Persist the set in one transaction:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add-batch {work_unit} --file .workflows/.cache/{work_unit}/discovery/topics.json
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add-batch {work_unit} --file .workflows/.cache/{work_unit}/discovery/topics.json
 ```
 
 The batch is atomic — a failing entry means nothing was persisted; fix the payload and re-run. Surface any error and stop before the commit so the user can recover.
@@ -54,13 +54,13 @@ Each verb validates and self-commits; record every landing under the log's **Edi
 **Park set** — one batch over the file the synthesis gate already wrote in full (provenance included; nothing to rewrite):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/{work_unit}/discovery/proposed-parks.json
 ```
 
 **Pull-forward set** — one call per item (the map topic + its join, one commit each; over a topic this epic postponed, the verb restores that row instead and `--routing` names nothing):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}
 ```
 
 A refusal naming a previously dismissed topic is the user's earlier removal speaking — the gate's confirmation was the deliberate re-add, so re-run with `--force-dismissed`.
@@ -68,7 +68,7 @@ A refusal naming a previously dismissed topic is the user's earlier removal spea
 **Binds** — the harvest's closing move for ideas pulled into this epic before it had a map. Read the roadmap state (`engine roadmap state`); for every item of kind `idea` whose row names this work unit with **no `topic`**, bind it to the confirmed topic its ground crystallised as — usually the same-named one; when its ground split across several topics, the one carrying its identity:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap bind {item} --topic {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap bind {item} --topic {topic}
 ```
 
 A harvest that renamed a bound item's topic re-runs the bind — re-binding re-aims the join.
@@ -118,13 +118,13 @@ Pick the commit message:
 Close the session — one engine transaction clears the active-session marker (resume detection on the next entry sees a closed session) and indexes the finalised log into the knowledge base so this epic's discovery is retrievable by later phases and sibling epics (idempotent — re-indexing the same session replaces its chunks; distinct sessions coexist under their own identity), then commits. One call covers everything a discovery session writes — its logs, its briefs, the manifest: the manifest writes from **A**, the Topics Identified write, the Conclusion replacement, and the briefs written and reconciled at harvest by [brief-synthesis.md](brief-synthesis.md):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-session close {work_unit} -m "{message}"
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session close {work_unit} -m "{message}"
 ```
 
 When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the session is closed and committed either way:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render session-receipt {work_unit} --warn
+node .claude/skills/leeway-engine/scripts/engine.cjs render session-receipt {work_unit} --warn
 ```
 
 → Return to caller.
@@ -134,7 +134,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render session-receipt {w
 Browse-only session — the marker was never set and there is nothing to index. Commit anything the session left in the discovery scope; a clean tree reports `committed: null` and is fine:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log" --discovery
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): finalise session log" --discovery
 ```
 
 → Return to caller.

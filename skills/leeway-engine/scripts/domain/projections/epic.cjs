@@ -733,7 +733,7 @@ function commandOptions(workUnit, detail, hasMap) {
   /** @type {MenuKey} */
   const discoveryOpt = {
     key: 'i', word: 'discovery', action: 'continue_discovery', topic: null,
-    route: `/workflow-discovery epic ${workUnit}`,
+    route: `/leeway-discovery epic ${workUnit}`,
     // An open session marker outranks map state: the user left a session
     // mid-flight, and discovery's resume gate is waiting for them.
     label: detail.active_session

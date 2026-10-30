@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The gate mod at boot (workflow-engine/scripts/domain/boot.cjs with
+// The gate mod at boot (leeway-engine/scripts/domain/boot.cjs with
 // domain/gate-surface.cjs): the gate surface reported where the mod can run,
 // is running, is outdated or cannot run, no Claude Code settings written;
 // and the hook sync beside it, its commit, its file's mode and link kept.
@@ -45,7 +45,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   }
   /** Install the mod where an install puts it, committed, so boot's commits are the only new ones. */
   function installMod() {
-    createFile(fix.project, '.claude/skills/workflow-gates/.claude-plugin/plugin.json', '{"name":"workflow-gates"}\n');
+    createFile(fix.project, '.claude/skills/leeway-gates/.claude-plugin/plugin.json', '{"name":"leeway-gates"}\n');
     commitAll(fix.project, 'install the mod');
   }
   /** The fixture's Claude Code config directory, and a home holding no `.claude` — neither made unless a test makes it. */
@@ -94,8 +94,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('the mod announced in boot\'s environment reports on — only `1` is the announcement', () => {
     installMod();
-    assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on');
-    assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '0' }).gate_surface, 'not-running');
+    assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on');
+    assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '0' }).gate_surface, 'not-running');
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made either way');
   });
 
@@ -105,7 +105,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       const res = bootTerminal({ AI_AGENT: `claude-code_${version}_agent` });
       assert.strictEqual(res.gate_surface, 'outdated', version);
     }
-    assert.strictEqual(bootTerminal({ AI_AGENT: 'claude-code_2-1-286_agent', WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'outdated');
+    assert.strictEqual(bootTerminal({ AI_AGENT: 'claude-code_2-1-286_agent', LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'outdated');
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
     assert.ok(!fs.existsSync(homeDir()), 'nor ~/.claude');
   });
@@ -114,7 +114,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     installMod();
     for (const version of ['2-1-287', '2-1-300', '2-2-0', '3-0-0']) {
       assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent` }).gate_surface, 'not-running', version);
-      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent`, WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on', version);
+      assert.strictEqual(bootTerminal({ AI_AGENT: `claude-code_${version}_agent`, LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', version);
     }
   });
 
@@ -123,7 +123,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     for (const entrypoint of ['claude-desktop', 'claude-desktop-3p']) {
       const desktop = { CLAUDE_CODE_ENTRYPOINT: entrypoint };
       assert.strictEqual(bootTerminal(desktop).gate_surface, 'not-running', entrypoint);
-      assert.strictEqual(bootTerminal({ ...desktop, WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on', entrypoint);
+      assert.strictEqual(bootTerminal({ ...desktop, LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', entrypoint);
       assert.strictEqual(bootTerminal({ ...desktop, AI_AGENT: 'claude-code_2-1-286_agent' }).gate_surface, 'outdated', entrypoint);
     }
     assert.ok(!fs.existsSync(claudeDir()), 'nothing made');
@@ -140,7 +140,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       ['Claude Code on the web', { CLAUDE_CODE_REMOTE: 'true' }],
       ['on the web at an older release', { CLAUDE_CODE_REMOTE: 'true', ...old }],
       ['the VS Code extension', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' }],
-      ['the VS Code extension, announced', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode', WORKFLOWS_GATE_SURFACE: '1' }],
+      ['the VS Code extension, announced', { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode', LEEWAY_GATE_SURFACE: '1' }],
       ['a Desktop cloud session', { CLAUDE_CODE_ENTRYPOINT: 'remote_desktop' }],
       ['a Desktop cloud session, flagged remote', { CLAUDE_CODE_ENTRYPOINT: 'remote_desktop', CLAUDE_CODE_REMOTE: 'true' }],
       ['the Desktop app on the web', { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop', CLAUDE_CODE_REMOTE: 'true' }],
@@ -178,7 +178,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       const project = json({ ...HOOKS_ONLY, env: { [FLAG]: value } });
       commitSettings(project);
       assert.strictEqual(bootTerminal().gate_surface, 'not-running', `a project flag of ${value}`);
-      assert.strictEqual(bootTerminal({ WORKFLOWS_GATE_SURFACE: '1' }).gate_surface, 'on', `a project flag of ${value}`);
+      assert.strictEqual(bootTerminal({ LEEWAY_GATE_SURFACE: '1' }).gate_surface, 'on', `a project flag of ${value}`);
       assert.strictEqual(projectSettingsText(), project, 'left as found');
     }
   });

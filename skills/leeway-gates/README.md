@@ -1,4 +1,4 @@
-# workflow-gates
+# leeway-gates
 
 A Claude Code mod that draws the workflow engine's gates in the band above the
 prompt instead of leaving the model to reproduce them.
@@ -10,7 +10,7 @@ model reads, and draws the rows where they stay put while the transcript
 scrolls; while any screen but the terminal or the Desktop app is attached
 beside it, it leaves the menu as text so every screen shows it, though a
 screen that attaches after a menu was drawn does not get that menu. No gate's
-prose names the mod; only workflow-start's setup step does, with a notice when
+prose names the mod; only leeway's setup step does, with a notice when
 the mod could run in Claude Code's terminal app or the Desktop app's Code tab
 but is not running.
 
@@ -20,8 +20,8 @@ has given the band the keyboard, the arrows move between rows, Enter or a row's
 own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
 plugin's; the mod leaves what it sent in the conversation's own folder (see
-below) as `sent.json`. A second plugin, `workflow-gates-rows`
-(`../workflow-gates-rows/`), reads that record to draw the row as the question
+below) as `sent.json`. A second plugin, `leeway-gates-rows`
+(`../leeway-gates-rows/`), reads that record to draw the row as the question
 and the answer, since no plugin can redraw the row of a prompt it submitted.
 Beside it the mod leaves the press itself as `pressed.json` — the gate's name,
 the row's answer, and when it was sent — which the engine's `gate` reads to
@@ -65,8 +65,8 @@ takes the gate off the band.
 
 At the end of every turn, and as the conversation ends, the mod keeps what the
 band shows — the gate, or nothing — in the conversation's own folder,
-`~/.config/workflows/conversations/{session-id}/gate.json` (under
-`WORKFLOWS_CONFIG_DIR` where that is set, beside the workflows' system
+`~/.config/leeway/conversations/{session-id}/gate.json` (under
+`LEEWAY_CONFIG_DIR` where that is set, beside the workflows' system
 config), found by the session id wherever the session's working directory has
 moved, and stamped with where the transcript ends, not counting the lines
 Claude Code writes around an interrupted turn. A conversation resumed with
@@ -77,7 +77,7 @@ not come back; one that moved on while the mod was not loaded gets nothing. A
 session the mod was loaded into after it started carries no announcement, so
 there it keeps and reads back nothing, and a conversation that does not run
 the workflows has no folder and keeps nothing — nor does one in a process
-that names neither a home directory nor `WORKFLOWS_CONFIG_DIR`. The folder
+that names neither a home directory nor `LEEWAY_CONFIG_DIR`. The folder
 holds one gate, and goes once Claude Code has deleted the conversation's
 transcript, so a kept gate lives as long as its conversation can be resumed,
 with one exception: a conversation whose end the session-end hook never saw
@@ -93,7 +93,7 @@ the project; mods are on by default there, so nothing switches it on. Claude
 Code loads a plugin as a session starts, so a session already open when the
 mod was installed or updated loads it in the next one. The mod is the
 workflows' upgrade layer and the engine's text menus their floor: a
-`/workflow-start` that finds the mod not running — a session started before
+`/leeway` that finds the mod not running — a session started before
 the mod was installed or updated, mods turned off by `--safe-mode`, `--bare`,
 `"disableAllHooks": true` or an organization's policy, or installed mods
 switched off remotely by Anthropic — says so and carries on with typed menus;
@@ -121,8 +121,8 @@ it.
 The mod also carries the workflows' handoffs: every move into work, which the
 engine names with `engine handoff`, starts in a cleared conversation. At the
 session's start, where it announces the gate surface, the mod announces that
-it carries handoffs too (`WORKFLOWS_HANDOFF=1`, a variable of its own, which
-the engine reads apart from `WORKFLOWS_GATE_SURFACE`). The engine then answers
+it carries handoffs too (`LEEWAY_HANDOFF=1`, a variable of its own, which
+the engine reads apart from `LEEWAY_GATE_SURFACE`). The engine then answers
 a handoff with a `HANDOFF` payload beside the line naming where the work goes:
 the continuation to send (``Invoke `/<skill> <args>`.``) and that line. The
 payload on a Bash result of the conversation's own call — never a subagent's —
@@ -138,7 +138,7 @@ goes into the prompt box for Enter instead; where the box will not take it
 either, the toast holds the continuation for the person to send, and stays
 longer. A clear that fails sends in place, so the work still goes on. Esc on
 the turn that handed off carries nothing: Esc means stop.
-`workflow-gates-rows` draws the continuation's transcript row as the line.
+`leeway-gates-rows` draws the continuation's transcript row as the line.
 Where the mod does not announce, the engine says so and the workflows invoke
 the skill in the same conversation.
 
@@ -161,7 +161,7 @@ both per request. Every engine call marks the conversation that made it — a
 command — and the mod reads that mark by its own session id after each of the
 conversation's Bash calls and when it starts, so a command that only mentions
 the engine marks nothing. What the settings replace, the person's own value or
-none, is kept in the process's environment (`WORKFLOWS_HARNESS_REPLACED`),
+none, is kept in the process's environment (`LEEWAY_HARNESS_REPLACED`),
 which a reload of the mod's files keeps, and a `/clear` or a resume puts it
 back exactly — except the clear a handoff runs, which leads into a workflow
 conversation by construction and so leaves the workflow values on, the
@@ -205,7 +205,7 @@ Words typed after `/compact` go to Claude Code's summary as they always do.
 Claude Code stores the note as an ordinary user row and would draw it as a
 prompt the person typed. So the mod records every note it hands up in the
 conversation's folder as `compacted.json`, each with the place the engine
-names (`fumi › discussion › management-window`), and `workflow-gates-rows`
+names (`fumi › discussion › management-window`), and `leeway-gates-rows`
 draws the note's row from it as one dim line.
 
 It does so in a session that announced, in a conversation the engine has
@@ -222,7 +222,7 @@ The implementation phase dispatches one executor agent per task and sends the
 task's later rounds — a fix, a retry, a comment at the gate — to that same
 agent by its id, so it keeps what it learned. In a session that announced, in
 a conversation the engine has marked, when the main loop dispatches
-`workflow-implementation-task-executor`, the mod hands the agent id the
+`leeway-implementation-task-executor`, the mod hands the agent id the
 dispatch answers with, foreground or background, to the engine's
 `conversation executor`, which records it on the position beside the task in
 flight; with no task in flight it records nothing. The id rides with that

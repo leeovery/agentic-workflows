@@ -18,7 +18,7 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const { call } = require('./engine-harness.cjs');
 const {

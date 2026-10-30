@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The trust log (workflow-engine/scripts/domain/trust-log.cjs, its events
+// The trust log (leeway-engine/scripts/domain/trust-log.cjs, its events
 // trust-events.cjs): `record`, the one door every event goes through — each
 // event of 16.13.4 written whole as one line under the fields the engine
 // sets, a bad one refused with nothing written, the project keyed by the
@@ -42,7 +42,7 @@ const path = require('path');
 const { NO_SPACE, STATE_DIR_NAME, statePath, layout, contend, failingTrustAppends, lockAttempts } = require('./engine-harness.cjs');
 const { idOf, PROJECT_ID, SESSION, lines, from, waitingPath, inConversation, useTrustWorld } = require('./trust-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const STATE_ROOT_MODULE = path.join(SCRIPTS, 'kernel/state-root.cjs');
 const TRUST_LOG_MODULE = path.join(SCRIPTS, 'domain/trust-log.cjs');
 const { pinStateRoot } = require(STATE_ROOT_MODULE);

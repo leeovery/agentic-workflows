@@ -1,6 +1,6 @@
 # Finding Floor
 
-*Reference for **[workflow-implementation-process](../SKILL.md)** — also loaded by the review phase's change-set verifiers*
+*Reference for **[leeway-implementation-process](../SKILL.md)** — also loaded by the review phase's change-set verifiers*
 
 ---
 

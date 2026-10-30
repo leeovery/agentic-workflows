@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state worktree (workflow-engine/scripts/domain/state-worktree.cjs) and
+// The state worktree (leeway-engine/scripts/domain/state-worktree.cjs) and
 // the isolated git it runs on (kernel/isolated-git.cjs): the orphan
 // `leeway-state` checked out at `.leeway/` in the main checkout and locked,
 // found from any worktree through the common git directory; every call made
@@ -25,18 +25,18 @@ const path = require('path');
 const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout, createFile, traced, childLimits, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { useWorld, elsewhereRepo, snapshot, ignored } = require('./state-worktree-world.cjs');
 
-const ISOLATED_GIT = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
+const ISOLATED_GIT = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
 const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout } = require(ISOLATED_GIT);
-const { GitError } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
+const { GitError } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 
-const { stateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
-const { isId } = require('../../skills/workflow-engine/scripts/domain/ledger-ids.cjs');
+const { stateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { isId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
 
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
   inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
   askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, commitState,
-} = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
 const world = useWorld();
 
@@ -145,7 +145,7 @@ describe('the isolated runner', () => {
   });
 
   it('runs every git within a time limit: the call\'s own, else CALL_TIMEOUT_MS — the config\'s hooks read at the first call too', (t) => {
-    const limits = childLimits(t, ISOLATED_GIT, (/** @type {typeof import('../../skills/workflow-engine/scripts/kernel/isolated-git.cjs')} */ fresh) => {
+    const limits = childLimits(t, ISOLATED_GIT, (/** @type {typeof import('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs')} */ fresh) => {
       const runner = fresh.isolatedGit(world());
       runner.run(['--version']);
       runner.tryRun(['--version']);

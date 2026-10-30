@@ -1,6 +1,6 @@
 # Design the Experiment
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -19,8 +19,8 @@ Depth scales with the shape — a ten-minute local test writes four lines per se
 When the design is written, record the step and commit — the commit carries the design file and the manifest together:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} designed"
+node .claude/skills/leeway-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} designed"
 ```
 
 **If the engine refused the advance:**

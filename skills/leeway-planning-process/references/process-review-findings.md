@@ -8,7 +8,7 @@ Process findings from a review agent interactively with the user. The agent writ
 
 **Review type**: `{review_type:[traceability|integrity]}` — set by the calling context (C or D in plan-review.md); a caller that names a tracking file rather than a phase derives it, and the file's path, from the tracking stem (`review-traceability-…` → traceability, `review-integrity-…` → integrity). Such a caller enters with the file in hand — read it and proceed to **A. Summary**; the `STATUS` branches below serve the agent-return callers.
 
-**Commits in this file**: applying a finding writes through the format adapter; commit with `node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "<message>" --plan {topic}` — it stages the planning topic, the manifests, and the plan's declared storage.
+**Commits in this file**: applying a finding writes through the format adapter; commit with `node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "<message>" --plan {topic}` — it stages the planning topic, the manifests, and the plan's declared storage.
 
 #### If `STATUS` is `clean`
 
@@ -38,7 +38,7 @@ Write the summary payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 Render and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render findings-summary {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render findings-summary {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/findings-summary.json
 ```
 
 → Proceed to **B. Process One Item at a Time**.
@@ -108,7 +108,7 @@ Write the finding payload to `.workflows/.cache/{work_unit}/planning/{topic}/fin
 Render, then emit each returned section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json
 ```
 
 The response carries the finding presentation plus the surface for its move and the current gate mode.
@@ -118,10 +118,10 @@ The response carries the finding presentation plus the surface for its move and 
 1. Apply the fix to the plan — the finding's change re-derived against the live plan content, from the **Proposed Text** field (older tracking files name it **Proposed** — read both as the same field); for `remove-task`/`remove-phase` the fix is removing the **Current** content
 2. Keep `task_map` current in ONE call for the whole finding — for `add-task`/`add-phase`, batch every new mapping as field pairs in a single `set`; for `remove-task`/`remove-phase` (or a mixed change), write the finding's ops — `{"op": "delete", "path": "{work_unit}.planning.{topic}", "field": "task_map.{internal_id}"}` per removal, `{"op": "set", …}` per addition — to `.workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json` with the Write tool and apply once:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id}={external_id} task_map.{internal_id_2}={external_id_2}
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id}={external_id} task_map.{internal_id_2}={external_id_2}
    ```
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/planning/{topic}/task-map-ops.json
    ```
 3. Update the tracking file: set resolution to "Fixed"
 4. Commit the tracking file and plan changes
@@ -144,7 +144,7 @@ The response carries the finding presentation plus the surface for its move and 
 Re-render with `--view full` and emit both returned sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json --view full
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/finding-current.json --view full
 ```
 
 **STOP.** Wait for user response.
@@ -205,7 +205,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 2. Update the tracking file: set resolution to "Fixed"
 3. Update `finding_gate_mode` in the manifest:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} finding_gate_mode auto
    ```
 4. Commit
 5. Process each remaining finding from **B** — the mode change removes the approval stops for settled fixes, never the per-finding pass: a `choice` that stands at **B**'s dispose still stops, and every finding **B** does not decline is still rendered
@@ -216,7 +216,7 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 ## C. After All Findings Processed
 
-1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} complete`.
+1. **Mark the tracking file complete** — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any plan changes.
 3. Say `{review_type:(titlecase)} review complete — {N} finding(s) processed.`, `{N}` the count of **A**'s summary items.
 

@@ -1,18 +1,18 @@
 # Topic Discovery
 
-*Shared reference. Loaded by [topic-discovery-dispatch.md](topic-discovery-dispatch.md), which `workflow-continue-epic` runs.*
+*Shared reference. Loaded by [topic-discovery-dispatch.md](topic-discovery-dispatch.md), which `leeway-continue-epic` runs.*
 
 ---
 
 Drives cache-based dispatch of `discovery-gap-analysis` against an epic. When the cache is stale the flow is **stage → present → approve → write → stamp**: the analysis stages its genuinely-new candidates to a staging file, the gate ([analysis-approval-gate.md](analysis-approval-gate.md)) presents each for per-item approval, approved items are written to `phases.discovery.items.{topic}` with `source` provenance, and the cache is stamped once the gate completes. The no-gate cases (already-on-map, dismissed) are resolved silently at stage time against the per-work-unit `phases.discovery.dismissed[]` list.
 
-The gate runs before the dashboard — it is the epic menu's boot-time review surface, run at `workflow-continue-epic` Step 3 through the shared dispatch.
+The gate runs before the dashboard — it is the epic menu's boot-time review surface, run at `leeway-continue-epic` Step 3 through the shared dispatch.
 
 The analysis self-gates on a precondition (at least one completed research OR discussion item). When the precondition fails it returns without staging, gating, or stamping — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
 Skipping every candidate (decline-all) still stamps the cache, so the analysis won't re-fire until its inputs change.
 
-The caller is responsible for surfacing the result — `workflow-continue-epic` shows a callout above the discovery map.
+The caller is responsible for surfacing the result — `leeway-continue-epic` shows a callout above the discovery map.
 
 ## Parameters
 
@@ -25,7 +25,7 @@ The caller provides these via context before loading:
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Parse the `analysis_caches` line from the output (`gap_analysis=<status>`): `valid` | `stale` | `absent`.
@@ -99,13 +99,13 @@ git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/d
 No single scope carries both the bookkeeping and the briefs, so each takes its own confined commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
 ```
 
 Run the second only when the gate approved a candidate — `new_arrivals.gap_analysis` holds a name — so a peer discovery session's half-written briefs are never swept up:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --discovery -m "discovery({work_unit}): analysis run briefs"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --discovery -m "discovery({work_unit}): analysis run briefs"
 ```
 
 → Proceed to **D. Return**.
@@ -120,6 +120,6 @@ Every write was already carried by a self-committing delivery — nothing to swe
 
 The caller reads `new_arrivals` from conversation memory:
 
-- **`workflow-continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the callout above the Discovery Map: `⚑ N new topics added to the map from gap-analysis`. Callouts are rendered once at this boot-up; subsequent boots without changes don't repeat them.
+- **`leeway-continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the callout above the Discovery Map: `⚑ N new topics added to the map from gap-analysis`. Callouts are rendered once at this boot-up; subsequent boots without changes don't repeat them.
 
 → Return to caller.

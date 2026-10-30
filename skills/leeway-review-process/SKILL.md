@@ -1,7 +1,7 @@
 ---
-name: workflow-review-process
+name: leeway-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
 ---
 
 # Review Process
@@ -27,7 +27,7 @@ The plan's tasks and acceptance criteria are what the review verifies against, a
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -35,9 +35,9 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Read review and synthesis files** for the current topic. Review documents are at `.workflows/{work_unit}/review/{topic}/report.md` with per-task report files (`report-{phase_id}-{task_id}.md`) and change-set verification files (`change-set-c{N}-{section-slug}.md`, one per section per review cycle) alongside. Synthesis staging files are at `.workflows/{work_unit}/implementation/{topic}/review-tasks-c{N}.md`. These hold the staged proposals — bodies exist only once the task author has run after the walk; the per-task decisions and `gate_mode` live in the manifest's `staging.c{N}` subtree.
-3. **Check git state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
+3. **Check git state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
@@ -58,7 +58,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
+The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -66,7 +66,7 @@ The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it",
 
 ## Postponing the Topic
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `review`, from any point in the phase.
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `review`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -74,7 +74,7 @@ The user pushes a topic back to the roadmap — "postpone this", "move the loyal
 
 ## Cancelling the Topic
 
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -84,7 +84,7 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ### Step 0.1: Code Slot
 
-Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`.
+Load **[code-session-gate.md](../leeway-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`.
 
 → On return, proceed to **Step 0.2**.
 
@@ -93,7 +93,7 @@ Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md
 Check the plan and implementation prerequisite — the engine derives the verdict from manifest state:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.review.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.review.{topic}
 ```
 
 #### If the response is empty
@@ -113,13 +113,13 @@ Emit both sections verbatim per their markers — the red blocker line, then its
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} review {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} review {topic}
 ```
 
 Read the phase status, storing it as `phase_status`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} status
 ```
 
 #### If `phase_status` is empty
@@ -133,21 +133,21 @@ A first start.
 Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} review {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} review {topic}
 ```
 
 Render the phase note — `Reopening` for a review just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.review.{topic} --verb {Reopening|Resuming}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.review.{topic} --verb {Reopening|Resuming}
 ```
 
-Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `review`.
+Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `review`.
 
 Check for prior review state — a review file at `.workflows/{work_unit}/review/{topic}/report.md`, and recorded coverage (empty stdout means none):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} reviewed_tasks
 ```
 
 **If neither exists:**
@@ -161,13 +161,13 @@ The review stopped before verifying anything — there is nothing to resume.
 Gather coverage state. Read `completed_tasks` from the implementation manifest:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} completed_tasks
 ```
 
 Render the resume menu — the engine derives review coverage from the two arrays — and emit its section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_unit}.review.{topic} --variant review
+node .claude/skills/leeway-engine/scripts/engine.cjs render resume-gate {work_unit}.review.{topic} --variant review
 ```
 
 **STOP.** Wait for user response.
@@ -200,26 +200,26 @@ Order matters — the review file is deleted last, so a crash mid-restart re-off
 
 1. Clear review tracking (each subtree only if it exists — check with `manifest exists {work_unit}.review.{topic} reviewed_tasks`, `… staging`, and `… out_of_scope` first):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} reviewed_tasks
    ```
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} staging
    ```
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
    ```
 2. Delete any synthesis staging files (`review-tasks-c*.md`) in `.workflows/{work_unit}/implementation/{topic}/` — stale proposals from the abandoned run. The synthesis reports (`review-report-c*.md`) stay — the cycle counter reads them
 3. **If the abandoned run's `Review Remediation (Cycle {N})` phase already landed in the plan**: mark each of that phase's tasks whose id is **not** in `{work_unit}.implementation.{topic}` `completed_tasks` skipped per the format's **updating.md** (format from `manifest get {work_unit}.planning.{topic} format`) — abandoned remediation must never execute, and a partially-executed phase keeps only what already ran. Then close that phase (`{M}` below is its number) — abandoned work takes no boundary sweep:
-   - empty the bank when the manifest holds one (`manifest exists {work_unit}.implementation.{topic} bank`, then `node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank`)
-   - drop an in-flight boundary walk when `staging.p{M}` exists (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} staging.p{M}`), and delete `consolidation-findings-p{M}.md` and `consolidation-tasks-p{M}.md` from `.workflows/{work_unit}/implementation/{topic}/`
-   - mark the boundary, skipping the push when `consolidated_phases` already contains `{M}` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {M}`)
-   - complete the phase in the plan per the format's **updating.md**, then record it via the engine for the phase's last completed task — or, when none ran, any of its skipped tasks with `--skipped` (`node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {M} [--skipped] --phase-complete`)
+   - empty the bank when the manifest holds one (`manifest exists {work_unit}.implementation.{topic} bank`, then `node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank`)
+   - drop an in-flight boundary walk when `staging.p{M}` exists (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} staging.p{M}`), and delete `consolidation-findings-p{M}.md` and `consolidation-tasks-p{M}.md` from `.workflows/{work_unit}/implementation/{topic}/`
+   - mark the boundary, skipping the push when `consolidated_phases` already contains `{M}` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {M}`)
+   - complete the phase in the plan per the format's **updating.md**, then record it via the engine for the phase's last completed task — or, when none ran, any of its skipped tasks with `--skipped` (`node .claude/skills/leeway-engine/scripts/engine.cjs task complete {work_unit} {topic} {internal_id} --phase {M} [--skipped] --phase-complete`)
 4. Delete the review file, all report files (`report-*.md`) and all change-set files (`change-set-*.md`) in the review directory (`.workflows/{work_unit}/review/{topic}/`), and the topic's review cache directory (`.workflows/.cache/{work_unit}/review/{topic}/`) — the abandoned run's collected criteria and staged payloads
 5. Commit the deletions under the topics that held them, then the plan — `--plan` stages the planning topic, the manifests, and the plan's declared storage (the skip-markings live there):
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear reports and staging" --topic review/{topic}
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear staged proposals" --topic implementation/{topic} --sweep
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review" --plan {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear reports and staging" --topic review/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review — clear staged proposals" --topic implementation/{topic} --sweep
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): restart review" --plan {topic}
    ```
 
 → Proceed to **Step 1**.
@@ -233,7 +233,7 @@ Order matters — the review file is deleted last, so a crash mid-restart re-off
 Start the review item — the engine creates it with `status: in-progress`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} review {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} review {topic}
 ```
 
 → Proceed to **Step 2**.
@@ -262,7 +262,7 @@ Load **[load-project-skills.md](references/load-project-skills.md)** and follow 
 
 ## Step 4: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 
@@ -284,7 +284,7 @@ Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** 
 
 Load **[invoke-task-verifiers.md](references/invoke-task-verifiers.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — use only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — use only for cross-work-unit consistency checks ("does this mirror how similar decisions were made elsewhere?"). Consistency with the current spec is already in scope — no KB needed. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
 
 → On return, proceed to **Step 6**.
 
@@ -380,7 +380,7 @@ Load **[present-review.md](references/present-review.md)** and follow its instru
 
 ## Step 11: Compliance Self-Check
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 12**.
 

@@ -24,7 +24,7 @@ Read the plan end-to-end — carefully, as if you were about to implement it. Fo
 
 ## What to Look For
 
-→ Load **[finding-floor.md](../../workflow-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
+→ Load **[finding-floor.md](../../leeway-implementation-process/references/finding-floor.md)** — the floor every finding clears. At planning it reads: a finding names what the implementer builds wrong or fails to build, for whom, and how it would be noticed — or it is not written.
 
 1. **Task Template Compliance**
    - Every task has all required fields: Problem, Solution, Outcome, Acceptance Criteria

@@ -1,6 +1,6 @@
 # Specification Body
 
-*Shared reference. Loaded by workflow-specification-process and workflow-scoping-process.*
+*Shared reference. Loaded by leeway-specification-process and leeway-scoping-process.*
 
 ---
 

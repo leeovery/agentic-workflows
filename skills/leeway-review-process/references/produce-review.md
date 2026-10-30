@@ -1,6 +1,6 @@
 # Produce Review
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
@@ -37,7 +37,7 @@ Each action is already resolved: collisions collapsed into one item, corrections
 Group by route, omitting any with no actions:
 
 - `replan` → `### Needs planning` — **these are why the review failed**. Each carries what is wrong, the failure it causes, and how far the fix reaches; an action carrying `blocking` carries the marker `**blocking**` on its row.
-- `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed **as the record shows it** — the apply commit's diff (`node .claude/skills/workflow-engine/scripts/engine.cjs code diff --subject "review({work_unit}): {topic} cycle {N} — apply do-now findings"`, `{N}` this review cycle's number), never merely what a status claimed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state. An action carrying `blocking` carries the marker `**blocking** — corrected` on its row: the criterion was unmet or the behaviour broken, and it is delivered now.
+- `do-now` → `### Corrected in this session` — the work is already applied, verified and committed by the time this report is written, so the section records what changed **as the record shows it** — the apply commit's diff (`node .claude/skills/leeway-engine/scripts/engine.cjs code diff --subject "review({work_unit}): {topic} cycle {N} — apply do-now findings"`, `{N}` this review cycle's number), never merely what a status claimed: the applied count, anything skipped or reverted with its reason (a reverted action is still owed), and the suite's final state. An action carrying `blocking` carries the marker `**blocking** — corrected` on its row: the criterion was unmet or the behaviour broken, and it is delivered now.
 - `out-of-scope` → `### Out of scope` — held in the manifest for the user's call before the review closes, never actioned here. Each names its kind: a feature, a bug worth investigating, or a standalone quick-fix.
 
 Each item carries its summary, the failure it names, the files it touches, and its source ids so it traces back to the verifiers that raised it — a task's or a section's. An action spanning several files is one item — never split it per file.
@@ -57,7 +57,7 @@ Omit the entire `## Findings` section.
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review" --topic review/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): complete review" --topic review/{topic}
 ```
 
 Your review feedback can be:

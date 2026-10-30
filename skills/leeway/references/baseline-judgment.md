@@ -1,6 +1,6 @@
 # Baseline Judgment
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ While `baseline` is `none`, nothing is recorded yet. Read the boot response's `b
 Record the verdict — written and committed in one call, so the question is settled for good. If it fails (`ok: false`), surface the error and continue — the judgment returns at the next start:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
+node .claude/skills/leeway-engine/scripts/engine.cjs baseline record native
 ```
 
 → Return to caller.
@@ -27,27 +27,27 @@ node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the workflow-start menus.
+> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the leeway menus.
 ```
 
 Fetch the offer and emit its `MENU: baseline offer` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-offer-gate
 ```
 
 **STOP.** Wait for user response.
 
 **If `yes`:**
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
 
 **If `no`:**
 
 Record the decline — written and committed in one call, so the offer never repeats. If it fails (`ok: false`), surface the error and continue — the offer returns at the next start:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs baseline record skipped
+node .claude/skills/leeway-engine/scripts/engine.cjs baseline record skipped
 ```
 
 → Return to caller.

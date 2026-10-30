@@ -40,7 +40,7 @@ Set `created_topic` to the validated `proposed_name`.
 Create the discovery item — `--backfill` stands in for the summary and description the next epic entry's summary-backfill drafts, and `--force-dismissed` clears any matching dismissed entry (the creation is explicit — a message, a gap, a session add — so a prior dismissal never blocks it):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} {routing} --source "{source}" --backfill --force-dismissed
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} {routing} --source "{source}" --backfill --force-dismissed
 ```
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.

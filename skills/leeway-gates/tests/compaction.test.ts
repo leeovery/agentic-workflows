@@ -14,16 +14,16 @@ const HOME = '/Users/person'
 /** The session's project. */
 const ROOT = '/Users/person/app'
 
-const ENGINE = `${ROOT}/.claude/skills/workflow-engine/scripts/engine.cjs`
+const ENGINE = `${ROOT}/.claude/skills/leeway-engine/scripts/engine.cjs`
 
 /** The workflows' system config directory where the process names none. */
-const DEFAULT_CONFIG = `${HOME}/.config/workflows`
+const DEFAULT_CONFIG = `${HOME}/.config/leeway`
 
 /** Where the conversation `s0` records the notes the mod handed up. */
 const COMPACTED = `${DEFAULT_CONFIG}/conversations/s0/compacted.json`
 
 const NOTE = [
-  `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "payments". Follow the workflow-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${ROOT}/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
+  `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "payments". Follow the leeway-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${ROOT}/.claude/skills/leeway-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
   `- ${ROOT}/.leeway/payments/discussion/ledger.md`,
 ].join('\n')
 
@@ -34,7 +34,7 @@ const AT_DISCUSSION = {
   session_id: 's0',
   position: { name: 'payments', phase: 'discussion', topic: 'ledger' },
   place: PLACE,
-  skill: `${ROOT}/.claude/skills/workflow-discussion-process/SKILL.md`,
+  skill: `${ROOT}/.claude/skills/leeway-discussion-process/SKILL.md`,
   files: [`${ROOT}/.leeway/payments/discussion/ledger.md`],
   text: NOTE,
 }
@@ -80,7 +80,7 @@ const CORE_RESULT = { messages: CORE, tokensBefore: 90_000, tokensAfter: 4_000 }
 const WITH_NOTE = { ...CORE_RESULT, messages: [...CORE, { role: 'user', text: NOTE, toolUses: [] }] }
 
 /** The announcement a session the mod applies to carries from its start. */
-const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' }
+const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' }
 
 /**
  * The world beneath the mod: its environment (announced unless told
@@ -218,7 +218,7 @@ describe('a workflow conversation\'s compaction', () => {
 
   test('finds the conversation in the config directory the process names, never under the home directory', async ($, on) => {
     const config = '/Users/person/state/workflows'
-    const calls = world(on, { env: { ...ANNOUNCED, WORKFLOWS_CONFIG_DIR: config }, markedIn: config })
+    const calls = world(on, { env: { ...ANNOUNCED, LEEWAY_CONFIG_DIR: config }, markedIn: config })
 
     expect(await $.session.compact(compactionOf())).toEqual(WITH_NOTE)
     expect([...calls.written.keys()]).toEqual([`${config}/conversations/s0/compacted.json`])
@@ -354,7 +354,7 @@ describe('what compacts as Claude Code does', () => {
     expect(calls.runs).toEqual([])
   })
 
-  for (const env of [{}, { WORKFLOWS_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
+  for (const env of [{}, { LEEWAY_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
     test(`a session that did not announce, asking the engine nothing — ${JSON.stringify(env)}`, async ($, on) => {
       const calls = world(on, { env })
 

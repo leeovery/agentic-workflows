@@ -1,6 +1,6 @@
 ---
-name: workflow-investigation-fix-validation
-description: Independently pressure-tests an agreed fix direction — verifying it resolves the root cause and hunting for side effects and knock-on risks. Invoked synchronously by workflow-investigation-process after the fix direction is agreed.
+name: leeway-investigation-fix-validation
+description: Independently pressure-tests an agreed fix direction — verifying it resolves the root cause and hunting for side effects and knock-on risks. Invoked synchronously by leeway-investigation-process after the fix direction is agreed.
 tools: Read, Write, Glob, Grep, Bash
 model: opus
 ---

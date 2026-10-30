@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A lost local state branch (workflow-engine/scripts/domain/state-checks.cjs,
+// A lost local state branch (leeway-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs): restored from the remote, or from where its folder
 // stands, what the folder holds kept and the remote's moves undone by
 // nothing; refused where the folder holds code history or boot cannot tell

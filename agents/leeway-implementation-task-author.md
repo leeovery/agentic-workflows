@@ -1,5 +1,5 @@
 ---
-name: workflow-implementation-task-author
+name: leeway-implementation-task-author
 description: Expands the walk-approved proposals in a staging file into full task bodies, in place — grounded in the findings behind each proposal and the code it names. Invoked by the implementation and review skills after the shortlist walk and before the task writer.
 tools: Read, Glob, Grep, Edit
 model: opus

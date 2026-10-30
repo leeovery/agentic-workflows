@@ -10,9 +10,9 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const {
   addThread, setThreadState, reframeThread, removeThread, registerState, threadsOf,
-} = require('../../skills/workflow-engine/scripts/domain/research-threads.cjs');
-const { researchThreads } = require('../../skills/workflow-engine/scripts/domain/projections/research-threads.cjs');
-const { VALID_THREAD_STATUSES, isThreadOrigin } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/research-threads.cjs');
+const { researchThreads } = require('../../skills/leeway-engine/scripts/domain/projections/research-threads.cjs');
+const { VALID_THREAD_STATUSES, isThreadOrigin } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
 const harness = require('./engine-harness.cjs');
 
@@ -284,7 +284,7 @@ describe('research-threads projection: golden renders', () => {
   });
 
   it('keeps every line within the pinned width — a long question wraps rather than overruns', () => {
-    const { TREE_WIDTH } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
+    const { TREE_WIDTH } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
     for (const l of researchThreads('space-homing', manifestWith(SPACE_HOMING)).split('\n')) {
       assert.ok(l.length <= TREE_WIDTH, `"${l}" (${l.length}) overruns ${TREE_WIDTH}`);
     }

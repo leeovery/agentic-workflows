@@ -1,14 +1,14 @@
 ---
-name: workflow-legacy-research-split
+name: leeway-legacy-research-split
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs *), Bash(node .claude/skills/workflow-legacy-research-split/scripts/validate.cjs *), Bash(node .claude/skills/workflow-legacy-research-split/scripts/apply.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs manifest *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs render *)
+allowed-tools: Bash(node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs *), Bash(node .claude/skills/leeway-legacy-research-split/scripts/validate.cjs *), Bash(node .claude/skills/leeway-legacy-research-split/scripts/apply.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs manifest *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs render *)
 ---
 
 Act as **curator + interviewer**. Walk the user through decomposing broad research files — each holding multiple themes — into topic-scoped files plus matching discovery-map items.
 
 **Parameters**:
 
-- **Work unit** (required) — the epic to normalise. Passed by `workflow-continue-epic` Step 2.
+- **Work unit** (required) — the epic to normalise. Passed by `leeway-continue-epic` Step 2.
 
 ---
 
@@ -41,7 +41,7 @@ Act as **curator + interviewer**. Walk the user through decomposing broad resear
 Initialise `applied_count = 0`, `abandoned_count = 0`, `errored_count = 0`.
 
 ```bash
-node .claude/skills/workflow-legacy-research-split/scripts/detect.cjs {work_unit}
+node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs {work_unit}
 ```
 
 Parse `qualifying_sources` from the JSON output.
@@ -49,7 +49,7 @@ Parse `qualifying_sources` from the JSON output.
 Fetch the scan's display — the interrupted splits a crashed apply left (detection excludes them, so they surface only here and need manual recovery), the sources whose names the split can't process, then the qualifying sources, each present only where the scan found its kind. The two advisories are informational — neither blocks the qualifying flow.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant sources
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant sources
 ```
 
 Emit the call's DISPLAY sections verbatim per their markers.
@@ -91,7 +91,7 @@ Load **[dialog.md](references/dialog.md)** and follow its instructions as writte
 Fetch the split's conclusion from the session's tallies and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant complete --applied {applied_count} --abandoned {abandoned_count} --errored {errored_count}
+node .claude/skills/leeway-engine/scripts/engine.cjs render legacy-split-display --variant complete --applied {applied_count} --abandoned {abandoned_count} --errored {errored_count}
 ```
 
 → Return to caller.
@@ -108,7 +108,7 @@ An interrupted split leaves a `legacy_split_state` sentinel on the source's disc
 Clear the sentinel and drop the cache:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{stuck_source} legacy_split_state
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.discovery.{stuck_source} legacy_split_state
 rm -rf .workflows/.cache/{work_unit}/legacy-split/{stuck_source}
 ```
 

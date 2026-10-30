@@ -18,7 +18,7 @@ Four neighbours it is not:
 Cancel is topic-level, per stage — never one phase item. Read the work type:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
 #### If work type is `epic` and `phase` is `research` or `discussion`
@@ -52,7 +52,7 @@ Write into the document what this sitting discussed and has not yet recorded, as
 Fetch the confirm — its statement names exactly what the cancel takes, which is the whole unit and not only the document in front of the user. The gate is the confirmation: the request is never put back to the user in conversation first.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render cancel-gate {work_unit}.{stage}.{name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render cancel-gate {work_unit}.{stage}.{name}
 ```
 
 #### If the call refuses
@@ -80,13 +80,13 @@ Emit the `MENU: cancel gate` section verbatim per its marker.
 Close this session's background agents first. Read the store:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent scan {work_unit} {phase} {topic}
 ```
 
 For each `in_flight` row, stop its running task with the TaskStop tool on the task id this session dispatched it under, then close the row — `agent scan` never promotes an incorporated row, so a report that lands later is ignored:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
+node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_unit} {phase} {topic} {id}
 ```
 
 Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
@@ -94,7 +94,7 @@ Rows in any other status stay as they are, and a scan holding no `in_flight` row
 Run the cancel — one command takes the unit (a topic: the map row marked, every research and discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic cancel {work_unit} {stage} {name}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic cancel {work_unit} {stage} {name}
 ```
 
 #### If the response is `ok: false`
@@ -108,10 +108,10 @@ Surface the engine's error verbatim in one line — nothing was written.
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty. When the response's `discarded` is non-empty, tell the user in one line which proposed grouping(s) went with the topic; when `abandoned` is non-empty, name the experiment records the cancel closed; when `released_waits` is non-empty, say where the ball sits — each waiting point reverts to open, surfaced when the topic is reactivated and that conversation next runs:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.{stage}.{name} --verb cancel [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.{stage}.{name} --verb cancel [--warn]
 ```
 
-Invoke `/workflow-bridge {work_unit} {phase} none cancelled`.
+Invoke `/leeway-bridge {work_unit} {phase} none cancelled`.
 
 ## D. Cancel the Work Unit
 
@@ -120,7 +120,7 @@ Write into the document what this sitting discussed and has not yet recorded, as
 Run the cancel — one command sets `status: cancelled`, removes the work unit's chunks from the knowledge base, hands any roadmap item joined to it back to waiting, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit cancel {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit cancel {work_unit}
 ```
 
 #### If the response is `ok: false`
@@ -134,7 +134,7 @@ Surface the engine's error verbatim in one line — nothing was written.
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn]
 ```
 
 **STOP.** Do not proceed — terminal condition.

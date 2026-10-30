@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/050-purge-closed-workunit-caches.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/050-purge-closed-workunit-caches.cjs');
 
 let dir, updates, skips;
 

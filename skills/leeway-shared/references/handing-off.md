@@ -15,7 +15,7 @@ The caller provides these via context before loading:
 ## A. Hand Off
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs handoff {route}
+node .claude/skills/leeway-engine/scripts/engine.cjs handoff {route}
 ```
 
 #### If the call was refused

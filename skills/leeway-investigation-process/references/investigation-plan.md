@@ -1,6 +1,6 @@
 # Investigation Plan
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -40,7 +40,7 @@ Open with one sentence above the display, written as markdown (not a code block)
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "suspected", "rows": [["Basis", "{one-line basis}"]]}], "trace_lines": ["{code path or area to trace, in intended order}"], "depth": "{depth:[straight-through|check-ins]}", "depth_reasoning": "{one-line reasoning}"}` — then fetch the plan, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant plan
+node .claude/skills/leeway-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant plan
 ```
 
 **STOP.** Wait for user response.
@@ -74,7 +74,7 @@ Open with one sentence above the display, written as markdown (not a code block)
 Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/board.json` with the Write tool — every hypothesis in the ledger at its current status, each carrying the rows the ledger holds for it, labelled for what they carry and one line apiece: `{"hypotheses": [{"id": "H1", "claim": "{hypothesis}", "status": "{status:[suspected|tracing|confirmed|ruled-out]}", "rows": [["{label}", "{value}"]]}], "depth": "{depth:[straight-through|check-ins]}", "remaining": "{unresolved hypotheses and open trace lines, or \"all hypotheses resolved\"}"}` — then fetch the board, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant resume
+node .claude/skills/leeway-engine/scripts/engine.cjs render hypothesis-board {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/board.json --variant resume
 ```
 
 **STOP.** Wait for user response.

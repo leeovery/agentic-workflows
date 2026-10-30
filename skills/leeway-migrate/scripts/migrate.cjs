@@ -38,7 +38,7 @@
 //     flow. Never re-emitted for recorded migrations.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
-// WORKFLOWS_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
+// LEEWAY_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
 //
 
 const fs = require('fs');
@@ -98,7 +98,7 @@ function readJournal(file) {
 
 // Bash used to source `*.sh` migrations. Default `bash` (PATH); the override
 // lets the orchestrator test pin stock /bin/bash 3.2 explicitly.
-const BASH = process.env.WORKFLOWS_MIGRATE_BASH || 'bash';
+const BASH = process.env.LEEWAY_MIGRATE_BASH || 'bash';
 
 // Wrapper that gives a sourced `*.sh` migration migrate.sh's exact contract:
 // report_update/report_skip counters, PROJECT_DIR pinned to ".", the tracking

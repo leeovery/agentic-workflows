@@ -1,7 +1,7 @@
 ---
-name: workflow-implementation-process
+name: leeway-implementation-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *)
 ---
 
 # Implementation Process
@@ -27,7 +27,7 @@ The plan's phases, tasks, and acceptance criteria are read through its output fo
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -37,14 +37,14 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 
 When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Check task progress in the plan** — use the plan adapter's instructions to read the plan's current state. Check manifest state for additional context.
 3. **Check gate modes and progress** via `engine manifest`:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic}
    ```
    Check `task_gate_mode`, `fix_gate_mode`, `analysis_gate_mode`, `consolidation_gate_mode`, `fix_attempts`, and `analysis_cycle_total` — a gate reading `auto` or `bounded` was opted into earlier this session; preserve it. If `fix_attempts` > 0, you're mid-fix-loop for the current task. If `analysis_cycle_total` > 0, you've completed analysis cycles — check for findings files on disk (`analysis-*-c{cycle-number}.md` in the implementation directory) to determine mid-analysis state; findings files for the latest cycle that each record no findings mean that cycle came back clean and the session had moved on to the conclude gate — resume at **Step 9**, never in the loop. If `staging` holds an `ad-hoc-{n}` subtree with `pending` rows, an ad hoc addition died mid-gate — resume its walk at **[ad-hoc-plan-changes.md](references/ad-hoc-plan-changes.md)** section F; `approved` rows with no matching plan tasks mean the task writer never ran — re-invoke it (idempotent) per section G. A `staging.p{N}` subtree, or a phase whose tasks are all complete while `completed_phases` lacks it, is a consolidation boundary in flight — the task loop's guard routes it to stage J, whose resume guards (**[consolidation-pass.md](references/consolidation-pass.md)**) discriminate the exact seam. A `staging.p{N}` whose rows are all decided, with the phase in both `consolidated_phases` and `completed_phases`, is history, not a signal. `do_banking` is answered by `task start` and never stored — re-run `task start` for `current_task` (idempotent for the in-flight task) before resuming any stage that branches on it.
-4. **Check git state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
+4. **Check git state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs code status` to see uncommitted code across every repo in the project, and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
 5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the stage it arrived at, unless it only asks to carry on. Otherwise resume at the stage that shows the moment. Every gate menu and header is served by its own render surface, fetched by the stage that displays it — the task verbs answer with JSON only, and re-running one re-emits nothing. Re-enter that stage and let it fetch its sections: a pending fix gate at the gate fetch in **F. Fix Approval Gate** and a pending task gate at the gated fetch in **G. Task Gate** (**[task-loop.md](references/task-loop.md)**), a pending conclude gate at **Step 9**; a presentation moment re-runs its display reference (**[display-task-brief.md](references/display-task-brief.md)**, **[display-task-result.md](references/display-task-result.md)**), which rebuilds its payload before rendering. Never run `fix-attempt` or `analysis-cycle` to reconstruct position — each records a new attempt or cycle.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
@@ -68,7 +68,7 @@ Unplanned work the user raises mid-implementation — a bug they hit while testi
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../workflow-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
+The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -76,7 +76,7 @@ The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it",
 
 ## Postponing the Topic
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../workflow-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -84,7 +84,7 @@ The user pushes a topic back to the roadmap — "postpone this", "move the loyal
 
 ## Cancelling the Topic
 
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../workflow-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`, from any point in the phase.
 
 → On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
 
@@ -94,7 +94,7 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ### Step 0.1: Code Slot
 
-Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`.
+Load **[code-session-gate.md](../leeway-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `implementation`.
 
 → On return, proceed to **Step 0.2**.
 
@@ -103,7 +103,7 @@ Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md
 Check the plan prerequisite — the engine derives the verdict from manifest state:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.implementation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.implementation.{topic}
 ```
 
 #### If the response is empty
@@ -129,7 +129,7 @@ Emit both sections verbatim per their markers — the red blocker line, then its
 Check whether the plan declares external dependencies:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic} external_dependencies
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic} external_dependencies
 ```
 
 **If `false`:**
@@ -147,13 +147,13 @@ Load **[check-dependencies.md](references/check-dependencies.md)** and follow it
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} implementation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} implementation {topic}
 ```
 
 Read the phase status, storing it as `phase_status`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
 ```
 
 #### If `phase_status` is empty
@@ -161,13 +161,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 A first start. Create the implementation tracking — the manifest entry with its default gates and counters:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```
 
 Commit the tracking (the scoped commit covers the manifest):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): start implementation" --topic implementation/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): start implementation" --topic implementation/{topic}
 ```
 
 → Proceed to **Step 1**.
@@ -177,22 +177,22 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
 ```
 
 Resume the tracking — it resets the gate modes to `gated` and, outside a live fix round, `fix_attempts`; the cycle count and progress are preserved:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```
 
 Render the phase note — `Reopening` for an implementation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb {Reopening|Resuming}
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb {Reopening|Resuming}
 ```
 
-Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `implementation`.
+Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `implementation`.
 
 → On return, proceed to **Step 1**.
 
@@ -232,7 +232,7 @@ Load **[linter-setup.md](references/linter-setup.md)** and follow its instructio
 
 ## Step 5: Knowledge Usage
 
-Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** and follow its instructions as written.
+Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 6**.
 
@@ -254,7 +254,7 @@ Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** 
 
 Load **[task-loop.md](references/task-loop.md)** and follow its instructions as written.
 
-*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)**.*
+*Knowledge-base nudge — code is the source of truth for *what* exists; read it rather than query. Reach for the KB only when you need the *why* behind an existing pattern (rare). Never to fill spec gaps — those are blockers. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
 
 After the loop completes:
 
@@ -298,7 +298,7 @@ Load **[analysis-loop.md](references/analysis-loop.md)** and follow its instruct
 
 ## Step 8: Compliance Self-Check
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 9**.
 

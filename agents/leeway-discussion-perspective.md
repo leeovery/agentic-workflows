@@ -1,6 +1,6 @@
 ---
-name: workflow-discussion-perspective
-description: Advocates from an assigned analytical lens on a contentious decision. Two instances run in parallel as a polarity pair. Invoked in the background by workflow-discussion-process skill.
+name: leeway-discussion-perspective
+description: Advocates from an assigned analytical lens on a contentious decision. Two instances run in parallel as a polarity pair. Invoked in the background by leeway-discussion-process skill.
 tools: Read, Write, Bash
 model: opus
 ---

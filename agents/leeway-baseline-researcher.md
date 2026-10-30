@@ -1,6 +1,6 @@
 ---
-name: workflow-baseline-researcher
-description: Investigates one area of an existing codebase for the project baseline — observed structure, marked inferences, and interview question candidates. Dispatched in parallel per area by the workflow-baseline skill.
+name: leeway-baseline-researcher
+description: Investigates one area of an existing codebase for the project baseline — observed structure, marked inferences, and interview question candidates. Dispatched in parallel per area by the leeway-baseline skill.
 tools: Read, Write, Bash, Grep, Glob
 model: opus
 ---

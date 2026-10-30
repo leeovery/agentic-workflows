@@ -24,7 +24,7 @@ Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/task-
 Render and emit its `DISPLAY: task brief` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-brief {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-brief.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render task-brief {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/task-brief.json
 ```
 
 → Return to caller.

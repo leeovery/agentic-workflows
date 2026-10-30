@@ -1,6 +1,6 @@
 # Abandon the Experiment
 
-*Reference for **[workflow-experiment-process](../SKILL.md)***
+*Reference for **[leeway-experiment-process](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Abandonment is a first-class terminal — the register keeps the row and its rea
 Take the one-line reason from the conversation — ask when it isn't stated. Record it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs experiment abandon {work_unit} {topic} {id} --reason "{one line}"
+node .claude/skills/leeway-engine/scripts/engine.cjs experiment abandon {work_unit} {topic} {id} --reason "{one line}"
 ```
 
 #### If the engine refused over live sub-experiments
@@ -31,7 +31,7 @@ Nothing was recorded — no row closed, no commit, no release to narrate. Say wh
 The parent still runs, and no wait moves. Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} abandoned"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} abandoned"
 ```
 
 → Return to caller.
@@ -41,7 +41,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 Commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} abandoned"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} abandoned"
 ```
 
 When the abandon response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the abandonment — with its reason — surfaces when it next opens; its waiting point reverts to open.

@@ -7,7 +7,7 @@
 // takes; a call naming anything else is refused. The engine composes the
 // continuation and the line naming where the work goes — the session writes
 // neither — and says which way the work travels: the gate mod carries it
-// where the session announced handoff support (`WORKFLOWS_HANDOFF=1`), and
+// where the session announced handoff support (`LEEWAY_HANDOFF=1`), and
 // the session invokes the skill in place where it did not.
 // ---------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 
-const HANDOFF_ENV = 'WORKFLOWS_HANDOFF';
+const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
@@ -30,7 +30,7 @@ const PIPELINE_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
 
 /** The skill a phase runs in — the one a handoff into the phase lands on. @param {string} phase */
 function phaseSkill(phase) {
-  return `workflow-${phase}-process`;
+  return `leeway-${phase}-process`;
 }
 
 /**
@@ -113,7 +113,7 @@ function phaseTarget(phase) {
 
 /** @type {Record<string, Target>} */
 const TARGETS = {
-  'workflow-discovery': {
+  'leeway-discovery': {
     usage: `<work-type|${NO_ARGUMENT}> <${NO_ARGUMENT}|epic> [<inbox-paths|${NO_ARGUMENT}>]`,
     counts: [2, 3],
     quoted: 2,
@@ -129,19 +129,19 @@ const TARGETS = {
     },
     where: ([, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),
   },
-  'workflow-roadmap': {
+  'leeway-roadmap': {
     usage: 'open',
     counts: [1],
     check: (cwd, [mode]) => assertOneOf('the mode', mode, ['open']),
     where: () => at('Roadmap'),
   },
-  'workflow-baseline': {
+  'leeway-baseline': {
     usage: '',
     counts: [0],
     check: () => {},
     where: () => at('Baseline'),
   },
-  'workflow-continue-epic': {
+  'leeway-continue-epic': {
     usage: '<epic> [<completed-phase> <outcome>]',
     counts: [1, 3],
     check: (cwd, [unit, phase, outcome]) => {
@@ -159,8 +159,8 @@ const TARGETS = {
 
 const HANDOFF_TARGETS = Object.keys(TARGETS);
 
-// A conversation opens on workflow-start, the user's way in, or wherever a handoff lands the work.
-const OPENING_SKILLS = ['workflow-start', ...HANDOFF_TARGETS];
+// A conversation opens on leeway, the user's way in, or wherever a handoff lands the work.
+const OPENING_SKILLS = ['leeway', ...HANDOFF_TARGETS];
 
 /**
  * The handoff into `skill` with `args`, checked against the table and

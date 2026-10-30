@@ -1,12 +1,12 @@
 # Review Checklist
 
-*Reference for **[workflow-review-process](../SKILL.md)***
+*Reference for **[leeway-review-process](../SKILL.md)***
 
 ---
 
 ## Per-Task Verification Criteria
 
-For each task, the workflow-review-task-verifier checks:
+For each task, the leeway-review-task-verifier checks:
 
 ### Implementation
 
@@ -65,7 +65,7 @@ Code quality criteria apply unchanged.
 
 ## Change-Set Verification
 
-After every task is verified, the workflow-review-change-set-verifier holds the whole delivered change-set against the specification's intent — one agent per numbered section plus one over the test surface — measuring where the project's own conventions give a way to and reading where they do not. Each measures the criteria the task verifiers recorded as unsettled and returns a coverage map: what it checked and found sound. The report's Specification Compliance is those maps; a criterion neither layer could settle is named under Plan Completion, never absorbed.
+After every task is verified, the leeway-review-change-set-verifier holds the whole delivered change-set against the specification's intent — one agent per numbered section plus one over the test surface — measuring where the project's own conventions give a way to and reading where they do not. Each measures the criteria the task verifiers recorded as unsettled and returns a coverage map: what it checked and found sound. The report's Specification Compliance is those maps; a criterion neither layer could settle is named under Plan Completion, never absorbed.
 
 ## Plan Completion Check
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's write verbs (workflow-engine/scripts/domain/ledger-write.cjs)
+// The ledger's write verbs (leeway-engine/scripts/domain/ledger-write.cjs)
 // and the fold they read the ledger through (domain/ledger-fold.cjs):
 // `engine ledger ask|find|decide|replace|hold|move|merge`, each appending one
 // event, tagged with its unit, topic, phase and session, and committing the
@@ -31,7 +31,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));

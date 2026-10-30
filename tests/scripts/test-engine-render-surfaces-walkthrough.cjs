@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown } = require('./render-surfaces-world.cjs');
 
 describe('walkthrough surfaces', () => {
@@ -25,12 +25,12 @@ describe('walkthrough surfaces', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
 
-  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough', 'screens');
+  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough', 'screens');
   const screenFiles = () => fs.readdirSync(SCREENS).filter((f) => f.endsWith('.md')).sort();
   const screenText = (n) => fs.readFileSync(path.join(SCREENS, screenFiles()[n - 1]), 'utf8');
   const titleOf = (n) => screenText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
 
-  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough', 'topics');
+  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough', 'topics');
   const cardFiles = () => fs.readdirSync(TOPICS).filter((f) => f.endsWith('.md')).sort();
   const cardText = (n) => fs.readFileSync(path.join(TOPICS, cardFiles()[n - 1]), 'utf8');
   const cardTitle = (n) => cardText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();

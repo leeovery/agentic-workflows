@@ -1,7 +1,7 @@
 ---
-name: workflow-discovery
+name: leeway-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-roadmap/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 The universal first phase. Shape the work the user is bringing — confirm what kind of work it is, sketch its outline — then persist it and route into the pipeline.
@@ -22,8 +22,8 @@ Discovery is the universal **first phase** — every work type begins here. It s
 
 It runs in two modes:
 
-- **New mode** — from `workflow-start`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase. A **product-altitude** read — no single unit of work on the table — routes out to the roadmap instead, before any unit exists.
-- **Existing-epic mode** — from `workflow-continue-epic`, or continuing straight from a roadmap pull that just created the epic. The work type is already known; shape (or re-shape) the epic's discovery map.
+- **New mode** — from `leeway`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase. A **product-altitude** read — no single unit of work on the table — routes out to the roadmap instead, before any unit exists.
+- **Existing-epic mode** — from `leeway-continue-epic`, or continuing straight from a roadmap pull that just created the epic. The work type is already known; shape (or re-shape) the epic's discovery map.
 
 **Stay in your lane**: Discovery settles *what the work is* and shapes it — determine the type first (epic / feature / bugfix / quick-fix / cross-cutting, or the product road when no single unit is on the table), then route it into the pipeline. How much substance the conversation engages is set per work type by the guidance loaded on each path, not fixed here: while determining the type you shape rather than resolve; once an epic is settled, its path opens into deep exploration. Name the work, shape it, route it.
 
@@ -31,7 +31,7 @@ It runs in two modes:
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ---
 
@@ -39,7 +39,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
-1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
 2. **Determine whether the work unit was persisted yet.** Pre-confirmation new-mode shaping lives in the conversation alone — nothing is on disk. If no manifest exists for the work in hand, the conversation had not yet reached the confirm-trigger, and the shaping carries on from the conversation. If a manifest exists, the confirm-trigger fired — read the active session log (highest-numbered `.workflows/{work_unit}/discovery/sessions/session-*.md`) and the manifest to recover state.
 3. **Check git state.** Run `git status` and `git log --oneline -10`. Commit messages reveal what has been completed.
 4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
@@ -53,7 +53,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 Read the positional arguments:
 
 - `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s/start` path, no hint). A hint, not a given — still confirmed in new mode.
-- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `workflow-continue-epic`), or `none` (new work, from `workflow-start`).
+- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `leeway-continue-epic`), or `none` (new work, from `leeway`).
 - `$2` — **inbox_seeds**: comma-joined path(s) to inbox file(s) consumed as the opening seed material — one or more, or `none`. Absent `$2` is treated as `none`. Split on commas into a list; a single path yields a one-element list. Held downstream as `inbox_seeds`.
 
 The mode is determined by `$1`:
@@ -153,13 +153,13 @@ Load **[resume-detection.md](references/resume-detection.md)** and follow its in
 Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} discovery {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} discovery {work_unit}
 ```
 
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
 Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
@@ -272,7 +272,7 @@ Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow 
 
 Reached before concluding by both paths — the epic topic path from Step 12, the single-phase endpoint from Step 13.
 
-Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 15**.
 

@@ -1,6 +1,6 @@
 # Findings Sign-off
 
-*Reference for **[workflow-investigation-process](../SKILL.md)***
+*Reference for **[leeway-investigation-process](../SKILL.md)***
 
 ---
 
@@ -8,7 +8,7 @@ The single canonical presentation of the investigation findings, gated for the u
 
 ## A. Present & Confirm
 
-→ Load **[product-lens.md](../../workflow-shared/references/product-lens.md)** and follow its instructions as written.
+→ Load **[product-lens.md](../../leeway-shared/references/product-lens.md)** and follow its instructions as written.
 
 Pull current values from the investigation file — the file is authoritative, not conversation memory.
 
@@ -28,7 +28,7 @@ Retell the investigation file's findings as markdown (not a code block) — a na
 Each beat lands in a paragraph the user takes in at a glance — complete in coverage, compact in telling. The code-perspective retelling is one `t` away; the record file itself one `v` away.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -47,12 +47,12 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If `technical`
 
-→ Load **[technical-lens.md](../../workflow-shared/references/technical-lens.md)** and follow its instructions as written.
+→ Load **[technical-lens.md](../../leeway-shared/references/technical-lens.md)** and follow its instructions as written.
 
 Retell the same findings through the technical lens — the same four sections from the investigation file, mechanism-first — a narrative, as markdown (not a code block). Then put the gate back beneath it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -66,7 +66,7 @@ Emit the call's MENU section verbatim per its marker.
 Render the full content of `.workflows/{work_unit}/investigation/{topic}.md` as markdown (not a code block). Then put the gate back beneath it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render findings-signoff-gate {work_unit}.investigation.{topic}
 ```
 
 Emit the call's MENU section verbatim per its marker.

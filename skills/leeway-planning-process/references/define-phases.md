@@ -1,10 +1,10 @@
 # Define Phases
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
-This step uses the `workflow-planning-phase-designer` agent (`.claude/agents/workflow-planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
+This step uses the `leeway-planning-phase-designer` agent (`.claude/agents/leeway-planning-phase-designer.md`) to define or review the phase structure. Whether phases are being designed for the first time or reviewed from a previous session, the process converges on the same approval gate.
 
 ---
 
@@ -26,17 +26,17 @@ Phase structure already exists. I'll present it for your review.
 
 Read `work_type` from the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-Invoke `workflow-planning-phase-designer` with these file paths:
+Invoke `leeway-planning-phase-designer` with these file paths:
 
-1. **read-specification.md**: `.claude/skills/workflow-planning-process/references/read-specification.md`
+1. **read-specification.md**: `.claude/skills/leeway-planning-process/references/read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Cross-cutting specs**: the specification paths the planning file's `## Cross-Cutting References` section lists, if any
-4. **phase-design.md**: `.claude/skills/workflow-planning-process/references/phase-design.md`
-5. **Context guidance**: `.claude/skills/workflow-planning-process/references/phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
-6. **task-design.md**: `.claude/skills/workflow-planning-process/references/task-design.md` *(for granularity awareness only — helps the agent judge whether a phase is too thin or too thick. The agent must NOT produce task tables or task lists.)*
+4. **phase-design.md**: `.claude/skills/leeway-planning-process/references/phase-design.md`
+5. **Context guidance**: `.claude/skills/leeway-planning-process/references/phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
+6. **task-design.md**: `.claude/skills/leeway-planning-process/references/task-design.md` *(for granularity awareness only — helps the agent judge whether a phase is too thin or too thick. The agent must NOT produce task tables or task lists.)*
 
 The agent returns phases only — goals, ordering rationale, and acceptance criteria. **Task lists are designed separately in a later step; do not request or include them.**
 
@@ -58,18 +58,18 @@ Write the phase structure directly to the planning file body, beneath the sectio
 
 When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
 
-Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-phase-designer` through its amendment path with the corrections and that work as the feedback, and write the revised structure to the planning file. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
+Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `leeway-planning-phase-designer` through its amendment path with the corrections and that work as the feedback, and write the revised structure to the planning file. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
 
 **Otherwise:** nothing to settle — continue.
 
 Update the manifest planning position — one batched write:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase=1 task='~'
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} phase=1 task='~'
 ```
 
 Commit:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft phase structure" --topic planning/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): draft phase structure" --topic planning/{topic}
 ```
 
 → Proceed to **B. Review and Approve**.
@@ -89,7 +89,7 @@ Use the Write tool for the payload — never a shell heredoc or redirect.
 Render and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json --approve
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json --approve
 ```
 
 **STOP.** Wait for user response.
@@ -105,7 +105,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_u
 Present the full phase structure from the planning file as markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Then put the gate back beneath it — the gate alone, the tree already shown above:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --menu-only
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-tree {work_unit}.planning.{topic} --menu-only
 ```
 
 Emit its `MENU: phase structure gate` section verbatim per its marker.
@@ -116,7 +116,7 @@ Emit its `MENU: phase structure gate` section verbatim per its marker.
 
 #### If the user provides feedback
 
-Re-invoke `workflow-planning-phase-designer` with all original inputs PLUS:
+Re-invoke `leeway-planning-phase-designer` with all original inputs PLUS:
 - **Previous output**: the current phase structure
 - **User feedback**: what the user wants changed
 
@@ -138,10 +138,10 @@ Resolve the destination per the caller's **Navigation** section — the user's p
 
 **If the phase structure is new or was amended:**
 
-1. Record the approval — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.structure $(date +%Y-%m-%d)`
+1. Record the approval — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} approvals.structure $(date +%Y-%m-%d)`
 2. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve phase structure" --topic planning/{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): approve phase structure" --topic planning/{topic}
    ```
 
 If the manifest already carries `approvals.structure` and the structure is unchanged, no updates are needed.

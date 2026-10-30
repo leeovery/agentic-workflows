@@ -1,6 +1,6 @@
 # State Display and Menu
 
-*Reference for **[workflow-continue-linear](../SKILL.md)***
+*Reference for **[leeway-continue-linear](../SKILL.md)***
 
 ---
 
@@ -15,7 +15,7 @@ This reference stores the selected `ACTIONS` entry's `action` and `route` and re
 Render the work unit's snapshot:
 
 ```bash
-node .claude/skills/workflow-continue-linear/scripts/gateway.cjs view {work_unit}
+node .claude/skills/leeway-continue-linear/scripts/gateway.cjs view {work_unit}
 ```
 
 The output is one snapshot in demarcated sections:
@@ -64,13 +64,13 @@ Store the entry's `action` and `route`.
 Complete the work unit — one command sets `status: completed`, stamps `completed_at`, and commits, its message naming the DATA's `work_type`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete {work_type} pipeline"
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit complete {work_unit} -m "workflow({work_unit}): complete {work_type} pipeline"
 ```
 
 Fetch and emit the receipt's `DISPLAY: confirmation` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb complete --pipeline
 ```
 
 **STOP.** Do not proceed — terminal condition.
@@ -81,7 +81,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### If `action` is `back`
 
-→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+→ Load **[start-menu.md](../../leeway/references/start-menu.md)**.
 
 ---
 
@@ -90,7 +90,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 Fetch and emit the `MENU: revisit phases` section verbatim per its marker (its numbering matches the `revisit_phase` keys in `ACTIONS`):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render revisit-phases {work_unit}
 ```
 
 **STOP.** Wait for user response.

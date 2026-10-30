@@ -1,7 +1,7 @@
 ---
-name: workflow-start
+name: leeway
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 Unified workflow entry point. Discovers state, shows all active work, and routes to start or continue skills.
@@ -12,7 +12,7 @@ Unified workflow entry point. Discovers state, shows all active work, and routes
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written — after Step 0's four display blocks: the BANNER FIRST rule above governs the ordering, and this load comes second.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written — after Step 0's four display blocks: the BANNER FIRST rule above governs the ordering, and this load comes second.
 
 ---
 
@@ -52,7 +52,7 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 Run the boot command with sandbox disabled (migrations may need to modify `.claude/settings.json`) and capture its JSON response:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs boot
+node .claude/skills/leeway-engine/scripts/engine.cjs boot
 ```
 
 **CRITICAL**: Use `dangerouslyDisableSandbox: true` when calling the Bash tool for this command.
@@ -155,12 +155,12 @@ A recorded status — render nothing.
 
 ## Step 1: Discover and Route
 
-!`node .claude/skills/workflow-start/scripts/gateway.cjs`
+!`node .claude/skills/leeway/scripts/gateway.cjs`
 
 If the above shows a script invocation rather than discovery output, the dynamic content preprocessor did not run — and on a return to this step the output above is stale. In either case, execute the script before continuing:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs
+node .claude/skills/leeway/scripts/gateway.cjs
 ```
 
 Parse the output to understand the current workflow state:

@@ -1,6 +1,6 @@
 # Topic Completion
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -13,7 +13,7 @@ The current topic is converging — tradeoffs are clear, it's approaching decisi
 First check the topic's mailbox — a waiting message is work the conclusion cannot pass:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
 ```
 
 #### If `count` is non-zero
@@ -21,7 +21,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit}
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
 ```
 
 → Return to caller.
@@ -37,7 +37,7 @@ Check for landed evidence first — follow **Landed Evidence** in **[session-loo
 Check the topic's waits next — a wait still open means the conclusion cannot pass, and the engine would refuse the completion anyway. Fetch the gate (empty when nothing is owed):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.research.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render wait-gate {work_unit}.research.{topic}
 ```
 
 #### If sections are returned
@@ -60,7 +60,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 ## C. Pausing
 
-→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `pause`.
+→ Load **[in-flight-agents.md](../../leeway-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `pause`.
 
 #### If `result` is `stay`
 
@@ -73,7 +73,7 @@ The conversation has the turn; the next done-signal re-enters here, and the wait
 Commit any uncommitted session work with the session's cadence commit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
 ```
 
 Then invoke the pipeline bridge as a pause:
@@ -84,11 +84,11 @@ Then invoke the pipeline bridge as a pause:
 > Paused with the waits queued — the closing ceremony runs once everything this research waits on has landed, and this research concludes once every wait releases.
 ```
 
-Invoke `/workflow-bridge {work_unit} research none paused`.
+Invoke `/leeway-bridge {work_unit} research none paused`.
 
 ## D. In-Flight Dives
 
-→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `conclude`.
+→ Load **[in-flight-agents.md](../../leeway-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `conclude`.
 
 #### If `result` is `stay`
 
@@ -104,14 +104,14 @@ The conversation has the turn; the next done-signal re-enters here.
 
 → Load **[document-review.md](document-review.md)** and follow its instructions as written.
 
-→ Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+→ Load **[compliance-check.md](../../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
 
-→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
+→ Load **[closing-recap.md](../../leeway-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 Judge the dead-end question before rendering: pass `--dead-end` **only** when `work_type` is `epic` and the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic} [--dead-end]
+node .claude/skills/leeway-engine/scripts/engine.cjs render research-conclude-gate {work_unit}.research.{topic} [--dead-end]
 ```
 
 The response carries the thread register as a DISPLAY section whenever the topic holds a thread — the hand-off, open threads included; nothing blocks on a thread's state. Emit that section verbatim per its marker when present, then the MENU section verbatim per its marker.
@@ -127,7 +127,7 @@ The response carries the thread register as a DISPLAY section whenever the topic
 Mark the map item first — no commit; the conclusion's own commit carries the manifest change:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map handle {work_unit} {topic}
 ```
 
 Concluding leaves the research completed and indexed as normal; the file stays on the map and in the knowledge base as record and seed material. Route on the response:

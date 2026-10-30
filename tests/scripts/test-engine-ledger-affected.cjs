@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What a replacement affects (workflow-engine/scripts/domain/ledger-affected.cjs),
+// What a replacement affects (leeway-engine/scripts/domain/ledger-affected.cjs),
 // `engine ledger affected`, read through the ledger's fold
 // (domain/ledger-fold.cjs): every current question, finding and decision
 // relying on an entry whose way to its current form passes a live

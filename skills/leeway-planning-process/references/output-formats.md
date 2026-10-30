@@ -1,6 +1,6 @@
 # Output Formats
 
-*Reference for **[workflow-planning-process](../SKILL.md)***
+*Reference for **[leeway-planning-process](../SKILL.md)***
 
 ---
 
@@ -19,7 +19,7 @@ Write the offer to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-offer.j
 Render the offer:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-format-gate --variant select --file .workflows/.cache/{work_unit}/{phase}/{topic}/format-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-format-gate --variant select --file .workflows/.cache/{work_unit}/{phase}/{topic}/format-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker.

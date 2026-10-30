@@ -1,10 +1,10 @@
 # Pivot to Epic
 
-*Shared reference. Loaded by `workflow-start` (manage menu), `workflow-research-process`, and `workflow-discussion-process` (off-topic pivot) to convert a single-topic feature into an epic.*
+*Shared reference. Loaded by `leeway` (manage menu), `leeway-research-process`, and `leeway-discussion-process` (off-topic pivot) to convert a single-topic feature into an epic.*
 
 ---
 
-One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — routing reflects whether the feature did research; `summary`/`description` are left unset for `summary-backfill.md` to fill on the next `/workflow-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
+One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — routing reflects whether the feature did research; `summary`/`description` are left unset for `summary-backfill.md` to fill on the next `/leeway-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
 
 ## Parameters
 
@@ -15,13 +15,13 @@ The caller provides this via context before loading:
 ## A. Run the Pivot
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit pivot {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit pivot {work_unit}
 ```
 
 When the response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot --warn
 ```
 
 → Return to caller.

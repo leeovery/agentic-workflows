@@ -19,7 +19,7 @@ const harness = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { git, commitOnState, withEnv } = harness;
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
@@ -123,7 +123,7 @@ function projectManifest(horizon, extra = {}) {
 function appendOnly(root) {
   try {
     checkLedger(root, []);
-    checkLedgerCommit(/** @type {import('../../skills/workflow-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
+    checkLedgerCommit(/** @type {import('../../skills/leeway-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
     return true;
   } catch (err) {
     if (err instanceof LedgerChanged) return false;

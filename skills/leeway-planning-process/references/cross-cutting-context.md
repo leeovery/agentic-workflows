@@ -23,7 +23,7 @@ Store the resulting text as `{query_text}`.
 A semantic query only surfaces completed work. An in-progress cross-cutting spec may contain decisions that will bind this plan but aren't yet indexed — the user needs to be aware.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest list --work-type cross-cutting
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest list --work-type cross-cutting
 ```
 
 #### If the output is `[]` (no cross-cutting work units exist)
@@ -45,7 +45,7 @@ The output is the full manifests — read each unit's spec status directly from 
 Write the relevant work unit names to `.workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json` with the Write tool — `{"units": ["{cc_work_unit}", …]}` — then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-gate --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render cross-cutting-gate --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting.json
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.
@@ -79,12 +79,12 @@ No cross-cutting context exists to surface. Proceed without it.
 Run a targeted semantic query filtered to completed cross-cutting specs:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "{query_text}" --work-type cross-cutting --phase specification --limit 10
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query "{query_text}" --work-type cross-cutting --phase specification --limit 10
 ```
 
 #### If the command exits with a non-zero code
 
-→ Load **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
+→ Load **[knowledge-usage.md](../../leeway-shared/references/knowledge-usage.md)** for **D. Query failure handling** and follow its instructions. When it returns:
 
 - **If the user chose `skip`** — the plan proceeds without cross-cutting context. → Return to caller.
 - **If a retry succeeded** — results are now available. → Proceed to **E. Interpret the results**.
@@ -103,7 +103,7 @@ No cross-cutting specs are semantically relevant to this plan. Proceed without c
 
 #### If results are returned
 
-→ Load **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** for **C. Reading the results** and follow its instructions, grouping the results by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec.
+→ Load **[knowledge-usage.md](../../leeway-shared/references/knowledge-usage.md)** for **C. Reading the results** and follow its instructions, grouping the results by work unit — each unique `work_unit/topic` in the provenance lines represents one cross-cutting spec.
 
 Keep only the specs that are genuinely relevant to the plan being built. A result matching on generic vocabulary (e.g., both mention "authentication") but addressing unrelated concerns should be dropped.
 
@@ -118,7 +118,7 @@ Proceed without cross-cutting context.
 Write each one's work unit name and a brief summary of its key decisions relevant to this plan to `.workflows/.cache/{work_unit}/planning/{topic}/cross-cutting-references.json` with the Write tool — `{"units": [{"name": "{cc_work_unit}", "summary": "{brief summary}"}, …]}` — then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-references --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting-references.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render cross-cutting-references --file .workflows/.cache/{work_unit}/planning/{topic}/cross-cutting-references.json
 ```
 
 Emit the call's DISPLAY section verbatim per its marker.

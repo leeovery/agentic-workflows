@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The hook before Bash (workflow-engine/scripts/domain/shell-guard.cjs, its
+// The hook before Bash (leeway-engine/scripts/domain/shell-guard.cjs, its
 // reader kernel/shell-reader.cjs, and the guards' door guards.cjs): `engine
 // shell guard`, Claude Code's hook before every shell command, fed its JSON
 // on stdin as Claude Code sends it. Ordinary commands pass silently and
@@ -55,7 +55,7 @@ const BUILDING = 'building-session';
 const IDLE = 'idle-session';
 const PLACED = 'placed-session';
 const NAMELESS = 'nameless-session';
-const CONFIG = /** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const CLAUDE = /** @type {string} */ (process.env.CLAUDE_CONFIG_DIR);
 const TASK = [
   '# Take a card', '', '## Type', 'feat', '', '## Problem', 'A card cannot be taken.', '', '## Solution', 'Add the card form.', '',
@@ -206,10 +206,10 @@ describe('ordinary commands pass silently, writing nothing', () => {
       `cat <<EOF > notes.md\necho '{}' >> ${ledger}\nEOF`,
       `echo "- tried the form" >> ${inState(layout.topic(UNIT, UNIT, 'log.md'))} && sed -i '' s/draft/final/ ${spec} && cp draft.md ${spec}`,
       `echo '{}' > manifest.json && sed -i '' s/a/b/ ${layout.manifest(UNIT)} && echo '{}' >> ${layout.ledger} && rm -f ${path.join(os.tmpdir(), 'manifest.json')}`,
-      'node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths src/card.js -m "Take the card" --for pay implementation/pay',
+      'node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths src/card.js -m "Take the card" --for pay implementation/pay',
       'npm test -- --grep "git commit"',
       `ls ${conversation} && cat ${path.join(conversation, 'position.json')}`,
-      'cat "$WORKFLOWS_CONFIG_DIR/trust.jsonl" "$(dirname "$X")/briefs/b1.md"',
+      'cat "$LEEWAY_CONFIG_DIR/trust.jsonl" "$(dirname "$X")/briefs/b1.md"',
     ];
     writingNothing(() => {
       for (const command of commands) {
@@ -370,7 +370,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
   });
 
   it('6.S22: with the mod not running, a raw commit during a build is refused, and so is a dispatch of the builder with no brief, by the hook before Agent', () => {
-    const env = { WORKFLOWS_GATE_SURFACE: undefined };
+    const env = { LEEWAY_GATE_SURFACE: undefined };
     assertRefused(guard(worktree, 'git commit -m x', { session: BUILDING, env }), BUILD_COMMIT, 'the raw commit');
     const dispatch = call(dir, ['brief', 'guard'], {
       env,
@@ -402,7 +402,7 @@ describe('the files at user level the layout hook refuses, by their names (6.5.1
     scratch.push(home);
     writingNothing(() => {
       for (const [command, reason] of cases) assertRefused(guard(dir, command), reason, command);
-      const res = guard(dir, 'cat ~/.config/workflows/trust.jsonl', { env: { HOME: home, WORKFLOWS_CONFIG_DIR: undefined } });
+      const res = guard(dir, 'cat ~/.config/leeway/trust.jsonl', { env: { HOME: home, LEEWAY_CONFIG_DIR: undefined } });
       assertRefused(res, trustLog, 'through `~`');
     });
   });

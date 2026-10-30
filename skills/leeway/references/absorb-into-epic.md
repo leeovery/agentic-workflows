@@ -17,7 +17,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 Fetch and emit the `MENU: absorb target` section verbatim per its marker (its numbering follows the DATA `available_epics` order):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-target {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-target {selected.name}
 ```
 
 **STOP.** Wait for user response.
@@ -39,9 +39,9 @@ Resolve the number against `available_epics` and store the selected epic as `tar
 Check whether the name is taken in the target epic — as a discussion topic, an experiment series, or a research topic:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {target_epic}.research.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.research.{topic}
 ```
 
 #### If any is `true`
@@ -61,13 +61,13 @@ Derive a different kebab-case name from the feature's name and its discussion's 
 Fetch the summary — every fact is the feature's own manifest state, read by the surface — and emit its DISPLAY section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-summary {selected.name} --into {target_epic} --topic {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-summary {selected.name} --into {target_epic} --topic {topic}
 ```
 
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-confirm-gate {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-confirm-gate {selected.name}
 ```
 
 **STOP.** Wait for user response.
@@ -84,10 +84,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-confirm-gat
 
 ## D. Absorb
 
-One engine transaction moves the discussion (and any research, experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/workflow-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
+One engine transaction moves the discussion (and any research, experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/leeway-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
 The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `renamed_imports` (the imports a name collision renamed, empty when none did), `routing`, `committed`, and `warnings`.
@@ -121,20 +121,20 @@ The command succeeded.
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the documents it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]
 ```
 
 Fetch the continuation and emit its MENU section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-continuation {target_epic} --feature {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-continuation {target_epic} --feature {selected.name}
 ```
 
 **STOP.** Wait for user response.
 
 #### If user chose `c/continue`
 
-Invoke `/workflow-continue-epic {target_epic}`.
+Invoke `/leeway-continue-epic {target_epic}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

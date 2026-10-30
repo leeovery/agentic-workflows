@@ -1,6 +1,6 @@
 # Feature Research Session
 
-*Reference for **[workflow-research-process](../SKILL.md)***
+*Reference for **[leeway-research-process](../SKILL.md)***
 
 ---
 
@@ -10,9 +10,9 @@ One kind of background agent operates during research — the deep dive — and 
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
 
-→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../leeway-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
-→ Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
+→ Load **[landing-shared-files.md](../../leeway-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
 ---
 
@@ -47,7 +47,7 @@ When a point surfaces that's beyond this topic's scope, a single-topic work type
 Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json` with the Write tool (`{"title": "…"}` — the point's short title), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render off-topic-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render off-topic-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker. The pivot option is offered only for a feature — the surface derives that from the work type.
@@ -56,17 +56,17 @@ Emit the call's MENU section verbatim per its marker. The pivot option is offere
 
 **If `log`:**
 
-Capture the point via the `workflow-log-idea` skill so it lands in the inbox for later triage.
+Capture the point via the `leeway-log-idea` skill so it lands in the inbox for later triage.
 
 → Return to **B. Session Loop**.
 
 **If `pivot`:**
 
-1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
+1. Load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
 
 2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the point; and `point` — the point with the full context discussed about it.
 
-3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, message = `{point}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the point in the research file so it isn't lost; otherwise the message is in the new `{landed_topic}` topic's mailbox and the delivery committed itself.
+3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, message = `{point}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the point in the research file so it isn't lost; otherwise the message is in the new `{landed_topic}` topic's mailbox and the delivery committed itself.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -88,6 +88,6 @@ Note the point in the research file for the user to consider separately, and con
 
 When a number is about to bear a decision — a controlled measurement would settle a choice the conversation is weighing, not merely inform it — offer the laboratory. Hands-on sightings short of that bar stay in the session, labelled exploratory.
 
-→ Load **[experiment-spawn.md](../../workflow-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
+→ Load **[experiment-spawn.md](../../leeway-shared/references/experiment-spawn.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`.
 
 → On return, proceed as the reference directed.

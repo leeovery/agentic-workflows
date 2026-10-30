@@ -1,6 +1,6 @@
 # Interview
 
-*Reference for **[workflow-baseline](../SKILL.md)***
+*Reference for **[leeway-baseline](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Walk the areas' agendas with the user, one themed round at a time, recording eve
 Read the area map:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline.areas
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.baseline.areas
 ```
 
 #### If any area is `pending`
@@ -25,7 +25,7 @@ Research hasn't covered it yet.
 A resumed interview — fetch the progress snapshot and emit its `DISPLAY: baseline progress` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-progress
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-progress
 ```
 
 → Proceed to **B. Next Area**.
@@ -51,7 +51,7 @@ Every area is `completed`.
 Write the area's opening to `.workflows/.cache/baseline/area.json` with the Write tool — `{"area": "{area}", "summary": "{one line: what this area covers and what the questions are after}"}` — then fetch the opening and emit its `DISPLAY: baseline area` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area --file .workflows/.cache/baseline/area.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-area --file .workflows/.cache/baseline/area.json
 ```
 
 → Proceed to **C. Rounds**.
@@ -64,7 +64,7 @@ Read the area's agenda (`.workflows/.baseline/.state/agenda-{area}.md`) and inte
 2. **Ask conversationally** — per question: the observation first, then the ask. Evidence is what jogs memory ("why polling?" retrieves nothing; "the dispatcher polls behind four separate guards — that layering usually accretes from incidents; what's the story?" retrieves everything), and a wrong candidate jogs memory better than an open prompt. Write the round payload to `.workflows/.cache/baseline/round.json` with the Write tool — `{"area": "{area}", "questions": [{"text": "{the question, evidence woven in}", "candidates": ["{plausible answer}", "…"]}]}` — then fetch the round and emit its `DISPLAY: baseline round` section verbatim per its marker:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-round --file .workflows/.cache/baseline/round.json
+   node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-round --file .workflows/.cache/baseline/round.json
    ```
 
    **STOP.** Wait for user response.
@@ -95,7 +95,7 @@ Next round.
 On return, the area doc is written, indexed, and committed. Re-read the area map to see what remains:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline.areas
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.baseline.areas
 ```
 
 #### If areas remain
@@ -103,7 +103,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.base
 Fetch the gate and emit its `MENU: baseline area gate` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate --area {area}
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-area-gate --area {area}
 ```
 
 **STOP.** Wait for user response.
@@ -125,13 +125,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area-gate
 Commit whatever the ledger holds:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --workflows -m "baseline: pause the interview"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "baseline: pause the interview"
 ```
 
 Fetch the pause receipt and emit its `DISPLAY: baseline paused` section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-paused
+node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-paused
 ```
 
 **STOP.** Do not proceed — terminal condition.

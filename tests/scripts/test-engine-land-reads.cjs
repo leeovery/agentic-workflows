@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the local landing driver (workflow-engine/scripts/drivers/landing/
+// What the local landing driver (leeway-engine/scripts/drivers/landing/
 // local/driver.cjs) records, and the shapes of landing it reads: where each
 // task's branch stood when it opened, dropped only when its phase lands, its
 // phase's stack begins again without it, or the unit finishes; a task
@@ -30,8 +30,8 @@ const { ok, git, tip, initRepo } = require('./engine-harness.cjs');
 const {
   TASKS, openArgs, own, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short,
 } = require('./landing-world.cjs');
-const { workMessage } = require('../../skills/workflow-engine/scripts/domain/commit-task.cjs');
-const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');

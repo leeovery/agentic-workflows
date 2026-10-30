@@ -97,7 +97,7 @@ Two categories always take the `route` move, and their findings are never applie
    - A `choice` is walked on its own after the batches: presented, discussed, the pick landed in the owning document first and then in the specification — Resolution `Routed`
    - A `route` finding goes back to the document that owns it — Resolution `Routed`, never presented at a gate
    - Update the tracking file: mark resolution, add notes
-5. After all items resolved, record the flip: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
+5. After all items resolved, record the flip: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`
 
 **Why tracking files**: If context refreshes mid-review, you can read the tracking file and continue where you left off. The tracking file shows which items are resolved and which remain.
 

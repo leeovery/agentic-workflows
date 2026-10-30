@@ -1,6 +1,6 @@
 # Select Output Format
 
-*Reference for **[workflow-scoping-process](../SKILL.md)***
+*Reference for **[leeway-scoping-process](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Select the plan output format using the same project-default logic as the planni
 Read the project default `plan_format` via `engine manifest`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defaults.plan_format
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.defaults.plan_format
 ```
 
 #### If output is empty (no project default)
@@ -23,7 +23,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.defa
 The surface reads the default itself and names it in both the label and the accept row:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-format-gate
+node .claude/skills/leeway-engine/scripts/engine.cjs render plan-format-gate
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -32,7 +32,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `yes`:**
 
-→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{plan_format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
+→ Load **[format-version-check.md](../../leeway-shared/references/format-version-check.md)** with format = `{plan_format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
 
 → Return to caller.
 
@@ -44,10 +44,10 @@ Emit the call's MENU section verbatim per its marker.
 
 ## B. Select Format
 
-→ Load **[output-formats.md](../../workflow-planning-process/references/output-formats.md)** with phase = `scoping`.
+→ Load **[output-formats.md](../../leeway-planning-process/references/output-formats.md)** with phase = `scoping`.
 
-→ Load the chosen format's **[about.md](../../workflow-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
+→ Load the chosen format's **[about.md](../../leeway-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
 
-→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
+→ Load **[format-version-check.md](../../leeway-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
 
 → Return to caller.

@@ -13,14 +13,14 @@ The findings accumulate in the manifest across review cycles — a cycle that fa
 Read the set:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} out_of_scope
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} out_of_scope
 ```
 
 Findings from an earlier cycle were judged against code that remediation has since changed — some may now be done, moot, or wrong. Dispatch **one assessor** over the set before offering anything:
 
-- **Agent path**: `.claude/agents/workflow-review-finding-assessor.md`
+- **Agent path**: `.claude/agents/leeway-review-finding-assessor.md`
 
-Write the set to `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.txt` (one block per finding, opening with its id) and pass it as the findings path, with the code standard path `.claude/skills/workflow-implementation-process/references/code-quality.md` and an output path of `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.jsonl`.
+Write the set to `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.txt` (one block per finding, opening with its id) and pass it as the findings path, with the code standard path `.claude/skills/leeway-implementation-process/references/code-quality.md` and an output path of `.workflows/.cache/{work_unit}/review/{topic}/oos-recheck.jsonl`.
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The assessor agent has been dispatched for the out-of-scope findings.`
 
@@ -33,7 +33,7 @@ State in one sentence, written as markdown (not a code block), that the accumula
 Delete the field — the set is decided:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
 ```
 
 → Return to caller.
@@ -50,18 +50,18 @@ Present each surviving finding as markdown (not a code block) — its summary, i
 
 **STOP.** Wait for user response.
 
-For each kept finding, invoke the capture skill its kind names — `/workflow-log-bug` for a bug, `/workflow-log-idea` for a feature, `/workflow-log-quickfix` for a quick-fix — with the finding's summary, the failure or gap it names, the files it concerns, and its provenance (`{work_unit}` review, the source finding ids) as the context it synthesises from. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
+For each kept finding, invoke the capture skill its kind names — `/leeway-log-bug` for a bug, `/leeway-log-idea` for a feature, `/leeway-log-quickfix` for a quick-fix — with the finding's summary, the failure or gap it names, the files it concerns, and its provenance (`{work_unit}` review, the source finding ids) as the context it synthesises from. An item arriving in the inbox months later is read by someone with none of this session's context, so it states the problem rather than referring to it.
 
 The capture skill writes the inbox file but does not commit it. Commit the filed items once — the inbox has its own scope:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): file out-of-scope findings to inbox"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "review({work_unit}): file out-of-scope findings to inbox"
 ```
 
 Delete the field — decided, whichever way each finding went:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.review.{topic} out_of_scope
 ```
 
 State in one sentence, written as markdown (not a code block), what was filed and what was dropped.

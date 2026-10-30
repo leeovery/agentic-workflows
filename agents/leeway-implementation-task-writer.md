@@ -1,5 +1,5 @@
 ---
-name: workflow-implementation-task-writer
+name: leeway-implementation-task-writer
 description: Creates plan tasks from a staging file of proposed tasks. Reads the staging file's task content, takes the prompt's approved task numbers, and creates exactly those in the plan using the format's authoring adapter — into one new phase or per-task destinations. Invoked by the implementation and review skills after user approval (analysis findings, review remediation, ad hoc additions, the consolidation boundary).
 tools: Read, Write, Edit, Glob, Grep, Bash, mcp__linear__list_issues, mcp__linear__get_issue, mcp__linear__create_issue, mcp__linear__create_issue_label, mcp__linear__update_issue, mcp__linear__create_issue_relation
 model: opus
@@ -31,8 +31,8 @@ You receive via the orchestrator's prompt:
 2. **Read the plan via the reading adapter** — determine the existing phases (numbers, labels, completion state) and, per phase, the max task number
 3. **Resolve destinations** — in label mode: a phase carrying the given label already exists (a crash-resume) → it is the destination; otherwise create one new phase at max existing phase + 1. In `per-task` mode, resolve each task's line: `phase {N}` targets that existing phase, with task numbering continuing from its max; each distinct `new phase "{label}"` creates its own phase, numbered sequentially after the max. **Validate before creating anything**: an approved task with no `placement:` line, or one naming a phase that is absent or already completed, is an input error — create nothing and return `STATUS: failed` naming the task and the reason. The one exception: a prompt-declared **consolidation-boundary placement** names a phase whose completion the caller has deferred — treat that phase as open and create into it (the format's own mechanics reopen what its backend closed)
 4. **Read the authoring adapter** — understand how to create tasks in this format
-5. **Create tasks in the plan** — follow the authoring adapter's instructions for each approved task, using the topic name to scope tasks to this plan (e.g., directory paths, internal ID prefixes, project association). Where the format attaches tasks to a parent phase entity, an existing destination phase's external handle comes from the manifest: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{phase_internal_id}`
-6. **Apply placement mechanics** — for tasks carrying `priority:` or `depends_on:`, follow the graph adapter's instructions. A `depends_on` entry naming a sibling as `task {n}` refers to that staged task — resolve it from this run's own creation results. An entry naming an internal ID refers to a pre-existing plan task — resolve it via `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}`. An empty lookup result is an input error — never pass an empty id to an adapter command
+5. **Create tasks in the plan** — follow the authoring adapter's instructions for each approved task, using the topic name to scope tasks to this plan (e.g., directory paths, internal ID prefixes, project association). Where the format attaches tasks to a parent phase entity, an existing destination phase's external handle comes from the manifest: `node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{phase_internal_id}`
+6. **Apply placement mechanics** — for tasks carrying `priority:` or `depends_on:`, follow the graph adapter's instructions. A `depends_on` entry naming a sibling as `task {n}` refers to that staged task — resolve it from this run's own creation results. An entry naming an internal ID refers to a pre-existing plan task — resolve it via `node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} task_map.{internal_id}`. An empty lookup result is an input error — never pass an empty id to an adapter command
 7. **Record in the planning file** — new phases get a phase section and task table; tasks landing in an existing phase append rows to that phase's existing task table (see below)
 8. **Update task_map in the manifest** — record each task's internal ID → external ID mapping (see below)
 
@@ -56,21 +56,21 @@ After creating task files, record all ID mappings in the manifest via the CLI. C
 
 For each phase this run created:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{phase_internal_id} {phase_external_id}
 ```
 
 For each task:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} task_map.{internal_id} {external_id}
 ```
 
 Check the planning `external_id` in the manifest:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
 ```
 If the command errors (field doesn't exist) or returns empty, set it to the external identifier for the plan from the output format:
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_id "{external_id_value}"
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_id "{external_id_value}"
 ```
 
 ## Hard Rules

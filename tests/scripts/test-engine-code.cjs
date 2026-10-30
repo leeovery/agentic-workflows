@@ -18,7 +18,7 @@ const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 
 const { git, commitAll, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, statePath, layout } = harness;
-const { diffPatch } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
+const { diffPatch } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 const PREFIX = 'impl(pay): T1-';

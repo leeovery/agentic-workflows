@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the gate surface — the `workflow-gates` mod, part of the
+// Domain ring: the gate surface — the `leeway-gates` mod, part of the
 // workflows, which draws the engine's gates as buttons above the prompt
 // instead of leaving the model to reproduce the menu. It runs only in
 // Claude Code's terminal app or the Desktop app's Code tab, from 2.1.287, in
@@ -26,7 +26,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const MOD_ENTRYPOINTS = new Set(['cli', 'claude-desktop', 'claude-desktop-3p']);
 
 /** Where an install puts the mod, relative to the project root. */
-const MOD_DIR = path.join('.claude', 'skills', 'workflow-gates');
+const MOD_DIR = path.join('.claude', 'skills', 'leeway-gates');
 
 /** The oldest Claude Code the mod runs on. */
 const MIN_VERSION = [2, 1, 287];

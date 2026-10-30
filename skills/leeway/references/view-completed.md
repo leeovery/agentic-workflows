@@ -1,6 +1,6 @@
 # View Completed & Cancelled
 
-*Reference for **[workflow-start](../SKILL.md)***
+*Reference for **[leeway](../SKILL.md)***
 
 ---
 
@@ -11,7 +11,7 @@ Display completed and cancelled work units.
 Render the completed & cancelled snapshot:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs completed
+node .claude/skills/leeway/scripts/gateway.cjs completed
 ```
 
 The output is one snapshot in demarcated sections:
@@ -50,7 +50,7 @@ Store the selected work unit's name from its `UNITS` row.
 Fetch the action menu over the selected unit:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render completed-actions {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs render completed-actions {selected.name}
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -62,13 +62,13 @@ Emit the call's MENU section verbatim per its marker.
 Run the reactivate transaction — one command restores `status: in-progress`, clears a stale `completed_at`, re-indexes the work unit's knowledge-base chunks when it was cancelled (completed units retain theirs), and commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs workunit reactivate {selected.name}
+node .claude/skills/leeway-engine/scripts/engine.cjs workunit reactivate {selected.name}
 ```
 
 Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb reactivate [--warn]
 ```
 
 → Return to caller.

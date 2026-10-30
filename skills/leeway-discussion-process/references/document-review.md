@@ -1,6 +1,6 @@
 # Document Review
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 
@@ -27,7 +27,7 @@ Read the discussion file in full: `.workflows/{work_unit}/discussion/{topic}.md`
 Pull the current Discussion Map state fresh as well:
 
 ```bash
-node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
+node .claude/skills/leeway-discussion-process/scripts/gateway.cjs map {work_unit} {topic}
 ```
 
 Don't rely on your memory of what you wrote earlier. Pay particular attention to:
@@ -60,7 +60,7 @@ Walk the conversation against the document and check seven dimensions (the last 
 
 - Gap → add the missing substance to the discussion file at the appropriate place (subtopic section, Journey, or Summary)
 - Hallucination → remove or correct to match what was discussed
-- Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}`)
+- Drift → rewrite to faithfully reflect the conversation; correct Discussion Map states where needed (`node .claude/skills/leeway-engine/scripts/engine.cjs discussion-map set {work_unit} {topic} {subtopic} {state}`)
 - Mislanded re-decision → restructure the block into the timeline shape (wrap the original prose as `#### Initial`, place the dated entry above it); restore any edited earlier entry from git
 - Misdirected knowledge → set aside for **C. Route Misdirected Knowledge** — never silently deleted, never landed without the gate
 - Pipeline meta → remove it — fold any genuine substance it carries back into the document (an open condition becomes an Open Thread), never the status itself
@@ -95,7 +95,7 @@ Single-topic work has no sibling to route to. Surface each note now, one sentenc
 Every note set aside in **B** has been gated (or none existed). When any send record was written, commit it — each send already committed itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): document review — send carry-notes as messages"
+node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): document review — send carry-notes as messages"
 ```
 
 → Proceed to **D. Brief the User**.
@@ -104,10 +104,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topi
 
 The unhandled notes go on screens of at most five — the same batch the surfacing protocol sends findings bound for other topics on, over the same kind of item; an approved screen returns here for the next. Handled-ness lives in the document itself: a sent note reads as a send record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is nothing to send — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge each note's target topic from its own addressing, and its `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per unhandled note — up to five, `remaining` counting those beyond the screen: `title` is the note's own claim, `target` is the topic, `detail` is why it is theirs and which mailbox it lands in), then render it:
+Judge each note's target topic from its own addressing, and its `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per unhandled note — up to five, `remaining` counting those beyond the screen: `title` is the note's own claim, `target` is the topic, `detail` is why it is theirs and which mailbox it lands in), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/carry-notes.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render finding-batch {work_unit}.discussion.{topic} --file .workflows/.cache/{work_unit}/discussion/{topic}/carry-notes.json
 ```
 
 Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
@@ -118,7 +118,7 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 Deliver each note in turn. Build its message from the note *plus* the session context it stems from — the decision that superseded the sibling's text, the reasoning, what the sibling needs to change — the target resolves it from cold.
 
-→ Load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Load **[sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the note's full context}`, origin = `{topic}`, phase = `discussion`, landing_phase = `{landing_phase}`, date = `{today}`.
 
 On return: if `result` is `landed`, the note is handled — replace the stranded prose with a send record in place, `Sent to {landed_topic}'s mailbox ({date}).`, and when the send response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents on the next run.
 

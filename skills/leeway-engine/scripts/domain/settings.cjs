@@ -31,7 +31,7 @@ const SETTINGS_SPEC = '.claude/settings.json';
  * @returns {boolean}
  */
 function settingsHeld() {
-  return Boolean(process.env.WORKFLOWS_HOLD_PROJECT_SETTINGS);
+  return Boolean(process.env.LEEWAY_HOLD_PROJECT_SETTINGS);
 }
 
 /** @param {unknown} err @returns {string} */

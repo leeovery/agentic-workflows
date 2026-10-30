@@ -1,6 +1,6 @@
 # Discussion Documentation Approach
 
-*Reference for **[workflow-discussion-process](../SKILL.md)***
+*Reference for **[leeway-discussion-process](../SKILL.md)***
 
 ---
 

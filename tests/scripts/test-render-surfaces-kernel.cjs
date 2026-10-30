@@ -26,7 +26,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 /**
@@ -298,7 +298,7 @@ describe('worklist shape', () => {
   // consumed — byte length over-counts a correct row, so width properties
   // are asserted on the rendered measure, against the resolved width.
   const renderedLen = (line) => line.replace(/\\(.)/g, '$1').replace(/~~/g, '').replace(/`/g, '').length;
-  const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
+  const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
 
   it('a tag that cannot fit the last title line drops to its own line at the title column', () => {
     const file = writePayload(dir, 't.json', { label: 'Cycle', tasks: [
@@ -392,7 +392,7 @@ describe('worklist shape', () => {
   });
 
   it('worklist fails loudly on shape errors its callers cannot reach', () => {
-    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     assert.throws(() => worklist({ items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
     assert.throws(() => worklist({ heading: { label: 'H', noun: 'x' }, intro: 'I', items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
     assert.throws(() => worklist({ intro: 'I', items: [] }), /"items" must be a non-empty array/);
@@ -403,7 +403,7 @@ describe('worklist shape', () => {
   });
 
   it('walked rows pad 10+ numbering with NBSP too', () => {
-    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
     const out = worklist({ heading: { label: 'H', noun: 'item' }, items, walked: true });
     assert.ok(out.includes(`○ ${NB(1)}1. T1`), `walked pad is NBSP: ${out.split('\n')[2]}`);
@@ -414,7 +414,7 @@ describe('worklist shape', () => {
     // No production surface reaches an unglyphed list past the batch cap;
     // the mechanism is pinned directly so an uncapped future caller
     // inherits it working.
-    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
     const out = worklist({ intro: 'I', items });
     assert.ok(out.includes(`${NB(1)}1\\. T1`), `unglyphed pad is a leading NBSP: ${out.split('\n')[2]}`);
@@ -425,7 +425,7 @@ describe('worklist shape', () => {
   });
 
   it('an unwalked heading never counts remaining', () => {
-    const { worklist } = require('../../skills/workflow-engine/scripts/domain/projections/worklist.cjs');
+    const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
     const out = worklist({ heading: { label: 'H', noun: 'item' }, items: [{ title: 'a', state: 'approved' }, { title: 'b' }] });
     assert.ok(out.startsWith('**H** — 2 items\n'), `unexpected header: ${out.split('\n')[0]}`);
   });
@@ -487,7 +487,7 @@ describe('catalogue dispatch', () => {
       catalogue = String(err.message).match(/surfaces: ([^)]+)\)/)[1].split(', ');
     }
     const engineSrc = fs.readFileSync(
-      path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts', 'engine.cjs'), 'utf8');
+      path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts', 'engine.cjs'), 'utf8');
     const banner = [...engineSrc.matchAll(/^ {2}render (\S+)/gm)].map((m) => m[1]);
     const missing = catalogue.filter((n) => !banner.includes(n));
     assert.deepStrictEqual(missing, [], `surfaces missing from the usage banner: ${missing.join(', ')}`);
@@ -500,7 +500,7 @@ describe('catalogue dispatch', () => {
 
 describe('single-source invariants', () => {
   it('the menu dot rule literal exists in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -516,7 +516,7 @@ describe('single-source invariants', () => {
   });
 
   it('the option-line grammar exists in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -532,8 +532,8 @@ describe('single-source invariants', () => {
   });
 
   it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'scripts');
-    const { RENDER_FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
+    const { RENDER_FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
     const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the workflow instructs'];
     /** @type {Record<string, string[]>} */
     const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
@@ -559,7 +559,7 @@ describe('single-source invariants', () => {
   // delegates to surfaces.callout — and guarded by review.
 
   it('every drawn walkthrough diagram fits the pinned width — an untagged fence cannot re-flow (D8)', () => {
-    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'workflow-engine', 'content', 'walkthrough');
+    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

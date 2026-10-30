@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A fresh clone's state (workflow-engine/scripts/domain/state-checks.cjs,
+// A fresh clone's state (leeway-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs): the remote's state branch made its own and checked out,
 // a remote out of reach; and two boots at once, everything made once.
 //

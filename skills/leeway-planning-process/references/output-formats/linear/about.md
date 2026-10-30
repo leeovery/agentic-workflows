@@ -1,6 +1,6 @@
 # Linear
 
-*Output format adapter for **[workflow-planning-process](../../../SKILL.md)***
+*Output format adapter for **[leeway-planning-process](../../../SKILL.md)***
 
 ---
 
@@ -31,7 +31,7 @@ Which team should own this project?
 Resolve the team's ID via the Linear MCP (`list_teams`), then persist it as a project default so every later phase can reach it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set project.defaults.linear_team_id {team_id}
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.defaults.linear_team_id {team_id}
 ```
 
 ## Version

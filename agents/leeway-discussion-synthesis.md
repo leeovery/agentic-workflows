@@ -1,6 +1,6 @@
 ---
-name: workflow-discussion-synthesis
-description: Reconciles competing perspective analyses into a tradeoff landscape with decision criteria. Invoked in the background by workflow-discussion-process skill after perspective agents complete.
+name: leeway-discussion-synthesis
+description: Reconciles competing perspective analyses into a tradeoff landscape with decision criteria. Invoked in the background by leeway-discussion-process skill after perspective agents complete.
 tools: Read, Write, Bash
 model: opus
 ---
