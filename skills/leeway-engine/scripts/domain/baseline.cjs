@@ -2,8 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the project baseline — the one home for reading the project
-// manifest's `baseline` object. Boot's status field, the start menus'
-// resume/manage rows, and the render surfaces all derive from this state, so
+// manifest's `baseline` object, and the brownfield offer's remembered
+// answer the reshape's move leaves in its place (`brownfield_offer`: native,
+// skipped or completed), which reads as that status with no areas, so a
+// moved project is never judged or offered again. Boot's status field, the
+// start menus' resume/manage rows, and the render surfaces all derive from
+// this state, so
 // the vocabulary and the remaining-count exist exactly once. Two more things
 // live here: the signal boot attaches while nothing is recorded — the
 // project's own account of what came before the workflows, read from every
@@ -23,6 +27,12 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
 /** The two verdicts leeway's judgment can record. */
 const VERDICTS = /** @type {const} */ (['native', 'skipped']);
+/**
+ * The brownfield offer's remembered answers, as the reshape's move carries
+ * a project's baseline onto `brownfield_offer` (8.12.11, 21.11.2), in its
+ * words: each means the offer is made no more.
+ */
+const BROWNFIELD_ANSWERS = /** @type {readonly unknown[]} */ (['native', 'skipped', 'completed']);
 
 /** @typedef {'none' | typeof RECORDED_STATUSES[number]} BaselineStatus */
 /** @typedef {typeof VERDICTS[number]} BaselineVerdict */
@@ -62,6 +72,8 @@ function baselineState(cwd) {
   } catch (_) {
     return { status: 'none', areas: [], remaining: 0 };
   }
+  const answer = manifest && manifest.brownfield_offer;
+  if (BROWNFIELD_ANSWERS.includes(answer)) return { status: answer, areas: [], remaining: 0 };
   const b = manifest && manifest.baseline;
   const raw = b && typeof b === 'object' && !Array.isArray(b) && typeof b.status === 'string' ? b.status : 'none';
   if (!RECORDED_STATUSES.includes(/** @type {typeof RECORDED_STATUSES[number]} */ (raw))) {

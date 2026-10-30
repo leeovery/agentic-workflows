@@ -32,6 +32,11 @@
 // person ended, cancelled or done, is theirs: the make is refused, reopening
 // nothing, and names every parent they must reopen, outermost first, the
 // ones Tick ended above theirs among them.
+//
+// `preLeewayStore` is where a project from before Leeway keeps Tick's store,
+// the project root's `.tick/`: the paths migration 078 was released against,
+// which it reads to carry the store into the state. It never changes; the
+// paths are written out apart from the store's own, which may.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -315,6 +320,10 @@ module.exports = {
   ensureStore,
   storeFiles: () => [`${STORE}/${TASKS}`],
   localFiles: () => [`/${STORE}/cache.db*`, `/${STORE}/lock`, `/${STORE}/.tasks-*.jsonl.tmp`],
+  preLeewayStore: Object.freeze({
+    files: Object.freeze(['.tick/tasks.jsonl']),
+    localFiles: Object.freeze(['/.tick/cache.db*', '/.tick/lock', '/.tick/.tasks-*.jsonl.tmp']),
+  }),
   mergeStore: () => {
     throw new Error(`the tracker's store is not yet merged by the ${TOOL} driver`);
   },

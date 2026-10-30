@@ -29,7 +29,8 @@
 // verb the driver fails, never one the engine refuses, is refused instead
 // for a tool the driver needs that is missing or failing, where one is. A
 // verb that writes commits the tracker's store in one state commit, pushed
-// (4.1.6, 7.5.1), with whatever of that setting up the state branch does not
+// (4.1.6, 7.5.1) — held while the migration runs, the answer saying so
+// (21.9.3) — with whatever of that setting up the state branch does not
 // yet hold; a read commits only that setting up, where there is any: the
 // store's files where the branch has none of them, staged or not, and the
 // setting and the ignore lines alone. Those two go onto the manifest and
@@ -49,7 +50,7 @@ const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored } = require('./state-worktree.cjs');
-const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { TASK_TYPES, breaksLine, readTaskText } = require('./task-file.cjs');
 const { recordTask, clearTask } = require('./position.cjs');
@@ -184,15 +185,19 @@ function ignoreLocalFiles(root, driver) {
 
 /**
  * The state commit of what a verb wrote, with the setting up the branch
- * lacks; a commit that fails is a warning.
+ * lacks; a commit that fails is a warning, and one held while the migration
+ * runs is noted so.
  * @param {string} cwd @param {string[]} paths @param {string} message @param {Setup} setUp
- * @returns {{committed: string|null, warnings?: string[]}}
+ * @returns {{committed: string|null, note?: string, warnings?: string[]}}
  */
 function commitTracker(cwd, paths, message, setUp) {
   /** @type {string[]} */
   const warnings = [];
-  const { committed: sha } = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, { contents: setUp.contents });
-  return warnings.length > 0 ? { committed: sha, warnings } : { committed: sha };
+  const outcome = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, { contents: setUp.contents });
+  /** @type {{committed: string|null, note?: string, warnings?: string[]}} */
+  const out = { committed: outcome.committed };
+  if (outcome.held) noteCommitOutcome(out, outcome);
+  return warnings.length > 0 ? { ...out, warnings } : out;
 }
 
 /**
