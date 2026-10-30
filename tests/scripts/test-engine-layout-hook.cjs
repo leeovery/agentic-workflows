@@ -3,30 +3,35 @@
 // ---------------------------------------------------------------------------
 // The layout hook (workflow-engine/scripts/domain/layout-hook.cjs): `engine
 // layout guard`, Claude Code's hook before Write, Edit and NotebookEdit, fed
-// its JSON on stdin as Claude Code sends it. It refuses a write to the ledger
-// with exit 2 and the reason on stderr (5.S7), reached by any route — from
+// its JSON on stdin as Claude Code sends it. In the state it refuses, with
+// exit 2 and the reason on stderr, a path the layout has no place for (6.S4)
+// and a file only the engine writes — the manifests, a unit's
+// spec-review.json and the ledger — naming the verb that writes it where
+// one does, with the mod or without (6.S5, 5.S7); a place in the layout
+// passes, whatever its kind, and in another case where the filesystem
+// ignores case (the places themselves are test-engine-layout.cjs's). The
+// ledger stands for every refusal in the state, reached by any route — from
 // the main checkout, from a code worktree, through a symbolic link, through
 // `..` read from the text, in another case where the filesystem ignores
-// case — against the state of the project the target is in, whatever project
-// the conversation sits in; refuses a write to every file whose bytes reach
-// the trust log — the log, its lock, each conversation's file of events
-// waiting for it and that file's lock — the settings file and the record of
-// the person in the system config directory, from anywhere, folders named
-// with no letters among them (16.13.2); refuses a write to any file in a
-// conversation's briefs, and to the brief hook's refusals (6.5.12);
-// refuses a write to the files of
-// Claude Code's own the trust log reads the model from — a conversation's
-// transcript, a subagent's transcript and its record (16.4.4). Those are
-// judged by the names the target is written with below the nearest folder
-// above it that is the guarded directory — by a relative path, through
-// `..`, through a link in the guarded directory's own path or one below it,
-// through macOS's firmlink, in another case where the filesystem ignores
-// case — and a write that reaches one under other names, at the place a
-// link leads or through a link to the file, passes, as a write by Bash
-// does. Everything else passes silently: the rest of `.leeway/`, of the
-// system config directory and of Claude Code's project folders, their
-// memory among it, the code tree, and any project with no state. Whether
-// the filesystem ignores case is asked once.
+// case — against the state of the project the target is in, whatever
+// project the conversation sits in. It refuses a write to every file whose
+// bytes reach the trust log — the log, its lock, each conversation's file of
+// events waiting for it and that file's lock — the settings file and the
+// record of the person in the system config directory, from anywhere,
+// folders named with no letters among them (16.13.2); refuses a write to any
+// file in a conversation's briefs, and to the brief hook's refusals
+// (6.5.12); refuses a write to the files of Claude Code's own the trust log
+// reads the model from — a conversation's transcript, a subagent's
+// transcript and its record (16.4.4). Those are judged by the names the
+// target is written with below the nearest folder above it that is the
+// guarded directory — by a relative path, through `..`, through a link in
+// the guarded directory's own path or one below it, through macOS's
+// firmlink, in another case where the filesystem ignores case — and a write
+// that reaches one under other names, at the place a link leads or through
+// a link to the file, passes, as a write by Bash does. Everything else
+// passes silently: the rest of the system config directory and of Claude
+// Code's project folders, their memory among it, the code tree, and any
+// project with no state. Whether the filesystem ignores case is asked once.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -103,11 +108,25 @@ function guard(cwd, file, { env, tool = 'Write' } = {}) {
   return harness.call(cwd, ['layout', 'guard'], { env, stdin: hookInput(cwd, tool, toolInput) });
 }
 
+/** The reason a write to the ledger is refused with, named as it lands in the state. @param {string} [name] */
+const ledgerReason = (name = layout.ledger) => `the ledger (${name}) changes only through the engine's commands — engine ledger ask|find|decide|replace|hold|move|merge`;
+
+/** Each file in the state only the engine writes, and the reason a write to it is refused with. */
+const ENGINE_FILES = Object.freeze({
+  [layout.projectManifest]: 'the project manifest (manifest.json) changes only through the engine\'s commands — engine manifest set|push|pull|delete',
+  [layout.manifest('pay')]: 'a unit\'s manifest (pay/manifest.json) changes only through the engine\'s commands — engine manifest set|push|pull|delete|apply',
+  [layout.unit('pay', 'spec-review.json')]: 'a unit\'s record of the person\'s review of its spec (pay/spec-review.json) changes only through the engine\'s commands',
+  [layout.ledger]: ledgerReason(),
+});
+
+/** The reason a write to the state-relative `rel` is refused with where the layout has no place for it. @param {string} rel */
+const outsideReason = (rel) => `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
+
 /**
  * @param {{code: number, stdout: string, stderr: string}} res @param {string} what
  * @param {string} [reason] the ledger's, unless another's
  */
-function assertRefused(res, what, reason = `the ledger (${layout.ledger}) changes only through the engine's commands`) {
+function assertRefused(res, what, reason = ledgerReason()) {
   assert.deepStrictEqual({ code: res.code, stdout: res.stdout, stderr: res.stderr }, { code: 2, stdout: '', stderr: `${reason}\n` }, what);
 }
 
@@ -125,6 +144,38 @@ function assertRefusedInAnotherCase(res, what, reason) {
   if (IGNORES_CASE) assertRefused(res, what, reason);
   else assertAllowed(res, `${what}: another file on a filesystem that keeps case`);
 }
+
+describe('the layout, held (6.2.1, 6.2.3)', () => {
+  /** The session without the mod and with it: the hook is the project's, so the two answer alike (6.2.2). */
+  const SURFACES = Object.freeze({ 'the mod off': {}, 'the mod on': { WORKFLOWS_GATE_SURFACE: '1' } });
+
+  it('6.S4: a Write to a folder of its own in a unit is refused, naming the path and where scratch goes, and a Write to a topic\'s log goes through — with the mod off and on', () => {
+    const [scratchNotes, topicLog] = [layout.unit('pay', 'scratch', 'notes.md'), layout.unit('pay', 'topics', 'auth', 'log.md')];
+    for (const [mod, env] of Object.entries(SURFACES)) {
+      assertRefused(guard(dir, path.join(root, scratchNotes), { env }), `${scratchNotes}, ${mod}`, outsideReason(scratchNotes));
+      assertAllowed(guard(dir, path.join(root, topicLog), { env }), `${topicLog}, ${mod}`);
+    }
+  });
+
+  it('6.S5: an Edit of the project manifest, a unit\'s manifest, its spec-review.json and the ledger is refused, each naming the engine verb that writes it where one does — with the mod off and on', () => {
+    for (const [mod, env] of Object.entries(SURFACES)) {
+      for (const [rel, reason] of Object.entries(ENGINE_FILES)) assertRefused(guard(dir, path.join(root, rel), { env, tool: 'Edit' }), `${rel}, ${mod}`, reason);
+    }
+  });
+
+  it('a place in the layout passes silently whatever its kind — a file, a log, a free folder\'s contents at any depth, one of today\'s places', () => {
+    for (const rel of [layout.unit('pay', 'spec.md'), layout.unit('pay', 'build', 'log.md'), layout.unit('pay', 'assets', 'mockups', 'home.png'), layout.cache('x'), layout.doc('pay', 'discussion', 'auth')]) {
+      assertAllowed(guard(dir, path.join(root, rel)), rel);
+    }
+  });
+
+  it('a place named in another case is that place where the filesystem ignores case, and a path the layout has no place for where it keeps it', () => {
+    const rel = layout.unit('PAY', 'Topics', 'auth', 'LOG.md');
+    const res = guard(dir, path.join(root, rel));
+    if (IGNORES_CASE) assertAllowed(res, rel);
+    else assertRefused(res, rel, outsideReason(rel));
+  });
+});
 
 describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
   it('Write, Edit and NotebookEdit on .leeway/.ledger.jsonl are refused with exit 2 — the code Claude Code blocks on — the reason on stderr, the ledger untouched', () => {
@@ -152,7 +203,7 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
     assertAllowed(guard(wt, path.join(wt, STATE_DIR_NAME, layout.ledger)), 'the worktree holds no state');
   });
 
-  it('through a symbolic link: to the state folder, to the ledger itself — dangling until the ledger is written — by a relative link read from the folder it sits in, and to the project', () => {
+  it('through a symbolic link: to the state folder — a path the layout has no place for among them — to the ledger itself — dangling until the ledger is written — by a relative link read from the folder it sits in, and to the project', () => {
     const elsewhere = outside('links');
     fs.symlinkSync(root, path.join(elsewhere, 'state'));
     fs.symlinkSync(ledger, path.join(elsewhere, 'ledger'));
@@ -160,6 +211,8 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
     fs.symlinkSync(dir, path.join(elsewhere, 'project'));
 
     assertRefused(guard(dir, path.join(elsewhere, 'state', layout.ledger)), 'a link to the state folder');
+    const scratchNotes = layout.unit('pay', 'scratch', 'notes.md');
+    assertRefused(guard(dir, path.join(elsewhere, 'state', scratchNotes)), 'outside the layout, through a link to the state folder', outsideReason(scratchNotes));
     assertRefused(guard(dir, path.join(elsewhere, 'ledger')), 'a dangling link to the ledger');
     assertRefused(guard(dir, path.join(elsewhere, 'relative')), 'a relative link to the ledger');
     assertRefused(guard(path.join(elsewhere, 'project'), `${STATE_DIR_NAME}/${layout.ledger}`), 'from the project reached through a link');
@@ -174,15 +227,17 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
     assertAllowed(guard(dir, `${path.join(elsewhere, 'unit')}/../${layout.ledger}`), 'the text climbs out of the link, beside it');
   });
 
-  it('in any case the filesystem reads as the ledger\'s — the ledger there or not yet written — and only there', () => {
-    const variants = [`.leeway/.LEDGER.jsonl`, `.Leeway/${layout.ledger}`, `.leeway/.ledger.JSONL`];
-    const check = (/** @type {string} */ what) => {
-      for (const rel of variants) assertRefusedInAnotherCase(guard(dir, path.join(dir, rel)), `${rel} ${what}`);
+  it('in any case the filesystem reads as the ledger\'s — the ledger there or not yet written, the refusal naming it as written until it is, then as it is on disk — and only there: where it keeps case, another name in the state is outside the layout', () => {
+    const check = (/** @type {string} */ what, /** @type {boolean} */ written) => {
+      for (const name of ['.LEDGER.jsonl', '.ledger.JSONL']) {
+        assertRefused(guard(dir, path.join(root, name)), `${name} ${what}`, IGNORES_CASE ? ledgerReason(written ? layout.ledger : name) : outsideReason(name));
+      }
+      assertRefusedInAnotherCase(guard(dir, path.join(dir, '.Leeway', layout.ledger)), `.Leeway/${layout.ledger} ${what}`);
     };
-    check('before the ledger is written');
+    check('before the ledger is written', false);
     fs.writeFileSync(ledger, '{"id":"e1"}\n');
-    check('over the ledger');
-    assertAllowed(guard(dir, path.join(root, 'Manifest.JSON')), 'another file in another case');
+    check('over the ledger', true);
+    assertAllowed(guard(dir, path.join(root, layout.cache('Ledger.JSONL'))), 'another file in another case');
   });
 
   it('the state is the target\'s own project\'s: a conversation sitting in another project with state, or out of every project, is refused this one\'s ledger', () => {
@@ -190,7 +245,7 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
     scratch.push(other);
     assertRefused(guard(other, ledger), 'from another project');
     assertRefused(guard(dir, statePath(other, layout.ledger)), 'the other project\'s, from this one');
-    assertAllowed(guard(other, statePath(other, layout.projectManifest)), 'the other project\'s manifest');
+    assertAllowed(guard(other, statePath(other, layout.unit('pay', 'spec.md'))), 'a place in the other project\'s layout');
     assertRefused(guard(outside('drifted'), ledger), 'from a folder in no project');
   });
 
@@ -320,7 +375,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
       assertRefusedInAnotherCase(guard(dir, path.join(config, 'conversations', 'sess-1', 'BRIEFS', name), inConfig), `${name} in another case`, reason(name));
     }
     assertRefused(guard(dir, path.join(briefs, 'deeper', 'b2.md'), inConfig), 'a file deeper in briefs/', reason('b2.md'));
-    for (const at of [path.join(config, 'conversations', 'sess-1', 'briefs.md'), path.join(config, 'conversations', 'briefs', 'b1.md'), path.join(config, 'briefs', 'b1.md'), path.join(root, 'briefs', 'b1.md'), path.join(dir, 'briefs', 'b1.md')]) {
+    for (const at of [path.join(config, 'conversations', 'sess-1', 'briefs.md'), path.join(config, 'conversations', 'briefs', 'b1.md'), path.join(config, 'briefs', 'b1.md'), path.join(root, layout.cache('briefs', 'b1.md')), path.join(dir, 'briefs', 'b1.md')]) {
       assertAllowed(guard(dir, at, inConfig), at);
     }
   });
@@ -330,7 +385,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
       assertAllowed(guard(dir, path.join(config, rel), inConfig), rel);
     }
     for (const name of Object.keys(USER_FILES)) {
-      assertAllowed(guard(dir, path.join(root, name), inConfig), `${name} in the state`);
+      assertAllowed(guard(dir, path.join(root, layout.cache(name)), inConfig), `${name} in the state's cache`);
       assertAllowed(guard(dir, path.join(dir, name), inConfig), `${name} in the code tree`);
     }
   });
@@ -410,12 +465,6 @@ describe('Claude Code\'s own files the trust log reads the model from, refused (
 });
 
 describe('everything else, allowed', () => {
-  it('the rest of .leeway/ — the layout hook\'s to refuse in a later step — passes silently', () => {
-    for (const rel of [layout.projectManifest, layout.manifest('pay'), layout.doc('pay', 'discussion', 'pay'), layout.unit('pay', layout.ledger), `${layout.ledger}.bak`, layout.cache('x')]) {
-      assertAllowed(guard(dir, path.join(root, rel)), rel);
-    }
-  });
-
   it('the code tree, and a folder outside the project, pass silently', () => {
     assertAllowed(guard(dir, path.join(dir, 'src/app.js')), 'code');
     assertAllowed(guard(dir, path.join(outside('elsewhere'), layout.ledger)), 'outside');
