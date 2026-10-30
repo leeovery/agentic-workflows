@@ -14,7 +14,8 @@
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; the asset links appended
-// in process, as no verb writes one yet.
+// in process, so the fold is read apart from the verb that writes them,
+// which never tags a link elsewhere than its entry (test-engine-asset.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -133,7 +134,7 @@ describe('the files an entry links (9.10.5–9.10.7, 9.10.16)', () => {
 
   /**
    * A link from `entry` to `file` where `at` says, giving the status and
-   * the lift `gives` names, as the asset verb will append it.
+   * the lift `gives` names.
    * @param {string} entry @param {string} file @param {{status?: string, into?: string}} gives @param {{unit: string, topic: string}} [at]
    */
   function link(entry, file, { status = null, into = null }, at = NOTE_AT) {

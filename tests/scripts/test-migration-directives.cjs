@@ -39,6 +39,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MIGRATIONS = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations');
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { directiveStop } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
+const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 const engine = directiveEngine();
 const RECORDS = '079-records';
@@ -304,5 +305,15 @@ describe('while the migration runs (21.1.5, 21.9.3)', () => {
     tell();
 
     assert.deepStrictEqual(fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line).type), ['call', 'gate']);
+  });
+
+  it('a task verb holds its commit: the tracker\'s store written in the state, nothing committed on either branch (21.5.21)', () => {
+    const code = codeHead(dir);
+
+    const written = ok(['task', 'phase', UNIT, '1', '--title', 'The licence']);
+
+    assert.deepStrictEqual([written.phase, written.committed, written.note], [1, null, 'held for the migration\'s commit']);
+    assert.ok(listDrivers('task').find((driver) => driver.isDefault).storeFiles().every((file) => fs.existsSync(statePath(dir, file))));
+    assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code]);
   });
 });

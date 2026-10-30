@@ -31,13 +31,12 @@ const path = require('path');
 const { messageOf, launcher } = require('../kernel/call.cjs');
 const { tryClaimFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { appendEntry, carrying, checkLines } = require('./ledger.cjs');
-const { LEDGER, entryKind } = require('./ledger-events.cjs');
+const { appendEntry, carrying, checkLines, commitLedger } = require('./ledger.cjs');
+const { entryKind } = require('./ledger-events.cjs');
 const { readFolded } = require('./ledger-fold.cjs');
 const { ledgerMessage } = require('./ledger-write.cjs');
 const { judgeDecision } = require('./ledger-one-decision.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { commitStateTail } = require('./commit.cjs');
 
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
 /** @typedef {import('../kernel/claude-call.cjs').CannotRun} CannotRun */
@@ -78,7 +77,7 @@ function recordChecked(cwd, root, entry, rules, warnings) {
     checkLines(root, warnings);
     const { unit, topic, phase, session, id } = /** @type {Record<string, string>} */ (entry);
     const checked = appendEntry(root, { event: 'checked', unit, topic, phase, session, entry: id, rules }, warnings);
-    commitStateTail(cwd, LEDGER, ledgerMessage(unit, 'checked', /** @type {string} */ (checked.id), topic), warnings);
+    commitLedger(cwd, ledgerMessage(unit, 'checked', /** @type {string} */ (checked.id), topic), warnings);
   });
 }
 
@@ -101,7 +100,7 @@ function checkOwed(cwd, root, warnings) {
   /** @type {Checked} */
   const done = { ran: true, checked: 0, several: 0, owed: owed.length };
   for (const entry of owed) {
-    const judged = judgeDecision(entry);
+    const judged = judgeDecision(entry, { cwd, unit: /** @type {string} */ (entry.unit), verb: LATE_CHECK_VERB, warnings });
     if ('cannot' in judged) {
       done.cannot = { reason: judged.cannot, detail: judged.detail };
       if (judged.cannot !== 'misfit') break;
