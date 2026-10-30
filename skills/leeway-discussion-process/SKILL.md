@@ -110,7 +110,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - An experiment → `experiment create`, then `render experiment-spawn-gate`.
 - A question for later → `roadmap add`, then `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
-- The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`.
+- The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
@@ -127,7 +127,9 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
    node .claude/skills/leeway-engine/scripts/engine.cjs render decided {work_unit}.{topic} --file .leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json
    ```
 
-The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
+   A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already.
+
+The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
 
 ## Backlogging
 
@@ -144,7 +146,7 @@ The move takes `{"by": "person", "who_moved_whom": "none"}` on stdin. A refused 
 
 The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another of the epic by name, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel. Say so in a line.
 
-Postponing this topic leaves it. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
+Where the topic postponed is this one, postponing leaves it: bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Another topic of the epic, named, leaves this one as it is. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
 
 The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch the receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; then follow the postpone's `next`:
 
