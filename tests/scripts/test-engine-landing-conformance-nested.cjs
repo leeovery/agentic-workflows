@@ -12,7 +12,8 @@
 // stands in each. A verb refused in one repository is
 // test-engine-landing-conformance-nested-refusals.cjs's; fix phases stacked
 // on a phase that moved the pointer,
-// test-engine-landing-conformance-stacked.cjs's. A driver's side
+// test-engine-landing-conformance-stacked.cjs's and
+// test-engine-landing-conformance-stacked-finish.cjs's. A driver's side
 // (tests/drivers/{name}/landing.cjs) readies each repository and reads what
 // landed where; this file names no driver and no tool. Conformance layer:
 // the nested world (landing-world.cjs), built once per driver and copied
