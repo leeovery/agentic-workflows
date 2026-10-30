@@ -124,7 +124,7 @@ function drawnGlyphs(label) {
 
 /**
  * The characters a payload row's parts show, each marked where the option
- * grammar draws it (CONVENTIONS.md: Menus): the tail italic after a dash, the
+ * grammar draws it (CONVENTIONS.md: The Design System, Menus): the tail italic after a dash, the
  * cue plain after a dot, the strike over all of it when a holder stands
  * plain after the strike, the recommendation last. The parts are read as the
  * text they state, so a part still carrying markup or an escape shows

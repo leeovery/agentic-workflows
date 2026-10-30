@@ -3,12 +3,12 @@
 // ---------------------------------------------------------------------------
 // Domain ring: shared render-surface primitives — the single builder every engine-rendered
 // menu, callout, and content frame flows through. The skill-visible formatting
-// rules (CONVENTIONS.md: render forms, menu frames, option syntax, callout
-// flags) exist in code exactly once, here; restyling a surface class is a
+// rules (CONVENTIONS.md: The Design System — Forms, Menus, Callouts and
+// blockers) exist in code exactly once, here; restyling a surface class is a
 // one-place change.
-// The one sibling: the worklist shape (CONVENTIONS.md: Worklists) lives in
-// worklist.cjs — markdown-emitted, so none of the fenced primitives here
-// serve it.
+// The one sibling: the worklist shape (CONVENTIONS.md: The Design System,
+// Worklists) lives in worklist.cjs — markdown-emitted, so none of the
+// fenced primitives here serve it.
 // Drawn borders never frame content — markdown and fences re-flow with the
 // terminal; fixed-width borders cannot.
 // ---------------------------------------------------------------------------
@@ -35,7 +35,8 @@ function glyphed(ask) {
 // the column itself is stable at any width. The label after the arrow is the
 // half that consults the terminal: a long label wraps at the display width
 // with continuations aligned under the label column, so the key column and
-// the label column never bleed into one another (CONVENTIONS.md: Menus).
+// the label column never bleed into one another (CONVENTIONS.md: The
+// Design System, Menus).
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
 // Continuation indents are non-breaking spaces — menus are markdown-emitted,
@@ -462,7 +463,7 @@ function section(name, instruction, body) {
   return name.startsWith('MENU') ? gateBlock(gateName(name)) + block : block;
 }
 
-// The four render forms (CONVENTIONS.md: Rendering Instructions), each said
+// The four render forms (CONVENTIONS.md: The Design System, Forms), each said
 // one way, keyed by the fence each names. Every TITLE, DISPLAY and MENU
 // marker's instruction is built from them here.
 const RENDER_FORMS = {
@@ -521,8 +522,8 @@ const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
 const AUTO_GATE_INSTRUCTION = emitAs('text', AUTO_GATE_CLAUSE);
 const AUTO_GATE_MARKDOWN_INSTRUCTION = emitAs('markdown', AUTO_GATE_CLAUSE);
 
-// The view's chrome heading (CONVENTIONS.md: Phase Titles): one markdown H1
-// in the chrome family's heaviest register — bold inline code with the
+// The view's chrome heading (CONVENTIONS.md: The Design System, Chrome):
+// one markdown H1 in the chrome family's heaviest register — bold inline code with the
 // filled square, so the renderer styles it at any terminal width.
 const TITLE_INSTRUCTION = emitAs('markdown', " — the view's chrome heading");
 
@@ -535,7 +536,7 @@ function titleSection(text) {
   return section('TITLE', TITLE_INSTRUCTION, `# **\`■ ${text}\`**`);
 }
 
-// The reasoning surface beside a render (CONVENTIONS.md: Engine Output
+// The reasoning surface beside a render (CONVENTIONS.md: Engine
 // Sections) — the flow decides from it, the user never sees it.
 const DATA_INSTRUCTION = 'reason from this — never display or parse the sections below';
 
@@ -665,8 +666,8 @@ function menu(label, options, { question } = {}) {
 
 /**
  * Command option line — a discrete input the user types verbatim
- * (CONVENTIONS.md option grammar): key and word share one code span, the
- * arrow separates it from the label. The word is omitted for bare-key
+ * (CONVENTIONS.md: The Design System, Menus): key and word share one code
+ * span, the arrow separates it from the label. The word is omitted for bare-key
  * options (numbered entries). Arrows are aligned by the enclosing frame.
  * `next` is what answering the row leads to (gate.cjs).
  * @param {string} key @param {string | null | undefined} word @param {OptionLabel} label
@@ -681,8 +682,9 @@ function cmdOption(key, word, label, { next } = {}) {
 
 /**
  * Bare command option — key and word, no arrow and no label. The shape a
- * yes/no gate takes (CONVENTIONS.md: Yes/no prompt): the question above the
- * options already says what yes means, so a label would only repeat it.
+ * yes/no gate takes (CONVENTIONS.md: The Design System, Menus): the
+ * question above the options already says what yes means, so a label would
+ * only repeat it.
  * Carries no arrow, so the enclosing frame passes it through unaligned.
  * `next` is what answering the row leads to (gate.cjs).
  * @param {string} key @param {string} word @param {{next?: Next}} [opts]

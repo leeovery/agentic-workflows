@@ -1160,9 +1160,10 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
       text = `${r.row} · ${r.locked}`;
     }
     const lastInGroup = i === rows.length - 1 || groupOf(rows[i + 1]) !== group;
-    // Sub-views are plain list rows (CONVENTIONS: selection sub-views use
-    // the [term] form, not trees) — the branch glyphs are visual grouping,
-    // so wrapped continuations align under the row text with no rail.
+    // Sub-views are plain list rows, their status in the [term] form, not
+    // trees (CONVENTIONS.md: The Design System, Lists) — the branch glyphs
+    // are visual grouping, so wrapped continuations align under the row text
+    // with no rail.
     const glyph = lastInGroup ? '└─' : '├─';
     displayLines.push(...wrapWithPrefix(text, { width: TREE_WIDTH, prefix: `  ${glyph} `, hang })
       .map((line, li) => (li === 0 ? line : line.replace(`  ${glyph} `, '     '))));

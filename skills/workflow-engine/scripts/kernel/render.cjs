@@ -119,7 +119,8 @@ function signpost(label, { style = 'step', width = WIDTH } = {}) {
 }
 
 // Phase-title box — bullet-bordered, fixed width, 2-space title padding, with a
-// trailing blank line inside the block (CONVENTIONS.md: phase titles).
+// trailing blank line inside the block. CONVENTIONS.md (The Design System,
+// Chrome) draws a title as a markdown H1 instead.
 //
 //   ●───…───●
 //     Title
