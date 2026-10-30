@@ -159,15 +159,15 @@ function discussionStanding(at) {
 
 /**
  * Why a bugfix's investigation cannot be entered: concluded, the unit's
- * work going on where its menu goes (`computeNextPhase`); null while the
- * menu still leads to the investigation.
+ * work going on where its menu goes (`computeNextPhase`), or done; null
+ * while the menu still leads to the investigation.
  * @param {Standing} at @returns {string|null}
  */
 function investigationStanding({ topic = '', manifest }) {
   const next = computeNextPhase(manifest).next_phase;
-  return next === 'investigation'
-    ? null
-    : `the topic "${topic}" is concluded — its work goes on in ${next}, from the start menu, and a message sent to it reopens it`;
+  if (next === 'investigation') return null;
+  const where = next === 'done' ? 'its work is done' : `its work goes on in ${next}, from the start menu`;
+  return `the topic "${topic}" is concluded — ${where}, and a message sent to it reopens it`;
 }
 
 /**

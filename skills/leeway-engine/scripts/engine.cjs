@@ -2455,7 +2455,7 @@ function runCode(call, argv) {
 function runHandoff(call, argv) {
   const [skill, ...args] = argv;
   try {
-    if (skill === undefined) throw new Error('Usage: engine handoff <skill|/skill> [args …]');
+    if (skill === undefined) throw new Error(`Usage: engine handoff <skill|/skill> [args …], or engine ${TOPIC_HANDOFF_USAGE}`);
     respondSections(call, handoffSections(skill === 'topic' ? topicHandoff(call.cwd, args) : resolveHandoff(call.cwd, skill, args)));
   } catch (err) {
     failJson(call, err);
