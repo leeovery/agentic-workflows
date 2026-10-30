@@ -282,15 +282,15 @@ function sessionLog(sim, wu, n = 1) {
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
 }
 
-/** Write a message scratch and return the `topic send` argv delivering it. */
-function sendArgv(sim, wu, topic, slug = 'a-message') {
+/** Write a message scratch and return the `topic send` argv delivering it from `from`. */
+function sendArgv(sim, wu, topic, from, slug = 'a-message') {
   const scratch = sim.write(`.leeway/.cache/scratch/${slug}.md`, `${slug}\n\nBody of ${slug}.\n`);
-  return ['topic', 'send', wu, topic, '--content', scratch, '--slug', slug];
+  return ['topic', 'send', wu, topic, '--from', from, '--content', scratch, '--slug', slug];
 }
 
-/** Send one message to a topic. */
-function send(sim, wu, topic, slug) {
-  return sim.run(sendArgv(sim, wu, topic, slug));
+/** Send one message to a topic from `from`. */
+function send(sim, wu, topic, from, slug) {
+  return sim.run(sendArgv(sim, wu, topic, from, slug));
 }
 
 /** An epic whose map carries the named topics, each routed to discussion. */

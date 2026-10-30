@@ -12,17 +12,18 @@
 //   has its `spec.md`, from which a change is settled in the spec (4.11.2,
 //   10.2.2).
 // - What the topic is now: postponed, cancelled or closed as a dead end on
-//   the map, promoted out of the unit, or decided. A message waits in a
-//   postponed topic's mailbox, reopens a decided one and goes to the inbox
-//   for a cancelled one (10.1.6, 10.1.8, 10.2.7), so only a topic closed as
-//   a dead end or promoted refuses it.
+//   the map, promoted out of the unit, decided, or for a bugfix its
+//   investigation concluded, the unit's menu leading past it. A message
+//   waits in a postponed topic's mailbox, reopens a decided or concluded
+//   one and goes to the inbox for a cancelled one (10.1.6, 10.1.8, 10.2.7),
+//   so only a topic closed as a dead end or promoted refuses it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
-const { computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
+const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
 
 /**
  * Where a topic stands as it is checked: the unit's manifest as it stood on
@@ -78,6 +79,15 @@ function topicsNamed(manifest) {
 }
 
 /**
+ * Whether the unit holds the topic: one its map or phases name, or a
+ * single-topic unit's own.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+function holdsTopic(manifest, topic) {
+  return (topic === manifest.name && manifest.work_type !== 'epic') || hasTopic(manifest, topic);
+}
+
+/**
  * Why the topic named cannot take work, whatever the phase: an epic named at
  * none, a name that is not one, the unit past its spec (4.11.2), or a topic
  * the unit lacks; null where it can.
@@ -88,8 +98,7 @@ function topicStanding({ cwd, phase, unit, topic, manifest }) {
   const illegal = illegalNameReason('topic', topic);
   if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
   if (fs.existsSync(statePath(cwd, unit, 'spec.md'))) return `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here`;
-  const own = topic === unit && manifest.work_type !== 'epic';
-  return own || hasTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
+  return holdsTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
 }
 
 /** @type {Readonly<Record<string, (topic: string, through: string) => string>>} */
@@ -149,12 +158,26 @@ function discussionStanding(at) {
 }
 
 /**
+ * Why a bugfix's investigation cannot be entered: concluded, the unit's
+ * work going on where its menu goes (`computeNextPhase`); null while the
+ * menu still leads to the investigation.
+ * @param {Standing} at @returns {string|null}
+ */
+function investigationStanding({ topic = '', manifest }) {
+  const next = computeNextPhase(manifest).next_phase;
+  return next === 'investigation'
+    ? null
+    : `the topic "${topic}" is concluded — its work goes on in ${next}, from the start menu, and a message sent to it reopens it`;
+}
+
+/**
  * Why each phase that enters at a topic cannot be entered there; a phase
  * with none of its own is held to the topic and its closure alone.
  * @type {Readonly<Record<string, (at: Standing) => string|null>>}
  */
 const STANDINGS = Object.freeze({
   discussion: (at) => topicStanding(at) ?? discussionStanding(at),
+  investigation: (at) => topicClosure(at) ?? investigationStanding(at),
 });
 
 /** @param {string} phase @returns {(at: Standing) => string|null} */
@@ -173,4 +196,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { assertInProgress, unitInProgress, assertPhaseHeld, topicClosure, phaseStanding, assertEnterable };
+module.exports = { assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, assertEnterable };

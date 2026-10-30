@@ -4,35 +4,40 @@
 // The mailboxes between topics (leeway-engine/scripts/domain/mail.cjs, the
 // screens projections/mail.cjs): `topic send`, landing a message as the next
 // file of the target topic's one mailbox, its path naming no phase (10.S1),
-// writing no entry (10.S6, 5.S11), the topic's conversation parked as a
+// the line under its title naming who sent it and when, as the waiting mail
+// heads it (10.4.2) — a sender a topic of the unit, another unit's topic or
+// an experiment of the target, never text — writing no entry (10.S6, 5.S11),
+// the topic's conversation parked as a
 // landing parks it — set back in progress where decided (10.S10) — a
 // postponed topic's message waiting in its mailbox and a cancelled topic's
-// gone to the inbox as an idea (10.1.8), each send under the writer lock and
+// gone to the inbox as an idea, as is a cancelled unit's, the report and the
+// commit naming which is cancelled (10.1.8), each send under the writer lock and
 // committed, and any other target the entry refuses refused by its rule — a
 // unit completed, or past its spec (10.2.2); `topic mailbox`, what waits,
 // taking no lock (10.S4); `topic answered`, a message named whole removed
-// once the topic holds the question it raised there (5.3.8); a pending
+// once the topic holds the question it raised there (5.3.8) or the question
+// a move brought it (9.S17); a pending
 // commit's retry, in a scope that commits what was left; and `render
 // send-report`, the send report ending with the command that opens the
 // target (10.3.4, 27.S4). The waiting mail raised at a topic's opening is
 // test-engine-enter.cjs's, a closed decided worked afresh after a reopen
 // test-engine-checklist.cjs's. What a message changes in the decisions it
-// touches is the ledger's: a question moved to another topic travels as a
-// message sent there, its standing on the maps test-engine-ledger-map.cjs's
-// (9.S17); another topic's same answer leaving the owner's entry to stand
+// touches is the ledger's: a moved question's standing on the maps is
+// test-engine-ledger-map.cjs's (9.S17); another topic's same answer leaving the owner's entry to stand
 // test-engine-ledger-map.cjs's (10.S7); a record showing another topic's
 // current answer test-engine-ledger-read.cjs's (10.S8); and a decided topic
 // relying on a replaced answer waiting on the person
 // test-engine-ledger-affected.cjs's (10.S9).
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, whose map
-// holds `commercialization` under discussion with a question asked on it,
-// `licence` not yet discussed, `first-run` decided with a question of its
+// holds `commercialization` under discussion with a question asked on it and
+// an experiment, E1, `licence` not yet discussed, `first-run` decided with a question of its
 // own and sourced by a concluded specification, `widgets` postponed,
 // `removal` cancelled, `dead-end` closed as one, and `export` promoted; a
 // feature, `quick-sync`; a bugfix, `crash`, under investigation; a
 // quick-fix, `typo`; a cancelled feature, `retired`; a completed one,
-// `shipped`; and one with its spec, `specced`.
+// `shipped`; one with its spec, `specced`; and a cancelled epic, `shelved`,
+// whose map holds `pricing`.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -52,6 +57,12 @@ const { BRANCH_REF } = require('../../skills/leeway-engine/scripts/kernel/state-
 const EPIC = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'mail-session' });
 const MESSAGE = 'The licence window carries a "Lost your key?" link\n\nTheir reasoning: a buyer on a new Mac has no key to hand.\n';
+
+/** Who each unit's sends in this suite come from: a topic of the unit. @type {Record<string, string>} */
+const SENDER = { [EPIC]: 'first-run', shelved: 'pricing' };
+
+/** MESSAGE as it lands, sent by `sender` on the frozen day. @param {string} sender */
+const landed = (sender) => MESSAGE.replace('\n', `\nFrom ${sender} · 1 Jan\n`);
 
 /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
 const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery', ...marks });
@@ -76,8 +87,10 @@ const world = fixtureFrom('engine-mail-', (dir) => {
         },
       },
       specification: { items: { onboarding: { status: 'completed', sources: { 'first-run': { status: 'incorporated' } } } } },
+      experiment: { items: { commercialization: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     },
   });
+  createManifest(dir, 'shelved', { work_type: 'epic', status: 'cancelled', phases: { discovery: { items: { pricing: row(1) } } } });
   createManifest(dir, 'quick-sync');
   createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
   createManifest(dir, 'typo', { work_type: 'quick-fix' });
@@ -101,9 +114,9 @@ function scratch(text = MESSAGE) {
   return writeState(dir, layout.cache('scratch', 'message.md'), text);
 }
 
-/** A send that must succeed: its response. @param {string} unit @param {string} topic @param {string} slug @param {string} [text] */
+/** A send from the unit's sender that must succeed: its response. @param {string} unit @param {string} topic @param {string} slug @param {string} [text] */
 function send(unit, topic, slug, text) {
-  return ok(dir, ['topic', 'send', unit, topic, '--content', scratch(text), '--slug', slug]);
+  return ok(dir, ['topic', 'send', unit, topic, '--from', SENDER[unit] ?? unit, '--content', scratch(text), '--slug', slug]);
 }
 
 /** A call that must refuse, writing nothing: its error. @param {string[]} args */
@@ -152,9 +165,9 @@ describe('topic send (10.1, 10.2.7)', () => {
     writeState(dir, layout.doc(EPIC, 'discussion', 'licence'), '# Licence, mid-conversation\n');
     const peer = dirt();
     const message = scratch();
-    const first = ok(dir, ['topic', 'send', EPIC, 'commercialization', '--content', message, '--slug', 'lost-key']);
+    const first = withFrozenClock(() => ok(dir, ['topic', 'send', EPIC, 'commercialization', '--from', 'first-run', '--content', message, '--slug', 'lost-key']));
     assert.deepStrictEqual(first, { ok: true, unit: EPIC, topic: 'commercialization', message_path: at(layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')), committed: shortHead() });
-    assert.deepStrictEqual([readState(dir, layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')), fs.existsSync(message)], [MESSAGE, false]);
+    assert.deepStrictEqual([readState(dir, layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')), fs.existsSync(message)], [landed('First Run'), false]);
     assert.deepStrictEqual([lastMessage(dir), changed('HEAD')], [`mail(${EPIC}): send 001-lost-key.md to commercialization`, [`A\t${layout.mailbox(EPIC, 'commercialization', '001-lost-key.md')}`]]);
     assert.strictEqual(send(EPIC, 'commercialization', 'refund-window').message_path, at(layout.mailbox(EPIC, 'commercialization', '002-refund-window.md')));
     assert.deepStrictEqual([readState(dir, layout.ledger), dirt()], [ledger, peer]);
@@ -205,7 +218,26 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(readState(dir, layout.manifest(EPIC)), before);
   });
 
-  it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title (10.1.8, P5)', () => {
+  it('names the sender under the title as the waiting mail heads it: a topic of the unit, another unit\'s topic — a single-topic unit by its name alone — or an experiment of the target, each on the day it was sent (10.4.2)', () => {
+    const fromLine = (/** @type {string} */ unit, /** @type {string} */ topic, /** @type {string} */ from) => {
+      const res = withFrozenClock(() => ok(dir, ['topic', 'send', unit, topic, '--from', from, '--content', scratch(), '--slug', `from-${from.replace(/\./g, '-').toLowerCase()}`]));
+      return fs.readFileSync(res.message_path, 'utf8').split('\n')[1];
+    };
+    assert.deepStrictEqual([
+      fromLine(EPIC, 'licence', 'commercialization'), fromLine('quick-sync', 'quick-sync', 'fumi.first-run'),
+      fromLine(EPIC, 'licence', 'quick-sync.quick-sync'), fromLine(EPIC, 'commercialization', 'E1'),
+    ], ['From Commercialization · 1 Jan', 'From First Run, on Fumi · 1 Jan', 'From Quick Sync · 1 Jan', 'From Experiment E1 · 1 Jan']);
+  });
+
+  it('refuses a sender that is no name it takes, writing nothing and keeping the scratch: text, a topic the unit lacks, a unit the project lacks, a topic another unit lacks, an experiment the target has not run, a name of three parts', () => {
+    const message = scratch();
+    const refusal = (/** @type {string} */ from) => `--from names "${from}" — it takes who sent the message: a topic of ${EPIC}, {unit}.{topic} for another unit's topic, or an experiment of licence`;
+    const senders = ['Lost key', 'billing', 'nowhere.any', 'quick-sync.other', 'E1', 'fumi.first-run.extra'];
+    assert.deepStrictEqual(senders.map((from) => refused(['topic', 'send', EPIC, 'licence', '--from', from, '--content', message, '--slug', 'lost-key'])), senders.map(refusal));
+    assert.strictEqual(fs.existsSync(message), true);
+  });
+
+  it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title, the commit naming what is cancelled (10.1.8, P5)', () => {
     const idea = (/** @type {string} */ slug) => layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--${slug}.md`);
     const res = withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
     assert.deepStrictEqual(res, { ok: true, unit: EPIC, topic: 'removal', inbox_path: at(idea('lost-key')), committed: shortHead() });
@@ -213,6 +245,8 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.deepStrictEqual([lastMessage(dir), fs.existsSync(at(layout.topic(EPIC, 'removal')))], [`mail(${EPIC}): lost-key to the inbox — removal is cancelled`, false]);
     assert.strictEqual(withFrozenClock(() => send('retired', 'retired', 'stray', '# A stray thought\n')).inbox_path, at(idea('stray')));
     assert.strictEqual(readState(dir, idea('stray')), '# A stray thought\n');
+    withFrozenClock(() => send('shelved', 'pricing', 'price-floor'));
+    assert.strictEqual(lastMessage(dir), 'mail(shelved): price-floor to the inbox — shelved is cancelled');
   });
 
   it('waits a feature\'s message for its discussion and a bugfix\'s for its investigation', () => {
@@ -222,18 +256,21 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(at(layout.mailbox('crash', 'crash', '001-repro.md'))), true);
   });
 
-  it('refuses, writing nothing and keeping the scratch: a send missing its message or slug, a slug not kebab-case, a message outside the cache, missing or with no title, a topic named across folders', () => {
+  it('refuses, writing nothing and keeping the scratch: a send missing its sender, message or slug, a slug not kebab-case, a message outside the cache, missing or with no title, a topic named across folders', () => {
     const message = scratch();
     const live = writeState(dir, layout.unit(EPIC, 'notes.md'), MESSAGE);
     const untitled = writeState(dir, layout.cache('scratch', 'untitled.md'), '\nBody.\n');
+    const usage = 'Usage: engine topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>';
+    const from = ['--from', 'first-run'];
     const cases = [
-      [[EPIC, 'commercialization', '--slug', 'lost-key'], 'Usage: engine topic send <work-unit> <topic> --content <file> --slug <kebab>'],
-      [[EPIC, 'commercialization', '--content', message], 'Usage: engine topic send <work-unit> <topic> --content <file> --slug <kebab>'],
-      [[EPIC, 'commercialization', '--content', message, '--slug', 'Lost_Key'], '--slug must be kebab-case, got "Lost_Key"'],
-      [[EPIC, 'commercialization', '--content', live, '--slug', 'lost-key'], `--content must point inside ${at('.cache')}/ — got "${live}"`],
-      [[EPIC, 'commercialization', '--content', at(layout.cache('scratch', 'absent.md')), '--slug', 'lost-key'], `message file not found: ${at(layout.cache('scratch', 'absent.md'))}`],
-      [[EPIC, 'commercialization', '--content', untitled, '--slug', 'lost-key'], `a message's first line is its title, and ${untitled}'s is blank`],
-      [[EPIC, '../evil', '--content', message, '--slug', 'lost-key'], 'invalid topic name "../evil" — no separators or ".."'],
+      [[EPIC, 'commercialization', '--content', message, '--slug', 'lost-key'], usage],
+      [[EPIC, 'commercialization', ...from, '--slug', 'lost-key'], usage],
+      [[EPIC, 'commercialization', ...from, '--content', message], usage],
+      [[EPIC, 'commercialization', ...from, '--content', message, '--slug', 'Lost_Key'], '--slug must be kebab-case, got "Lost_Key"'],
+      [[EPIC, 'commercialization', ...from, '--content', live, '--slug', 'lost-key'], `--content must point inside ${at('.cache')}/ — got "${live}"`],
+      [[EPIC, 'commercialization', ...from, '--content', at(layout.cache('scratch', 'absent.md')), '--slug', 'lost-key'], `message file not found: ${at(layout.cache('scratch', 'absent.md'))}`],
+      [[EPIC, 'commercialization', ...from, '--content', untitled, '--slug', 'lost-key'], `a message's first line is its title, and ${untitled}'s is blank`],
+      [[EPIC, '../evil', ...from, '--content', message, '--slug', 'lost-key'], 'invalid topic name "../evil" — no separators or ".."'],
     ];
     assert.deepStrictEqual(cases.map(([args]) => refused(['topic', 'send', ...args])), cases.map(([, error]) => error));
     assert.strictEqual(fs.existsSync(message), true);
@@ -250,7 +287,7 @@ describe('topic send (10.1, 10.2.7)', () => {
       [['typo', 'typo'], 'a quick-fix has no conversation for a message to wait in'],
     ];
     const message = scratch();
-    assert.deepStrictEqual(cases.map(([[unit, topic]]) => refused(['topic', 'send', unit, topic, '--content', message, '--slug', 'lost-key'])), cases.map(([, error]) => error));
+    assert.deepStrictEqual(cases.map(([[unit, topic]]) => refused(['topic', 'send', unit, topic, '--from', SENDER[unit] ?? unit, '--content', message, '--slug', 'lost-key'])), cases.map(([, error]) => error));
     assert.strictEqual(fs.existsSync(message), true);
   });
 });
@@ -277,13 +314,13 @@ describe('topic mailbox (10.1.5)', () => {
 
 describe('topic answered (P4, 5.3.8)', () => {
   it('removes the message once the topic holds the question it raised, committing the removal alone, and git keeps the file — the mailbox then reads empty', () => {
-    send(EPIC, 'commercialization', 'lost-key');
+    withFrozenClock(() => send(EPIC, 'commercialization', 'lost-key'));
     send(EPIC, 'commercialization', 'refund-window');
     const res = ok(dir, ['topic', 'answered', EPIC, 'commercialization', '001-lost-key', '--entry', asked.commercialization]);
     assert.deepStrictEqual(res, { ok: true, unit: EPIC, topic: 'commercialization', answered: '001-lost-key.md', entry: asked.commercialization, remaining: 1, committed: shortHead() });
     const file = layout.mailbox(EPIC, 'commercialization', '001-lost-key.md');
     assert.deepStrictEqual([fs.existsSync(at(file)), lastMessage(dir), changed('HEAD'), stateGit(dir, ['show', `HEAD~1:${file}`])], [
-      false, `mail(${EPIC}): commercialization answered 001-lost-key.md`, [`D\t${file}`], MESSAGE,
+      false, `mail(${EPIC}): commercialization answered 001-lost-key.md`, [`D\t${file}`], landed('First Run'),
     ]);
     ok(dir, ['topic', 'answered', EPIC, 'commercialization', '002-refund-window', '--entry', asked.commercialization]);
     const item = ok(dir, ['checklist', 'show', 'decided', EPIC, 'commercialization']).items.find((/** @type {{key: string}} */ i) => i.key === 'mailbox-empty');
@@ -324,6 +361,13 @@ describe('topic answered (P4, 5.3.8)', () => {
     assert.strictEqual(ok(dir, ['topic', 'answered', EPIC, 'commercialization', '002-refund-window', '--entry', later]).remaining, 0);
   });
 
+  it('takes the question a move brought to the topic, the message that carried it answered by it there (9.S17)', () => {
+    const made = { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none' }) };
+    ok(dir, ['ledger', 'move', `${EPIC}.discussion.commercialization`, '--question', asked.commercialization, '--to', 'licence'], made);
+    ok(dir, ['topic', 'send', EPIC, 'licence', '--from', 'commercialization', '--content', scratch(), '--slug', 'moved-question']);
+    assert.strictEqual(ok(dir, ['topic', 'answered', EPIC, 'licence', '001-moved-question', '--entry', asked.commercialization]).remaining, 0);
+  });
+
   it('refuses a unit no longer in progress, writing nothing, its message left waiting', () => {
     send(EPIC, 'commercialization', 'lost-key');
     const manifest = readManifest(dir, EPIC);
@@ -345,7 +389,7 @@ describe('topic answered (P4, 5.3.8)', () => {
       'no message 002-lost-key waits in commercialization\'s mailbox — it holds 001-lost-key.md',
       'topic answered --entry: no ledger entry\'s id begins "ffffffff"',
       `topic answered --entry names ${finding}, a finding — it must name the question the message raised`,
-      `topic answered --entry names ${asked['first-run']}, a question raised on first-run of ${EPIC} — the question the message raised was raised on commercialization`,
+      `topic answered --entry names ${asked['first-run']}, a question raised on first-run of ${EPIC} — the question the message raised was raised on commercialization, or moved to it`,
     ]);
   });
 });
@@ -390,10 +434,11 @@ describe('render send-report (10.3.4)', () => {
     ].join('\n'));
   });
 
-  it('names a single-topic unit once, a postponed topic\'s wait for its return, and a cancelled topic\'s inbox in one line', () => {
+  it('names a single-topic unit once, a postponed topic\'s wait for its return, and a cancelled topic\'s inbox in one line — or a cancelled unit\'s, naming the unit', () => {
     assert.match(report('quick-sync.quick-sync', send('quick-sync', 'quick-sync', 'lost-key')), /^Sent to Quick Sync\n/m);
     assert.match(report(`${EPIC}.widgets`, send(EPIC, 'widgets', 'lost-key')), /^ {2}↳ Postponed — waiting in its mailbox for its return$/m);
     assert.deepStrictEqual(report(`${EPIC}.removal`, send(EPIC, 'removal', 'lost-key')).split('\n').slice(1), ['Removal is cancelled, so the message went to the inbox as an idea', '']);
+    assert.deepStrictEqual(report('shelved.pricing', send('shelved', 'pricing', 'price-floor')).split('\n').slice(1), ['Shelved is cancelled, so the message went to the inbox as an idea', '']);
   });
 
   it('refuses a path that is no message sent to the topic, and a call of another shape', () => {

@@ -213,7 +213,7 @@ describe('render map-op-gate', () => {
   it('a close over messages waiting in the topic\'s mailbox is refused', () => {
     writePayload(dir, '.leeway/pay/topics/auth-flow/mail/001-a-point.md', 'A point\n');
     assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'w.json')),
-      '"auth-flow" can\'t be closed as a dead end — messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead.');
+      '"auth-flow" can\'t be closed as a dead end — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead.');
   });
 
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {

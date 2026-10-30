@@ -97,7 +97,7 @@ describe('pipeline simulation: epic-topics', () => {
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
-    sim.run(['topic', 'send', wu, 'auth', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
+    sim.run(['topic', 'send', wu, 'auth', '--from', 'billing', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/grouping-ops.json`,
       [{ op: 'set', path: `${wu}.specification.grouping`, fields: { status: 'proposed', sources: { auth: { status: 'pending' } } } }])]);
     assert.deepStrictEqual(locked(), [], 'a proposed grouping never locks');
@@ -238,9 +238,9 @@ describe('pipeline simulation: epic-topics', () => {
     // backstop for a peer closing the target under a landing; the cancel
     // marker sits over the dead end and lifts off it.
     sim.run(['discovery-map', 'handle', wu, 'export']);
-    sim.refuses(sendArgv(sim, wu, 'export'), /^the topic "export" is closed as a dead end — reopening it goes through the epic menu's discovery row$/);
+    sim.refuses(sendArgv(sim, wu, 'export', 'auth'), /^the topic "export" is closed as a dead end — reopening it goes through the epic menu's discovery row$/);
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
-    assert.match(sim.run(sendArgv(sim, wu, 'export')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
+    assert.match(sim.run(sendArgv(sim, wu, 'export', 'auth')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
       'a cancelled topic\'s message goes to the inbox as an idea');
     sim.refuses(['discovery-map', 'unhandle', wu, 'export'], /it's cancelled; reactivate it from the epic menu first/);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
@@ -346,7 +346,7 @@ describe('pipeline simulation: epic-topics', () => {
     sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Mail that waits\n\nStill?\n');
     const held = JSON.stringify(sim.manifest(wu));
-    const mail = sim.run(['topic', 'send', wu, 'decided', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits']);
+    const mail = sim.run(['topic', 'send', wu, 'decided', '--from', 'fresh-one', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits']);
     assert.strictEqual(mail.message_path, path.join(sim.dir, `.leeway/${wu}/topics/decided/mail/001-mail-that-waits.md`),
       'a message for a topic that waits is mail that waits with it');
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), held, 'the send leaves the hold alone');

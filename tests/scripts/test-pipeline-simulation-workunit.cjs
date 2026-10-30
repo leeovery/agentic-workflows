@@ -106,7 +106,7 @@ describe('pipeline simulation: workunit', () => {
     // mailbox, and the mailbox follows the topic.
     const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
       'Rollback owner\n\nWho owns a rollback once the cutover starts?\n');
-    const landed = sim.run(['topic', 'send', feat, feat, '--content', scratch, '--slug', 'rollback-owner']);
+    const landed = sim.run(['topic', 'send', feat, feat, '--from', feat, '--content', scratch, '--slug', 'rollback-owner']);
     assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/topics/${feat}/mail/001-rollback-owner.md`));
 
     // The manage flow's absorb gates render from the pre-absorb state.

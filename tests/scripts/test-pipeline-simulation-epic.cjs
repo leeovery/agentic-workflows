@@ -100,7 +100,7 @@ describe('pipeline simulation: epic', () => {
     // A landing is the engine's own act — never held: it waits in the
     // topic's one mailbox, the discussion under way left as it stands, and
     // the mail rides alpha's row; the report ends with the way into it.
-    const decision = send(sim, wu, 'alpha', 'a-decision');
+    const decision = send(sim, wu, 'alpha', 'beta', 'a-decision');
     assert.strictEqual(decision.message_path, path.join(sim.dir, `.leeway/${wu}/topics/alpha/mail/001-a-decision.md`));
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_research', 'Continue "Alpha" — *research* · mail waiting']]);
@@ -123,7 +123,7 @@ describe('pipeline simulation: epic', () => {
     // The entry raises the waiting message before anything is read; the
     // question it raised is asked, and the message answered by it leaves.
     enterEntry(sim, wu, 'discussion', 'alpha');
-    assert.match(sim.sections, /^=== DISPLAY: waiting mail [^\n]*\n1 message waiting — raised before anything else\n\na-decision\n/);
+    assert.match(sim.sections, /^=== DISPLAY: waiting mail [^\n]*\n1 message waiting — raised before anything else\n\nFrom Beta · \d{1,2} [A-Z][a-z]{2}\na-decision\n/);
     const raised = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a-decision change alpha?' }));
     assert.strictEqual(sim.run(['topic', 'answered', wu, 'alpha', '001-a-decision', '--entry', raised.id]).remaining, 0);
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion*']]);
@@ -131,7 +131,7 @@ describe('pipeline simulation: epic', () => {
 
     // A message to the decided topic sets it back in progress, its mail
     // waiting on its row; answered, it is decided again.
-    const late = send(sim, wu, 'alpha', 'late-call');
+    const late = send(sim, wu, 'alpha', 'beta', 'late-call');
     assert.strictEqual(late.reopened, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
@@ -214,7 +214,7 @@ describe('pipeline simulation: epic', () => {
     sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'message:alpha', '--backfill', '--force-dismissed']);
     const message = sim.write('.leeway/.cache/scratch/message.md', 'Off-topic\n\nDetails.\n');
-    sim.run(['topic', 'send', wu, 'beta', '--content', message, '--slug', 'off-topic']);
+    sim.run(['topic', 'send', wu, 'beta', '--from', 'alpha', '--content', message, '--slug', 'off-topic']);
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 

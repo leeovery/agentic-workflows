@@ -1310,7 +1310,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // Delivery acts on the TARGET topic from the origin's session — a beat
     // there would manufacture a hold on a topic no session is in.
     writeState(dir, layout.cache('scratch', 'c.md'), 'Q\n');
-    ok(dir, ['topic', 'send', 'payments', 'topic-b',
+    ok(dir, ['topic', 'send', 'payments', 'topic-b', '--from', 'topic-a',
       '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q'], { env: me });
     assert.ok(!beaten('discussion', 'topic-b'), 'send never beats the target');
   });
@@ -1720,7 +1720,7 @@ describe('commit door: transaction-tail degrade', () => {
     // so a delivery's retry must carry the same suppression the delivery has.
     writeState(dir, layout.cache('scratch', 'c.md'), 'Q\n');
     holdStateRef(dir);
-    const delivered = ok(dir, ['topic', 'send', 'payments', 'topic-b',
+    const delivered = ok(dir, ['topic', 'send', 'payments', 'topic-b', '--from', 'topic-a',
       '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q']);
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /retry with: engine commit payments --topic discussion\/topic-b --sweep -m /, 'the delivery\'s retry is a sweep of the target, so it never beats it');

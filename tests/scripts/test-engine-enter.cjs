@@ -398,19 +398,20 @@ describe('the answer', () => {
     ]));
   });
 
-  it('a topic with mail waiting opens on it: each message, its title over the rest, raised before anything is read, and named first in what to read (10.S3, 2.S18)', () => {
-    writeState(dir, layout.mailbox(EPIC, 'licence', '001-lost-key.md'), '# The licence window carries a "Lost your key?" link\n\nFrom Commercialization · 16 Oct\n↳ Their reasoning: a new Mac has no key to hand.\n');
-    writeState(dir, layout.mailbox(EPIC, 'licence', '002-trial.md'), 'A trial runs fourteen days\n');
+  it('a topic with mail waiting opens on it: each message headed by the line naming its sender, its title over the rest, raised before anything is read, and named first in what to read (10.S3, 10.4.2, 2.S18)', () => {
+    writeState(dir, layout.mailbox(EPIC, 'licence', '001-lost-key.md'), '# The licence window carries a "Lost your key?" link\nFrom Commercialization · 16 Oct\n\n↳ Their reasoning: a new Mac has no key to hand.\n');
+    writeState(dir, layout.mailbox(EPIC, 'licence', '002-trial.md'), 'A trial runs fourteen days\nFrom Onboarding · 17 Oct\n');
     const { sections } = enter(['discussion', EPIC, 'licence']);
     const [mail, reads] = sections.split(/(?==== DATA )/);
     assert.strictEqual(mail, [
       '=== DISPLAY: waiting mail (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       '2 messages waiting — raised before anything else',
       '',
+      'From Commercialization · 16 Oct',
       'The licence window carries a "Lost your key?" link',
-      '  From Commercialization · 16 Oct',
       '  ↳ Their reasoning: a new Mac has no key to hand.',
       '',
+      'From Onboarding · 17 Oct',
       'A trial runs fourteen days',
       '',
     ].join('\n'));

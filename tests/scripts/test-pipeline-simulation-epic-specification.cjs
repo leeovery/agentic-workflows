@@ -45,7 +45,7 @@ describe('pipeline simulation: epic-specification', () => {
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
         ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
       const message = sim.write('.leeway/.cache/scratch/spec-gap.md', 'Gap — retry window\n\nWhat the spec needs decided.\n');
-      const landed = sim.run(['topic', 'send', wu, source, '--content', message, '--slug', 'retry-window']);
+      const landed = sim.run(['topic', 'send', wu, source, '--from', source, '--content', message, '--slug', 'retry-window']);
       assert.strictEqual(landed.reopened, true);
       assert.deepStrictEqual(landed.sources_staled, [spec]);
       sim.run(['commit', wu, '-m', `spec(${wu}): pause — gap routed to ${source}`, '--topic', `specification/${spec}`]);
@@ -319,7 +319,7 @@ describe('pipeline simulation: epic-specification', () => {
     // The specification never transitions — it still reads `completed` —
     // and its source row alone carries the landing, which is why the hold
     // cannot key on the specification's status.
-    const landed = send(sim, wu, 'shared');
+    const landed = send(sim, wu, 'shared', 'shared');
     assert.deepStrictEqual(landed.sources_staled.sort(), ['alpha-spec', 'beta-spec']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].status, 'completed',
       'the specification never transitioned — only its row moved');

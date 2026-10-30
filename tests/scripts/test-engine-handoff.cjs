@@ -307,6 +307,13 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'topic', ...args]).error), cases.map(([, error]) => error));
   });
 
+  it('refuses a bugfix\'s topic once its investigation is concluded, the way its menu goes, and hands off into it again once a message reopens it', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'completed' } } } } });
+    refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it$/);
+    createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
+  });
+
   it('refuses a bugfix\'s topic once its spec is written, the investigation behind it', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix' });
     createFile(dir, '.leeway/crash/spec.md', '# Spec\n');

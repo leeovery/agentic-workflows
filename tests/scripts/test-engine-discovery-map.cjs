@@ -586,7 +586,7 @@ describe('engine CLI: discovery-map operations', () => {
       'cancelled-topic': /it is cancelled and stays on the map as record.*reactivate it from the epic menu first/,
       // unstarted-topic derives fresh, but its parked stub is real content —
       // the refusal names the mailbox, not the historical anchor.
-      'unstarted-topic': /messages wait in its mailbox; open the topic to answer them, or cancel from the epic menu/,
+      'unstarted-topic': /messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead/,
     };
 
     it('remove refuses every non-fresh lifecycle, leaving the manifest untouched', () => {
@@ -729,7 +729,7 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('refuses a topic with a parked stub — a dead end never buries messages', () => {
       const err = runFail(dir, ['handle', 'payments', 'unstarted-topic']);
-      assert.match(err.error, /"unstarted-topic" can't be closed as a dead end — messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead/);
+      assert.match(err.error, /"unstarted-topic" can't be closed as a dead end — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead/);
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['unstarted-topic'], false);
     });
 

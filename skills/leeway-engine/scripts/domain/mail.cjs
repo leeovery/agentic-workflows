@@ -4,9 +4,12 @@
 // Domain ring: the mailboxes between topics (§10). A topic has one mailbox,
 // `{unit}/topics/{topic}/mail/`, a queue of files, one message each,
 // `NNN-{slug}.md` numbered in the order they landed; a message's first line
-// is its title. Three verbs:
-// - `topic send <unit> <topic> --content <file> --slug <kebab>` lands a
-//   message, the scratch it was written to consumed. It takes the next
+// is its title, and the line under it says who sent it and when, as the
+// waiting mail heads it (10.4.2): `From {sender} · {16 Oct}`. Three verbs:
+// - `topic send <unit> <topic> --from <sender> --content <file> --slug
+//   <kebab>` lands a message, the scratch it was written to consumed. The
+//   sender is a name, never text: a topic of the unit, `{unit}.{topic}` for
+//   another unit's topic, or an experiment of the target topic. It takes the next
 //   number under the writer lock, so a send racing another takes the one
 //   after it, and parks the topic's conversation as a landing does: created
 //   not started where absent, set back in progress where decided (10.2.7),
@@ -24,8 +27,9 @@
 // - `topic answered <unit> <topic> <NNN-slug> --entry <id>` removes a
 //   message, named whole since a number comes back once the highest is
 //   answered, once the topic holds the question it raised (5.3.8): the entry
-//   a question raised on this topic, wherever it stands since; the unit in
-//   progress, as for any work on it. Git keeps the file.
+//   a question raised on this topic, wherever it stands since, or one the
+//   unit's latest move of it brought here (9.S17); the unit in progress, as
+//   for any work on it. Git keeps the file.
 // A commit a send to the mailbox or a removal leaves pending is retried in
 // the topic's scope as a sweep, which takes no hold on the topic.
 // The send report and the waiting mail are drawn by projections/mail.cjs.
@@ -34,20 +38,21 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { KEBAB_SLUG_PATTERN, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
-const { manifestOf } = require('./ledger-units.cjs');
-const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
-const { assertInProgress, topicClosure } = require('./topic-standing.cjs');
+const { liveness, manifestOf } = require('./ledger-units.cjs');
+const { ID_FACTS, foldLedger, madeOn } = require('./ledger-fold.cjs');
+const { assertInProgress, holdsTopic, topicClosure } = require('./topic-standing.cjs');
 const { resolveId, shortId } = require('./ledger-ids.cjs');
-const { todayStamp } = require('./dates.cjs');
+const { todayStamp, dayMonth } = require('./dates.cjs');
+const { titlecase } = require('./conventions.cjs');
 const { sendReport } = require('./projections/mail.cjs');
 
-const SEND_USAGE = 'topic send <work-unit> <topic> --content <file> --slug <kebab>';
+const SEND_USAGE = 'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>';
 const MAILBOX_USAGE = 'topic mailbox <work-unit> <topic>';
 const ANSWERED_USAGE = 'topic answered <work-unit> <topic> <NNN-slug> --entry <id>';
 
@@ -59,9 +64,40 @@ function titleOf(text) {
   return text.split('\n', 1)[0].replace(/^#+\s*/, '').trim();
 }
 
-/** What follows a message's title, its leading blank lines dropped. @param {string} text */
+/** Lines of a message as one body, its leading blank lines and trailing space dropped. @param {string[]} lines */
+function bodyFrom(lines) {
+  return lines.join('\n').replace(/^\s*\n/, '').replace(/\s+$/, '');
+}
+
+/** What follows a scratch's title. @param {string} text */
 function bodyOf(text) {
-  return text.split('\n').slice(1).join('\n').replace(/^\s*\n/, '').replace(/\s+$/, '');
+  return bodyFrom(text.split('\n').slice(1));
+}
+
+/**
+ * How the waiting mail titles a message's sender — a topic of the unit, a
+ * topic of another unit as `{unit}.{topic}`, or an experiment of the target
+ * topic — refused where `from` names none of them.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} from
+ */
+function senderTitle(cwd, manifest, topic, from) {
+  if (EXPERIMENT_ID_PATTERN.test(from)) {
+    if (manifest.phases?.experiment?.items?.[topic]?.experiments?.[from] !== undefined) return `Experiment ${from}`;
+  } else {
+    const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
+    const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
+    if (sender && rest.length === 0 && illegalNameReason('topic', held) === null && holdsTopic(sender, held)) {
+      if (unit === manifest.name || held === unit) return titlecase(held);
+      return `${titlecase(held)}, on ${titlecase(unit)}`;
+    }
+  }
+  throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name}, {unit}.{topic} for another unit's topic, or an experiment of ${topic}`);
+}
+
+/** A message as it lands in a mailbox: its title, the line saying who sent it and when, then the rest. @param {string} content @param {string} sender */
+function withSender(content, sender) {
+  const [title, ...rest] = content.split('\n');
+  return [title, `From ${sender} · ${dayMonth(todayStamp())}`, ...rest].join('\n');
 }
 
 /**
@@ -110,17 +146,18 @@ function nextNumber(cwd, unit, topic) {
  */
 
 /**
- * A message to a cancelled topic, landed in the inbox as an idea (10.1.6).
- * @param {string} cwd @param {string} unit @param {string} topic @param {string} content @param {string} slug
+ * A message to a cancelled topic, or a cancelled unit's, landed in the inbox
+ * as an idea (10.1.6), `cancelled` naming which.
+ * @param {string} cwd @param {string} unit @param {string} cancelled @param {string} content @param {string} slug
  * @returns {Landed}
  */
-function toInbox(cwd, unit, topic, content, slug) {
+function toInbox(cwd, unit, cancelled, content, slug) {
   const rel = `${INBOX_IDEAS}/${todayStamp()}--${slug}.md`;
   if (fs.existsSync(statePath(cwd, rel))) throw new Error(`the inbox already holds ${statePath(cwd, rel)} — send it under another slug`);
   const body = bodyOf(content);
   fs.mkdirSync(statePath(cwd, INBOX_IDEAS), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `# ${titleOf(content)}\n${body === '' ? '' : `\n${body}\n`}`);
-  return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${topic} is cancelled`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
+  return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${cancelled} is cancelled`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
 }
 
 /** The scope a pending commit on a topic's mailbox is retried in. @param {string} unit @param {string|null} phase @param {string} topic */
@@ -131,10 +168,10 @@ function mailboxRetry(unit, phase, topic) {
 /**
  * A message landed in the topic's mailbox, the topic's conversation parked
  * as a landing parks it — a postponed topic left as it stands.
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} phase @param {string} topic @param {string} content @param {string} slug
- * @returns {Landed}
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} phase @param {string} topic @param {string} message the file's whole text
+ * @param {string} slug @returns {Landed}
  */
-function toMailbox(cwd, manifest, phase, topic, content, slug) {
+function toMailbox(cwd, manifest, phase, topic, message, slug) {
   const unit = manifest.name;
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   /** @type {Record<string, unknown>} */
@@ -152,7 +189,7 @@ function toMailbox(cwd, manifest, phase, topic, content, slug) {
   const name = `${nextNumber(cwd, unit, topic)}-${slug}.md`;
   const rel = `${mailboxDir(unit, topic)}/${name}`;
   fs.mkdirSync(statePath(cwd, mailboxDir(unit, topic)), { recursive: true });
-  fs.writeFileSync(statePath(cwd, rel), content);
+  fs.writeFileSync(statePath(cwd, rel), message);
   return {
     rel, paths: [`${unit}/manifest.json`, rel], message: `mail(${unit}): send ${name} to ${topic}`, retry: mailboxRetry(unit, phase, topic),
     fields: { message_path: statePath(cwd, rel), ...fields },
@@ -161,11 +198,12 @@ function toMailbox(cwd, manifest, phase, topic, content, slug) {
 
 /**
  * Where a message to a topic of a unit in progress lands: the inbox for a
- * cancelled topic, else its mailbox — refused where the topic takes nothing.
- * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} content @param {string} slug
+ * cancelled topic, else its mailbox, under the line naming its sender —
+ * refused where the topic takes nothing.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} content @param {string} slug @param {string} sender
  * @returns {Landed}
  */
-function toTopic(cwd, manifest, topic, content, slug) {
+function toTopic(cwd, manifest, topic, content, slug, sender) {
   assertInProgress(manifest);
   const phase = mailPhase(manifest.work_type);
   if (phase === null) throw new Error(`a ${manifest.work_type} has no conversation for a message to wait in`);
@@ -173,24 +211,25 @@ function toTopic(cwd, manifest, topic, content, slug) {
   if (closure !== null) throw new Error(closure);
   return computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled'
     ? toInbox(cwd, manifest.name, topic, content, slug)
-    : toMailbox(cwd, manifest, phase, topic, content, slug);
+    : toMailbox(cwd, manifest, phase, topic, withSender(content, sender), slug);
 }
 
 /**
  * `topic send`: the message landed — in the topic's mailbox, or for a
  * cancelled topic in the inbox — its scratch consumed, and committed.
- * @param {string} cwd @param {string} unit @param {string} topic @param {{contentFile?: string, slug?: string}} opts
+ * @param {string} cwd @param {string} unit @param {string} topic @param {{from?: string, contentFile?: string, slug?: string}} opts
  * @returns {Record<string, unknown>}
  */
-function sendMessage(cwd, unit, topic, { contentFile, slug }) {
-  if (!contentFile || !slug) throw new Error(`Usage: engine ${SEND_USAGE}`);
+function sendMessage(cwd, unit, topic, { from, contentFile, slug }) {
+  if (!from || !contentFile || !slug) throw new Error(`Usage: engine ${SEND_USAGE}`);
   assertLegalTopicName(topic);
   if (!KEBAB_SLUG_PATTERN.test(slug)) throw new Error(`--slug must be kebab-case, got "${slug}"`);
   unitManifest(cwd, unit);
   const { scratch, content } = messageIn(cwd, contentFile);
   const landed = withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
-    return manifest.status === 'cancelled' ? toInbox(cwd, unit, topic, content, slug) : toTopic(cwd, manifest, topic, content, slug);
+    const sender = senderTitle(cwd, manifest, topic, from);
+    return manifest.status === 'cancelled' ? toInbox(cwd, unit, unit, content, slug) : toTopic(cwd, manifest, topic, content, slug, sender);
   });
   fs.rmSync(scratch, { force: true });
   /** @type {string[]} */
@@ -218,8 +257,8 @@ function mailboxOf(cwd, unit, topic) {
 
 /**
  * The question the message raised, by a prefix of its id: refused where the
- * id names no entry, an entry other than a question, or a question raised on
- * another topic.
+ * id names no entry, an entry other than a question, or a question neither
+ * raised on the topic nor brought to it by its unit's latest move of it.
  * @param {string} cwd @param {string} unit @param {string} topic @param {string} prefix @param {string[]} warnings
  * @returns {string} its short id
  */
@@ -236,8 +275,10 @@ function raisedQuestion(cwd, unit, topic, prefix, warnings) {
   const named = /** @type {import('./ledger-fold.cjs').IdFacts} */ (facts.get(id));
   if (named.kind !== 'question') throw new Error(`topic answered --entry names ${short(id)}, ${named.kind === null ? `a ${named.event} line` : `a ${named.kind}`} — it must name the question the message raised`);
   const raised = /** @type {import('./ledger-fold.cjs').IdFacts} */ (facts.get(named.root));
-  if (raised.unit !== unit || raised.topic !== topic) {
-    throw new Error(`topic answered --entry names ${short(id)}, a question raised on ${raised.topic ?? 'no topic'} of ${raised.unit} — the question the message raised was raised on ${topic}`);
+  const moved = madeOn({ facts, live: liveness(root) }, id);
+  const here = (/** @type {{unit: string, topic: string|null}} */ place) => place.unit === unit && place.topic === topic;
+  if (!here(raised) && !here(moved)) {
+    throw new Error(`topic answered --entry names ${short(id)}, a question raised on ${raised.topic ?? 'no topic'} of ${raised.unit} — the question the message raised was raised on ${topic}, or moved to it`);
   }
   return short(id);
 }
@@ -281,15 +322,16 @@ function answerMessage(cwd, unit, topic, message, { entry }) {
 
 /**
  * What waits in a topic's mailbox, in the order it landed: each message's
- * path, absolute, its title and what follows it.
+ * path, absolute, its title, the line naming its sender, and what follows.
  * @param {string} cwd @param {string} unit @param {string} topic
- * @returns {{path: string, title: string, body: string}[]}
+ * @returns {{path: string, title: string, from: string, body: string}[]}
  */
 function waitingMessages(cwd, unit, topic) {
   return mailboxFiles(stateRoot(cwd), unit, topic).map((name) => {
     const at = statePath(cwd, mailboxDir(unit, topic), name);
     const text = fs.readFileSync(at, 'utf8');
-    return { path: at, title: titleOf(text), body: bodyOf(text) };
+    const [, from = '', ...rest] = text.split('\n');
+    return { path: at, title: titleOf(text), from, body: bodyFrom(rest) };
   });
 }
 
@@ -314,7 +356,8 @@ function sendReportOf(cwd, address, sent) {
   /** @type {import('./projections/mail.cjs').Landing} */
   let landing = 'inbox';
   if (folder !== INBOX_IDEAS) landing = computeTopicLifecycle(manifest, topic).lifecycle === 'postponed' ? 'postponed' : 'mailbox';
-  return sendReport({ unit, topic, title: titleOf(fs.readFileSync(at, 'utf8')), landing });
+  const cancelled = manifest.status === 'cancelled' ? unit : topic;
+  return sendReport({ unit, topic, title: titleOf(fs.readFileSync(at, 'utf8')), landing, cancelled });
 }
 
 module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, sendReportOf };

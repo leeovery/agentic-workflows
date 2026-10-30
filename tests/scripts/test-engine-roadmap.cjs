@@ -975,7 +975,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), 'Ordering\n\nA question for later.\n');
     const before = fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8');
-    const parked = engineOk(['topic', 'send', 'mvp', 'ordering', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
+    const parked = engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
     assert.strictEqual(parked.message_path, path.join(dir, '.leeway/mvp/topics/ordering/mail/001-a-question.md'));
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8'), before, 'the send leaves the hold alone');
   });

@@ -1219,7 +1219,7 @@ function runTopic(call, argv) {
       const { opts, positional } = parseArgs(rest);
       const [workUnit, topic] = positional;
       if (!workUnit || !topic || positional.length !== 2) throw new Error(`Usage: engine ${SEND_USAGE}`);
-      respond(call, sendMessage(call.cwd, workUnit, topic, { contentFile: opts.content, slug: opts.slug }));
+      respond(call, sendMessage(call.cwd, workUnit, topic, { from: opts.from, contentFile: opts.content, slug: opts.slug }));
       return;
     }
     if (command === 'answered') {

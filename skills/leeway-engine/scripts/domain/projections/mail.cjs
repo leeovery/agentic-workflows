@@ -6,9 +6,10 @@
 // - the send report (10.3.4): where the message landed — the target's
 //   mailbox, where a postponed topic's waits for its return, ending with
 //   the command that opens the target (10.3.3); or the inbox, a cancelled
-//   topic's, said in one line (10.1.8);
+//   topic's or unit's, said in one line naming which (10.1.8);
 // - the waiting mail (10.4.2), raised at a topic's opening before anything
-//   else: each message, its title over what follows it.
+//   else: each message headed by who sent it and when, its title over what
+//   follows it.
 // ---------------------------------------------------------------------------
 
 const { section, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -35,12 +36,12 @@ function indented(line, width) {
 /**
  * The send report: where the message landed, and for a mailbox the command
  * that opens the target topic.
- * @param {{unit: string, topic: string, title: string, landing: Landing}} sent
+ * @param {{unit: string, topic: string, title: string, landing: Landing, cancelled: string}} sent  `cancelled` the unit or topic whose cancel sent it to the inbox
  * @param {{width?: number}} [opts]
  * @returns {string}
  */
-function sendReport({ unit, topic, title, landing }, { width = displayWidth() } = {}) {
-  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${titlecase(topic)} is cancelled, so the message went to the inbox as an idea`);
+function sendReport({ unit, topic, title, landing, cancelled }, { width = displayWidth() } = {}) {
+  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${titlecase(cancelled)} is cancelled, so the message went to the inbox as an idea`);
   const to = topic === unit ? titlecase(unit) : `${titlecase(topic)}, on ${titlecase(unit)}`;
   return section('DISPLAY: send report', CONTINUE_INSTRUCTION, [
     `Sent to ${to}`,
@@ -53,8 +54,8 @@ function sendReport({ unit, topic, title, landing }, { width = displayWidth() } 
 
 /**
  * The waiting mail, raised at a topic's opening: how many messages wait,
- * then each, its title over what follows it.
- * @param {{title: string, body: string}[]} messages in the order they landed — one at least
+ * then each, headed by who sent it and when, its title over what follows it.
+ * @param {{title: string, from: string, body: string}[]} messages in the order they landed — one at least
  * @param {{width?: number}} [opts]
  * @returns {string}
  */
@@ -62,7 +63,7 @@ function waitingMail(messages, { width = displayWidth() } = {}) {
   const count = messages.length === 1 ? '1 message waiting' : `${messages.length} messages waiting`;
   return section('DISPLAY: waiting mail', CONTINUE_INSTRUCTION, [
     `${count} — raised before anything else`,
-    ...messages.flatMap(({ title, body }) => ['', title, ...(body === '' ? [] : body.split('\n').flatMap((line) => indented(line, width)))]),
+    ...messages.flatMap(({ title, from, body }) => ['', from, title, ...(body === '' ? [] : body.split('\n').flatMap((line) => indented(line, width)))]),
   ].join('\n'));
 }
 

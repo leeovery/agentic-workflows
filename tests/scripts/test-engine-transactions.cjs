@@ -2084,7 +2084,7 @@ describe('engine usage banner', () => {
     assert.strictEqual(res.code, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
-      'topic send <work-unit> <topic> --content <file> --slug <kebab>',
+      'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>',
       'topic mailbox <work-unit> <topic>',
       'topic answered <work-unit> <topic> <NNN-slug> --entry <id>',
       'topic complete <work-unit> <phase> <topic>',

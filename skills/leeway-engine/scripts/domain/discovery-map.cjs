@@ -111,6 +111,9 @@ function validatePrior(prior) {
   return { work_unit: prior.work_unit, topic: prior.topic };
 }
 
+/** What a refusal over a topic with mail waiting says to do instead. */
+const MAIL_WAITING = 'messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead';
+
 /**
  * Gate a destructive op (remove/rename/reroute) on the fresh lifecycle. The
  * derived lifecycle alone is not enough: status combinations outside the
@@ -131,7 +134,7 @@ function assertFresh(manifest, name, verbPhrase) {
     // the topic's mailbox. Name that instead of the historical-anchor message.
     if (phaseWork.every((it) => it.status === 'unstarted')) {
       throw new Error(
-        `"${name}" can't be ${verbPhrase} — messages wait in its mailbox; open the topic to answer them, or cancel from the epic menu`,
+        `"${name}" can't be ${verbPhrase} — ${MAIL_WAITING}`,
       );
     }
     throw new Error(
@@ -628,7 +631,7 @@ function markerRefusal(cwd, manifest, op, name) {
   if (op === 'reopen') return lifecycle === 'handled' ? null : "it isn't closed as a dead end, so there's nothing to reopen";
   if (lifecycle === 'handled') return "it's already closed";
   return mailboxDepth(stateRoot(cwd), manifest.name, name) > 0
-    ? 'messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead'
+    ? MAIL_WAITING
     : null;
 }
 

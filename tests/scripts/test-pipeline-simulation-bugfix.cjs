@@ -104,7 +104,7 @@ describe('pipeline simulation: bugfix', () => {
     // the mailbox answers; the question it raised answers it, and the
     // pipeline re-concludes.
     sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
-    const gapLand = sim.run(['topic', 'send', wu, wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
+    const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
@@ -132,7 +132,7 @@ describe('pipeline simulation: bugfix', () => {
     // Completed, the unit takes no message and opens no topic, each refusal
     // naming the way on, the message's scratch kept.
     sim.write('.leeway/.cache/scratch/late-message.md', 'A late thought\n');
-    sim.refuses(['topic', 'send', wu, wu, '--content', '.leeway/.cache/scratch/late-message.md', '--slug', 'late-thought'], /^crash-fix is completed — new work starts from the start menu$/);
+    sim.refuses(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/late-message.md', '--slug', 'late-thought'], /^crash-fix is completed — new work starts from the start menu$/);
     assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/late-message.md')), 'the refused send keeps its scratch');
     sim.refuses(['handoff', 'topic', wu, wu], /^crash-fix is completed — new work starts from the start menu$/);
   });
