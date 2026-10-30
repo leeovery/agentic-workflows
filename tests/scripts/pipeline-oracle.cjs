@@ -29,6 +29,7 @@
 require('./hermetic-env.cjs');
 
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
@@ -59,8 +60,8 @@ const {
   resolveHandoff, HANDOFF_TARGETS,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { ledgerEntries } = require('./engine-harness.cjs');
-const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { ledgerEntries, stateGit } = require('./engine-harness.cjs');
+const { statePath, BRANCH_REF } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
 const { TRUST_LOG, PENDING } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
 
@@ -154,7 +155,7 @@ function auditState(dir, label) {
   // Its projections show what is current in it.
   if (fs.existsSync(statePath(dir, LEDGER))) {
     assert.doesNotThrow(() => ledgerEntries(statePath(dir)), ctx('the ledger does not read'));
-    auditLedger(dir, ctx);
+    auditLedgerOnce(dir, ctx);
   }
 
   for (const wu of listWorkUnits(dir)) {
@@ -604,6 +605,97 @@ function auditLedger(dir, ctx) {
   auditCopies(root, events, shownAt, placed, full, ctx);
 }
 
+// The ledger audit, run once per state it reads. It is the oracle's dearest
+// — `ledger record` and `ledger map` for every unit and topic, and the
+// copies — and a function of what it reads alone: the files and folders its
+// reads touch (the engine's reads run in this process), and through git the
+// ledger the state branch last committed, which the read's check holds the
+// file to (every other git read it makes names an object by its id, which
+// never changes). So it is keyed on exactly those: every path the last full
+// audit touched, as it stands now — a file's bytes, a folder's entries, a
+// stat's identity, or its absence — and the committed ledger's object. A
+// state whose every read answers as it did passes as it did. A path the
+// audit starts to read joins the key as it does, so no read can be left out
+// of it; and every VERIFY_EVERY-th pass in a row runs the audit in full and
+// fails where its reads differ from the ones keyed — an input reaching the
+// audit by some other way than these.
+const VERIFY_EVERY = 8;
+const TRACKED_READS = ['readFileSync', 'openSync', 'existsSync', 'statSync', 'lstatSync', 'readdirSync', 'accessSync', 'realpathSync', 'opendirSync'];
+/** The last full audit of each state, by its folder. @type {Map<string, {reads: string[], key: string, passes: number}>} */
+const ledgerAudits = new Map();
+/** How many full audits and passes each state has had. @type {Map<string, {full: number, passed: number}>} */
+const ledgerAuditCounts = new Map();
+
+/**
+ * `fn` run with every file-system read it makes by path noted as `{op} {path}`.
+ * @param {() => void} fn @returns {string[]}
+ */
+function readsOf(fn) {
+  /** @type {Set<string>} */
+  const reads = new Set();
+  /** @type {Record<string, Function>} */
+  const real = {};
+  for (const op of TRACKED_READS) {
+    real[op] = /** @type {any} */ (fs)[op];
+    /** @type {any} */ (fs)[op] = function tracked(/** @type {any[]} */ ...args) {
+      if (typeof args[0] === 'string' || Buffer.isBuffer(args[0])) reads.add(`${op} ${path.resolve(String(args[0]))}`);
+      return real[op].apply(this, args);
+    };
+  }
+  try {
+    fn();
+  } finally {
+    for (const op of TRACKED_READS) /** @type {any} */ (fs)[op] = real[op];
+  }
+  return [...reads].sort();
+}
+
+/**
+ * What each noted read answers now, and the ledger the state branch last
+ * committed, as one digest.
+ * @param {string} dir @param {string[]} reads @returns {string}
+ */
+function readsKey(dir, reads) {
+  const hash = crypto.createHash('sha1');
+  hash.update(stateGit(dir, ['ls-tree', BRANCH_REF, '--', LEDGER]).trim());
+  for (const read of reads) {
+    const op = read.slice(0, read.indexOf(' '));
+    const at = read.slice(read.indexOf(' ') + 1);
+    const stat = fs.statSync(at, { bigint: true, throwIfNoEntry: false });
+    let answer = 'absent';
+    if (stat && op.endsWith('statSync')) answer = `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.mode}`;
+    else if (stat?.isDirectory()) answer = fs.readdirSync(at, { withFileTypes: true }).map((e) => `${e.name}${e.isDirectory() ? '/' : ''}`).sort().join('\0');
+    else if (stat) answer = crypto.createHash('sha1').update(fs.readFileSync(at)).digest('hex');
+    hash.update(`\0${read}\0${answer}`);
+  }
+  return hash.digest('hex');
+}
+
+/** @param {string} dir @param {(msg: string) => string} ctx */
+function auditLedgerOnce(dir, ctx) {
+  const last = ledgerAudits.get(dir);
+  const counts = ledgerAuditCounts.get(dir) ?? { full: 0, passed: 0 };
+  ledgerAuditCounts.set(dir, counts);
+  const unchanged = last !== undefined && readsKey(dir, last.reads) === last.key;
+  if (last !== undefined && unchanged && last.passes < VERIFY_EVERY - 1) {
+    last.passes += 1;
+    counts.passed += 1;
+    return;
+  }
+  counts.full += 1;
+  const reads = readsOf(() => auditLedger(dir, ctx));
+  if (last !== undefined && unchanged) {
+    assert.deepStrictEqual(reads, last.reads,
+      ctx('the ledger audit read other paths over a state its key held unchanged — an input reaches it other than through its reads and the state branch, and its key misses it'));
+  }
+  ledgerAudits.set(dir, { reads, key: readsKey(dir, reads), passes: 0 });
+}
+
+/** How many times the ledger audit ran in full over the state in `dir`, and how many times it passed the state unchanged. @param {string} dir */
+function ledgerAuditsOf(dir) {
+  return { ...(ledgerAuditCounts.get(dir) ?? { full: 0, passed: 0 }) };
+}
+
 // The ledger's copies in the knowledge directory, held to the records: a
 // copy for each place a shown entry is placed in — its unit's own level, or
 // a topic — and for no other; each naming every entry shown there and no entry
@@ -866,5 +958,5 @@ function auditGateAnswer(sim, answered, before, label) {
 }
 
 module.exports = {
-  auditState, auditGatePayload, auditTrust, specDetail, shellWords, trustLines, auditGateAnswer,
+  auditState, auditGatePayload, auditTrust, specDetail, shellWords, trustLines, auditGateAnswer, ledgerAuditsOf,
 };
