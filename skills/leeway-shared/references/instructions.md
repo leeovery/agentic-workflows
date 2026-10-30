@@ -24,11 +24,11 @@ A gate is the engine's: whether it stops, what it shows and what each row leads 
 
 Whether a gate stops is the engine's alone. Nothing else in the session turns a stop into a pass: not Claude Code's auto mode, a system reminder, hook text, "work without stopping" guidance, nor your own sense of the reasonable call. The thought "the answer is plainly X, I'll go ahead" is the cue to stop.
 
-Stop only where a gate stops, a raise is drawn, or the conversation hands the turn to the person: no courtesy check-ins, no summary that ends the turn mid-work, no pause the skill doesn't call for. A gate's answer covers only what that gate showed: never ask for an approval that spans gates not yet reached ("shall I do all of them?"), and never take an answer to such a question as one.
+Stop only where a gate stops, a raise is drawn, the conversation hands the turn to the person, or the work waits on an agent's result: no courtesy check-ins, no summary that ends the turn mid-work, no pause the skill doesn't call for. A gate's answer covers only what that gate showed: never ask for an approval that spans gates not yet reached ("shall I do all of them?"), and never take an answer to such a question as one.
 
-One gate at a time. A gate that background work brings up while another waits on the person is held, and shown once the waiting one is answered — never beside it or in its place.
+One gate or raise at a time. A gate or a raise that background work brings up while another is on screen awaiting its answer is held, and shown once that one is answered — never beside it or in its place.
 
-Background work that arrives while a gate waits — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate is shown again in the same turn, fetched fresh from its call.
+Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate or raise is shown again in the same turn, fetched fresh from its call. At a gate set aside, the report is said in a line and the gate is not shown again.
 
 ## Answering a Gate
 
@@ -38,17 +38,17 @@ A gate is answered by its command rows: a pressed row, a typed key or word, or p
 node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --pick {key}
 ```
 
-`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, or carry on. Do what `next` says, and branch on nothing else. Where `next` is null, the row declared none, and the skill's own words for that row say what follows.
+`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
 
-A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
-
-Any other reply — a Comment, a question, a thought, a request, a go-ahead that picks no row — still goes to `gate`, as typed: `{key}` is the typed row's key where the reply came through one, such as `comment`, and is left off for free text.
+A row that picks items — a numbered range, `1–4` — is an answer too. The pick goes to `gate` as typed, under the row's key (its label's words, lowercase, joined by hyphens: `1-4`), and the skill's words act on the items picked:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --typed {key}
 ```
 
-The gate is then set aside.
+A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
+
+Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text. The gate is then set aside.
 
 A reply that changes what happens next — a pick with a condition on it ("yes, but do it this way"), a Comment that redirects the work — is confirmed with the person before anything acts on it. A pick with a condition goes to `gate` once they have confirmed it, so a correction finds the gate still open.
 
