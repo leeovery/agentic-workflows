@@ -21,8 +21,9 @@
 // A suite that fakes `$HOME` to reach a system config takes the pinned
 // LEEWAY_CONFIG_DIR, or WORKFLOWS_CONFIG_DIR for a released migration, back
 // off the environment it passes down, since each answers ahead of `$HOME`.
-// The shell tiers pin their own subset in their npm scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
-// runs the mod suites against its own stand-in environment and files.
+// The shell tiers pin their own subset in their npm scripts; `test:mod`
+// stands outside the pin altogether — `claude plugin test` runs the mod
+// suites against its own stand-in environment and files.
 
 const fs = require('fs');
 const os = require('os');
