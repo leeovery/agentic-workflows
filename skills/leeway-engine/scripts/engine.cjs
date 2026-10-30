@@ -73,6 +73,7 @@ const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./do
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
+const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -279,6 +280,7 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
+  ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -480,6 +482,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
   render state-merge-gate
   render ledger-stop
+  render directive-stop --directive <id>
   render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -1481,6 +1484,19 @@ function runChecklist(call, argv) {
   const { opts, positional } = parseArgs(rest);
   try {
     respond(call, runChecklistVerb(call.cwd, verb, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// migrate — a directive of the migration checked (domain/directives.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runMigrate(call, argv) {
+  try {
+    respond(call, runMigrateVerb(call.cwd, argv));
   } catch (err) {
     failJson(call, err);
   }
@@ -2528,6 +2544,7 @@ const COMMANDS = Object.freeze({
   raise: runRaise,
   cut: runCut,
   checklist: runChecklist,
+  migrate: runMigrate,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2550,10 +2567,10 @@ const COMMANDS = Object.freeze({
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; and the rest read: `layout guard` among them, run
 // before every file Claude writes, `brief guard`, before every dispatch of
-// an agent, `shell guard`, before every shell command, and `checklist
-// show`. `manifest` takes it to write alone, `commit` but for a code
-// commit (`--paths`), and a brief's fill whole, since its read of the
-// task may commit the tracker's set-up.
+// an agent, `shell guard`, before every shell command, `checklist show`,
+// and `migrate check`. `manifest` takes it to write alone, `commit` but for
+// a code commit (`--paths`), and a brief's fill whole, since its read of
+// the task may commit the tracker's set-up.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2573,6 +2590,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   raise: '*',
   brief: ['guard'],
   checklist: ['show'],
+  migrate: ['check'],
 }));
 
 /** @param {string[]} argv @returns {boolean} */

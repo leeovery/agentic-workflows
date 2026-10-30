@@ -30,6 +30,11 @@
 //   and boot stops there, starting again only on the person's yes (4.4.5,
 //   4.5.2); one on the layout before the state branch stops for the
 //   migration, and boot writes nothing.
+// - The migration under way: its state worktree checked out on a
+//   `leeway-state` with no commit yet, `.workflows/` still on the code
+//   branch until the migration's commit (21.5.11). The worktree is locked
+//   where it is not, and boot goes on to the migrations with nothing
+//   pushed: the branch is the migration's to begin (21.9.3).
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -55,11 +60,12 @@ const { holdsTrace, onLegacyLayout, keepStateExcluded } = require('./code-trace.
  * What boot's checks left: a stop, with nothing written to the state or the
  * code — the state `lost`, or the project on the layout before the state
  * branch, owing the `migrate`ion; or the state in place — made by this boot
- * where `made` says so — with the remote's answer the catch-up starts from,
- * none where a push this boot made left it behind. Either way, what went
- * wrong on the way that boot carries on past.
+ * where `made` says so, or the migration's, under way, where `migrating` —
+ * with the remote's answer the catch-up starts from, none where a push this
+ * boot made left it behind, or the migration has nothing to catch up.
+ * Either way, what went wrong on the way that boot carries on past.
  * @typedef {{stop: 'lost'|'migrate', warnings: string[]}
- *   | {made: 'created'|'restarted'|null, listing: RemoteAnswer|undefined, warnings: string[]}} Placed
+ *   | {made: 'created'|'restarted'|null, migrating: boolean, listing: RemoteAnswer|undefined, warnings: string[]}} Placed
  */
 
 const BOOT_REFUSES = 'so boot neither checks it out nor pushes it, and wrote nothing. Rename that branch, and boot sets the state up afresh';
@@ -154,7 +160,17 @@ function startState(cwd, root, answer, startAgain, warnings) {
   const lost = holdsTrace(cwd);
   if (lost && !startAgain) return { stop: 'lost', warnings };
   const created = createState(root);
-  return { made: lost ? 'restarted' : 'created', listing: created.pushed ? undefined : answer, warnings: [...warnings, ...created.warnings] };
+  return { made: lost ? 'restarted' : 'created', migrating: false, listing: created.pushed ? undefined : answer, warnings: [...warnings, ...created.warnings] };
+}
+
+/**
+ * Whether the migration is under way: no local branch, and the state
+ * worktree checked out on `leeway-state`, which has no commit yet, with
+ * `.workflows/` still on the code branch.
+ * @param {string} cwd @param {StateInspection} seen
+ */
+function migrationUnderWay(cwd, seen) {
+  return !seen.branch && seen.folder === 'linked' && seen.worktree?.branch === STATE_BRANCH && onLegacyLayout(cwd);
 }
 
 /**
@@ -205,13 +221,14 @@ function pushBack(root, answer, warnings) {
 /**
  * Boot's checks: the state folder kept out of every branch, then the state
  * branch and its worktree put in place, set up on a project being set up,
- * and started again on a lost one where the person said yes (`startAgain`);
- * or the stop where it is lost, or where the project is on the layout
- * before the state branch. Held one boot at a time. Refuses, with nothing
- * written to the state or the code, where the remote is out of reach and
- * this clone holds no state, where the remote's branches cannot be fetched
- * to read the trace from, where a `leeway-state` holds code history, and
- * where the state's folder is there in a shape boot cannot account for.
+ * and started again on a lost one where the person said yes (`startAgain`),
+ * or the migration's, under way, locked; or the stop where it is lost, or
+ * where the project is on the layout before the state branch. Held one
+ * boot at a time. Refuses, with nothing written to the state or the code,
+ * where the remote is out of reach and this clone holds no state, where
+ * the remote's branches cannot be fetched to read the trace from, where a
+ * `leeway-state` holds code history, and where the state's folder is there
+ * in a shape boot cannot account for.
  * @param {string} cwd
  * @param {{startAgain?: boolean}} [opts]
  * @returns {Placed}
@@ -222,9 +239,13 @@ function placeState(cwd, { startAgain = false } = {}) {
     const warnings = keepStateExcluded(cwd);
     const answer = askStateRemote(root);
     const seen = inspectState(root);
+    if (migrationUnderWay(cwd, seen)) {
+      if (!seen.worktree?.locked) lockStateWorktree(root);
+      return { made: null, migrating: true, listing: undefined, warnings };
+    }
     if (!seen.branch && !restoreBranch(root, seen, answer)) return startState(cwd, root, answer, startAgain, warnings);
     warnings.push(...placeWorktree(root, seen.branch ? seen : inspectState(root)));
-    return { made: null, listing: pushBack(root, answer, warnings), warnings };
+    return { made: null, migrating: false, listing: pushBack(root, answer, warnings), warnings };
   });
 }
 

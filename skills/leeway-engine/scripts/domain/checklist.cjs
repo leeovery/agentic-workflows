@@ -12,7 +12,7 @@
 //   cut holds, `checklists.phase-{N}-start` and `checklists.phase-{N}-close`;
 // - finish (6.4.10), `checklists.finish`;
 // - a directive (6.4.11), on the project manifest under
-//   `checklists.directive.{id}`.
+//   `checklists.directive.{id}`, its id the directive's file's name.
 //
 // A record is `{items: {key: {state: 'done'|'skipped', reason?, at}},
 // closed?: at}` (6.4.12): Claude's marks alone, each skip with its reason,
@@ -22,17 +22,19 @@
 // `topics/{topic}/mail/`; each phase of the cut naming its scenarios and
 // its sections, what it relies on maybe nothing; every part of `spec.md`
 // drawn on by a phase, directly or through its area, an area with no parts
-// whole; and what a phase relies on done — an earlier phase's close
-// recorded, another unit completed. An item applies only where the unit has
-// its step: the sweep between topics where it has more than one live topic.
+// whole; what a phase relies on done — an earlier phase's close recorded,
+// another unit completed; and a directive's check passing (directives.cjs).
+// An item applies only where the unit has its step: the sweep between
+// topics where it has more than one live topic.
 //
 // A mark counts only once made after the record's last close, so a point
 // closed again — a decided topic reopened by mail (10.2.7) — is worked
 // afresh; 29.11 settles reopening. A skip shows on the screen of the next
 // authority gate over its work (6.4.5): decided's, ready to build's and
 // finish's each their own, and finish's every phase start's and close's too,
-// as each record keeps them. A directive's check is never skipped, and an
-// engine item is never marked.
+// as each record keeps them. An engine item is never marked or skipped, so
+// a directive's check must pass (6.4.5); the directive's close records the
+// directive in the migrations record, the one way it is recorded.
 //
 // `show` reads and takes no lock. `done`, `skip` and `close` write under the
 // writer lock (engine.cjs) and commit the manifest they wrote alone, pushed;
@@ -41,11 +43,12 @@
 
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
-const { KEBAB_SLUG_PATTERN, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { readSpec, specSections } = require('./spec-sections.cjs');
+const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 
@@ -65,9 +68,8 @@ const { messageOf } = require('../kernel/call.cjs');
 
 /**
  * An item of a point: its key and text; how the engine checks it, where it
- * does; where it applies, where not everywhere; and whether it may be
- * skipped, where it may not.
- * @typedef {{key: string, text: string, check?: (named: Named) => boolean, applies?: (named: Named) => boolean, skippable?: false}} Item
+ * does; and where it applies, where not everywhere.
+ * @typedef {{key: string, text: string, check?: (named: Named) => boolean, applies?: (named: Named) => boolean}} Item
  */
 
 /** @typedef {{checklist: string, item: string, text: string, reason: string, at: string}} Skip */
@@ -76,12 +78,14 @@ const { messageOf } = require('../kernel/call.cjs');
 
 /**
  * A point: what names its checklist after the point, and where that places
- * it; its items; and the skips its gate shows, given its own.
+ * it; its items; the skips its gate shows, given its own; and what its
+ * close does beyond recording itself, where it does more.
  * @typedef {{
  *   takes: string[],
  *   place: (cwd: string, args: string[]) => Place,
  *   items: Item[],
  *   shows: (named: Named, own: Skip[]) => Skip[],
+ *   closes?: (named: Named) => void,
  * }} Point
  */
 
@@ -136,6 +140,9 @@ function reliedOnDone({ cwd, manifest, phase }) {
   const on = phasesOf(manifest)[/** @type {number} */ (phase) - 1].relies_on;
   return on.every((relied) => (typeof relied === 'number' ? closed(manifest, [phaseKey(relied, 'close')]) : finished(relied)));
 }
+
+/** The directive's check passes. @param {Named} named */
+const directivePasses = ({ cwd, path }) => checkDirective(cwd, path[1]).passed;
 
 /** The unit has more than one live topic. @param {Named} named */
 const moreThanOneTopic = ({ unit, manifest }) => liveTopics(/** @type {string} */ (unit), manifest).length > 1;
@@ -245,11 +252,12 @@ const POINTS = Object.freeze({
   directive: {
     takes: ['<id>'],
     place: (cwd, [id]) => {
-      if (!KEBAB_SLUG_PATTERN.test(id)) throw new Error(`"${id}" is no directive's id — a directive's id is a kebab-case slug`);
+      directiveOf(id);
       return { unit: null, topic: null, phase: null, path: ['directive', id], manifest: readProjectManifest(cwd) };
     },
-    items: [{ key: 'check', text: 'its check', skippable: false }],
+    items: [{ key: 'check', text: 'its check', check: directivePasses }],
     shows: noSkips,
+    closes: ({ cwd, path }) => recordDirective(cwd, directiveOf(path[1])),
   },
 });
 
@@ -317,7 +325,7 @@ function usage() {
 /**
  * The checklist `args` name after its point, its work's manifest read.
  * Refuses a point it does not know, a unit, topic or phase the project
- * lacks, and a directive's id that is no kebab-case slug.
+ * lacks, and a directive the migrations lack.
  * @param {string} cwd @param {string} point @param {string[]} args
  * @returns {Named}
  */
@@ -379,8 +387,7 @@ function show(checklist) {
 
 /**
  * Claude's mark of an item: done, or skipped with its reason. Refuses an
- * item the checklist lacks, one the engine checks, and a skip of one never
- * skipped.
+ * item the checklist lacks, and one the engine checks.
  * @param {Named} checklist @param {string} key @param {Mark['state']} state @param {string} [reason]
  */
 function mark(checklist, key, state, reason) {
@@ -388,21 +395,26 @@ function mark(checklist, key, state, reason) {
   const item = items.find((candidate) => candidate.key === key);
   if (item === undefined) throw new Error(`${nameOf(checklist)} has no item "${key}" — its items are ${items.map((each) => each.key).join(', ')}`);
   if (item.check !== undefined) throw new Error(`${key} is the engine's to check, never marked — it reads done once it holds`);
-  if (state === 'skipped' && item.skippable === false) throw new Error(`${key} is never skipped — it must pass`);
   const at = new Date().toISOString();
   /** @type {Mark} */
   const made = state === 'done' ? { state, at } : { state, reason: /** @type {string} */ (reason), at };
   return changeRecord(checklist, `${key} ${state}`, (record) => { record.items[key] = made; }, { ...answering(checklist), item: key, ...made });
 }
 
-/** Record the checklist's close, refused while any item is open (6.4.4). @param {Named} checklist */
+/**
+ * Record the checklist's close, refused while any item is open (6.4.4),
+ * then do what its point's close does beyond.
+ * @param {Named} checklist
+ */
 function close(checklist) {
   const at = new Date().toISOString();
-  return changeRecord(checklist, 'closed', (record, fresh) => {
+  const answer = changeRecord(checklist, 'closed', (record, fresh) => {
     const open = itemStates(fresh).filter((item) => item.state === 'open').map((item) => item.key);
     if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
     record.closed = at;
   }, { ...answering(checklist), closed: at });
+  POINTS[checklist.point].closes?.(checklist);
+  return answer;
 }
 
 /**

@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: leeway's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
-// offer, the migration confirm, the label opt-in — the stop on a git below
-// the engine's floor, and the knowledge gate's displays. Pure renderers;
+// offer, the migration confirm, the label opt-in — the stops on a git below
+// the engine's floor and at a directive of the migration not yet done, and
+// the knowledge gate's displays. Pure renderers;
 // none reads state (the calling prose branches on the boot response and
 // fetches the gate at its display point, and the render surface reads what
 // a display names).
@@ -99,6 +100,32 @@ function gitFloorStop(floor, found) {
   return [
     section('DISPLAY: git floor stop', emitAs('properties'), `⚑ Boot stopped: ${title}`),
     section('DISPLAY: git floor account', emitAs('markdown'), account.join('\n')),
+  ].join('\n');
+}
+
+/**
+ * Boot's stop at a directive of the migration not yet done (21.10.11): no
+ * session works in the project until the migration is done; what the
+ * directive finished is kept, each piece checked, and a piece it was in the
+ * middle of is redone; this session carries it on.
+ * @param {{step: string, done: number, of: number, counts: string}} stopped the directive's step in words, its pieces done of all of them, and one piece's name
+ * @returns {string}
+ */
+function directiveStop({ step, done, of, counts }) {
+  const kept = done === 0 ? [] : [
+    `> What it finished is kept: ${done} of its ${of} ${counts}${of === 1 ? '' : 's'} ${done === 1 ? 'is' : 'are'} done, each checked. A ${counts} it was in the middle of is redone from the start.`,
+    '>',
+  ];
+  const account = [
+    '> No session works in this project until the migration is done.',
+    '>',
+    ...kept,
+    `> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`,
+  ];
+  return [
+    section('DISPLAY: migration marker', emitAs('markdown'), '**`▪ Migration`**'),
+    section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
+    section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
   ].join('\n');
 }
 
@@ -281,4 +308,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

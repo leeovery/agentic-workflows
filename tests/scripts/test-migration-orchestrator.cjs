@@ -10,7 +10,11 @@
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
-//     the code-tree fleet recorded unrun where there is no code-tree state.
+//     the code-tree fleet recorded unrun where there is no code-tree state;
+//     a directive stopping the run, recorded unrun in the reshape's sequence
+//     where there is no code-tree state, and a run with nothing pending
+//     reading the migrations folder once (21.10.4; the engine's side is
+//     test-migration-directives.cjs's).
 //
 
 require('./hermetic-env.cjs');
@@ -26,7 +30,7 @@ const REAL_MIGRATE = path.join(
   __dirname,
   '../../skills/leeway-migrate/scripts/migrate.cjs'
 );
-const { LAST_CODE_TREE_MIGRATION } = require(REAL_MIGRATE);
+const { LAST_CODE_TREE_MIGRATION, LAST_CODE_TREE_DIRECTIVE } = require(REAL_MIGRATE);
 
 // Stock /bin/bash is 3.2.57 on macOS — the whole point of the .sh path being
 // bash-3.2-safe. Pin it explicitly where the .sh execution path is under test.
@@ -93,6 +97,29 @@ function runReport(stdout) {
 // A .sh migration that appends its id to order.log and reports an update.
 const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
+
+// A directive: its title, its head, and its instructions.
+const directive = (title) =>
+  `# ${title}\n\n## Touches\n\n- Nothing.\n\n## Asks\n\n- Nothing.\n\n## Instructions\n\nCarry it out.\n`;
+
+// A preload recording each fs call a run makes on a path under COUNT_UNDER,
+// by method and path, written to COUNT_TO as the run exits.
+const FS_COUNTER = path.join(tmp('mig-orch-counter-'), 'count-fs.cjs');
+fs.writeFileSync(FS_COUNTER, `'use strict';
+const fs = require('fs');
+const path = require('path');
+const under = process.env.COUNT_UNDER;
+const calls = [];
+const write = fs.writeFileSync;
+for (const name of ['existsSync', 'statSync', 'lstatSync', 'readdirSync', 'readFileSync', 'openSync']) {
+  const real = fs[name];
+  fs[name] = function counted(target, ...rest) {
+    if (typeof target === 'string' && (target === under || target.startsWith(under + path.sep))) calls.push(name + ' ' + (path.relative(under, target) || '.'));
+    return real.call(this, target, ...rest);
+  };
+}
+process.on('exit', () => write(process.env.COUNT_TO, JSON.stringify(calls)));
+`);
 
 // A .cjs migration that appends its id to order.log and reports an update.
 const cjsMig = (id) =>
@@ -478,6 +505,67 @@ describe('migrate.cjs — synthetic fleet', () => {
       '001\n002\n001\n002\n',
       'both migrations ran a second time'
     );
+  });
+
+  it('stops at a directive the record does not hold — what comes before it run and recorded, nothing after, the directive not recorded, no counts, handbacks or run report printed — and carries on past it once recorded', () => {
+    const { migrate } = synthFleet({
+      '001-a.cjs':
+        `'use strict';\nmodule.exports = { id: '001', description: 'synthetic 001',\n` +
+        `  run({ reportUpdate }) { reportUpdate(); return { notice: 'Something moved.' }; } };\n`,
+      '002-records.md': directive('Records'),
+      '002-records.check.cjs': `'use strict';\nmodule.exports = { counts: 'topic', check: () => [] };\n`,
+      '003-c.cjs': cjsMig('003'),
+    });
+    const project = freshProject();
+
+    const stopped = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(stopped.status, 0, stopped.stderr);
+    assert.strictEqual(stopped.stdout, '---DIRECTIVE: 002-records---\n');
+    assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false, '003 never ran');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001']);
+
+    fs.appendFileSync(path.join(project, RECORD), '002\n');
+    const carried = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(carried.status, 0, carried.stderr);
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '003\n');
+    assert.deepStrictEqual(markerPayload(carried.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice), ['Something moved.'], 'the journaled notice waits for the run that completes');
+    assert.deepStrictEqual(runReport(carried.stdout), { ran: 1 });
+  });
+
+  it('records a directive of the reshape\'s sequence unrun where the code tree holds no state; one past the sequence stops the run all the same', () => {
+    const [reshape, later] = [LAST_CODE_TREE_DIRECTIVE, LAST_CODE_TREE_DIRECTIVE + 1].map((n) => String(n).padStart(3, '0'));
+    const { migrate } = synthFleet({ [`${reshape}-records.md`]: directive('Records'), [`${later}-later.md`]: directive('Later') });
+    const project = tmp('mig-orch-none-');
+
+    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(res.stdout, `---DIRECTIVE: ${later}-later---\n`);
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), [reshape]);
+  });
+
+  it('a run with nothing pending looks at the migrations folder once and reads nothing in it', () => {
+    const { migrate, root } = synthFleet({
+      '001-a.sh': shMig('001'),
+      '002-b.cjs': cjsMig('002'),
+      '003-records.md': directive('Records'),
+      '003-records.check.cjs': `'use strict';\nmodule.exports = { counts: 'topic', check: () => [] };\n`,
+    });
+    const project = freshProject();
+    fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });
+    fs.writeFileSync(path.join(project, RECORD), '001\n002\n003\n');
+    const counted = path.join(root, 'counted.json');
+
+    const res = run(migrate, project, {
+      LEEWAY_MIGRATE_BASH: SYSTEM_BASH,
+      NODE_OPTIONS: `--require ${FS_COUNTER}`,
+      COUNT_UNDER: path.join(root, 'scripts/migrations'),
+      COUNT_TO: counted,
+    });
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(counted, 'utf8')), ['existsSync .', 'readdirSync .']);
   });
 
   it('runs a .sh migration under stock /bin/bash 3.2 with the report helpers', () => {

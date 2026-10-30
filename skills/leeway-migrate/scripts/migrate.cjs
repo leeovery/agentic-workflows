@@ -5,16 +5,17 @@
 // migrate.cjs — the migration orchestrator.
 //
 // Keeps workflow files in sync with the current system design. Discovers every
-// migration in scripts/migrations/ (both legacy `*.sh` and modern `*.cjs`),
-// sorts them into one strict numeric-prefix ordering, and runs each exactly
-// once — a project stuck at 020 catches up through the frozen bash fleet then
-// the Node ones, in order.
+// migration in scripts/migrations/ — legacy `*.sh`, modern `*.cjs`, and
+// directives, `*.md` — sorts them into one strict numeric-prefix ordering,
+// and runs each exactly once — a project stuck at 020 catches up through the
+// frozen bash fleet then the Node ones, in order — stopping at a directive.
 //
 // Tracking:
 //   - Progress lives in the migrations record the caller names (`--record
 //     <path>`; boot names the state's `.state/migrations`), one numeric-only
 //     ID per line (e.g. "001", "047"). The ID is the filename's leading
-//     digits, extension-independent — .sh and .cjs share the same ID space.
+//     digits, extension-independent — .sh, .cjs and .md share the same ID
+//     space.
 //   - An ID recorded once is never re-run. Delete the log to force a full
 //     re-run. An ID is recorded only AFTER its migration completes; any
 //     failure aborts the whole run without recording (boot treats a non-zero
@@ -36,6 +37,31 @@
 //     executed this run are each emitted as one JSON line under their marker
 //     (VERIFY_ADDENDA, MIGRATION_NOTICES) for boot to hand to the calling
 //     flow. Never re-emitted for recorded migrations.
+//   - `*.md`: a directive (21.10) — a migration whose transform is
+//     judgment, a file of instructions the start session carries out, written
+//     against the shape at its number and frozen once released like any
+//     migration. It opens on its title, an H1, then its head: `## Touches`,
+//     a list of the files it may touch, and `## Asks`, a list of what it asks
+//     the person — "Nothing." an item of its own where it asks nothing — each
+//     holding its list alone; its instructions follow, under headings of
+//     their own. Beside it sits its check, `NNN-{slug}.check.cjs`:
+//     `module.exports = { counts, check({ projectDir, stateDir }) }`. `counts`
+//     names one piece of the directive's work, singular ('topic'), as a screen
+//     counts them; `check` answers an array of `{ name, problems }`, one for
+//     each piece, `problems` a sentence for each thing the piece still lacks,
+//     none once it is done. The check reads alone — the project's code tree
+//     at `projectDir` and git's history of it, the state at `stateDir`, both
+//     absolute — and is mechanical: it calls no model and changes nothing.
+//     The directive's check passes when every piece's does. The engine runs
+//     it (`engine migrate check NNN-{slug}`).
+//
+//     The runner stops at a directive the record does not hold: it prints
+//     `---DIRECTIVE: NNN-{slug}---` and ends, the migrations before it
+//     recorded and nothing after it run, printing neither the run's counts,
+//     its handbacks (journaled still, for the run that completes) nor its
+//     run report. The directive is recorded by `engine checklist close
+//     directive NNN-{slug}`, which its passing check alone lets through; the
+//     next run carries on past it. One start may meet several.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // LEEWAY_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -80,6 +106,15 @@ const RECORD_FLAG = '--record';
 // each is recorded unrun.
 const LAST_CODE_TREE_MIGRATION = 72;
 const CODE_TREE_STATE = '.workflows';
+
+// The reshape's sequence (074–081, 21.2) carries a project's state out of
+// the code tree's `.workflows/`. A directive of it, in a project with none,
+// has nothing to carry, so it is recorded unrun; the sequence's code steps
+// see that for themselves. Renumbered with the sequence until it is released.
+const LAST_CODE_TREE_DIRECTIVE = 81;
+
+const DIRECTIVE = '.md';
+const CHECK = '.check.cjs';
 
 /** @param {string} record @param {string} journal */
 function journalPath(record, journal) {
@@ -150,16 +185,14 @@ function compareMigrations(a, b) {
   return ba < bb ? -1 : ba > bb ? 1 : 0;
 }
 
-/** Whether `id` is already in the record (grep -q "^id$").
- *  @param {string} record @param {string} id */
-function isRecorded(record, id) {
-  let content;
-  try {
-    content = fs.readFileSync(record, 'utf8');
-  } catch (_) {
-    return false;
-  }
-  return content.split('\n').some((line) => line === id);
+/** The IDs the record holds, one a line. @param {string} record @returns {Set<string>} */
+function recordedIds(record) {
+  return new Set(fs.readFileSync(record, 'utf8').split('\n'));
+}
+
+/** Whether a file in the migrations folder is a migration: a directive's check is its directive's. @param {string} name */
+function isMigration(name) {
+  return /\.(sh|cjs|md)$/.test(name) && !name.endsWith(CHECK);
 }
 
 /**
@@ -249,7 +282,7 @@ function main() {
     dirents = [];
   }
   const scripts = dirents
-    .filter((e) => e.isFile() && /\.(sh|cjs)$/.test(e.name))
+    .filter((e) => e.isFile() && isMigration(e.name))
     .map((e) => path.join(MIGRATIONS_DIR, e.name))
     .sort(compareMigrations);
 
@@ -260,6 +293,11 @@ function main() {
 
   let filesUpdated = 0;
   let migrationsRun = 0;
+  const recorded = recordedIds(record);
+  const noteRecorded = (/** @type {string} */ id) => {
+    fs.appendFileSync(record, id + '\n');
+    recorded.add(id);
+  };
 
   for (const script of scripts) {
     const id = migrationId(script);
@@ -269,10 +307,15 @@ function main() {
     }
 
     // Skip entire migration if already recorded.
-    if (isRecorded(record, id)) continue;
-    if (!codeTreeState && parseInt(id, 10) <= LAST_CODE_TREE_MIGRATION) {
-      fs.appendFileSync(record, id + '\n');
+    if (recorded.has(id)) continue;
+    const directive = script.endsWith(DIRECTIVE);
+    if (!codeTreeState && parseInt(id, 10) <= (directive ? LAST_CODE_TREE_DIRECTIVE : LAST_CODE_TREE_MIGRATION)) {
+      noteRecorded(id);
       continue;
+    }
+    if (directive) {
+      process.stdout.write(`---DIRECTIVE: ${path.basename(script, DIRECTIVE)}---\n`);
+      return;
     }
 
     const result = script.endsWith('.cjs')
@@ -282,7 +325,7 @@ function main() {
     if (result.stdout) process.stdout.write(result.stdout);
     filesUpdated += result.updated;
 
-    fs.appendFileSync(record, id + '\n');
+    noteRecorded(id);
     migrationsRun += 1;
 
     // Journal what it handed back durably the moment its migration is
@@ -334,4 +377,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { LAST_CODE_TREE_MIGRATION };
+module.exports = { LAST_CODE_TREE_MIGRATION, LAST_CODE_TREE_DIRECTIVE };

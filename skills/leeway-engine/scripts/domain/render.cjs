@@ -75,6 +75,7 @@ const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs')
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
+const { directiveStopSurface } = require('./directives.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
 
@@ -7268,6 +7269,7 @@ const SURFACES = {
   'legacy-split-display': legacySplitDisplaySurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
+  'directive-stop': directiveStopSurface,
 };
 
 /**

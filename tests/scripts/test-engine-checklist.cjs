@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The checklists (leeway-engine/scripts/domain/checklist.cjs): `engine
-// checklist show|done|skip|close` over the six closing points (6.4.6–6.4.11).
+// checklist show|done|skip|close` over the closing points of a unit's work
+// (6.4.6–6.4.10); a directive's checklist (6.4.11) is
+// test-migration-directives.cjs's.
 // Each point's exact list (6.S14), the sweep left off for a unit of one
 // topic; Claude's items marked in its own order, one skipped with its
 // reason, and the close (2.S2); the engine's own items worked out at each
@@ -12,8 +14,8 @@
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation
 // (6.S32); the record as stored, `checklists.{point}` on the unit's
-// manifest, a directive's on the project's; each write under the writer
-// lock with its own state commit, and every refusal writing nothing.
+// manifest; each write under the writer lock with its own state commit, and
+// every refusal writing nothing.
 //
 // Layer: verb. Worlds, each built once and copied: a project with an epic,
 // `payments`, of two topics under discussion, its `spec.md` (area 1 with
@@ -35,7 +37,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
+  ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, stateGit, fixtureFrom, cleanupFixture, lockAttempts, holdLock,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -136,7 +138,7 @@ const records = (unit = UNIT) => readManifest(dir, unit).checklists;
 /** A message waiting in a topic's mail. @param {string} topic */
 const mailFor = (topic) => layout.unit(UNIT, 'topics', topic, 'mail', '001-from-refunds.md');
 
-describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
+describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S14)', () => {
   eachOn(fresh);
 
   it('lists each point\'s items in the spec\'s order, each in the spec\'s words with who checks it, every one open on a fresh unit but what the engine finds done', () => {
@@ -146,7 +148,6 @@ describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
       start: standing('phase-start', UNIT, '2'),
       close: standing('phase-close', UNIT, '2'),
       finish: standing('finish', UNIT),
-      directive: standing('directive', '074-records'),
     }, {
       decided: [
         'questions-closed engine done: every question of the person\'s closed',
@@ -187,7 +188,6 @@ describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
         'build-log-closed claude open: the build log closed',
         'records-indexed claude open: the records indexed',
       ],
-      directive: ['check claude open: its check'],
     });
   });
 
@@ -221,7 +221,7 @@ describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
       'checklist done: ready-to-build has no item "sweep-run" — its items are topics-settled, replacements-checked, statements-traced, review-settled, phases-complete, invariants-checked, sections-drawn, assets-linked');
   });
 
-  it('refuses a point the engine lacks, a unit, topic or phase the project lacks, a unit with no cut, a directive\'s id of another shape, an item the point lacks, and arguments of another shape, writing nothing', () => {
+  it('refuses a point the engine lacks, a unit, topic or phase the project lacks, a unit with no cut, an item the point lacks, and arguments of another shape, writing nothing', () => {
     const usage = /^Usage: engine checklist show <checklist> \| engine checklist done <checklist> <item> \| .* \| <checklist>: decided <work-unit> <topic> \| /;
     for (const args of [['show', 'started', UNIT], ['show', 'finish'], ['show', 'decided', UNIT], ['close', 'finish', UNIT, 'extra'], ['done', 'finish'], ['show', 'finish', UNIT, '--force', 'yes'], ['tidy', 'finish', UNIT]]) {
       assert.match(refused(args), usage, args.join(' '));
@@ -233,7 +233,6 @@ describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
       refused(['show', 'phase-start', UNIT, '3']),
       refused(['show', 'phase-close', UNIT, '0']),
       refused(['show', 'phase-start', 'solo', '1']),
-      refused(['show', 'directive', '../074']),
       refused(['done', 'finish', UNIT, 'tidied']),
     ], [
       'checklist show: there is no work unit "ledger"',
@@ -242,7 +241,6 @@ describe('the six points, each its exact list (6.4.6–6.4.11, 6.S14)', () => {
       `checklist show: ${UNIT}'s cut has no phase 3 — its phases are 1 to 2`,
       `checklist show: ${UNIT}'s cut has no phase 0 — its phases are 1 to 2`,
       'checklist show: solo has no cut — its phases come from engine cut',
-      'checklist show: "../074" is no directive\'s id — a directive\'s id is a kebab-case slug',
       'checklist done: finish has no item "tidied" — its items are review-passed, inbox-closed, build-log-closed, records-indexed',
     ]);
   });
@@ -407,17 +405,6 @@ describe('skips (6.4.2, 6.4.5)', () => {
   it('a skip records its reason: none given, or a blank one, is refused', () => {
     assert.match(refused(['skip', 'finish', UNIT, 'inbox-closed']), /^Usage: engine checklist /);
     assert.strictEqual(refused(['skip', 'finish', UNIT, 'inbox-closed', '--reason', ' ']), 'checklist skip: a skip records its reason — --reason "<text>"');
-  });
-
-  it('a directive\'s check is never skipped; done, it closes on the project manifest', () => {
-    assert.strictEqual(refused(['skip', 'directive', '074-records', 'check', '--reason', 'Checked by eye.']), 'checklist skip: check is never skipped — it must pass');
-    const done = checklist(['done', 'directive', '074-records', 'check']);
-    assert.strictEqual(lastMessage(dir), 'checklist: directive.074-records check done');
-    const { closed } = checklist(['close', 'directive', '074-records']);
-
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(statePath(dir, layout.projectManifest), 'utf8')).checklists, {
-      directive: { '074-records': { items: { check: { state: 'done', at: done.at } }, closed } },
-    });
   });
 
   it('decided\'s gate shows its own skips; a phase\'s start and close show none of theirs', () => {

@@ -30,7 +30,16 @@
 // that recorded migrations without changing a document leaves the record as
 // the only dirt, and no reviewed commit follows a report of no changes, so
 // boot commits that line itself — this run's, or one an earlier boot
-// stranded.
+// stranded. A run the runner stops at a directive — a migration the start
+// session carries out (directives.cjs) — stops boot there, past nothing,
+// committing nothing (21.10.10): the stop names the directive, its file,
+// and its pieces done of all of them.
+//
+// While the migration is under way — its state worktree checked out on a
+// `leeway-state` with no commit yet — nothing is committed before the
+// migration's commit (21.9.3): no ledger tail, no catch-up, no ignore line
+// in the code tree, and no settings commit; every state commit is held
+// (state-worktree.cjs). The migrations run as ever.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
 // beside them the store's lock and the fill's claim — sits in the one state
@@ -66,7 +75,6 @@
 // keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const { spawnSync } = require('child_process');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
@@ -92,9 +100,7 @@ const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
-
-// Resolved against this file so it works wherever the skill tree is installed.
-const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'leeway-migrate', 'scripts', 'migrate.cjs');
+const { MIGRATE_CJS, MIGRATIONS_RECORD, directiveStopped } = require('./directives.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
@@ -120,9 +126,8 @@ const NOTICES_MARKER = '---MIGRATION_NOTICES---';
 // cannot speak for the record.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
-// The record of the migrations applied, which the runner writes,
-// state-relative: never the project's ledger (domain/ledger.cjs).
-const MIGRATIONS_RECORD = '.state/migrations';
+// The line migrate.cjs ends a run on where it stops at a directive.
+const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
 
 /**
  * @typedef {object} SystemConfigReport
@@ -159,6 +164,14 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @typedef {object} BootStop
  * @property {'git'|'lost'|'migrate'|'merge'} state
  * @property {string[]} warnings
+ */
+
+/**
+ * Boot stopped at a directive of the migration the record does not hold
+ * (21.10.10): the directive's id and file, and its pieces done of all of
+ * them — `render directive-stop` draws the stop, and the session carries
+ * the directive on.
+ * @typedef {{state: 'directive', id: string, file: string, done: number, of: number, warnings: string[]}} DirectiveStop
  */
 
 /**
@@ -257,7 +270,7 @@ function trimReport(stdout) {
  * person's yes at the lost-state stop: a state still lost is started again.
  * @param {string} cwd project root
  * @param {{startAgain?: boolean}} [opts]
- * @returns {BootResult|BootStop}
+ * @returns {BootResult|BootStop|DirectiveStop}
  */
 function boot(cwd, { startAgain = false } = {}) {
   if (gitShortfall() !== null) return { state: 'git', warnings: [] };
@@ -270,14 +283,17 @@ function boot(cwd, { startAgain = false } = {}) {
   if ('stop' in placed) return { state: placed.stop, warnings };
   const root = stateRoot(cwd);
   const migrated = withStateLock(root, () => {
-    commitLedgerTail(root, warnings);
-    const caught = catchUpState(root, { listing: placed.listing });
-    warnings.push(...caught.warnings);
-    if (caught.action === 'stopped') return null;
-    keepStateIgnored(cwd, warnings);
+    if (!placed.migrating) {
+      commitLedgerTail(root, warnings);
+      const caught = catchUpState(root, { listing: placed.listing });
+      warnings.push(...caught.warnings);
+      if (caught.action === 'stopped') return null;
+      keepStateIgnored(cwd, warnings);
+    }
     return runMigrations(cwd, warnings);
   });
   if (migrated === null) return { state: 'merge', warnings };
+  if ('directive' in migrated) return { state: 'directive', ...directiveStopped(cwd, migrated.directive), warnings };
   const { migrations, migrationsCommitted } = migrated;
 
   renderLedgerCopies(cwd, warnings);
@@ -286,8 +302,9 @@ function boot(cwd, { startAgain = false } = {}) {
   // While a reviewed migration commit follows, it takes every path the
   // workflows own, so boot's own writes there ride it as the record does —
   // a confined commit of a file a migration also edited would carry that
-  // edit past the review under boot's message.
-  const commitOwn = !migrations.changed;
+  // edit past the review under boot's message — as the migration's commit
+  // does while the migration is under way.
+  const commitOwn = !migrations.changed && !placed.migrating;
   const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
   tidyConversations(holdsWaiting);
   launchLateCheck(root, warnings);
@@ -323,9 +340,10 @@ function commitLedgerTail(root, warnings) {
 
 /**
  * Run the migrations into the state's migrations record and, where no
- * reviewed commit will carry it, commit the record.
+ * reviewed commit will carry it, commit the record; or answer the directive
+ * the run stopped at, committing nothing.
  * @param {string} cwd @param {string[]} warnings
- * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
+ * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}}
  */
 function runMigrations(cwd, warnings) {
   const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD)], { cwd: codeRoot(cwd), encoding: 'utf8' });
@@ -335,6 +353,8 @@ function runMigrations(cwd, warnings) {
       : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
     throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
   }
+  const stopped = DIRECTIVE_MARKER.exec(mig.stdout || '');
+  if (stopped !== null) return { directive: stopped[1] };
 
   const outLines = (mig.stdout || '').split('\n');
   const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
