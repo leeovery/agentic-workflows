@@ -28,7 +28,8 @@
 //   the project, the unit, the verb whose check it was (`decide`, `replace`,
 //   `raise`, `late-check`), how many rules the call found, the outcome —
 //   `one`, `several`, or `unchecked` where the call could not judge — and the
-//   model it ran on; never the entry's text. How often the check refuses is
+//   model that answered, by its full id, null where none did; never the
+//   entry's text. How often the check refuses is
 //   read from it (2.4.6). It is appended whole, as the brief hook's refusals
 //   are, never through the trust log, which holds what the matrix needs
 //   (16.13.3); an append that fails is a warning, and the check stands.
@@ -81,7 +82,7 @@ function entryText({ text, why, rules_out: rulesOut }) {
   ].join('\n\n');
 }
 
-/** @typedef {{rules: string[]}|{cannot: CannotRun, detail: string}} Judged */
+/** @typedef {{rules: string[], model: string|null}|{cannot: CannotRun, detail: string}} Judged */
 
 /**
  * Where a run of the check is logged from: the folder the verb runs in, the
@@ -104,8 +105,8 @@ function outcomeOf(judged) {
 function logRun({ cwd, unit, verb, warnings }, judged) {
   try {
     const { project, project_name: name } = projectOf(cwd);
-    const rules = 'cannot' in judged ? null : judged.rules.length;
-    const line = { v: 1, at: isoNow(), project_id: project, project: name, unit, verb, rules, outcome: outcomeOf(judged), model: MODEL };
+    const [rules, model] = 'cannot' in judged ? [null, null] : [judged.rules.length, judged.model];
+    const line = { v: 1, at: isoNow(), project_id: project, project: name, unit, verb, rules, outcome: outcomeOf(judged), model };
     fs.mkdirSync(systemConfigDir(), { recursive: true });
     fs.appendFileSync(path.join(systemConfigDir(), DECISION_CHECKS), `${JSON.stringify(line)}\n`);
   } catch (err) {
@@ -124,10 +125,10 @@ function askOf(content) {
   return { system: PROMPT, schema: SCHEMA, model: MODEL, effort: EFFORT, input: entryText(content), timeoutMs: TIMEOUT_MS };
 }
 
-/** The rules the call's answer names, or why it cannot run. @param {import('../kernel/claude-call.cjs').Answer} answered @returns {Judged} */
+/** The rules the call's answer names and the model that answered, or why it cannot run. @param {import('../kernel/claude-call.cjs').Answer} answered @returns {Judged} */
 function rulesOf(answered) {
   if ('cannot' in answered) return answered;
-  return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules };
+  return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules, model: answered.model };
 }
 
 /** The call's answer to a decision's content, unlogged. @param {Record<string, unknown>} content @returns {Judged} */

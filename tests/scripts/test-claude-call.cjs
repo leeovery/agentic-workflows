@@ -6,7 +6,8 @@
 // Its command line flag by flag, never `--bare`; a fresh empty folder, gone
 // after; an environment cleared of the calling session, the project and
 // Leeway's own variables, the login's kept; the question
-// on stdin; the answer where it fits the schema, and each way it cannot run
+// on stdin; the answer where it fits the schema, with the model that
+// answered, and each way it cannot run
 // — no login, a rate limit, a timeout, an answer that does not fit, a
 // binary that will not start. The form answering later puts the same call,
 // gives the same answers, and runs beside the calls put with it.
@@ -164,7 +165,7 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     setEnv({ LEEWAY_CLAUDE: undefined, PATH: `${bin}${path.delimiter}${process.env.PATH}` });
     arm({ '': ANSWER });
 
-    assert.deepStrictEqual(askClaude(ASK), { answer: ANSWER, cost: 0.01 });
+    assert.deepStrictEqual(askClaude(ASK), { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' });
     assert.strictEqual(calls().length, 1, 'claude on PATH was not the one run');
   });
 });
@@ -173,7 +174,23 @@ describe('the call\'s answer', () => {
   it('answers the structured output where it fits the schema, with what the call cost', () => {
     arm({ '': ANSWER });
 
-    assert.deepStrictEqual(askClaude(ASK), { answer: ANSWER, cost: 0.01 });
+    assert.deepStrictEqual(askClaude(ASK), { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' });
+  });
+
+  it('names the model that answered by the full id the result gives: the one it names; among several, the asked model\'s family; none it can tell, null', () => {
+    arm({ '': ANSWER });
+    const modelOf = (/** @type {string[]} */ ids, model = ASK.model) => {
+      setEnv({ CLAUDE_STUB_MODELS: JSON.stringify(ids) });
+      return /** @type {{model: string|null}} */ (askClaude({ ...ASK, model })).model;
+    };
+
+    assert.deepStrictEqual([
+      modelOf(['claude-sonnet-5-5']),
+      modelOf(['claude-haiku-4-5', 'claude-sonnet-5-5']),
+      modelOf(['claude-haiku-4-5', 'claude-sonnet-5-5'], 'claude-sonnet-5-5'),
+      modelOf(['claude-haiku-4-5', 'claude-opus-5-5']),
+      modelOf([]),
+    ], ['claude-sonnet-5-5', 'claude-sonnet-5-5', 'claude-sonnet-5-5', null, null]);
   });
 
   it('cannot run with no login — the suite\'s world has none, and the stub answers as a real Claude does there', () => {
@@ -294,7 +311,7 @@ describe('the call answering later', () => {
     arm({ '': ANSWER });
     setEnv({ CLAUDE_STUB_MEET: `2:${meet}` });
 
-    assert.deepStrictEqual(await Promise.all([askClaudeAsync(ASK), askClaudeAsync(ASK)]), [{ answer: ANSWER, cost: 0.01 }, { answer: ANSWER, cost: 0.01 }]);
+    assert.deepStrictEqual(await Promise.all([askClaudeAsync(ASK), askClaudeAsync(ASK)]), [{ answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' }, { answer: ANSWER, cost: 0.01, model: 'claude-sonnet-stub' }]);
   });
 
   it('cannot run past its time, killed outright — one deaf to SIGTERM too — nor where the binary will not start, as the waiting form cannot', { timeout: KILLED_WITHIN_MS }, async () => {

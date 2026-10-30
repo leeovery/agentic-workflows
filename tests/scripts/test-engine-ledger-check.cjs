@@ -11,8 +11,7 @@
 // boot launches the late check, detached and one at a time, which records
 // what it finds beside each unchecked decision and commits it, never
 // touching the entry's line, a decision found holding several rules showing
-// flagged wherever its record is read. Every run of either is logged in
-// the system config directory, a failed append a warning.
+// flagged wherever its record is read.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; the separate call is the suite's stub
@@ -35,12 +34,9 @@ const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/led
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
-const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
-const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 
 const SPEC = `${UNIT}.specification`;
 const DETACHED_MS = 20000;
-const CHECK_LOG = path.join(systemConfigDir(), DECISION_CHECKS);
 
 const PHASES = Object.freeze({
   discovery: { items: { 'note-window': {} } },
@@ -59,7 +55,6 @@ let log;
 beforeEach(() => {
   dir = ledgerWorld('ledger-check-', PHASES);
   log = path.join(dir, 'claude-calls.jsonl');
-  fs.rmSync(CHECK_LOG, { force: true });
 });
 
 afterEach(() => {
@@ -82,7 +77,7 @@ function rules(...rules) {
 }
 
 const ledger = ledgerHelpers(() => dir);
-const { ledgerText, entries, full, checkRuns, checkRun } = ledger;
+const { ledgerText, entries, full } = ledger;
 
 /**
  * One ledger write that must succeed: its response.
@@ -449,50 +444,5 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.ok(done(), 'the detached check recorded nothing');
     assert.deepStrictEqual([entries().at(-1).entry, entries().at(-1).rules], [full(decision), 'several']);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
-  });
-});
-
-describe('the check\'s log (5.5.9)', () => {
-  it('logs every run as a decision is written — one, several with the write refused, unchecked where the call cannot run — with its verb, unit, rule count and outcome, never the entry\'s text; a write that makes no decision logs nothing', () => {
-    const question = ask();
-    const decision = decide(question, PANEL, { [PANEL]: rules(PANEL) });
-    refuses(dir, ['ledger', 'decide', NOTE, '--answers', question], { env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things at once.' }) });
-    decide(question, SYNC);
-    write('replace', NOTE, ['--replaces', decision, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'A frameless panel.', why: 'Lighter.' }, { '': rules('A frameless panel.') });
-
-    assert.deepStrictEqual(checkRuns(), [
-      checkRun('decide', 'one', 1), checkRun('decide', 'several', 2), checkRun('decide', 'unchecked', null), checkRun('replace', 'one', 1),
-    ]);
-  });
-
-  it('logs the late check\'s runs as `late-check`: a decision it cannot judge unchecked, then each it judges, one or several', () => {
-    decide(ask(), PANEL);
-    decide(ask(SPEC, 'Does the spec cover a second display?'), BOTH, undefined, { address: SPEC });
-    fs.rmSync(CHECK_LOG);
-
-    lateCheck();
-    lateCheck({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) });
-
-    assert.deepStrictEqual(checkRuns(), [checkRun('late-check', 'unchecked', null), checkRun('late-check', 'one', 1), checkRun('late-check', 'several', 2)]);
-  });
-
-  it('warns where a run cannot be appended, and the check it records stands: the decision lands checked, one holding several is refused, and the late check records its result, each carrying the warning', (t) => {
-    const append = fs.appendFileSync;
-    t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
-      if (file === CHECK_LOG) throw Object.assign(new Error('ENOSPC: no space left on device, write'), { code: 'ENOSPC' });
-      return append(file, data);
-    });
-    const warning = `the one-decision check's run was not logged (${DECISION_CHECKS}): ENOSPC: no space left on device, write`;
-    const question = ask();
-
-    const landed = write('decide', NOTE, ['--answers', question], { ...MADE, text: PANEL, why: 'One thing.' }, { [PANEL]: rules(PANEL) });
-    const refused = refusedPristine(dir, ['ledger', 'decide', NOTE, '--answers', question], { env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things.' }) });
-    decide(question, SYNC);
-    const late = lateCheck({ [SYNC]: rules(SYNC) });
-
-    assert.deepStrictEqual([landed.warnings, eventOf(landed.id).unchecked], [[warning], false]);
-    assert.deepStrictEqual([refused.error.split(' — ')[0], refused.warnings], ['ledger decide: the decision holds 2 rules, and an entry holds one', [warning]]);
-    assert.deepStrictEqual([late.checked, late.warnings], [1, [warning]]);
-    assert.ok(!fs.existsSync(CHECK_LOG), 'a run was logged through the failing append');
   });
 });

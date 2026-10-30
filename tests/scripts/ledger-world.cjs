@@ -181,12 +181,13 @@ function ledgerHelpers(dir) {
 
   /**
    * A run as the log holds it, but its time: in this project, of the `verb`
-   * in `unit`, its `outcome` and the rules it found.
+   * in `unit`, its `outcome`, the rules it found, and the model that
+   * answered — the stub's id for Opus, none where unchecked.
    * @param {string} verb @param {'one'|'several'|'unchecked'} outcome @param {number|null} rules @param {string} [unit]
    */
   function checkRun(verb, outcome, rules, unit = UNIT) {
     const { project_id: id } = JSON.parse(fs.readFileSync(statePath(dir(), layout.projectManifest), 'utf8'));
-    return { v: 1, project_id: id, project: path.basename(dir()), unit, verb, rules, outcome, model: 'opus' };
+    return { v: 1, project_id: id, project: path.basename(dir()), unit, verb, rules, outcome, model: outcome === 'unchecked' ? null : 'claude-opus-stub' };
   }
 
   return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun };

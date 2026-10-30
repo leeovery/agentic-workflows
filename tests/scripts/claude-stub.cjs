@@ -16,6 +16,9 @@
 //   'rate-limit', 'failed' (an outage), 'misfit' (Claude Code giving up on
 //   an answer that fits the schema), or 'timeout' (it waits past any
 //   deadline, deaf to SIGTERM).
+// - A result that answers names the model that answered in `modelUsage`, by
+//   a full id: `claude-{model}-stub` for the model it was asked for, or each
+//   id CLAUDE_STUB_MODELS lists, a JSON array.
 // - CLAUDE_STUB_LOG names a file each call appends one JSON line to: its
 //   argv, its folder and what the folder held, its input, and its
 //   environment's names — each name's value null but for the names
@@ -82,4 +85,9 @@ function met() {
 
 const answer = met() ? answerFor() : 'failed';
 if (typeof answer === 'string') FAILURES[/** @type {keyof typeof FAILURES} */ (answer)]();
-else result({ subtype: 'success', is_error: false, result: '', structured_output: answer, total_cost_usd: 0.01 }, 0);
+else {
+  const asked = process.argv[process.argv.indexOf('--model') + 1];
+  const models = process.env.CLAUDE_STUB_MODELS ? JSON.parse(process.env.CLAUDE_STUB_MODELS) : [`claude-${asked}-stub`];
+  const modelUsage = Object.fromEntries(models.map((/** @type {string} */ id) => [id, { inputTokens: 1, outputTokens: 1, costUSD: 0.01 }]));
+  result({ subtype: 'success', is_error: false, result: '', structured_output: answer, total_cost_usd: 0.01, modelUsage }, 0);
+}
