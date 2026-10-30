@@ -50,7 +50,7 @@ Load **[select-record.md](select-record.md)** and follow its instructions as wri
 
 **If a record resolved** (`{id}`, `{slug}`, `{record_status}` set):
 
-Derive `{dir}` = `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`.
+Derive `{dir}` = `.leeway/{work_unit}/topics/{topic}/experiments/{id}-{slug}`.
 
 → Return to **[the skill](../SKILL.md)** for **Step 1**.
 
