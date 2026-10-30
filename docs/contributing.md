@@ -175,7 +175,10 @@ re-weighs each item below, each held as it is for today's model:
 - the effort threshold;
 - the raw calls' models and efforts: the one-decision check, the
   labeller, and the typed-answer reader;
-- the one-decision check's hit rate;
+- the one-decision check's hit rate, read from its log,
+  `~/.config/leeway/decision-checks.jsonl`: a line per run, across every
+  project, with its outcome (`one`, `several`, or `unchecked` where the
+  call could not judge) and how many rules it found;
 - the knowledge eval's index arm.
 
 ## Raising changes

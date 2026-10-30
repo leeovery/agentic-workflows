@@ -991,12 +991,13 @@ function linkedBeforeCall(request) {
 }
 
 /**
- * A write as asked, a decision among them judged by the one-decision check.
- * @param {Request} request
+ * A write as asked, a decision among them judged by the one-decision check,
+ * its run logged from `cwd`.
+ * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {Request}
  */
-function oneDecisionChecked(request) {
-  return request.kind === 'decision' ? checkOneDecision(request, linkedBeforeCall(request)) : request;
+function oneDecisionChecked(cwd, request, warnings) {
+  return request.kind === 'decision' ? checkOneDecision(cwd, request, linkedBeforeCall(request), warnings) : request;
 }
 
 /**
@@ -1082,7 +1083,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    return landed(cwd, oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings)), warnings).landed;
+    return landed(cwd, oneDecisionChecked(cwd, requestOf(cwd, verb, args, stdin, warnings), warnings), warnings).landed;
   } catch (err) {
     throw carrying(err, warnings);
   }
