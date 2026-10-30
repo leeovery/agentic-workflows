@@ -7,11 +7,13 @@
 // in the same call (5.8.14, 9.5.11): the calls it lists since the person
 // last looked are the ones it marks shown.
 //
-// - Whose a row is: Claude's call where every answer on it is Claude's own
-//   (9.5.3); every other row is the person's question — open, closed by
-//   their decision, by "your call" or "don't care" (9.5.4), carried over,
-//   or gone on: moved to another topic, later on the roadmap, or standing
-//   elsewhere for what was made on the topic.
+// - Whose a row is: Claude's call where every answer on it is Claude's —
+//   its own, or one the person handed over with "your call" or "don't
+//   care", marked so (9.5.3, 9.5.4); every other row is the person's
+//   question — open, closed by their decision, carried over, or gone on:
+//   moved to another topic, later on the roadmap, or standing elsewhere for
+//   what was made on the topic. So the person's rows and Claude's calls
+//   together are the map's rows.
 // - Claude's calls are the map's answers Claude made, those handed over
 //   among them and none carried over (`claudesCall`), each counted once.
 // - An open question its experiment measures is marked waiting on it, still
@@ -45,10 +47,11 @@ const { mapScreen } = require('./projections/map.cjs');
 /** The stands a decided row has: answered, merged, or an answer whose question is set aside. */
 const DECIDED_STANDS = ['answered', 'merged', 'question-set-aside'];
 
-/** The tag of a closed row's answers, the person's first, by how each was given. */
-const GIVEN_TAGS = Object.freeze({ 'your-call': 'your call', 'dont-care': 'don\'t care', carried: 'carried over' });
+/** The tag of a row Claude's answer closed as the person handed it over, by how it was given. */
+const HANDED_TAGS = Object.freeze({ 'your-call': 'your call', 'dont-care': 'don\'t care' });
 
 const CLAUDES_CALL = 'Claude\'s call';
+const CARRIED = 'carried over';
 
 /** A row's answers; the row's own entry where it is an answer whose question is set aside. @param {Row} row @returns {RowAnswer[]} */
 function answersOn(row) {
@@ -56,14 +59,18 @@ function answersOn(row) {
 }
 
 /**
- * Who closed a decided row: the person, where any answer is theirs; else
- * how the first handed or carried answer was given; else Claude's own call.
+ * Who closed a decided row, and its tag: the person, where any answer is
+ * theirs; the person too where an answer was carried over; else Claude —
+ * marked handed over where the person handed it over, else Claude's own
+ * call.
  * @param {RowAnswer[]} answers
+ * @returns {{claudes: boolean, tag: string}}
  */
 function closedBy(answers) {
-  if (answers.some((a) => a.by === 'person')) return 'yours';
-  const given = answers.find((a) => Object.hasOwn(GIVEN_TAGS, a.given));
-  return given === undefined ? CLAUDES_CALL : GIVEN_TAGS[/** @type {keyof typeof GIVEN_TAGS} */ (given.given)];
+  if (answers.some((a) => a.by === 'person')) return { claudes: false, tag: 'yours' };
+  if (answers.some((a) => a.given === 'carried')) return { claudes: false, tag: CARRIED };
+  const handed = answers.find((a) => Object.hasOwn(HANDED_TAGS, a.given));
+  return { claudes: true, tag: handed === undefined ? CLAUDES_CALL : HANDED_TAGS[/** @type {keyof typeof HANDED_TAGS} */ (handed.given)] };
 }
 
 /** Where a row gone on stands now: moved to a topic, later on the roadmap, or elsewhere. @param {Row} row */
@@ -95,9 +102,9 @@ function mapSections(rows) {
     if (row.stands === 'open') {
       drawn.open.push({ glyph: '○', text: row.text, tag: 'yours', notes: openNotes(row) });
     } else if (DECIDED_STANDS.includes(row.stands)) {
-      const tag = closedBy(answersOn(row));
-      if (tag !== CLAUDES_CALL) yoursDecided += 1;
-      drawn.decided.push({ glyph: tag === CLAUDES_CALL ? '◇' : '✓', text: row.text, tag, notes: [] });
+      const { claudes, tag } = closedBy(answersOn(row));
+      if (!claudes) yoursDecided += 1;
+      drawn.decided.push({ glyph: claudes ? '◇' : '✓', text: row.text, tag, notes: [] });
     } else {
       drawn.moved.push({ glyph: '→', text: row.text, tag: goneTo(row), notes: [] });
     }
@@ -177,4 +184,4 @@ function mapSurface(cwd, { dotpath }) {
   }
 }
 
-module.exports = { CLAUDES_CALL, closedBy, answersOn, claudesCalls, mapSections, topicAddress, mapSurface };
+module.exports = { closedBy, answersOn, claudesCalls, topicAddress, mapSurface };

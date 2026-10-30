@@ -14,8 +14,9 @@
 //   person moved its question (9.1.11). It takes the next number under the
 //   writer lock, so a send racing another takes the one after it, and parks
 //   the topic's conversation as a landing does: created not started where
-//   absent, set back in progress where decided (10.2.7), so the next
-//   decided needs a fresh close and the gate's yes. A postponed topic is
+//   absent, set back in progress where decided (10.2.7), and any decided
+//   close it holds voided (checklist.cjs), so the next decided needs a
+//   fresh close and the gate's yes. A postponed topic is
 //   left as it stands, the message waiting in its mailbox for its return
 //   (10.1.8), and while it waits the topic is never fresh enough to remove,
 //   rename or reroute (discovery-map.cjs). A message to a cancelled topic,
@@ -55,6 +56,7 @@ const { resolveId, shortId } = require('./ledger-ids.cjs');
 const { todayStamp, dayMonth } = require('./dates.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { sendReport } = require('./projections/mail.cjs');
+const { voidDecidedClose } = require('./checklist.cjs');
 
 const SEND_USAGE = 'topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>';
 const MAILBOX_USAGE = 'topic mailbox <work-unit> <topic>';
@@ -207,10 +209,11 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
     const items = ensureContainer(ensureContainer(phases, phase, `phases.${phase}`), 'items', `phases.${phase}.items`);
     const park = parkMessageItem(items, phase, topic);
     const flags = flagDownstream(manifest, manifest.work_type, phase, topic);
+    const voided = voidDecidedClose(manifest, topic, new Date().toISOString());
     if (park.reopened) fields.reopened = true;
     if (flags.flagged.length > 0) fields.reconcile_flagged = true;
     if (flags.staled.length > 0) fields.sources_staled = flags.staled;
-    if (park.dirty || flags.flagged.length > 0 || flags.staled.length > 0) saveWorkUnitManifest(cwd, unit, manifest);
+    if (park.dirty || voided || flags.flagged.length > 0 || flags.staled.length > 0) saveWorkUnitManifest(cwd, unit, manifest);
   }
   const name = `${nextNumber(cwd, unit, topic)}-${slug}.md`;
   const rel = `${mailboxDir(unit, topic)}/${name}`;

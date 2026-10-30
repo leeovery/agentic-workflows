@@ -65,15 +65,25 @@ describe('pipeline simulation: feature', () => {
     assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
       /□ Discussion Session[\s\S]*> Discussion starting\./);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // The topic closes at the decided screen, whose yes completes it.
-    decideTopic(sim, wu, wu);
+    // The person answers their question, and the topic closes at the decided
+    // screen: its yes lands Claude's product-record line, completes the topic
+    // and hands it to the specification.
+    const at = `${wu}.discussion.${wu}`;
+    const person = { by: 'person', who_moved_whom: 'none' };
+    const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
+    const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
+    const decided = decideTopic(sim, wu, wu, { lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }], candidates: [] });
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.
     assert.ok(fs.existsSync(statePath(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
-    // The engine's own door reads back what the completion indexed in process.
+    // The engine's own door reads back what the close indexed in process: the
+    // records — the topic's, and the unit's own, which holds the line — and
+    // the discussion beside them.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
-    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}discussion: \d+$/m);
+    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n {2}discussion: 1$/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
@@ -98,25 +108,6 @@ describe('pipeline simulation: feature', () => {
     const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' });
     assert.match(correctionScreen, new RegExp(`Correcting ${literal(path.join(sim.dir, `.leeway/${wu}/specification/${wu}/specification.md`))}\\.`));
     assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
-  });
-
-  it('feature: the decided screen stands on the closed checklist, and its yes lands the product-record line, completes the topic and hands it to the specification', () => {
-    const wu = 'cards';
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Card networks', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    const at = `${wu}.discussion.${wu}`;
-    const person = { by: 'person', who_moved_whom: 'none' };
-    const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
-    const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
-    sim.refuses(['render', 'decided', `${wu}.${wu}`], /^render decided: decided\.cards is open — its items are worked, then it is closed: checklist close decided cards cards$/);
-    const decided = decideTopic(sim, wu, wu, { lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }], candidates: [] });
-    assert.strictEqual(decided.lines.length, 1, 'the yes landed the product-record line');
-    assert.strictEqual(typeof decided.committed, 'string', 'the yes committed the close');
-    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items[wu].status, 'completed');
-    assert.deepStrictEqual(sim.run(['ledger', 'product']).decisions.map((/** @type {{id: string}} */ d) => d.id), decided.lines, 'the line stands on the product record');
-    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 1$/m, 'the close indexed the line on the record');
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
   });
 
   it('start: a working set of inbox ideas hands discovery its seeds, which the work-type commit lands', () => {

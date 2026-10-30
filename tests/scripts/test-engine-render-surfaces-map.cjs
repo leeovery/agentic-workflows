@@ -70,12 +70,12 @@ const map = (topic = 'note-window') => output(dir, ['render', 'map', `${UNIT}.${
 const shown = (out) => out.slice(out.indexOf('\n') + 1);
 
 describe('render map (9.5.6)', () => {
-  it('shows the person\'s questions and Claude\'s calls, one line each, where each stands, and Claude\'s calls since the person last looked', () => {
+  it('shows the person\'s questions and Claude\'s calls, one line each, where each stands — a call handed over Claude\'s, so the two counts are the rows — and Claude\'s calls since the person last looked', () => {
     const out = map();
     assert.match(out, /^=== DISPLAY: map \(emit verbatim as a text code block/);
     assert.strictEqual(shown(out), [
       'Map — Note Window',
-      '5 of yours: 2 decided, 2 open, 1 moved on · 2 calls by Claude',
+      '4 of yours: 1 decided, 2 open, 1 moved on · 2 calls by Claude',
       '',
       'SINCE YOU LAST LOOKED (2 calls by Claude)',
       '  ├─ ◇ Is pricing mentioned?',
@@ -89,10 +89,10 @@ describe('render map (9.5.6)', () => {
       '  └─ ○ How fast does a note open?                  [yours]',
       '        ↳ Waiting on experiment E1, still running',
       '',
-      'DECIDED (2 of yours · 2 calls by Claude)',
+      'DECIDED (1 of yours · 2 calls by Claude)',
       '  ├─ ✓ How does first run open?             [yours]',
       '  ├─ ◇ Is pricing mentioned?                [Claude\'s call]',
-      '  └─ ✓ Which corner does a note open in?    [your call]',
+      '  └─ ◇ Which corner does a note open in?    [your call]',
       '',
       'MOVED ON (1 of yours)',
       '  └─ → Where does a space keep its notes? [moved to Space Homing]',

@@ -308,6 +308,80 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
 }
 
 /**
+ * A batch entry: a topic to add, its routing and summary, and optionally its
+ * description, brief pointer, provenance tag (`discovery` where it gives
+ * none) and the person's confirmed re-add of a dismissed name.
+ * @typedef {{name: string, routing: string, summary: string, description?: string, brief_path?: string, source?: string, force_dismissed?: boolean}} BatchEntry
+ */
+
+/**
+ * Refuse, in the words of `said`, a batch that is not a non-empty list of
+ * entries each well formed, or that names a topic twice — checked before
+ * the map is read.
+ * @param {any} entries @param {string} said
+ */
+function checkBatchEntries(entries, said) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error(`${said}: entries must be a non-empty array of {name, routing, summary, description?, brief_path?, force_dismissed?}`);
+  }
+  entries.forEach((e, i) => {
+    const at = `entry ${i + 1}`;
+    if (!e || typeof e !== 'object') throw new Error(`${said}: ${at} must be an object`);
+    if (typeof e.name !== 'string' || e.name === '' || /[./]/.test(e.name)) {
+      throw new Error(`${said}: ${at} — "${e.name}" is not a legal topic name (dots and slashes break manifest addressing)`);
+    }
+    if (!e.routing || !VALID_ROUTINGS.includes(e.routing)) {
+      throw new Error(`${said}: ${at} ("${e.name}") — unknown routing ${JSON.stringify(e.routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
+    }
+    if (typeof e.summary !== 'string' || e.summary.trim() === '') {
+      throw new Error(`${said}: ${at} ("${e.name}") — "summary" must be a non-empty string`);
+    }
+    for (const opt of ['description', 'brief_path', 'source']) {
+      if (e[opt] !== undefined && (typeof e[opt] !== 'string' || e[opt].trim() === '')) {
+        throw new Error(`${said}: ${at} ("${e.name}") — "${opt}" must be a non-empty string when present`);
+      }
+    }
+  });
+  const names = entries.map((e) => e.name);
+  const dupe = names.find((n, i) => names.indexOf(n) !== i);
+  if (dupe) throw new Error(`${said}: "${dupe}" appears more than once in the batch`);
+}
+
+/**
+ * The batch added to the map on `manifest`, the whole batch checked against
+ * the map as it stands before any of it is applied — refused, in the words
+ * of `said`, for a name on the map already or one dismissed from it that
+ * the entry does not confirm re-adding, `reAdd` saying how it is re-added.
+ * The caller saves the manifest.
+ * @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {string} said @param {string} [reAdd]
+ * @returns {string[]} the dismissed names the batch re-added
+ */
+function addBatchTo(manifest, entries, said, reAdd = 'confirm the re-add with the user, then set force_dismissed on the entry') {
+  const phases = ensureContainer(manifest, 'phases', 'phases');
+  const discovery = ensureContainer(phases, 'discovery', 'phases.discovery');
+  ensureContainer(discovery, 'items', 'phases.discovery.items');
+  const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
+  for (const e of entries) {
+    if (discovery.items[e.name]) {
+      throw new Error(`${said}: "${e.name}" is already on the map — nothing was added; edit it, or pick a different name`);
+    }
+    if (dismissed.includes(e.name) && !e.force_dismissed) {
+      throw new Error(`${said}: "${e.name}" was previously dismissed from this map — nothing was added; ${reAdd}`);
+    }
+  }
+  const undismissed = entries.filter((e) => dismissed.includes(e.name)).map((e) => e.name);
+  for (const e of entries) {
+    /** @type {Record<string, unknown>} */
+    const item = { routing: e.routing, source: e.source ?? 'discovery', summary: e.summary };
+    if (e.description !== undefined) item.description = e.description;
+    if (e.brief_path !== undefined) item.brief_path = e.brief_path;
+    discovery.items[e.name] = item;
+  }
+  if (undismissed.length > 0) discovery.dismissed = dismissed.filter((n) => !undismissed.includes(n));
+  return undismissed;
+}
+
+/**
  * Add a whole topic set in one transaction — one lock, one load, one save.
  * The batch form for the harvest (D7: one task, one call): every entry is
  * validated before anything is applied, so a failing entry means nothing
@@ -317,74 +391,21 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
  * covers the batch.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {{name: string, routing: string, summary: string, description?: string, brief_path?: string, force_dismissed?: boolean}[]} entries
+ * @param {BatchEntry[]} entries
  * @returns {{work_unit: string, op: string, added: {name: string, routing: string, lifecycle: string}[], undismissed: string[], map_total: number}}
  */
 function addItemsBatch(cwd, workUnit, entries) {
-  if (!Array.isArray(entries) || entries.length === 0) {
-    throw new Error('add-batch: entries must be a non-empty array of {name, routing, summary, description?, brief_path?, force_dismissed?}');
-  }
-  entries.forEach((e, i) => {
-    const at = `entry ${i + 1}`;
-    if (!e || typeof e !== 'object') throw new Error(`add-batch: ${at} must be an object`);
-    if (typeof e.name !== 'string' || e.name === '' || /[./]/.test(e.name)) {
-      throw new Error(`add-batch: ${at} — "${e.name}" is not a legal topic name (dots and slashes break manifest addressing)`);
-    }
-    if (!e.routing || !VALID_ROUTINGS.includes(e.routing)) {
-      throw new Error(`add-batch: ${at} ("${e.name}") — unknown routing ${JSON.stringify(e.routing ?? null)} (${VALID_ROUTINGS.join('|')})`);
-    }
-    if (typeof e.summary !== 'string' || e.summary.trim() === '') {
-      throw new Error(`add-batch: ${at} ("${e.name}") — "summary" must be a non-empty string`);
-    }
-    for (const opt of ['description', 'brief_path']) {
-      if (e[opt] !== undefined && (typeof e[opt] !== 'string' || e[opt].trim() === '')) {
-        throw new Error(`add-batch: ${at} ("${e.name}") — "${opt}" must be a non-empty string when present`);
-      }
-    }
-  });
-  const names = entries.map((e) => e.name);
-  const dupe = names.find((n, i) => names.indexOf(n) !== i);
-  if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
-
+  checkBatchEntries(entries, 'add-batch');
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const phases = ensureContainer(manifest, 'phases', 'phases');
-    const discovery = ensureContainer(phases, 'discovery', 'phases.discovery');
-    ensureContainer(discovery, 'items', 'phases.discovery.items');
-    const dismissed = Array.isArray(discovery.dismissed) ? discovery.dismissed : [];
-
-    // Validate the whole batch against current state before applying any of it.
-    for (const e of entries) {
-      if (discovery.items[e.name]) {
-        throw new Error(`add-batch: "${e.name}" is already on the map — nothing was added; edit it, or pick a different name`);
-      }
-      if (dismissed.includes(e.name) && !e.force_dismissed) {
-        throw new Error(`add-batch: "${e.name}" was previously dismissed from this map — nothing was added; confirm the re-add with the user, then set force_dismissed on the entry`);
-      }
-    }
-
-    /** @type {string[]} */
-    const undismissed = [];
-    for (const e of entries) {
-      if (dismissed.includes(e.name)) undismissed.push(e.name);
-      /** @type {Record<string, unknown>} */
-      const item = { routing: e.routing, source: 'discovery', summary: e.summary };
-      if (e.description !== undefined) item.description = e.description;
-      if (e.brief_path !== undefined) item.brief_path = e.brief_path;
-      discovery.items[e.name] = item;
-    }
-    if (undismissed.length > 0) {
-      discovery.dismissed = dismissed.filter((n) => !undismissed.includes(n));
-    }
-
+    const undismissed = addBatchTo(manifest, entries, 'add-batch');
     saveWorkUnitManifest(cwd, workUnit, manifest);
-
     return {
       work_unit: workUnit,
       op: 'add-batch',
       added: entries.map((e) => ({ name: e.name, routing: e.routing, lifecycle: computeTopicLifecycle(manifest, e.name).lifecycle })),
       undismissed,
-      map_total: Object.keys(discovery.items).length,
+      map_total: Object.keys(manifest.phases.discovery.items).length,
     };
   });
 }
@@ -690,4 +711,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS, freshRefusal };
+module.exports = { sequenceMap, addItem, addItemsBatch, checkBatchEntries, addBatchTo, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS, freshRefusal };
