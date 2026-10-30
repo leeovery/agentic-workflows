@@ -30,6 +30,8 @@ const { useWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp, placed,
 
 useWorld();
 
+const [NOTES, THEIRS, DRAFT, MINE] = ['notes.md', 'theirs.md', 'draft.md', 'mine.md'].map((name) => layout.assets('unit', name));
+
 // --- a lost local branch --------------------------------------------------------
 
 describe('a lost local branch (4.S8)', () => {
@@ -50,24 +52,24 @@ describe('a lost local branch (4.S8)', () => {
   it('deleted under its worktree, is restored and the folder linked to it again, what the folder holds kept', () => {
     const { main, root, bare } = setUp({ remote: true });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
-    createFile(root, 'notes.md', 'not yet committed\n');
+    createFile(root, NOTES, 'not yet committed\n');
 
     assert.strictEqual(boot(main).state, 'ready');
 
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(readFile(root, 'notes.md'), 'not yet committed\n');
+    assert.strictEqual(readFile(root, NOTES), 'not yet committed\n');
     bootsWithNothingToDo(main, bare);
   });
 
   it('deleted under its worktree while the remote moved on, its folder is brought to the remote\'s tip: the next write undoes nothing the remote changed, and edits not yet committed survive', () => {
     const { main, root, bare } = setUp({ remote: true });
-    commitOnState(root, { 'notes.md': 'one\ntwo\nthree\n' });
+    commitOnState(root, { [NOTES]: 'one\ntwo\nthree\n' });
     const other = cloneInWorld(bare, 'other');
     boot(other);
-    commitOnState(statePath(other), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
-    createFile(root, 'notes.md', 'one, mine\ntwo\nthree\n');
-    createFile(root, 'draft.md', 'not yet committed\n');
+    commitOnState(statePath(other), { [NOTES]: 'one\ntwo\nthree, theirs\n', [THEIRS]: 'from the other clone\n' });
+    createFile(root, NOTES, 'one, mine\ntwo\nthree\n');
+    createFile(root, DRAFT, 'not yet committed\n');
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
     const res = boot(main);
@@ -75,17 +77,17 @@ describe('a lost local branch (4.S8)', () => {
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(readFile(root, 'theirs.md'), 'from the other clone\n');
-    assert.strictEqual(readFile(root, 'notes.md'), 'one, mine\ntwo\nthree, theirs\n');
-    assert.strictEqual(readFile(root, 'draft.md'), 'not yet committed\n');
-    assert.deepStrictEqual(git(root, ['status', '--porcelain']).split('\n').filter(Boolean), [' M notes.md', '?? draft.md'],
+    assert.strictEqual(readFile(root, THEIRS), 'from the other clone\n');
+    assert.strictEqual(readFile(root, NOTES), 'one, mine\ntwo\nthree, theirs\n');
+    assert.strictEqual(readFile(root, DRAFT), 'not yet committed\n');
+    assert.deepStrictEqual(git(root, ['status', '--porcelain']).split('\n').filter(Boolean), [` M ${NOTES}`, `?? ${DRAFT}`],
       'the index reads the remote\'s tip: only the edits show');
 
     const next = withStateLock(root, () => commitState(root, ['.'], 'state: everything'));
 
-    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:theirs.md`]), 'from the other clone\n');
-    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:notes.md`]), 'one, mine\ntwo\nthree, theirs\n');
-    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:draft.md`]), 'not yet committed\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${THEIRS}`]), 'from the other clone\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${NOTES}`]), 'one, mine\ntwo\nthree, theirs\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${DRAFT}`]), 'not yet committed\n');
     assert.strictEqual(remoteTip(bare), next.commit);
   });
 
@@ -93,7 +95,7 @@ describe('a lost local branch (4.S8)', () => {
     const { main, root, bare } = setUp({ remote: true });
     const hook = path.join(bare, 'hooks', 'pre-receive');
     fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
-    const left = commitOnState(root, { 'mine.md': 'committed, never pushed\n' }).commit;
+    const left = commitOnState(root, { [MINE]: 'committed, never pushed\n' }).commit;
     fs.rmSync(hook);
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
@@ -101,7 +103,7 @@ describe('a lost local branch (4.S8)', () => {
 
     assert.strictEqual(tip(main, STATE_BRANCH), left);
     assert.strictEqual(remoteTip(bare), left);
-    assert.strictEqual(readFile(root, 'mine.md'), 'committed, never pushed\n');
+    assert.strictEqual(readFile(root, MINE), 'committed, never pushed\n');
     assert.strictEqual(git(root, ['status', '--porcelain']), '');
   });
 
@@ -110,7 +112,7 @@ describe('a lost local branch (4.S8)', () => {
     git(main, ['config', 'core.logAllRefUpdates', 'false']);
     assert.strictEqual(boot(main).state, 'ready');
     const root = statePath(main);
-    const left = commitOnState(root, { 'mine.md': 'committed\n' }).commit;
+    const left = commitOnState(root, { [MINE]: 'committed\n' }).commit;
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
     assert.strictEqual(boot(main).state, 'ready');

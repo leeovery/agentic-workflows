@@ -184,6 +184,8 @@ describe('today\'s places (E4)', () => {
       cache: layout.cache('pay', 'draft.md'),
       unit: layout.unit('pay', 'spec.md'),
       manifest: layout.manifest('pay'),
+      topic: layout.topic('pay', 'auth', 'log.md'),
+      assets: layout.assets('pay', 'deck', 'cover.png'),
       doc: layout.doc('pay', 'investigation', 'crash'),
       mailbox: layout.mailbox('pay', 'research', 'auth', '001-retry-policy.md'),
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),

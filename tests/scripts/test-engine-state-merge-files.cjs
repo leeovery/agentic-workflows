@@ -80,102 +80,102 @@ describe('any other file both sides changed', () => {
   it('reads in one batch an empty file and a file of any bytes, LFs and lines like the batch\'s own headers in it, beside text files', () => {
     const header = `${'e'.repeat(40)} 7\n`;
     const binary = (/** @type {string} */ side) => Buffer.from(`\0\n${header}${side}\n\n${header}`);
-    const { here, there } = machinesSharing({ 'unit/empty.md': '', 'unit/blob.bin': binary('base'), 'unit/spec.md': 'one\n\ntwo\n' });
-    commitUnpushed(here, { 'unit/empty.md': 'here\n', 'unit/blob.bin': binary('here'), 'unit/spec.md': 'ONE\n\ntwo\n' });
-    commitOnState(there.root, { 'unit/empty.md': 'there\n', 'unit/blob.bin': binary('there'), 'unit/spec.md': 'one\n\nTWO\n' });
+    const { here, there } = machinesSharing({ 'unit/assets/empty.md': '', 'unit/assets/blob.bin': binary('base'), 'unit/spec.md': 'one\n\ntwo\n' });
+    commitUnpushed(here, { 'unit/assets/empty.md': 'here\n', 'unit/assets/blob.bin': binary('here'), 'unit/spec.md': 'ONE\n\ntwo\n' });
+    commitOnState(there.root, { 'unit/assets/empty.md': 'there\n', 'unit/assets/blob.bin': binary('there'), 'unit/spec.md': 'one\n\nTWO\n' });
 
     const { result: out, commands } = traced(() => catchUpState(here.root));
 
-    const beside = `unit/blob.${blobId(binary('here')).slice(0, 8)}.bin`;
+    const beside = `unit/assets/blob.${blobId(binary('here')).slice(0, 8)}.bin`;
     assert.deepStrictEqual([out.action, commands.filter((c) => c.startsWith("cat-file '--batch=")).length], ['merged', 1]);
-    assert.strictEqual(readFile(here.root, 'unit/empty.md'), 'there\nhere\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/empty.md'), 'there\nhere\n');
     assert.strictEqual(readFile(here.root, 'unit/spec.md'), 'ONE\n\nTWO\n');
-    assert.ok(fs.readFileSync(path.join(here.root, 'unit/blob.bin')).equals(binary('there')), 'the remote\'s bytes are not at the path');
+    assert.ok(fs.readFileSync(path.join(here.root, 'unit/assets/blob.bin')).equals(binary('there')), 'the remote\'s bytes are not at the path');
     assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(binary('here')), 'this machine\'s bytes are not beside it');
   });
 
   it('keeps whole a file whose bytes are not UTF-8, though it holds no NUL', () => {
     const latin = (/** @type {string} */ text) => Buffer.from(text, 'latin1');
-    const { here, there } = machinesSharing({ 'unit/notes.txt': latin('café\n\none\n\ntwo\n') });
-    commitUnpushed(here, { 'unit/notes.txt': latin('café\n\nONE\n\ntwo\n') });
-    commitOnState(there.root, { 'unit/notes.txt': latin('café\n\none\n\nTWO\n') });
+    const { here, there } = machinesSharing({ 'unit/assets/notes.txt': latin('café\n\none\n\ntwo\n') });
+    commitUnpushed(here, { 'unit/assets/notes.txt': latin('café\n\nONE\n\ntwo\n') });
+    commitOnState(there.root, { 'unit/assets/notes.txt': latin('café\n\none\n\nTWO\n') });
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/notes.${blobId(latin('café\n\nONE\n\ntwo\n')).slice(0, 8)}.txt`;
-    assert.ok(fs.readFileSync(path.join(here.root, 'unit/notes.txt')).equals(latin('café\n\none\n\nTWO\n')), 'the remote\'s bytes are not at the path');
+    const beside = `unit/assets/notes.${blobId(latin('café\n\nONE\n\ntwo\n')).slice(0, 8)}.txt`;
+    assert.ok(fs.readFileSync(path.join(here.root, 'unit/assets/notes.txt')).equals(latin('café\n\none\n\nTWO\n')), 'the remote\'s bytes are not at the path');
     assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(latin('café\n\nONE\n\ntwo\n')), 'this machine\'s bytes are not beside it');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/notes.txt']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/notes.txt']);
   });
 
   it('keeps a JSON file both sides changed whole, the remote\'s at its path and this machine\'s beside it, never merged line by line', () => {
-    const { here, there } = machinesSharing({ 'unit/data.json': '{\n  "a": 1,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n' });
-    commitUnpushed(here, { 'unit/data.json': '{\n  "a": 2,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":2}\n' });
-    commitOnState(there.root, { 'unit/data.json': '{\n  "a": 1,\n  "b": 3\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":3}\n' });
+    const { here, there } = machinesSharing({ 'unit/assets/data.json': '{\n  "a": 1,\n  "b": 1\n}\n', 'unit/assets/events.jsonl': '{"n":1}\n' });
+    commitUnpushed(here, { 'unit/assets/data.json': '{\n  "a": 2,\n  "b": 1\n}\n', 'unit/assets/events.jsonl': '{"n":1}\n{"n":2}\n' });
+    commitOnState(there.root, { 'unit/assets/data.json': '{\n  "a": 1,\n  "b": 3\n}\n', 'unit/assets/events.jsonl': '{"n":1}\n{"n":3}\n' });
 
     const out = catchUpState(here.root);
 
-    const data = `unit/data.${blobId('{\n  "a": 2,\n  "b": 1\n}\n').slice(0, 8)}.json`;
-    const events = `unit/events.${blobId('{"n":1}\n{"n":2}\n').slice(0, 8)}.jsonl`;
+    const data = `unit/assets/data.${blobId('{\n  "a": 2,\n  "b": 1\n}\n').slice(0, 8)}.json`;
+    const events = `unit/assets/events.${blobId('{"n":1}\n{"n":2}\n').slice(0, 8)}.jsonl`;
     assert.strictEqual(out.action, 'merged');
-    assert.strictEqual(readFile(here.root, 'unit/data.json'), '{\n  "a": 1,\n  "b": 3\n}\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/data.json'), '{\n  "a": 1,\n  "b": 3\n}\n');
     assert.strictEqual(readFile(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
-    assert.strictEqual(readFile(here.root, 'unit/events.jsonl'), '{"n":1}\n{"n":3}\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/events.jsonl'), '{"n":1}\n{"n":3}\n');
     assert.strictEqual(readFile(here.root, events), '{"n":1}\n{"n":2}\n');
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/data.json', 'unit/events.jsonl']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/data.json', 'unit/assets/events.jsonl']);
   });
 
   it('keeps a file on the remote and a folder here apart, the remote\'s file at the path and this machine\'s folder beside it', () => {
-    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
-    commitUnpushed(here, { 'unit/z/inside.md': 'inside, here\n' });
-    commitOnState(there.root, { 'unit/z': 'z, a file there\n' });
+    const { here, there } = machinesSharing({ 'unit/assets/a.md': 'a\n' });
+    commitUnpushed(here, { 'unit/assets/z/inside.md': 'inside, here\n' });
+    commitOnState(there.root, { 'unit/assets/z': 'z, a file there\n' });
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/z.${treeId(here.root, { 'inside.md': 'inside, here\n' }).slice(0, 8)}`;
+    const beside = `unit/assets/z.${treeId(here.root, { 'inside.md': 'inside, here\n' }).slice(0, 8)}`;
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
-    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\nunit/z\n${beside}/inside.md\n`);
-    assert.strictEqual(readFile(here.root, 'unit/z'), 'z, a file there\n');
+    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/assets/a.md\nunit/assets/z\n${beside}/inside.md\n`);
+    assert.strictEqual(readFile(here.root, 'unit/assets/z'), 'z, a file there\n');
     assert.strictEqual(readFile(here.root, `${beside}/inside.md`), 'inside, here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/z is a file on the remote and a folder on this machine: the remote's file stays at unit/z, and this machine's folder is kept beside it as ${beside}`,
+      `unit/assets/z is a file on the remote and a folder on this machine: the remote's file stays at unit/assets/z, and this machine's folder is kept beside it as ${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
 
   it('keeps a folder on the remote and a file here apart, the remote\'s folder at the path and this machine\'s file beside it', () => {
-    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
-    commitUnpushed(here, { 'unit/w': 'w, a file here\n' });
-    commitOnState(there.root, { 'unit/w/inside.md': 'inside, there\n' });
+    const { here, there } = machinesSharing({ 'unit/assets/a.md': 'a\n' });
+    commitUnpushed(here, { 'unit/assets/w': 'w, a file here\n' });
+    commitOnState(there.root, { 'unit/assets/w/inside.md': 'inside, there\n' });
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/w.${blobId('w, a file here\n').slice(0, 8)}`;
-    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\n${beside}\nunit/w/inside.md\n`);
-    assert.strictEqual(readFile(here.root, 'unit/w/inside.md'), 'inside, there\n');
+    const beside = `unit/assets/w.${blobId('w, a file here\n').slice(0, 8)}`;
+    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/assets/a.md\n${beside}\nunit/assets/w/inside.md\n`);
+    assert.strictEqual(readFile(here.root, 'unit/assets/w/inside.md'), 'inside, there\n');
     assert.strictEqual(readFile(here.root, beside), 'w, a file here\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/w, and this machine's file is kept beside it as ${beside}`,
+      `unit/assets/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/assets/w, and this machine's file is kept beside it as ${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
 
   it('keeps the changed copy of a file deleted on one side and changed on the other', () => {
-    const { here, there } = machinesSharing({ 'unit/notes.md': 'n\n', 'unit/brief.md': 'b\n' });
-    fs.rmSync(path.join(here.root, 'unit/notes.md'));
-    pushFailing(here, () => withStateLock(here.root, () => commitState(here.root, ['unit/notes.md'], 'state: drop')));
-    commitUnpushed(here, { 'unit/brief.md': 'b, changed here\n' });
-    fs.rmSync(path.join(there.root, 'unit/brief.md'));
-    commitOnState(there.root, { 'unit/notes.md': 'n, changed there\n' });
-    withStateLock(there.root, () => commitState(there.root, ['unit/brief.md'], 'state: drop'));
+    const { here, there } = machinesSharing({ 'unit/assets/notes.md': 'n\n', 'unit/assets/brief.md': 'b\n' });
+    fs.rmSync(path.join(here.root, 'unit/assets/notes.md'));
+    pushFailing(here, () => withStateLock(here.root, () => commitState(here.root, ['unit/assets/notes.md'], 'state: drop')));
+    commitUnpushed(here, { 'unit/assets/brief.md': 'b, changed here\n' });
+    fs.rmSync(path.join(there.root, 'unit/assets/brief.md'));
+    commitOnState(there.root, { 'unit/assets/notes.md': 'n, changed there\n' });
+    withStateLock(there.root, () => commitState(there.root, ['unit/assets/brief.md'], 'state: drop'));
 
     const out = catchUpState(here.root);
 
-    assert.strictEqual(readFile(here.root, 'unit/notes.md'), 'n, changed there\n');
-    assert.strictEqual(readFile(here.root, 'unit/brief.md'), 'b, changed here\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), 'n, changed there\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/brief.md'), 'b, changed here\n');
     assert.deepStrictEqual(out.warnings.sort(), [
-      'unit/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
-      'unit/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
+      'unit/assets/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
+      'unit/assets/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
     ]);
   });
 });
@@ -214,7 +214,7 @@ describe('the person\'s line-ending config', () => {
 });
 
 describe('the git calls a merge makes, all under the writer lock', () => {
-  const FILES = ['unit/a.md', 'unit/b.md', 'unit/c.md'];
+  const FILES = ['unit/assets/a.md', 'unit/assets/b.md', 'unit/assets/c.md'];
 
   /** @param {string} text */
   function each(text) {

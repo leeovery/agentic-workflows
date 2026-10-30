@@ -43,6 +43,18 @@
 //   is pushed wherever the project has a remote, never forced; a push that
 //   fails, runs out of time, or finds no remote chosen among several is a
 //   warning, and the commit stands.
+// - The backstop: every state commit is the engine's, so a commit reads the
+//   state worktree's changes once, untracked files among them, ignored ones
+//   not, and holds each against the layout (layout.cjs), its names spelled
+//   as the state's filesystem spells them. A file on disk the layout has no
+//   place for — one a shell wrote, past the layout hook — refuses the
+//   commit, naming it, with nothing committed (6.2.5); a file gone is never
+//   refused, as removing one is the way on. Every changed log of the
+//   layout's rides along with what the verb gives (6.3.2). The files the
+//   person's tools leave beside the state's — an operating system's folder
+//   metadata, an editor's swap files, backups and locks — are neither
+//   refused nor committed. A merge's landing is no verb's commit, and is
+//   never checked.
 // - Its `.gitignore`: written whole at the orphan's first commit; the task
 //   driver's local files are added to it later, as its store is made.
 //
@@ -60,6 +72,8 @@ const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolat
 const { GitError, literally } = require('../kernel/git.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
+const { ignoresCase } = require('../kernel/state-root.cjs');
+const { AS_WRITTEN, IN_LOWER_CASE, layoutPlace } = require('./layout.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
@@ -79,6 +93,19 @@ const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
 const PRIVATE_INDEX = 'leeway-commit.index';
 const BOOT_LOCK = 'leeway-boot.lock';
+
+// The files the person's tools leave beside the state's, by base name, `*`
+// any run of characters: Finder's, Explorer's and the AppleDouble halves a
+// Mac writes on a foreign disk; Vim's swap files; Emacs's backups,
+// autosaves and locks; JetBrains' safe-write copies.
+const TOOL_SIDECARS = Object.freeze([
+  '.DS_Store', 'Thumbs.db', 'desktop.ini', '._*',
+  '.*.swp', '.*.swo', '.*.swx',
+  '*~', '#*#', '.#*',
+  '*___jb_tmp___', '*___jb_old___',
+]);
+const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(/[^\w*]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`);
+const SIDECARS_HELD_OUT = Object.freeze(TOOL_SIDECARS.map((glob) => `:(exclude,glob)**/${glob}`));
 
 const PUSH_TIMEOUT_MS = 15000;
 const FETCH_TIMEOUT_MS = 15000;
@@ -701,6 +728,43 @@ function changedAt(git, head, spec, change) {
 }
 
 /**
+ * A path whose file in the state worktree differs from HEAD, named from the
+ * root: whether it is gone from the working tree, and its place in the
+ * layout, null where it has none.
+ * @typedef {{rel: string, gone: boolean, at: import('./layout.cjs').Place|null}} PlacedChange
+ */
+
+/**
+ * Every path whose file in the state worktree differs from HEAD — changed,
+ * added, untracked or gone, never one git ignores — read in one `status`,
+ * the files the person's tools leave beside the state's left out, each with
+ * its place in the layout as the state's filesystem spells names.
+ * @param {OpenWorktree} worktree
+ * @returns {PlacedChange[]}
+ */
+function placedChanges({ git, root }) {
+  const fold = ignoresCase(root) ? IN_LOWER_CASE : AS_WRITTEN;
+  return git.run(['status', '--porcelain', '-z', '--untracked-files=all', '--no-renames']).split('\0')
+    .filter((entry) => entry !== '' && !SIDECAR_NAME.test(path.posix.basename(entry.slice(3))))
+    .map((entry) => {
+      const rel = entry.slice(3);
+      return { rel, gone: entry[1] === 'D' || entry.startsWith('D '), at: layoutPlace(rel, fold) };
+    });
+}
+
+/**
+ * Refuse a state commit, committing nothing, where a file on disk has no
+ * place in the layout, naming each and the way on (6.2.5).
+ * @param {string} root @param {PlacedChange[]} changes
+ */
+function refuseOutsideLayout(root, changes) {
+  const strays = changes.filter(({ at, gone }) => at === null && !gone).map(({ rel }) => rel);
+  if (strays.length === 0) return;
+  const it = strays.length === 1 ? 'it' : 'each';
+  throw new Error(`the state at ${root} holds ${strays.join(', ')}, outside the workflows' layout — nothing committed; remove ${it}, or move ${it} into the layout`);
+}
+
+/**
  * Commit the working tree's state of the pathspecs onto `leeway-state`. The
  * tree is built in a private index seeded from HEAD — never the worktree's
  * own, whatever it holds staged — and the branch moves only from the HEAD it
@@ -710,7 +774,8 @@ function changedAt(git, head, spec, change) {
  * A kill at any step leaves the branch where it was or at the whole commit,
  * and the private index is cleared before and after. A file given a change
  * is committed as the change makes it of HEAD's, whatever the working tree
- * holds. Null where the tree comes out as HEAD's.
+ * holds. The files the person's tools leave beside the state's are never
+ * staged. Null where the tree comes out as HEAD's.
  * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
  * @param {Record<string, Change>} changes
  * @returns {string|null}
@@ -729,7 +794,7 @@ function commitPaths(worktree, specs, message, changes) {
     // a path gone from both has nothing to commit.
     const stageable = specs.filter((spec) => spec === '.' || onDisk(path.join(root, spec))
       || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
-    if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable)], { env });
+    if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable), ...SIDECARS_HELD_OUT], { env });
     for (const { spec, text } of changed) {
       const blob = git.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
       git.run(['update-index', '--add', '--cacheinfo', `100644,${blob},${spec}`], { env });
@@ -782,16 +847,18 @@ function push(git, timeoutMs) {
 }
 
 /**
- * Commit exactly `paths`, as the working tree holds them, onto
- * `leeway-state` in the state worktree, pushing nothing. The caller holds
- * the writer lock (`withStateLock`). Refuses, committing nothing, where git
- * cannot open the state worktree and where it has another branch checked
- * out. A merge's landing a kill cut short is finished first. Paths that hold
- * no change commit nothing. A file in `contents` is committed as its change
- * makes it of the file the branch holds once any landing is finished — over
- * whatever `paths` gives of it — the working file's own changes left as
- * they are, uncommitted; a file the branch holds that git cannot read, or
- * that its change cannot be made of, refuses the commit.
+ * Commit `paths`, as the working tree holds them, onto `leeway-state` in
+ * the state worktree, with every log of the layout's changed since the last
+ * commit, pushing nothing. The caller holds the writer lock
+ * (`withStateLock`). Refuses, committing nothing, where git cannot open the
+ * state worktree, where it has another branch checked out, and where a file
+ * in it has no place in the layout. A merge's landing a kill cut short is
+ * finished first. Paths that hold no change commit nothing. A file in
+ * `contents` is committed as its change makes it of the file the branch
+ * holds once any landing is finished — over whatever `paths` gives of it —
+ * the working file's own changes left as they are, uncommitted; a file the
+ * branch holds that git cannot read, or that its change cannot be made of,
+ * refuses the commit.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
@@ -811,13 +878,16 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
   const taken = [...specs, ...Object.keys(given)];
   if (taken.length === 0) return { commit: null, warnings: [] };
   const landed = finishLanding(worktree, STATE_BRANCH);
-  const commit = commitPaths(worktree, specs, message, given);
-  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', taken)] };
+  const changes = placedChanges(worktree);
+  refuseOutsideLayout(root, changes);
+  const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
+  const commit = commitPaths(worktree, [...specs, ...logs], message, given);
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs])] };
 }
 
 /**
- * Commit exactly `paths` as `commitHere` does, then push. Paths that hold no
- * change commit nothing and push nothing.
+ * Commit `paths` as `commitHere` does, then push. Paths that hold no change,
+ * with no log changed, commit nothing and push nothing.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message

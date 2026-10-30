@@ -36,6 +36,8 @@ const { SESSION, MADE, NOTE } = require('./ledger-world.cjs');
 
 const world = useWorld();
 
+const NOTES = layout.assets('unit', 'notes.md');
+
 // --- the catch-up at boot ------------------------------------------------------------
 
 /** Two clones of one project's state: `there` set up and pushed, `here` a clone of it. */
@@ -50,14 +52,14 @@ function twoClones() {
 describe('the catch-up at boot (4.7.8)', () => {
   it('fast-forwards a branch only the remote moved before the migrations run (4.S36)', () => {
     const { there, here } = twoClones();
-    const moved = commitOnState(there.root, { 'notes.md': 'from there\n' }).commit;
+    const moved = commitOnState(there.root, { [NOTES]: 'from there\n' }).commit;
     const mark = path.join(world(), 'migrated');
 
     const res = boot(here.main, { STUB_MIGRATE_MARK: mark });
 
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     assert.strictEqual(tip(here.main, STATE_BRANCH), moved);
-    assert.strictEqual(readFile(here.root, 'notes.md'), 'from there\n');
+    assert.strictEqual(readFile(here.root, NOTES), 'from there\n');
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), moved, 'the migrations ran over the state already caught up');
   });
 
@@ -89,7 +91,7 @@ describe('the catch-up at boot (4.7.8)', () => {
   it('pushes what a failed push left behind, the remote not moved since', () => {
     const { bare, here } = twoClones();
     git(here.main, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
-    const unpushed = commitOnState(here.root, { 'notes.md': 'unpushed\n' }).commit;
+    const unpushed = commitOnState(here.root, { [NOTES]: 'unpushed\n' }).commit;
     git(here.main, ['config', '--unset', 'remote.origin.pushurl']);
     assert.notStrictEqual(remoteTip(bare), unpushed);
 

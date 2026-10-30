@@ -256,6 +256,18 @@ function lastMessage(dir) {
 }
 
 /**
+ * The files a commit touched, sorted, each `{status}\t{path}` with the path
+ * as it stands, unquoted.
+ * @param {string} dir @param {string} rev @returns {string[]}
+ */
+function touched(dir, rev) {
+  const fields = git(dir, ['show', '--name-status', '--no-renames', '-z', '--format=', rev]).replace(/^\n+/, '').split('\0');
+  const entries = [];
+  for (let i = 0; i + 1 < fields.length; i += 2) entries.push(`${fields[i]}\t${fields[i + 1]}`);
+  return entries.sort();
+}
+
+/**
  * Every file in the state as it stands, state-relative, with its text.
  * @param {string} dir @returns {Record<string, string>}
  */
@@ -856,7 +868,7 @@ module.exports = {
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
-  git, stateGit, commitOnState, head, lastMessage, treeSnapshot, traced, childLimits, ledgerEntries, tip, remoteTip,
+  git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,

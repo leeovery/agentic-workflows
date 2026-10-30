@@ -124,9 +124,9 @@ describe('the merge, both sides moved (4.S14)', () => {
     const notes = Array.from({ length: 2000 }, (_, i) => `line ${i}\n`).join('');
     const unit = (/** @type {string} */ horizon, /** @type {object} */ extra) => projectManifest(horizon, { padding: 'p'.repeat(budget), ...extra });
     assert.ok([long, notes, unit('now', {})].every((text) => Buffer.byteLength(text) > budget));
-    const { here, there } = machinesSharing({ [layout.ledger]: long, 'unit/notes.md': notes, [layout.manifest('unit')]: unit('now', {}) });
-    commitUnpushed(here, { [layout.ledger]: long + ledger('a1'), 'unit/notes.md': `${notes}here\n`, [layout.manifest('unit')]: unit('next', { here: 1 }) });
-    commitOnState(there.root, { [layout.ledger]: long + ledger('b1'), 'unit/notes.md': `there\n${notes}`, [layout.manifest('unit')]: unit('someday', { there: 1 }) });
+    const { here, there } = machinesSharing({ [layout.ledger]: long, 'unit/assets/notes.md': notes, [layout.manifest('unit')]: unit('now', {}) });
+    commitUnpushed(here, { [layout.ledger]: long + ledger('a1'), 'unit/assets/notes.md': `${notes}here\n`, [layout.manifest('unit')]: unit('next', { here: 1 }) });
+    commitOnState(there.root, { [layout.ledger]: long + ledger('b1'), 'unit/assets/notes.md': `there\n${notes}`, [layout.manifest('unit')]: unit('someday', { there: 1 }) });
 
     const stopped = catchUpState(here.root, { readBudgetBytes: budget });
 
@@ -137,13 +137,13 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     const out = pickStateMerge(here.root, '1', shownChoice(here), { readBudgetBytes: budget });
 
-    const notesBeside = `unit/notes.${blobId(`${notes}here\n`).slice(0, 8)}.md`;
+    const notesBeside = `unit/assets/notes.${blobId(`${notes}here\n`).slice(0, 8)}.md`;
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.ok(readFile(here.root, layout.ledger) === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
-    assert.strictEqual(readFile(here.root, 'unit/notes.md'), `there\n${notes}`);
+    assert.strictEqual(readFile(here.root, 'unit/assets/notes.md'), `there\n${notes}`);
     assert.strictEqual(readFile(here.root, notesBeside), `${notes}here\n`);
     assert.strictEqual(readFile(here.root, layout.manifest('unit')), unit('next', { there: 1, here: 1 }));
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/notes.md']);
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/assets/notes.md']);
   });
 
   it('carries a line across the chunks the ledger is read in whole, a character split between them included', () => {
@@ -195,24 +195,24 @@ describe('the merge, both sides moved (4.S14)', () => {
   });
 
   it('takes a file only one side changed whole, adds and deletions too', () => {
-    const { here, there } = machinesSharing({ 'unit/topics/a/log.md': '# a\n', 'unit/topics/b/log.md': '# b\n', 'unit/gone-here.md': 'g\n', 'unit/gone-there.md': 'g\n' });
+    const { here, there } = machinesSharing({ 'unit/topics/a/log.md': '# a\n', 'unit/topics/b/log.md': '# b\n', 'unit/assets/gone-here.md': 'g\n', 'unit/assets/gone-there.md': 'g\n' });
     createFile(here.root, 'unit/topics/a/log.md', '# a, here\n');
-    fs.rmSync(path.join(here.root, 'unit/gone-here.md'));
-    commitUnpushed(here, { 'unit/topics/a/log.md': '# a, here\n', 'unit/new-here.md': 'n\n', 'unit/gone-here.md': '' });
-    fs.rmSync(path.join(here.root, 'unit/gone-here.md'));
-    pushFailing(here, () => withStateLock(here.root, () => commitState(here.root, ['unit/gone-here.md'], 'state: drop')));
-    fs.rmSync(path.join(there.root, 'unit/gone-there.md'));
-    commitOnState(there.root, { 'unit/topics/b/log.md': '# b, there\n', 'unit/new-there.md': 'n\n' });
-    withStateLock(there.root, () => commitState(there.root, ['unit/gone-there.md'], 'state: drop'));
+    fs.rmSync(path.join(here.root, 'unit/assets/gone-here.md'));
+    commitUnpushed(here, { 'unit/topics/a/log.md': '# a, here\n', 'unit/assets/new-here.md': 'n\n', 'unit/assets/gone-here.md': '' });
+    fs.rmSync(path.join(here.root, 'unit/assets/gone-here.md'));
+    pushFailing(here, () => withStateLock(here.root, () => commitState(here.root, ['unit/assets/gone-here.md'], 'state: drop')));
+    fs.rmSync(path.join(there.root, 'unit/assets/gone-there.md'));
+    commitOnState(there.root, { 'unit/topics/b/log.md': '# b, there\n', 'unit/assets/new-there.md': 'n\n' });
+    withStateLock(there.root, () => commitState(there.root, ['unit/assets/gone-there.md'], 'state: drop'));
 
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
     assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']),
-      'unit/new-here.md\nunit/new-there.md\nunit/topics/a/log.md\nunit/topics/b/log.md\n');
+      'unit/assets/new-here.md\nunit/assets/new-there.md\nunit/topics/a/log.md\nunit/topics/b/log.md\n');
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a, here\n');
     assert.strictEqual(readFile(here.root, 'unit/topics/b/log.md'), '# b, there\n');
-    assert.ok(!fs.existsSync(path.join(here.root, 'unit/gone-there.md')));
+    assert.ok(!fs.existsSync(path.join(here.root, 'unit/assets/gone-there.md')));
     assert.strictEqual(status(here.root), '');
   });
 });

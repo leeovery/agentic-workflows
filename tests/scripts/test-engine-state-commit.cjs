@@ -8,7 +8,8 @@
 // read that; the ignore file's added patterns; and its push, a failed push a
 // warning. A commit killed between its steps leaves the branch whole and the
 // next commit right; a commit beside the person's repository runs none of
-// its hooks (4.S18).
+// its hooks (4.S18). What the layout makes of a commit — a file outside it
+// refused, its logs taken along — is test-engine-state-commit-layout.cjs's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote (state-worktree-world.cjs). The kill is a `git`
@@ -23,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const { git, bareRepo, layout, createFile, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, bareRepo, layout, createFile, touched, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, elsewhereRepo, snapshot, childStderr } = require('./state-worktree-world.cjs');
 
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
@@ -36,74 +37,68 @@ const {
 
 const world = useWorld();
 
-/**
- * The files a commit touched, each `{status}\t{path}` with the path as it
- * stands, unquoted.
- * @param {string} dir @param {string} rev
- */
-function touched(dir, rev) {
-  const fields = git(dir, ['show', '--name-status', '--no-renames', '-z', '--format=', rev]).replace(/^\n+/, '').split('\0');
-  const entries = [];
-  for (let i = 0; i + 1 < fields.length; i += 2) entries.push(`${fields[i]}\t${fields[i + 1]}`);
-  return entries.sort();
+/** A file of the unit `u`'s assets, a folder of the layout whose names are its own. @param {string} name */
+function asset(name) {
+  return layout.assets('u', name);
 }
 
 describe('committing state', () => {
   it('commits exactly the paths given, on leeway-state, whatever else is changed or staged', () => {
     const { root } = codeProject(world(), { state: true });
     createFile(root, layout.manifest('pay'), '{}\n');
-    createFile(root, 'unit/topics/a/log.md', '# a\n');
-    createFile(root, 'unit/topics/a/brief.md', '# brief\n');
-    git(root, ['add', 'unit/topics/a/brief.md']);
+    createFile(root, layout.unit('unit', 'spec.md'), '# spec\n');
+    createFile(root, layout.topic('unit', 'a', 'brief.md'), '# brief\n');
+    git(root, ['add', layout.topic('unit', 'a', 'brief.md')]);
 
     const out = withStateLock(root, () => commitState(root, [layout.manifest('pay')], 'state: the manifest'));
 
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.strictEqual(git(root, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the manifest');
     assert.deepStrictEqual(touched(root, out.commit), [`A\t${layout.manifest('pay')}`]);
-    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  unit/topics/a/brief.md\n?? unit/topics/a/log.md\n');
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  unit/topics/a/brief.md\n?? unit/spec.md\n');
   });
 
   it('commits a file added, one changed and one deleted, a folder taking every file in it', () => {
     const { root } = codeProject(world(), { state: true });
     createFile(root, layout.projectManifest, '{}\n');
-    createFile(root, 'unit/old.md', 'old\n');
+    createFile(root, layout.unit('unit', 'spec.md'), '# spec\n');
     withStateLock(root, () => commitState(root, [layout.projectManifest, 'unit'], 'state: first'));
 
     createFile(root, layout.projectManifest, '{"a":1}\n');
-    fs.rmSync(path.join(root, 'unit/old.md'));
-    createFile(root, 'unit/topics/a/log.md', '# a\n');
-    createFile(root, 'unit/topics/a/brief.md', '# brief\n');
+    fs.rmSync(path.join(root, layout.unit('unit', 'spec.md')));
+    createFile(root, layout.topic('unit', 'a', 'log.md'), '# a\n');
+    createFile(root, layout.topic('unit', 'a', 'brief.md'), '# brief\n');
     const out = withStateLock(root, () => commitState(root, [path.join(root, layout.projectManifest), 'unit'], 'state: second'));
 
     assert.deepStrictEqual(touched(root, out.commit), [
-      'A\tunit/topics/a/brief.md', 'A\tunit/topics/a/log.md', 'D\tunit/old.md', 'M\tmanifest.json',
+      'A\tunit/topics/a/brief.md', 'A\tunit/topics/a/log.md', 'D\tunit/spec.md', 'M\tmanifest.json',
     ]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
   });
 
   it('commits a file given a change as it makes it of the branch\'s own — a new one among them, and over what the paths give of it — the working file\'s own changes left uncommitted', () => {
     const { root } = codeProject(world(), { state: true });
+    const [given, untouched] = [layout.assets('unit', 'state.json'), layout.assets('unit', 'new.md')];
     createFile(root, '.gitignore', `${STATE_GITIGNORE}/mine/\n`);
-    createFile(root, 'unit/state.json', '{"a":1,"mine":true}\n');
-    createFile(root, 'unit/new.md', 'theirs\n');
+    createFile(root, given, '{"a":1,"mine":true}\n');
+    createFile(root, untouched, 'theirs\n');
     /** @type {Record<string, string|null>} */
     const seen = {};
     /** @param {string} file @param {(held: string|null) => string|null} change */
     const seeing = (file, change) => (/** @type {string|null} */ held) => { seen[file] = held; return change(held); };
 
-    const out = withStateLock(root, () => commitState(root, ['unit/state.json'], 'state: given', {
+    const out = withStateLock(root, () => commitState(root, [given], 'state: given', {
       contents: {
         '.gitignore': seeing('.gitignore', (held) => `${held}/given/\n`),
-        'unit/state.json': seeing('unit/state.json', () => '{"a":1}\n'),
-        'unit/new.md': seeing('unit/new.md', () => null),
+        [given]: seeing(given, () => '{"a":1}\n'),
+        [untouched]: seeing(untouched, () => null),
       },
     }));
 
-    assert.deepStrictEqual(seen, { '.gitignore': STATE_GITIGNORE, 'unit/state.json': null, 'unit/new.md': null });
-    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tunit/state.json', 'M\t.gitignore']);
-    assert.deepStrictEqual([git(root, ['show', 'HEAD:unit/state.json']), git(root, ['show', 'HEAD:.gitignore'])], ['{"a":1}\n', `${STATE_GITIGNORE}/given/\n`]);
-    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), ' M .gitignore\n M unit/state.json\n?? unit/new.md\n');
+    assert.deepStrictEqual(seen, { '.gitignore': STATE_GITIGNORE, [given]: null, [untouched]: null });
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tunit/assets/state.json', 'M\t.gitignore']);
+    assert.deepStrictEqual([git(root, ['show', `HEAD:${given}`]), git(root, ['show', 'HEAD:.gitignore'])], ['{"a":1}\n', `${STATE_GITIGNORE}/given/\n`]);
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), ' M .gitignore\n M unit/assets/state.json\n?? unit/assets/new.md\n');
   });
 
   it('refuses a commit where a file it is given a change to cannot be read from the branch, naming it and the commit, committing nothing', () => {
@@ -127,16 +122,17 @@ describe('committing state', () => {
 
   it('commits a deletion already staged in the state worktree, named by its file or by its folder', () => {
     const { root } = codeProject(world(), { state: true });
-    createFile(root, 'unit/old.md', 'old\n');
-    createFile(root, 'unit/gone.md', 'gone\n');
+    const [old, gone] = [layout.assets('unit', 'old.md'), layout.assets('unit', 'gone.md')];
+    createFile(root, old, 'old\n');
+    createFile(root, gone, 'gone\n');
     withStateLock(root, () => commitState(root, ['unit'], 'state: first'));
-    git(root, ['rm', '-q', 'unit/old.md', 'unit/gone.md']);
+    git(root, ['rm', '-q', old, gone]);
 
-    const byFile = withStateLock(root, () => commitState(root, ['unit/old.md'], 'state: drop old'));
+    const byFile = withStateLock(root, () => commitState(root, [old], 'state: drop old'));
     const byFolder = withStateLock(root, () => commitState(root, ['unit'], 'state: drop gone'));
 
-    assert.deepStrictEqual(touched(root, byFile.commit || ''), ['D\tunit/old.md']);
-    assert.deepStrictEqual(touched(root, byFolder.commit || ''), ['D\tunit/gone.md']);
+    assert.deepStrictEqual(touched(root, byFile.commit || ''), [`D\t${old}`]);
+    assert.deepStrictEqual(touched(root, byFolder.commit || ''), [`D\t${gone}`]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
   });
 
@@ -163,69 +159,69 @@ describe('committing state', () => {
   const INDEX_STATES = [
     {
       name: 'AD: added to the index, then deleted',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { createFile(root, 'u/n.md', 'n\n'); git(root, ['add', 'u/n.md']); fs.rmSync(path.join(root, 'u/n.md')); },
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { createFile(root, asset('n.md'), 'n\n'); git(root, ['add', asset('n.md')]); fs.rmSync(path.join(root, asset('n.md'))); },
       touched: [],
     },
     {
       name: 'MD: changed in the index, then deleted',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { createFile(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); fs.rmSync(path.join(root, 'u/m.md')); },
-      touched: ['D\tu/m.md'],
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { createFile(root, asset('m.md'), 'm2\n'); git(root, ['add', asset('m.md')]); fs.rmSync(path.join(root, asset('m.md'))); },
+      touched: [`D\t${asset('m.md')}`],
     },
     {
       name: 'rm --cached, the file kept',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => git(root, ['rm', '-q', '--cached', 'u/m.md']),
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => git(root, ['rm', '-q', '--cached', asset('m.md')]),
       touched: [],
     },
     {
       name: 'intent to add',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { createFile(root, 'u/n.md', 'n\n'); git(root, ['add', '-N', 'u/n.md']); },
-      touched: ['A\tu/n.md'],
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { createFile(root, asset('n.md'), 'n\n'); git(root, ['add', '-N', asset('n.md')]); },
+      touched: [`A\t${asset('n.md')}`],
     },
     {
       name: 'AM: added, then changed again',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { createFile(root, 'u/n.md', 'n1\n'); git(root, ['add', 'u/n.md']); createFile(root, 'u/n.md', 'n2\n'); },
-      touched: ['A\tu/n.md'],
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { createFile(root, asset('n.md'), 'n1\n'); git(root, ['add', asset('n.md')]); createFile(root, asset('n.md'), 'n2\n'); },
+      touched: [`A\t${asset('n.md')}`],
     },
     {
       name: 'a staged deletion',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => git(root, ['rm', '-q', 'u/m.md']),
-      touched: ['D\tu/m.md'],
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => git(root, ['rm', '-q', asset('m.md')]),
+      touched: [`D\t${asset('m.md')}`],
     },
     {
       name: 'a staged change undone in the working tree',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { createFile(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); createFile(root, 'u/m.md', 'm\n'); },
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { createFile(root, asset('m.md'), 'm2\n'); git(root, ['add', asset('m.md')]); createFile(root, asset('m.md'), 'm\n'); },
       touched: [],
     },
     {
       name: 'a folder become a file',
-      base: { 'u/x/a.md': 'a\n' },
-      setup: (root) => { fs.rmSync(path.join(root, 'u/x'), { recursive: true }); createFile(root, 'u/x', 'x\n'); },
-      touched: ['A\tu/x', 'D\tu/x/a.md'],
+      base: { [asset('x/a.md')]: 'a\n' },
+      setup: (root) => { fs.rmSync(path.join(root, asset('x')), { recursive: true }); createFile(root, asset('x'), 'x\n'); },
+      touched: [`A\t${asset('x')}`, `D\t${asset('x/a.md')}`],
     },
     {
       name: 'a file become a folder',
-      base: { 'u/x': 'x\n' },
-      setup: (root) => { fs.rmSync(path.join(root, 'u/x')); createFile(root, 'u/x/a.md', 'a\n'); },
-      touched: ['A\tu/x/a.md', 'D\tu/x'],
+      base: { [asset('x')]: 'x\n' },
+      setup: (root) => { fs.rmSync(path.join(root, asset('x'))); createFile(root, asset('x/a.md'), 'a\n'); },
+      touched: [`A\t${asset('x/a.md')}`, `D\t${asset('x')}`],
     },
     {
       name: 'symlinks, one dangling',
-      base: { 'u/m.md': 'm\n' },
-      setup: (root) => { fs.symlinkSync('m.md', path.join(root, 'u/link')); fs.symlinkSync('nowhere', path.join(root, 'u/dangling')); },
-      touched: ['A\tu/dangling', 'A\tu/link'],
+      base: { [asset('m.md')]: 'm\n' },
+      setup: (root) => { fs.symlinkSync('m.md', path.join(root, asset('link'))); fs.symlinkSync('nowhere', path.join(root, asset('dangling'))); },
+      touched: [`A\t${asset('dangling')}`, `A\t${asset('link')}`],
     },
     {
       name: 'a file become a symlink',
-      base: { 'u/m.md': 'm\n', 'u/n.md': 'n\n' },
-      setup: (root) => { fs.rmSync(path.join(root, 'u/n.md')); fs.symlinkSync('m.md', path.join(root, 'u/n.md')); },
-      touched: ['T\tu/n.md'],
+      base: { [asset('m.md')]: 'm\n', [asset('n.md')]: 'n\n' },
+      setup: (root) => { fs.rmSync(path.join(root, asset('n.md'))); fs.symlinkSync('m.md', path.join(root, asset('n.md'))); },
+      touched: [`T\t${asset('n.md')}`],
     },
   ];
 
@@ -247,15 +243,16 @@ describe('committing state', () => {
 
   it('takes every name literally, odd characters and all', () => {
     const { root } = codeProject(world(), { state: true });
-    const names = ['u/a b.md', 'u/"quoted".md', 'u/é.md', 'u/-dash.md', 'u/star*.md', 'u/starX.md', 'u/[b].md', 'u/b.md', 'u/tab\there.md', 'u/new\nline.md'];
+    const names = ['a b.md', '"quoted".md', 'é.md', '-dash.md', 'star*.md', 'starX.md', '[b].md', 'b.md', 'tab\there.md', 'new\nline.md'].map(asset);
     for (const rel of names) createFile(root, rel, `${rel}\n`);
+    const byName = [asset('star*.md'), asset('[b].md')];
 
-    const named = withStateLock(root, () => commitState(root, ['u/star*.md', 'u/[b].md'], 'state: two by name'));
+    const named = withStateLock(root, () => commitState(root, byName, 'state: two by name'));
     const rest = withStateLock(root, () => commitState(root, ['u'], 'state: the rest'));
 
-    assert.deepStrictEqual(touched(root, named.commit || ''), ['A\tu/[b].md', 'A\tu/star*.md']);
+    assert.deepStrictEqual(touched(root, named.commit || ''), [`A\t${asset('[b].md')}`, `A\t${asset('star*.md')}`]);
     assert.deepStrictEqual(touched(root, rest.commit || ''),
-      names.filter((rel) => !['u/star*.md', 'u/[b].md'].includes(rel)).map((rel) => `A\t${rel}`).sort());
+      names.filter((rel) => !byName.includes(rel)).map((rel) => `A\t${rel}`).sort());
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
   });
 
@@ -513,10 +510,10 @@ describe('a state commit interrupted between its steps', () => {
 
   it('moves the branch only from the tip it built on: one that moved meanwhile refuses the commit', () => {
     const { root } = codeProject(world(), { state: true });
-    createFile(root, 'u/a.md', 'a\n');
+    createFile(root, asset('a.md'), 'a\n');
     withStateLock(root, () => commitState(root, ['u'], 'state: base'));
     const elsewhere = git(root, ['commit-tree', `${STATE_BRANCH}^{tree}`, '-p', STATE_BRANCH, '-m', 'a writer the lock missed']).trim();
-    createFile(root, 'u/a.md', 'a2\n');
+    createFile(root, asset('a.md'), 'a2\n');
 
     const res = commitInterrupted(root, { MOVE_AFTER: 'commit-tree', MOVE_TO: elsewhere });
 
@@ -528,15 +525,15 @@ describe('a state commit interrupted between its steps', () => {
   for (const step of ['read-tree', 'add', 'write-tree', 'commit-tree', 'update-ref', 'reset']) {
     it(`leaves the branch at its old tip or the whole commit, and the next commit right, when killed after ${step}`, () => {
       const { root } = codeProject(world(), { state: true });
-      createFile(root, 'u/a.md', 'a\n');
-      createFile(root, 'u/b.md', 'b\n');
+      createFile(root, asset('a.md'), 'a\n');
+      createFile(root, asset('b.md'), 'b\n');
       withStateLock(root, () => commitState(root, ['u'], 'state: base'));
       const before = tip(root, STATE_BRANCH);
-      createFile(root, 'other.md', 'other\n');
-      git(root, ['add', 'other.md']);
-      createFile(root, 'u/a.md', 'a2\n');
-      fs.rmSync(path.join(root, 'u/b.md'));
-      createFile(root, 'u/c/d.md', 'd\n');
+      createFile(root, layout.unit('other', 'spec.md'), 'other\n');
+      git(root, ['add', layout.unit('other', 'spec.md')]);
+      createFile(root, asset('a.md'), 'a2\n');
+      fs.rmSync(path.join(root, asset('b.md')));
+      createFile(root, asset('c/d.md'), 'd\n');
 
       const killed = commitInterrupted(root, { KILL_AFTER: step });
       assert.strictEqual(killed.signal, 'SIGKILL', killed.signal === 'SIGTERM' ? childStderr(killed.signal, killed.stderr) : `the verb was not killed: ${killed.stderr}`);
@@ -547,9 +544,9 @@ describe('a state commit interrupted between its steps', () => {
 
       assert.strictEqual(out.commit === null, landed !== before);
       assert.strictEqual(git(root, ['rev-list', '--count', `${before}..${STATE_BRANCH}`]).trim(), '1');
-      assert.deepStrictEqual(touched(root, STATE_BRANCH), ['A\tu/c/d.md', 'D\tu/b.md', 'M\tu/a.md']);
-      assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:u/a.md`]), 'a2\n');
-      assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  other.md\n');
+      assert.deepStrictEqual(touched(root, STATE_BRANCH), [`A\t${asset('c/d.md')}`, `D\t${asset('b.md')}`, `M\t${asset('a.md')}`]);
+      assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:${asset('a.md')}`]), 'a2\n');
+      assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  other/spec.md\n');
       const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
       assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`), 'the private index was left behind');
     });

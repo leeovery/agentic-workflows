@@ -1585,24 +1585,24 @@ describe('commit door: transaction tails commit their own scope', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a deletion that empties its scope still commits (inbox delete)', () => {
-    writeState(dir, layout.archived('ideas', 'a-thought.md'), '# A thought\n');
+    writeState(dir, layout.archived('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
     commitAll(dir, 'an archived idea');
     writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
 
-    const res = ok(dir, ['inbox', 'delete', path.join(STATE_DIR_NAME, layout.archived('ideas', 'a-thought.md'))]);
+    const res = ok(dir, ['inbox', 'delete', path.join(STATE_DIR_NAME, layout.archived('ideas', '2026-10-30--a-thought.md'))]);
 
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
-    assert.ok(headFiles(dir).includes(layout.archived('ideas', 'a-thought.md')), 'the deletion is in the commit');
+    assert.ok(headFiles(dir).includes(layout.archived('ideas', '2026-10-30--a-thought.md')), 'the deletion is in the commit');
     assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('the inbox scope commits the inbox alone — dirt outside it that the state does not ignore stays out', () => {
-    writeState(dir, layout.inbox('ideas', 'a-thought.md'), '# A thought\n');
+    writeState(dir, layout.inbox('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
     writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
 
     ok(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
-    assert.deepStrictEqual(headFiles(dir), [layout.inbox('ideas', 'a-thought.md')]);
+    assert.deepStrictEqual(headFiles(dir), [layout.inbox('ideas', '2026-10-30--a-thought.md')]);
     assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 

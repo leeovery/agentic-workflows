@@ -576,7 +576,7 @@ describe('engine session label-config', () => {
 
   it('records the opt-in on the project manifest, installs the session hooks, and commits each where it lives, confined', () => {
     fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
-    fs.writeFileSync(path.join(dir, '.leeway', 'peer-dirt.txt'), 'a peer session\'s state\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'spec.md'), 'a peer session\'s state\n');
     const before = projectManifest();
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
@@ -584,7 +584,7 @@ describe('engine session label-config', () => {
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
     assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the code commit takes its own path and nothing else');
-    assert.match(stateGit(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the state commit takes its own path and nothing else');
+    assert.match(stateGit(['status', '--porcelain', '--untracked-files=all']), /\?\? pay\/spec\.md/, 'the state commit takes its own path and nothing else');
   });
 
   it('preserves every other manifest key and every other default', () => {

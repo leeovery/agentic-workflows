@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState, commitAll } = require('./engine-harness.cjs');
+const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath, layout, readState } = require('./engine-harness.cjs');
 const {
   TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
 } = require('./landing-world.cjs');
@@ -127,7 +127,7 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
     const ignore = statePath(dir, '.gitignore');
     const local = new Set(TRACKER.localFiles());
     fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').split('\n').filter((line) => !local.has(line)).join('\n'));
-    commitAll(dir, 'the tracker\'s ignore lines gone');
+    stateGit(dir, ['commit', '-q', '-m', 'the tracker\'s ignore lines gone', '--', layout.gitignore]);
     git(dir, ['remote', 'add', 'origin', path.join(dir, '..', 'nowhere.git')]);
 
     const { committed, warnings } = ok(dir, openArgs(card));
@@ -143,7 +143,7 @@ describe('land open: the task\'s type and title, the tracker\'s (7.2.18, 12.4.1)
     const ignore = statePath(tracker, '.gitignore');
     const local = new Set(TRACKER.localFiles());
     fs.writeFileSync(ignore, fs.readFileSync(ignore, 'utf8').split('\n').filter((line) => !local.has(line)).join('\n'));
-    commitAll(tracker, 'the tracker\'s ignore lines gone');
+    stateGit(tracker, ['commit', '-q', '-m', 'the tracker\'s ignore lines gone', '--', layout.gitignore]);
     git(tracker, ['remote', 'add', 'origin', path.join(tracker, '..', 'nowhere.git')]);
     const lacking = track(tracker, '1.4', 'feat', 'Card limits');
     const unbranched = refuses(tracker, openArgs(lacking)).error;
