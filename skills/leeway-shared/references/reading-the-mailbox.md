@@ -232,10 +232,10 @@ Fold the message into the investigation file in its own idiom: revise the passag
 
 ## E. Absorb
 
-Absorb the message — one engine transaction deletes its mailbox file and commits the fold action-scoped under its name, bracketing the message's life in history with the send commit that delivered it. A discussion absorb also names the message's ground — `--subtopic {subtopic}`, the subtopic the raise armed: the engine settles it into the review anchor, so the fold never counts toward review arming and a sitting that only drained the mailbox arms no review (its review duty belongs to the concluding flow). Omit the flag for the other phases. The response answers `remaining` — route on it; never recap the absorbed message on either branch:
+Absorb the message — one engine transaction deletes its mailbox file and commits the fold action-scoped under its name, bracketing the message's life in history with the send commit that delivered it. The response answers `remaining` — route on it; never recap the absorbed message on either branch:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md [--subtopic {subtopic}] -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
 ```
 
 #### If `remaining` is non-zero

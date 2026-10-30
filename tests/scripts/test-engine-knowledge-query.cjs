@@ -6,17 +6,23 @@
 // over since. Verb layer: the door in process (knowledge-harness), over one
 // keyword-only world built once and copied for each test. How a query ranks
 // and renders, and what it says when it runs keyword-only, is
-// test-knowledge-query.cjs's.
+// test-knowledge-query.cjs's. And what a query run in a conversation keeps
+// as its last, for the plain-search helper's brief (22.6.10).
 
 require('./hermetic-env.cjs');
 
 const fs = require('fs');
+const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { fixtureFrom, call } = require('./engine-harness.cjs');
 const { cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
-const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
+const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { conversationDir, conversationsRoot } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
+const { lastQuery } = require(path.join(SCRIPTS, 'domain/knowledge/last-query.cjs'));
 
 const CHOSEN_NOTE = '[keyword-only mode — configure embedding provider for semantic search]';
 
@@ -113,5 +119,49 @@ describe('engine knowledge query', () => {
     const status = (await knowledge('status')).stdout;
     assert.match(status, /^Mode: Keyword-only — the store has no vectors yet; the next start embeds them$/m);
     assert.doesNotMatch(status, /rebuild/);
+  });
+});
+
+describe('engine knowledge query — the conversation\'s last query (22.6.10)', () => {
+  const SESSION_ID = 'kb-last-query';
+  let root;
+  refuseLaunches();
+
+  beforeEach(() => {
+    root = indexedWorld();
+  });
+
+  afterEach(() => {
+    cleanupFixture(root);
+    fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true });
+  });
+
+  /** A query run in the conversation. @param {...string} args */
+  const asked = (...args) => engineKnowledge(root, ['query', ...args], { CLAUDE_CODE_SESSION_ID: SESSION_ID });
+
+  it('kept with its terms, each filter as its flag gave it, and what it printed — the last query alone', async () => {
+    await asked('storage');
+    const answer = await asked('token', 'refresh', '--work-unit', 'auth', '--limit', '2', '--boost:phase', 'discussion');
+
+    assert.deepStrictEqual(lastQuery(SESSION_ID), {
+      terms: ['token', 'refresh'], filters: ['--work-unit auth', '--limit 2', '--boost:phase discussion'], outcome: { returned: answer.stdout },
+    });
+  });
+
+  it('a query that fails kept with what it said as it failed — a refusal and a usage alike', async () => {
+    await asked('  ');
+    const blank = lastQuery(SESSION_ID)?.outcome;
+    await asked('--phase', 'discussion');
+    const bare = lastQuery(SESSION_ID);
+
+    assert.deepStrictEqual(blank, { failed: `Empty search term. \`engine knowledge query\` requires at least one non-empty positional term. If you intended to list everything indexed, use \`${ENGINE_COMMAND} knowledge status\` instead.` });
+    assert.deepStrictEqual([bare?.terms, bare?.filters, bare?.outcome && 'failed' in bare.outcome && bare.outcome.failed.split(' ').slice(0, 4).join(' ')], [[], ['--phase discussion'], 'Usage: engine knowledge query']);
+  });
+
+  it('a query with no conversation keeps nothing', async () => {
+    assert.strictEqual((await engineKnowledge(root, ['query', 'token'])).code, 0);
+
+    const kept = fs.existsSync(conversationsRoot()) ? fs.readdirSync(conversationsRoot()).filter((id) => fs.existsSync(path.join(conversationsRoot(), id, 'knowledge-query.json'))) : [];
+    assert.deepStrictEqual(kept, []);
   });
 });
