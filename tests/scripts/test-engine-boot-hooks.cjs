@@ -5,12 +5,14 @@
 // with domain/session-label.cjs): the tmux label choice reported, the
 // calling conversation's position dropped, the workflows' own hooks and the
 // label hooks installed or taken out, the sync under the writer lock, and
-// the person's settings kept.
+// the person's settings kept; and the guards as installed, run by a later
+// session the way Claude Code runs them, with the mod off (6.S31).
 //
-// Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per process and
-// copied; boot runs from a copy of the engine beside a stand-in migration
-// runner whose behaviour the test picks through the environment.
+// Layer: verb, and process for the installed command lines. World: the
+// project fixture (boot-world.cjs), a git repository with its state worktree
+// and the workflows' hooks, made once per process and copied; boot runs from
+// a copy of the engine beside a stand-in migration runner whose behaviour
+// the test picks through the environment.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -20,11 +22,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
+const { conversationDir, positionPath } = require(path.join(REAL_SCRIPTS, 'domain/conversation.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { hookHelpers, LABELS_ON, stubbed, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
@@ -120,7 +124,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
   });
 
-  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, the layout hook before Write, Edit and NotebookEdit, and the brief hook before Agent and SendMessage — committed confined, and a second boot changes nothing', () => {
+  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, the layout hook before Write, Edit and NotebookEdit, the brief hook before Agent and SendMessage, and the shell hook before Bash — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
@@ -136,7 +140,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.leeway']).trim(), '', 'and no new dirt');
   });
 
-  it('a project holding the layout group alone gains the brief group beside it — the foreign groups as they were — committed, and a second boot changes nothing', () => {
+  it('a project holding the layout group alone gains the brief and shell groups beside it — the foreign groups as they were, a foreign Bash group among them — committed, and a second boot changes nothing', () => {
     const theirs = { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo theirs' }] };
     commitSettings(JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, LAYOUT_GROUP] } }, null, 2) + '\n');
     const first = bootWith();
@@ -147,6 +151,41 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
     assert.strictEqual(bootWith().session_hooks_installed, false);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
+  });
+
+  it('6.S31: boot installs the hooks before Bash and before Agent and SendMessage beside the layout hook, committed on the branch checked out; a later session with the mod off runs them as installed, and a raw commit during a build and a dispatch of the builder with no brief are each refused', () => {
+    dropSettings();
+    git(fix.project, ['checkout', '-q', '-b', 'feature']);
+    const main = git(fix.project, ['rev-parse', 'main']);
+    assert.strictEqual(bootWith().session_hooks_installed, true);
+    assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'feature']).trim(), 'chore: install workflow session hooks');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
+
+    const session = 'later-session';
+    fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
+    fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'workflow-engine'));
+    fs.mkdirSync(conversationDir(session), { recursive: true });
+    fs.writeFileSync(positionPath(session), JSON.stringify({ name: 'payments', phase: 'implementation', topic: 'payments', task: '1.1' }));
+    const refusals = path.join(/** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR), 'brief-refusals.jsonl');
+    /** The installed hook for `matcher`, run as Claude Code runs it on `toolInput`. @param {string} matcher @param {string} tool @param {object} toolInput */
+    const asInstalled = (matcher, tool, toolInput) => {
+      const { command } = settings().hooks.PreToolUse.find((/** @type {{matcher: string}} */ group) => group.matcher === matcher).hooks[0];
+      const input = { session_id: session, cwd: fix.project, hook_event_name: 'PreToolUse', tool_name: tool, tool_input: toolInput };
+      return spawnSync('sh', ['-c', command], { cwd: fix.project, env: { ...process.env, CLAUDE_PROJECT_DIR: fix.project }, input: JSON.stringify(input), encoding: 'utf8' });
+    };
+    try {
+      assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined, 'the mod is off');
+      const commit = asInstalled('Bash', 'Bash', { command: 'git commit -am "Take the card"' });
+      assert.deepStrictEqual([commit.status, commit.stdout], [2, '']);
+      assert.match(commit.stderr, /^a raw git commit is refused while task 1\.1 of payments is in flight/);
+      const dispatch = asInstalled('Agent|SendMessage', 'Agent', { subagent_type: 'leeway-builder', prompt: 'Build task 1.1.' });
+      assert.deepStrictEqual([dispatch.status, dispatch.stdout], [2, '']);
+      assert.match(dispatch.stderr, /this one names no brief\n$/);
+    } finally {
+      fs.rmSync(conversationDir(session), { recursive: true, force: true });
+      fs.rmSync(refusals, { force: true });
+    }
   });
 
   it('labels on adds `session cleanup` beside the workflows\' own, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {

@@ -174,7 +174,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched, the ledger's copies not rendered, the trust log's waiting events not appended)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
- * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end`, and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`) and brief hook (`brief guard`, matcher `Agent|SendMessage`), for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
+ * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end`, and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`), brief hook (`brief guard`, matcher `Agent|SendMessage`) and shell hook (`shell guard`, matcher `Bash`), for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — workflow-start shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
@@ -376,10 +376,10 @@ function runMigrations(cwd, warnings) {
 
 /**
  * Keep the session hooks in the project's settings — SessionEnd's `presence
- * cleanup` and `conversation end`, and PreToolUse's layout and brief hooks,
- * for every project, `session cleanup` and SessionStart's `session resume` while
- * labels are on — so a checkout that
- * predates them, or lost them to a hand edit, gets them back; committed
+ * cleanup` and `conversation end`, and PreToolUse's layout, brief and shell
+ * hooks, for every project, `session cleanup` and SessionStart's `session
+ * resume` while labels are on — so a checkout that predates them, or lost
+ * them to a hand edit, gets them back; committed
  * where `commit` says so, this boot's write or one an earlier boot could not
  * commit. The opt-in read and the write share the project lock: a
  * `label-config` landing between them would have this boot strip the hook

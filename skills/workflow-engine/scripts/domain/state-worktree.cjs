@@ -58,6 +58,7 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
+const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
@@ -66,7 +67,6 @@ const { checkLedgerCommit, spendPass, dropStop } = require('./ledger-check.cjs')
 const { LEDGER } = require('./ledger-events.cjs');
 const { newId } = require('./ledger-ids.cjs');
 
-const STATE_BRANCH = 'leeway-state';
 const STATE_LOCK_REASON = 'workflows state, do not remove';
 // The lock's claim is written beside it and linked into place, and a
 // takeover holds a guard beside it: both are the lock's, ignored with it. A
@@ -77,7 +77,6 @@ const STATE_GITIGNORE = [
 ].join('\n');
 const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
-const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 const PRIVATE_INDEX = 'leeway-commit.index';
 const BOOT_LOCK = 'leeway-boot.lock';
 

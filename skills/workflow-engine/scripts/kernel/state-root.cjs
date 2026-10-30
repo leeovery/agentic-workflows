@@ -6,7 +6,9 @@
 // The state is `.leeway/` in the repository's main checkout, found through
 // git's common directory from any folder in the repository or any of its
 // worktrees, so every session writes the one copy and no code worktree holds
-// one. The answer is memoised per folder for the life of the process.
+// one. The answer is memoised per folder for the life of the process. The
+// folder is a worktree of the state's own branch, `leeway-state`
+// (domain/state-worktree).
 //
 // A path into the state takes one of two forms, by what it is for:
 // - absolute (`statePath`), for reading and writing a file and for every
@@ -25,6 +27,8 @@ const path = require('path');
 const { mainCheckout } = require('./isolated-git.cjs');
 
 const STATE_DIR_NAME = '.leeway';
+const STATE_BRANCH = 'leeway-state';
+const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 
 /** @type {Map<string, string>} */
 const roots = new Map();
@@ -219,6 +223,6 @@ function insideState(cwd, given, ...segments) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
+  STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
   resolvedPath, ignoresCase,
 };

@@ -23,7 +23,15 @@
 // which `run` refuses before running.
 // Nothing below either door reads process state: the directory, the output
 // streams and the stdin text all arrive on the call.
+//
+// A guard — a hook Claude Code runs before every call of a tool — is
+// answered at the shell door before anything below loads, loading its own
+// module alone (guards.cjs).
 // ---------------------------------------------------------------------------
+
+const { GUARD_VERBS, runGuard, guardDoor } = require('./guards.cjs');
+// @ts-expect-error TS1108: a return ends a CommonJS module, which tsc allows only in a function
+if (require.main === module && guardDoor(process.argv.slice(2))) return;
 
 const fs = require('fs');
 const path = require('path');
@@ -62,11 +70,9 @@ const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
-const { guardDispatch } = require('./domain/brief-guard.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
-const { layoutRefusal } = require('./domain/layout-hook.cjs');
 const { assertPlace, recordPosition, recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
@@ -83,8 +89,8 @@ const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, c
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
-const { ExitSignal, messageOf } = require('./kernel/call.cjs');
-const { findStateRoot, stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
+const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
+const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
 const { codeRoot } = require('./kernel/code-root.cjs');
 const { handedSession } = require('./kernel/process.cjs');
 
@@ -235,6 +241,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   conversation position [session-id]
   conversation executor <session-id> <agent-id>
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
+  shell guard                        (hook before Bash; its JSON on stdin)
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -977,20 +984,6 @@ const TOPIC_BEATS = ['start'];
 const UNIT_VERBS = ['cancel', 'reactivate'];
 
 /**
- * The JSON Claude Code hands a session hook on stdin; empty where none
- * arrived or it does not parse.
- * @param {Call} call @returns {Record<string, unknown>}
- */
-function hookInput(call) {
-  try {
-    const input = JSON.parse(call.stdin());
-    return input && typeof input === 'object' ? input : {};
-  } catch {
-    return {};
-  }
-}
-
-/**
  * A session hook target's session id: the argument when given, else the
  * hook's stdin JSON.
  * @param {Call} call @param {string[]} rest @param {string} usage @returns {string|null}
@@ -999,16 +992,6 @@ function hookSessionId(call, rest, usage) {
   if (rest.length > 1) throw new Error(usage);
   const sessionId = rest[0] || hookInput(call).session_id;
   return typeof sessionId === 'string' && sessionId ? sessionId : null;
-}
-
-/**
- * The folder a session hook acts from: the invocation cwd when its
- * repository holds the state, else CLAUDE_PROJECT_DIR for a hook fired from
- * a drifted cwd.
- * @param {string} cwd @returns {string}
- */
-function hookProjectDir(cwd) {
-  return findStateRoot(cwd) !== null ? cwd : (process.env.CLAUDE_PROJECT_DIR || cwd);
 }
 
 /** @param {Call} call @param {string[]} argv */
@@ -1102,18 +1085,15 @@ function runSession(call, argv) {
 }
 
 /**
- * The layout hook's target, before Write, Edit and NotebookEdit: silent where
- * the write is allowed; a refusal says why on stderr and exits 2, the code
- * Claude Code blocks the tool call on — its other failures pass the call.
- * @param {Call} call @param {string[]} argv
+ * A family whose one verb is its guard, `{family} guard` — a hook's target
+ * before a tool call (guards.cjs).
+ * @param {string} family @returns {(call: Call, argv: string[]) => void}
  */
-function runLayout(call, argv) {
-  if (argv.length !== 1 || argv[0] !== 'guard') die(call, 'Usage: engine layout guard');
-  const input = hookInput(call);
-  const reason = layoutRefusal(typeof input.cwd === 'string' ? input.cwd : hookProjectDir(call.cwd), input);
-  if (reason === null) return;
-  call.err(`${reason}\n`);
-  throw new ExitSignal(2);
+function guardFamily(family) {
+  return (call, argv) => {
+    if (argv[0] !== 'guard') die(call, `Usage: engine ${family} guard`);
+    runGuard(call, `${family} guard`, argv.slice(1));
+  };
 }
 
 /** @param {Call} call @param {string[]} argv */
@@ -1459,7 +1439,7 @@ function runLand(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runBrief(call, argv) {
   if (argv[0] === 'guard') {
-    runBriefGuard(call, argv.slice(1));
+    runGuard(call, 'brief guard', argv.slice(1));
     return;
   }
   try {
@@ -1467,27 +1447,6 @@ function runBrief(call, argv) {
   } catch (err) {
     failJson(call, err);
   }
-}
-
-/**
- * The brief hook's target, before Agent and SendMessage: silent where the
- * call reaches none of the workflows' agents; where it carries the
- * agent's brief, the hook's answer on stdout, which Claude Code reads as
- * its decision, and nothing else; a refusal says why on stderr and exits 2,
- * the code Claude Code blocks the tool call on.
- * @param {Call} call @param {string[]} argv
- */
-function runBriefGuard(call, argv) {
-  if (argv.length !== 0) die(call, 'Usage: engine brief guard');
-  const input = hookInput(call);
-  const guarded = guardDispatch(typeof input.cwd === 'string' ? input.cwd : hookProjectDir(call.cwd), input);
-  if (guarded === null) return;
-  if ('answer' in guarded) {
-    call.out(`${JSON.stringify(guarded.answer)}\n`);
-    return;
-  }
-  call.err(`${guarded.refused}\n`);
-  throw new ExitSignal(2);
 }
 
 // ---------------------------------------------------------------------------
@@ -2472,7 +2431,8 @@ const COMMANDS = Object.freeze({
   presence: runPresence,
   session: runSession,
   conversation: runConversation,
-  layout: runLayout,
+  layout: guardFamily('layout'),
+  shell: guardFamily('shell'),
   task: runTask,
   land: runLand,
   brief: runBrief,
@@ -2510,10 +2470,11 @@ const COMMANDS = Object.freeze({
 // session files the state ignores; a conversation's folder is outside the
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; and the rest read: `layout guard` among them, run
-// before every file Claude writes, and `brief guard`, before every dispatch
-// of an agent. `manifest` takes it to write alone, `commit` but for a code
-// commit (`--paths`), and a brief's fill whole, since its read of the task
-// may commit the tracker's set-up.
+// before every file Claude writes, `brief guard`, before every dispatch of
+// an agent, and `shell guard`, before every shell command. `manifest` takes
+// it to write alone, `commit` but for a code commit (`--paths`), and a
+// brief's fill whole, since its read of the task may commit the tracker's
+// set-up.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2522,6 +2483,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   presence: '*',
   conversation: '*',
   layout: '*',
+  shell: '*',
   code: '*',
   render: '*',
   handoff: '*',
@@ -2563,21 +2525,9 @@ function runCli(call, argv) {
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project
-// ends or resumes, or before it writes a file or dispatches an agent,
-// whether it ran the workflows or not.
-const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', 'layout guard', 'brief guard'];
-
-/**
- * The exit code a stop answers with. A stop that is no ExitSignal is a
- * handler that threw without answering, and gets the CLI's last word — the
- * message on stderr, exit 1.
- * @param {Call} call @param {unknown} err @returns {number}
- */
-function exitCode(call, err) {
-  if (err instanceof ExitSignal) return err.code;
-  call.err(messageOf(err) + '\n');
-  return 1;
-}
+// ends or resumes, or before it writes a file, dispatches an agent or runs a
+// shell command, whether it ran the workflows or not.
+const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', ...GUARD_VERBS];
 
 /**
  * One command against a bound call, answering its exit code — later, for
@@ -2600,9 +2550,9 @@ function dispatch(call, argv) {
   try {
     answer = runCli(call, argv);
   } catch (err) {
-    return settle(exitCode(call, err));
+    return settle(exitCodeOf(call, err));
   }
-  return answer ? answer.then(() => 0, (err) => exitCode(call, err)).then(settle) : settle(0);
+  return answer ? answer.then(() => 0, (err) => exitCodeOf(call, err)).then(settle) : settle(0);
 }
 
 /**
@@ -2738,15 +2688,7 @@ function main() {
     if (err && typeof err === 'object' && 'code' in err && err.code === 'EPIPE') process.exit(0);
     throw err;
   });
-  const code = dispatch({
-    cwd: process.cwd(),
-    out: (text) => process.stdout.write(text),
-    err: (text) => process.stderr.write(text),
-    // A terminal hands nothing over until someone types; a hook's JSON
-    // arrives on a pipe.
-    stdin: () => (process.stdin.isTTY ? '' : fs.readFileSync(0, 'utf8')),
-    ...(process.stdin.isTTY ? { terminal: { input: process.stdin, output: process.stdout } } : {}),
-  }, process.argv.slice(2));
+  const code = dispatch(processCall(), process.argv.slice(2));
   // Only a failure exits explicitly: falling off the end lets Node flush a
   // long render to a pipe before the process goes.
   const exit = (/** @type {number} */ answered) => {

@@ -812,8 +812,10 @@ const WORKFLOW_HOOKS = [engineHook('presence cleanup'), engineHook('conversation
 const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
 /** The brief hook's group, before every dispatch, in every project whatever the label choice. */
 const BRIEF_GROUP = { matcher: 'Agent|SendMessage', hooks: [engineHook('brief guard')] };
+/** The shell hook's group, before every shell command, in every project whatever the label choice. */
+const SHELL_GROUP = { matcher: 'Bash', hooks: [engineHook('shell guard')] };
 /** The PreToolUse groups, in the order boot installs them. */
-const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP];
+const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP, SHELL_GROUP];
 /** The workflows' own hooks by event, as boot installs them. */
 const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: GUARD_GROUPS };
 

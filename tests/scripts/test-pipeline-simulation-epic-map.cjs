@@ -433,8 +433,10 @@ describe('pipeline simulation: epic map', () => {
     // conversation context — with nothing to resume; opting out takes
     // `session cleanup` and `session resume` back out and leaves the
     // workflows' own, the layout hook before every write among them, which
-    // refuses a Write to the ledger and lets one to a manifest through, and
-    // the brief hook before every dispatch.
+    // refuses a Write to the ledger and lets one to a manifest through, the
+    // brief hook before every dispatch, and the shell hook before every shell
+    // command, which refuses a raw commit in the state worktree and lets the
+    // engine's own commands through.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
@@ -449,7 +451,7 @@ describe('pipeline simulation: epic map', () => {
       SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
       PreToolUse: guardVerbs,
-    }, 'the opt-in installs the session hooks on both events, beside the layout and brief hooks');
+    }, 'the opt-in installs the session hooks on both events, beside the layout, brief and shell hooks');
     assert.strictEqual(stateGit(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
       'the choice is state');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
@@ -485,6 +487,11 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(beforeWrite('.ledger.jsonl').code, 2, 'the ledger is the engine\'s alone');
     assert.strictEqual(beforeWrite('manifest.json').code, 2, 'and so is the project manifest');
     assert.deepStrictEqual(beforeWrite(`${wu}/research/alpha.md`), { stdout: '', stderr: '', code: 0 }, 'the research the session writes next is in the layout');
+    const beforeBash = (/** @type {string} */ command) => sim.engine(['shell', 'guard'], null, JSON.stringify({
+      hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Bash', tool_input: { command },
+    }));
+    assert.strictEqual(beforeBash('cd .leeway && git commit -am x').code, 2, 'every state commit is the engine\'s');
+    assert.deepStrictEqual(beforeBash(`node .claude/skills/workflow-engine/scripts/engine.cjs commit ${wu} -m x`), { stdout: '', stderr: '', code: 0 });
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

@@ -31,10 +31,11 @@
 // end`, present in every workflow project regardless — the heartbeat sweep
 // and the conversation's transcript record are the workflows' own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
-// resume` while labels are on. PreToolUse carries two groups in every
+// resume` while labels are on. PreToolUse carries three groups in every
 // workflow project, each matched to the tools its hook stands before:
 // `layout guard` before Write, Edit and NotebookEdit (domain/layout-hook),
-// and `brief guard` before Agent and SendMessage. Recording the choice syncs
+// `brief guard` before Agent and SendMessage (domain/brief-guard), and
+// `shell guard` before Bash (domain/shell-guard). Recording the choice syncs
 // the hooks (`recordLabelChoice`) and every boot re-syncs them
 // (`syncSessionHooks`).
 //
@@ -74,6 +75,7 @@ const { readPosition, isPlace, dropPosition, placeLine } = require('./position.c
 const { statePath } = require('../kernel/state-root.cjs');
 const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
+const { SHELL_HOOK_TOOLS } = require('./shell-guard.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -82,6 +84,7 @@ const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const CONVERSATION_END_COMMAND = `${HOOK_ENGINE} conversation end`;
 const LAYOUT_GUARD_COMMAND = `${HOOK_ENGINE} layout guard`;
 const BRIEF_GUARD_COMMAND = `${HOOK_ENGINE} brief guard`;
+const SHELL_GUARD_COMMAND = `${HOOK_ENGINE} shell guard`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
 // install prefix or carrying a timeout is recognised and never twinned; the
@@ -150,9 +153,9 @@ function carriesOurHooks(settings) {
  * resumed session's label back, its matcher having Claude Code fire it on
  * `claude --resume` alone — and the workflows' own (`workflows`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
- * transcript, and PreToolUse runs the layout hook before every write and the
- * brief hook before every dispatch. A group with no command wanted is never
- * written.
+ * transcript, and PreToolUse runs the layout hook before every write, the
+ * brief hook before every dispatch and the shell hook before every shell
+ * command. A group with no command wanted is never written.
  * @param {{session: boolean, workflows: boolean}} want
  * @returns {WantedGroup[]}
  */
@@ -164,6 +167,7 @@ function wantedGroups({ session, workflows }) {
     { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
     { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([workflows && LAYOUT_GUARD_COMMAND]) },
     { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([workflows && BRIEF_GUARD_COMMAND]) },
+    { event: 'PreToolUse', matcher: SHELL_HOOK_TOOLS.join('|'), commands: on([workflows && SHELL_GUARD_COMMAND]) },
   ];
 }
 
@@ -208,11 +212,11 @@ function reconcileEventGroups(groups, wanted) {
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
  * end` iff `workflows`; SessionStart carries `session resume` iff `session`;
- * PreToolUse carries `layout guard` and `brief guard`, each in its own
- * group, iff `workflows` — each event reconciled on its own, every other
- * key (permissions, other events, foreign groups and their matchers)
- * preserved, an event emptied by a removal gone. Null where the document
- * already carries exactly those.
+ * PreToolUse carries `layout guard`, `brief guard` and `shell guard`, each
+ * in its own group, iff `workflows` — each event reconciled on its own,
+ * every other key (permissions, other events, foreign groups and their
+ * matchers) preserved, an event emptied by a removal gone. Null where the
+ * document already carries exactly those.
  * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
  * @returns {Record<string, any>|null}
  */

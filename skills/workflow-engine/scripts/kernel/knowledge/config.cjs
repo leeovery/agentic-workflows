@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { systemConfigDir } = require('../system-config.cjs');
+const { SETTINGS_FILE, systemConfigDir } = require('../system-config.cjs');
 const { ENGINE_COMMAND } = require('../call.cjs');
 const { isObject, writeJsonAtomic } = require('../manifest-io.cjs');
 const { StubProvider } = require('./embeddings.cjs');
@@ -101,7 +101,7 @@ const PROVIDER_ENV_VARS = {
 
 /** @returns {string} */
 function systemConfigPath() {
-  return path.join(systemConfigDir(), 'config.json');
+  return path.join(systemConfigDir(), SETTINGS_FILE);
 }
 
 /**

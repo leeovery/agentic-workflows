@@ -14,24 +14,17 @@
 // landing where Claude Code's tool would write it (kernel/state-root,
 // `resolvedPath`): its `..` read from the text, its links followed, a code
 // worktree's path into the main checkout's state among them. At user level
-// it refuses, in the system config directory, every file whose bytes reach
-// the trust log — the log and its lock, and each conversation's file of
-// events waiting for it and that file's lock; each conversation's two files
-// a gate event is built from, the gate shown and the gate mod's last press,
-// which the mod writes by no tool of Claude's (gate.cjs); each
-// conversation's sealed raises, which hold Claude's lean before the person
-// answers (raise.cjs); every file in each conversation's briefs, which the
-// hook before Agent and SendMessage hands over as issued (brief-guard.cjs),
-// and that hook's refusals; the settings file and the record of the person;
-// and in each project folder of Claude Code's projects directory, the files
-// of its own the trust log reads the model from (conversation.cjs): a
-// conversation's transcript, and a subagent's transcript and its record.
-// Those it judges by the names the target is written with, below the
-// nearest folder above it that is the guarded directory, read with its `..`
-// from the text as the engine joins names to it: the same folder on disk,
-// however it is named — through a link, a firmlink or in another case — or,
-// before the directory is made, one that would be made where it would. No
-// other folder is read. A write named through a link below the directory —
+// it refuses the files only the engine writes, as the hook before Bash does
+// (user-files.cjs, `userLevelRefusal`): the trust log and every file whose
+// bytes reach it, the gate's records, the sealed raises, a conversation's
+// briefs, the settings file and the record of the person, and Claude Code's
+// own transcripts and records the trust log reads the model from. Those it
+// judges by the names the target is written with, below the nearest folder
+// above it that is the guarded directory, read with its `..` from the text
+// as the engine joins names to it: the same folder on disk, however it is
+// named — through a link, a firmlink or in another case — or, before the
+// directory is made, one that would be made where it would. No other folder
+// is read. A write named through a link below the directory —
 // a conversation's folder that is one among them — is refused by its names.
 // A write that reaches a refused file under other names — at the place such
 // a link leads, through a link from outside that leads in, or through a
@@ -50,40 +43,11 @@
 const fs = require('fs');
 const path = require('path');
 const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath, ignoresCase } = require('../kernel/state-root.cjs');
-const { systemConfigDir } = require('../kernel/system-config.cjs');
-const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { TRUST_LOG, PENDING } = require('./trust-log.cjs');
-const { SHOWN, PRESSED, RAISE_SHOWN } = require('./gate.cjs');
-const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
-const { BRIEFS, BRIEF_REFUSALS } = require('./brief-names.cjs');
+const { userLevelRefusal } = require('./user-files.cjs');
 const { AS_WRITTEN, IN_LOWER_CASE, layoutPlace } = require('./layout.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
-
-/**
- * Each file at user level the hook refuses: its name, the folder it sits
- * below and how many names reach it from there — one in the system config
- * directory, two in a conversation's folder of the conversations directory
- * — and what it is, for the reason Claude is given.
- * @returns {{name: string, below: string, depth: number, what: string}[]}
- */
-function userFiles() {
-  const configFile = (/** @type {string} */ name, /** @type {string} */ what) => ({ name, below: systemConfigDir(), depth: 1, what });
-  const conversationFile = (/** @type {string} */ name, /** @type {string} */ what) => ({ name, below: conversationsRoot(), depth: 2, what });
-  return [
-    configFile(TRUST_LOG, 'the trust log'),
-    configFile(`${TRUST_LOG}.lock`, 'the trust log\'s lock'),
-    conversationFile(PENDING, 'a conversation\'s file of events waiting for the trust log'),
-    conversationFile(`${PENDING}.lock`, 'the lock on a conversation\'s events waiting for the trust log'),
-    conversationFile(SHOWN, 'the record of the gate a conversation was shown'),
-    conversationFile(PRESSED, 'the gate mod\'s record of a conversation\'s last press'),
-    conversationFile(RAISE_SHOWN, 'a conversation\'s sealed raises'),
-    configFile(BRIEF_REFUSALS, 'the brief hook\'s refusals'),
-    configFile(path.basename(systemConfigPath()), 'the settings file'),
-    configFile('person.md', 'the record of the person'),
-  ];
-}
 
 /**
  * The file a tool call writes, from the hook's input: Write's and Edit's
@@ -166,48 +130,6 @@ function namesBelow(file, root, fold) {
 }
 
 /**
- * Why the hook refuses a write to `file` at user level, or null where it is
- * none of the files the engine alone writes there.
- * @param {string} file as written @param {(name: string) => string} fold
- * @returns {string|null}
- */
-function userRefusal(file, fold) {
-  const name = fold(path.basename(file));
-  const refused = userFiles().find((user) => fold(user.name) === name && namesBelow(file, user.below, fold).length === user.depth);
-  return refused ? `${refused.what} (${refused.name}) changes only through the engine's commands` : null;
-}
-
-/**
- * Why the hook refuses a write to `file` in a conversation's briefs, at
- * any depth there, or null where it is none of them.
- * @param {string} file as written @param {(name: string) => string} fold
- * @returns {string|null}
- */
-function briefRefusal(file, fold) {
-  const names = namesBelow(file, conversationsRoot(), fold);
-  return names.length > 2 && names[1] === fold(BRIEFS) ? `a brief a conversation issued (${path.basename(file)}) changes only through the engine's commands` : null;
-}
-
-/**
- * Why the hook refuses a write to `file` among Claude Code's own files the
- * trust log reads the model from — in a project folder of its projects
- * directory, a conversation's transcript, or in a conversation's
- * `subagents/` a subagent's transcript or its record — or null where it is
- * none of them.
- * @param {string} file as written @param {(name: string) => string} fold
- * @returns {string|null}
- */
-function claudeRefusal(file, fold) {
-  const name = fold(path.basename(file));
-  const transcript = name.endsWith('.jsonl');
-  if (!transcript && !name.endsWith('.meta.json')) return null;
-  const names = namesBelow(file, claudeProjectsDir(), fold);
-  const what = names.length === 2 && transcript ? 'a conversation\'s transcript'
-    : names.length === 4 && names[2] === 'subagents' ? `a subagent's ${transcript ? 'transcript' : 'record'}` : null;
-  return what === null ? null : `${what} (${path.basename(file)}) is Claude Code's own: the trust log reads the model from it`;
-}
-
-/**
  * Why the hook refuses a write to the state-relative `rel`, or null where
  * the layout has a place for it that is not the engine's alone.
  * @param {string} rel @param {(name: string) => string} fold
@@ -248,7 +170,7 @@ function layoutRefusal(cwd, input) {
   if (target === null) return null;
   const [written, landed] = [path.resolve(cwd, target), resolvedPath(cwd, target)];
   const fold = folding(nearestFolder(landed));
-  return userRefusal(written, fold) ?? briefRefusal(written, fold) ?? claudeRefusal(written, fold) ?? stateRefusal(landed);
+  return userLevelRefusal(written, fold, (file, root) => namesBelow(file, root, fold)) ?? stateRefusal(landed);
 }
 
-module.exports = { LAYOUT_HOOK_TOOLS, layoutRefusal, userFiles };
+module.exports = { LAYOUT_HOOK_TOOLS, layoutRefusal };
