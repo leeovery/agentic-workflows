@@ -2,6 +2,10 @@
 
 {{question}}
 
+# Your kind of dive
+
+{{dive-kind}}
+
 # This topic's record
 
 {{topic-record}}

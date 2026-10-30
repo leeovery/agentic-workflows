@@ -9,9 +9,10 @@
 // brief-names.cjs); a role whose records include a task's takes the unit
 // and the task, one whose records include a topic's takes the unit and the
 // topic, any other neither. A role takes each flag its records name, every
-// one of them, once, and no other: `--base <branch>`, `--report-a <path>`,
-// `--question <id>`, `--agent <id>`; a flag carries a name, an id or a
-// path, so no free text reaches a brief (6.5.6).
+// one of them but a flag a record holds optional, once, and no other:
+// `--base <branch>`, `--report-a <path>`, `--question <id>`, `--agent
+// <id>`, `--kind <kind>`, a read dive's `--path <file>`; a flag carries a
+// name, an id or a path, so no free text reaches a brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its
@@ -36,9 +37,11 @@
 //
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit, a task or a topic the project lacks, a task done or
-// closed, a topic set aside (5.8.17), and a record it cannot read. It runs
-// under the writer lock: reading the task may commit the tracker's set-up
-// (task-verbs.cjs).
+// closed, a topic set aside (5.8.17), and a record it cannot read. Once
+// every record is drawn, what a record binds is bound — the dispatch a
+// question's brief is for, to that question (brief-records.cjs) — before
+// the brief is stored. It runs under the writer lock: reading the task may
+// commit the tracker's set-up (task-verbs.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -81,8 +84,7 @@ function flagsOf(role) {
   /** @type {Map<string, BriefFlag>} */
   const flags = new Map();
   for (const record of ROLES[role].records) {
-    const { flag } = RECORDS[record];
-    if (flag !== undefined && !flags.has(flag.name)) flags.set(flag.name, flag);
+    for (const flag of RECORDS[record].flags ?? []) if (!flags.has(flag.name)) flags.set(flag.name, flag);
   }
   return [...flags.values()];
 }
@@ -90,7 +92,7 @@ function flagsOf(role) {
 /** The verb's usage, a line per role. */
 const BRIEF_USAGE = Object.keys(ROLES).map((role) => {
   const place = placeOfRole(role);
-  return [`brief ${role}`, ...(place === null ? [] : [`<unit> <${place}>`]), ...flagsOf(role).map(({ name, value }) => `--${name} <${value}>`)].join(' ');
+  return [`brief ${role}`, ...(place === null ? [] : [`<unit> <${place}>`]), ...flagsOf(role).map(({ name, value, optional }) => (optional ? `[--${name} <${value}>]` : `--${name} <${value}>`))].join(' ');
 }).join('\n');
 
 /** @returns {never} */
@@ -119,7 +121,7 @@ function flagNamed(role, arg) {
  * @returns {{ref: TaskRef|null, place: TopicPlace|null, given: Record<string, string>}}
  */
 function argumentsOf(role, args) {
-  const taken = flagsOf(role).map(({ name }) => name);
+  const required = flagsOf(role).filter(({ optional }) => !optional).map(({ name }) => name);
   const of = placeOfRole(role);
   /** @type {string[]} */
   const positional = [];
@@ -136,7 +138,7 @@ function argumentsOf(role, args) {
     given[name] = value;
     at += 1;
   }
-  if (positional.length !== (of === null ? 0 : 2) || taken.some((name) => !Object.hasOwn(given, name))) usage();
+  if (positional.length !== (of === null ? 0 : 2) || required.some((name) => !Object.hasOwn(given, name))) usage();
   const [unit, named] = positional;
   return {
     ref: of === 'task' ? parseShownTask(unit, named) : null,
@@ -264,8 +266,9 @@ function issueBrief(cwd, [role, ...rest]) {
     if (place !== null) liveTopic(cwd, place);
     const { task, committed } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
     /** @type {Filling} */
-    const filling = { cwd, role, ref, task, place, given };
+    const filling = { cwd, role, ref, task, place, given, session };
     const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
+    for (const record of records) RECORDS[record].bind?.(filling, warnings);
     const id = newId();
     storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, place)}\n\n${filled(template, drawn)}`, {
       role, agent, unit: ref?.unit ?? place?.unit ?? null, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,

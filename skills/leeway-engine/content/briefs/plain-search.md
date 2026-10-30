@@ -1,3 +1,3 @@
-# What to find
+# The knowledge query you follow
 
-{{question}}
+{{knowledge-query}}

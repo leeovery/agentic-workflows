@@ -43,13 +43,13 @@ const ROLES = Object.freeze({
   fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['report-a', 'report-b'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
   'deep-dive': {
-    agent: 'leeway-deep-dive', whose: 'the deep dive\'s', kind: 'deep-dive', records: ['question', 'topic-record', 'product-record', 'report-to'],
+    agent: 'leeway-deep-dive', whose: 'the deep dive\'s', kind: 'deep-dive', records: ['question', 'dive-kind', 'topic-record', 'product-record', 'report-to'],
   },
   perspective: {
     agent: 'leeway-discussion-perspective', whose: 'the perspective\'s', kind: 'perspective', records: ['question', 'lens', 'topic-record', 'product-record', 'report-to'],
   },
   synthesis: {
-    agent: 'leeway-discussion-synthesis', whose: 'the synthesis\'s', kind: 'synthesis', records: ['question', 'perspectives', 'topic-record', 'report-to'],
+    agent: 'leeway-discussion-synthesis', whose: 'the synthesis\'s', kind: 'synthesis', records: ['pair-question', 'perspectives', 'topic-record', 'report-to'],
   },
   'discussion-reviewer': {
     agent: 'leeway-discussion-reviewer', whose: 'the discussion reviewer\'s', kind: 'review', records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'report-to'],
@@ -60,7 +60,7 @@ const ROLES = Object.freeze({
     kind: 'closing-pass',
     records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'gap-review', 'report-to'],
   },
-  'plain-search': { agent: 'leeway-plain-search', whose: 'the plain search\'s', records: ['question'] },
+  'plain-search': { agent: 'leeway-plain-search', whose: 'the plain search\'s', records: ['knowledge-query'] },
 });
 
 /** Where a conversation keeps a brief. @param {string} session @param {string} id */

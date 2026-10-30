@@ -40,6 +40,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { markOf, lineOf, movesSince, lastDecisionLine } = require('./ledger-moves.cjs');
+const { pairProblem } = require('./lenses.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -58,8 +59,8 @@ const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
 // research store is closed: scan never buckets it and no verb addresses it.
 const RESEARCH_KINDS = ['deep-dive'];
 
-// Review-arming backoff: review n+1 needs min(n, MOVEMENT_CAP) map moves
-// since the last dispatch. The cap keeps late reviews permanently reachable
+// Review-arming backoff: review n+1 needs min(n, MOVEMENT_CAP) of the
+// topic's moves since the last review or closing pass. The cap keeps late reviews permanently reachable
 // on genuinely new ground instead of climbing toward a de-facto ceiling.
 const MOVEMENT_CAP = 3;
 
@@ -236,15 +237,16 @@ function completedReviewCycles(cwd, workUnit, topic) {
 }
 
 /**
- * The arming anchor: the latest report-backed review row. A row with no
- * report is a killed dispatch closed as bookkeeping, never a review —
- * anchoring on it would hide every move between the real review and the
- * kill.
+ * The arming anchor: the latest report-backed review or closing-pass row —
+ * a closing pass read the record whole, so the moves before it are read
+ * however the topic reopens. A row with no report is a killed dispatch
+ * closed as bookkeeping, never a read — anchoring on it would hide every
+ * move between the real read and the kill.
  * @param {string} dir
  */
 function anchorReviewRow(dir) {
   return derivationRows(dir)
-    .filter((r) => r.kind === 'review' && reportBacked(r, dir))
+    .filter((r) => REVIEWING_KINDS.includes(r.kind) && reportBacked(r, dir))
     .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
     .pop() || null;
 }
@@ -258,8 +260,8 @@ function ledgerFacts(cwd) {
  * @typedef {object} ReviewArming
  * @property {boolean} armed
  * @property {number} cycles              completed (report-backed) review cycles
- * @property {number|null} map_moves_seen the topic's moves since the anchor; null when no review has completed
- * @property {number} map_moves_needed    min(cycles, MOVEMENT_CAP)
+ * @property {number|null} moves_seen the topic's moves since the anchor; null when no review has completed
+ * @property {number} moves_needed    min(cycles, MOVEMENT_CAP)
  * @property {string} reason              one line, always present
  */
 
@@ -273,7 +275,7 @@ function armingOf(cwd, workUnit, topic, facts) {
   const cycles = completedReviewCycles(cwd, workUnit, topic);
   const needed = Math.min(cycles, MOVEMENT_CAP);
   if (needed === 0) {
-    return { armed: true, cycles, map_moves_seen: null, map_moves_needed: 0, reason: 'no completed review cycle — the first review is free' };
+    return { armed: true, cycles, moves_seen: null, moves_needed: 0, reason: 'no completed review cycle — the first review is free' };
   }
   const anchor = anchorReviewRow(agentDir(cwd, workUnit, 'discussion', topic));
   const moves = movesSince(facts, workUnit, topic, anchor === null ? null : anchor.ledger_mark);
@@ -281,21 +283,21 @@ function armingOf(cwd, workUnit, topic, facts) {
   return {
     armed: moves >= needed,
     cycles,
-    map_moves_seen: moves,
-    map_moves_needed: needed,
+    moves_seen: moves,
+    moves_needed: needed,
     reason: moves >= needed
-      ? `armed on ${moves} map move(s) since ${since}`
-      : `quiet — ${moves} of ${needed} map moves since ${since}`,
+      ? `armed on ${moves} move(s) since ${since}`
+      : `quiet — ${moves} of ${needed} moves since ${since}`,
   };
 }
 
 /**
  * The review-arming verdict for a discussion topic — is a background review
  * worth dispatching, measured by the topic's moves on the ledger since the
- * last real review (ledger-moves.cjs): the person's questions opened or
+ * last real read (ledger-moves.cjs): the person's questions opened or
  * closed, and Claude's calls (9.8.14). The first review is free; review n+1
  * needs min(n, MOVEMENT_CAP) moves since the anchor's mark, the latest
- * report-backed review row's. Tolerant of the store — the verdict rides
+ * report-backed review or closing-pass row's. Tolerant of the store — the verdict rides
  * displays and must never brick one.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @returns {ReviewArming}
@@ -308,21 +310,18 @@ function reviewArming(cwd, workUnit, topic) {
 
 /**
  * The gap review that has run on a discussion topic since its last
- * decision (9.9.6): the latest report-backed review or closing pass whose
- * mark the topic's last decision does not pass; null where none has. Read
+ * decision (9.9.6): the arming anchor, where the topic's last decision does
+ * not pass its mark; null where none has. Marks only grow with dispatch
+ * order, so no earlier read can pass where the anchor does not. Read
  * without promoting or saving anything, tolerant of the store.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @returns {string|null}
  */
 function gapReviewSince(cwd, workUnit, topic) {
-  const dir = agentDir(cwd, workUnit, 'discussion', topic);
+  const anchor = anchorReviewRow(agentDir(cwd, workUnit, 'discussion', topic));
+  if (anchor === null) return null;
   const facts = ledgerFacts(cwd);
-  const last = lastDecisionLine(facts, workUnit, topic);
-  const run = derivationRows(dir)
-    .filter((r) => REVIEWING_KINDS.includes(r.kind) && reportBacked(r, dir) && lineOf(facts, r.ledger_mark) >= last)
-    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
-    .pop();
-  return run === undefined ? null : run.id;
+  return lineOf(facts, anchor.ledger_mark) >= lastDecisionLine(facts, workUnit, topic) ? anchor.id : null;
 }
 
 /**
@@ -378,6 +377,8 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
   if (new Set(labels).size !== labels.length) {
     throw new Error('Invalid labels: duplicates in one dispatch');
   }
+  const unpaired = kind === 'perspective' ? pairProblem(labels) : null;
+  if (unpaired !== null) throw new Error(unpaired);
   if (set !== undefined && kind !== 'synthesis') {
     throw new Error('--set names the perspective set a synthesis consumes — legal only with --kind synthesis');
   }
@@ -513,6 +514,7 @@ function publicRow(row) {
     surfaced: row.surfaced,
     remaining: unsurfaced(row),
     ...(row.label ? { label: row.label } : {}),
+    ...(row.question ? { question: row.question } : {}),
   };
 }
 
@@ -719,6 +721,25 @@ function dispatchedRows(cwd, workUnit, topic) {
   return agentRows(cwd, workUnit, 'discussion', topic).map((row) => ({ ...row, file: path.join(dir, `${row.id}.md`) }));
 }
 
+/**
+ * A discussion dispatch bound to the question its brief argues, by the
+ * question's first wording, `question` on its row: what a synthesis reads
+ * back from its set, so it is briefed on the question its pair argued.
+ * Refused where the row is bound to another.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {string} question
+ */
+function bindQuestion(cwd, workUnit, topic, id, question) {
+  io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, 'discussion', topic);
+    const row = requireRow(state, 'discussion', topic, id);
+    if (row.question !== undefined && row.question !== question) {
+      throw new Error(`brief: ${id} was briefed on another question — a dispatch argues the one question it was first briefed on`);
+    }
+    row.question = question;
+    saveState(cwd, workUnit, 'discussion', topic, state);
+  });
+}
+
 module.exports = {
   AGENT_KINDS,
   AGENT_STATUSES,
@@ -735,4 +756,5 @@ module.exports = {
   latestReview,
   gapReviewSince,
   dispatchedRows,
+  bindQuestion,
 };

@@ -1,6 +1,6 @@
 # The decision
 
-{{question}}
+{{pair-question}}
 
 # The perspectives
 

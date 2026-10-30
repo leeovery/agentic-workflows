@@ -458,10 +458,10 @@ describe('the refusals, nothing written and no brief stored', () => {
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
       'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task> --report-a <path> --report-b <path>', 'product-researcher',
-      'deep-dive <unit> <topic> --question <id> --agent <id>', 'perspective <unit> <topic> --question <id> --agent <id>',
-      'synthesis <unit> <topic> --question <id> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
-      'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search <unit> <topic> --question <id>',
-    ].map((line) => `engine brief ${line}`).join(' \\| ')}$`);
+      'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
+      'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
+      'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
+    ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     const [, , , ...reports] = fixArgs();
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -482,12 +482,12 @@ describe('the refusals, nothing written and no brief stored', () => {
       reviewer: [UNIT, '1.1', '--base', 'main'],
       fix: fixArgs().slice(1),
       'product-researcher': [],
-      'deep-dive': [...asked, ...dispatched.slice(2)],
+      'deep-dive': [...asked, ...dispatched.slice(2), '--kind', 'survey'],
       perspective: [...asked, ...dispatched.slice(2)],
-      synthesis: [...asked, ...dispatched.slice(2)],
+      synthesis: dispatched,
       'discussion-reviewer': dispatched,
       'closing-pass-reader': dispatched,
-      'plain-search': asked,
+      'plain-search': [],
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {

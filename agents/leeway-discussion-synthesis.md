@@ -14,7 +14,7 @@ You reconcile two perspectives, each argued through one lens of a polarity pair 
 
 The engine's brief is all you are given; the conversation never reaches you. It holds:
 
-- **The decision** — the open question being decided: its short id and its text.
+- **The decision** — the question both perspectives were briefed on: its short id and its current text.
 - **The perspectives** — each perspective's report, verbatim, its Restatement first.
 - **This topic's record** — as the ledger reads it, in JSON: the questions, findings and decisions current on the topic, each by its short id, a decision with who made it and its `why`, each with what it replaced beneath it under `replaced`. `None recorded.` where the topic holds nothing yet.
 - **Your report** — the file your report goes to.

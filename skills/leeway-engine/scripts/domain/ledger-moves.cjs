@@ -12,11 +12,12 @@
 //   — sits before every line.
 // - A topic's moves since a mark, which arm the background review's back-off
 //   (9.8.14): the person's questions opened or closed on it, and Claude's
-//   calls — each question asked on it but one Claude's own call answers;
-//   each decision made on it, a replaced answer among them, the person's or
-//   Claude's alike; and each question moved, on the topic it left and on
-//   the topic it went to. A rewording, a finding, a confirmation, a keep and
-//   a merge move nothing.
+//   calls — each question asked on it but a review's finding (5.3.9) and
+//   one Claude's own call answers; each decision made on it, a replaced
+//   answer among them, the person's or Claude's alike, a review finding's
+//   answer too; and each question moved, on the topic it left and on the
+//   topic it went to. A rewording, a finding, a confirmation, a keep and a
+//   merge move nothing.
 // - A topic's last decision: where the latest decision made on it sits, a
 //   replaced answer among them, which a gap review is measured against
 //   (9.9.6); 0 where it has none.
@@ -57,12 +58,21 @@ function movesSince(facts, unit, topic, mark) {
   const after = lineOf(facts, mark);
   const ownCalls = ownCallQuestions(facts);
   let moves = 0;
-  for (const [id, { event, kind, unit: madeIn, topic: madeOn, to, place }] of facts) {
-    if (place.number <= after || madeIn !== unit) continue;
-    const here = madeOn === topic;
-    if ((event === 'asked' && here && !ownCalls.has(id)) || (kind === 'decision' && here) || (event === 'moved' && (here || to === topic))) moves += 1;
+  for (const [id, fact] of facts) {
+    if (fact.place.number > after && fact.unit === unit && isMove(id, fact, topic, ownCalls)) moves += 1;
   }
   return moves;
+}
+
+/**
+ * Whether the line `id` is a move on `topic`.
+ * @param {string} id @param {IdFacts} fact @param {string} topic @param {Set<string>} ownCalls
+ */
+function isMove(id, { event, kind, by, topic: madeOn, to }, topic, ownCalls) {
+  const here = madeOn === topic;
+  if (event === 'asked') return here && by !== 'review' && !ownCalls.has(id);
+  if (event === 'moved') return here || to === topic;
+  return kind === 'decision' && here;
 }
 
 /** Where the last decision made on `topic` of `unit` sits; 0 where none is. @param {Facts} facts @param {string} unit @param {string} topic */

@@ -215,13 +215,13 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', rev1.id, 'F1']);
     sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is incorporated/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
-      /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
+      /review dispatch blocked: quiet — 0 of 1 moves since review-001/);
     const quietScan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(quietScan.review_arming,
-      { armed: false, cycles: 1, map_moves_seen: 0, map_moves_needed: 1, reason: 'quiet — 0 of 1 map moves since review-001' },
+      { armed: false, cycles: 1, moves_seen: 0, moves_needed: 1, reason: 'quiet — 0 of 1 moves since review-001' },
       'scan answers the same verdict dispatch enforces');
     sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
-    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'], /0 of 1 map moves since review-001/);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'], /0 of 1 moves since review-001/);
     const revFinal = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     assert.strictEqual(revFinal.id, 'review-002', 'a review the person asks for dispatches over a quiet topic');
     sim.run(['brief', 'discussion-reviewer', wu, 'beta', '--agent', revFinal.id]);
@@ -239,7 +239,9 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // A message: a send reopens the concluded discussion and the absorb
-    // drains the mailbox — the fold moves nothing towards the next review.
+    // drains the mailbox. The absorb writes nothing to the ledger, so the
+    // back-off stays where the closing pass left it — a question the message
+    // raised on the ledger would be a move like any other.
     sim.write('.leeway/.cache/scratch/message-scratch.md',
       '### Escalation path\n*From: alpha · discussion · 2026-07-23*\n\nWho gets paged?\n');
     const sent = sim.run(['topic', 'send', wu, 'discussion', 'beta',
@@ -264,7 +266,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(folded.remaining, 0);
     assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the drained mailbox retires the cue');
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
-      /0 of 2 map moves since review-002/);
+      /0 of 2 moves since closing-pass-001/);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
