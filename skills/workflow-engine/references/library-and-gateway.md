@@ -22,10 +22,13 @@ engine.render.fillTo(head, fillChar, width)       // → string (padded)
 // kernel: manifest IO (façade over kernel/manifest-io.cjs)
 engine.manifest.loadWorkUnitManifest(cwd, wu)     // → parsed manifest (loud on missing/invalid)
 engine.manifest.saveWorkUnitManifest(cwd, wu, m)  // atomic write (temp file + rename)
-engine.manifest.withWorkUnitLock(cwd, wu, fn)     // → fn() under the work unit's manifest lock
+engine.manifest.withWorkUnitLock(cwd, wu, fn)     // → fn() under the state's writer lock, over the work unit's manifest (loud on a missing unit)
 engine.manifest.readProjectManifest(cwd)          // → project manifest ({} when absent, loud on corrupt)
 engine.manifest.writeProjectManifestAtomic(cwd, m)// atomic write
-engine.manifest.withProjectLock(cwd, fn)          // → fn() under the project manifest lock
+engine.manifest.withProjectLock(cwd, fn)          // → fn() under the state's writer lock, over the project manifest
+
+// kernel: where the state lives
+engine.state.stateRoot(cwd)                       // → `.leeway/` in the main checkout of the repository `cwd` is in — absolute, from any folder or worktree of it; loud where there is no repository
 
 // domain: composition conventions
 engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [researching]"
@@ -48,13 +51,13 @@ engine.derivations.phaseData(manifest, phase)     // → phases.{phase} ({} when
 engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] from phases.{phase}.items
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
-engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, stamped, generated, files[, reason] }
+engine.derivations.computeAnalysisCacheStatus(manifest, stateDir, kind) // → { status, stamped, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
-engine.derivations.buildDiscoveryMap(manifest, workflowsDir)    // → { map, summary, needs_sequencing } — the one discovery-map row builder; the mailboxes are counted from disk
+engine.derivations.buildDiscoveryMap(manifest, stateDir)    // → { map, summary, needs_sequencing } — the one discovery-map row builder; the mailboxes are counted from disk under the state root
 
 // domain: discussion-map transitions + queries
 engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
@@ -75,7 +78,7 @@ engine.roadmap.becomesTopic(item)                 // → whether the item become
 // domain: session presence
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
 engine.presence.scanProject(cwd)                  // → the same row shape and `held` total but no `held_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row
-engine.presence.heldCodeSessions(cwd)             // → the project's held implementation/review rows, minus the caller's own — the code gate's read
+engine.presence.heldCodeSessions(cwd)             // → the held implementation/review rows working in the caller's checkout, minus the caller's own — the code gate's read
 engine.presence.heldDocument(cwd, wu, doc)     // → the freshest held research/discussion/investigation row a peer holds on `doc`, or null — the spec-side held-doc gate's read
 engine.presence.ownsRow(row)                      // → does the calling session own this heartbeat (its session id, or its pid)? Filter with it before marking any row as a peer's
 engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / `12m` / `3h` / `2d`
@@ -129,7 +132,7 @@ engine.project.specificationMenu(detail)          // → { keys, rendered } — 
 engine.project.specificationCompletedMenu(detail) // → { keys, title, display, rendered } — concluded-specs Refine sub-view
 
 // gateway: adapter harness
-engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout
+engine.gateway.runGateway(handlers)               // argv verb dispatch → stdout; the gate the result's MENU states recorded as the gate the conversation was shown
 engine.gateway.dataBlock(obj | string)            // → demarcated DATA section
 engine.gateway.displayBlock(text)                 // → demarcated DISPLAY section
 engine.gateway.menuBlock(name, text)              // → demarcated `MENU: {name}` section stating the gate `name` — the gateway's own, from its table of gates — the GATE block directly ahead of it under WORKFLOWS_GATE_SURFACE=1 ('' for an empty menu — no gate, no section)
