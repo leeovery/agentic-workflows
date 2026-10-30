@@ -11,7 +11,9 @@
 // the spec refused where a section is numbered twice or a part sits under
 // another area or none; and the sections a reference cites drawn from a
 // text, a range's at its level in the spec's order, a part whose area is
-// drawn left to the area, each refusal naming the reference.
+// drawn left to the area, each refusal naming the reference; and the
+// scenarios a spec gives, each a line opening `N.Sk ` outside a fenced block,
+// the spec refused where it gives one twice.
 //
 // Layer: unit. World: none — spec texts as values.
 // ---------------------------------------------------------------------------
@@ -22,7 +24,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { citedSections, specSections, sectionsCited } = require(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/spec-sections.cjs'));
+const { citedSections, specSections, specScenarios, sectionsCited } = require(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/spec-sections.cjs'));
 
 /** @param {string[]} lines */
 const text = (lines) => lines.join('\n');
@@ -111,5 +113,24 @@ describe('the sections a reference cites', () => {
     assert.throws(() => drawn('§1, 4, §1.7'), /^Error: the spec reference "§1, 4, §1\.7" cites §4, §1\.7, which the spec lacks$/);
     assert.throws(() => drawn('§1.1–1.9'), /^Error: the spec reference "§1\.1–1\.9" cites §1\.9, which the spec lacks$/);
     assert.throws(() => drawn('§2.2–1.1'), /^Error: the spec reference "§2\.2–1\.1" cites §2\.2–1\.1, a range run backwards$/);
+  });
+});
+
+describe('a spec\'s scenarios', () => {
+  it('each line opening N.Sk outside a fenced block, in the spec\'s order, wherever it sits', () => {
+    const spec = text([
+      '3.S2 Given a spec, when it opens, then this is a scenario.',
+      '## 1. Cards', 'Cards are covered by 1.S7 below.', '  1.S8 indented is text.', '1.S9 Given a card, when it is taken, then it is checked.',
+      '```', '1.S3 Given a fence, then this is text.', '```',
+      '~~~~', '1.S4 Given a fence of tildes, then this is text.', '~~~', '1.S5 Still inside, the fence closed by its own length or longer.', '~~~~',
+      '### 1.1 The form', '1.S1 Given a form, when it is sent, then a receipt shows.',
+      '1.S6', '1.Sx Given no number, then this is text.',
+    ]);
+    assert.deepStrictEqual(specScenarios(spec), ['3.S2', '1.S9', '1.S1']);
+  });
+
+  it('a scenario given twice is refused, naming both its lines; one in a fenced block is no second', () => {
+    assert.throws(() => specScenarios(text(['3.S1 Given one.', '## 3. Refunds', '3.S1 Given another.'])), /^Error: the spec gives scenario 3\.S1 twice, on lines 1 and 3$/);
+    assert.deepStrictEqual(specScenarios(text(['3.S1 Given one.', '```md', '3.S1 Given an example.', '```'])), ['3.S1']);
   });
 });

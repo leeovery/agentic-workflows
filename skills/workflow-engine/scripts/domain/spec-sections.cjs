@@ -1,15 +1,17 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the spec's sections — how a unit's `spec.md` is addressed, the
-// one reading every verb that names a section shares (a brief's spec
-// sections, the phase cut's). The spec is written by area (11.3.2): an
-// area is a numbered heading at level two, `## N. Title`, and a part of it
-// one at level three, `### N.M Title`. A section runs from its heading to
-// the next heading at its level or above, so an area holds its parts.
-// Headings inside a fenced block are text. A spec that numbers one section
-// twice, or a part under another area's number, is refused: its sections
-// cannot be addressed.
+// Domain ring: the spec's sections and scenarios — how a unit's `spec.md` is
+// addressed, the one reading every verb that names a section or a scenario
+// shares (a brief's spec sections, the phase cut's). The spec is written by
+// area (11.3.2): an area is a numbered heading at level two, `## N. Title`,
+// and a part of it one at level three, `### N.M Title`. A section runs from
+// its heading to the next heading at its level or above, so an area holds
+// its parts. Headings inside a fenced block are text. A spec that numbers
+// one section twice, or a part under another area's number, is refused: its
+// sections cannot be addressed. A scenario is a line opening with its id,
+// `N.Sk `, anywhere in the spec but inside a fenced block; a spec giving one
+// id twice is refused, as its scenarios cannot be placed.
 //
 // A reference cites sections in runs. A run opens at `§` or `§§` and goes
 // on over numbers joined by `,`, `and` or `&` — `§1.1, 1.2`, `§1.1 and 2.1`,
@@ -44,6 +46,9 @@ const NUMBERED = [
   { level: 2, pattern: /^## +([1-9][0-9]*)\. +\S/ },
   { level: 3, pattern: /^### +([1-9][0-9]*\.[1-9][0-9]*) +\S/ },
 ];
+
+/** A scenario's line, opening with its id. */
+const SCENARIO = /^([1-9][0-9]*\.S[1-9][0-9]*) /;
 
 /** @typedef {{address: string, level: number, text: string}} Section */
 /** A section cited, or a range of them: one section where both ends are it. @typedef {{from: string, to: string}} Cite */
@@ -93,26 +98,29 @@ function citedSections(reference) {
   return cites;
 }
 
-/**
- * Each line's heading level, 0 for a line that is no heading — a line in a
- * fenced block among them.
- * @param {string[]} lines @returns {number[]}
- */
-function headingLevels(lines) {
+/** Whether each line is in a fenced block, its fences among them. @param {string[]} lines @returns {boolean[]} */
+function fencedLines(lines) {
   /** @type {{mark: string, length: number}|null} */
   let fence = null;
   return lines.map((line) => {
     const opens = /^ {0,3}(`{3,}|~{3,})/.exec(line);
     if (fence !== null) {
       if (opens !== null && opens[1][0] === fence.mark && opens[1].length >= fence.length && line.trim() === opens[1]) fence = null;
-      return 0;
+      return true;
     }
-    if (opens !== null) {
-      fence = { mark: opens[1][0], length: opens[1].length };
-      return 0;
-    }
-    return /^(#{1,6})(?: |$)/.exec(line)?.[1].length ?? 0;
+    if (opens !== null) fence = { mark: opens[1][0], length: opens[1].length };
+    return opens !== null;
   });
+}
+
+/**
+ * Each line's heading level, 0 for a line that is no heading — a line in a
+ * fenced block among them.
+ * @param {string[]} lines @returns {number[]}
+ */
+function headingLevels(lines) {
+  const fenced = fencedLines(lines);
+  return lines.map((line, at) => (fenced[at] ? 0 : /^(#{1,6})(?: |$)/.exec(line)?.[1].length ?? 0));
 }
 
 /**
@@ -145,6 +153,26 @@ function specSections(text) {
 }
 
 /**
+ * Every scenario a spec's text gives, by id, in the spec's order: each line
+ * outside a fenced block opening `N.Sk `. Refuses an id given twice, naming
+ * both its lines.
+ * @param {string} text @returns {string[]}
+ */
+function specScenarios(text) {
+  const lines = text.split('\n');
+  const fenced = fencedLines(lines);
+  /** @type {Map<string, number>} each id by the line that gives it, from 1 */
+  const given = new Map();
+  lines.forEach((line, at) => {
+    const id = fenced[at] ? undefined : SCENARIO.exec(line)?.[1];
+    if (id === undefined) return;
+    if (given.has(id)) throw new Error(`the spec gives scenario ${id} twice, on lines ${given.get(id)} and ${at + 1}`);
+    given.set(id, at + 1);
+  });
+  return [...given.keys()];
+}
+
+/**
  * The sections a reference cites, each verbatim from a spec's text, in the
  * order cited, each once — a range's in the spec's order, a part whose own
  * area is drawn left out. Refuses, naming the reference, what
@@ -168,6 +196,13 @@ function sectionsCited(text, reference) {
     .map((address) => /** @type {Section} */ (sections.get(address)));
 }
 
+/** A unit's spec's text, refused where the unit has none. @param {string} cwd @param {string} unit */
+function readSpec(cwd, unit) {
+  const file = specPath(cwd, unit);
+  if (!fs.existsSync(file)) throw new Error(`${unit} has no spec — its folder holds no ${SPEC_FILE}`);
+  return fs.readFileSync(file, 'utf8');
+}
+
 /**
  * The sections a reference cites from a unit's spec (`sectionsCited`),
  * refused where the unit has no spec.
@@ -175,9 +210,7 @@ function sectionsCited(text, reference) {
  * @returns {Section[]}
  */
 function readCitedSections(cwd, unit, reference) {
-  const file = specPath(cwd, unit);
-  if (!fs.existsSync(file)) throw new Error(`${unit} has no spec — its folder holds no ${SPEC_FILE}`);
-  return sectionsCited(fs.readFileSync(file, 'utf8'), reference);
+  return sectionsCited(readSpec(cwd, unit), reference);
 }
 
-module.exports = { SPEC_FILE, specPath, headingLevels, citedSections, specSections, sectionsCited, readCitedSections };
+module.exports = { SPEC_FILE, specPath, readSpec, headingLevels, citedSections, specSections, specScenarios, sectionsCited, readCitedSections };
