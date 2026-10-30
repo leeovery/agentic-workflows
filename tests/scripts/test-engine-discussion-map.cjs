@@ -407,7 +407,7 @@ describe('discussion adapter: map verb', () => {
       'counts: {"pending":0,"exploring":1,"converging":0,"decided":1,"deferred":0}',
       'all_decided: false',
       'unresolved: ["token-refresh"]',
-      'review_arming: {"armed":true,"cycles":1,"map_moves_seen":null,"map_moves_needed":1,"reason":"no snapshot on record — armed; this dispatch stamps one"}',
+      'review_arming: {"armed":false,"cycles":1,"map_moves_seen":0,"map_moves_needed":1,"reason":"quiet — 0 of 1 map moves since the last review"}',
       '',
       '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
       'Discussion Map — Auth Flow (2 subtopics — 1 decided · 1',
@@ -440,7 +440,7 @@ describe('discussion adapter: map verb', () => {
     // A pre-programme legacy file with no row: counted by existence, frontmatter never read.
     fs.writeFileSync(path.join(cacheDir, 'review-007.md'), '---\nstatus: in-flight\n---\nlegacy');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_arming: \{"armed":true,"cycles":2,/);
+    assert.match(out, /review_arming: \{"armed":false,"cycles":2,/);
   });
 
   it('the verdict counts a finished-but-unscanned review (report landed, no scan yet)', () => {
@@ -454,7 +454,7 @@ describe('discussion adapter: map verb', () => {
     }));
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'the report landed');
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_arming: \{"armed":true,"cycles":1,/, 'mirror of scan promotion — the cycle happened');
+    assert.match(out, /review_arming: \{"armed":false,"cycles":1,/, 'mirror of scan promotion — the cycle happened');
   });
 
   it('review_arming rides DATA — the quiet verdict names the movement owed', () => {
@@ -465,7 +465,7 @@ describe('discussion adapter: map verb', () => {
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
       agents: {
-        'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth-flow', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z', map_snapshot: { 'token-refresh': 'exploring' } },
+        'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth-flow', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z' },
       },
     }));
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
@@ -481,7 +481,7 @@ describe('discussion adapter: map verb', () => {
     fs.writeFileSync(path.join(cacheDir, 'state.json'), '{not json');
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'legacy report'); // cycles 1 — the arming path past the free return
     const out = execFileSync('node', [ADAPTER, 'map', 'auth', 'auth-flow'], { cwd: dir, encoding: 'utf8' });
-    assert.match(out, /review_arming: \{"armed":true,"cycles":1,"map_moves_seen":null,"map_moves_needed":1,/);
+    assert.match(out, /review_arming: \{"armed":false,"cycles":1,"map_moves_seen":0,"map_moves_needed":1,/);
     assert.match(out, /Discussion Map — Auth Flow/, 'the display survives the garbage');
   });
 });

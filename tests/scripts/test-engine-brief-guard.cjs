@@ -291,6 +291,17 @@ describe('6.S16: the builder\'s brief', () => {
   });
 });
 
+describe('9.S48: discussion\'s agents take only a brief the engine issued (9.8.13, 6.5.13)', () => {
+  it('a dispatch of each — the review agent among them — carrying no pointer is refused for want of its brief, never of a template, and recorded', () => {
+    for (const agent of ['leeway-deep-dive', 'leeway-discussion-perspective', 'leeway-discussion-synthesis', 'leeway-discussion-reviewer', 'leeway-closing-pass-reader', 'leeway-plain-search']) {
+      assertRefused(guard('Agent', agentCall(agent, 'Review the note window.')), {
+        tool: 'Agent', agent, brief: null, reason: 'no-brief',
+        detail: `a call of ${agent} carries the pointer to its brief, brief:{id}, as \`engine brief\` answers it — this one names no brief`,
+      });
+    }
+  });
+});
+
 describe('6.S17: the fix round\'s brief', () => {
   it('a message to the builder carrying its pointer goes through, the brief with the two reports in both the message and the content', () => {
     const input = messageCall('a1builder', pointer(briefs.fix.id));
