@@ -12,11 +12,14 @@
 // moving nothing — pushed before the project's stack merges, which squashes
 // it into the top task's landing under that task's own subject (7.2.17,
 // 7.2.18); the pointer's commit refused before it is pushed where the
-// branch is checked out with changes; and a merge refused in one repository
-// carrying the warnings of those landed before it. A stack brought up to
-// date with the default branch is test-landing-nested-merge-up.cjs's. Git
-// layer: the nested world (landing-world.cjs), each repository on a fake
-// GitHub of its own (world.cjs), built once and copied for each test.
+// branch is checked out with changes; the squash default set by one yes on
+// the project's repository and each nested one on GitHub, and a stack in a
+// repository nested since refused, naming that yes; and a merge refused in
+// one repository carrying the warnings of those landed before it. A stack
+// brought up to date with the default branch is
+// test-landing-nested-merge-up.cjs's. Git layer: the nested world
+// (landing-world.cjs), each repository on a fake GitHub of its own
+// (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('../../scripts/hermetic-env.cjs');
@@ -29,7 +32,8 @@ const path = require('path');
 const harness = require('../../scripts/engine-harness.cjs');
 const { NESTED, NESTED_TASKS, openArgs, cutTask, commitFiles, mergeBack, useNestedWorld } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
-const { github, bareOf, tipOnGithub, ok, refused } = require('./world.cjs');
+const { GITHUB_SQUASH } = require('./gh-stub.cjs');
+const { github, onGithub, bareOf, calls, tipOnGithub, ok, refused } = require('./world.cjs');
 
 const { git, tip, initRepo } = harness;
 const { rates, show } = NESTED_TASKS;
@@ -103,17 +107,46 @@ describe('GitHub\'s landing driver across nested repositories (7.2.17)', () => {
     assert.strictEqual(git(bareOf(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), release);
   });
 
-  it('refuses, before the pointer is pushed, a top task branch checked out with changes not committed — nothing pushed, the stack left open', () => {
+  it('refuses, before the pointer is pushed, a top task branch checked out with changes not committed to the pointer — nothing pushed, the stack left open', () => {
     const at = project();
     ok(at.dir, openArgs(rates));
     ok(at.dir, openArgs(show));
     const held = path.join(path.dirname(at.dir), 'held');
     git(at.dir, ['worktree', 'add', '-q', held, show.branch]);
-    fs.writeFileSync(path.join(held, 'show.txt'), 'changed\n');
+    git(held, ['update-index', '--cacheinfo', `160000,${tip(at.ext, NESTED.ext.into)},${NESTED.ext.folder}`]);
     const pushed = tipOnGithub(at.dir, show.branch);
 
-    assert.match(refused(at.dir, ['land', 'phase', 'pay', '1']), new RegExp(`^land: ${show.branch} is checked out at ${held}, with changes not committed: show\\.txt, so nothing moved — .+ \\(phase 1 merged in ext, lib before it\\)$`));
+    assert.match(refused(at.dir, ['land', 'phase', 'pay', '1']), new RegExp(`^land: ${show.branch} is checked out at ${held}, with changes not committed: ext, so nothing moved — .+ \\(phase 1 merged in ext, lib before it\\)$`));
     assert.deepStrictEqual([tipOnGithub(at.dir, show.branch), tip(at.dir, show.branch), pullStates([at.dir])], [pushed, pushed, [['OPEN', 'OPEN']]]);
+  });
+
+  it('sets the squash default, on one yes, on the project\'s repository and each nested one on GitHub, each read first and left as it is where set; a stack in a repository nested since refused, naming that yes, taken again once answered', () => {
+    const at = project();
+    const squashing = (/** @type {ReturnType<typeof github>} */ state) => {
+      state.squash = { ...GITHUB_SQUASH };
+    };
+    for (const dir of [at.dir, at.ext]) onGithub(dir, squashing);
+    const read = (/** @type {string} */ repo) => ['auth status --hostname github.com', `api repos/acme/${repo}`];
+    const set = (/** @type {string} */ repo) => `api --method PATCH repos/acme/${repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY`;
+    const squashes = () => [at.dir, at.ext, at.lib].map((dir) => github(dir).squash);
+    const fromPulls = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
+
+    assert.strictEqual(ok(at.dir, ['github-squash', 'yes']).github_squash, 'set');
+    assert.deepStrictEqual([at.dir, at.ext, at.lib].map(calls), [[...read('portal'), set('portal')], [...read('ext'), set('ext')], read('lib')]);
+    assert.deepStrictEqual(squashes(), [fromPulls, fromPulls, fromPulls]);
+
+    onGithub(at.lib, squashing);
+    commitFiles(at.lib, show.branch, rates.branch, { 'lib-show.txt': 'show\n' });
+    for (const task of [rates, show]) ok(at.dir, openArgs(task));
+    assert.strictEqual(
+      refused(at.dir, ['land', 'phase', 'pay', '1']),
+      'land: in lib, acme/lib does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
+      + 'set that squash default on every repository the project lands in on GitHub, as `engine github-squash yes` does, and land again (phase 1 merged in ext before it)',
+    );
+    const before = [at.dir, at.ext].map((dir) => calls(dir).length);
+    assert.strictEqual(ok(at.dir, ['github-squash', 'yes']).github_squash, 'set');
+    assert.deepStrictEqual([at.dir, at.ext].map((dir, i) => calls(dir).slice(before[i])), [read('portal'), read('ext')]);
+    assert.deepStrictEqual([calls(at.lib).slice(-3), squashes()], [[...read('lib'), set('lib')], [fromPulls, fromPulls, fromPulls]]);
   });
 
   it('refuses a merge in one repository carrying the warnings of those landed before it', () => {

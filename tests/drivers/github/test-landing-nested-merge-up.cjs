@@ -12,8 +12,12 @@
 // submodule's (7.2.17, 7.2.18); refused before anything is pushed where a
 // merge conflicts in a file or a branch here is checked out with changes;
 // and landed, once, by landing again where its merges were pushed but never
-// moved here, each branch here brought to its pull request's head. The rest
-// of the driver across nested repositories is test-landing-nested.cjs's.
+// moved here, each branch here brought to its pull request's head; and a
+// default branch on GitHub pointing the submodule at a commit the
+// submodule's own there does not hold — one on a branch of its own — refused
+// before anything merges, naming it, and landed past it once the
+// submodule's is brought up to it. The rest of the driver across nested
+// repositories is test-landing-nested.cjs's.
 // Git layer: the nested world (landing-world.cjs), each repository on a
 // fake GitHub of its own (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -22,7 +26,6 @@ require('../../scripts/hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
 
 const { git, tip } = require('../../scripts/engine-harness.cjs');
@@ -73,11 +76,11 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     const opened = beside.map((task) => tipOnGithub(at.dir, task.branch));
     const held = path.join(path.dirname(at.dir), 'held');
     git(at.dir, ['worktree', 'add', '-q', held, page.branch]);
-    fs.writeFileSync(path.join(held, 'page.txt'), 'changed\n');
-    assert.match(refused(at.dir, ['land', 'phase', 'pay', '5']), new RegExp(`^land: ${page.branch} is checked out at ${held}, with changes not committed: page\\.txt, so nothing moved — .+ \\(phase 5 merged in ext before it\\)$`));
+    git(held, ['update-index', '--cacheinfo', `160000,${moved},${NESTED.ext.folder}`]);
+    assert.match(refused(at.dir, ['land', 'phase', 'pay', '5']), new RegExp(`^land: ${page.branch} is checked out at ${held}, with changes not committed: ext, so nothing moved — .+ \\(phase 5 merged in ext before it\\)$`));
     assert.deepStrictEqual(beside.map((task) => tipOnGithub(at.dir, task.branch)), opened);
 
-    git(held, ['checkout', '--', 'page.txt']);
+    git(held, ['reset', '-q', '--', NESTED.ext.folder]);
     assert.match(refused(at.dir, ['land', 'phase', 'pay', '5'], { GH_STUB_FAULT: 'unmergeable@stack merge' }), /^land: gh could not merge phase 5's stack: /);
     const pushed = beside.map((task) => tipOnGithub(at.dir, task.branch));
     assert.deepStrictEqual(pushed.map((made) => git(top, ['log', '-1', '--format=%s', made]).trim()), [`chore(pay): merge main into ${page.branch}`, `chore(pay): merge ${page.branch} into ${again.branch}`]);
@@ -91,5 +94,27 @@ describe('GitHub\'s landing driver bringing a stack up to date across nested rep
     ]);
     assert.strictEqual(git(top, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), tipOnGithub(at.ext, NESTED.ext.into));
     assert.deepStrictEqual(pullStates(at.dir), ['MERGED', 'MERGED', 'MERGED', 'OPEN', 'OPEN', 'MERGED', 'MERGED']);
+  });
+
+  it('refuses, before anything merges, a phase whose default branch on GitHub points the submodule at a commit the submodule\'s own there does not hold — one on a branch of its own, held here — naming it, and lands past it once that default branch is brought up to it', () => {
+    const at = project();
+    const aside = commitFiles(at.ext, 'aside', NESTED.ext.into, { 'ext-aside.txt': 'aside\n' });
+    commitFiles(at.dir, 'main', 'main', {}, { gitlinks: { [NESTED.ext.folder]: aside }, message: 'point ext aside' });
+    git(at.dir, ['reset', '-q']);
+    git(at.dir, ['push', '-q', 'origin', 'main']);
+    const task = track(at.dir, '2.2', 'feat', 'More ext');
+    const more = commitFiles(at.ext, task.branch, NESTED.ext.into, { 'ext-more.txt': 'more\n' });
+    commitFiles(at.dir, task.branch, 'main', { 'more.txt': 'more\n' }, { gitlinks: { [NESTED.ext.folder]: more } });
+    ok(at.dir, openArgs(task));
+
+    assert.strictEqual(
+      refused(at.dir, ['land', 'phase', 'pay', '2']),
+      `land: main points ext at ${aside.slice(0, 7)}, a commit ext's main does not hold — bring ext's main up to it, as \`git -C ext pull\` does where its remote holds it, and land again`,
+    );
+    assert.deepStrictEqual([at.ext, at.dir].map((dir) => github(dir).pulls.map(({ state }) => state)), [['OPEN'], ['OPEN']]);
+    git(at.ext, ['push', '-q', 'origin', `aside:${NESTED.ext.into}`]);
+    ok(at.dir, ['land', 'phase', 'pay', '2']);
+    const pointer = git(bareOf(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
+    assert.deepStrictEqual([pointer, git(bareOf(at.ext), ['rev-parse', `${pointer}^`]).trim()], [tipOnGithub(at.ext, NESTED.ext.into), aside]);
   });
 });

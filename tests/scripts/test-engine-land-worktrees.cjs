@@ -26,7 +26,7 @@ const path = require('path');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const {
-  TASKS, openArgs, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
+  TASKS, openArgs, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, shellWord, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
   stoppedRebase, way, moveStep, rebaseSteps, strayRefusal: stray,
 } = require('./landing-world.cjs');
 
@@ -66,7 +66,7 @@ function remounted(tree, work) {
 describe('land phase: a linked worktree', () => {
   it('holds the default branch it has out as the main checkout would — changes not committed there, kept by detaching it; a rebase stopped there — and goes through once each remedy is followed', () => {
     const dir = project();
-    ok(dir, openArgs(card));
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Edit the app', 'main', { 'app.txt': 'app edited\n' })));
     ok(dir, openArgs(rounding));
     git(dir, ['checkout', '-q', '-b', 'wip']);
     const linked = path.join(dir, '.git', 'linked main');

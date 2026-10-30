@@ -24,13 +24,13 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
-const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, way, rebaseSteps } = require('./landing-world.cjs');
+const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, way, rebaseSteps } = require('./landing-world.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');
 
 describe('land: what the local driver reads off its stacks', () => {
-  it('refuses a phase with nothing opened, a task not open, and a phase merged, saying so', () => {
+  it('refuses a phase with nothing opened, a task not open, and a task opened into a phase merged or chained there, saying so — and answers a phase merged as merged already', () => {
     const dir = project();
     assert.deepStrictEqual([['land', 'phase', 'pay', '1'], ['land', 'chain', 'pay', '1.1']].map((args) => refusedMoving(dir, args)), [
       'land: phase 1 of pay has no task opened — open its tasks first',
@@ -39,14 +39,11 @@ describe('land: what the local driver reads off its stacks', () => {
     ok(dir, openArgs(rounding));
     ok(dir, ['land', 'phase', 'pay', '2']);
     const up = cutTask(dir, '2.2', 'fix', 'Round up', 'main', { 'up.txt': 'up\n' });
-    assert.deepStrictEqual(
-      [['land', 'phase', 'pay', '2'], openArgs(up), ['land', 'chain', 'pay', '2.1']].map((args) => refusedMoving(dir, args)),
-      [
-        'land: phase 2 is merged into main already — there is nothing more to merge',
-        'land: phase 2 is merged into main — task 2.2 lands in a phase not yet merged, so number it in one',
-        'land: phase 2 is merged into main — its stack is landed',
-      ],
-    );
+    assert.deepStrictEqual(alreadyMoving(dir, ['land', 'phase', 'pay', '2']), { ok: true, phase: 2, already: true, repos: [], driver: 'local' });
+    assert.deepStrictEqual([openArgs(up), ['land', 'chain', 'pay', '2.1']].map((args) => refusedMoving(dir, args)), [
+      'land: phase 2 is merged into main — task 2.2 lands in a phase not yet merged, so number it in one',
+      'land: phase 2 is merged into main — its stack is landed',
+    ]);
   });
 
   it('counts a phase merged once the default branch holds its tasks\' trailers, its branch kept or deleted — so a task built on one of them opens', () => {

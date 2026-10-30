@@ -12,23 +12,28 @@
 // - The squash default (7.2.18): a squash merge's commit made from the pull
 //   request's title and description, so each task lands under its own
 //   subject and id; offered only where the project also lands through that
-//   driver, since landing refuses a stack merge until it is set.
+//   driver, since landing refuses a stack merge until it is set — and made
+//   on every repository the project lands in there: its own, and each
+//   nested in it whose own remote the driver serves, each left as it is
+//   where it is set already. A yes is taken again once the offer is
+//   answered, so a repository nested since is set by the verb alone.
 //
 // An offer stands until it is answered, and the answer is recorded on the
 // project manifest either way, as the walkthrough's is, so it is never made
 // again — and, on the state branch, never made to another clone of the
-// project. A setting the driver could not make is said, with why, and setup
-// carries on without it. What is recorded is what happened: `set`,
-// `declined`, or `failed` with why — so the manifest never says a setting is
-// made when it is not.
+// project. A setting the driver could not make is said, with why and on
+// which repository, and setup carries on without it. What is recorded is
+// what happened: `set` on every repository, `declined`, or `failed` with
+// why — so the manifest never says a setting is made when it is not.
 // ---------------------------------------------------------------------------
 
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { STATE_BRANCH } = require('./state-worktree.cjs');
-const { remoteUrl } = require('./remote.cjs');
+const { remoteUrl, nestedRemoteUrl } = require('./remote.cjs');
 const { hostDriver, chosenDriver } = require('./drivers.cjs');
 
 /** @typedef {import('./drivers.cjs').LandingDriver} LandingDriver */
@@ -41,12 +46,13 @@ const STATUSES = /** @type {const} */ (['set', 'declined', 'failed']);
 
 /**
  * An offer: its verb and the project manifest's field for its answer; what
- * a commit names it; the driver's method that makes it, how it is called,
- * and whether the project must land through that driver for it to be
- * offered; and the words of a yes where it is not offered, and of a setting
- * not made.
+ * a commit names it; the driver's method that makes it, and how it is
+ * called on a repository; whether it is a setting the landing needs —
+ * offered only where the project lands through that driver, made on every
+ * repository it lands in, and a yes taken again once answered; and the
+ * words of a yes where it is not offered, and of a setting not made.
  * @typedef {{
- *   verb: string, field: string, named: string, landingOnly: boolean, method: 'protectBranch'|'setSquashDefault',
+ *   verb: string, field: string, named: string, forLanding: boolean, method: 'protectBranch'|'setSquashDefault',
  *   make: (host: Required<LandingDriver>, root: string, url: string) => {repository: string, unset: string|null},
  *   nowhere: string, unset: (repository: string, why: string) => string,
  * }} Offer
@@ -57,7 +63,7 @@ const RULE = {
   verb: 'github-rule',
   field: 'github_rule',
   named: `the GitHub rule on ${STATE_BRANCH}`,
-  landingOnly: false,
+  forLanding: false,
   method: 'protectBranch',
   make: (host, root, url) => host.protectBranch(root, url, STATE_BRANCH),
   nowhere: 'the state\'s remote is not on GitHub — there is no repository to set the rule on',
@@ -69,7 +75,7 @@ const SQUASH = {
   verb: 'github-squash',
   field: 'github_squash',
   named: 'the GitHub squash default',
-  landingOnly: true,
+  forLanding: true,
   method: 'setSquashDefault',
   make: (host, root, url) => host.setSquashDefault(root, url),
   nowhere: 'the project does not land through GitHub — there is no repository to set the squash default on',
@@ -87,7 +93,7 @@ function codeHost(cwd, offer) {
   const url = remoteUrl(cwd);
   const host = url === null ? null : hostDriver(url);
   if (host === null || host[offer.method] === undefined) return null;
-  if (offer.landingOnly && landsThrough(cwd) !== host.name) return null;
+  if (offer.forLanding && landsThrough(cwd) !== host.name) return null;
   return { host, url: /** @type {string} */ (url) };
 }
 
@@ -136,18 +142,51 @@ function offered(cwd, offer) {
 }
 
 /**
- * What a yes did: the setting made, or why it was not — said as a warning
- * too, with where to make it by hand. Refuses where the offer is not made.
+ * The repositories nested in the project whose own remote the host serves:
+ * each one's folder, checkout, and remote's URL.
+ * @param {string} cwd @param {LandingDriver} host
+ * @returns {{dir: string, root: string, url: string}[]}
+ */
+function nestedOn(cwd, host) {
+  return projectRepos(cwd).slice(1).flatMap((repo) => {
+    const url = nestedRemoteUrl(repo.path);
+    return url !== null && host.serves(url) ? [{ dir: repo.dir, root: repo.path, url }] : [];
+  });
+}
+
+/**
+ * What a yes did: the setting made on every repository the offer covers, or
+ * why it was not — said as a warning too, for each repository, with where
+ * to make it by hand. Refuses where the offer is not made.
  * @param {string} cwd @param {Offer} offer @param {string[]} warnings
  * @returns {GithubRecord}
  */
 function makeOnYes(cwd, offer, warnings) {
   const at = codeHost(cwd, offer);
   if (at === null) throw new Error(`${offer.verb}: ${offer.nowhere}`);
-  const { repository, unset } = offer.make(/** @type {Required<LandingDriver>} */ (at.host), codeRoot(cwd), at.url);
-  if (unset === null) return { status: 'set' };
-  warnings.push(offer.unset(repository, unset));
-  return { status: 'failed', reason: unset };
+  const host = /** @type {Required<LandingDriver>} */ (at.host);
+  const repos = [{ root: codeRoot(cwd), url: at.url }, ...(offer.forLanding ? nestedOn(cwd, host) : [])];
+  /** @type {string[]} */
+  const whys = [];
+  for (const { root, url } of repos) {
+    const { repository, unset } = offer.make(host, root, url);
+    if (unset === null) continue;
+    warnings.push(offer.unset(repository, unset));
+    if (!whys.includes(unset)) whys.push(unset);
+  }
+  return whys.length === 0 ? { status: 'set' } : { status: 'failed', reason: whys.join('; ') };
+}
+
+/**
+ * Refuse an answer an offer does not take once answered: any, but a yes to
+ * a setting the landing needs.
+ * @param {string} cwd @param {Offer} offer @param {string} answer
+ */
+function refuseAnswered(cwd, offer, answer) {
+  const recorded = recordedAnswer(cwd, offer);
+  if (recorded === null || (offer.forLanding && answer === 'yes')) return;
+  const taken = offer.forLanding ? 'only a yes is taken again, setting it wherever it is not' : 'an answer is recorded once';
+  throw new Error(`${offer.verb}: the offer is answered — "${recorded}" is recorded, and ${taken}`);
 }
 
 /**
@@ -156,14 +195,13 @@ function makeOnYes(cwd, offer, warnings) {
  * manifest, committed confined to it: `set`, `declined`, or `failed` with
  * why. The offer is never made again, whichever is recorded. Refuses
  * another answer, a yes where the offer is not made, and an offer already
- * answered.
+ * answered but for a yes to a setting the landing needs.
  * @param {string} cwd @param {Offer} offer @param {string} answer
  * @returns {{status: GithubStatus, reason?: string, committed: string|null, note?: string, warnings?: string[]}}
  */
 function answerOffer(cwd, offer, answer) {
   if (answer !== 'yes' && answer !== 'no') throw new Error(`${offer.verb}: the answer is yes or no — got "${answer}"`);
-  const recorded = recordedAnswer(cwd, offer);
-  if (recorded !== null) throw new Error(`${offer.verb}: the offer is answered — "${recorded}" is recorded, and an answer is recorded once`);
+  refuseAnswered(cwd, offer, answer);
   /** @type {string[]} */
   const warnings = [];
   /** @type {GithubRecord} */
@@ -192,9 +230,21 @@ const answering = (offer) => (cwd, answer) => {
   return { [offer.field]: status, ...rest };
 };
 
+/**
+ * The folders of the repositories nested in the project that the squash
+ * default's offer covers past the project's own, none where it is not made.
+ * @param {string} cwd
+ * @returns {string[]}
+ */
+function githubSquashNested(cwd) {
+  const at = codeHost(cwd, SQUASH);
+  return at === null ? [] : nestedOn(cwd, at.host).map(({ dir }) => dir);
+}
+
 module.exports = {
   githubRuleOffered: (/** @type {string} */ cwd) => offered(cwd, RULE),
   answerGithubRule: answering(RULE),
   githubSquashOffered: (/** @type {string} */ cwd) => offered(cwd, SQUASH),
+  githubSquashNested,
   answerGithubSquash: answering(SQUASH),
 };

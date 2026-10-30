@@ -6,8 +6,8 @@
 // repository needing nothing more; a repository lands in itself, so what
 // landed is what its default branch itself gained, what it holds is its
 // own tree, and what the driver opened there is what its phases' branches
-// land. A merge there is refused while its default branch's checkout holds
-// a change not committed.
+// land. A merge there is refused while its default branch's checkout is in
+// the middle of a merge.
 
 const fs = require('fs');
 const path = require('path');
@@ -34,10 +34,10 @@ module.exports = {
     const phases = git(dir, ['for-each-ref', '--format=%(refname:lstrip=2)', `refs/heads/feat/${UNIT}-phase-*`]).split('\n').filter(Boolean);
     return [...new Set(phases.flatMap((branch) => landedOn(dir, branch).map(({ task }) => task)))].sort();
   },
-  /** A merge in the repository at `dir` refused until `undo`: a file its checkout tracks changed and not committed. @param {string} dir */
+  /** A merge in the repository at `dir` refused until `undo`: its checkout in the middle of a merge, as a merge stopped there leaves it. @param {string} dir */
   refuseMerge: (dir) => {
-    const [file] = git(dir, ['ls-files']).split('\n');
-    fs.appendFileSync(path.join(dir, file), 'not committed\n');
-    return { env: {}, undo: () => git(dir, ['checkout', '-q', '--', file]) };
+    const marker = path.resolve(dir, git(dir, ['rev-parse', '--git-path', 'MERGE_HEAD']).trim());
+    fs.writeFileSync(marker, `${git(dir, ['rev-parse', 'HEAD']).trim()}\n`);
+    return { env: {}, undo: () => fs.rmSync(marker) };
   },
 };

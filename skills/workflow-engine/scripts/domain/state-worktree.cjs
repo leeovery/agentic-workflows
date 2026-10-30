@@ -591,15 +591,24 @@ function stateRemoteName(root) {
 }
 
 /**
+ * The URL a checkout's chosen remote (`stateRemote`) fetches from, any
+ * `insteadOf` applied, or null where none is chosen.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the checkout
+ * @returns {string|null}
+ */
+function chosenRemoteUrl(git) {
+  const { remote } = stateRemote(git);
+  return remote === null ? null : git.run(['remote', 'get-url', remote]).trim();
+}
+
+/**
  * The URL the state's remote fetches from, any `insteadOf` applied, or null
  * where no remote is chosen.
  * @param {string} root
  * @returns {string|null}
  */
 function stateRemoteUrl(root) {
-  const git = isolatedGit(mainOf(root));
-  const { remote } = stateRemote(git);
-  return remote === null ? null : git.run(['remote', 'get-url', remote]).trim();
+  return chosenRemoteUrl(isolatedGit(mainOf(root)));
 }
 
 /**
@@ -861,6 +870,7 @@ module.exports = {
   refuseCodeHistory,
   stateRemoteName,
   stateRemoteUrl,
+  chosenRemoteUrl,
   withStateLock,
   withBootLock,
   ignoreInState,

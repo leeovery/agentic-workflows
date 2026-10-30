@@ -31,13 +31,14 @@
 //   in git's words, naming the commit, and nothing moves.
 // - A branch moves by its ref alone, so no checkout moves — but for a branch
 //   a worktree has checked out, which moves only by a fast-forward there,
-//   its tracked files clean, nothing at a path the move adds, ignored or
-//   not, and in the middle of no operation. A submodule's own checkout is
-//   its repository's: the move leaves it where it is, and it is no dirt of
-//   the parent's. A rebase stopped in a worktree leaves it detached, yet
-//   holds the branch it rebases and those it updates, so no such branch
-//   moves. Otherwise the move stops, saying what is in the way and the way
-//   on.
+//   its tracked files clean where the move changes them — changes to any
+//   other carried across, as the fast-forward carries them — nothing at a
+//   path the move adds, ignored or not, and in the middle of no operation.
+//   A submodule's own checkout is its repository's: the move leaves it
+//   where it is, and it is no dirt of the parent's. A rebase stopped in a
+//   worktree leaves it detached, yet holds the branch it rebases and those
+//   it updates, so no such branch moves. Otherwise the move stops, saying
+//   what is in the way and the way on.
 // - No remedy changes the files of any worktree but one it makes itself.
 //   Before it moves or rewrites a branch, it keeps the branch as it stands
 //   on a `.kept-` branch and frees it: a worktree an earlier remedy left
@@ -184,6 +185,14 @@ function messagesPast(root, from, to) {
   return git(root, ['log', '-z', '--format=%B', `${from}..${to}`]).split('\0').filter(Boolean);
 }
 
+/** Every commit `to` holds past `from`, oldest first, as a refusal names it: short, then its subject. @param {string} root @param {string} from @param {string} to @returns {string[]} */
+function commitsNamed(root, from, to) {
+  return git(root, ['log', '--reverse', '--format=%H%x00%s', `${from}..${to}`]).split('\n').filter(Boolean).map((line) => {
+    const [sha, subject] = line.split('\0');
+    return `${short(sha)} "${plain(subject)}"`;
+  });
+}
+
 /** A commit's message. @param {string} root @param {string} commit @returns {string} */
 function messageOf(root, commit) {
   return git(root, ['log', '-1', '--format=%B', commit]);
@@ -259,6 +268,27 @@ function pointedLike(root, commit, like, paths) {
   return git(root, ['commit-tree', '--no-gpg-sign', treeWithPointers(root, commit, pointers), '-m', 'leeway: a merge base']).trim();
 }
 
+/** Whether the repository holds `sha` as a commit. @param {string} root @param {string} sha */
+function holdsCommit(root, sha) {
+  return tryGit(root, ['cat-file', '-e', `${sha}^{commit}`]) !== null;
+}
+
+/**
+ * The refusal of a landing whose default branch, `into`, points a submodule
+ * at `sha`, where what the submodule lands onto, `onto`, does not descend
+ * from it — as a pull of the repository holding it leaves it, the
+ * submodule's default branch not pulled — so the submodule's landing would
+ * move the pointer off it; null where `onto` descends from it, which it
+ * never does from a commit the submodule lacks.
+ * @param {string} into @param {string} folder the submodule's @param {{root: string, into: string}} sub @param {string} sha @param {string} onto
+ * @returns {string|null}
+ */
+function pointerAhead(into, folder, sub, sha, onto) {
+  if (isAncestor(sub.root, sha, onto)) return null;
+  const named = plain(folder);
+  return `land: ${into} points ${named} at ${short(sha)}, a commit ${named}'s ${sub.into} does not hold — bring ${named}'s ${sub.into} up to it, as \`git -C ${quoted(folder)} pull\` does where its remote holds it, and land again`;
+}
+
 /**
  * Each of a stack's own commits' moves of its repository's submodules'
  * pointers, in the commits' order: where a commit points a submodule other
@@ -268,9 +298,10 @@ function pointedLike(root, commit, like, paths) {
  * landed, read off its default branch's first-parent line from where
  * `since` points it to its tip (`tipOf`, read when first needed), for a
  * submodule the walk lands in; else the commit's own pointer. One taken
- * out stays out.
- * @template {{root: string, unit: string}} Sub
- * @param {{root: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
+ * out stays out. Refused, never in git's words, where the submodule's tip
+ * does not descend from the commit `since` points it at (`pointerAhead`).
+ * @template {{root: string, unit: string, into: string}} Sub
+ * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
  * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
  * @returns {Map<string, string|null>[]}
  */
@@ -287,7 +318,12 @@ function stackMoves(repo, commits, since, tipOf) {
     const sub = repo.submodules.find((walked) => walked.path === at)?.ctx;
     const start = from.get(at) ?? null;
     if (sub === undefined || start === null) return undefined;
-    if (!landings.has(at)) landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, tipOf(sub))));
+    if (!landings.has(at)) {
+      const tip = tipOf(sub);
+      const ahead = pointerAhead(repo.into, at, sub, start, tip);
+      if (ahead !== null) throw new Error(ahead);
+      landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, tip)));
+    }
     return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
   };
   return commits.map(({ sha, parents, tasks }) => {
@@ -728,6 +764,21 @@ function moveTo(branch, to, how) {
 }
 
 /**
+ * The refusal of a task whose branch has moved since it was opened at
+ * `was`, to `now` — moved on, or rewritten: the branch kept as it stands,
+ * a task of its own, and put back.
+ * @param {string} root @param {string} shown @param {string} branch @param {string} was @param {string} now
+ * @returns {string}
+ */
+function movedSinceOpened(root, shown, branch, was, now) {
+  const [from, to] = [short(was), short(now)];
+  const way = remedy(root, branch, moveTo(branch, from, `put ${branch} back`), {
+    note: (kept) => `the change from ${from} to ${to}, on ${kept}, is a task of its own`,
+  });
+  return `land: task ${shown}'s branch ${branch} has moved since it was opened at ${from}, to ${to} — ${way}`;
+}
+
+/**
  * A remedy's steps rebasing a branch, once free, in a worktree made for it —
  * a folder left at its path cleared first — and removed after, settling each
  * conflict there as the rebase stops. The rebase is the merge backend's,
@@ -800,13 +851,52 @@ function changesAt(tree) {
   return entries.filter((entry) => !(entry.status[0] === ' ' && submodules.has(entry.path))).map((entry) => entry.path);
 }
 
+/** The paths a move from one commit, or tree, to another changes, from the repository's top, a submodule's pointer among them. @param {string} root @param {string} from @param {string} to @returns {Set<string>} */
+function pathsChanged(root, from, to) {
+  return new Set(git(root, ['diff', '--name-only', '-z', '--no-renames', '--no-relative', '--ignore-submodules=none', from, to]).split('\0').filter(Boolean));
+}
+
+/**
+ * The block a worktree's changes not committed put on moving the branch it
+ * has out — those to the paths the move changes, which `changed` answers,
+ * asked only where there are changes; every one where it answers null —
+ * and the way on, or null where there are none.
+ * @param {string} root @param {Worktree} holder @param {string} branch @param {() => Set<string>|null} changed
+ * @returns {string|null}
+ */
+function dirtOf(root, holder, branch, changed) {
+  const changes = changesAt(holder.path);
+  if (changes.length === 0) return null;
+  const moving = changed();
+  const dirt = changes.filter((file) => moving === null || moving.has(file)).map(plain);
+  if (dirt.length === 0) return null;
+  const freed = detaching(root, holder, branch, git(root, ['rev-parse', `${HEADS}${branch}`]).trim());
+  return `${branch} is checked out at ${holder.path}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or ${freed.step}, and land again; ${freed.note}`;
+}
+
+/**
+ * What a worktree's changes not committed put in the way of moving the
+ * branch it has out — those to the paths the move changes, which `changed`
+ * answers (`pathsChanged`), asked only where there are changes, the rest
+ * carried across — or null where nothing does, or no worktree holds it.
+ * @param {string} root @param {string} branch @param {() => Set<string>} changed
+ * @returns {string|null}
+ */
+function dirtBlock(root, branch, changed) {
+  const holder = holderOf(root, branch, worktrees(root));
+  if (holder === undefined || !fs.existsSync(holder.path)) return null;
+  return dirtOf(root, holder, branch, changed);
+}
+
 /**
  * What stops a branch a worktree holds from moving there, and the way on —
  * a rebase rewriting it, a worktree an earlier remedy left with it out, the
  * worktree that has it out with its folder missing, an operation in
- * progress, tracked changes not committed, and, for a move given, one that
- * is no fast-forward or would overwrite a file — or null where nothing does,
- * or no worktree holds it.
+ * progress, tracked changes not committed — for a move given, only to
+ * files the move changes, as a fast-forward there would refuse them, the
+ * rest carried across — and, for a move given, one that is no fast-forward
+ * or would overwrite a file not tracked — or null where nothing does, or no
+ * worktree holds it.
  * @param {string} root @param {string} branch
  * @param {{from: string, to: string}} [move] @param {Worktree[]} [trees]
  * @returns {string|null}
@@ -822,11 +912,8 @@ function checkoutBlock(root, branch, move, trees = worktrees(root)) {
   if (!fs.existsSync(holder.path)) return `${at}, whose folder is missing, so nothing moved — remove that worktree with ${removing(holder)} and land again`;
   const stopped = stoppedAt(root, holder.path);
   if (stopped !== null) return `${at}, where ${stopped.operation} is in progress, so nothing moved — finish it, or end it with ${stopped.end}, and land again`;
-  const dirt = changesAt(holder.path).map(plain);
-  if (dirt.length > 0) {
-    const freed = detaching(root, holder, branch, git(root, ['rev-parse', `${HEADS}${branch}`]).trim());
-    return `${at}, with changes not committed: ${dirt.join(', ')}, so nothing moved — commit them, or ${freed.step}, and land again; ${freed.note}`;
-  }
+  const dirty = dirtOf(root, holder, branch, () => (move === undefined ? null : pathsChanged(root, move.from, move.to)));
+  if (dirty !== null) return dirty;
   if (move === undefined) return null;
   if (!isAncestor(root, move.from, move.to)) {
     return `${at}, and the landing would move it to a commit it does not lead to, so nothing moved — check out another branch there, as \`${gitIn(root, holder.path)} switch --detach\` does, and land again`;
@@ -952,7 +1039,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, messageOf, commitWithTree, treesPast,
-  prefixOf, pointersAt, treeWithPointers, pointedLike, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, rewrite, scratchBlock, rebaseBlock, checkoutBlock, moveBranch,
+  short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
+  prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
 };

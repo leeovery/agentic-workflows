@@ -7,11 +7,14 @@
 // branch (`github-rule`, 4.4.6, 4.S10, 4.S30) and the squash default the
 // landing needs (`github-squash`, 7.2.18). Each is offered until answered,
 // and set on a yes alone, through gh — signed in first, then GitHub's API —
-// recorded once, `set`, `declined` or `failed` with why, and never offered
+// recorded, `set`, `declined` or `failed` with why, and never offered
 // again; a setting gh could not make is said, with where to make it by hand,
-// and setup carries on. The squash default is offered only where the
-// project lands through GitHub. That boot makes the offers, and offers
-// nothing beyond GitHub, is test-engine-boot-state-github.cjs's. Git layer:
+// and setup carries on. The rule's answer is recorded once. The squash
+// default is offered only where the project lands through GitHub, read
+// first and left as it is where it is set, and a yes to it is taken again
+// once answered; across nested repositories, it is
+// test-landing-nested.cjs's. That boot makes the offers, and offers nothing
+// beyond GitHub, is test-engine-boot-state-github.cjs's. Git layer:
 // the landing world on a fake GitHub (world.cjs), built once and copied for
 // each test, every gh call made under the stand-in gh.
 // ---------------------------------------------------------------------------
@@ -40,16 +43,18 @@ const project = useLandingWorld('github-setup-', (dir) => {
 const committedManifest = (dir) => JSON.parse(git(dir, ['show', `leeway-state:${layout.projectManifest}`]));
 
 const AUTH = 'auth status --hostname github.com';
+const SET_SQUASH = 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY';
 
 /**
- * Each offer: its verb and field; whether it is offered; the API call that
- * sets it, and what GitHub holds of it before and once set; the commit's
- * subject on a yes; and the warning where it is not set.
+ * Each offer: its verb and field; whether it is offered; the API calls that
+ * set it, and what GitHub holds of it before and once set; the commit's
+ * subject on a yes; the warning where it is not set; and the answer refused
+ * once one is recorded, and why.
  */
 const OFFERS = [
   {
     verb: 'github-rule', field: 'github_rule', offered: githubRuleOffered,
-    call: 'api --method POST repos/acme/portal/rulesets --input -',
+    calls: ['api --method POST repos/acme/portal/rulesets --input -'],
     held: (/** @type {string} */ dir) => github(dir).rulesets,
     before: [],
     set: [{
@@ -59,15 +64,17 @@ const OFFERS = [
     }],
     subject: 'chore: the GitHub rule on leeway-state set',
     unset: (/** @type {string} */ why) => `the rule against deleting or force-pushing leeway-state was not set on acme/portal: ${why} — set it by hand under the repository's Settings → Rules`,
+    answered: { refused: 'yes', why: 'an answer is recorded once' },
   },
   {
     verb: 'github-squash', field: 'github_squash', offered: githubSquashOffered,
-    call: 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY',
+    calls: ['api repos/acme/portal', SET_SQUASH],
     held: (/** @type {string} */ dir) => github(dir).squash,
     before: GITHUB_SQUASH,
     set: { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' },
     subject: 'chore: the GitHub squash default set',
     unset: (/** @type {string} */ why) => `the squash default was not set on acme/portal: ${why} — set it by hand in the repository's Settings, under Pull Requests, as the default commit message "Pull request title and description"`,
+    answered: { refused: 'no', why: 'only a yes is taken again, setting it wherever it is not' },
   },
 ];
 
@@ -79,7 +86,7 @@ for (const offer of OFFERS) {
 
       const out = ok(dir, [offer.verb, 'yes']);
 
-      assert.deepStrictEqual(calls(dir), [AUTH, offer.call]);
+      assert.deepStrictEqual(calls(dir), [AUTH, ...offer.calls]);
       assert.deepStrictEqual(offer.held(dir), offer.set);
       assert.deepStrictEqual([out[offer.field], out.reason, out.warnings], ['set', undefined, undefined]);
       assert.strictEqual(out.committed, git(dir, ['rev-parse', '--short', 'leeway-state']).trim());
@@ -118,16 +125,30 @@ for (const offer of OFFERS) {
       });
     }
 
-    it('an answer is recorded once, and is yes or no', () => {
+    it(`an answer is yes or no, and once one is recorded, ${offer.answered.why}`, () => {
       const dir = project();
       ok(dir, [offer.verb, 'no']);
 
-      assert.strictEqual(refused(dir, [offer.verb, 'yes']), `${offer.verb}: the offer is answered — "declined" is recorded, and an answer is recorded once`);
+      assert.strictEqual(refused(dir, [offer.verb, offer.answered.refused]), `${offer.verb}: the offer is answered — "declined" is recorded, and ${offer.answered.why}`);
       assert.strictEqual(refused(project(), [offer.verb, 'maybe']), `${offer.verb}: the answer is yes or no — got "maybe"`);
       assert.deepStrictEqual(calls(dir), []);
     });
   });
 }
+
+describe('github-squash: a yes taken again', () => {
+  it('sets it after a no, and once set, reads it and leaves it as it is, recorded set', () => {
+    const dir = project();
+    ok(dir, ['github-squash', 'no']);
+
+    assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
+    const out = ok(dir, ['github-squash', 'yes']);
+
+    assert.deepStrictEqual(calls(dir), [AUTH, 'api repos/acme/portal', SET_SQUASH, AUTH, 'api repos/acme/portal']);
+    assert.deepStrictEqual([out.github_squash, out.committed, github(dir).squash], ['set', null, OFFERS[1].set]);
+    assert.deepStrictEqual(committedManifest(dir).github_squash, { status: 'set' });
+  });
+});
 
 describe('github-squash: only where the project lands through GitHub', () => {
   it('a project on GitHub that lands locally is offered the rule and not the squash default, and a yes to that is refused, nothing set', () => {

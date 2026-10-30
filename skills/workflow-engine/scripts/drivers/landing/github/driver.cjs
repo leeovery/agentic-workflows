@@ -25,7 +25,11 @@
 //   (landing.cjs).
 // - Open: the task's branch pushed under its own name (7.2.14), then its
 //   pull request opened onto the chain's tip, titled with its landing's
-//   subject, its body the rest of that message, with the task's id.
+//   subject, its body the rest of that message, with the task's id. Refused,
+//   before anything opens in any repository, while the default branch here
+//   holds commits GitHub's does not, naming them: a branch cut from it would
+//   land them under the task's subject, and pushing them is the person's
+//   call.
 // - Chain: the phase's pull requests linked into one stack, bottom to top,
 //   always with the default branch as the stack's base — without it, the
 //   extension retargets the bottom pull request onto GitHub's own default.
@@ -35,25 +39,34 @@
 //   repository's squash default says, so a stack merges only where that is
 //   the pull request's title and description — each commit then the task's
 //   subject with GitHub's " (#N)", and its id in the body (7.2.18); setup
-//   offers to set it (github-setup.cjs). A lone pull request is merged alone
+//   offers to set it on every repository the project lands in on GitHub,
+//   and `github-squash yes` sets it wherever it is not, so a refusal names
+//   that verb (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
 //   first where it stood on another phase's task. A task's branch here
 //   behind its pull request's head — a push of the driver's that went before
 //   the branch here moved — is brought to it first, refused where it is
 //   checked out and cannot move; one anywhere else stops the phase, with the
-//   local driver's way back (landing-git.cjs). Once merged, the default
-//   branch is fetched and moved here to the merge, as the local driver
-//   leaves it, where git would fast-forward it; where it cannot be, the
+//   local driver's way back (landing-git.cjs). A stack is refused before
+//   anything merges where the default branch here is checked out with
+//   changes not committed to files the merge changes, naming them. Once
+//   merged, the default branch is fetched and moved here to the merge, as
+//   the local driver leaves it, where git would fast-forward it, changes not
+//   committed to any other file carried across; where it cannot be, the
 //   answer warns why, and the merge stands. A phase found merged already is
-//   refused, the default branch here brought to it all the same, so landing
-//   again recovers one a merge left behind, or one merged on GitHub by hand.
-// - Finish: every phase not yet merged, each after the one it stacks on,
-//   each warning given once.
+//   answered so, the default branch here brought to it all the same, so
+//   landing again recovers one a merge left behind, or one merged on GitHub
+//   by hand.
+// - Finish: the phase merged next, the lowest not merged that stacks on no
+//   phase not merged; the seam makes each merge in turn (landing.cjs).
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
-//   moves (`assertServes`). A repository's submodules' pointers are settled
-//   before its stack merges, each submodule's stack merged first
+//   moves (`assertServes`). A merge lands onto the default branch on GitHub,
+//   fetched (`landsOn`), which the seam reads to check each submodule's
+//   there descends from what the repository holding it points it at. A
+//   repository's submodules' pointers are settled before its stack merges,
+//   each submodule's stack merged first
 //   (landing.cjs merges children first), squashed into new commits the
 //   pointers its tasks carry do not name. A stack moves a pointer only
 //   where its own commits do — those no pull request below it, no other
@@ -253,10 +266,31 @@ function chainTip(ctx, task) {
     if (isMerged(own)) throw new Error(`land: phase ${phase} is merged into ${ctx.into} — task ${shown} lands in a phase not yet merged, so number it in one`);
     if (pullOf(own, task.ref) !== undefined) return null;
   }
+  refuseUnpushed(ctx, host, shown);
   const top = own ?? builtOn(ctx, stacks, phase, task.branch);
   if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (lg.branches(ctx.root).get(ctx.into)), host };
   const last = top.pulls[top.pulls.length - 1];
   return { name: last.head, commit: last.oid, host };
+}
+
+/**
+ * Refuse a task's open while the default branch here holds commits GitHub's
+ * does not — a task's branch cut from it would carry them, and they would
+ * land under the task's subject — naming them, and the way on: pushing them
+ * is the person's call.
+ * @param {LandingContext} ctx @param {Host} host @param {string} shown
+ */
+function refuseUnpushed(ctx, host, shown) {
+  const theirs = `${host.remote}/${ctx.into}`;
+  const fetched = lg.fetchBranch(ctx.root, host.remote, ctx.into);
+  if ('failed' in fetched) throw new Error(`land: ${theirs} could not be fetched (${fetched.failed}), so task ${shown} was not opened — open it again once it can be`);
+  const ahead = lg.commitsNamed(ctx.root, fetched.commit, ctx.into);
+  if (ahead.length === 0) return;
+  const [held, them, belong] = ahead.length === 1 ? ['a commit', 'it', 'it belongs'] : [`${ahead.length} commits`, 'them', 'they belong'];
+  throw new Error(
+    `land: ${ctx.into} here holds ${held} ${theirs} does not — ${ahead.join(', ')} — which a task's branch cut from it would land under the task's own subject, so task ${shown} was not opened; `
+    + `push ${them} to ${ctx.into} on GitHub if ${belong} there, as \`git push ${host.remote} ${ctx.into}\` does, and open the task again`,
+  );
 }
 
 /**
@@ -334,14 +368,43 @@ function catchUpBranches(ctx, stack) {
       behind.push({ branch: pull.head, from: at, to: pull.oid });
       continue;
     }
-    const [was, now] = [lg.short(pull.oid), lg.short(at)];
-    const way = lg.remedy(ctx.root, pull.head, lg.moveTo(pull.head, was, `put ${pull.head} back`), {
-      note: (kept) => `the change from ${was} to ${now}, on ${kept}, is a task of its own`,
-    });
-    throw new Error(`land: task ${shownTask(pull.ref)}'s branch ${pull.head} has moved since it was opened at ${was}, to ${now} — ${way}`);
+    throw new Error(lg.movedSinceOpened(ctx.root, shownTask(pull.ref), pull.head, pull.oid, at));
   }
   refuseBlocked(ctx, behind);
   for (const { branch, from, to } of behind) lg.moveBranch(ctx.root, branch, from, to);
+}
+
+/**
+ * Refuse a stack's merge, before anything merges, where the default branch
+ * here is checked out with changes not committed to files the merge would
+ * change there, so it could not be brought to the merge — naming them; the
+ * merge is read only where there are changes. A stack that conflicts with
+ * the default branch on GitHub is GitHub's to refuse, and one whose default
+ * branch cannot be fetched merges all the same, the answer then warning
+ * that it was not brought up — `theirs`, the default branch on GitHub, as
+ * its fetch answered.
+ * @param {LandingContext} ctx @param {Stack} stack @param {{commit: string}|{failed: string}} theirs
+ */
+function refuseDirtyDefault(ctx, stack, theirs) {
+  const ours = lg.branches(ctx.root).get(ctx.into);
+  if (ours === undefined || 'failed' in theirs) return;
+  const block = lg.dirtBlock(ctx.root, ctx.into, () => {
+    const top = stack.pulls[stack.pulls.length - 1].oid;
+    const merged = lg.mergeTree(ctx.root, lg.mergeBase(ctx.root, theirs.commit, top), theirs.commit, top);
+    return 'conflicts' in merged ? new Set() : lg.pathsChanged(ctx.root, ours, merged.tree);
+  });
+  if (block !== null) throw new Error(`land: ${block}`);
+}
+
+/**
+ * Whether a repository, as GitHub's API reads it, squashes a pull request
+ * into its title and description.
+ * @param {string} read
+ */
+function squashesIntoPull(read) {
+  /** @type {{squash_merge_commit_title?: string, squash_merge_commit_message?: string}} */
+  const repository = JSON.parse(read);
+  return repository.squash_merge_commit_title === 'PR_TITLE' && repository.squash_merge_commit_message === 'PR_BODY';
 }
 
 /**
@@ -350,12 +413,10 @@ function catchUpBranches(ctx, stack) {
  * @param {LandingContext} ctx @param {Host} host @param {Stack} stack
  */
 function refuseSquashDefault(ctx, host, stack) {
-  /** @type {{squash_merge_commit_title?: string, squash_merge_commit_message?: string}} */
-  const repository = JSON.parse(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read ${host.repo}'s squash default`));
-  if (repository.squash_merge_commit_title === 'PR_TITLE' && repository.squash_merge_commit_message === 'PR_BODY') return;
+  if (squashesIntoPull(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read ${host.repo}'s squash default`))) return;
   throw new Error(
     `land: ${host.repo} does not squash a pull request into its title and description, so phase ${stack.phase}'s stack would land under other subjects than its tasks' — `
-    + 'set the repository\'s squash default to "Pull request title and description" in its Settings, under Pull Requests, and land again',
+    + 'set that squash default on every repository the project lands in on GitHub, as `engine github-squash yes` does, and land again',
   );
 }
 
@@ -394,7 +455,16 @@ function bringDefaultUp(ctx, host) {
  * @returns {string}
  */
 function fetchedDefault(ctx) {
-  const fetched = lg.fetchBranch(ctx.root, hostOf(ctx).remote, ctx.into);
+  return defaultOn(ctx, lg.fetchBranch(ctx.root, hostOf(ctx).remote, ctx.into));
+}
+
+/**
+ * The tip of a repository's default branch on GitHub as a fetch of it
+ * answered — refused where the fetch failed, no pointer then recorded.
+ * @param {LandingContext} ctx @param {{commit: string}|{failed: string}} fetched
+ * @returns {string}
+ */
+function defaultOn(ctx, fetched) {
   if ('failed' in fetched) {
     const named = ctx.repo === '.' ? ctx.into : `${lg.plain(ctx.repo)}'s ${ctx.into}`;
     throw new Error(`land: ${named} could not be fetched (${fetched.failed}), so no submodule's pointer was recorded and nothing merged — land again once it can be`);
@@ -452,12 +522,12 @@ function meetsMove(paths, base, onto, heads) {
  * before GitHub merges it (see the header): the stack brought up to date
  * with the default branch on GitHub where a squash would meet a pointer
  * both sides moved, else the top's pointers recorded where they are not the
- * rule's.
- * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack
+ * rule's — against the default branch on GitHub as `fetched` found it.
+ * @param {LandingContext} ctx @param {Host} host @param {Map<number, Stack>} stacks @param {Stack} stack @param {{commit: string}|{failed: string}} fetched
  */
-function settlePointers(ctx, host, stacks, stack) {
+function settlePointers(ctx, host, stacks, stack, fetched) {
   if (ctx.gitlinks.length === 0) return;
-  const into = fetchedDefault(ctx);
+  const into = defaultOn(ctx, fetched);
   const moves = movesOf(ctx, stacks, stack, into);
   const heads = stack.pulls.map(({ oid }) => oid);
   const [base, onto, ...held] = lg.pointersAt(ctx.root, [lg.mergeBase(ctx.root, into, heads[0]), into, ...heads], ctx.gitlinks);
@@ -531,6 +601,8 @@ function mergeStack(ctx, host, stacks, stack) {
     throw new Error(`land: phase ${stack.phase} stacks on phase ${below.phase}, which has not merged — merge it first with \`land phase ${ctx.unit} ${below.phase}\`, then land again`);
   }
   catchUpBranches(ctx, stack);
+  const fetched = lg.fetchBranch(ctx.root, host.remote, ctx.into);
+  refuseDirtyDefault(ctx, stack, fetched);
   const merging = `merge phase ${stack.phase}'s stack`;
   const [lone, ...more] = stack.pulls;
   if (more.length > 0) {
@@ -539,7 +611,7 @@ function mergeStack(ctx, host, stacks, stack) {
   } else if (lone.base !== ctx.into) {
     ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
   }
-  settlePointers(ctx, host, stacks, stack);
+  settlePointers(ctx, host, stacks, stack, fetched);
   if (more.length > 0) ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
   else ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
   const { stack: tasks, pull_requests } = answered(stack);
@@ -566,31 +638,17 @@ function mergePhase(ctx, phase) {
 }
 
 /**
- * Merge every phase not yet merged, lowest first, each after the one it
- * stacks on, each warning given once. Stops at the first that cannot merge,
- * saying which merged.
+ * The merge finish makes next: the lowest phase not merged that stacks on
+ * no phase not merged, else the lowest not merged — null where every one
+ * is.
  * @param {LandingContext} ctx
  */
-function finish(ctx) {
+function nextMerge(ctx) {
   const host = hostOf(ctx);
-  /** @type {({phase: number} & Omit<ReturnType<typeof mergeStack>, 'warnings'>)[]} */
-  const merged = [];
-  /** @type {Set<string>} */
-  const warned = new Set();
-  for (;;) {
-    const stacks = stacksOf(pullsOf(ctx, host));
-    const unmerged = [...stacks.values()].filter((stack) => !isMerged(stack)).sort((a, b) => a.phase - b.phase);
-    if (unmerged.length === 0) return { into: ctx.into, phases: merged, ...(warned.size > 0 ? { warnings: [...warned] } : {}) };
-    try {
-      const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
-      const { warnings = [], ...landed } = mergeStack(ctx, host, stacks, next);
-      merged.push({ phase: next.phase, ...landed });
-      warnings.forEach((warning) => warned.add(warning));
-    } catch (err) {
-      if (merged.length === 0) throw err;
-      throw new Error(`${err instanceof Error ? err.message : String(err)} (finish merged phase ${merged.map((done) => done.phase).join(', ')} before it)`);
-    }
-  }
+  const stacks = stacksOf(pullsOf(ctx, host));
+  const unmerged = [...stacks.values()].filter((stack) => !isMerged(stack)).sort((a, b) => a.phase - b.phase);
+  const next = unmerged.find((stack) => builtOn(ctx, stacks, stack.phase, stack.pulls[0].oid) === undefined) ?? unmerged[0];
+  return next === undefined ? null : { phase: next.phase, merge: () => mergeStack(ctx, host, stacks, next) };
 }
 
 /**
@@ -621,19 +679,20 @@ function repositoryNamed(url) {
  */
 function protectBranch(root, url, branch) {
   const repository = repositoryNamed(url);
-  return { repository, unset: setOnGithub(root, ['--method', 'POST', `repos/${repository}/rulesets`, '--input', '-'], JSON.stringify(rulesetFor(branch))) };
+  return { repository, unset: setOnGithub(root, ['--method', 'POST', `repos/${repository}/rulesets`, '--input', '-'], { input: JSON.stringify(rulesetFor(branch)) }) };
 }
 
 /**
  * Make the remote's repository squash a pull request into its title and
- * description (7.2.18): the repository, and why it does not, null where it
- * does.
+ * description (7.2.18), left as it is where it does already: the
+ * repository, and why it does not, null where it does.
  * @param {string} root @param {string} url
  */
 function setSquashDefault(root, url) {
   const repository = repositoryNamed(url);
   const squash = ['-f', 'squash_merge_commit_title=PR_TITLE', '-f', 'squash_merge_commit_message=PR_BODY'];
-  return { repository, unset: setOnGithub(root, ['--method', 'PATCH', `repos/${repository}`, ...squash]) };
+  const held = { read: [`repos/${repository}`], made: squashesIntoPull };
+  return { repository, unset: setOnGithub(root, ['--method', 'PATCH', `repos/${repository}`, ...squash], { held }) };
 }
 
 module.exports = {
@@ -648,11 +707,12 @@ module.exports = {
   assertServes: (/** @type {LandingContext} */ ctx) => {
     hostOf(ctx);
   },
+  landsOn: fetchedDefault,
   chainTip,
   open,
   chain,
   mergePhase,
-  finish,
+  nextMerge,
   protectBranch,
   setSquashDefault,
   repositoryOf,

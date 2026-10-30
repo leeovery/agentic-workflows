@@ -49,8 +49,8 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'finish']),
-    optional: /** @type {const} */ (['assertServes', 'protectBranch', 'setSquashDefault']),
+    required: /** @type {const} */ (['serves', 'chainTip', 'open', 'chain', 'mergePhase', 'nextMerge']),
+    optional: /** @type {const} */ (['assertServes', 'landsOn', 'finished', 'protectBranch', 'setSquashDefault']),
   },
 });
 
@@ -138,29 +138,39 @@ const METHODS = Object.freeze({
  * project, its context's, and answers what it did there. `serves` answers
  * whether it serves a remote's URL; a driver that lands through a host
  * refuses a repository whose remote it does not serve (`assertServes`),
- * which the seam asks of every repository it walks before any acts.
+ * which the seam asks of every repository it walks before any acts; and a
+ * driver whose default branch is not the local one answers the commit a
+ * merge lands onto (`landsOn`), fetched — the seam reads the local branch's
+ * tip where it does not.
  * `chainTip` answers the branch a task's branch must descend from, at a
  * commit the repository has locally, which the seam checks before `open` —
  * null where the task's phase's stack holds it already; `chain`, null where
  * the task is not open there; `mergePhase`, null where no task of the
  * phase is open there, and `already` where it is merged; a merge, what it
- * was warned of. Where the host can, run from the code root against the
- * remote's repository: `protectBranch` sets a rule refusing a branch's
- * deletion and any push to it that is not a fast-forward (4.4.6), and
- * `setSquashDefault` makes a squash merge's commit the pull request's title
- * and description (7.2.18) — each answering the repository as its host
- * names it, and why the setting is not made, null where it is.
+ * was warned of. `nextMerge` answers the merge finish makes next there —
+ * its phase, and the merge, made from what the driver read to pick it —
+ * null where every phase is merged; the seam makes each in turn, and
+ * `finished` lets go, once finish has merged them all, what the driver
+ * keeps of the unit there. Where the host can, run from a repository's
+ * checkout against its remote's repository: `protectBranch` sets a rule
+ * refusing a branch's deletion and any push to it that is not a
+ * fast-forward (4.4.6), and `setSquashDefault` makes a squash merge's
+ * commit the pull request's title and description (7.2.18), left as it is
+ * where it does — each answering the repository as its host names it, and
+ * why the setting is not made, null where it is.
  * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
  *   serves: (url: string) => boolean,
  *   assertServes?: (ctx: LandingContext) => void,
+ *   landsOn?: (ctx: LandingContext) => string,
  *   protectBranch?: (root: string, url: string, branch: string) => {repository: string, unset: string|null},
  *   setSquashDefault?: HostSetting,
  *   chainTip: (ctx: LandingContext, task: LandingTask) => ChainTip|null,
  *   open: (ctx: LandingContext, task: LandingTask, tip: ChainTip) => {base: string},
  *   chain: (ctx: LandingContext, ref: TaskRef) => {stack: string[]}|null,
  *   mergePhase: (ctx: LandingContext, phase: number) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]}|null,
- *   finish: (ctx: LandingContext) => {into: string, phases: {phase: number, merged: string[]}[], warnings?: string[]},
+ *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
+ *   finished?: (ctx: LandingContext) => void,
  * }} LandingMethods
  */
 /** @typedef {DriverDeclaration & Omit<MethodsOf<typeof METHODS.landing>, keyof LandingMethods> & LandingMethods} LandingDriver */

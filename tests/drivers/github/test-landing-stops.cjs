@@ -8,8 +8,12 @@
 // on, never an install command (22.4.7) — gh not installed or not signed
 // in, the extension missing, GitHub's rate limit, no network, a merge
 // GitHub refuses, a stack merged in part by hand on GitHub, a task with
-// nothing to land, opened already or opened into a merged phase, and a
-// push refused; the push naming its branch, with no tag and no prompt; the
+// nothing to land or opened into a merged phase, a default branch here
+// holding commits GitHub's lacks at the open, naming them, and a push
+// refused; a task opened already, and a phase merged, answered as done
+// already; the push naming its branch, with no tag and no prompt; the
+// default branch here checked out with changes to files the merge changes
+// refused before anything merges, other changes carried across; the
 // default branch here left where the person's work, a failed fetch or git
 // itself stops it, warned once with the way to bring it up, the merge
 // standing; the stand-in gh at the driver's floors, failing closed,
@@ -82,7 +86,7 @@ describe('the default branch here, once a phase merges', () => {
     assert.deepStrictEqual([warnings.length, tip(dir, 'main'), landedOn(bareOf(dir), 'main').map(({ task }) => task)], [1, ours, ['pay-1-1']]);
     fs.rmSync(lock);
 
-    assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), 'land: phase 1 is merged into main already — there is nothing more to merge');
+    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), { ok: true, phase: 1, already: true, repos: [], driver: 'github' });
     assert.strictEqual(tip(dir, 'main'), side.defaultTip(dir));
   });
 
@@ -101,6 +105,20 @@ describe('the default branch here, once a phase merges', () => {
     fs.rmSync(path.join(dir, 'card.txt'));
     execFileSync('sh', ['-c', /** @type {string} */ (/`([^`]+)`/.exec(warning)?.[1])], { cwd: dir });
     assert.strictEqual(tip(dir, 'main'), side.defaultTip(dir));
+  });
+
+  it('checked out with changes not committed: the merge refused before anything merges where it changes them, naming them — and, where it does not, made, the branch here brought to it with the changes carried across', () => {
+    const dir = project();
+    ok(dir, openArgs(cutTask(dir, '1.4', 'feat', 'Edit the app', 'main', { 'app.txt': 'app edited\n' })));
+    fs.writeFileSync(path.join(dir, 'app.txt'), 'mine\n');
+
+    assert.match(refused(dir, ['land', 'phase', 'pay', '1']), new RegExp(`^land: main is checked out at ${fs.realpathSync(dir)}, with changes not committed: app\\.txt, so nothing moved — commit them, or detach `));
+    assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['OPEN']);
+    git(dir, ['checkout', '--', 'app.txt']);
+    fs.writeFileSync(path.join(dir, 'note.txt'), 'note\n');
+    git(dir, ['add', 'note.txt']);
+    assert.strictEqual(ok(dir, ['land', 'phase', 'pay', '1']).warnings, undefined);
+    assert.deepStrictEqual([tip(dir, 'main'), git(dir, ['status', '--porcelain']), fs.readFileSync(path.join(dir, 'app.txt'), 'utf8')], [side.defaultTip(dir), 'A  note.txt\n', 'app edited\n']);
   });
 });
 
@@ -142,7 +160,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     );
     assert.deepStrictEqual([tipOnGithub(dir, card.branch), pulls(dir)], [tip(dir, card.branch), []]);
     assert.strictEqual(own(ok(dir, openArgs(card))).pull_request, 1);
-    assert.strictEqual(refused(dir, openArgs(card)), 'land: task 1.1 is in phase 1\'s stack already — there is nothing more to open');
+    assert.deepStrictEqual(ok(dir, openArgs(card)), { ok: true, task: '1.1', branch: card.branch, already: true, repos: [], driver: 'github' });
   });
 
   it('no network: refused in gh\'s words, to land again once it is back, nothing merged', () => {
@@ -195,7 +213,26 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.strictEqual(refused(dir, openArgs(tax)), partly);
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'OPEN']);
     mergeByHand(dir, 2, 'main');
-    assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '1']), 'land: phase 1 is merged into main already — there is nothing more to merge');
+    assert.deepStrictEqual(ok(dir, ['land', 'phase', 'pay', '1']), { ok: true, phase: 1, already: true, repos: [], driver: 'github' });
+  });
+
+  it('the default branch here holding a commit GitHub\'s does not, as first boot leaves it: the open refused before anything is pushed or opened, naming it — and, once it is pushed, the task landed alone under its subject', () => {
+    const dir = project();
+    ok(dir, ['boot']);
+    const tax = cutTask(dir, '1.4', 'feat', 'Add tax', 'main', { 'tax.txt': 'tax\n' });
+    const [booted] = git(dir, ['log', '--format=%H %s', 'origin/main..main']).trim().split('\n');
+    assert.strictEqual(booted.slice(41), 'chore: install workflow session hooks');
+
+    assert.strictEqual(
+      refused(dir, openArgs(tax)),
+      `land: main here holds a commit origin/main does not — ${booted.slice(0, 7)} "chore: install workflow session hooks" — which a task's branch cut from it would land under the task's own subject, so task 1.4 was not opened; `
+      + 'push it to main on GitHub if it belongs there, as `git push origin main` does, and open the task again',
+    );
+    assert.deepStrictEqual([tipOnGithub(dir, tax.branch), pulls(dir)], ['', []]);
+    git(dir, ['push', '-q', 'origin', 'main']);
+    ok(dir, openArgs(tax));
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').slice(-1).map(({ subject, paths }) => [subject, paths]), [['feat(pay): Add tax (#1)', ['tax.txt']]]);
   });
 
   it('a push refused: no pull request opened, in git\'s words, to open the task again once what git names is cleared', () => {
@@ -207,7 +244,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual([pulls(dir), tipOnGithub(dir, card.branch)], [[], theirs]);
   });
 
-  it('the push names its branch whatever the person\'s push settings, carries no tag, and git never waits on a prompt — the push as a task opens and the fetch once its phase merges run with git\'s prompt off, as the state branch\'s do', () => {
+  it('the push names its branch whatever the person\'s push settings, carries no tag, and git never waits on a prompt — the fetch and the push as a task opens, and the fetches as its phase merges, run with git\'s prompt off, as the state branch\'s do', () => {
     const dir = project();
     git(dir, ['config', 'remote.origin.push', 'refs/heads/*:refs/heads/elsewhere/*']);
     git(dir, ['config', 'push.followTags', 'true']);
@@ -224,7 +261,7 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
       );
       ok(dir, ['land', 'phase', 'pay', '1']);
 
-      assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0']);
+      assert.deepStrictEqual(fs.readFileSync(seen, 'utf8').split('\n').filter(Boolean), ['0', '0', '0', '0']);
     } finally {
       fs.rmSync(bin, { recursive: true, force: true });
     }

@@ -32,20 +32,31 @@
 // work on the task's branch: touched where the branch holds a commit past
 // its chain's tip, which the driver answers there, and refused where it does
 // not descend from that tip (12.7.1); one with nothing past its default
-// branch or the chain's tip gets nothing. The other verbs walk the project's
+// branch or the chain's tip gets nothing. A task whose branch points a
+// submodule at a commit the submodule here does not hold is refused before
+// anything opens, naming both, so no pointer lands naming a commit no
+// repository holds. The other verbs walk the project's
 // own repository and each nested one holding work on a branch of the
 // unit's in question. Every verb walks them children first, the project's
 // own last, so a submodule's landing merges before the repository holding
 // it records its pointer, as each driver records it; a merge is told, for
 // that, each submodule of its repository, and which of them the walk lands
-// in. A driver that lands through a host refuses, before anything moves, a
+// in. A merge is refused before anything merges where a default branch
+// points a submodule the walk lands in at a commit the submodule's own
+// default branch does not descend from — each as it lands, what its driver
+// lands onto (`landsOn`) — so no landing moves a pointer off it. A
+// driver that lands through a host refuses, before anything moves, a
 // repository it walks whose remote it does not serve (`assertServes`). A
 // refusal in a nested repository names it, and one after a repository moved
 // names what moved where and carries the warnings those landings gave; the
 // verb run again picks up where it stopped, a repository done already
-// passed over. A verb answers, children first, as `repos`, each repository
-// where its landing did something — a merge, those where a phase merged —
-// and every warning, one in a nested repository naming it. Every verb,
+// passed over; `open` and `phase` run again where their work is done answer
+// `already`. `finish` makes, in each repository, the merge its driver
+// picks next (`nextMerge`) until none is left, each warning given once, a
+// refusal saying which phases merged before it. A verb answers, children first,
+// as `repos`, each repository where its landing did something — a merge,
+// those where a phase merged — and every warning, one in a nested
+// repository naming it. Every verb,
 // before anything else, stops on a rebase stopped in a worktree a remedy
 // made in a repository it walks, until it is settled or ended there
 // (landing-git.cjs).
@@ -68,6 +79,7 @@ const { trackedTask, ENDED } = require('./task-verbs.cjs');
 const names = require('./landing-names.cjs');
 const lg = require('./landing-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectPath, childrenFirst } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
@@ -357,26 +369,91 @@ function landingOf(project, ref, { type, title, status }) {
 /**
  * The repositories a task's branch touches, children first, each with its
  * chain's tip — read in every repository holding the branch, and the branch
- * held to descend from it there, before anything opens. Refuses a task
- * touching none: opened already wherever it touches, or with nothing past a
- * chain's tip — the project's own named, where it holds the branch.
+ * held to descend from it there, before anything opens; none where the task
+ * is opened already wherever it touches. Refuses a task touching none with
+ * nothing past a chain's tip — the project's own named, where it holds the
+ * branch — and one moving a submodule's pointer to a commit the submodule
+ * here lacks (`refuseUnheldMoves`).
  * @param {Project} project @param {LandingDriver} driver @param {LandingTask} task @param {Repo[]} holding
- * @returns {{ctx: LandingContext, tip: ChainTip}[]}
+ * @returns {{repo: Repo, ctx: LandingContext, tip: ChainTip}[]}
  */
 function touching(project, driver, task, holding) {
   const shown = shownTask(task.ref);
   const judged = childrenFirst(holding).map((repo) => {
     const ctx = contextOf(project, repo);
-    return { ctx, found: inRepo(ctx.repo, () => standing(driver, ctx, task)) };
+    return { repo, ctx, found: inRepo(ctx.repo, () => standing(driver, ctx, task)) };
   });
-  const opening = judged.flatMap(({ ctx, found }) => ('tip' in found ? [{ ctx, tip: found.tip }] : []));
-  if (opening.length > 0) return opening;
-  if (judged.some(({ found }) => 'opened' in found)) throw new Error(`land: task ${shown} is in phase ${task.ref.phase}'s stack already — there is nothing more to open`);
+  const opening = judged.flatMap(({ repo, ctx, found }) => ('tip' in found ? [{ repo, ctx, tip: found.tip }] : []));
+  for (const { repo, ctx, tip } of opening) inRepo(ctx.repo, () => refuseUnheldMoves(project, repo, task, tip.commit));
+  if (opening.length > 0 || judged.some(({ found }) => 'opened' in found)) return opening;
   const idle = judged.flatMap(({ ctx, found }) => ('past' in found ? [{ ctx, past: found.past }] : []));
   const { ctx, past } = idle[idle.length - 1];
   return inRepo(ctx.repo, () => {
     throw new Error(lg.nothingPast(shown, task.branch, past));
   });
+}
+
+/**
+ * Refuse a task's branch moving a submodule's pointer, past the chain's tip
+ * at `from`, to a commit the submodule here does not hold — as a change
+ * committed in a clone the task's worktree made of its own leaves it, so
+ * the pointer would land naming a commit no repository holds.
+ * @param {Project} project @param {Repo} repo @param {LandingTask} task @param {string} from
+ */
+function refuseUnheldMoves(project, repo, task, from) {
+  if (repo.submodules.length === 0) return;
+  const prefix = lg.prefixOf(repo.path);
+  const paths = repo.submodules.map((folder) => `${prefix}${folder}`);
+  const [before, after] = lg.pointersAt(repo.path, [from, task.branch], paths);
+  repo.submodules.forEach((folder, i) => {
+    const sha = after.get(paths[i]) ?? null;
+    if (sha === null || sha === (before.get(paths[i]) ?? null)) return;
+    const nested = project.repos.find((held) => held.dir === projectPath(repo.dir, folder));
+    if (nested !== undefined && lg.holdsCommit(nested.path, sha)) return;
+    const named = lg.plain(folder);
+    throw new Error(`land: task ${shownTask(task.ref)}'s branch ${task.branch} points ${named} at ${lg.short(sha)}, a commit ${named} here does not hold — commit the change in ${named}, on ${task.branch}, and open the task again`);
+  });
+}
+
+/**
+ * Refuse, before anything merges, a repository whose default branch points
+ * a submodule the walk lands in at a commit the submodule's own default
+ * branch does not descend from, each as it lands (`pointerAhead`).
+ * @param {LandingDriver} driver @param {LandingContext[]} merging
+ */
+function refuseDefaultsAhead(driver, merging) {
+  for (const ctx of merging.filter(({ submodules }) => submodules.length > 0)) {
+    inRepo(ctx.repo, () => {
+      const [pointers] = lg.pointersAt(ctx.root, [landsOn(driver, ctx)], ctx.submodules.map(({ path }) => path));
+      for (const { path, ctx: sub } of ctx.submodules) {
+        const sha = pointers.get(path) ?? null;
+        const ahead = sha === null ? null : lg.pointerAhead(ctx.into, path, sub, sha, landsOn(driver, sub));
+        if (ahead !== null) throw new Error(ahead);
+      }
+    });
+  }
+}
+
+/**
+ * The commit a repository's merge lands onto: its driver's answer
+ * (`landsOn`), else its default branch's tip here.
+ * @param {LandingDriver} driver @param {LandingContext} ctx
+ * @returns {string}
+ */
+function landsOn(driver, ctx) {
+  return driver.landsOn?.(ctx) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
+}
+
+/**
+ * Each repository's part of a merge, children first, `act` run in each —
+ * once no default branch points a submodule at a commit its own lacks.
+ * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
+ * @returns {Step[]}
+ */
+function mergeSteps(project, driver, walking, act) {
+  const merging = walking.map((repo) => mergingIn(project, repo, walking));
+  refuseDefaultsAhead(driver, merging);
+  return merging.map((ctx) => ({ ctx, act: () => act(ctx) }));
 }
 
 /**
@@ -400,8 +477,9 @@ function standing(driver, ctx, task) {
 /**
  * The task's pull request opened in every repository its change touches —
  * locally, its change squashed onto its phase's branch there — under the
- * type and title the tracker holds for it. A task the tracker lacks is
- * refused as the read finds it.
+ * type and title the tracker holds for it; `already` where it is opened
+ * wherever it touches, so a rerun reads finished work as done. A task the
+ * tracker lacks is refused as the read finds it.
  * @param {string} cwd @param {string} unit @param {string} task shown, `{phase}.{n}`
  */
 function landOpen(cwd, unit, task) {
@@ -413,7 +491,8 @@ function landOpen(cwd, unit, task) {
   const { task: landing, holding } = carrying(warnings ?? [], () => landingOf(project, ref, held));
   return withDriver(cwd, (driver) => {
     const steps = touching(project, driver, landing, holding).map(({ ctx, tip }) => ({ ctx, act: () => driver.open(ctx, landing, tip) }));
-    return { task: shown, branch: landing.branch, ...answered(walk(steps, () => `task ${shown} opened`)) };
+    const already = steps.length === 0 ? { already: true } : {};
+    return { task: shown, branch: landing.branch, ...already, ...answered(walk(steps, () => `task ${shown} opened`)) };
   }, { committed, warnings });
 }
 
@@ -441,21 +520,10 @@ function landChain(cwd, unit, task) {
 }
 
 /**
- * The refusal of a phase merged already wherever it lands, as the project's
- * own repository says it — else the last nested one to — with every
- * warning merging it gave.
- * @param {number} phase @param {Answer[]} answers
- */
-function mergedAlready(phase, answers) {
-  const { warnings = [] } = answered(answers);
-  const { repo, into } = answers[answers.length - 1];
-  return inRepo(repo, () => {
-    throw new Error(`land: phase ${phase} is merged into ${into} already — there is nothing more to merge${warnings.map((warning) => `; ${warning}`).join('')}`);
-  });
-}
-
-/**
- * A phase merged whole in every repository it lands in, children first.
+ * A phase merged whole in every repository it lands in, children first —
+ * `already` where it is merged wherever it lands, so a rerun reads finished
+ * work as done, with every warning bringing the default branch here to it
+ * gave.
  * @param {string} cwd @param {string} unit @param {string} given
  */
 function landPhase(cwd, unit, given) {
@@ -463,16 +531,38 @@ function landPhase(cwd, unit, given) {
   const project = projectOf(cwd, unit);
   const ofPhase = (/** @type {string} */ branch) => (names.taskOfBranch(unit, branch)?.phase ?? names.phaseOfBranch(unit, branch)) === phase;
   return withDriver(cwd, (driver) => {
-    const walking = walked(project, driver, ofPhase);
-    const steps = walking.map((repo) => {
-      const ctx = mergingIn(project, repo, walking);
-      return { ctx, act: () => driver.mergePhase(ctx, phase) };
-    });
+    const steps = mergeSteps(project, driver, walked(project, driver, ofPhase), (ctx) => driver.mergePhase(ctx, phase));
     const answers = walk(steps, (answer) => (answer.already ? null : `phase ${phase} merged`));
     if (answers.length === 0) throw new Error(`land: phase ${phase} of ${unit} has no task opened — open its tasks first`);
-    if (answers.every((answer) => answer.already)) return mergedAlready(phase, answers);
-    return { phase, ...answered(answers, (answer) => !answer.already) };
+    const already = answers.every((answer) => answer.already) ? { already: true } : {};
+    return { phase, ...already, ...answered(answers, (answer) => !answer.already) };
   });
+}
+
+/**
+ * Every phase not merged in one repository merged, each as the driver picks
+ * it next (`nextMerge`), each warning given once, and what the driver keeps
+ * of the unit there then let go (`finished`). Stops at the first refusal,
+ * saying which phases merged before it.
+ * @param {LandingDriver} driver @param {LandingContext} ctx
+ */
+function finishing(driver, ctx) {
+  /** @type {Record<string, any>[]} */
+  const phases = [];
+  /** @type {Set<string>} */
+  const warned = new Set();
+  try {
+    for (let next = driver.nextMerge(ctx); next !== null; next = driver.nextMerge(ctx)) {
+      const { warnings = [], ...merged } = next.merge();
+      phases.push({ phase: next.phase, ...merged });
+      for (const warning of warnings) warned.add(warning);
+    }
+  } catch (err) {
+    if (phases.length === 0) throw err;
+    throw new Error(`${messageOf(err)} (finish merged phase ${phases.map(({ phase }) => phase).join(', ')} before it)`);
+  }
+  driver.finished?.(ctx);
+  return { into: ctx.into, phases, ...(warned.size > 0 ? { warnings: [...warned] } : {}) };
 }
 
 /**
@@ -484,11 +574,7 @@ function landPhase(cwd, unit, given) {
 function landFinish(cwd, unit) {
   const project = projectOf(cwd, unit);
   return withDriver(cwd, (driver) => {
-    const walking = walked(project, driver, (branch) => names.isUnitBranch(unit, branch));
-    const steps = walking.map((repo) => {
-      const ctx = mergingIn(project, repo, walking);
-      return { ctx, act: () => driver.finish(ctx) };
-    });
+    const steps = mergeSteps(project, driver, walked(project, driver, (branch) => names.isUnitBranch(unit, branch)), (ctx) => finishing(driver, ctx));
     const did = (/** @type {Answer} */ answer) => (answer.phases.length === 0 ? null : `phase ${answer.phases.map((/** @type {{phase: number}} */ merged) => merged.phase).join(', ')} merged`);
     return answered(walk(steps, did), (answer) => answer.phases.length > 0);
   });

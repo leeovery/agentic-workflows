@@ -42,6 +42,7 @@ const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
+const { githubSquashNested } = require('./github-setup.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -7258,7 +7259,7 @@ const SURFACES = {
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
   'git-floor-stop': () => gitFloorStopSurface(),
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
-  'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd)),
+  'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ready': knowledgeReadySurface,
