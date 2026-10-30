@@ -57,30 +57,30 @@
 //   meets no threshold (16.3.2). It refuses `--replaces`: a fact that
 //   changes is the person's to say, and the decision it changes is replaced
 //   as any other.
-// - The seal (16.1.2): the call as given, sealed before the person answers,
-//   so its lean cannot change — `raise-shown.json` in the conversation's
-//   folder (conversation.cjs), each raise drawn there by its id, with a
-//   version of its own: the call; the place; the question it answers, null on
-//   a replacement, and the entries it relies on, by full id; on a
-//   replacement, the decision it replaces by full id, the reason and the
-//   cause, and the row keeping the decision as it stands, so the answer needs
-//   nothing more; whether it is a fact; the id, minted at the draw, which is
-//   the id its line lands as; the menu it is declared as, `raise — <id>`;
-//   the rows whose answer and what it rules out the check judged one rule;
-//   the decision point's reason; when it was shown; its answer once given —
-//   when, and the row's key, null for the person's own words — null until
-//   then; and how many times the person did not follow it. It is written before the command answers, and
-//   one that cannot be written refuses the raise. Every write to the seals
-//   holds a lock of their own beside them, reads them again under it and
-//   changes its own raise alone, so raises drawn, answered and not followed
-//   at once in one conversation — Claude makes its calls in parallel — keep
-//   each other's. A raise of a question, or of a replacement of a decision,
-//   the conversation holds an open seal for — the same place, and the same
-//   question or the same decision — draws that seal, the call it is given set
-//   aside, and says it drew it again: the pick is measured against the first
-//   lean — and so does a draw whose seal another, drawn at once, wrote while
-//   it waited. A seal of another version is never matched, and stays as
-//   written. The layout hook refuses Claude's own writes to it
+// - The seal (16.1.2): the call as given, sealed before the person answers, so
+//   its lean cannot change — `raise-shown.json` in the conversation's folder
+//   (conversation.cjs), each raise drawn there by its id, with a version of
+//   its own: the call; the place; the question it answers, null on a
+//   replacement, and the entries it relies on, by full id; on a replacement,
+//   the decision it replaces by full id, the reason and the cause, and the row
+//   keeping the decision as it stands, so the answer needs nothing more;
+//   whether it is a fact; the id, minted at the draw, which is the id its line
+//   lands as; the menu it is declared as, `raise — <id>`; the rows whose
+//   answer and what it rules out the check judged one rule; the decision
+//   point's reason; when it was shown; its answer once given — when, and the
+//   row's key, null for the person's own words — null until then; and how many
+//   times the person did not follow it. It is written before the command
+//   answers, and one that cannot be written refuses the raise. Every write to
+//   the seals holds a lock of their own beside them, reads them again under it
+//   and changes its own raise alone, so raises drawn, answered and not
+//   followed at once in one conversation — Claude makes its calls in parallel
+//   — keep each other's. A raise of a question, or of a replacement of a
+//   decision, the conversation holds an open seal for — the same place, and
+//   the same question or the same decision — draws that seal, the call it is
+//   given set aside, and says it drew it again: the pick is measured against
+//   the first lean — and so does a draw whose seal another, drawn at once,
+//   wrote while it waited. A seal of another version is never matched, and
+//   stays as written. The layout hook refuses Claude's own writes to it
 //   (layout-hook.cjs).
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
@@ -992,9 +992,9 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
 
 /**
  * The person's answer landed at the raise's id, its raise event with it —
- * none for a fact — then the seal marked answered. Where the ledger held the line already,
- * the seal is marked with the answer it holds, and the response says the
- * raise was answered already, and with which row.
+ * none for a fact — then the seal marked answered. Where the ledger held
+ * the line already, the seal is marked with the answer it holds, and the
+ * response says the raise was answered already, and with which row.
  * @param {string} cwd @param {string} session @param {Seal} seal @param {Answering} answering
  * @returns {Landed & {raise: string, already?: true, answer?: string|null}}
  */
@@ -1018,9 +1018,10 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
 
 /**
  * "I don't follow": a raise event in the trust log alone — none for a
- * fact — and the count on the seal; the raise stays open. On a raise the ledger holds the answer
- * to — an old screen's press — nothing is logged or counted, and the
- * raise is said answered already, with the row the line holds.
+ * fact — and the count on the seal; the raise stays open. On a raise the
+ * ledger holds the answer to — an old screen's press — nothing is logged
+ * or counted, and the raise is said answered already, with the row the
+ * line holds.
  * @param {string} cwd @param {string} session @param {Seal} seal
  * @returns {{raise: string, open: true, warnings?: string[]} | {raise: string, already: true, answer: string|null, warnings?: string[]}}
  */
