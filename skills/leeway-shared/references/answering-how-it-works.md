@@ -1,6 +1,6 @@
 # Answering How It Works
 
-*Shared reference for all workflow skills. Loaded at the question, per [instructions.md](instructions.md), and by leeway and help for the questions their own screens invite.*
+*Shared reference. Loaded by `instructions.md` at the question, and by `leeway` and `leeway-help` for the questions their own screens invite.*
 
 ---
 
@@ -19,6 +19,4 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render walkthrough-topic --
 
    The slugs: `kinds-of-work`, `the-phases`, `epics-the-map-and-the-dashboard`, `the-roadmap`, `gates-and-auto`, `the-knowledge-base-and-the-baseline`, `the-inbox`, `reshaping-work`, `working-in-parallel`.
 
-5. Where the person was at a gate, the question set it aside; once they say they are ready to move on — asked in conversation when the exchange looks settled — put it back — re-run the render call that produced it, or the one the caller names, emit it per its marker, and **STOP.** Wait for user response. Otherwise the conversation carries on where it was.
-
-→ Return to caller.
+5. Where the person was at a gate, the question set it aside, and it comes back as [instructions.md](instructions.md) says, fetched with the render call that produced it or the one the caller names. Otherwise the conversation carries on where it was.
