@@ -21,6 +21,11 @@
 // logged whatever the config says (`core.logAllRefUpdates`), so a worktree's
 // HEAD log always says which commit its files were last put at.
 //
+// No call waits without bound: each runs within the time limit it names, or
+// `CALL_TIMEOUT_MS`, and one that runs past it fails, naming itself. A git
+// that stalls — on a filter the repository configures, say — never holds the
+// verb, and the writer lock with it, for ever.
+//
 // It also finds a repository's main checkout, the folder the workflows keep
 // their state in, refusing the repositories and folders that have none; its
 // refusals say so. It knows nothing else of the state.
@@ -61,10 +66,13 @@ const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.f
 const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
 const REFS_LOGGED = Object.freeze(['-c', 'core.logAllRefUpdates=true']);
 
+// The time limit of a call that names none: far past any the workflows make.
+const CALL_TIMEOUT_MS = 300000;
+
 /**
- * A call's stdin, its time limit, variables layered over the isolated
- * environment, and a file descriptor its output is written to whole rather
- * than answered, for output of any size.
+ * A call's stdin, its time limit (`CALL_TIMEOUT_MS` where it names none),
+ * variables layered over the isolated environment, and a file descriptor its
+ * output is written to whole rather than answered, for output of any size.
  * @typedef {{input?: string, timeoutMs?: number, env?: Record<string, string>, out?: number}} RunOptions
  */
 
@@ -98,7 +106,7 @@ function isolatedEnv() {
  * @returns {string[]}
  */
 function configuredHookNames(cwd, env) {
-  const res = spawnSync('git', ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'], { cwd, env, encoding: 'utf8' });
+  const res = spawnSync('git', ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'], { cwd, env, encoding: 'utf8', timeout: CALL_TIMEOUT_MS });
   if (res.error || res.status !== 0) return [];
   return res.stdout.split('\0').filter((key) => key !== '').map((key) => key.slice('hook.'.length, -'.command'.length));
 }
@@ -132,21 +140,22 @@ function isolatedGit(cwd) {
   /** @type {Record<string, string>|null} */
   let base = null;
 
-  /** @param {string[]} args @param {RunOptions} opts */
-  function spawn(args, { input, timeoutMs, env, out } = {}) {
+  /** @param {string[]} args @param {RunOptions} opts @param {number} limit */
+  function spawn(args, { input, env, out }, limit) {
     base ??= hooksOffEnv(cwd);
     return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
-      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
+      cwd, encoding: 'utf8', input, timeout: limit, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
   }
 
   return {
     run(args, opts = {}) {
-      const res = spawn(args, opts);
+      const limit = opts.timeoutMs ?? CALL_TIMEOUT_MS;
+      const res = spawn(args, opts, limit);
       if (res.error) {
         const timedOut = /** @type {NodeJS.ErrnoException} */ (res.error).code === 'ETIMEDOUT';
         throw new GitError(timedOut
-          ? `git ${args[0]} timed out after ${Number(opts.timeoutMs) / 1000}s`
+          ? `git ${args[0]} timed out after ${limit / 1000}s`
           : `git ${args[0]} failed: ${res.error.message}`);
       }
       if (res.status !== 0) {
@@ -155,7 +164,7 @@ function isolatedGit(cwd) {
       return res.stdout ?? '';
     },
     tryRun(args, opts = {}) {
-      const res = spawn(args, opts);
+      const res = spawn(args, opts, opts.timeoutMs ?? CALL_TIMEOUT_MS);
       return res.error || res.status !== 0 ? null : res.stdout ?? '';
     },
   };
@@ -266,4 +275,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };
+module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };

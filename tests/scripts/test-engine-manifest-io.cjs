@@ -28,11 +28,12 @@ const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
+const PROCESS_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/process.cjs');
+const { PS_TIMEOUT_MS, processStartTime } = require(PROCESS_PATH);
 const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
 
 const {
-  ok, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME,
+  ok, childLimits, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME,
 } = harness;
 
 function writeEpicFixture(dir) {
@@ -358,6 +359,14 @@ describe('the claim — one holder at a time, never waited on', () => {
     fs.writeFileSync(claim, JSON.stringify({ pid: 1, pid_start: 'another' }));
     release();
     assert.ok(fs.existsSync(claim), 'a claim another took is theirs to release');
+  });
+
+  it('gives `ps` PS_TIMEOUT_MS to answer an owner\'s start time, never longer', (t) => {
+    const limits = childLimits(t, PROCESS_PATH, (/** @type {typeof import('../../skills/workflow-engine/scripts/kernel/process.cjs')} */ fresh) => {
+      fresh.ownerAlive({ pid: process.pid, pid_start: 'a process before this one' });
+    });
+
+    assert.deepStrictEqual(limits, [PS_TIMEOUT_MS]);
   });
 
   it('while `ps` fails, a live owner\'s claim stands and a gone owner\'s is still taken over', () => {

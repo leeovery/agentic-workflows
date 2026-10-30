@@ -31,9 +31,18 @@ const { KNOWLEDGE_DIR } = require('../../skills/workflow-engine/scripts/kernel/k
 
 const { STATE_DIR_NAME } = stateRoot;
 
+// A test's git call answers in well under a second; one still running after
+// this has hung, and fails rather than holding its suite.
+const GIT_TIMEOUT_MS = 60000;
+
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+  try {
+    return execFileSync('git', args, { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code !== 'ETIMEDOUT') throw err;
+    throw new Error(`git ${args.join(' ')} in ${dir} ran past ${GIT_TIMEOUT_MS / 1000}s`);
+  }
 }
 
 /**
@@ -322,6 +331,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
+  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, GIT_TIMEOUT_MS, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
   statePath, stateRelative, layout, writeState, readState, readManifest, createManifest, createFile, readFile,
 };

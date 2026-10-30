@@ -8,8 +8,8 @@
 // that keeps concurrent verbs one after the other; the confined commit — a
 // file given a change committed as it makes it of the branch's own, refused
 // where git cannot read that — and its push, a failed push a warning; the
-// ignore file's added patterns; and every call made with hooks off and the
-// caller's repository environment cleared.
+// ignore file's added patterns; and every call made with hooks off, the
+// caller's repository environment cleared, and within a time limit.
 //
 // Real repositories in temp folders, a bare repository as the remote.
 // ---------------------------------------------------------------------------
@@ -23,12 +23,14 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout, createFile, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout, createFile, traced, childLimits, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
-const { REPOSITORY_ENV, isolatedGit, mainCheckout } = require('../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
+const ISOLATED_GIT = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
+const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout } = require(ISOLATED_GIT);
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
+const { WRITER_LOCK_TIMEOUT_MS } = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
 const { stateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 const { isId } = require('../../skills/workflow-engine/scripts/domain/ledger-ids.cjs');
@@ -38,6 +40,10 @@ const {
   inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
   askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, withBootLock, commitState, pushState,
 } = state;
+
+// Past twice the writer lock's wait, a child of this suite still running has
+// hung: it is killed, and its test fails.
+const CHILD_TIMEOUT_MS = 2 * WRITER_LOCK_TIMEOUT_MS;
 
 /** @type {string} */
 let world;
@@ -74,7 +80,7 @@ function worktreeRecord(main, root) {
 
 /** Whether git ignores the path in the state worktree. @param {string} root @param {string} rel */
 function ignored(root, rel) {
-  return spawnSync('git', ['check-ignore', '-q', rel], { cwd: root }).status === 0;
+  return spawnSync('git', ['check-ignore', '-q', rel], { cwd: root, timeout: CHILD_TIMEOUT_MS }).status === 0;
 }
 
 /** A repo of its own with one commit, for the environment to point at. @param {string} name */
@@ -188,6 +194,17 @@ describe('the isolated runner', () => {
       fs.closeSync(fd);
     }
     assert.strictEqual(fs.readFileSync(file, 'utf8'), text + text);
+  });
+
+  it('runs every git within a time limit: the call\'s own, else CALL_TIMEOUT_MS — the config\'s hooks read at the first call too', (t) => {
+    const limits = childLimits(t, ISOLATED_GIT, (/** @type {typeof import('../../skills/workflow-engine/scripts/kernel/isolated-git.cjs')} */ fresh) => {
+      const runner = fresh.isolatedGit(world);
+      runner.run(['--version']);
+      runner.tryRun(['--version']);
+      runner.run(['--version'], { timeoutMs: 1234 });
+    });
+
+    assert.deepStrictEqual(limits, [CALL_TIMEOUT_MS, CALL_TIMEOUT_MS, CALL_TIMEOUT_MS, 1234]);
   });
 
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {
@@ -664,7 +681,7 @@ describe('the writer lock', () => {
   it('takes over at once a lock whose holder is gone, however fresh the lock', () => {
     const { root } = codeProject(world, { state: true });
     const lock = path.join(root, layout.lock);
-    const ended = spawnSync('node', ['-e', '']).pid;
+    const ended = spawnSync(process.execPath, ['-e', ''], { timeout: CHILD_TIMEOUT_MS }).pid;
 
     for (const left of [{ pid: ended, pid_start: 'gone' }, { pid: process.pid, pid_start: 'a process before this one' }]) {
       fs.writeFileSync(lock, JSON.stringify(left));
@@ -705,7 +722,7 @@ describe('the writer lock', () => {
   it('never breaks a live holder, however long it has held: the contender gives up, naming it', async () => {
     const { root } = codeProject(world, { state: true });
     const lock = path.join(root, layout.lock);
-    const holder = spawn('node', ['-e', HOLDER, STATE, root, world]);
+    const holder = spawn(process.execPath, ['-e', HOLDER, STATE, root, world], { timeout: CHILD_TIMEOUT_MS, killSignal: 'SIGKILL' });
     let stderr = '';
     holder.stderr.on('data', (chunk) => { stderr += chunk; });
     const exited = new Promise((resolve) => holder.on('exit', resolve));
@@ -1220,7 +1237,7 @@ describe('a state commit interrupted between its steps', () => {
    * did not hold back.
    */
   function interruptingGit() {
-    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8', timeout: CHILD_TIMEOUT_MS }).trim();
     const dir = path.join(world, 'interrupting-git');
     fs.mkdirSync(dir);
     fs.writeFileSync(path.join(dir, 'git'), [
@@ -1239,8 +1256,8 @@ describe('a state commit interrupted between its steps', () => {
 
   /** Run the verb's commit in its own process under `env`. @param {string} root @param {Record<string, string>} env */
   function commitInterrupted(root, env) {
-    return spawnSync('node', ['-e', COMMIT, STATE, root], {
-      encoding: 'utf8', env: { ...process.env, PATH: `${interruptingGit()}:${process.env.PATH}`, ...env },
+    return spawnSync(process.execPath, ['-e', COMMIT, STATE, root], {
+      encoding: 'utf8', timeout: CHILD_TIMEOUT_MS, env: { ...process.env, PATH: `${interruptingGit()}:${process.env.PATH}`, ...env },
     });
   }
 
@@ -1348,10 +1365,10 @@ describe('two sessions writing state at once (4.S3)', () => {
 
   /** @param {string} root @param {string} who @param {number} turns */
   function session(root, who, turns) {
-    const proc = spawn('node', ['-e', SESSION, STATE, root, who, String(turns)]);
+    const proc = spawn(process.execPath, ['-e', SESSION, STATE, root, who, String(turns)], { timeout: CHILD_TIMEOUT_MS, killSignal: 'SIGKILL' });
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
-    return new Promise((resolve) => proc.on('exit', (code) => resolve({ code, stderr })));
+    return new Promise((resolve) => proc.on('exit', (code, signal) => resolve({ code, stderr: signal ? `killed by ${signal} past ${CHILD_TIMEOUT_MS / 1000}s\n${stderr}` : stderr })));
   }
 
   it('writes one after the other: every line kept, one line per commit, a linear branch with no merge', async () => {
