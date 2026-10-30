@@ -595,6 +595,7 @@ const EXEMPT_CALLS = [
   ['layout', 'guard'],
   ['shell', 'guard'],
   ['brief', 'guard'],
+  ['checklist', 'show', 'decided', 'payments', 'auth-flow'],
   ['render', 'migration-gate'],
   ['gate', 'migration gate', '--pick', 'y'],
 ];

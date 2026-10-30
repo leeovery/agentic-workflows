@@ -16,7 +16,9 @@
 // Layer: verb. World: a project with two units, built once and copied: one
 // whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1 and 3.S2
 // (11.S31's), and one, `billing`, with no spec. A phase's start is its
-// checklist closed on the manifest, written by hand: no verb closes one yet.
+// checklist closed on the manifest: by `checklist close` for a first phase
+// relying on nothing, and written by hand for later ones, whose starts would
+// need each phase before them worked to its close first.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -219,13 +221,17 @@ describe('a second cut (E10)', () => {
     assert.deepStrictEqual(readManifest(dir, UNIT).cut, { phases: [CARDS, { ...REFUNDS, goal: 'Refunds, whole and part.' }] });
   });
 
-  it('a phase whose start\'s checklist is open, items marked and no close, has not started', () => {
-    cut([CARDS, REFUNDS]);
-    withChecklists({ 'phase-1-start': { items: { 'tasks-written': { state: 'done', at: FROZEN_AT } } } });
-    const sooner = { ...CARDS, goal: 'Cards, sooner.' };
+  it('a phase whose start\'s checklist is open, items marked and no close, has not started; `checklist close` starts it', () => {
+    const cards = { ...CARDS, relies_on: [] };
+    cut([cards, REFUNDS]);
+    ok(dir, ['checklist', 'done', 'phase-start', UNIT, '1', 'tasks-written']);
+    ok(dir, ['checklist', 'done', 'phase-start', UNIT, '1', 'design-settled']);
+    const sooner = { ...cards, goal: 'Cards, sooner.' };
 
     cut([sooner, REFUNDS]);
+    ok(dir, ['checklist', 'close', 'phase-start', UNIT, '1']);
 
     assert.deepStrictEqual(readManifest(dir, UNIT).cut, { phases: [sooner, REFUNDS] });
+    assert.match(refused({ phases: [cards, REFUNDS] }), /^cut: phase 1 has started, and the cut changes phase 1 — /);
   });
 });

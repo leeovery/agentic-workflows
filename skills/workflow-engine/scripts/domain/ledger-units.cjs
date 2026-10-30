@@ -2,9 +2,10 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the work units and topics the ledger's entries are tagged
-// with, as today's manifests say them. The ledger reads a manifest here
-// alone, so a later phase that reshapes the manifests changes the ledger in
-// this one place.
+// with, as today's manifests say them. The ledger, and the checklists'
+// engine items (checklist.cjs), read a unit's topics and status here alone,
+// so a later phase that reshapes the manifests changes them in this one
+// place.
 //
 // - A topic exists only before the spec (4.11.2): it is an item of its unit
 //   in one of the phases before it.
@@ -16,6 +17,7 @@
 //   made at the unit's level carries no topic, and its unit alone decides.
 // - A unit is finished once its status reads completed; until then it is
 //   still under way.
+// - A unit's live topics: those it names that are live.
 // - What is live, marked unit by unit: a value two reads of a unit's
 //   manifest answer alike exactly when they set the same of its topics, or
 //   the unit, aside, so a change to what is live is seen however it was
@@ -112,6 +114,11 @@ function topicsOf(manifest) {
   }))].sort();
 }
 
+/** The topics a unit's manifest names that are live, sorted. @param {string} unit @param {Record<string, any>} manifest @returns {string[]} */
+function liveTopics(unit, manifest) {
+  return topicsOf(manifest).filter((topic) => deadReason(unit, topic, manifest) === null);
+}
+
 /**
  * What is live of a unit, marked: why it and each topic it names is not
  * live where one is not; null where it has no manifest.
@@ -174,4 +181,4 @@ function changedUnits(root, before) {
   return [...new Set([...before.keys(), ...after.keys()])].filter((unit) => (before.get(unit) ?? '') !== (after.get(unit) ?? ''));
 }
 
-module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, unitMark, livenessMarks, manifestStamps, changedUnits };
+module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits };
