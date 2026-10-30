@@ -8,7 +8,9 @@
 // rows without creating files; the content file's existence is the
 // completion signal scan promotes on; ack/announce/surface/incorporate walk
 // a validated lifecycle with loud refusals off the legal path. Store is
-// `.leeway/.cache/{wu}/state.json` — cache-resident, purged at close.
+// `.leeway/.cache/{wu}/state.json` — cache-resident, purged at close. The
+// background review's back-off arms on the topic's moves on the ledger since
+// the last review's mark (9.8.14), over the ledger suites' world.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,6 +23,7 @@ const path = require('path');
 
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const { ok: engineJson, refuses: engineFails } = require('./engine-harness.cjs');
+const { UNIT, MADE, NOTE, SPACE, PHASES, writtenWorld, ledgerHelpers } = require('./ledger-world.cjs');
 const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
 
 /** Agent-store runner: the verb prefix is the suite's subject. */
@@ -57,8 +60,8 @@ describe('engine agent — lifecycle store', () => {
     assert.ok(!fs.existsSync(a.file), 'no skeleton file');
     const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(b.id, 'review-002');
-    const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
-    assert.strictEqual(c.id, 'perspective-001-auth', 'kinds number independently, label suffixes');
+    const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(c.id, 'deep-dive-001-auth', 'kinds number independently, label suffixes');
     const store = readStore(dir, 'pay', 'discussion', 'alpha');
     assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
@@ -73,7 +76,7 @@ describe('engine agent — lifecycle store', () => {
 
   it('dispatch numbers past legacy files already in the cache dir', () => {
     writeContent(dir, '.leeway/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
-    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
+    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review', '--final']);
     assert.strictEqual(a.id, 'review-004', 'never collides with pre-programme files');
   });
 
@@ -154,8 +157,8 @@ describe('engine agent — lifecycle store', () => {
 
   it('the mailbox guard holds review dispatches only — other kinds pass a full mailbox', () => {
     writeContent(dir, '.leeway/pay/topics/alpha/mail/001-parked.md', '### Parked\n');
-    const lens = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
-    assert.strictEqual(lens.id, 'perspective-001-auth');
+    const dive = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
+    assert.strictEqual(dive.id, 'deep-dive-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
     // count as waiting messages — only what `topic mailbox` itself would count.
@@ -209,7 +212,7 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('surface walks the findings; the last one incorporates the row; refusals are loud', () => {
-    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'ship-now', '--label', 'strategic-timing']);
     for (const a of pair.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     const d = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]);
@@ -268,9 +271,21 @@ describe('engine agent — lifecycle store', () => {
       '--label', 'dup', '--label', 'dup']).error, /duplicates/);
   });
 
+  it('a perspective dispatch is one polarity pair: a label that is no lens, one lens alone, or two of different pairs refused, nothing recorded', () => {
+    const refused = (/** @type {string[]} */ labels) => runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', ...labels.flatMap((l) => ['--label', l])]).error;
+
+    assert.match(refused(['ship-now', 'argue-for-friday']), /^"argue-for-friday" is no lens — a perspective argues one of the polarity pairs: formal-systems\/incentive-realist, /);
+    assert.match(refused(['ship-now']), /one polarity pair, a lens and its counter-lens, as two --label — ship-now is one lens: /);
+    assert.match(refused(['ship-now', 'tail-risk']), /ship-now and tail-risk are no pair: /);
+    assert.match(refused([]), /none was given: /);
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
+    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'tail-risk', '--label', 'common-path']).set, '001',
+      'either lens of a pair may come first');
+  });
+
   it('synthesis joins its landed set — required, complete, one live per set, name unoccupied', () => {
     const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective',
-      '--label', 'a', '--label', 'b']);
+      '--label', 'ship-now', '--label', 'strategic-timing']);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', pair.set]).error,
       /not complete/, 'a half-landed council never synthesises');
     for (const a of pair.agents) writeContent(dir, a.file);
@@ -291,7 +306,7 @@ describe('engine agent — lifecycle store', () => {
     const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
     assert.strictEqual(again.id, 'synthesis-001', 'recovery re-dispatch after closing the dead row');
     writeContent(dir, '.leeway/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
-    const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'x', '--label', 'y']);
+    const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'common-path', '--label', 'tail-risk']);
     for (const a of p2.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'beta']);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'synthesis', '--set', p2.set]).error,
@@ -299,7 +314,7 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('perspectives are never acknowledged, and sit alongside a mid-drain review', () => {
-    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'ship-now', '--label', 'strategic-timing']);
     for (const a of pair.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     assert.match(runFails(dir, ['ack', 'pay', 'discussion', 'alpha', pair.agents[0].id, '--clean']).error,
@@ -328,13 +343,13 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('a pending perspective and a pending review are both listed, kinds intact', () => {
-    const p = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'lens']);
-    writeContent(dir, p.file);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'common-path', '--label', 'tail-risk']);
+    for (const a of pair.agents) writeContent(dir, a.file);
     const r = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     writeContent(dir, r.file);
     const scan = runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
-    assert.strictEqual(scan.pending.length, 2, 'both rows listed for set checks');
-    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ x) => x.kind), ['perspective', 'review'],
+    assert.strictEqual(scan.pending.length, 3, 'every row listed for set checks');
+    assert.deepStrictEqual(scan.pending.map((/** @type {any} */ x) => x.kind), ['perspective', 'perspective', 'review'],
       'the reading flow filters by kind — the store lists both');
   });
 
@@ -352,10 +367,10 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('incorporate closes from any live state: pending set-members and abandoned in-flight rows', () => {
-    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'tail-risk']);
-    writeContent(dir, a.file);
+    const pair = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'common-path', '--label', 'tail-risk']);
+    for (const a of pair.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
-    const consumed = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', a.id]);
+    const consumed = runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', pair.agents[1].id]);
     assert.strictEqual(consumed.status, 'incorporated', 'pending row consumed without surfacing');
 
     const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
@@ -432,9 +447,9 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('synthesis recovery re-dispatch discards the dead row\'s stale report', () => {
-    runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
-    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-a.md');
-    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-b.md');
+    runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'ship-now', '--label', 'strategic-timing']);
+    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-ship-now.md');
+    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-strategic-timing.md');
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     const s1 = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
     writeContent(dir, s1.file, '# Stale synthesis report\n');
@@ -447,159 +462,160 @@ describe('engine agent — lifecycle store', () => {
   });
 });
 
-describe('engine agent — discussion review arming', () => {
+/**
+ * The arming suite's world, written once: on the note window, the person's
+ * three questions; then, past mark A, the first answered by the person, the
+ * second moved to space homing, a finding, the third reworded, and the
+ * person's question on space homing; then, past mark B, Claude's own call,
+ * its question with it; then, past mark C, the person's question handed
+ * over by "your call"; then, past mark D, a review's finding, and the
+ * person's answer to it. Each mark is the id of the last line before it.
+ */
+const ARMING = writtenWorld('agent-arming-', PHASES, (write) => {
+  const ask = (/** @type {string} */ by, address = NOTE) => write('ask', address, [], { by, who_moved_whom: 'none', text: `A question of ${by}'s?` }).id;
+  const decide = (/** @type {string} */ question, /** @type {string} */ by, given = 'own') => write('decide', NOTE, ['--answers', question], {
+    by, given, who_moved_whom: 'none', text: 'The answer.', why: 'The reason.',
+  }).id;
+  const [closed, moved, reworded] = [ask('person'), ask('person'), ask('person')];
+  const a = reworded;
+  decide(closed, 'person');
+  write('move', NOTE, ['--question', moved, '--to', 'space-homing'], MADE);
+  write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' });
+  write('replace', NOTE, ['--replaces', reworded, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'A question reworded?' });
+  const b = ask('person', SPACE);
+  const c = decide(ask('claude'), 'claude');
+  const d = decide(ask('person'), 'claude', 'your-call');
+  decide(ask('review'), 'person');
+  return { a, b, c, d };
+});
+
+describe('engine agent — discussion review arming (9.8.14)', () => {
+  const TOPIC = 'note-window';
+  /** @type {string} */
   let dir;
   beforeEach(() => {
-    dir = setupFixture('agent-arming-');
-    const wuDir = path.join(dir, '.leeway', 'pay');
-    fs.mkdirSync(wuDir, { recursive: true });
-    writeMap({ tokens: 'exploring' });
+    dir = ARMING.world();
   });
   afterEach(() => cleanupFixture(dir));
+  const { write, entries, full } = ledgerHelpers(() => dir);
 
-  /** @param {Record<string, string>} statuses */
-  function writeMap(statuses) {
-    const subtopics = Object.fromEntries(Object.entries(statuses)
-      .map(([name, status]) => [name, { status, parent: null }]));
-    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
-      name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { discussion: { items: { auth: { status: 'in-progress', subtopics } } } },
-    }, null, 2));
-  }
+  /** The id of the ledger's last line. */
+  const last = () => entries().at(-1).id;
 
-  /** Land the report and drain the row — a completed cycle. @param {{id: string, file: string}} d */
-  function completeCycle(d) {
-    writeContent(dir, d.file, '# Findings\n');
-    runJson(dir, ['scan', 'pay', 'discussion', 'auth']);
-    runJson(dir, ['ack', 'pay', 'discussion', 'auth', d.id, '--clean']);
-  }
+  /** A dispatch of `kind` on the note window: its response. @param {string} kind @param {string[]} [flags] */
+  const dispatch = (kind, flags = []) => runJson(dir, ['dispatch', UNIT, 'discussion', TOPIC, '--kind', kind, ...flags]);
 
-  it('the first review is free and stamps the map snapshot', () => {
-    const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(a.id, 'review-001');
-    const store = readStore(dir, 'pay', 'discussion', 'auth');
-    assert.deepStrictEqual(store.agents['review-001'].map_snapshot, { tokens: 'exploring' });
-  });
+  /** A review dispatch refused: its error. */
+  const refusedReview = () => runFails(dir, ['dispatch', UNIT, 'discussion', TOPIC, '--kind', 'review']).error;
 
-  it('a second review refuses at zero movement, then arms on one forward move', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error;
-    assert.match(err, /review dispatch blocked/);
-    assert.match(err, /0 of 1 map moves since review-001/);
-    assert.match(err, /--final/, 'the refusal names the closing pass\'s bypass');
-    writeMap({ tokens: 'decided' });
-    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-002');
-    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
-      { tokens: 'decided' }, 'the new row snapshots the moved map');
-  });
-
-  it('subtopic additions count as movement', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'exploring', refresh: 'pending' });
-    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-002');
-  });
-
-  it('a backward move never arms', () => {
-    writeMap({ tokens: 'decided' });
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'exploring' });
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /0 of 1 map moves/, 'unwinding a decision is not new ground');
-  });
-
-  it('the requirement escalates per completed cycle and caps at 3', () => {
-    for (let i = 0; i < 4; i += 1) {
-      completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review', '--final']));
-    }
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /0 of 3 map moves since review-004/, 'four cycles in, the bar holds at the cap');
-    writeMap({ tokens: 'decided', refresh: 'pending', expiry: 'pending' });
-    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-005', 'three fresh moves re-arm however many cycles have run');
-  });
-
-  it('--final bypasses the movement gate and still stamps the snapshot', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review', '--final']);
-    assert.strictEqual(b.id, 'review-002');
-    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
-      { tokens: 'exploring' });
-  });
-
-  it('rows predating the snapshot arm permissively once', () => {
-    fs.mkdirSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth', 'state.json'), JSON.stringify({
-      agents: { 'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z' } },
+  /**
+   * A topic's store holding a completed review per mark, in order, each its
+   * report read and drained; a mark null leaves its row with no report, a
+   * killed dispatch closed.
+   * @param {(string|null)[]} marks @param {string} [topic]
+   */
+  function reviewed(marks, topic = TOPIC) {
+    const agents = Object.fromEntries(marks.map((mark, i) => {
+      const id = `review-00${i + 1}`;
+      const findings = mark === null ? [] : ['F1'];
+      return [id, {
+        id, kind: 'review', phase: 'discussion', topic, set: `00${i + 1}`, status: 'incorporated', announced: false, findings, surfaced: findings, created: `2026-08-0${i + 1}T00:00:00.000Z`, ledger_mark: mark ?? last(),
+      }];
     }));
-    const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(b.id, 'review-002', 'a pre-upgrade history never wedges the topic');
-    assert.ok(readStore(dir, 'pay', 'discussion', 'auth').agents['review-002'].map_snapshot,
-      'the dispatch stamps the snapshot that engages the damping');
+    writeContent(dir, `.leeway/.cache/${UNIT}/discussion/${topic}/state.json`, JSON.stringify({ agents }));
+  }
+
+  /** The arming verdict scan answers for a topic. @param {string} [topic] */
+  const arming = (topic = TOPIC) => runJson(dir, ['scan', UNIT, 'discussion', topic]).review_arming;
+
+  /** The ledger's mark a row was stamped with. @param {string} id */
+  const markOf = (id) => readStore(dir, UNIT, 'discussion', TOPIC).agents[id].ledger_mark;
+
+  it('the first review is free, and its row is stamped with the ledger\'s mark — the id of its last line', () => {
+    const first = dispatch('review');
+
+    assert.deepStrictEqual([first.id, markOf(first.id)], ['review-001', last()]);
+  });
+
+  it('a second review refuses with no move since the last, naming the bypass, and arms on the person\'s question opened', () => {
+    reviewed([last()]);
+    assert.match(refusedReview(), /^review dispatch blocked: quiet — 0 of 1 moves since review-001 — .*--final/);
+
+    write('ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'What opens first?' });
+
+    assert.strictEqual(dispatch('review').id, 'review-002');
+  });
+
+  it('the moves since a mark: the person\'s question closed or moved, counted on the topic it left and the one it went to; Claude\'s own call once, its question with it; a question handed over as the person\'s opened and Claude\'s call; a review\'s finding nothing, its answer one — a finding, a rewording and another topic\'s question nothing', () => {
+    const { a, b, c, d } = ARMING.made;
+    /** @param {string} mark @param {string} topic */
+    const seen = (mark, topic) => {
+      reviewed([full(mark)], topic);
+      return arming(topic).moves_seen;
+    };
+
+    assert.deepStrictEqual([seen(a, TOPIC), seen(b, TOPIC), seen(c, TOPIC), seen(d, TOPIC)], [6, 4, 3, 1], 'the note window: 2 past A before B, 1 past B before C, 2 past C before D, 1 past D');
+    assert.deepStrictEqual([seen(a, 'space-homing'), seen(b, 'space-homing')], [2, 0], 'space homing: the move in and its own question, past A');
+  });
+
+  it('the requirement escalates per completed cycle — two cycles want two moves — and caps at 3', () => {
+    reviewed([last(), last()]);
+    assert.match(refusedReview(), /0 of 2 moves since review-002/);
+    reviewed([last(), last(), last(), last()]);
+    assert.match(refusedReview(), /0 of 3 moves since review-004/);
+
+    reviewed([last(), last(), last(), full(ARMING.made.b)]);
+
+    assert.strictEqual(dispatch('review').id, 'review-005', 'three moves re-arm however many cycles have run');
+  });
+
+  it('--final bypasses the movement gate and still stamps the mark', () => {
+    reviewed([last()]);
+
+    const final = dispatch('review', ['--final']);
+
+    assert.deepStrictEqual([final.id, markOf(final.id)], ['review-002', last()]);
   });
 
   it('scan answers the arming verdict on discussion topics only', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    const scan = runJson(dir, ['scan', 'pay', 'discussion', 'auth']);
-    assert.deepStrictEqual(scan.review_arming, {
-      armed: false, cycles: 1, map_moves_seen: 0, map_moves_needed: 1,
-      reason: 'quiet — 0 of 1 map moves since review-001',
+    reviewed([last()]);
+    assert.deepStrictEqual(arming(), {
+      armed: false, cycles: 1, moves_seen: 0, moves_needed: 1, reason: 'quiet — 0 of 1 moves since review-001',
     });
-    assert.strictEqual(runJson(dir, ['scan', 'pay', 'research', 'auth']).review_arming, undefined,
-      'research carries no review');
+    assert.strictEqual(runJson(dir, ['scan', UNIT, 'research', TOPIC]).review_arming, undefined, 'research carries no review');
   });
 
   it('--final is refused outside a discussion review, like --set off its kind', () => {
-    assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'auth', '--kind', 'deep-dive', '--label', 'scope', '--final']).error,
+    assert.match(runFails(dir, ['dispatch', UNIT, 'research', TOPIC, '--kind', 'deep-dive', '--label', 'scope', '--final']).error,
       /--final bypasses a discussion review's movement gate/);
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'perspective', '--label', 'scope', '--final']).error,
+    assert.match(runFails(dir, ['dispatch', UNIT, 'discussion', TOPIC, '--kind', 'perspective', '--label', 'ship-now', '--label', 'strategic-timing', '--final']).error,
       /legal only with --kind review in the discussion phase/);
   });
 
-  it('the middle rung holds: two cycles demand two moves', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'decided' });
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'decided', refresh: 'pending' });
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /1 of 2 map moves since review-002/);
-    writeMap({ tokens: 'decided', refresh: 'pending', expiry: 'pending' });
-    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id, 'review-003');
-  });
+  it('a killed dispatch never anchors — the moves since the last real review stand past a dead row', () => {
+    reviewed([full(ARMING.made.c), null]);
 
-  it('the conclusion\'s deferral sweep is bookkeeping, never movement', () => {
-    writeMap({ tokens: 'exploring', refresh: 'pending' });
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'deferred', refresh: 'deferred' });
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /0 of 1 map moves/, 'parking every thread arms nothing');
-    writeMap({ tokens: 'deferred', refresh: 'exploring' });
-    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id, 'review-002',
-      'reactivating a deferred thread is new ground and counts');
-  });
-
-  it('a killed dispatch never anchors — banked movement survives a dead row', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    writeMap({ tokens: 'decided' });
-    const dead = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    runJson(dir, ['incorporate', 'pay', 'discussion', 'auth', dead.id]);
-    const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
-    assert.strictEqual(c.id, 'review-003',
-      'movement measures from review-001, the last real review — not the reportless kill');
+    assert.strictEqual(dispatch('review').id, 'review-003', 'the moves count from review-001, the last real review — not the reportless kill');
   });
 
   it('a corrupt store fails a dispatch loudly — mutations never run over garbage', () => {
-    fs.mkdirSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth', 'state.json'), '{not json');
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /Corrupt agent state/);
+    writeContent(dir, `.leeway/.cache/${UNIT}/discussion/${TOPIC}/state.json`, '{not json');
+    assert.match(refusedReview(), /Corrupt agent state/);
   });
 
-  it('SUBTOPIC_RANK covers the map\'s whole state vocabulary', () => {
-    const { SUBTOPIC_RANK } = require('../../skills/leeway-engine/scripts/domain/agent-state.cjs');
-    const { SUBTOPIC_STATES } = require('../../skills/leeway-engine/scripts/domain/discussion-map.cjs');
-    assert.deepStrictEqual(Object.keys(SUBTOPIC_RANK).sort(), [...SUBTOPIC_STATES].sort(),
-      'a state outside the rank map would silently score 0');
+  it('a closing pass waits on no arming, and is stamped with the mark', () => {
+    reviewed([last()]);
+
+    const pass = dispatch('closing-pass');
+
+    assert.deepStrictEqual([pass.id, markOf(pass.id)], ['closing-pass-001', last()]);
+  });
+
+  it('a closing pass that reported anchors the back-off — the moves it read arm no review once the topic reopens', () => {
+    reviewed([full(ARMING.made.a)]);
+    const pass = dispatch('closing-pass');
+    writeContent(dir, pass.file, '# Closing Pass\n');
+
+    assert.match(refusedReview(), /quiet — 0 of 1 moves since closing-pass-001/);
   });
 });

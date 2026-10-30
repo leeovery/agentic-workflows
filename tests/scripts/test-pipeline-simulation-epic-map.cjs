@@ -190,11 +190,13 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual(emptyMap.unresolved, []);
     sim.refuses(['render', 'defer-gate', `${wu}.discussion.beta`], /nothing on "beta"'s map is undecided/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
-    // Review arming: the first background review is free and snapshots the
-    // map; after a completed cycle the next refuses until the Discussion Map
-    // moves forward min(cycles, 3) times; --final — the mandatory closing
-    // pass — bypasses the movement gate.
+    // Review arming: the first background review is free and stamps the
+    // ledger's mark; after a completed cycle the next refuses until the topic
+    // has moved on the ledger min(cycles, 3) times; --final bypasses the
+    // movement gate. Each dispatch is briefed by the engine, its brief
+    // naming the dispatch's report.
     const rev1 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
+    sim.run(['brief', 'discussion-reviewer', wu, 'beta', '--agent', rev1.id]);
     sim.write(rev1.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     // The conclusion's drain offer reads the acknowledged row's own count and
@@ -213,29 +215,32 @@ describe('pipeline simulation: epic map', () => {
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', rev1.id, 'F1']);
     sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is incorporated/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
-      /review dispatch blocked: quiet — 0 of 1 map moves since review-001/);
+      /review dispatch blocked: quiet — 0 of 1 moves since review-001/);
     const quietScan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(quietScan.review_arming,
-      { armed: false, cycles: 1, map_moves_seen: 0, map_moves_needed: 1, reason: 'quiet — 0 of 1 map moves since review-001' },
+      { armed: false, cycles: 1, moves_seen: 0, moves_needed: 1, reason: 'quiet — 0 of 1 moves since review-001' },
       'scan answers the same verdict dispatch enforces');
     sim.run(['discussion-map', 'set', wu, 'beta', 'retry-policy', 'decided']);
-    const rev2 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
-    assert.strictEqual(rev2.id, 'review-002', 'one forward move re-arms the second review');
-    sim.write(rev2.file, '# Findings\n');
-    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
-    sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev2.id, '--clean']);
+    sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'], /0 of 1 moves since review-001/);
     const revFinal = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
-    assert.strictEqual(revFinal.id, 'review-003', 'the closing pass dispatches over a quiet map');
+    assert.strictEqual(revFinal.id, 'review-002', 'a review the person asks for dispatches over a quiet topic');
+    sim.run(['brief', 'discussion-reviewer', wu, 'beta', '--agent', revFinal.id]);
     sim.write(revFinal.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
+    // The closing pass's fresh reader: dispatched with no arming, briefed
+    // with the gap review the agent store and the ledger answer.
+    const pass = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'closing-pass']);
+    sim.run(['brief', 'closing-pass-reader', wu, 'beta', '--agent', pass.id]);
+    sim.write(pass.file, '# Closing Pass\n');
+    sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
+    sim.run(['agent', 'ack', wu, 'discussion', 'beta', pass.id, '--clean']);
     sim.write(`.leeway/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // A message reopens the concluded discussion: its mail waits on its rows
-    // and holds the review shut; the question it raised answers it, and an
-    // answered message re-arms nothing — its review duty belongs to the
-    // closing gates' final pass.
+    // and holds the review shut; the question it raised answers it, and that
+    // question is a move on the back-off like any other.
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Escalation path\n\nWho gets paged?\n');
     const sent = sim.run(['topic', 'send', wu, 'beta', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'escalation-path']);
     assert.strictEqual(sent.reopened, true, 'a delivery to a concluded discussion reopens it');
@@ -254,7 +259,7 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual([answered.remaining, Boolean(answered.committed)], [0, true]);
     assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the answered mailbox retires the cue');
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
-      /0 of 3 map moves since review-003/);
+      /1 of 2 moves since closing-pass-001/);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     sim.run(['topic', 'start', wu, 'research', 'gamma-prime']);
