@@ -21,14 +21,14 @@
 // - The binary: `claude` on PATH, or the one LEEWAY_CLAUDE names — the test
 //   suite pins it to a stub, so no test reaches a real Claude.
 // - Its answer: the structured output, where it fits the schema, what the
-//   call cost, and the model that answered — the full id Claude Code's
-//   result names in `modelUsage`, the one of the asked model's family where
-//   it names several, null where it names none it can tell; or why the call cannot run — no login serves it, a rate
-//   limit, a timeout, an answer that does not fit the schema, or another
-//   failure, no folder to run from among them, said. A call past its time is
-//   killed outright, so nothing it does holds its caller longer. Only a
-//   schema an answer cannot be checked against — the caller's mistake — is
-//   refused, before any call.
+//   call cost, and the model that answered — the full id Claude Code's result
+//   names in `modelUsage`, the one of the asked model's family where it names
+//   several, null where it names none it can tell; or why the call cannot run
+//   — no login serves it, a rate limit, a timeout, an answer that does not
+//   fit the schema, or another failure, no folder to run from among them,
+//   said. A call past its time is killed outright, so nothing it does holds
+//   its caller longer. Only a schema an answer cannot be checked against —
+//   the caller's mistake — is refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
 // - Two forms, one call: `askClaude` waits on it, and `askClaudeAsync`

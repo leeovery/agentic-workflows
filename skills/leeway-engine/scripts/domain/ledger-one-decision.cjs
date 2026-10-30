@@ -29,10 +29,10 @@
 //   `raise`, `late-check`), how many rules the call found, the outcome —
 //   `one`, `several`, or `unchecked` where the call could not judge — and the
 //   model that answered, by its full id, null where none did; never the
-//   entry's text. How often the check refuses is
-//   read from it (2.4.6). It is appended whole, as the brief hook's refusals
-//   are, never through the trust log, which holds what the matrix needs
-//   (16.13.3); an append that fails is a warning, and the check stands.
+//   entry's text. How often the check refuses is read from it (2.4.6). It is
+//   appended whole, as the brief hook's refusals are, never through the trust
+//   log, which holds what the matrix needs (16.13.3); an append that fails is
+//   a warning, and the check stands.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

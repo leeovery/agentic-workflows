@@ -6,19 +6,19 @@
 // the layout hook holds Claude's writes to (layout-hook.cjs), and the hook
 // before Bash the words of a shell command to (shell-guard.cjs).
 //
-// In the system config directory: every file whose bytes reach the trust
-// log — the log and its lock, and each conversation's file of events waiting
-// for it and that file's lock (trust-log.cjs); each conversation's two files
-// a gate event is built from, the gate shown and the gate mod's last press,
-// which the mod writes by no tool of Claude's (gate.cjs); each
-// conversation's sealed raises, which hold Claude's lean before the person
-// answers (raise.cjs); each conversation's briefs, the folder and every file
-// in it, which the hook before Agent and SendMessage hands over as issued
+// In the system config directory: every file whose bytes reach the trust log
+// — the log and its lock, and each conversation's file of events waiting for
+// it and that file's lock (trust-log.cjs); each conversation's two files a
+// gate event is built from, the gate shown and the gate mod's last press,
+// which the mod writes by no tool of Claude's (gate.cjs); each conversation's
+// sealed raises, which hold Claude's lean before the person answers
+// (raise.cjs); each conversation's briefs, the folder and every file in it,
+// which the hook before Agent and SendMessage hands over as issued
 // (brief-guard.cjs), and that hook's refusals; the one-decision check's log
-// (ledger-one-decision.cjs); the settings file and the record of the person. In each project folder of Claude Code's projects
-// directory, the files of its own the trust log reads the model from
-// (conversation.cjs): a conversation's transcript, and a subagent's
-// transcript and its record.
+// (ledger-one-decision.cjs); the settings file and the record of the person.
+// In each project folder of Claude Code's projects directory, the files of
+// its own the trust log reads the model from (conversation.cjs): a
+// conversation's transcript, and a subagent's transcript and its record.
 //
 // Each is judged by the names that reach it from the folder it is guarded
 // below, which each hook reads its own way, spelled as it folds them. The
