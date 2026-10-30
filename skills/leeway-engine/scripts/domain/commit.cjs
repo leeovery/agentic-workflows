@@ -74,15 +74,16 @@ function discoveryScope(workUnit) {
  * file outside the layout refuses it (`commitHere`). A push that fails
  * comes back as a warning; the commit stands. The sha is short, as the code
  * tree's commits answer it. A file in `contents` is committed as its change
- * makes it of the branch's own (`commitState`).
+ * makes it of the branch's own (`commitState`). While the migration runs,
+ * the commit is held (`held`).
  * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
  * @param {string} message @param {Record<string, import('./state-worktree.cjs').Change>} [contents]
- * @returns {{committed: string|null, warnings: string[]}}
+ * @returns {{committed: string|null, held?: true, warnings: string[]}}
  */
 function commitStateScoped(cwd, paths, message, contents = {}) {
   const root = stateRoot(cwd);
-  const { commit, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents }));
-  return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), warnings };
+  const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents }));
+  return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), ...(held ? { held } : {}), warnings };
 }
 
 /**
@@ -92,13 +93,13 @@ function commitStateScoped(cwd, paths, message, contents = {}) {
  * @param {string} cwd @param {string|string[]} paths state-relative
  * @param {string} message @param {string[]} warnings
  * @param {Record<string, import('./state-worktree.cjs').Change>} [contents] as `commitStateScoped`'s
- * @returns {{committed: string|null, failed: boolean}}
+ * @returns {{committed: string|null, failed: boolean, held?: true}}
  */
 function commitStateTail(cwd, paths, message, warnings, contents = {}) {
   try {
     const out = commitStateScoped(cwd, paths, message, contents);
     warnings.push(...out.warnings);
-    return { committed: out.committed, failed: false };
+    return { committed: out.committed, failed: false, ...(out.held ? { held: out.held } : {}) };
   } catch (err) {
     warnings.push(`commit failed: ${err instanceof Error ? err.message : String(err)}`);
     return { committed: null, failed: true };
@@ -288,10 +289,14 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
   }
 }
 
+// The note a verb answers while the migration runs, its commit held.
+const HELD_NOTE = 'held for the migration\'s commit';
+
 /**
- * Stamp a transaction result from a tail-commit outcome: a failure notes the
- * pending commit (the state is saved — only the commit is owed), a clean
- * tree notes `nothing to commit`. Mutates the result in place.
+ * Stamp a transaction result from a tail-commit outcome: a held commit
+ * notes it is held for the migration's commit, a failure notes the pending
+ * commit (the state is saved — only the commit is owed), a clean tree notes
+ * `nothing to commit`. Mutates the result in place.
  *
  * A note is contract surface — a session runs the command it prescribes
  * verbatim — so a transaction whose commit was narrower than the work unit
@@ -299,11 +304,13 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
  * `engine commit` and `-m`. Without it the note stays generic, which is the
  * honest answer for a genuinely work-unit-wide tail.
  * @param {{note?: string}} result
- * @param {{committed: string|null, failed: boolean}} outcome
+ * @param {{committed: string|null, failed: boolean, held?: true}} outcome
  * @param {string} [retry] the retry's scope arguments, e.g. `payments --discovery`
  */
 function noteCommitOutcome(result, outcome, retry) {
-  if (outcome.failed) {
+  if (outcome.held) {
+    result.note = HELD_NOTE;
+  } else if (outcome.failed) {
     result.note = retry
       ? `commit pending — state saved; retry with: engine commit ${retry} -m "<message>"`
       : 'commit pending — state saved; retry with engine commit';
@@ -322,6 +329,7 @@ module.exports = {
   commitOwnChange,
   noteCommitOutcome,
   noteIfNothingCommitted,
+  HELD_NOTE,
   withCommitLock,
   onStateBranch,
   STATE_BRANCH_HELD,

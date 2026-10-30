@@ -843,7 +843,8 @@ function checkQuotedFreeTextFlags(files) {
 // question …`, as an H4 or a bold conditional, or a route list's `- **Ask** —`
 // item — says so before whatever puts the gate back ("sets the gate aside",
 // then "ask … ready to move on" in one clause), or delegates the answer to
-// the shared answering-how-it-works.md, whose put-back carries the same rule.
+// the shared answering-how-it-works.md, which brings the gate back by the
+// framework's rule.
 // A heading branch runs to the next heading, bold conditional, or rule; a
 // list item runs to the next item or blank line. A standing section's return
 // into the flow it interrupted (`→ On return, resume the interrupted flow`)
@@ -1155,6 +1156,41 @@ function checkBashGrantsCarryWildcard(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 29 — the framework's references load once per conversation (The
+// Framework Load; 2.10.9): framework.md loads each file it composes once, and
+// no other file loads one, so voice, altitude and the rest come into a
+// conversation through the framework's load alone.
+// ---------------------------------------------------------------------------
+
+const FRAMEWORK_FILE = /\/skills\/leeway-shared\/references\/framework\.md$/;
+const LOAD_TARGET = /[Ll]oad \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
+
+// Each file a Load directive outside a fence names, resolved, with its line.
+function loadsOf(file) {
+  const lines = readLines(file);
+  const { inFence } = parseFences(lines);
+  return lines.flatMap((line, i) => (inFence[i] ? [] : [...line.matchAll(LOAD_TARGET)].map(([, target]) => ({ target: path.resolve(path.dirname(file), target), line: i + 1 }))));
+}
+
+function checkFrameworkLoadsOnce(files) {
+  const framework = files.find((file) => FRAMEWORK_FILE.test(posix(file)));
+  if (!framework) return [];
+  const out = [];
+  const composed = new Set();
+  for (const { target, line } of loadsOf(framework)) {
+    if (composed.has(target)) out.push({ file: framework, line, message: `${path.basename(target)} is loaded twice — the framework loads each file it composes once` });
+    composed.add(target);
+  }
+  for (const file of files) {
+    if (file === framework) continue;
+    for (const { target, line } of loadsOf(file)) {
+      if (composed.has(target)) out.push({ file, line, message: `${path.basename(target)} is the framework's — it loads once per conversation, from framework.md alone` });
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1184,6 +1220,7 @@ const CHECKS = [
   ['26: a path a dispatch hands an agent is written as installed', checkInstalledDispatchPaths],
   ['27: the framework loads at the head of the skills a conversation opens on', checkFrameworkLoad],
   ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
+  ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2332,6 +2369,40 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     ], `each miss is caught once, at its line, got ${report(v)}`);
     assert.match(v[0].message, /^leeway-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
     assert.match(v[2].message, /^leeway-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+  });
+});
+
+test('2.S17 — the framework load holds voice and altitude, once each', () => {
+  const framework = path.join(REPO, 'skills', 'leeway-shared', 'references', 'framework.md');
+  const loaded = loadsOf(framework).map(({ target }) => path.relative(path.dirname(framework), target));
+  for (const name of ['voice.md', 'altitude.md']) {
+    assert.strictEqual(loaded.filter((n) => n === name).length, 1, `framework.md loads ${name} once, got ${JSON.stringify(loaded)}`);
+  }
+});
+
+test('check 29 (the framework loads once) — catches a file the framework loads twice and a framework file loaded from anywhere else; permits the framework load itself, another shared reference, fenced content, and a corpus without the framework', () => {
+  withTemp((dir) => {
+    const shared = 'skills/leeway-shared/references';
+    const framework = write(dir, `${shared}/framework.md`, [
+      '# Framework', '', 'Load **[voice.md](voice.md)** and follow its instructions as written.', '',
+      'Load **[altitude.md](altitude.md)** and follow its instructions as written.', '',
+    ].join('\n'));
+    const opening = write(dir, 'skills/leeway-x/SKILL.md', '## Instructions\n\nLoad **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.\n');
+    const other = write(dir, 'skills/leeway-x/references/a.md', 'Load **[devils-advocate.md](../../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.\n');
+    const fenced = write(dir, 'skills/leeway-y/SKILL.md', '```markdown\nLoad **[voice.md](../leeway-shared/references/voice.md)** and follow its instructions as written.\n```\n');
+    const ok = checkFrameworkLoadsOnce([framework, opening, other, fenced]);
+    assert.strictEqual(ok.length, 0, `the framework's own loads, another reference and fenced content are clean, got ${report(ok)}`);
+    assert.strictEqual(checkFrameworkLoadsOnce([opening, other]).length, 0, 'a corpus without the framework has nothing to hold');
+
+    fs.appendFileSync(framework, 'Load **[voice.md](voice.md)** and follow its instructions as written.\n');
+    const phase = write(dir, 'skills/leeway-z/SKILL.md', '# Z\n\nThen load **[altitude.md](../leeway-shared/references/altitude.md)** and follow its instructions as written.\n');
+    const v = checkFrameworkLoadsOnce([framework, opening, phase]);
+    assert.deepStrictEqual(v.map((x) => [posix(path.relative(dir, x.file)), x.line]), [
+      [`${shared}/framework.md`, 6],
+      ['skills/leeway-z/SKILL.md', 3],
+    ], `each miss is caught once, at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^voice\.md is loaded twice — the framework loads each file it composes once$/);
+    assert.match(v[1].message, /^altitude\.md is the framework's — it loads once per conversation, from framework\.md alone$/);
   });
 });
 

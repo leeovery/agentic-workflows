@@ -1,26 +1,30 @@
 # Ask or Decide
 
-*Shared reference for all workflow skills. Loaded via [framework.md](framework.md).*
+*Shared reference. Loaded by `framework.md`.*
 
 ---
 
-Whether a point needs the user at all. [voice.md](voice.md) governs how a challenge sounds; this file governs whether a question is owed in the first place. It applies to questions you compose in conversation — prescribed gates, menus, and `**STOP.**` directives are untouched: they stop every time, whatever this file says. It governs asking, never concluding: what an artifact may state stays with its phase's own guidelines — research explores rather than decides, and this file overrides no phase's rule about its record.
+Which calls never become a question, and which go to `raise`. Whether a raise reaches the person is the engine's to decide, never yours: you supply the question and, on a call, your lean. A phase whose skill says how its calls go — worked through in the conversation for a time, or none settled at all — keeps its own rule, and this file gives way to it. [voice.md](voice.md) governs how a challenge sounds.
 
-Before ending a turn on a question, locate the answer's source:
+## Facts Are Checked
 
-- **The record** — decisions already made, this session or on disk; sibling artifacts; the seed or brief; platform or industry convention; first principles. When these admit exactly one defensible answer, the call is yours: make it, and land it as the phase prescribes — queued for a batch screen where the session defines one, stated in a line and moved past where it doesn't. Never a question. Presenting a settled call for ratification costs the user a full read to say "yes" — the wall this rule exists to prevent.
-- **The user** — taste, appetite, product intent, priorities, facts only they hold. Ask, and make the question carry the fork: what turns on the answer, not a recap of everything already known.
+A question that reading the code, reading the record or running something can answer never reaches the person: check it.
 
-Three overrides send an otherwise-derivable call to the user, any one alone:
+Where there is more than one way and no obvious choice, find out before you lean. When each way has its pros, cons and risks and evidence can tell them apart, spike it, research it, read or reverse-engineer the source, or look at how open-source products do it, rather than guess or ask. That runs on a disposable machine or this one, without the person; where the phase records findings, what it shows lands through `ledger find` for the call to rely on.
 
-- **The consequence leaves the topic** — the call would amend, contradict, or owe a correction to ground outside the current artifact.
-- **Expensive to reverse** — structural; wrong means rework, not a patch.
-- **You don't believe it** — the derivation lands somewhere you wouldn't stand behind. Say so plainly; the discomfort is the question.
+## Every Other Call Goes to `raise`
 
-The overrides govern questions you compose in open conversation. A phase reference that prescribes the landing for a derived or judged call — a document landing, a corrigendum route, a staged-proposal settlement — is the phase's own rule: follow it as written.
+Every call you can't settle by checking goes to `raise`, the obvious ones included, however sure you are: what the person wants the product to be and do, and equally a data model, a contract, the code's insides or the process. Compose it product first where it can be; never settle it alone.
 
-When uncertain which side a point falls on, ask — a needless question costs one exchange; a wrong silent call is a decision the user never saw.
+A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` with `--fact`: no lean, and rows only where the answers are few and known. It is always asked, and counts for nothing in the trust layer, which takes only intent and taste. The person's answer in their own words, given through the Comment row too, goes to `raise answer {id} --own`.
 
-A call landed from a derivation records its provenance where the phase's template defines a marker — the derivation is what a later reader checks the call against when it turns out wrong.
+In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows.
 
-→ Return to caller.
+## Answering a Raise
+
+- **A pick, or the person's own answer,** goes to `raise answer`, never to `gate`.
+- **`e/explain`** is no answer: run `raise answer {id} --didnt-follow`, explain it again, and draw the raise again with `raise show {id}`; the question stays open.
+- **`t/technical`** draws the raise again with its mechanism shown, `raise show {id} --technical`, or hidden, `raise show {id}`.
+- **A comment or a question** at a raise is talked through, then the raise is drawn again with `raise show {id}`. On a fact, a comment that gives the answer is the person's own words; only a question about it is talked through and the fact drawn again.
+
+Questions reach the person one at a time. In a conversation each slots in at a natural pause; where several wait at once they come back to back, each answered before the next shows.

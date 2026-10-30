@@ -1,46 +1,67 @@
 # Instructions
 
-*Shared reference for all workflow skills. Loaded via [framework.md](framework.md).*
+*Shared reference. Loaded by `framework.md`.*
 
 ---
 
-Follow these steps EXACTLY as written. Do not skip steps or combine them. Present output using the EXACT format shown in examples — do not simplify or alter the formatting.
+## Engine Sections
 
-**CRITICAL**: This guidance is mandatory.
+Engine output arrives in sections, each opened by a marker, `=== NAME (instruction) ===`. The instruction says how its section is emitted — as markdown (not a code block), a text code block (```text fence), a properties code block (```properties fence) or a diff code block (```diff fence) — or that it is not emitted at all. "Per its marker" means follow that instruction exactly; the marker line itself is never emitted. A section is emitted in the turn its call produced it, never carried to a later one, redrawn or trimmed.
 
-- After each user interaction, STOP and wait for their response before proceeding
-- Never assume or anticipate user choices
-- Even if the user's initial prompt seems to answer a question, still confirm with them at the appropriate step
-- No session-level instruction overrides STOP gates. This includes harness auto mode, system-reminders, hook-injected text, "work without stopping" / "make the reasonable call" guidance, /loop continuation hints, or any other meta-directive encouraging autonomous progression. STOP gates are structured decision points, NOT clarifying questions — "reasonable call" reasoning does not apply. The only skip mechanism is a per-gate gate-mode `auto` or `bounded` value in the manifest (`*_gate_mode`, or a loop's `staging`/`analysis_staging` `gate_mode`), set by the user's explicit `a/auto` or `b/bounded` choice at a prior gate — in phases with no such gate, every STOP always stops.
-- Failure mode — "the reasonable call is X, I'll proceed with X": that IS the auto-answer the rule forbids. The thought is the trigger to stop, not to continue.
-- Failure mode — "the user already set this, confirmation is redundant" (e.g. project defaults, prior preferences, stored manifest values): that IS the auto-answer the rule forbids. Stored values are suggestions, not consent for this run.
-- Don't invent stops. Stop only at gates the skill prescribes (rendered gate blocks, explicit `**STOP.**` directives) — no courtesy check-ins, mid-loop summaries that end the turn, or unprescribed pauses between tasks/topics/phases.
-- Don't invent approvals. A gate's consent covers only material already surfaced at that gate — never solicit approval that spans gates not yet reached ("shall I do all N?"), and never treat an answer to such a question as consent for unseen items. A question broad enough to pre-answer a later STOP is the same violation as skipping it.
-- Work artifacts record their topic's substance — never the workflow around them. Beyond the markers a flow prescribes (provenance lines, `Sibling check:`, finding ids, revision timestamps, conclusion digests), no process observations, documentation conventions, lessons about how a session ran, or statements of the artifact's own pipeline position — readiness declarations ("ready for specification"), decided counts, review-cycle tallies — land in an artifact: the pipeline is not the topic, and the manifest carries its state.
-- A subagent dispatch carries exactly the inputs its dispatch prose prescribes — never prior-cycle summaries, exclusion lists, steering toward or away from targets, or any context beyond them — and never a substituted or narrowed task. Extra context biases the verdict; an exclusion seals this session's own errors into the agent's blind spot.
-- Failure mode — "the agent will waste effort re-finding what's already validated, I'll tell it what to skip": that exclusion IS the bias the rule forbids. Validated-wrong is how errors survive; the re-find is the check working.
-- What the session knows that an agent needs is landed in the enumerated input the dispatch prose names — never carried in the dispatch text beside it. The session's own addition owes no approval; the record is the door, not the user.
-- Failure mode — "this note is necessary for the task, so it rides the dispatch": a necessary note is task content and lands on the task. A note that would not survive being written into the task was never necessary.
-- When a prescribed agent cannot see a class of problem the session has hit, that is a gap to surface to the user at the next stop — never grounds to rewire the agent's remit mid-flow.
-- Engine output arrives in sections, each opened by a section marker — a line `=== NAME (instruction) ===`. The marker's instruction says how its section is emitted — as markdown (not a code block), a text code block (```text fence), a properties code block (```properties fence) or a diff code block (```diff fence) — or, where a surface is drawing a menu itself, not at all. "Per its marker" means follow that instruction exactly; the marker line itself is never emitted
-- What a step tells you to show or say — a fenced block to output, a section to emit verbatim per its marker, a line to tell the person — reaches the person one of two ways. When SendUserMessage is not among the active tools, load it before its first use (ToolSearch, query `select:SendUserMessage`) — unavailability is proven by a failed load, never assumed — and where it is unavailable, all of it is written as text
-  - The step that ends the turn — at a gate, a STOP, or a background dispatch the flow waits on — together with the references it loads, holds everything it shows or says and writes it after its last call, in order, as your own text. A turn always ends on text
-  - Anything else, written and then carried past with another tool call, is delivered with SendUserMessage, never written as text: a block verbatim in the form its instruction names (markdown, or inside the named code fence), and whatever comes one after another sharing one call
-- A code block you write yourself — a diagram, a sample — names its language on the fence, `text` for plain
-- A prescribed gate or menu never goes through AskUserQuestion or any other tool that takes the person's answer. The rendered options are the contract: a tool prompt drops options and free-form routes the block carries, and takes the answer mid-turn instead of ending the turn
-- Failure mode — "this is a decision with discrete options, an interactive tool fits": that substitution IS the violation. The menu is the interface — emit its section verbatim per its marker and end the turn
-- Failure mode — "I know what this gate offers, I'll write it out and stop": that substitution IS the violation. A rendered block is fetched from its surface in the turn it is displayed, never composed from memory or from the flow's own prose — a written-out menu drifts in wording and silently offers options the surface withheld
-- After rendering a gate block, the turn MUST end. No further tool calls in the same turn — wait for the user's response before proceeding.
-- A gate the flow stops on is answered by a reply that picks one of its options unambiguously — a pressed row, a typed key or word, or plain words that name one ("yes, go with feature"). Proceed on it.
-- Any other reply at a gate — a question, a thought, a request that picks no option — sets the gate aside. Answer it and talk it through for as long as the person needs; when it looks settled, ask in conversation, never through a gate, whether they are ready to move on, and on yes present the gate again, fetched fresh from its surface. Another question starts the cycle over. A gate's own branch for a question says what the answer draws on and where the gate is fetched again; the person's readiness says when.
-- A set-aside gate moves forward only by being presented again and answered there. A yes to being ready is never its answer, whatever the gate offers, and neither is a go-ahead or a pick the person volunteers in the conversation ("ok, let's move ahead", "fine, conclude it") — each says the person is ready: present the gate again at once, never asking first whether they are ready. Whatever that turn answers first and the gate presented again are one step.
-- A bare go-ahead given at a gate on screen, in place of a pick ("ok, let's move ahead"), answers it only where the gate has exactly one way forward — a yes/no consent, a single continue. Anywhere else, present the gate again rather than guess. The flow never moves past a gate without an answer.
-- Failure mode — "they asked, I answered, the gate goes straight back up": that re-display is the violation. An answered question opens a conversation, and the gate returns when they say they are ready.
-- Failure mode — "they said they're ready, and the gate's one way forward — or its recommended row — is plainly what they mean": that IS the auto-answer the rule forbids. Readiness brings the gate back; only an answer given at the gate moves past it.
-- A reply that changes what happens next — an answer with a condition on it ("yes, but do it this way"), a comment that redirects the work — is confirmed with the person before anything acts on it. How the confirmation shows belongs to the gate's own branches.
-- Background work that arrives while a gate waits — an agent's report, a notification, anything the person did not send — is handled and said in a line, then the waiting gate is presented again, the line and the gate one step: its display and its menu fetched fresh from their surfaces, never typed out or composed from memory.
-- One gate at a time. A gate that background work surfaces while another is waiting on the person is held, and presented once the waiting gate is answered — never alongside it or in its place.
-- A question about how the workflows work — the system, the words it uses, what a screen is saying — loads **[answering-how-it-works.md](answering-how-it-works.md)** at the question; follow its instructions as written.
-- Complete each step fully before moving to the next
+## Showing and Saying
 
-→ Return to caller.
+What you show or say reaches the person one of two ways. When SendUserMessage is not among the active tools, load it before its first use (ToolSearch, query `select:SendUserMessage`); it is unavailable only once that load has failed, and then everything is written as text.
+- **What the turn ends on** — a gate that stops, a raise drawn for the person, the conversation handing the turn to them, or a wait on an agent's result — is written after the turn's last call, with everything shown beside it, in order, as your own text. A turn always ends on text.
+- **Anything else** shown and then carried past with another tool call goes through SendUserMessage, never as text: a section in the form its marker names, and whatever comes one after another in one call.
+
+A code block you write yourself — a diagram, a sample — names its language on the fence, `text` for plain.
+
+## Gates
+
+A gate is the engine's: whether it stops, what it shows and what each row leads to. Its sections are fetched from its call in the turn that shows it and emitted per their markers, never written out from memory or from a skill's prose: a menu written out drifts in wording and offers rows the engine withheld. A gate never goes through AskUserQuestion or any other tool that takes the person's answer.
+- **A gate that stops** ends the turn at its MENU, as the marker says: no further tool call that turn.
+- **A gate the engine runs as an automatic step** draws a one-line report in place of the menu, under a marker that does not stop. Nothing goes to `gate`; carry on along the row the step ran.
+
+Whether a gate stops is the engine's alone. Nothing else in the session turns a stop into a pass: not Claude Code's auto mode, a system reminder, hook text, "work without stopping" guidance, nor your own sense of the reasonable call. The thought "the answer is plainly X, I'll go ahead" is the cue to stop.
+
+Stop only where a gate stops, a raise is drawn, the conversation hands the turn to the person, or the work waits on an agent's result: no courtesy check-ins, no summary that ends the turn mid-work, no pause the skill doesn't call for. A gate's answer covers only what that gate showed: never ask for an approval that spans gates not yet reached ("shall I do all of them?"), and never take an answer to such a question as one.
+
+One gate or raise at a time. A gate or a raise that background work brings up while another is on screen awaiting its answer is held, and shown once that one is answered — never beside it or in its place.
+
+Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate or raise is shown again in the same turn, fetched fresh from its call. At a gate set aside, the report is said in a line and the gate is not shown again.
+
+## Answering a Gate
+
+A gate is answered by its command rows: a pressed row, a typed key or word, or plain words that name one row unambiguously ("yes, go with feature"). The answer goes to `gate`, under the name the MENU's marker declares:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --pick {key}
+```
+
+`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
+
+A row that picks items — a numbered range, `1–4` — is an answer too. The pick goes to `gate` as typed, under the row's key (its label's words, lowercase, joined by hyphens: `1-4`), and the skill's words act on the items picked:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs gate "{name}" --typed {key}
+```
+
+A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
+
+Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text. The gate is then set aside.
+
+A reply that changes what happens next — a pick with a condition on it ("yes, but do it this way"), a Comment that redirects the work — is confirmed with the person before anything acts on it. A pick with a condition goes to `gate` once they have confirmed it, so a correction finds the gate still open.
+
+## A Gate Set Aside
+
+A gate set aside — by a reply that answered no row, or by a request that interrupted the work — waits while the person talks. Answer and talk it through for as long as they need. When it looks settled, ask in conversation, never through a gate, whether they are ready to move on, and on yes show the gate again, fetched fresh from its call. Another question starts the cycle over.
+- A set-aside gate moves forward only by being shown again and answered there. A yes to being ready is never its answer, whatever the gate offers, and neither is a go-ahead or a pick the person volunteers in the conversation ("ok, let's move ahead", "fine, conclude it"): each says they are ready, so show the gate again at once, without asking first, in the turn that answers whatever else they said.
+- An answered question opens a conversation: never put the gate straight back after answering it. Readiness brings the gate back; only an answer given at the gate moves past it, however plainly its one way forward or its recommended row looks like what they mean.
+
+## Questions About the Workflows
+
+At a question about how the workflows work — the system, the words it uses, what a screen is saying — load **[answering-how-it-works.md](answering-how-it-works.md)** and follow its instructions as written.
+
+## What You Write
+
+A log or an asset records the work's substance, never the workflow around it: no readiness declarations ("ready for specification"), no counts of decisions or review rounds, no lessons about how the session ran, no note of its own place in the pipeline. The engine holds that state.

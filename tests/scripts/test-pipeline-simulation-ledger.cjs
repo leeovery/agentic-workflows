@@ -227,7 +227,7 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual(ids(sim.run(['verdict', 'queue']).departures), [departed]);
   });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the queue — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it and one standing over it, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one', async () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -260,6 +260,15 @@ describe('pipeline simulation: ledger', () => {
     const snaps = ledger(['decide', note, '--answers', snapping], { ...made, text: 'Notes snap to the grid.', why: 'Tidy desks.' });
     const proposed = await sim.runAsync(['raise', note, '--replaces', snaps, '--reason', 'changed-mind'], null, JSON.stringify(leaningCall('Notes float free.', 'Notes snap to a coarse grid.')));
     sim.run(['raise', 'answer', proposed.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'The person likes the grid.' }));
+
+    // A fact only the person holds, raised with no rows: the person's own
+    // words land as their decision, and nothing reaches the trust log, their
+    // "I don't follow" included.
+    const signing = ledger(['ask', note], { ...made, text: 'Which team signs the beta?' });
+    const fact = { question: 'Which team signs the beta?', rows: [], mechanism: 'Outside the code.', product_wide: false };
+    const signs = (await sim.runAsync(['raise', note, '--answers', signing, '--fact'], null, JSON.stringify(fact))).raise;
+    sim.run(['raise', 'answer', signs, '--didnt-follow']);
+    sim.run(['raise', 'answer', signs, '--own'], null, JSON.stringify({ text: 'Team ABCDE12345.', why: 'It is their account.' }));
 
     // The person deciding unprompted, then changing their mind: Claude put
     // no lean on it, so it is no departure.
