@@ -2,11 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: a shell command's text read as the shell would run it, far enough
-// to say which simple commands it runs, with which words, from which folder
-// — running nothing. The text splits into simple commands at `;`, `&&`,
-// `||`, `|`, `&`, a newline and a subshell's parentheses. A quoted word, a
-// heredoc's body and a comment are data, never commands; a command
-// substitution's own commands, `$(…)`, are read as the commands they are.
+// to say which simple commands it runs, with which words and redirections,
+// from which folder — running nothing. The text splits into simple commands
+// at `;`, `&&`, `||`, `|`, `&`, a newline and a subshell's parentheses. A
+// quoted word, a heredoc's body and a comment are data, never commands; a
+// command substitution's own commands, `$(…)`, are read as the commands
+// they are.
 // Before each command's name, the assignments, the reserved words a list
 // opens with (`if`, `then`, `do`, `{`, …), and `command` and `env` with
 // their options, are passed over. A `cd` or `pushd` moves the folder the
@@ -25,9 +26,15 @@ const os = require('os');
 const path = require('path');
 
 /**
+ * A redirection: its operator, the descriptor before it apart — `>`, `>>`,
+ * `>|`, `>&`, `<`, `<>`, `<&`, `<<<` — and the word it names.
+ * @typedef {{op: string, target: string|null}} Redirection
+ */
+
+/**
  * @typedef {object} SimpleCommand
  * @property {(string|null)[]} words the command's name and its arguments
- * @property {(string|null)[]} targets the words its redirections name
+ * @property {Redirection[]} redirections its redirections but a heredoc's, in order
  * @property {string|null} cwd the folder it runs in
  */
 
@@ -107,11 +114,11 @@ function readList(reader, nested) {
   if (nested) Object.assign(reader, entered);
 }
 
-/** @typedef {{words: Word[], targets: (string|null)[], redirection: string|null}} OpenCommand  a command still being read */
+/** @typedef {{words: Word[], redirections: Redirection[], redirection: string|null}} OpenCommand  a command still being read */
 
 /** @returns {OpenCommand} */
 function openCommand() {
-  return { words: [], targets: [], redirection: null };
+  return { words: [], redirections: [], redirection: null };
 }
 
 /**
@@ -123,7 +130,7 @@ function placeWord(reader, command, word) {
   const { redirection } = command;
   command.redirection = null;
   if (redirection === '<<' || redirection === '<<-') reader.heredocs.push({ delimiter: word.text ?? word.raw, tabs: redirection === '<<-' });
-  else if (redirection !== null) command.targets.push(word.text);
+  else if (redirection !== null) command.redirections.push({ op: redirection, target: word.text });
   else command.words.push(word);
 }
 
@@ -303,10 +310,10 @@ function braceEnd(text, from) {
  * and the folder the commands after it run in.
  * @param {Reader} reader @param {OpenCommand} command
  */
-function settle(reader, { words, targets }) {
+function settle(reader, { words, redirections }) {
   const run = commandWords(words);
-  if (run.length === 0 && targets.length === 0) return;
-  reader.commands.push({ words: run, targets, cwd: reader.cwd });
+  if (run.length === 0 && redirections.length === 0) return;
+  reader.commands.push({ words: run, redirections, cwd: reader.cwd });
   const [name, ...args] = run;
   if (name === 'pushd') reader.pushed.push(reader.cwd);
   if (name === 'cd' || name === 'pushd') reader.cwd = folderAfter(reader.cwd, args);

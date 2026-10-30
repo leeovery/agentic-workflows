@@ -29,6 +29,17 @@
 //   briefs, the brief hook's refusals, the trust log and its kin, Claude
 //   Code's transcripts — by the names its words give it, a read among them,
 //   since the text cannot tell one from a write;
+// - a command writing to a file in the state only the engine writes — the
+//   manifests, the ledger, `spec-review.json` — for the reason the layout
+//   hook refuses Claude's own write to it, naming the verb (layout.cjs,
+//   `engineRefusal`): an output redirection onto it (`>`, `>>`, `>|`, `&>`,
+//   `<>`, `>&` a file, each with a descriptor), `tee`, an in-place `sed` or
+//   `perl`, `mv` from or onto it, `cp`, `install` or `ln` onto it — their
+//   last word, or, were it a folder, the file a source lands as there —
+//   and `rm`, `unlink`, `truncate`, `touch` or `dd of=`. The file is read
+//   from the command's folder, and is in the state by the part of its path
+//   after the first `.leeway`, which the layout reads as the layout hook
+//   reads Claude's own write. Reading one passes;
 // and, while the conversation stdin's `session_id` names has a task in
 // flight (6.3.12, conversation.cjs) — a subagent's call carries the
 // conversation's — a raw `git commit` anywhere: a build commits through the
@@ -39,12 +50,14 @@
 // Each refusal is one line on stderr with the way on, and exit 2, the code
 // Claude Code blocks the call on. A pass says nothing and writes nothing.
 // The decision is the text's, with one file read — the position, and only
-// for a commit: it runs before every shell command, so it never asks git.
-// A word that expands at run time, an alias, a script, or a command handed
-// to another as text (`sh -c`, `eval`, `xargs`) is not seen, and passes.
-// Where the text cannot say which folder a command runs in — after a `cd`
-// to such a word, or `cd -` — it is not taken for the state worktree, and a
-// relative path there names no file at user level; but an `rm -r` or a
+// for a commit — and, for a write into the state alone, the layout loaded
+// and whether the state's filesystem ignores case: it runs before every
+// shell command, so it never asks git. A word that expands at run time — a
+// glob among them — an alias, a script, or a command handed to another as
+// text (`sh -c`, `eval`, `xargs`) is not seen, and passes. Where the text
+// cannot say which folder a command runs in — after a `cd` to such a word,
+// or `cd -` — it is not taken for the state worktree, and a relative path
+// there names no file at user level or in the state; but an `rm -r` or a
 // `git worktree` of a relative `.leeway` is refused there, its name enough.
 // ---------------------------------------------------------------------------
 
@@ -55,6 +68,7 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
+/** @typedef {import('../kernel/shell-reader.cjs').Redirection} Redirection */
 /** @typedef {{unit: string, task: string}} InFlight */
 
 /** The tools the hook stands before, as the settings' matcher names them. */
@@ -247,11 +261,121 @@ function namesFrom(file, root) {
  * folder as a path.
  * @param {SimpleCommand} command
  */
-function namedRefusal({ words, targets, cwd }) {
-  for (const word of [...words, ...targets]) {
+function namedRefusal({ words, redirections, cwd }) {
+  for (const word of [...words, ...redirections.map(({ target }) => target)]) {
     const file = within(cwd, word);
     const reason = file === null ? null : userLevelRefusal(file, (name) => name, namesFrom);
     if (reason !== null) return `${reason} — ${NAMED}`;
+  }
+  return null;
+}
+
+/** The redirections that write to the file they name: out, appended, clobbering, and opened to read and write. */
+const WRITING = new Set(['>', '>>', '>|', '<>']);
+
+/** A `>&` target that copies or closes a descriptor, naming no file. */
+const DESCRIPTOR = /^(?:[0-9]+|-)$/;
+
+/** Whether a redirection writes to the file it names. @param {Redirection} redirection */
+function writes({ op, target }) {
+  return WRITING.has(op) || (op === '>&' && target !== null && !DESCRIPTOR.test(target));
+}
+
+/** The option clusters `sed` edits its files in place by: `-i`, or BSD's `-I`, after letters taking no value. */
+const SED_IN_PLACE = /^-[nrEsuza]*[iI]/;
+
+/** The switch clusters `perl` edits its files in place by: `-i`, after letters taking no value. */
+const PERL_IN_PLACE = /^-[acnpsStTuUwWXl]*i/;
+
+/**
+ * Whether the options before any `--` edit the files named in place: a
+ * cluster `inPlace` matches, or `--in-place`.
+ * @param {(string|null)[]} args @param {RegExp} inPlace
+ */
+function editsInPlace(args, inPlace) {
+  const end = args.indexOf('--');
+  return (end < 0 ? args : args.slice(0, end)).some((word) => word !== null && (inPlace.test(word) || word.startsWith('--in-place')));
+}
+
+/**
+ * Where a command copying, moving or linking the operands before its last
+ * word to it writes: that word, and the file in it each one would land as,
+ * were it a folder; nothing where the last word is no operand, or the only one.
+ * @param {(string|null)[]} args @returns {string[]}
+ */
+function landings(args) {
+  const to = args[args.length - 1];
+  const from = args.slice(0, -1).filter((word) => word === null || !word.startsWith('-'));
+  if (typeof to !== 'string' || to.startsWith('-') || from.length === 0) return [];
+  return [to, ...from.flatMap((word) => (word === null ? [] : [path.join(to, path.basename(word))]))];
+}
+
+/**
+ * The words naming the files each command writes to, by its name, from its
+ * arguments.
+ * @type {Readonly<Record<string, (args: (string|null)[]) => string[]>>}
+ */
+const WRITERS = Object.freeze({
+  tee: operandsOf,
+  sed: (args) => (editsInPlace(args, SED_IN_PLACE) ? operandsOf(args) : []),
+  perl: (args) => (editsInPlace(args, PERL_IN_PLACE) ? operandsOf(args) : []),
+  mv: (args) => [...operandsOf(args), ...landings(args)],
+  cp: landings,
+  install: landings,
+  ln: landings,
+  rm: operandsOf,
+  unlink: operandsOf,
+  truncate: operandsOf,
+  touch: operandsOf,
+  dd: (args) => args.flatMap((word) => (word !== null && word.startsWith('of=') ? [word.slice('of='.length)] : [])),
+});
+
+/**
+ * The words naming the files a command writes to: its writing
+ * redirections' targets, and those its name writes among its arguments.
+ * @param {SimpleCommand} command @returns {(string|null)[]}
+ */
+function writtenWords({ words: [name, ...args], redirections }) {
+  const writer = typeof name === 'string' ? path.basename(name) : '';
+  const named = Object.hasOwn(WRITERS, writer) ? WRITERS[writer](args) : [];
+  return [...redirections.filter(writes).map(({ target }) => target), ...named];
+}
+
+/**
+ * The state folder a file is in, and its path from there: the part after
+ * the first `.leeway` among its names; null where none of them is, or the
+ * last is.
+ * @param {string} file absolute @returns {{root: string, rel: string}|null}
+ */
+function inStateFolder(file) {
+  const names = file.split(path.sep);
+  const at = names.indexOf(STATE_DIR_NAME);
+  return at < 0 || at === names.length - 1 ? null : { root: names.slice(0, at + 1).join(path.sep), rel: names.slice(at + 1).join('/') };
+}
+
+/**
+ * Why a write to the state-relative `rel` in the state folder `root` is
+ * refused, as the layout hook refuses Claude's own: a file only the engine
+ * writes. Null where it is another place, or none.
+ * @param {{root: string, rel: string}} file
+ */
+function engineFileRefusal({ root, rel }) {
+  // Loaded for a write into the state alone: the layout reads every shipped task driver.
+  const { folding, layoutPlace, engineRefusal } = require('./layout.cjs');
+  return engineRefusal(layoutPlace(rel, folding(root)), rel);
+}
+
+/**
+ * Why a command writing to a file in the state only the engine writes is
+ * refused, each file it writes to read from its folder as a path.
+ * @param {SimpleCommand} command
+ */
+function writeRefusal(command) {
+  for (const word of writtenWords(command)) {
+    const file = within(command.cwd, word);
+    const state = file === null ? null : inStateFolder(file);
+    const reason = state === null ? null : engineFileRefusal(state);
+    if (reason !== null) return reason;
   }
   return null;
 }
@@ -269,7 +393,7 @@ function gitRefusal(command, inFlight) {
  * @returns {string|null}
  */
 function commandRefusal(command, inFlight) {
-  return gitRefusal(command, inFlight) ?? removalRefusal(command) ?? namedRefusal(command);
+  return gitRefusal(command, inFlight) ?? removalRefusal(command) ?? namedRefusal(command) ?? writeRefusal(command);
 }
 
 /**

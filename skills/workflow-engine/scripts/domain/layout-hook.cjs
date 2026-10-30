@@ -42,9 +42,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath, ignoresCase } = require('../kernel/state-root.cjs');
+const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
-const { AS_WRITTEN, IN_LOWER_CASE, layoutPlace } = require('./layout.cjs');
+const { folding, layoutPlace, engineRefusal } = require('./layout.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
@@ -68,15 +68,6 @@ function nearestFolder(abs) {
   let at = path.dirname(abs);
   while (!fs.existsSync(at) && path.dirname(at) !== at) at = path.dirname(at);
   return at;
-}
-
-/**
- * How names are spelled on the filesystem the existing `folder` is on: in
- * lower case where it ignores case.
- * @param {string} folder @returns {(name: string) => string}
- */
-function folding(folder) {
-  return ignoresCase(folder) ? IN_LOWER_CASE : AS_WRITTEN;
 }
 
 /** The folder or file at `at` on disk, by device and inode; null where none is. @param {string} at */
@@ -138,8 +129,7 @@ function namesBelow(file, root, fold) {
 function placeRefusal(rel, fold) {
   const at = layoutPlace(rel, fold);
   if (at === null) return `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
-  if (at.kind !== 'engine') return null;
-  return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
+  return engineRefusal(at, rel);
 }
 
 /**

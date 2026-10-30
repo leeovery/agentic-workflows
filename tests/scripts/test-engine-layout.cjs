@@ -139,10 +139,11 @@ describe('4.11\'s places (4.11.17)', () => {
     }
   });
 
-  it('the logs are 4.11\'s four — the product\'s and discovery\'s sessions, a topic\'s log and the build\'s — and today\'s session logs are none (6.3.2)', () => {
+  it('the logs are 4.11\'s four — the product\'s and discovery\'s sessions, a topic\'s log and the build\'s — and today\'s session logs are none (6.3.2); a log\'s names are compared as the fold spells them', () => {
     const logs = ['.product/sessions/session-001.md', 'pay/discovery/session-001.md', 'pay/topics/auth/log.md', 'pay/build/log.md'];
     assert.deepStrictEqual(logs.filter((rel) => !isLog(rel)), []);
-    assert.deepStrictEqual(['pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', 'pay/topics/auth/brief.md'].filter(isLog), []);
+    assert.deepStrictEqual(['pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', 'pay/topics/auth/brief.md'].filter((rel) => isLog(rel)), []);
+    assert.deepStrictEqual([isLog('PAY/Build/LOG.md', IN_LOWER_CASE), isLog('PAY/Build/LOG.md')], [true, false]);
   });
 
   it('the ledger\'s refusal names every verb that writes it', () => {

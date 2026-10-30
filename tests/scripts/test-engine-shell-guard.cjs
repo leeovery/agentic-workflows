@@ -7,18 +7,22 @@
 // on stdin as Claude Code sends it. Ordinary commands pass silently and
 // write nothing — a git read, git's plumbing, a quoted word or a heredoc's
 // body or a comment that says "git commit", a mention of the state branch,
-// a file under the state removed by its name, a name built at run time.
+// a file under the state removed by its name, a name built at run time, a
+// read of a file only the engine writes, a write to a place the layout
+// gives Claude or to a file of an engine-only name outside any state.
 // It refuses, with exit 2 and the way on: the state worktree unlocked,
 // moved or removed, `.leeway` removed, the state branch deleted here or on
 // the remote or force-pushed, by every spelling Claude writes, in a project
 // with a remote and one without (4.S7); a raw `git commit` during a build,
 // the task in flight read from the conversation stdin names (6.S11, 6.S22),
-// and in the state worktree at any time; and a command naming a file at user
-// level the layout hook refuses Claude's writes to. Input it cannot read
-// passes. A pass never runs git, and the position is read for a commit
-// alone. At the shell door each guard answers before the engine loads
-// anything but its own module, the shell guard's modules pinned one by one
-// (E5).
+// and in the state worktree at any time; a command naming a file at user
+// level the layout hook refuses Claude's writes to; and a command writing,
+// by any form a shell writes with, to a file in the state only the engine
+// writes, for the layout hook's reason (2.S1). Input it cannot read passes.
+// A pass never runs git, and the position is read for a commit alone. At
+// the shell door each guard answers before the engine loads anything but
+// its own module, the shell guard's modules pinned one by one, and the
+// layout guard's for a write into the state (E5).
 //
 // Layer: verb, and process for the shell door. World: a project with a unit
 // and a task started in one conversation, a code worktree beside it; a
@@ -33,7 +37,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, STATE_DIR_NAME } = require('./engine-harness.cjs');
+const {
+  ENGINE, call, ok, git, stateGit, commitAll, fixtureFrom, codeProject, cleanupFixture, statePath, layout, STATE_DIR_NAME,
+} = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.dirname(ENGINE);
@@ -70,6 +76,23 @@ const SHELL_GUARD_LOADS = [
   'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/process.cjs',
   'kernel/shell-reader.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
+
+/** The engine's modules the layout guard loads for a write into the state, every shipped task driver's aside. */
+const LAYOUT_GUARD_LOADS = [
+  'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/drivers.cjs', 'domain/layout-hook.cjs', 'domain/layout.cjs', 'domain/task-id.cjs',
+  'domain/user-files.cjs', 'engine.cjs', 'guards.cjs', 'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs',
+  'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs', 'kernel/manifest.cjs', 'kernel/process.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
+];
+
+/** Each file in the state only the engine writes, by its path from the state, with the layout hook's reason for refusing a write to it. */
+const ENGINE_FILES = [
+  [layout.manifest(UNIT), `a unit's manifest (${layout.manifest(UNIT)}) changes only through the engine's commands — engine manifest set|push|pull|delete|apply`],
+  [layout.projectManifest, `the project manifest (${layout.projectManifest}) changes only through the engine's commands — engine manifest set|push|pull|delete`],
+  [layout.ledger, `the ledger (${layout.ledger}) changes only through the engine's commands — engine ledger ask|find|decide|replace|hold|move|merge`],
+];
+
+/** A path in the state as a command from the project spells it. @param {string} rel */
+const inState = (rel) => `${STATE_DIR_NAME}/${rel}`;
 
 /** The unit, its first task written, the project's code committed. */
 const unitWorld = fixtureFrom('shell-guard-', (dir) => {
@@ -154,8 +177,9 @@ function writingNothing(fn) {
 }
 
 describe('ordinary commands pass silently, writing nothing', () => {
-  it('git\'s reads and plumbing, a quoted word, a heredoc\'s body or a comment saying "git commit", a mention of the state branch, a forced push of another branch, a file under the state removed by its name, the engine\'s own commit — each passes during a build and out of one, and nothing is written', () => {
+  it('git\'s reads and plumbing, a quoted word, a heredoc\'s body or a comment saying "git commit", a mention of the state branch, a forced push of another branch, a file under the state removed by its name, the engine\'s own commit, a read of a file only the engine writes — redirected from, copied away — a write to a log or the spec, or to a file of an engine-only name outside the state — each passes during a build and out of one, and nothing is written', () => {
     const conversation = path.join(CONFIG, 'conversations', BUILDING);
+    const [manifest, ledger, spec] = [inState(layout.manifest(UNIT)), inState(layout.ledger), inState(layout.unit(UNIT, 'spec.md'))];
     const commands = [
       'git log --oneline -5',
       'git status && git diff HEAD~1 -- src',
@@ -172,6 +196,12 @@ describe('ordinary commands pass silently, writing nothing', () => {
       'git worktree list && git worktree remove ../card',
       'rm -rf node_modules dist && rm -rf .leeway/pay/stray.md',
       'ls -la .leeway && cat .leeway/manifest.json',
+      `jq .status ${manifest} && jq . < ${manifest} && wc -l < ${ledger} && grep -c found ${ledger} && head -3 ${ledger}`,
+      `git -C ${STATE_DIR_NAME} diff && cat ${manifest} > held.json && cp ${manifest} ${ledger} ${os.tmpdir()} && mv held.json kept.json`,
+      `sed -n 1p ${manifest} && sed -e 's/i/x/' ${manifest} && perl -MList::Util -ne 'print' ${manifest} && node build.js 2>&1 | tee build.log`,
+      `cat <<EOF > notes.md\necho '{}' >> ${ledger}\nEOF`,
+      `echo "- tried the form" >> ${inState(layout.topic(UNIT, UNIT, 'log.md'))} && sed -i '' s/draft/final/ ${spec} && cp draft.md ${spec}`,
+      `echo '{}' > manifest.json && sed -i '' s/a/b/ ${layout.manifest(UNIT)} && echo '{}' >> ${layout.ledger} && rm -f ${path.join(os.tmpdir(), 'manifest.json')}`,
       'node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths src/card.js -m "Take the card" --for pay implementation/pay',
       'npm test -- --grep "git commit"',
       `ls ${conversation} && cat ${path.join(conversation, 'position.json')}`,
@@ -384,6 +414,70 @@ describe('the files at user level the layout hook refuses, by their names (6.5.1
   });
 });
 
+describe('a write to a file in the state only the engine writes, by the names its words give (2.S1, 6.2.3)', () => {
+  /** Each form a shell command writes to a file with, by the file's path as the command spells it. @type {((file: string) => string)[]} */
+  const WRITES = [
+    (file) => `jq '.status = "completed"' notes.json > ${file}`,
+    (file) => `echo '{"event":"found"}' >> ${file}`,
+    (file) => `echo '{}' >| ${file}`,
+    (file) => `node build.js &> ${file}`,
+    (file) => `node build.js &>> ${file}`,
+    (file) => `node build.js 2> ${file}`,
+    (file) => `node build.js 1>>${file}`,
+    (file) => `node build.js >& ${file}`,
+    (file) => `exec 3<> ${file}`,
+    (file) => `jq . notes.json | tee -a ${file}`,
+    (file) => `sed -i '' 's/in-progress/completed/' ${file}`,
+    (file) => `sed -i.bak -e 's/a/b/' ${file}`,
+    (file) => `sed --in-place 's/a/b/' ${file}`,
+    (file) => `sed -Ei 's/a+/b/' ${file}`,
+    (file) => `perl -pi -e 's/a/b/' ${file}`,
+    (file) => `perl -i.bak -ne 'print' ${file}`,
+    (file) => `mv ${file} held.json`,
+    (file) => `mv forged.json ${file}`,
+    (file) => `mv ${path.basename(file)} ${path.dirname(file)}/`,
+    (file) => `cp forged.json ${file}`,
+    (file) => `cp -f ${path.join('forged', path.basename(file))} ${path.dirname(file)}`,
+    (file) => `install -m 644 forged.json ${file}`,
+    (file) => `ln -sf forged.json ${file}`,
+    (file) => `rm -f ${file}`,
+    (file) => `unlink ${file}`,
+    (file) => `truncate -s 0 ${file}`,
+    (file) => `touch ${file}`,
+    (file) => `dd if=forged.json of=${file}`,
+  ];
+
+  it('each form a shell writes with — a redirection out, appended, clobbering, of both streams or one descriptor, to read and write; tee; sed and perl in place; mv from it or onto it; cp, install or ln onto it or into its folder; rm, unlink, truncate, touch; dd — is refused for a unit\'s manifest, the project manifest and the ledger, with the layout hook\'s reason naming the verb', () => {
+    writingNothing(() => {
+      for (const [rel, reason] of ENGINE_FILES) {
+        for (const write of WRITES) assertRefused(guard(dir, write(inState(rel))), reason, write(inState(rel)));
+      }
+    });
+  });
+
+  it('a file is read from the folder the command runs in — after a `cd` or `pushd` into the state, from inside it, through `..`, by its absolute path — and where the text cannot say the folder, a relative path names no file in the state', () => {
+    const state = path.join(dir, STATE_DIR_NAME);
+    const [unitManifest, projectManifest, ledger] = ENGINE_FILES.map(([, reason]) => reason);
+    const review = layout.unit(UNIT, 'spec-review.json');
+    const refused = [
+      [dir, `cd ${STATE_DIR_NAME} && echo '{}' >> ${layout.ledger}`, ledger],
+      [dir, `cd ${inState(UNIT)} && sed -i '' s/a/b/ manifest.json`, unitManifest],
+      [dir, `pushd ${STATE_DIR_NAME} && rm ${layout.projectManifest}`, projectManifest],
+      [dir, `cd ${inState(UNIT)} && echo '{}' >> ../${layout.ledger}`, ledger],
+      [os.tmpdir(), `touch ${statePath(dir, review)}`, `a unit's record of the person's review of its spec (${review}) changes only through the engine's commands`],
+      [state, `echo '{}' > ${layout.projectManifest}`, projectManifest],
+    ];
+    writingNothing(() => {
+      for (const [cwd, command, reason] of refused) assertRefused(guard(cwd, command), reason, `${command} — from ${cwd}`);
+    });
+    for (const [cwd, command] of [
+      [state, `cd "$ELSEWHERE" && echo '{}' > ${layout.projectManifest}`],
+      [state, `cd - && rm ${layout.manifest(UNIT)}`],
+      [dir, `(cd ${STATE_DIR_NAME}) && echo '{}' > ${layout.projectManifest}`],
+    ]) assertPassed(guard(cwd, command), `${command} — from ${cwd}`);
+  });
+});
+
 describe('input it cannot read passes', () => {
   it('no JSON, no tool input, no command, a command that is no text', () => {
     for (const stdin of ['', '{not json', '[]', JSON.stringify({ tool_name: 'Bash' }), hookInput(dir, '', { tool_input: { description: 'x' } }), hookInput(dir, '', { tool_input: { command: ['git', 'commit'] } })]) {
@@ -427,12 +521,19 @@ describe('the shell door', () => {
     }
   });
 
-  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position among them', () => {
-    const loaded = loadedBy([ENGINE, 'shell', 'guard'], hookInput(dir, 'git commit -m x'));
+  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position and a write outside the state among them', () => {
+    const loaded = loadedBy([ENGINE, 'shell', 'guard'], hookInput(dir, 'git status > status.txt && git commit -m x'));
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), SHELL_GUARD_LOADS);
   });
 
-  it('a pass never runs git — from the project, a code worktree or the state worktree, a commit\'s read of the position among them', () => {
+  it('E5: the layout guard loads these modules of the engine\'s for a write into the state, and the shipped task drivers, and no other', () => {
+    const write = JSON.stringify({ cwd: dir, tool_name: 'Write', tool_input: { file_path: statePath(dir, layout.topic(UNIT, UNIT, 'log.md')), content: '' } });
+    const drivers = fs.readdirSync(path.join(SCRIPTS, 'drivers', 'task')).map((name) => `drivers/task/${name}/driver.cjs`);
+    const loaded = loadedBy([ENGINE, 'layout', 'guard'], write);
+    assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), [...LAYOUT_GUARD_LOADS, ...drivers].sort());
+  });
+
+  it('a pass never runs git — from the project, a code worktree or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them', () => {
     const bin = path.join(out, 'bin');
     const ran = path.join(out, 'git-ran');
     fs.mkdirSync(bin);
