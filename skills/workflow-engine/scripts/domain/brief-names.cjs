@@ -34,6 +34,8 @@ const POINTED = new RegExp(`${POINTER}([0-9A-Za-z]+)`);
  */
 const ROLES = Object.freeze({
   builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters'] },
+  reviewer: { agent: 'leeway-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'linters'] },
+  fix: { agent: 'leeway-builder', whose: 'the fix round\'s', records: ['report-a', 'report-b'] },
   'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
 });
 

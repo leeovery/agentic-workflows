@@ -2,12 +2,14 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a brief filled and issued (6.5) — `brief <role> [<unit>
-// <task>]`, the only way the workflows hand one of their own agents its
-// brief (6.5.1). Each role names its template, the agent it is dispatched
-// as, and the records its brief draws on (6.5.4, 6.5.11, brief-names.cjs);
+// <task>] [--{flag} <value> …]`, the only way the workflows hand one of
+// their own agents its brief (6.5.1). Each role names its template, the
+// agent it is dispatched as — the fix round's, the builder it is sent to —
+// and the records its brief draws on (6.5.4, 6.5.11, brief-names.cjs);
 // a role whose records include a task's takes the unit and the task, any
-// other takes neither, and no role takes a flag, so no free text reaches a
-// brief (6.5.6).
+// other takes neither. A role takes each flag its records name, every one
+// of them, once, and no other: `--base <branch>`, `--report-a <path>`; a
+// flag carries a name or a path, so no free text reaches a brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its
@@ -47,6 +49,7 @@ const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs')
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./brief-records.cjs').Filling} Filling */
+/** @typedef {import('./brief-records.cjs').BriefFlag} BriefFlag */
 /** @typedef {import('./brief-names.cjs').Issued} Issued */
 
 // The install moves the skills under `.claude/skills/`, so the content is
@@ -61,12 +64,63 @@ function takesTask(role) {
   return ROLES[role].records.some((record) => RECORDS[record].ofTask);
 }
 
+/** The flags a role takes, each its records name. @param {string} role @returns {BriefFlag[]} */
+function flagsOf(role) {
+  return ROLES[role].records.flatMap((record) => {
+    const { flag } = RECORDS[record];
+    return flag === undefined ? [] : [flag];
+  });
+}
+
 /** The verb's usage, a line per role. */
-const BRIEF_USAGE = Object.keys(ROLES).map((role) => `brief ${role}${takesTask(role) ? ' <unit> <task>' : ''}`).join('\n');
+const BRIEF_USAGE = Object.keys(ROLES).map((role) => [
+  `brief ${role}`, ...(takesTask(role) ? ['<unit> <task>'] : []), ...flagsOf(role).map(({ name, value }) => `--${name} <${value}>`),
+].join(' ')).join('\n');
 
 /** @returns {never} */
 function usage() {
   throw new Error(`Usage: ${BRIEF_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
+}
+
+/**
+ * The name of the flag `arg` gives, refused where its role does not take it
+ * or its value is joined to it by `=`.
+ * @param {string} role @param {string} arg `--{name}`
+ */
+function flagNamed(role, arg) {
+  const [name, joined] = arg.slice(2).split(/=(.*)/s);
+  const flag = flagsOf(role).find((taken) => taken.name === name);
+  if (flag === undefined) throw new Error(`brief: the ${role}'s brief takes no --${name} — a brief draws on its records alone`);
+  if (joined !== undefined) throw new Error(`brief: --${name} takes its value after a space, \`--${name} <${flag.value}>\``);
+  return name;
+}
+
+/**
+ * A role's arguments: its unit and task, where it takes them, and each flag
+ * it takes, given once with its value. A flag it does not take is refused
+ * as such, any other shape by the usage.
+ * @param {string} role @param {string[]} args
+ * @returns {{ref: TaskRef|null, given: Record<string, string>}}
+ */
+function argumentsOf(role, args) {
+  const taken = flagsOf(role).map(({ name }) => name);
+  /** @type {string[]} */
+  const positional = [];
+  /** @type {Record<string, string>} */
+  const given = {};
+  for (let at = 0; at < args.length; at += 1) {
+    if (!args[at].startsWith('--')) {
+      positional.push(args[at]);
+      continue;
+    }
+    const name = flagNamed(role, args[at]);
+    const value = args[at + 1];
+    if (value === undefined || value.startsWith('--') || Object.hasOwn(given, name)) usage();
+    given[name] = value;
+    at += 1;
+  }
+  if (positional.length !== (takesTask(role) ? 2 : 0) || taken.some((name) => !Object.hasOwn(given, name))) usage();
+  return { ref: positional.length === 2 ? parseShownTask(positional[0], positional[1]) : null, given };
 }
 
 /**
@@ -157,10 +211,7 @@ function unendedTask(cwd, ref, warnings) {
  */
 function issueBrief(cwd, [role, ...rest]) {
   if (role === undefined || !Object.hasOwn(ROLES, role)) usage();
-  const flag = rest.find((arg) => arg.startsWith('--'));
-  if (flag !== undefined) throw new Error(`brief: the ${role}'s brief takes no ${flag} — a brief draws on its records alone`);
-  if (rest.length !== (takesTask(role) ? 2 : 0)) usage();
-  const ref = rest.length === 2 ? parseShownTask(rest[0], rest[1]) : null;
+  const { ref, given } = argumentsOf(role, rest);
   const session = handedSession();
   if (session === null) throw new Error('brief: no conversation to issue it in — Claude Code hands every command it runs a session id, and this one has none');
   const { agent, whose, records } = ROLES[role];
@@ -170,7 +221,7 @@ function issueBrief(cwd, [role, ...rest]) {
   try {
     const { task, committed } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
     /** @type {Filling} */
-    const filling = { cwd, ref, task };
+    const filling = { cwd, ref, task, given };
     const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
     const id = newId();
     const named = `Brief ${id} — ${whose}${ref === null ? '' : `, for ${ref.unit} task ${shownTask(ref)}`}`;

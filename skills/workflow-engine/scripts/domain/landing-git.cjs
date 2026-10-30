@@ -21,6 +21,10 @@
 //   the first the repository has of the one `init.defaultBranch` names,
 //   `main` and `master`. Never the branch a checkout happens to be on, and
 //   never the state branch (4.9.4).
+// - A repository holds a task's branch where it names it: the project's own
+//   always, a nested one only where the branch holds a commit no branch
+//   there but the unit's holds (7.2.17) — the rule the landing walks by and
+//   a reviewer's brief draws its ranges by.
 // - A change is read from the project's folder alone, named from it — a
 //   project inside a larger repository reads only its own folder (7.2.17) —
 //   but for what a caller asks of a folder at the repository's top.
@@ -67,6 +71,7 @@ const names = require('./landing-names.cjs');
  * made it, and whether it is locked.
  * @typedef {{path: string, branch: string|null, rebasing: string[], scratch: boolean, locked: boolean}} Worktree
  */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
 /** The settings a replay merges by, at git's own defaults, each against what the person's could make of it; a printed rebase carries them too. */
 const MERGE_PINS = [
@@ -127,6 +132,31 @@ function branchesHeldBy(root, commit) {
 function holdsBeyond(root, branches, others) {
   const refs = (/** @type {string[]} */ names) => names.map((name) => `${HEADS}${name}`);
   return git(root, ['rev-list', '-1', ...refs(branches), '--not', ...refs(others)]).trim() !== '';
+}
+
+/**
+ * Whether a nested repository holds work on a branch of the unit's `picks`
+ * names: a commit no branch there but the unit's holds — read without its
+ * default branch, so a repository the unit never touched is passed over
+ * whatever it lacks.
+ * @param {string} unit @param {Repo} repo @param {(branch: string) => boolean} picks
+ */
+function holdsWork(unit, repo, picks) {
+  const held = [...branches(repo.path).keys()];
+  const picked = held.filter(picks);
+  return picked.length > 0 && holdsBeyond(repo.path, picked, held.filter((branch) => !names.isUnitBranch(unit, branch)));
+}
+
+/**
+ * The repositories holding a task's branch, in the order given: each naming
+ * it, a nested one only where the branch holds work there (`holdsWork`);
+ * and whether any names it at all.
+ * @param {string} unit @param {Repo[]} repos @param {string} branch
+ * @returns {{named: boolean, holding: Repo[]}}
+ */
+function holdingBranch(unit, repos, branch) {
+  const named = repos.filter((repo) => branches(repo.path).has(branch));
+  return { named: named.length > 0, holding: named.filter((repo) => repo.dir === '' || holdsWork(unit, repo, (held) => held === branch)) };
 }
 
 /** Whether `ancestor` is `commit` or one it descends from. @param {string} root @param {string} ancestor @param {string} commit @returns {boolean} */
@@ -1039,7 +1069,7 @@ function defaultBranch(root, remote, nested = false) {
 }
 
 module.exports = {
-  short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
+  short, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranch, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
   prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
 };

@@ -195,19 +195,6 @@ function mergingIn(project, repo, walking) {
 }
 
 /**
- * Whether a nested repository holds work on a branch of the unit's `picks`
- * names: a commit no branch there but the unit's holds — read without its
- * default branch, so a repository the unit never touched is passed over
- * whatever it lacks.
- * @param {string} unit @param {Repo} repo @param {(branch: string) => boolean} picks
- */
-function holdsWork(unit, repo, picks) {
-  const held = [...lg.branches(repo.path).keys()];
-  const picked = held.filter(picks);
-  return picked.length > 0 && lg.holdsBeyond(repo.path, picked, held.filter((branch) => !names.isUnitBranch(unit, branch)));
-}
-
-/**
  * The repositories a verb but `open` walks, children first: the project's
  * own, and each nested one holding work on a branch `picks` names — each
  * refused before any acts where the driver does not serve its remote.
@@ -215,7 +202,7 @@ function holdsWork(unit, repo, picks) {
  * @returns {Repo[]}
  */
 function walked(project, driver, picks) {
-  const repos = childrenFirst(project.repos).filter((repo) => repo.dir === '' || holdsWork(project.unit, repo, picks));
+  const repos = childrenFirst(project.repos).filter((repo) => repo.dir === '' || lg.holdsWork(project.unit, repo, picks));
   for (const repo of repos) {
     const ctx = contextOf(project, repo);
     inRepo(ctx.repo, () => driver.assertServes?.(ctx));
@@ -342,7 +329,7 @@ function untyped(ref, status) {
 /**
  * The landing a task opens under, from the type and title the tracker holds
  * for it (7.2.18, 12.4.1), and the repositories holding its branch — a
- * nested one only where the branch holds work there (`holdsWork`): refused
+ * nested one only where the branch holds work there (`lg.holdsWork`): refused
  * where it has no type, where no repository holds its branch, or none holds
  * work on it, and where its change carries the state.
  * @param {Project} project @param {TaskRef} ref @param {{type: string|null, title: string, status: string}} task
@@ -352,11 +339,10 @@ function landingOf(project, ref, { type, title, status }) {
   const shown = shownTask(ref);
   if (type === null) throw new Error(untyped(ref, status));
   const branch = names.taskBranch(ref, type, title);
-  const named = project.repos.filter((repo) => lg.branches(repo.path).has(branch));
-  if (named.length === 0) {
+  const { named, holding } = lg.holdingBranch(project.unit, project.repos, branch);
+  if (!named) {
     throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
   }
-  const holding = named.filter((repo) => repo.dir === '' || holdsWork(project.unit, repo, (held) => held === branch));
   if (holding.length === 0) throw new Error(`land: task ${shown}'s branch ${branch} changes nothing in the repositories holding it — commit its change there first`);
   const own = /** @type {LandingContext} */ (project.contexts.get(''));
   const state = holding[0].dir === '' ? lg.changedAtTop(own.root, own.into, branch, STATE_DIR_NAME) : [];
