@@ -318,7 +318,7 @@ describe('pipeline simulation: experiments', () => {
     bridgeTo(sim, wu, 'specification');
   });
 
-  it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and its report a message once the person closed it first', () => {
+  it('the question an experiment measures: waiting on the map while it runs, held from Claude\'s close, and once the person closed it first, the topic decided goes on to its specification and the report reopens it as a message', () => {
     const wu = 'cold-start';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Launch time', '--session-log-file', sessionLog(sim, wu)]);
     menuEntry(sim, wu);
@@ -337,15 +337,19 @@ describe('pipeline simulation: experiments', () => {
     sim.refuses(['ledger', 'decide', at, '--answers', budget], /is measured by experiment E1, still running/, null,
       JSON.stringify({ ...made, text: 'Under a second.', why: 'It feels instant.' }));
 
-    // The laboratory runs while the person closes the question themselves;
-    // the report then reaches the topic as a message.
+    // The laboratory runs while the person closes the question themselves
+    // and decides the topic: the pipeline goes on to the specification as
+    // the yes said, the experiment running beside it, and the report then
+    // reaches the topic as a message, reopening it.
     bridgeTo(sim, wu, 'experiment');
     handoffEntry(sim, wu, 'experiment', wu);
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
     ledger(['decide', at, '--answers', budget], { by: 'person', who_moved_whom: 'none', text: 'Under a second.', why: 'It feels instant.' });
+    assert.deepStrictEqual(decideTopic(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    bridgeTo(sim, wu, 'specification');
     sim.write(path.relative(sim.dir, path.join(e1.dir, 'report.md')), '# Report — E1\n\nCold launch lands at 0.8 s.\n');
     const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'under a second holds']);
-    assert.strictEqual(concluded.report_sent.topic, wu, 'the question closed where it was asked, so the report goes back there');
+    assert.deepStrictEqual([concluded.report_sent.topic, concluded.report_sent.reopened], [wu, true], 'the question closed where it was asked, so the report goes back there');
     assert.ok(fs.existsSync(concluded.report_sent.message_path), 'the report waits in the topic\'s mailbox');
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
   });

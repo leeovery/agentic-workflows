@@ -129,7 +129,7 @@ describe('render map (9.5.6)', () => {
     assert.strictEqual(shown(output(dir, ['render', 'map', 'solo.solo'])), 'Map — Solo\nNothing on the map yet: no question asked and no call made.\n');
   });
 
-  it('refuses an address that names no unit\'s topic, moving no mark', () => {
+  it('refuses an address that names no unit\'s topic', () => {
     for (const [address, refusal] of [
       ['fumi', 'render map: address must be <work-unit>.<topic>, got "fumi"'],
       ['fumi.discussion.note-window', 'render map: address must be <work-unit>.<topic>, got "fumi.discussion.note-window"'],
@@ -138,6 +138,5 @@ describe('render map (9.5.6)', () => {
     ]) {
       assert.strictEqual(refusedPristine(dir, ['render', 'map', address]).error, refusal);
     }
-    assert.match(map(), /SINCE YOU LAST LOOKED \(2 calls by Claude\)/);
   });
 });

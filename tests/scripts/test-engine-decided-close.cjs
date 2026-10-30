@@ -5,7 +5,9 @@
 // domain/checklist.cjs, domain/decided.cjs): a topic a message set back in
 // progress closed afresh before its gate shows again, counting the verdicts
 // its close asks, a decision the record widens already taking no second
-// line and a replacement of it widened afresh (P9); a message delivered or
+// line, the yes refused while a line widens a decision replaced since, and
+// a line widening the replacement replacing it, one rule standing (P9,
+// 8.9.2); a message delivered or
 // a question opened since the close voiding it, the payload staged against
 // it refused by the screen and the yes alike, and a decision changed since
 // voiding nothing.
@@ -21,13 +23,13 @@ const fs = require('fs');
 
 const { ok, output, refusedPristine, readManifest, statePath } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE } = require('./ledger-world.cjs');
-const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, sectionOf, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(dir);
 
 describe('a topic set back in progress (P9, 10.2.7)', () => {
-  it('shows its gate again only once closed afresh, counting the verdicts this close asks, and the next decided takes the gate\'s yes again', () => {
+  it('shows its gate again only once closed afresh, counting the verdicts this close asks; a decision widened already takes no second line, the yes refuses while a line widens a decision replaced since, and a line widening the replacement at the end of its chain replaces it, one rule standing', () => {
     close();
     reverse(NOTE_MAP.title.answer, 'Hello.');
     staged({ lines: [{ text: 'Sync is on once a folder is picked.', why: 'It holds for the product.', widens: NOTE_MAP.sync.answer }], candidates: [] });
@@ -56,12 +58,17 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     const again = ['render', 'decided', `${UNIT}.note-window`, '--file', payload({ lines: [{ text: 'Sync stays on.', why: 'Again.', widens: NOTE_MAP.sync.answer }], candidates: [] })];
     assert.strictEqual(refusedPristine(dir(), again, { env: SESSION }).error,
       `render decided: line 1 widens ${NOTE_MAP.sync.answer}: ${widened.id} widens it for the product already — "Sync is on once a folder is picked."`);
-    const resync = writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.sync.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['on once a folder is picked'], text: 'Off until turned on.', why: 'The banner asks first.' });
-    staged({ lines: [{ text: 'Sync is off until you turn it on.', why: 'It holds for the product.', widens: resync }], candidates: [] });
+    const replaced = writeIn(dir(), 'replace', NOTE, ['--replaces', NOTE_MAP.sync.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['on once a folder is picked'], text: 'Off until turned on.', why: 'The banner asks first.' });
+    const resync = writeIn(dir(), 'replace', NOTE, ['--replaces', replaced, '--reason', 'changed-mind'], { ...MADE, drops: ['until turned on'], text: 'Off until the banner is answered.', why: 'The banner turns it on.' });
+    staged(NO_PAYLOAD);
+    assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error,
+      `decided yes: the product record's line ${widened.id}, "Sync is on once a folder is picked.", widens a decision of note-window replaced since, and no line staged replaces it — a line widening the replacement is staged with --file`);
+    const replacing = staged({ lines: [{ text: 'Sync is off until you turn it on.', why: 'It holds for the product.', widens: resync }], candidates: [] });
+    assert.match(sectionOf(replacing, 'DISPLAY: decided'), /\nFOR THE PRODUCT RECORD \(1 line\)\n {2}· Sync is off until you turn it on\.\n {4}↳ Replaces: Sync is on once a folder is picked\.\n/);
     run(answer('decided', 'y'));
     assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'completed');
-    assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync is on once a folder is picked.', 'Sync is off until you turn it on.'],
-      'a replacement is another decision, widened afresh');
+    assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync is off until you turn it on.'],
+      'one rule stands: the line widening the replacement replaced the line widening the decision it replaced');
   });
 
   it('voids the close with a message delivered since, its answer leaving it void, and the payload staged against it refused by the screen and the yes alike', () => {

@@ -309,9 +309,9 @@ function addItem(cwd, workUnit, name, { routing, source = 'discovery', summary, 
 
 /**
  * A batch entry: a topic to add, its routing and summary, and optionally its
- * description, brief pointer, provenance tag (`discovery` where it gives
- * none) and the person's confirmed re-add of a dismissed name.
- * @typedef {{name: string, routing: string, summary: string, description?: string, brief_path?: string, source?: string, force_dismissed?: boolean}} BatchEntry
+ * description, brief pointer and the person's confirmed re-add of a
+ * dismissed name.
+ * @typedef {{name: string, routing: string, summary: string, description?: string, brief_path?: string, force_dismissed?: boolean}} BatchEntry
  */
 
 /**
@@ -336,7 +336,7 @@ function checkBatchEntries(entries, said) {
     if (typeof e.summary !== 'string' || e.summary.trim() === '') {
       throw new Error(`${said}: ${at} ("${e.name}") — "summary" must be a non-empty string`);
     }
-    for (const opt of ['description', 'brief_path', 'source']) {
+    for (const opt of ['description', 'brief_path']) {
       if (e[opt] !== undefined && (typeof e[opt] !== 'string' || e[opt].trim() === '')) {
         throw new Error(`${said}: ${at} ("${e.name}") — "${opt}" must be a non-empty string when present`);
       }
@@ -348,15 +348,17 @@ function checkBatchEntries(entries, said) {
 }
 
 /**
- * The batch added to the map on `manifest`, the whole batch checked against
- * the map as it stands before any of it is applied — refused, in the words
- * of `said`, for a name on the map already or one dismissed from it that
- * the entry does not confirm re-adding, `reAdd` saying how it is re-added.
- * The caller saves the manifest.
- * @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {string} said @param {string} [reAdd]
+ * The batch added to the map on `manifest`, each item's provenance
+ * `source`, the whole batch checked against the map as it stands before
+ * any of it is applied — refused, in the words of `said`, for a name on the
+ * map already or one dismissed from it that the entry does not confirm
+ * re-adding, `reAdd` saying how it is re-added. The caller saves the
+ * manifest.
+ * @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {string} said
+ * @param {{source?: string, reAdd?: string}} [opts]
  * @returns {string[]} the dismissed names the batch re-added
  */
-function addBatchTo(manifest, entries, said, reAdd = 'confirm the re-add with the user, then set force_dismissed on the entry') {
+function addBatchTo(manifest, entries, said, { source = 'discovery', reAdd = 'confirm the re-add with the user, then set force_dismissed on the entry' } = {}) {
   const phases = ensureContainer(manifest, 'phases', 'phases');
   const discovery = ensureContainer(phases, 'discovery', 'phases.discovery');
   ensureContainer(discovery, 'items', 'phases.discovery.items');
@@ -372,7 +374,7 @@ function addBatchTo(manifest, entries, said, reAdd = 'confirm the re-add with th
   const undismissed = entries.filter((e) => dismissed.includes(e.name)).map((e) => e.name);
   for (const e of entries) {
     /** @type {Record<string, unknown>} */
-    const item = { routing: e.routing, source: e.source ?? 'discovery', summary: e.summary };
+    const item = { routing: e.routing, source, summary: e.summary };
     if (e.description !== undefined) item.description = e.description;
     if (e.brief_path !== undefined) item.brief_path = e.brief_path;
     discovery.items[e.name] = item;

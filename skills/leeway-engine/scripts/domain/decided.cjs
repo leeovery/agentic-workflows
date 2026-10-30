@@ -22,10 +22,15 @@
 //   screen changes as it lands. Each line takes its ids as staged, so a yes
 //   run again after a kill lands no line twice; and a decision the product
 //   record widens already takes no second line, so a restage after that
-//   kill, or after a reopen, lands none twice either. A restage keeps the
-//   strike of every candidate it still names. Candidates are an epic's
-//   alone, each checked by the map's own rules for adding a topic
-//   (discovery-map.cjs).
+//   kill, or after a reopen, lands none twice either; nor does a payload
+//   widen one decision twice. A line widening a decision that replaced one
+//   a line of the record widens lands as the person's replacement of that
+//   line, at the same yes (8.9.2), the screen showing the text it replaces;
+//   and the yes refuses while a line of the record widens a decision of the
+//   topic replaced since and nothing staged replaces it, so the record never
+//   holds two rules for one call. A restage keeps the strike of every
+//   candidate it still names. Candidates are an epic's alone, each checked
+//   by the map's own rules for adding a topic (discovery-map.cjs).
 //   The screen draws from the staged payload again without `--file`, the
 //   calls listed with `--calls`.
 // - What the person decided is shown apart from the rows carried over,
@@ -72,7 +77,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { carrying } = require('./ledger.cjs');
 const { newId, resolveId } = require('./ledger-ids.cjs');
-const { factsOf, productOf } = require('./ledger-fold.cjs');
+const { factsOf, productOf, notCurrent } = require('./ledger-fold.cjs');
 const { readShown, answerMap } = require('./ledger-read.cjs');
 const { departureRow } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
@@ -83,7 +88,7 @@ const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkBatchEntries, addBatchTo } = require('./discovery-map.cjs');
 const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { rowStanding, answersOn, claudesCalls, topicAddress } = require('./topic-map.cjs');
+const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -92,9 +97,10 @@ const { decidedScreen, strikePick, waitAgents } = require('./projections/decided
 
 /**
  * A product-record line as staged: the ids its question and it land as, its
- * text and why, the decision it widens by full id, and its question's
- * wording.
- * @typedef {{id: string, question: string, asks: string, text: string, why: string, widens: string}} StagedLine
+ * text and why, the decision it widens by full id, its question's wording,
+ * and the product-record line it replaces — the one widening a decision
+ * this one replaced — by full id and text, null where it replaces none.
+ * @typedef {{id: string, question: string, asks: string, text: string, why: string, widens: string, replaces: {id: string, text: string}|null}} StagedLine
  */
 
 /** A new-topic candidate as staged, struck or standing. @typedef {{name: string, reason: string, struck: boolean}} StagedCandidate */
@@ -166,21 +172,41 @@ function questionOn(shower, rows, decision) {
 }
 
 /**
- * Refused where a product-wide decision standing in the record relies on
- * `decision` already: a line widened it before — at an earlier yes, or one
- * killed after the line landed — and a replacement of it is another
- * decision, widened afresh.
- * @param {Shower} shower @param {string} decision a full id
+ * The product-record line standing that widens one of `decisions`: a
+ * product-wide decision, current, relying on it. Undefined where none does.
+ * @param {Shower} shower @param {string[]} decisions full ids
  */
-function notWidened(shower, decision) {
-  const widened = productOf(shower.folded).decisions.find((id) => factsOf(shower.folded, id).relies_on.includes(decision));
-  if (widened !== undefined) throw new Error(`${shower.short(widened)} widens it for the product already — "${shower.show(widened).text}"`);
+function lineWidening(shower, decisions) {
+  return productOf(shower.folded).decisions.find((id) => factsOf(shower.folded, id).relies_on.some((d) => decisions.includes(d)));
+}
+
+/** The decisions `decision` replaced, along its chain, nearest first. @param {Shower} shower @param {string} decision a full id */
+function replacedBy(shower, decision) {
+  const earlier = [];
+  for (let at = factsOf(shower.folded, decision).replaces; at !== null; at = factsOf(shower.folded, at).replaces) earlier.push(at);
+  return earlier;
 }
 
 /**
- * A line as Claude's payload gives it, staged, its ids minted: refused
- * where it is not `{text, why, widens}`, `widens` names no decision on the
- * map, or the product record widens that decision already.
+ * Refused where a product-record line standing widens `decision` already:
+ * a line widened it before — at an earlier yes, or one killed after the
+ * line landed. Else the line standing that widens a decision `decision`
+ * replaced, which a line widening it replaces (8.9.2), or null.
+ * @param {Shower} shower @param {string} decision a full id
+ * @returns {StagedLine['replaces']}
+ */
+function lineReplaced(shower, decision) {
+  const widened = lineWidening(shower, [decision]);
+  if (widened !== undefined) throw new Error(`${shower.short(widened)} widens it for the product already — "${shower.show(widened).text}"`);
+  const earlier = lineWidening(shower, replacedBy(shower, decision));
+  return earlier === undefined ? null : { id: earlier, text: /** @type {string} */ (shower.show(earlier).text) };
+}
+
+/**
+ * A line as Claude's payload gives it, staged, its ids minted, replacing
+ * the line that widens a decision `widens` replaced: refused where it is
+ * not `{text, why, widens}`, `widens` names no decision on the map, or the
+ * product record widens that decision already.
  * @param {Shower} shower @param {Row[]} rows @param {unknown} given @param {number} at
  * @returns {StagedLine}
  */
@@ -190,15 +216,16 @@ function stagedLine(shower, rows, given, at) {
   if (!filled(text) || !filled(why) || !filled(widens)) throw new Error(`${what}'s text, why and widens are each a non-empty string`);
   let decision;
   let asks;
+  let replaces;
   try {
     decision = resolveId(widens, shower.folded.facts.keys());
     if (factsOf(shower.folded, decision).kind !== 'decision') throw new Error(`${widens} is no decision`);
     asks = questionOn(shower, rows, decision);
-    notWidened(shower, decision);
+    replaces = lineReplaced(shower, decision);
   } catch (err) {
     throw new Error(`${what} widens ${widens}: ${messageOf(err)}`);
   }
-  return { id: newId(), question: newId(), asks, text, why, widens: decision };
+  return { id: newId(), question: newId(), asks, text, why, widens: decision, replaces };
 }
 
 /** How a candidate dismissed from the map is re-added: by the person, on the map. */
@@ -210,7 +237,7 @@ const RE_ADD = 'the person re-adds it on the map';
  * @param {string} topic @param {{name: string, reason: string}[]} candidates
  */
 function mapEntries(topic, candidates) {
-  return candidates.map(({ name, reason }) => ({ name, routing: PHASE, summary: reason, source: `topic:${topic}` }));
+  return candidates.map(({ name, reason }) => ({ name, routing: PHASE, summary: reason }));
 }
 
 /**
@@ -222,7 +249,7 @@ function checkCandidates(manifest, topic, candidates, said) {
   if (candidates.length === 0) return;
   const entries = mapEntries(topic, candidates);
   checkBatchEntries(entries, said);
-  addBatchTo(structuredClone(manifest), entries, said, RE_ADD);
+  addBatchTo(structuredClone(manifest), entries, said, { source: `topic:${topic}`, reAdd: RE_ADD });
 }
 
 /**
@@ -261,10 +288,15 @@ function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
   }
   const { lines, candidates } = shaped(parsed, 'the payload', ['lines', 'candidates']);
   if (!Array.isArray(lines) || !Array.isArray(candidates)) throw new Error('the payload\'s lines and candidates are each a list');
+  const widened = lines.map((line, i) => stagedLine(shower, rows, line, i));
+  widened.forEach(({ widens }, i) => {
+    const first = widened.findIndex((line) => line.widens === widens);
+    if (first < i) throw new Error(`line ${i + 1} widens ${shower.short(widens)}, as line ${first + 1} does — a decision takes one line`);
+  });
   /** @type {Staged} */
   const staged = {
     closed,
-    lines: lines.map((line, i) => stagedLine(shower, rows, line, i)),
+    lines: widened,
     candidates: stagedCandidates(manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
   };
   fs.mkdirSync(path.dirname(stagedFile(cwd, unit, topic)), { recursive: true });
@@ -345,6 +377,7 @@ function recordSide(shower, root, unit, topic, closed) {
     question,
     answer: answer.text,
     kind: /** @type {string|null} */ (shower.show(resolveId(answer.id, shower.folded.facts.keys())).kind),
+    handed: handedTag(answer),
   }));
   return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, unit, topic, closed) };
 }
@@ -391,7 +424,7 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
         moved: side.moved,
         calls: side.calls,
         listed: calls !== undefined,
-        lines: staged.lines.map((line) => line.text),
+        lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
         candidates: staged.candidates,
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
@@ -447,19 +480,42 @@ function nextAfter(manifest, unit) {
 }
 
 /**
- * The two raises a staged line lands as, at the unit's level: its question,
- * relying on the decision it widens, and the person's product-wide
- * decision answering it.
+ * The raises a staged line lands as, at the unit's level, the person's
+ * product-wide decision relying on the decision it widens: its question
+ * and the decision answering it; or, where it replaces a line, the
+ * replacement of that line, the person's change of mind (8.9.2).
  * @param {string} unit @param {StagedLine} line
- * @returns {[import('./ledger-write.cjs').Raised, import('./ledger-write.cjs').Raised]}
+ * @returns {import('./ledger-write.cjs').Raised[]}
  */
-function lineRaises(unit, { id, question, asks, text, why, widens }) {
+function lineRaises(unit, { id, question, asks, text, why, widens, replaces }) {
   const place = { unit, phase: PHASE, topic: null };
   const common = { said: 'decided yes', place, logs: null, checkRead: () => {} };
+  const decision = { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true };
+  if (replaces !== null) {
+    return [{ ...common, lands: 'replace', linked: { replaces: replaces.id, reason: 'changed-mind', cause: null, relies_on: [widens] }, content: { ...decision, drops: [replaces.text] }, id }];
+  }
   return [
     { ...common, lands: 'ask', linked: { relies_on: [widens] }, content: { by: 'claude', who_moved_whom: 'none', text: asks }, id: question },
-    { ...common, lands: 'decide', linked: { answers: question, relies_on: [widens] }, content: { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true }, id },
+    { ...common, lands: 'decide', linked: { answers: question, relies_on: [widens] }, content: decision, id },
   ];
+}
+
+/**
+ * Refused where a product-record line standing relies on a decision of the
+ * topic replaced since and no staged line replaces it: the rule it states
+ * is widened afresh from the replacement, or the record holds two.
+ * @param {Shower} shower @param {string} unit @param {string} topic @param {StagedLine[]} lines
+ */
+function checkReplacedLines(shower, unit, topic, lines) {
+  const { folded } = shower;
+  const replacedHere = (/** @type {string} */ id) => {
+    const facts = factsOf(folded, id);
+    return facts.unit === unit && facts.topic === topic && 'replaced_by' in (notCurrent(folded, id) ?? {});
+  };
+  const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !lines.some((line) => line.replaces?.id === id));
+  if (left !== undefined) {
+    throw new Error(`the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and no line staged replaces it — a line widening the replacement is staged with --file`);
+  }
 }
 
 /**
@@ -488,19 +544,20 @@ function decidedYes(cwd, unit, topic) {
   if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
   /** @type {string[]} */
   const warnings = [];
-  const staged = onClosedTopic(cwd, unit, topic, ({ closed, side }) => {
+  const staged = onClosedTopic(cwd, unit, topic, ({ shower, closed, side }) => {
     const ready = stagedFor(cwd, unit, topic, closed);
     if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
+    checkReplacedLines(shower, unit, topic, ready.lines);
     return ready;
   });
   const added = staged.candidates.filter(({ struck }) => !struck);
   checkCandidates(loadWorkUnitManifest(cwd, unit), topic, added, 'the candidates');
   checkLines(cwd, unit, staged.lines, warnings);
-  const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id)[1]);
+  const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1));
   const at = new Date().toISOString();
   const manifest = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
-    if (added.length > 0) addBatchTo(fresh, mapEntries(topic, added), 'the candidates', RE_ADD);
+    if (added.length > 0) addBatchTo(fresh, mapEntries(topic, added), 'the candidates', { source: `topic:${topic}`, reAdd: RE_ADD });
     fresh.phases[PHASE].items[topic].status = 'completed';
     takeDecidedClose(fresh, topic, at);
     saveWorkUnitManifest(cwd, unit, fresh);
