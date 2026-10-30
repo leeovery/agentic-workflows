@@ -66,7 +66,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
+  postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
@@ -5196,16 +5196,6 @@ const DIRECT_ENTRY_WAY_BACK = {
   handled: 'Reopen it in discovery (`i/discovery`) — a dead-ended topic carries no row.',
 };
 const POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
-
-/**
- * Whether a postponed topic's roadmap item still waits — the pull forward's
- * return leg open, which another epic's pull closes.
- * @param {string} cwd @param {string} workUnit @param {string} topic
- */
-function postponedStillWaits(cwd, workUnit, topic) {
-  const item = postponedItem(loadProjectManifest(cwd), workUnit, topic);
-  return Boolean(item && item.waiting);
-}
 
 /**
  * @param {string} cwd

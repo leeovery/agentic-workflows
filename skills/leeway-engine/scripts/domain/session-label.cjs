@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: tmux session labels — an opt-in rename of the user's tmux
 // session to show where the workflow session is working. Every place labels
-// itself on arrival: a process skill's Step 0 applies `{original} ·
+// itself on arrival: a phase's entry — `enter`, or a process skill's Step 0
+// where the phase is not entered through it — applies `{original} ·
 // {work-unit} · {phase} · {topic}`, a navigation skill and the bridge
 // `{original} · {work-unit}`, the roadmap and the baseline `{original} ·
 // roadmap` / `{original} · baseline`, and leeway puts the original
@@ -71,7 +72,7 @@ const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
-const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
+const { readPosition, assertPlace, isPlace, recordPosition, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
@@ -523,6 +524,20 @@ function applySessionLabel(cwd, name, phase, topic) {
 }
 
 /**
+ * Arrive at a place — `session label`'s, and the entry's (enter.cjs): a
+ * place this project lacks refused before anything is labelled or recorded,
+ * then the tmux session labelled and the conversation's position recorded,
+ * labels on or off. Answers the label's own answer.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ */
+function arriveAt(cwd, name, phase, topic) {
+  assertPlace(cwd, name, phase, topic);
+  const labelled = applySessionLabel(cwd, name, phase, topic);
+  recordPosition(cwd, name, phase, topic);
+  return labelled;
+}
+
+/**
  * Bring a resumed session's label back — `session resume`, the SessionStart
  * hook's target on `claude --resume`. The conversation's position is
  * re-applied through `applySessionLabel`, so the gates are `label`'s own
@@ -680,6 +695,6 @@ function repairSessionLabels(cwd) {
 }
 
 module.exports = {
-  applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
+  arriveAt, applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
   resolveEnabled, labelConfigStatus, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };

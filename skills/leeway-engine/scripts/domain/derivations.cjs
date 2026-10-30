@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { fileExists, filesChecksum, listFiles } = require('./reads.cjs');
+const { fileExists, filesChecksum, listFiles, loadProjectManifest } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
@@ -554,6 +554,16 @@ function postponedItem(project, workUnit, topic) {
     }
   }
   return null;
+}
+
+/**
+ * Whether a postponed topic's roadmap item still waits — the pull forward's
+ * return leg open, which another epic's pull closes.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ */
+function postponedStillWaits(cwd, workUnit, topic) {
+  const item = postponedItem(loadProjectManifest(cwd), workUnit, topic);
+  return Boolean(item && item.waiting);
 }
 
 /**
@@ -1518,6 +1528,7 @@ module.exports = {
   postponeTarget,
   postponeClashPhrase,
   postponedItem,
+  postponedStillWaits,
   lockingSpecsPhrase,
   proposedGroupings,
   specReactivateLocks,

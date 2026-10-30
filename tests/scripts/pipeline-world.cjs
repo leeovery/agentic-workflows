@@ -109,12 +109,13 @@ class Sim {
   // Transactions answer with pure JSON — display artifacts belong to render
   // surfaces fetched at their display point. The section-bearing commands
   // left are presence, whose scan is a read-only snapshot whose deferral
-  // advisory rides the dump, the view-family pattern, and a raise's draw and
+  // advisory rides the dump, the view-family pattern; a raise's draw and
   // show — every raise command but its answer — whose sections are the
-  // screen the raise is drawn as.
+  // screen the raise is drawn as; and the entry, whose sections are what
+  // the phase reads on arrival.
   /** @param {string[]} args */
   static carriesSections([group, verb]) {
-    return group === 'presence' || (group === 'raise' && verb !== 'answer');
+    return group === 'presence' || group === 'enter' || (group === 'raise' && verb !== 'answer');
   }
 
   /**
@@ -364,6 +365,23 @@ function handoffEntry(sim, wu, phase, topic) {
   assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
     `a compaction there carries on in the phase's skill (${phase})`);
+}
+
+// A move into a phase that enters through `enter`: handed off as above, the
+// phase skill's first engine call is its entry — starting the topic where
+// unstarted, recording the place, and answering what to read in its sections
+// (`sim.sections`) — so a compaction there carries on in the phase's skill,
+// re-reading the topic's record.
+function enterEntry(sim, wu, phase, topic) {
+  sim.handOver();
+  const res = sim.run(['enter', phase, wu, topic]);
+  assert.strictEqual(res.entered, true, `no other session holds the topic, so the entry asks nothing (${phase})`);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the entry records its place (${phase})`);
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
+    `a compaction there carries on in the phase's skill (${phase})`);
+  assert.ok(here.text.includes(`ledger record ${wu} ${topic}\``), `a compaction there re-reads the topic's record (${phase})`);
+  return res;
 }
 
 // A move into work, as the prose makes it through handing-off.md: the route —
@@ -960,5 +978,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

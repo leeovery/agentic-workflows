@@ -180,11 +180,11 @@ and ellipsis, its word the phase the conversation works in — `Discussing`,
 `Assessing` at the baseline — from the position the engine keeps in the
 conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
-spinner draws in, and again after each engine call that moves it (`session
-label`, `session repair`, `boot`, `task start`, `task done`, `task close`,
-`task complete`), never per frame. At a work unit's menu or the start menu it
-keeps Claude Code's word, and on the Desktop app a step that names itself
-(`Creating notes.md`) keeps its words.
+spinner draws in, and again after each engine call that moves it (`enter`,
+`session label`, `session repair`, `boot`, `task start`, `task done`, `task
+close`, `task complete`), never per frame. At a work unit's menu or the start
+menu it keeps Claude Code's word, and on the Desktop app a step that names
+itself (`Creating notes.md`) keeps its words.
 
 ## How it compacts a workflow conversation
 
@@ -192,14 +192,18 @@ Claude Code compacts a workflow conversation as it compacts any other — its
 summary, and the recent messages it keeps as they were, the person's waiting
 message among them — and the mod appends one message last: the engine's
 `conversation position` note. It says the conversation was just compacted and
-where it is working, the work unit named by its work type, then tells Claude
-to follow the skill's "Resuming After Context Refresh" steps before anything
-else — the skill and its framework re-read in full, then the topic's
-documents, each by its absolute path. Those steps end by carrying on from
-where the conversation was, as if the break never happened. A `/compact`
-starts no turn of its own, so after one the mod sends a short continuation
-once the command is done — into the prompt box for Enter where the send is
-dropped — and Claude follows the note without the person typing anything.
+where it is working, the work unit named by its work type, then what to do
+before anything else. In discussion the note carries the recovery whole: the
+skill and its framework re-read in full, the topic's record and its log, the
+log caught up from the conversation's transcript, then carry on from where the
+conversation was, as if the break never happened. In a phase whose skill keeps
+its own "Resuming After Context Refresh" steps, it tells Claude to follow
+them — the skill and its framework re-read in full, then the topic's
+documents, each by its absolute path — and those steps end by carrying on.
+A `/compact` starts no turn of its own, so after one the mod sends a short
+continuation once the command is done — into the prompt box for Enter where
+the send is dropped — and Claude follows the note without the person typing
+anything.
 Words typed after `/compact` go to Claude Code's summary as they always do.
 
 Claude Code stores the note as an ordinary user row and would draw it as a

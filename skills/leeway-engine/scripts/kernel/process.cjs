@@ -4,8 +4,9 @@
 // Kernel: process identity — pid + kernel-recorded start time uniquely
 // identify a process (a recycled pid carries a different start time). The
 // domains that record an owning Claude process (presence heartbeats, session-
-// label stashes) share these to answer "does that process still run" and
-// "is that record the calling session's own". The calling session is the id
+// label stashes, background-agent rows) share these to answer "does that
+// process still run" and "is that record the calling session's own". The
+// calling session is the id
 // Claude Code hands every command it runs, `CLAUDE_CODE_SESSION_ID`, read
 // here alone (`handedSession`).
 // ---------------------------------------------------------------------------
@@ -54,6 +55,19 @@ function ownStartTime() {
   return ownStart;
 }
 
+/**
+ * Memoised process start times — one `ps` per pid across a whole read.
+ * @returns {(pid: number) => string|null|undefined}
+ */
+function startTimeReader() {
+  /** @type {Map<number, string|null>} */
+  const cache = new Map();
+  return (pid) => {
+    if (!cache.has(pid)) cache.set(pid, processStartTime(pid));
+    return cache.get(pid);
+  };
+}
+
 /** Zero-signal existence probe; EPERM means alive. @param {number} pid */
 function processAlive(pid) {
   try { process.kill(pid, 0); return true; }
@@ -86,6 +100,17 @@ function handedSession() {
 }
 
 /**
+ * The calling Claude process and conversation, as a record names its owner:
+ * the process (`CLAUDE_PID`) with its start time, and the session id — each
+ * null where Claude Code handed none.
+ * @returns {{pid: number|null, pid_start: string|null, session_id: string|null}}
+ */
+function callerIdentity() {
+  const pid = Number(process.env.CLAUDE_PID) || null;
+  return { pid, pid_start: pid === null ? null : processStartTime(pid), session_id: handedSession() };
+}
+
+/**
  * Does the calling session own this record? Its own session id, or its own
  * pid where the record predates a session id — so a later conversation in
  * the same process owns its predecessor's records. The one home for the
@@ -102,4 +127,4 @@ function ownsRow(record) {
   return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
 }
 
-module.exports = { PS_TIMEOUT_MS, handedSession, sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };
+module.exports = { PS_TIMEOUT_MS, handedSession, callerIdentity, sleepSync, processStartTime, ownStartTime, startTimeReader, processAlive, ownerAlive, ownsRow };
