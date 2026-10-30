@@ -1653,7 +1653,7 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
   });
 });
 
-test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences and the capture skills', () => {
+test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences and the capture skills (6.S21)', () => {
   withTemp((dir) => {
     const sites = (file) => checkNoTemplatedRenders([file], dir).map((v) => v.line);
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';

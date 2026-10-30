@@ -15,6 +15,9 @@
 // `engine.runAsync`, the environment held until it settles; `run` refuses to
 // answer one it cannot wait for.
 //
+// The entry dispatches no uninstall, and the release ships no skill or agent
+// for one (27.S3).
+//
 // The last tests pin the two doors together: whatever the in-process entry
 // answers, the spawned CLI answers byte for byte.
 // ---------------------------------------------------------------------------
@@ -24,12 +27,14 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const REPO = path.join(__dirname, '../..');
+const ENGINE = path.join(REPO, 'skills/workflow-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
 const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
 
@@ -205,6 +210,18 @@ describe('engine.run — the invocation is the caller\'s', () => {
     const res = engine.run(['nonsense'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]/);
+  });
+});
+
+describe('no uninstall in the release (27.2.3)', () => {
+  it('the engine dispatches no uninstall, and its usage names none — `engine uninstall` answers that usage — and no skill or agent, nor any file of theirs, is one (27.S3)', () => {
+    const res = engine.run(['uninstall'], { cwd: os.tmpdir() });
+    const shipped = ['skills', 'agents'].flatMap((folder) => /** @type {string[]} */ (fs.readdirSync(path.join(REPO, folder), { recursive: true })));
+
+    assert.strictEqual(res.code, 1);
+    assert.match(res.stderr, /^Usage: engine <command> \[args\]\n\nCommands:\n {2}boot /);
+    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('workflow-start') && shipped.includes('workflow-baseline-researcher.md'));
+    assert.deepStrictEqual([...Object.keys(engine.COMMANDS), res.stderr, ...shipped].filter((name) => /uninstall/i.test(name)), []);
   });
 });
 

@@ -153,20 +153,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
   });
 
-  it('6.S31: boot installs the hooks before Bash and before Agent and SendMessage beside the layout hook, committed on the branch checked out; a later session with the mod off runs them as installed, and a raw commit during a build and a dispatch of the builder with no brief are each refused', () => {
-    dropSettings();
-    git(fix.project, ['checkout', '-q', '-b', 'feature']);
-    const main = git(fix.project, ['rev-parse', 'main']);
-    assert.strictEqual(bootWith().session_hooks_installed, true);
-    assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'feature']).trim(), 'chore: install workflow session hooks');
-    assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
-
+  it('6.S31: boot installs the hooks before Bash and before Agent and SendMessage beside the layout hook, committed on the branch checked out, naming no task while one is in flight (6.S25); a later session with the mod off runs them as installed, and a raw commit during a build and a dispatch of the builder with no brief are each refused', () => {
     const session = 'later-session';
-    fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
-    fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'workflow-engine'));
-    fs.mkdirSync(conversationDir(session), { recursive: true });
-    fs.writeFileSync(positionPath(session), JSON.stringify({ name: 'payments', phase: 'implementation', topic: 'payments', task: '1.1' }));
     const refusals = path.join(/** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR), 'brief-refusals.jsonl');
     /** The installed hook for `matcher`, run as Claude Code runs it on `toolInput`. @param {string} matcher @param {string} tool @param {object} toolInput */
     const asInstalled = (matcher, tool, toolInput) => {
@@ -175,6 +163,19 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       return spawnSync('sh', ['-c', command], { cwd: fix.project, env: { ...process.env, CLAUDE_PROJECT_DIR: fix.project }, input: JSON.stringify(input), encoding: 'utf8' });
     };
     try {
+      dropSettings();
+      git(fix.project, ['checkout', '-q', '-b', 'feature']);
+      const main = git(fix.project, ['rev-parse', 'main']);
+      fs.mkdirSync(conversationDir(session), { recursive: true });
+      fs.writeFileSync(positionPath(session), JSON.stringify({ name: 'payments', phase: 'implementation', topic: 'payments', task: '1.1' }));
+
+      assert.strictEqual(bootWith().session_hooks_installed, true);
+      assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);
+      assert.strictEqual(git(fix.project, ['log', '-1', '--format=%B', 'feature']), 'chore: install workflow session hooks\n\n', 'the subject alone, no Leeway-Task trailer');
+      assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
+
+      fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
+      fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'workflow-engine'));
       assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined, 'the mod is off');
       const commit = asInstalled('Bash', 'Bash', { command: 'git commit -am "Take the card"' });
       assert.deepStrictEqual([commit.status, commit.stdout], [2, '']);
