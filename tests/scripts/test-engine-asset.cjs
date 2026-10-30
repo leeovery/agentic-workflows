@@ -30,10 +30,14 @@ const os = require('os');
 const path = require('path');
 const { ok, refuses, refusedPristine, head, holdLock, lockAttempts, stateGit, statePath, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { midMigration, stateUnborn, UNIT: MIGRATING } = require('./migration-world.cjs');
 
-const { shortIds } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
-const { ignoresCase } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { ignoresCase } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 
 // Whether the filesystem every folder of these tests is on ignores case.
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
@@ -180,7 +184,7 @@ describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
 
   it('9.S33: refuses a file anywhere but below a home — the unit\'s imports/, another unit\'s assets, a folder in spikes/ that is no spike, a topic\'s folder, the assets folder itself — and a path not written plain', () => {
     const homes = `${UNIT}/assets/, a spike of ${UNIT}'s, ${UNIT}/spikes/NNN-{slug}/, or the product's .product/assets/ or .product/spikes/NNN-{slug}/`;
-    for (const rel of [saved(`${UNIT}/imports/brief.pdf`), saved('mint/assets/mock.png'), saved(`${UNIT}/spikes/frame/Frame.swift`), saved(`${UNIT}/topics/note-window/sketch.png`), `${UNIT}/assets`]) {
+    for (const rel of [saved(`${UNIT}/imports/brief.pdf`), saved('mint/assets/mock.png'), saved(`${UNIT}/spikes/frame/Frame.swift`), saved(`${UNIT}/topics/note-window/sketch.png`), `${UNIT}/assets`, `${UNIT}/spikes`]) {
       assert.strictEqual(refused(['add', UNIT, rel, '--entry', made.frameless, '--status', 'reference']), `asset add: ${rel} is not where an asset lives — ${homes}`);
     }
     for (const rel of [`${UNIT}/assets/../assets/note-mock.png`, `./${MOCK}`, statePath(dir, MOCK)]) {
@@ -205,20 +209,59 @@ describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
 });
 
 describe('what a link commits (9.10.4)', () => {
-  it('commits the file a later link names with its line, an edit since its last link among it, and a folder with its files; a spike\'s file no entry links stays untracked (9.S38)', () => {
+  it('takes every file a link names into each ledger commit after: an edit since its link and a linked folder\'s new file land with the next unrelated ledger write, and none removes a linked file; a spike\'s file no entry links stays untracked (9.S38)', () => {
     asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
-    fs.writeFileSync(statePath(dir, MOCK), 'the mock, edited\n');
-
-    asset(['status', UNIT, MOCK, 'canonical']);
-    const edited = [committedFiles(), stateGit(dir, ['show', `HEAD:${MOCK}`])];
     const designs = asset(['spike', UNIT, 'note-design']).path;
     const round = [saved(`${designs}/round-2/note-b.png`), saved(`${designs}/round-2/note-b.url`)];
     const unlinked = saved(`${designs}/round-1/note-a.png`);
     asset(['add', UNIT, `${designs}/round-2`, '--entry', made.frameless, '--status', 'canonical']);
+    const linked = committedFiles();
+    fs.writeFileSync(statePath(dir, MOCK), 'the mock, edited\n');
+    const added = saved(`${designs}/round-2/note-c.png`);
+    fs.rmSync(statePath(dir, round[1]));
 
-    assert.deepStrictEqual(edited, [[layout.ledger, MOCK].sort(), 'the mock, edited\n']);
-    assert.deepStrictEqual(committedFiles(), [layout.ledger, ...round].sort());
-    assert.deepStrictEqual(stateGit(dir, ['ls-files', '--', designs, FRAME]).trim(), round.join('\n'), `${unlinked} or ${FRAME}, linked from nothing, is tracked`);
+    ask(SPACE, 'Does a note snap to the grid?');
+
+    assert.deepStrictEqual(linked, [layout.ledger, ...round].sort());
+    assert.deepStrictEqual([committedFiles(), stateGit(dir, ['show', `HEAD:${MOCK}`])], [[layout.ledger, MOCK, added].sort(), 'the mock, edited\n']);
+    assert.deepStrictEqual(stateGit(dir, ['ls-files', '--', designs, FRAME]).trim().split('\n'), [...round, added].sort(), `a linked file was removed, or ${unlinked} or ${FRAME}, linked from nothing, is tracked`);
+  });
+
+  it('catches up a link whose commit was refused, its file with it, at the next ledger write and at boot\'s catch-up', () => {
+    const stray = saved(`${UNIT}/tmp/notes.md`);
+    const pending = asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
+    fs.rmSync(statePath(dir, stray));
+    ask(SPACE, 'Does a note snap to the grid?');
+    const caught = committedFiles();
+    saved(stray);
+    asset(['add', UNIT, FRAME, '--entry', made.frameless]);
+    fs.rmSync(statePath(dir, stray));
+
+    withStateLock(statePath(dir), () => commitUncommitted(statePath(dir), 'ledger: the entries a write left uncommitted'));
+
+    assert.deepStrictEqual([pending.committed, pending.note], [null, 'commit pending — the link is in the ledger, and the next ledger write or boot commits it']);
+    assert.deepStrictEqual([caught, committedFiles()], [[layout.ledger, MOCK].sort(), [layout.ledger, FRAME].sort()]);
+  });
+
+  it('holds no ledger commit up on a linked file gone before any commit took it: the next ledger write commits the ledger', () => {
+    const stray = saved(`${UNIT}/tmp/notes.md`);
+    asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
+    fs.rmSync(statePath(dir, stray));
+    fs.rmSync(statePath(dir, MOCK));
+
+    const res = write('ask', SPACE, [], { ...MADE, text: 'Does a note snap to the grid?' });
+
+    assert.deepStrictEqual([res.committed, committedFiles()], [stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), [layout.ledger]]);
+  });
+
+  it('links a spike\'s folder whole, named with or without its trailing slash, stored without it — reference, as a spike\'s file is', () => {
+    const spike = `${UNIT}/spikes/001-frame`;
+
+    asset(['add', UNIT, `${spike}/`, '--entry', made.frameless]);
+    asset(['add', UNIT, spike, '--entry', made.active, '--status', 'canonical']);
+
+    assert.deepStrictEqual(links(), [[full(made.frameless), spike, 'reference', null], [full(made.active), spike, 'canonical', null]]);
+    assert.ok(committedFiles().includes(layout.ledger) && stateGit(dir, ['ls-files', '--', FRAME]).trim() === FRAME, `${FRAME} is not tracked`);
   });
 
   it('stores a path as the file system spells it, so one file is one path: where it ignores case, a link named in another case links the file as it is named on disk; where it keeps case, nothing is there', () => {
@@ -257,18 +300,24 @@ describe('a status changed (9.10.7)', () => {
     asset(['add', UNIT, brand, '--entry', made.active, '--status', 'reference']);
     const panel = write('replace', NOTE, ['--replaces', made.frameless, '--reason', 'changed-mind'], { ...MADE, drops: ['frameless'], text: 'A panel with a hairline frame.', why: 'Easier to grab.' }).id;
     asset(['add', UNIT, MOCK, '--entry', panel, '--status', 'reference']);
+    const spec = `${UNIT}.specification`;
+    const specced = decide(spec, write('ask', spec, [], { ...MADE, text: 'Does the spec carry the mock?' }).id, 'It does.');
+    asset(['add', UNIT, MOCK, '--entry', specced, '--status', 'reference']);
     const before = entries().length;
 
     const res = asset(['status', UNIT, MOCK, 'canonical']);
     asset(['status', UNIT, brand, 'canonical']);
 
-    const written = entries().slice(before).map((e) => [e.id, e.topic, e.entry, e.path, e.status, e.into]);
+    const written = entries().slice(before).map((e) => [e.id, e.phase, e.topic, e.entry, e.path, e.status, e.into]);
     assert.deepStrictEqual(written.map(([, ...link]) => link), [
-      ['space-homing', full(made.active), MOCK, 'canonical', null],
-      ['note-window', full(panel), MOCK, 'canonical', null],
-      ['space-homing', full(made.active), brand, 'canonical', null],
+      ['discussion', 'space-homing', full(made.active), MOCK, 'canonical', null],
+      ['discussion', 'note-window', full(panel), MOCK, 'canonical', null],
+      ['specification', null, full(specced), MOCK, 'canonical', null],
+      ['discussion', 'space-homing', full(made.active), brand, 'canonical', null],
     ]);
-    assert.deepStrictEqual(res, { ok: true, path: MOCK, links: [{ id: shortOf(written[0][0]), entry: made.active }, { id: shortOf(written[1][0]), entry: panel }], committed: res.committed });
+    assert.deepStrictEqual(res, {
+      ok: true, path: MOCK, links: [[written[0][0], made.active], [written[1][0], panel], [written[2][0], specced]].map(([id, entry]) => ({ id: shortOf(id), entry })), committed: res.committed,
+    });
     assert.deepStrictEqual([assetsOf('note-window', panel), assetsOf('space-homing', made.active)], [
       [{ path: MOCK, status: 'canonical', into: null }],
       [{ path: MOCK, status: 'canonical', into: null }, { path: brand, status: 'canonical', into: null }],
@@ -311,6 +360,16 @@ describe('a lift (9.10.16)', () => {
     assert.deepStrictEqual(lifted, [full(made.frameless), FRAME, null, LIFTED]);
     assert.deepStrictEqual(assetsOf('note-window', made.frameless), [{ path: FRAME, status: 'canonical', into: LIFTED }]);
     assert.deepStrictEqual(asset(['lift', UNIT, FRAME, '--into', LIFTED, '--entry', made.frameless]).links, [], 'the same lift again was written');
+  });
+
+  it('a lift after the spike\'s file moved into the product commits the ledger alone: no removal of the linked file', () => {
+    asset(['add', UNIT, FRAME, '--entry', made.frameless]);
+    fs.mkdirSync(path.join(dir, path.dirname(LIFTED)), { recursive: true });
+    fs.renameSync(statePath(dir, FRAME), path.join(dir, LIFTED));
+
+    asset(['lift', UNIT, FRAME, '--into', LIFTED, '--entry', made.frameless]);
+
+    assert.deepStrictEqual([committedFiles(), stateGit(dir, ['ls-files', '--', FRAME]).trim()], [[layout.ledger], FRAME]);
   });
 
   it('refuses a lift into a path the project lacks or one not written plain, and from an entry not linking the file — its first link gives its status', () => {

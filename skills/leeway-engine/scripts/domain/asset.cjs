@@ -17,10 +17,10 @@
 //   file's path from the state root, and the status the link gives the
 //   file, the lift it records, or both.
 //   - `add` is the first link of an entry and a path, and gives its status
-//     (9.10.7). The path names something on disk below a home: the unit's
-//     `assets/` or one of its spikes, or the product's (9.10.5, 9.10.11);
-//     a path naming nothing is refused, to be corrected or skipped
-//     (9.10.22). A file in a spike is reference unless the status is said,
+//     (9.10.7). The path names something on disk below a home — the unit's
+//     `assets/` or one of its spikes, or the product's (9.10.5, 9.10.11) —
+//     or a spike's folder itself; a path naming nothing is refused, to be
+//     corrected or skipped (9.10.22). A file in a spike is reference unless the status is said,
 //     as draft code is (9.10.6); anywhere else it is said. An entry already
 //     linking the path is refused, its status changed through `status`.
 //   - `status` changes the status (9.10.7): every current entry of the
@@ -36,14 +36,15 @@
 //   stands while the entry's place does, and carries the conversation's
 //   session; with none the link is refused.
 // - Each path is stored as the file system spells what of it exists, so one
-//   file is one path where the file system ignores case; a lift's is read
-//   from the call's folder, so a call from a subfolder of the project reads
-//   it from there.
-// - What a link commits: the ledger and the path it names, a folder with
-//   its files, in one commit — so a file a decision rests on is tracked
-//   with its link (9.10.4), and an edit to it since its last link lands
-//   with the next. A file no entry links stays untracked (9.S38): two clones
-//   can start the same spike number for spikes nothing links yet.
+//   file is one path where the file system ignores case, and a folder's
+//   without a trailing slash; a lift's is read from the call's folder, so a
+//   call from a subfolder of the project reads it from there.
+// - A link's commit is a ledger commit, which takes every file the ledger's
+//   links name (ledger.cjs): the file enters the state with its first link
+//   (9.10.4), and its edits land with every ledger commit after. A lift
+//   after the file moved into the product commits no removal of it. A file
+//   no entry links stays untracked (9.S38): two clones can start the same
+//   spike number for spikes nothing links yet.
 // - A link belongs to its entry: a replacement carries none forward, so a
 //   file the replaced entry linked is linked from the new one through `add`.
 //   A link to a question is tagged at the topic the question was written
@@ -51,9 +52,9 @@
 //   moved.
 // - When: the argv, the unit and the paths are refused before the writer
 //   lock; under it the ledger is folded, the entry resolved and checked, the
-//   links appended and committed (`ledger({unit}): asset {id} …`) — held
-//   while the migration runs, the files with the line, as every state commit
-//   is (commit.cjs).
+//   links appended and the ledger committed (`ledger({unit}): asset {id} …`)
+//   — held while the migration runs, the files with the line, as every
+//   state commit is (commit.cjs).
 //   Then, the lock released, the knowledge base's copies, which show each
 //   entry's files, are rendered and indexed (ledger-copies.cjs).
 // ---------------------------------------------------------------------------
@@ -64,15 +65,15 @@ const { KEBAB_SLUG, KEBAB_SLUG_PATTERN, workUnitNameRefusal } = require('../kern
 const { stateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { appendEntry, carrying } = require('./ledger.cjs');
-const { LEDGER, ASSET_STATUSES, isPlainPath } = require('./ledger-events.cjs');
+const { appendEntry, carrying, commitLedger } = require('./ledger.cjs');
+const { ASSET_STATUSES, isPlainPath } = require('./ledger-events.cjs');
 const { shortIds, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, readFolded, factsOf, isLive, notCurrent, assetsOf } = require('./ledger-fold.cjs');
 const { manifestOf, liveness } = require('./ledger-units.cjs');
 const { ledgerMessage, staleness } = require('./ledger-write.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { commitStateTail, HELD_NOTE } = require('./commit.cjs');
+const { HELD_NOTE } = require('./commit.cjs');
 const { layoutPlace } = require('./layout.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -188,28 +189,41 @@ function startSpike(cwd, [unit, slug]) {
 }
 
 /**
- * The home a linked file sits below, or null: one of `HOMES`, a unit's
- * being `unit`'s own.
+ * The home a linked path sits below, or is — a spike's folder itself — or
+ * null: one of `HOMES`, a unit's being `unit`'s own.
  * @param {string} unit @param {string} rel
  * @returns {string|null}
  */
 function homeOf(unit, rel) {
-  const at = layoutPlace(rel);
-  if (at === null || !HOMES.includes(at.path)) return null;
-  return at.path.startsWith('{unit}/') && rel.split('/')[0] !== unit ? null : at.path;
+  const home = layoutPlace(rel)?.path ?? spikeFolder(rel);
+  if (home === null || !HOMES.includes(home)) return null;
+  return home.startsWith('{unit}/') && rel.split('/')[0] !== unit ? null : home;
 }
 
 /**
- * A path from the state root, written plain, as the file system spells what
- * of it exists — so one file is one path where the file system ignores case.
- * Refuses one not written plain, or leading out of the state.
+ * The spike home `rel` is the folder of, or null.
+ * @param {string} rel
+ * @returns {string|null}
+ */
+function spikeFolder(rel) {
+  const [owner, spikes, name, ...below] = rel.split('/');
+  if (spikes !== 'spikes' || below.length > 0 || !SPIKE_FOLDER.test(name ?? '')) return null;
+  return owner === '.product' ? '.product/spikes/{NNN}-{slug}' : '{unit}/spikes/{NNN}-{slug}';
+}
+
+/**
+ * A path from the state root, written plain — a folder's trailing slash
+ * dropped — as the file system spells what of it exists, so one file is one
+ * path where the file system ignores case. Refuses one not written plain,
+ * or leading out of the state.
  * @param {string} said @param {string} cwd @param {string} given
  * @returns {string}
  */
 function spelledInState(said, cwd, given) {
   const plain = `${said}: "${given}" is no path from the state root written plain — no part of it empty, . or ..`;
-  if (!isPlainPath(given)) throw new Error(plain);
-  const rel = stateRelative(cwd, path.join(stateRoot(cwd), given));
+  const named = given.endsWith('/') ? given.slice(0, -1) : given;
+  if (!isPlainPath(named)) throw new Error(plain);
+  const rel = stateRelative(cwd, path.join(stateRoot(cwd), named));
   if (rel === null) throw new Error(plain);
   return rel;
 }
@@ -351,7 +365,7 @@ function noteOf(outcome) {
 /**
  * Under the writer lock: the ledger folded, the links `plan` works out
  * appended, each tagged as its entry is and carrying `session`, and the
- * ledger committed with the file the links name where any was. Answers each
+ * ledger committed — with every file its links name — where any was. Answers each
  * link's short id and the entry's, and the commit's outcome, or null where
  * nothing was appended.
  * @param {string} cwd @param {string} root @param {string} unit @param {string} rel @param {string} session @param {Plan} plan @param {string[]} warnings
@@ -373,7 +387,7 @@ function landLinks(cwd, root, unit, rel, session, plan, warnings) {
     const message = ledgerMessage(unit, 'asset', appended.map((link) => short(link.id)).join(' '), topics.size === 1 ? [...topics][0] : null);
     return {
       links: appended.map((link) => ({ id: short(link.id), entry: short(link.entry) })),
-      outcome: appended.length === 0 ? null : commitStateTail(cwd, [LEDGER, rel], message, warnings),
+      outcome: appended.length === 0 ? null : commitLedger(cwd, message, warnings),
     };
   });
 }

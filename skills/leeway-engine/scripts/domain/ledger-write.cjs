@@ -132,13 +132,13 @@ const { messageOf, stdinObject } = require('../kernel/call.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { appendEntry, carrying, withLedger } = require('./ledger.cjs');
-const { LEDGER, HEADER, REASONS, ROADMAP, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
+const { appendEntry, carrying, withLedger, commitLedger } = require('./ledger.cjs');
+const { HEADER, REASONS, ROADMAP, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { commitStateTail, HELD_NOTE } = require('./commit.cjs');
+const { HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
@@ -1008,12 +1008,13 @@ function ledgerMessage(unit, event, id, topic) {
 }
 
 /**
- * The ledger committed to the state branch, under the message of the
- * request's entry `id`: a commit git refuses a warning.
+ * The ledger committed to the state branch with the files its asset links
+ * name (ledger.cjs), under the message of the request's entry `id`: a
+ * commit git refuses a warning.
  * @param {string} cwd @param {Request} request @param {string} id @param {string[]} warnings
  */
-function commitLedger(cwd, { at, write }, id, warnings) {
-  return commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings);
+function commitEntry(cwd, { at, write }, id, warnings) {
+  return commitLedger(cwd, ledgerMessage(at.unit, write.event, id, at.topic), warnings);
 }
 
 /**
@@ -1037,7 +1038,7 @@ function land(cwd, request, warnings) {
   if (read.facts.has(id)) {
     const held = withLedger(at.root, warnings, (ledger) => ledger.entryAt(factsOf(read, id).place));
     if (logs !== null) landKept(cwd, warnings);
-    return { id: short, outcome: commitLedger(cwd, request, id, warnings), held };
+    return { id: short, outcome: commitEntry(cwd, request, id, warnings), held };
   }
   checkPlaceLive(said, at, read.live);
   write.checkLive(said, at, given, read.live);
@@ -1048,7 +1049,7 @@ function land(cwd, request, warnings) {
   }
   appendEntry(at.root, fields, warnings, id);
   if (logs !== null) landKept(cwd, warnings);
-  return { id: short, outcome: commitLedger(cwd, request, id, warnings), held: null };
+  return { id: short, outcome: commitEntry(cwd, request, id, warnings), held: null };
 }
 
 /**

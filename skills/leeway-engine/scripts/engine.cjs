@@ -2602,13 +2602,13 @@ const COMMANDS = Object.freeze({
 // alone, its question and reads taking none; an `asset` link holds it as a
 // `ledger` write does, and a spike around taking its number; `presence`,
 // `session label`, `repair`, `cleanup` and `resume`, and the hold
-// `topic mailbox` refreshes
-// write only the session files the state ignores, as `enter` does beside
-// its start; a conversation's folder is outside the project; `gate`
-// writes the trust log, under its own lock, and the conversation's folder;
-// and the rest read: `layout guard` among them, run before every file Claude
-// writes, `brief guard`, before every dispatch of an agent, `shell guard`,
-// before every shell command, `checklist show`, and `migrate check`.
+// `topic mailbox` refreshes write only the session files the state ignores,
+// as `enter` does beside its start; a conversation's folder is outside the
+// project; `gate` writes the trust log, under its own lock, and the
+// conversation's folder; and the rest read: `layout guard` among them, run
+// before every file Claude writes, `brief guard`, before every dispatch of
+// an agent, `shell guard`, before every shell command, `checklist show`,
+// and `migrate check`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
