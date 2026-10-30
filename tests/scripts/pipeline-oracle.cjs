@@ -44,7 +44,7 @@ const {
 const knowledgeStore = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/store.cjs'));
 const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
-const { LEDGER } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
+const { LEDGER, ROADMAP } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
 const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
@@ -278,7 +278,8 @@ function auditState(dir, label) {
 // row is neither cancelled nor postponed; an event is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
-// question in a live place took it to. A question's line is the wordings
+// question to a topic in a live place took it to; a move to the roadmap
+// leaves it where it stands. A question's line is the wordings
 // of its chain in a live place, in the ledger's order: the last is the
 // question's wording, the rest earlier ones, and a wording reads as the
 // nearest wording in a live place it grew from, down its chain. An entry
@@ -298,12 +299,15 @@ function auditState(dir, label) {
 // answers any wording of it; it holds a row for each shown question
 // standing on the topic — answered by the shown entries answering any
 // wording of it and those the leading merges of any wording lead to, merged
-// while one leads, moved in from where the last live move the map's unit
-// made of it was made, while that is live; a row for each shown question
-// standing on another topic of the map's unit that the unit moved away
-// from the topic by a live move, leading to where it stands now; and a row
-// for each other shown question placed on the topic or with an answer
-// placed there, saying where it stands. A row of a
+// while one leads, later where the last live move the map's unit made of it
+// took it to the roadmap and it is neither, moved in from where the last
+// live move to a topic the map's unit made of it was made, while that is
+// live, and waiting on the last experiment of the unit neither concluded
+// nor abandoned that names any wording of it while it is open; a row for
+// each shown question standing on another topic of the map's unit that the
+// unit moved away from the topic by a live move, leading to where it stands
+// now; and a row for each other shown question placed on the topic or with
+// an answer placed there, saying where it stands. A row of a
 // question standing off the topic shows its answers placed on the topic
 // that no question standing there shows; and a row of its own for each
 // shown answer placed on the topic that answers no shown question, saying
@@ -312,10 +316,12 @@ function auditState(dir, label) {
 // there, that its entries rely on, its leading merges went into or that
 // answer its questions; its live moves and merges, a merge's duplicate
 // where it is live and whether the merge leads; each entry's live
-// confirmations, what the late one-decision check last found of it where it
-// found anything, and its chain down to the first entry not in a live
-// place — a question's, the earlier wordings of its line. A place that is
-// not live shows nothing; the product record holds the shown entries marked
+// confirmations, for each file linked from it, in the order each was
+// first linked, the latest live status and apart from it the latest live
+// lift, what the late one-decision check last found of it where it found
+// anything, and its chain down to the first entry not in a live place — a
+// question's, the earlier wordings of its line. A place that is not live
+// shows nothing; the product record holds the shown entries marked
 // product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
@@ -347,6 +353,8 @@ function auditLedger(dir, ctx) {
   /** @param {Record<string, any>} e */
   const isQuestion = (e) => e.event === 'asked' || e.of === 'question';
   const moves = events.filter((e) => e.event === 'moved' && placeLive(e.unit, null));
+  /** Whether a move took its question to a topic, not to the roadmap. @param {Record<string, any>} m */
+  const toTopic = (m) => !m.to.startsWith(ROADMAP);
   /** The moves in a live place `unit` made of `id`'s question, in the ledger's order. @param {string} id @param {string} unit */
   const movesOf = (id, unit) => moves.filter((m) => m.unit === unit && firstOf(m.question).id === firstOf(id).id);
   /** @type {Map<string, string|null>} */
@@ -355,7 +363,7 @@ function auditLedger(dir, ctx) {
   const topicOf = (id) => {
     if (!madeOn.has(id)) {
       const e = byId.get(id);
-      const move = isQuestion(e) ? movesOf(id, e.unit).at(-1) : undefined;
+      const move = isQuestion(e) ? movesOf(id, e.unit).filter(toTopic).at(-1) : undefined;
       madeOn.set(id, move === undefined ? e.topic : move.to);
     }
     return /** @type {string|null} */ (madeOn.get(id));
@@ -390,6 +398,29 @@ function auditLedger(dir, ctx) {
   const merges = liveEvents('merged');
   const confirmations = liveEvents('still-holds');
   const keeps = liveEvents('kept');
+  const links = liveEvents('asset');
+  /** The files linked from `id`, in the order each was first linked: for each, the latest live status and, apart from it, the latest live lift. @param {string} id */
+  const assetsOf = (id) => {
+    /** @type {Map<string, {path: string, status: string|null, into: string|null}>} */
+    const files = new Map();
+    for (const { path: file, status, into } of links.filter((a) => a.entry === id)) {
+      const was = files.get(file) ?? { path: file, status: null, into: null };
+      files.set(file, { path: file, status: status ?? was.status, into: into ?? was.into });
+    }
+    return [...files.values()];
+  };
+  /** The roadmap `id`'s question went to as later, where the last live move its unit made of it went there: `roadmap:{item}`, or null. @param {string} id */
+  const laterOf = (id) => {
+    const last = movesOf(id, standing(id).unit).at(-1);
+    return last === undefined || toTopic(last) ? null : last.to;
+  };
+  /** The last experiment of `unit` neither concluded nor abandoned that names any wording of `id`'s question, or null. @param {string} unit @param {string} id */
+  const waitingOn = (unit, id) => {
+    const items = manifests.get(unit)?.phases?.experiment?.items ?? {};
+    const named = Object.values(items).flatMap((item) => Object.entries(item?.experiments ?? {}))
+      .filter(([, r]) => byId.has(r.question) && !schema.EXPERIMENT_TERMINAL_STATUSES.includes(r.status) && firstOf(r.question).id === firstOf(id).id);
+    return named.at(-1)?.[0] ?? null;
+  };
   /** What the late check last found of each entry it judged. @type {Map<string, string>} */
   const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [e.entry, e.rules]));
 
@@ -400,7 +431,7 @@ function auditLedger(dir, ctx) {
     return JSON.parse(res.stdout);
   };
   const units = [...new Set(events.flatMap((e) => [e.unit, standing(e.id).unit]))];
-  const topics = [...new Set(events.flatMap((e) => [[e.unit, e.topic], [standing(e.id).unit, standing(e.id).topic], ...(e.event === 'moved' ? [[e.unit, e.to]] : [])])
+  const topics = [...new Set(events.flatMap((e) => [[e.unit, e.topic], [standing(e.id).unit, standing(e.id).topic], ...(e.event === 'moved' && toTopic(e) ? [[e.unit, e.to]] : [])])
     .filter(([, topic]) => topic !== null).map((pair) => pair.join('\0')))].map((key) => key.split('\0'));
   /** @type {Map<string, Record<string, any>>} */
   const records = new Map([...units.map((unit) => [`${unit}\0`, ledger(['record', unit])]), ...topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['record', unit, topic])])]);
@@ -482,6 +513,7 @@ function auditLedger(dir, ctx) {
         assert.deepStrictEqual(shownEntry.kept.map((/** @type {{id: string}} */ k) => full(k.id)), keeps.filter((k) => k.entry === full(shownEntry.id)).map((k) => k.id),
           ctx(`${place} does not show the person's live keeps of ${shownEntry.id} alone`));
         assert.strictEqual(shownEntry.late_check, lateChecks.get(full(shownEntry.id)), ctx(`${place} does not show what the late check last found of ${shownEntry.id}`));
+        assert.deepStrictEqual(shownEntry.assets, assetsOf(full(shownEntry.id)), ctx(`${place} does not show the latest live link of each file linked from ${shownEntry.id}`));
       }
     }
     assert.deepStrictEqual(record.moved.map((/** @type {{id: string, text: string}} */ m) => [full(m.id), m.text]), moves.filter(made).map((m) => [m.id, byId.get(m.question).text]),
@@ -528,17 +560,20 @@ function auditLedger(dir, ctx) {
     assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
     for (const row of map.questions) {
+      assert.strictEqual(row.waiting_on, row.stands === 'open' ? waitingOn(unit, full(row.id)) : null, ctx(`${place}'s map does not mark ${row.id} waiting on the experiment of its unit measuring it alone`));
       if (row.stands === 'question-set-aside') assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(row.id)), ctx(`${place}'s record does not show ${row.id}, which its map shows as a row of its own`));
       for (const { id: answer } of row.answers) {
         assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));
       }
     }
     for (const row of standingHere) {
-      const movedIn = movesOf(full(row.id), unit).at(-1);
-      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, null],
-        ctx(`${place}'s map does not show the live topic ${row.id} moved in from by its unit's last live move`));
+      const movedIn = movesOf(full(row.id), unit).filter(toTopic).at(-1);
       const { answers, merged } = answersOf(full(row.id));
-      assert.deepStrictEqual([row.answers.map((/** @type {{id: string}} */ a) => full(a.id)).sort(), row.stands], [answers, merged ? 'merged' : answers.length > 0 ? 'answered' : 'open'],
+      const later = laterOf(full(row.id));
+      const stands = merged ? 'merged' : answers.length > 0 ? 'answered' : later === null ? 'open' : 'later';
+      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, stands === 'later' ? later : null],
+        ctx(`${place}'s map does not show the live topic ${row.id} moved in from by its unit's last live move to a topic, and the roadmap it is later on`));
+      assert.deepStrictEqual([row.answers.map((/** @type {{id: string}} */ a) => full(a.id)).sort(), row.stands], [answers, stands],
         ctx(`${place}'s map does not answer ${row.id} by its shown answers`));
       for (const answer of answers) {
         const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => full(o.id) === answer);
@@ -629,11 +664,12 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
 // The trust log held to the ledger (16.13.3, 16.13.4, 16.12.1), read from
 // the sim's own config folder, the project's events alone, each once by its
 // id: a call for each of Claude's answers, a decision or its replacement of
-// one; a reversal, naming the entry it reverses, for each of the person's
-// replacements of a decision that held Claude's lean — Claude leaned down
-// its chain, its own call or a sealed answer, and it did not stand over
-// the lean — made for a changed mind or a mistake and carrying no sealed
-// answer of Claude's; a raise, naming the line, for each of the person's
+// one, but one carried over; a reversal, naming the entry it reverses, for
+// each of the person's replacements of a decision that held Claude's lean —
+// Claude leaned down its chain, its own call, handed over or not, or a
+// sealed answer, and it did not stand over the lean — made for a changed
+// mind or a mistake and carrying no sealed answer of Claude's; a raise,
+// naming the line, for each of the person's
 // answers to the lean a raise sealed — an entry, or a keep of the decision
 // Claude proposed to replace — beside the raises the person did not follow;
 // none of them for anything else; and nothing left waiting in a
@@ -659,10 +695,11 @@ function auditTrust(sim, label, ran = []) {
   const isDecision = (/** @type {Record<string, any>} */ e) => e.event === 'decided' || e.of === 'decision';
   const isKeep = (/** @type {Record<string, any>} */ e) => e.event === 'kept';
 
-  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && e.by === 'claude').map((e) => e.id).sort(),
+  const claudes = (/** @type {Record<string, any>} */ e) => e.by === 'claude' && e.given !== 'carried';
+  assert.deepStrictEqual(ofType('call').map((e) => e.entry).sort(), entries.filter((e) => isDecision(e) && claudes(e)).map((e) => e.id).sort(),
     ctx('the trust log does not hold one call for each of Claude\'s answers, and no other'));
   /** @type {(e: Record<string, any>) => boolean} */
-  const leaned = (e) => e.by === 'claude' || typeof e.sealed === 'string' || (e.event === 'replaced' && leaned(byId.get(e.replaces)));
+  const leaned = (e) => claudes(e) || typeof e.sealed === 'string' || (e.event === 'replaced' && leaned(byId.get(e.replaces)));
   const reversing = entries.filter((e) => e.event === 'replaced' && e.of === 'decision' && e.by === 'person' && e.sealed === null
     && ['changed-mind', 'was-wrong'].includes(e.reason) && leaned(byId.get(e.replaces)) && byId.get(e.replaces).who_moved_whom !== 'person-moved-claude');
   assert.deepStrictEqual(ofType('reversal').map((e) => [e.entry, e.reverses]).sort(), reversing.map((e) => [e.id, e.replaces]).sort(),

@@ -32,7 +32,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { LEDGER_VERSION, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -63,16 +63,17 @@ describe('the write verbs (6.1.4)', () => {
     const res = write('ask', NOTE, ['--part-of', parent, '--relies-on', finding], { by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?' });
 
     const id = assertLast('asked', AT_NOTE, {
-      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)],
+      by: 'person', who_moved_whom: 'none', text: 'Does a note snap to the grid?', part_of: full(parent), relies_on: [full(finding)], cites: [],
     });
     assertAnswered(res, id);
   });
 
   it('find: a fact and how it is known, product-wide where marked, the line written field by field', () => {
-    const res = write('find', NOTE, [], { by: 'claude', who_moved_whom: 'none', text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', product_wide: true });
+    const res = write('find', NOTE, [], { by: 'claude', who_moved_whom: 'none', text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', known: 'documented', product_wide: true });
 
     const id = assertLast('found', AT_NOTE, {
       by: 'claude', who_moved_whom: 'none', text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', relies_on: [], product_wide: true,
+      known: 'documented', command: null, result: null, cites: [],
     });
     assertAnswered(res, id);
   });
@@ -89,6 +90,7 @@ describe('the write verbs (6.1.4)', () => {
     const id = assertLast('decided', AT_NOTE, {
       by: 'person', who_moved_whom: 'none', answers: full(question), text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
       rules_out: ['a title bar', 'a dock icon'], relies_on: [full(finding)], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: 'look', unchecked: true,
+      given: 'own', cites: [],
     });
     assertAnswered(res, id);
     assert.strictEqual(entries().length, 3, 'one line appended per write');
@@ -112,6 +114,7 @@ describe('the write verbs (6.1.4)', () => {
     assertLast('decided', AT_NOTE, {
       ...MADE, answers: full(question), text: 'Notes float above every Space.', why: 'A note follows the person.',
       rules_out: [], relies_on: [], product_wide: false, sealed: null, alternatives: ['one Space per note'], evidence: ['the spike'], kind: null, unchecked: true,
+      given: 'own', cites: [],
     });
   });
 
@@ -127,7 +130,7 @@ describe('the write verbs (6.1.4)', () => {
     const id = assertLast('replaced', AT_NOTE, {
       by: 'person', who_moved_whom: 'person-moved-claude', replaces: full(old), reason: 'changed-mind', cause: null, drops: ['a near-frameless window'], of: 'decision',
       answers: full(question), text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true,
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [],
     });
     assertAnswered(res, id);
     assert.deepStrictEqual(rawLines().slice(0, -1), before);
@@ -141,13 +144,13 @@ describe('the write verbs (6.1.4)', () => {
     write('replace', NOTE, ['--replaces', child, '--reason', 'new-fact', '--cause', finding], { ...MADE, drops: ['Spaces'], text: 'Which display does a new note open on?' });
     assertLast('replaced', AT_NOTE, {
       ...MADE, replaces: full(child), reason: 'new-fact', cause: full(finding), drops: ['Spaces'], of: 'question',
-      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [],
+      text: 'Which display does a new note open on?', part_of: full(parent), relies_on: [], cites: [],
     });
 
-    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong', '--relies-on', parent], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' });
+    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong', '--relies-on', parent], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' });
     assertLast('replaced', AT_NOTE, {
       ...MADE, replaces: full(finding), reason: 'was-wrong', cause: null, drops: ['across restarts'], of: 'finding',
-      text: 'Spaces keep their ids within a login.', how: 'a second spike', relies_on: [full(parent)], product_wide: false,
+      text: 'Spaces keep their ids within a login.', how: 'a second spike', relies_on: [full(parent)], product_wide: false, known: 'spike', command: null, result: null, cites: [],
     });
   });
 
@@ -192,7 +195,7 @@ describe('tags (5.2.3)', () => {
   it('tags an entry made at the unit\'s level with its unit, phase and session, and no topic', () => {
     const res = write('ask', `${UNIT}.specification`, [], { ...MADE, text: 'Which macOS releases does the spec cover?' });
 
-    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [] });
+    const id = assertLast('asked', { phase: 'specification', topic: null }, { ...MADE, text: 'Which macOS releases does the spec cover?', part_of: null, relies_on: [], cites: [] });
     assertAnswered(res, id);
   });
 
@@ -261,7 +264,7 @@ describe('content and links', () => {
     for (const assigned of ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at', 'of', 'unchecked']) {
       refused('decide', NOTE, flags, { ...decision, [assigned]: 'mine' }, new RegExp(`^ledger decide: the content carries ${assigned}, which the engine gives$`));
     }
-    refused('decide', NOTE, flags, { ...decision, how: 'documented' }, /^ledger decide: the content has no field how — it holds by, who_moved_whom, text, why, rules_out, product_wide, sealed, alternatives, evidence, kind$/);
+    refused('decide', NOTE, flags, { ...decision, how: 'documented' }, /^ledger decide: the content has no field how — it holds by, who_moved_whom, text, why, rules_out, product_wide, sealed, alternatives, evidence, kind, given, cites$/);
     refused('decide', NOTE, flags, { by: 'claude', who_moved_whom: 'none', text: 'Floating.' }, /^ledger decide: the content needs why$/);
     refused('decide', NOTE, flags, { who_moved_whom: 'none', text: 'Floating.', why: 'Furniture.' }, /^ledger decide: the content needs by$/);
     refused('find', NOTE, [], { ...MADE, text: 'A fact.' }, /^ledger find: the content needs how$/);
@@ -269,7 +272,7 @@ describe('content and links', () => {
     refused('decide', NOTE, flags, { ...decision, rules_out: 'a title bar' }, /^ledger decide: the content's rules_out is not a list of non-empty text$/);
     refused('decide', NOTE, flags, { ...decision, by: 'review' }, /^ledger decide: the content's by is not one of person, claude$/);
     refused('decide', NOTE, flags, { ...decision, kind: 'mood' }, /the content's kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null$/);
-    refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Q?', why: 'A question has no why.' }, /^ledger replace: the content has no field why — it holds by, who_moved_whom, drops, text$/);
+    refused('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Q?', why: 'A question has no why.' }, /^ledger replace: the content has no field why — it holds by, who_moved_whom, drops, text, cites$/);
   });
 
   it('takes the links as flags: refuses a flag the verb does not take, one with no value, one given twice that takes one, a required one left out, and anything but one dot-path', () => {
@@ -301,8 +304,8 @@ describe('content and links', () => {
     const twin = 'Tw1nTw1n';
     const [a, b] = [`${twin}a${newId().slice(0, 12)}`, `${twin}b${newId().slice(0, 12)}`];
     const lines = [a, b].map((id) => JSON.stringify(validEvent({
-      v: 1, id, event: 'found', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
-      ...MADE, text: `Found ${id}.`, how: 'by hand', relies_on: [], product_wide: false,
+      v: LEDGER_VERSION, id, event: 'found', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
+      ...MADE, text: `Found ${id}.`, how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [],
     })));
     fs.writeFileSync(statePath(dir, layout.ledger), `${lines.join('\n')}\n`);
     withStateLock(statePath(dir), () => commitState(statePath(dir), [layout.ledger], 'state: two findings'));
@@ -310,7 +313,7 @@ describe('content and links', () => {
 
     refused('decide', NOTE, ['--answers', 'Zz9Zz9'], content, /^ledger decide --answers: no ledger entry's id begins "Zz9Zz9"$/);
     refused('decide', NOTE, ['--answers', `${twin}a`], content, /^ledger decide --answers names Tw1nTw1na, a finding — it must name a question$/);
-    refused('find', NOTE, ['--relies-on', a, '--relies-on', 'Zz9Zz9'], { ...MADE, text: 'A fact.', how: 'by hand' }, /^ledger find --relies-on: no ledger entry's id begins "Zz9Zz9"$/);
+    refused('find', NOTE, ['--relies-on', a, '--relies-on', 'Zz9Zz9'], { ...MADE, text: 'A fact.', how: 'by hand', known: 'read' }, /^ledger find --relies-on: no ledger entry's id begins "Zz9Zz9"$/);
   });
 
   it('refuses a link to an entry of a kind it does not take, or to an event that is no entry', () => {
@@ -318,7 +321,7 @@ describe('content and links', () => {
     const content = { ...MADE, text: 'Floating.', why: 'Furniture.' };
     refused('decide', NOTE, ['--answers', d], content, new RegExp(`^ledger decide --answers names ${d}, a decision — it must name a question$`));
     refused('ask', NOTE, ['--part-of', f], { ...MADE, text: 'Q?' }, new RegExp(`^ledger ask --part-of names ${f}, a finding — it must name a question$`));
-    refused('find', NOTE, ['--relies-on', m], { ...MADE, text: 'A fact.', how: 'by hand' }, new RegExp(`^ledger find --relies-on names ${m}, a moved event — it must name an entry$`));
+    refused('find', NOTE, ['--relies-on', m], { ...MADE, text: 'A fact.', how: 'by hand', known: 'read' }, new RegExp(`^ledger find --relies-on names ${m}, a moved event — it must name an entry$`));
     refused('replace', NOTE, ['--replaces', m, '--reason', 'was-wrong'], { ...MADE, drops: [] }, new RegExp(`^ledger replace --replaces names ${m}, a moved event — it must name an entry$`));
     refused('replace', NOTE, ['--replaces', q, '--reason', 'was-wrong', '--cause', m], { ...MADE, drops: [], text: 'Q?' }, /--cause names \w+, a moved event — it must name an entry$/);
     refused('hold', NOTE, ['--entry', f, '--after', d], MADE, new RegExp(`^ledger hold --after names ${d}, a decision — it must name a replacement$`));
@@ -412,7 +415,7 @@ describe('refusals', () => {
 describe('scenarios', () => {
   it('replaces a finding shown wrong with the reason "it was wrong", and the person\'s own decision with the same reason (5.S12)', () => {
     const finding = find().id;
-    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' });
+    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' });
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().at(-1).of], [full(finding), 'was-wrong', 'finding']);
 
     const question = ask().id;
@@ -437,7 +440,7 @@ describe('scenarios', () => {
 
   it('records a review\'s finding as a question the review asked, and links the later answer to it (5.S14)', () => {
     const raised = write('ask', `${UNIT}.review`, [], { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?' });
-    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [] });
+    assertLast('asked', { phase: 'review', topic: null }, { by: 'review', who_moved_whom: 'none', text: 'The note window leaks its frame on hover — is that intended?', part_of: null, relies_on: [], cites: [] });
 
     write('decide', `${UNIT}.review`, ['--answers', raised.id], { ...MADE, text: 'No: the frame stays hidden on hover.', why: 'The design is frameless.' });
 
@@ -456,8 +459,8 @@ describe('scenarios', () => {
     assert.deepStrictEqual([res.stop, res.error], ['ledger', `${layout.ledger} changed outside the engine: line 2 is not the line committed there — the engine stops here`]);
     assert.strictEqual(ledgerText(), tampered, 'the stop appended');
     const screen = output(dir, ['render', 'ledger-stop']);
-    assert.match(screen, /line 2 isn't the line the state branch last committed there\. The line it found:\n> \s+\{"v":1,"id":"/);
-    assert.ok(screen.includes(`{"v":1,"id":"${JSON.parse(tampered.split('\n')[1]).id.slice(0, 6)}`), `the screen does not show the line found\n${screen}`);
+    assert.match(screen, /line 2 isn't the line the state branch last committed there\. The line it found:\n> \s+\{"v":2,"id":"/);
+    assert.ok(screen.includes(`{"v":2,"id":"${JSON.parse(tampered.split('\n')[1]).id.slice(0, 6)}`), `the screen does not show the line found\n${screen}`);
   });
 });
 

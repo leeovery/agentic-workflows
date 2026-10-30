@@ -9,6 +9,7 @@
 // landed in the command that writes its entry, under the writer lock
 // between the ledger's append and its commit — Claude's answer, by `ledger
 // decide` or its replacement of a decision, a call naming the entry, the
+// person's "your call" and "don't care" among them and none carried over, the
 // person's replacement the departure rule holds standing over a lean the
 // replaced entry held a reversal naming the entry it reverses, wherever that
 // entry stands, and no other write anything; the person's entry carrying
@@ -31,7 +32,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { NO_SPACE, head, stateGit, statePath, killedAt, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
+const { NO_SPACE, ok, head, stateGit, statePath, killedAt, failingTrustAppends, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -134,6 +135,19 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.deepStrictEqual(logged(), [callOf(call), callOf(own), callOf(persons)]);
   });
 
+  it('reads an answer the person handed over or left to the builder as Claude\'s call: each logs a call, and the person\'s change of mind over it a reversal, waiting on a verdict with it as the lean; one carried over logs none, and the person\'s replacement of it no reversal (9.2.14, 9.2.16, 21.6.5)', () => {
+    const handed = decide(ask().id, { given: 'your-call' }).id;
+    const builders = decide(ask('Does a note snap?').id, { text: 'Notes snap to the grid.', given: 'dont-care' }).id;
+    const carried = decide(ask('Does a note dim?').id, { text: 'Notes dim after a minute.', given: 'carried' }).id;
+    assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders)]);
+
+    const reversal = overrule(handed).id;
+    overrule(carried);
+
+    assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders), reversalOf(reversal, handed)]);
+    assert.deepStrictEqual(ok(dir, ['verdict', 'queue']).departures.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.lean]), [[reversal, 'A near-frameless floating note.']]);
+  });
+
   it('logs a reversal of the person\'s own answer that took Claude\'s lean, made from another unit, as of Claude\'s call', async () => {
     const agreed = await answeredRaise(dir, NOTE, ask().id, { lean: 'A near-frameless floating note.', other: 'A sheet.', key: '1', env: SESSION });
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
@@ -160,7 +174,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
 
     persons(first, ['--reason', 'new-fact', '--cause', fact], { who_moved_whom: 'none' });
     const third = persons(departed, ['--reason', 'changed-mind'], { who_moved_whom: 'person-moved-claude' });
-    write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' });
+    write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' });
     write('merge', NOTE, ['--question', ask('Does a note float?').id, '--into', third], { by: 'person', who_moved_whom: 'none' });
 
     assert.deepStrictEqual([calls.map((event) => event.type), logged()], [['call', 'raise'], calls]);

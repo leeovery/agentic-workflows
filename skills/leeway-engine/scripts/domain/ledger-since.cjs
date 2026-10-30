@@ -7,12 +7,13 @@
 // draws from as it shows in the conversation.
 //
 // - Claude's calls: the current decisions Claude made, `by` claude, the
-//   build's included (5.1.6), that a place shows (5.8.19): a topic, those
-//   its map shows — its rows' answers, and an answer whose question is set
-//   aside on a row of its own; a unit, those it shows anywhere, its topics'
-//   maps and its own level's list alike — each by where it shows
-//   (ledger-fold.cjs), so a later unit's replacement of an earlier unit's
-//   decision is new in both.
+//   build's included (5.1.6) and those the person handed over, but none a
+//   migration carried over (ledger-events.cjs), that a place shows
+//   (5.8.19): a topic, those its map shows — its rows' answers, and an
+//   answer whose question is set aside on a row of its own; a unit, those
+//   it shows anywhere, its topics' maps and its own level's list alike —
+//   each by where it shows (ledger-fold.cjs), so a later unit's
+//   replacement of an earlier unit's decision is new in both.
 // - The mark is the machine's own: the ids of the calls a screen has shown
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
@@ -40,6 +41,7 @@ const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject, writeJsonAtomic, withStateLockFile } = require('../kernel/manifest-io.cjs');
+const { claudesCall } = require('./ledger-events.cjs');
 const { standingOf, inPlace, showsIn } = require('./ledger-fold.cjs');
 const { isId } = require('./ledger-ids.cjs');
 
@@ -126,7 +128,7 @@ function callsSince(folded, { unit, topic }, shown) {
   /** @type {string[]} */
   const calls = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'decision' || facts.by !== 'claude' || shown.has(id)) continue;
+    if (facts.kind !== 'decision' || !claudesCall(facts) || shown.has(id)) continue;
     if (showsIn(folded, id).some((place) => inPlace(place, at, topic))) calls.push(id);
   }
   return calls;

@@ -77,16 +77,16 @@ describe('whose entries a link names, and how they relate', () => {
 
   it('refuses, before the spec, a topic replacing or confirming another topic\'s entry, or answering its question, which goes to the owner by message (5.6.9, 10.S6); from the spec on, a change is settled where it is found (12.15.4)', () => {
     const theirs = spaceHomings();
-    const unitLevel = write('find', `${UNIT}.discovery`, [], { ...MADE, text: 'Notes sync through iCloud.', how: 'the brief' }).id;
+    const unitLevel = write('find', `${UNIT}.discovery`, [], { ...MADE, text: 'Notes sync through iCloud.', how: 'the brief', known: 'documented' }).id;
     const ours = decide(ask().id).id;
-    const relying = write('find', SPACE, ['--relies-on', ours], { ...MADE, text: 'Homing reads the note\'s frame.', how: 'the spike' }).id;
+    const relying = write('find', SPACE, ['--relies-on', ours], { ...MADE, text: 'Homing reads the note\'s frame.', how: 'the spike', known: 'spike' }).id;
     const replacement = change(ours).id;
 
     refused('replace', NOTE, ['--replaces', theirs.decision, '--reason', 'changed-mind'], CHANGE,
       new RegExp(`^ledger replace --replaces names ${theirs.decision}, a decision on space-homing — ${BEFORE_THE_SPEC}$`));
     refused('decide', NOTE, ['--answers', theirs.question], DECISION,
       new RegExp(`^ledger decide --answers names ${theirs.question}, a question on space-homing — ${BEFORE_THE_SPEC}$`));
-    refused('replace', NOTE, ['--replaces', unitLevel, '--reason', 'was-wrong'], { ...MADE, drops: ['iCloud'], text: 'Notes stay local.', how: 'the brief, reread' },
+    refused('replace', NOTE, ['--replaces', unitLevel, '--reason', 'was-wrong'], { ...MADE, drops: ['iCloud'], text: 'Notes stay local.', how: 'the brief, reread', known: 'documented' },
       new RegExp(`^ledger replace --replaces names ${unitLevel}, a finding at the unit's level — ${BEFORE_THE_SPEC}$`));
     refused('hold', NOTE, ['--entry', relying, '--after', replacement], MADE,
       new RegExp(`^ledger hold --entry names ${relying}, a finding on space-homing — ${BEFORE_THE_SPEC}$`));
@@ -138,13 +138,13 @@ describe('whose entries a link names, and how they relate', () => {
 
     refused('decide', NOTE, ['--answers', asked], DECISION, superseded('decide', '--answers'));
     refused('ask', NOTE, ['--part-of', asked], { ...MADE, text: 'Is a note a window?' }, superseded('ask', '--part-of'));
-    refused('find', NOTE, ['--relies-on', asked], { ...MADE, text: 'A note is a window.', how: 'by hand' }, superseded('find', '--relies-on'));
+    refused('find', NOTE, ['--relies-on', asked], { ...MADE, text: 'A note is a window.', how: 'by hand', known: 'read' }, superseded('find', '--relies-on'));
     refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move', '--question'));
     refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge', '--question'));
 
     write('decide', NOTE, ['--answers', reworded], DECISION);
     write('ask', NOTE, ['--part-of', reworded], { ...MADE, text: 'Is a note a window?' });
-    write('find', NOTE, ['--relies-on', reworded], { ...MADE, text: 'A note is a window.', how: 'by hand' });
+    write('find', NOTE, ['--relies-on', reworded], { ...MADE, text: 'A note is a window.', how: 'by hand', known: 'read' });
     write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
     write('merge', SPACE, ['--question', reworded, '--into', owned], MADE);
     assert.deepStrictEqual(entries().slice(-5).map((e) => [e.event, e.answers ?? e.part_of ?? e.relies_on?.[0] ?? e.question]), [
@@ -210,7 +210,7 @@ describe('whose entries a link names, and how they relate', () => {
     write('hold', NOTE, ['--entry', relying, '--after', third], MADE);
     write('hold', NOTE, ['--entry', onSecond, '--after', third], MADE);
 
-    const corrected = write('replace', NOTE, ['--replaces', relying, '--reason', 'was-wrong', '--relies-on', third], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
+    const corrected = write('replace', NOTE, ['--replaces', relying, '--reason', 'was-wrong', '--relies-on', third], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' }).id;
     refused('hold', NOTE, ['--entry', relying, '--after', third], MADE, new RegExp(`^ledger hold --entry names ${relying}, which ${corrected} replaced — the current one is ${corrected}$`));
     const fourth = change(third, { text: 'A clear surface.', why: 'Clearer still.' }).id;
     write('hold', NOTE, ['--entry', corrected, '--after', fourth], MADE);
@@ -257,10 +257,10 @@ describe('whose entries a link names, and how they relate', () => {
     const wide = decide(ask().id, { product_wide: true }).id;
     const kept = change(wide).id;
     const narrowed = change(kept, { text: 'Frameless, on this product alone.', why: 'Scoped.', product_wide: false }).id;
-    const fact = write('find', NOTE, [], { ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', product_wide: true }).id;
-    const corrected = write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['14'], text: 'CKSyncEngine ships from macOS 14.4.', how: 'the release notes' }).id;
+    const fact = write('find', NOTE, [], { ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', known: 'documented', product_wide: true }).id;
+    const corrected = write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['14'], text: 'CKSyncEngine ships from macOS 14.4.', how: 'the release notes', known: 'documented' }).id;
     const plain = find().id;
-    const reworded = write('replace', NOTE, ['--replaces', plain, '--reason', 'was-wrong'], { ...MADE, drops: ['restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
+    const reworded = write('replace', NOTE, ['--replaces', plain, '--reason', 'was-wrong'], { ...MADE, drops: ['restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike', known: 'spike' }).id;
 
     assert.deepStrictEqual([kept, narrowed, corrected, reworded].map((id) => entries().find((e) => e.id === full(id)).product_wide), [true, false, true, false]);
   });
