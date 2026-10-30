@@ -216,6 +216,14 @@ describe('render map-op-gate', () => {
       '"auth-flow" can\'t be closed as a dead end — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead.');
   });
 
+  it('a destructive op over messages waiting in a fresh topic\'s mailbox is refused, as its transaction refuses it', () => {
+    writePayload(dir, '.leeway/pay/topics/auth-flow/mail/001-a-point.md', 'A point\n');
+    for (const [op, extra, verb] of [['remove', {}, 'removed'], ['rename', { new_name: 'x' }, 'renamed'], ['reroute', { from: 'discussion', to: 'research' }, 're-routed']]) {
+      assert.strictEqual(refusal(render(op, { name: 'auth-flow', ...extra }, `${op}-w.json`)),
+        `"auth-flow" can't be ${verb} from the map — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead.`);
+    }
+  });
+
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {
     assert.match(render('edit-summary', { items: [{ name: 'away', summary: 'Still editable' }] }, 'p6.json'),
       /Updating 1 summary\(ies\):/);

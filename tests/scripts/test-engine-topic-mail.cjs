@@ -242,6 +242,20 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
+  it('keeps a postponed topic\'s mail through its pull-forward: the topic, fresh again, refuses its removal, rename and reroute while the mail waits (10.1.8)', () => {
+    ok(dir, ['topic', 'postpone', EPIC, 'licence', '--horizon', 'v2']);
+    send(EPIC, 'licence', 'lost-key');
+    ok(dir, ['roadmap', 'pull-forward', 'licence', '--into', EPIC, '--routing', 'discussion']);
+    const map = () => readManifest(dir, EPIC).phases.discovery.items;
+    const before = map();
+    const verbs = [['remove', EPIC, 'licence', 'removed'], ['rename', EPIC, 'licence', 'licensing', 'renamed'], ['reroute', EPIC, 'licence', 'research', 're-routed']];
+    assert.deepStrictEqual(
+      verbs.map((args) => refused(['discovery-map', ...args.slice(0, -1)])),
+      verbs.map((args) => `"licence" can't be ${args.at(-1)} — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead`),
+    );
+    assert.deepStrictEqual([map(), fs.existsSync(at(layout.mailbox(EPIC, 'licence', '001-lost-key.md')))], [before, true]);
+  });
+
   it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title, the line naming its sender kept under it, the commit naming what is cancelled (10.1.8, P5)', () => {
     const idea = (/** @type {string} */ slug) => layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--${slug}.md`);
     const res = withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
@@ -253,6 +267,17 @@ describe('topic send (10.1, 10.2.7)', () => {
     withFrozenClock(() => send('shelved', 'pricing', 'price-floor'));
     assert.strictEqual(lastMessage(dir), 'mail(shelved): price-floor to the inbox — shelved is cancelled');
     assert.strictEqual(readState(dir, idea('price-floor')), `# ${landed('Pricing')}`);
+  });
+
+  it('never overwrites an idea: the same slug sent to a cancelled topic twice in a day is refused, the scratch kept and the first idea as it was (10.1.6)', () => {
+    const idea = layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--lost-key.md`);
+    withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
+    const message = scratch('# Another thought\n');
+    assert.strictEqual(
+      withFrozenClock(() => refused(['topic', 'send', EPIC, 'removal', '--from', 'first-run', '--content', message, '--slug', 'lost-key'])),
+      `the inbox already holds ${at(idea)} — send it under another slug`,
+    );
+    assert.deepStrictEqual([fs.existsSync(message), readState(dir, idea)], [true, `# ${landed('First Run')}`]);
   });
 
   it('waits a feature\'s message for its discussion and a bugfix\'s for its investigation', () => {

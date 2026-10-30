@@ -60,7 +60,9 @@
 //     mail/`, renumbered where it had more than one box (21.5.5); the mail of
 //     a cancelled topic, or of a name no topic holds, goes to the inbox
 //     instead, each message an idea, its first line the title (21.5.6,
-//     10.1.6);
+//     10.1.6); either way a message's line naming its sender, today's
+//     `*From: {origin} · {phase} · {date}*`, becomes the line the waiting
+//     mail heads it with, `From {sender} · {16 Oct}` (10.4.2), with no phase;
 //   - its brief is `topics/{topic}/brief.md`, and its experiment records sit
 //     in `topics/{topic}/experiments/` as they stood (21.5.13);
 //   - nothing lands in a topic's folder no topic owns: a brief, experiment
@@ -523,6 +525,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   built: boolean,
  *   incoming: {topic: string, text: string}[],
  *   outgoing: Set<string>,
+ *   holders: Map<string, Set<string>>,
  * }} UnitMove
  */
 
@@ -590,13 +593,48 @@ function moveLogs(move) {
   put(move, `discovery/session-${number}.md`, [...head, '', ...spread].join('\n'));
 }
 
+/** A message's line naming its sender as today's send writes it: its origin, phase and date. */
+const OLD_SENDER_LINE = /^\*From: (.+) · [a-z-]+ · \d{4}-(\d{2})-(\d{2})\*$/;
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A name as the screen titles it: `first-run` as `First Run`. @param {string} name */
+const titled = (name) => name.split(/[-_\s]+/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+/**
+ * Who sent a message, as the waiting mail titles them: a topic of another
+ * unit, `{unit}.{topic}`, with its unit — a single-topic unit's by its name
+ * alone — and any other origin, a topic of the unit among them, title-cased
+ * as written.
+ * @param {UnitMove} move @param {string} origin
+ */
+function senderOf(move, origin) {
+  const [unit, topic, ...more] = origin.split('.');
+  if (topic === undefined || more.length > 0 || !move.holders.get(unit)?.has(topic)) return titled(origin);
+  return unit === move.unit || topic === unit ? titled(topic) : `${titled(topic)}, on ${titled(unit)}`;
+}
+
+/**
+ * A message with its second line, where today's send wrote who sent it,
+ * as the waiting mail heads it (10.4.2): `From {sender} · {16 Oct}`, the
+ * phase gone; one without that line as it is.
+ * @param {UnitMove} move @param {string} text
+ */
+function senderLined(move, text) {
+  const [title, second = '', ...rest] = text.split('\n');
+  const match = OLD_SENDER_LINE.exec(second);
+  if (match === null) return text;
+  const [, origin, month, day] = match;
+  return [title, `From ${senderOf(move, origin)} · ${Number(day)} ${MONTHS[Number(month) - 1]}`, ...rest].join('\n');
+}
+
 /**
  * A message for a topic cancelled or none holds, as an idea in the inbox,
  * its first line the title — written once, a move run again finding it there.
  * @param {UnitMove} move @param {string} rel @param {string} name
  */
 function messageToInbox(move, rel, name) {
-  const [first, ...rest] = takeDocument(move, rel, '.inbox/ideas/idea.md').split('\n');
+  const [first, ...rest] = senderLined(move, takeDocument(move, rel, '.inbox/ideas/idea.md')).split('\n');
   const named = name.replace(/^[0-9]+-/, '').replace(/\.md$/, '');
   const title = first.replace(/^#+\s*/, '').trim() || named;
   const content = [`# ${title}`, ...rest].join('\n');
@@ -630,7 +668,7 @@ function moveMail(move) {
       if (move.cancelled.has(topic) || !move.topics.has(topic)) return messageToInbox(move, rel, name);
       const renamed = box.size > 1 ? `${String(i + 1).padStart(3, '0')}${name.replace(/^[0-9]+/, '')}` : name;
       const at = `topics/${topic}/mail/${renamed}`;
-      return put(move, at, takeDocument(move, rel, `${move.unit}/${at}`));
+      return put(move, at, senderLined(move, takeDocument(move, rel, `${move.unit}/${at}`)));
     });
   }
 }
@@ -713,9 +751,10 @@ function promotedText(workflows, { source, target: unit, topic }) {
  * Move one unit into the layout — every file placed, dropped, or left
  * behind — then its manifest.
  * @param {string} workflows @param {string} state @param {string} unit @param {Record<string, any>} manifest @param {Promoted[]} promoted
+ * @param {Map<string, Set<string>>} holders  each unit's topics
  * @returns {string[]} the files left behind, unit-relative
  */
-function moveUnit(workflows, state, unit, manifest, promoted) {
+function moveUnit(workflows, state, unit, manifest, promoted, holders) {
   const from = path.join(workflows, unit);
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
@@ -734,6 +773,7 @@ function moveUnit(workflows, state, unit, manifest, promoted) {
     built: buildingStarted(manifest),
     incoming: promoted.filter(({ target }) => target === unit).map((entry) => promotedText(workflows, entry)),
     outgoing: new Set(promoted.filter(({ source }) => source === unit).map(({ topic }) => topic)),
+    holders,
   };
   moveLogs(move);
   moveMail(move);
@@ -833,10 +873,11 @@ function move(projectDir, reportUpdate, reportSkip) {
   const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
   const promoted = promotedResearch(from, manifests);
+  const holders = new Map([...manifests].map(([name, manifest]) => [name, topicNames(manifest, name)]));
   const unitsLeft = folders.flatMap((name) => {
     const manifest = manifests.get(name);
     if (manifest === undefined) return [name];
-    const unitLeft = moveUnit(from, state, name, manifest, promoted);
+    const unitLeft = moveUnit(from, state, name, manifest, promoted, holders);
     reportUpdate();
     return unitLeft.map((rel) => `${name}/${rel}`);
   });

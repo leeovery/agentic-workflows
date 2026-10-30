@@ -26,7 +26,10 @@
 // The question an experiment measures stays open on the map, waiting on it,
 // until the discussion writes the result (9.1.11). A report concluding after
 // that question closed reaches the topic as a message, through `topic send`,
-// which reopens a decided topic and commits its own delivery.
+// which reopens a decided topic and commits its own delivery. Known edge: a
+// report owed to a topic closed as a dead end or promoted, or to a unit
+// given its spec.md while the experiment ran, is refused by the send after
+// the conclusion has committed, and never arrives.
 //
 // The phase item is derived bookkeeping over the records: the spawn opens it
 // (and reopens a completed series), the last record's terminal transition

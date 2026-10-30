@@ -11,19 +11,21 @@
 //   sender is a name, never text: a topic of the unit, `{unit}.{topic}` for
 //   another unit's topic, or an experiment of the unit — `E{n}` of the
 //   target topic's series, `{topic}/E{n}` of another topic's, where the
-//   person moved its question (9.1.11). It takes the next
-//   number under the writer lock, so a send racing another takes the one
-//   after it, and parks the topic's conversation as a landing does: created
-//   not started where absent, set back in progress where decided (10.2.7),
-//   so the next decided needs a fresh close and the gate's yes. A postponed
-//   topic is left as it stands, the message waiting in its mailbox for its
-//   return (10.1.8). A message to a cancelled topic, or a cancelled unit's,
-//   goes to the inbox as an idea instead, its first line the title, the
-//   line saying who sent it kept under it (10.1.6, 10.1.8). Any other target the entry would refuse is refused, by the
+//   person moved its question (9.1.11). It takes the next number under the
+//   writer lock, so a send racing another takes the one after it, and parks
+//   the topic's conversation as a landing does: created not started where
+//   absent, set back in progress where decided (10.2.7), so the next
+//   decided needs a fresh close and the gate's yes. A postponed topic is
+//   left as it stands, the message waiting in its mailbox for its return
+//   (10.1.8), and while it waits the topic is never fresh enough to remove,
+//   rename or reroute (discovery-map.cjs). A message to a cancelled topic,
+//   or a cancelled unit's, goes to the inbox as an idea instead, its first
+//   line the title, the line saying who sent it kept under it (10.1.6,
+//   10.1.8). Any other target the entry would refuse is refused, by the
 //   entry's own rule (topic-standing.cjs), the scratch kept: a unit not in
 //   progress, a topic it lacks or has closed, and any topic once the unit
-//   has its spec, from which a change is settled where it is found (10.2.2).
-//   Each send commits what it wrote.
+//   has its spec, from which a change is settled where it is found
+//   (10.2.2). Each send commits what it wrote.
 // - `topic mailbox <unit> <topic>` lists what waits, lock-free, for the
 //   conversation's loop to raise (10.1.5).
 // - `topic answered <unit> <topic> <NNN-slug> --entry <id>` removes a
