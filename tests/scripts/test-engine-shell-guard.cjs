@@ -45,6 +45,10 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.dirname(ENGINE);
 const { GUARD_VERBS } = require(path.join(SCRIPTS, 'guards.cjs'));
 const { positionPath } = require(path.join(SCRIPTS, 'domain', 'conversation.cjs'));
+const { ignoresCase } = require(path.join(SCRIPTS, 'kernel', 'state-root.cjs'));
+
+// Whether the filesystem every folder of these tests is on ignores case.
+const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 const UNIT = 'pay';
 const BUILDING = 'building-session';
@@ -475,6 +479,20 @@ describe('a write to a file in the state only the engine writes, by the names it
       [state, `cd - && rm ${layout.manifest(UNIT)}`],
       [dir, `(cd ${STATE_DIR_NAME}) && echo '{}' > ${layout.projectManifest}`],
     ]) assertPassed(guard(cwd, command), `${command} — from ${cwd}`);
+  });
+
+  it('a file named in another case is the file it names where the state\'s filesystem ignores case, refused with its name as written, and another file where it keeps case', () => {
+    const [unitManifest, ledger] = [layout.unit(UNIT.toUpperCase(), 'Manifest.json'), layout.ledger.toUpperCase()];
+    const cases = [
+      [`echo '{}' > ${inState(unitManifest)}`, `a unit's manifest (${unitManifest}) changes only through the engine's commands — engine manifest set|push|pull|delete|apply`],
+      [`sed -i '' s/a/b/ ${inState(ledger)}`, `the ledger (${ledger}) changes only through the engine's commands — engine ledger ask|find|decide|replace|hold|move|merge`],
+    ];
+    writingNothing(() => {
+      for (const [command, reason] of cases) {
+        if (IGNORES_CASE) assertRefused(guard(dir, command), reason, command);
+        else assertPassed(guard(dir, command), `${command}: another file on a filesystem that keeps case`);
+      }
+    });
   });
 });
 

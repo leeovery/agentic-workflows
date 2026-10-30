@@ -2,11 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the layout on disk (4.11) — every place the workflows keep
-// under `.leeway/`, one table with one reader, `layoutPlace`; `isLog` asks
-// it for the logs. The layout hook refuses Claude's write to any path the
-// table has no place for (layout-hook.cjs, 6.2.3), and it and the hook
-// before Bash a write to a file only the engine writes (shell-guard.cjs),
-// each for the reason `engineRefusal` gives.
+// under `.leeway/`, one table with one reader, `layoutPlace`, whose row's
+// kind says what a path is, a log among them. The layout hook refuses
+// Claude's write to any path the table has no place for (layout-hook.cjs,
+// 6.2.3), and it and the hook before Bash a write to a file only the engine
+// writes (shell-guard.cjs), each for the reason `engineRefusal` gives.
 //
 // A place is a row: its path, state-relative, as 4.11.17's tree draws it,
 // and its kind —
@@ -224,15 +224,6 @@ function layoutPlace(rel, fold = AS_WRITTEN) {
 }
 
 /**
- * Whether the state-relative path `rel` is one of the layout's logs, its
- * names compared as `layoutPlace` compares them.
- * @param {string} rel @param {Fold} [fold]
- */
-function isLog(rel, fold = AS_WRITTEN) {
-  return layoutPlace(rel, fold)?.kind === 'log';
-}
-
-/**
  * Why a write to the state-relative `rel`, at the place `at`, is refused as
  * a file only the engine writes, naming the verb that writes it where one
  * does; null where `at` is no such file, or none.
@@ -244,4 +235,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, isLog, engineRefusal };
+module.exports = { LAYOUT, TODAY, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, engineRefusal };

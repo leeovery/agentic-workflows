@@ -72,7 +72,7 @@ const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolat
 const { GitError, literally } = require('../kernel/git.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
-const { folding, layoutPlace, isLog } = require('./layout.cjs');
+const { folding, layoutPlace } = require('./layout.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
@@ -728,17 +728,16 @@ function changedAt(git, head, spec, change) {
 
 /**
  * A path whose file in the state worktree differs from HEAD, named from the
- * root: whether it is gone from the working tree, its place in the layout,
- * null where it has none, and whether it is one of the layout's logs.
- * @typedef {{rel: string, gone: boolean, at: import('./layout.cjs').Place|null, log: boolean}} PlacedChange
+ * root: whether it is gone from the working tree, and its place in the
+ * layout, null where it has none.
+ * @typedef {{rel: string, gone: boolean, at: import('./layout.cjs').Place|null}} PlacedChange
  */
 
 /**
  * Every path whose file in the state worktree differs from HEAD — changed,
  * added, untracked or gone, never one git ignores — read in one `status`,
  * the files the person's tools leave beside the state's left out, each with
- * its place in the layout and whether it is a log, as the state's
- * filesystem spells names.
+ * its place in the layout as the state's filesystem spells names.
  * @param {OpenWorktree} worktree
  * @returns {PlacedChange[]}
  */
@@ -748,7 +747,7 @@ function placedChanges({ git, root }) {
     .filter((entry) => entry !== '' && !SIDECAR_NAME.test(path.posix.basename(entry.slice(3))))
     .map((entry) => {
       const rel = entry.slice(3);
-      return { rel, gone: entry[1] === 'D' || entry.startsWith('D '), at: layoutPlace(rel, fold), log: isLog(rel, fold) };
+      return { rel, gone: entry[1] === 'D' || entry.startsWith('D '), at: layoutPlace(rel, fold) };
     });
 }
 
@@ -880,7 +879,7 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
-  const logs = changes.filter(({ log }) => log).map(({ rel }) => rel);
+  const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
   const commit = commitPaths(worktree, [...specs, ...logs], message, given);
   return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs])] };
 }

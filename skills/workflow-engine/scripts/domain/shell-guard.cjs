@@ -68,7 +68,6 @@ const { tasksInFlight } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
-/** @typedef {import('../kernel/shell-reader.cjs').Redirection} Redirection */
 /** @typedef {{unit: string, task: string}} InFlight */
 
 /** The tools the hook stands before, as the settings' matcher names them. */
@@ -270,16 +269,12 @@ function namedRefusal({ words, redirections, cwd }) {
   return null;
 }
 
-/** The redirections that write to the file they name: out, appended, clobbering, and opened to read and write. */
-const WRITING = new Set(['>', '>>', '>|', '<>']);
-
-/** A `>&` target that copies or closes a descriptor, naming no file. */
-const DESCRIPTOR = /^(?:[0-9]+|-)$/;
-
-/** Whether a redirection writes to the file it names. @param {Redirection} redirection */
-function writes({ op, target }) {
-  return WRITING.has(op) || (op === '>&' && target !== null && !DESCRIPTOR.test(target));
-}
+/**
+ * The redirections that write to what they name: out, appended, clobbering,
+ * both streams, and opened to read and write. A `>&` that copies or closes
+ * a descriptor names no file in the state.
+ */
+const WRITING = new Set(['>', '>>', '>|', '>&', '<>']);
 
 /** The option clusters `sed` edits its files in place by: `-i`, or BSD's `-I`, after letters taking no value. */
 const SED_IN_PLACE = /^-[nrEsuza]*[iI]/;
@@ -338,7 +333,7 @@ const WRITERS = Object.freeze({
 function writtenWords({ words: [name, ...args], redirections }) {
   const writer = typeof name === 'string' ? path.basename(name) : '';
   const named = Object.hasOwn(WRITERS, writer) ? WRITERS[writer](args) : [];
-  return [...redirections.filter(writes).map(({ target }) => target), ...named];
+  return [...redirections.filter(({ op }) => WRITING.has(op)).map(({ target }) => target), ...named];
 }
 
 /**

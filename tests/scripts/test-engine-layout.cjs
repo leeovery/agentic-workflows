@@ -2,13 +2,13 @@
 
 // ---------------------------------------------------------------------------
 // The layout on disk (workflow-engine/scripts/domain/layout.cjs, 4.11): the
-// table of places and its reader, `layoutPlace` and `isLog`. Unit layer, no
-// world. Every place 4.11.17's tree draws holds a sample path, with its kind,
-// and a sample outside each folder is in none; names are compared as the
-// fold spells them; the logs are 4.11's four; the tracker's store is each
-// shipped task driver's; each of today's places holds its sample and names
-// the phase from 29.11 to 29.17 that retires it (E4); and the suites' layout
-// helper names only places the table holds.
+// table of places and its reader, `layoutPlace`. Unit layer, no world.
+// Every place 4.11.17's tree draws holds a sample path, with its kind — the
+// logs 4.11's four — and a sample outside each folder is in none; names are
+// compared as the fold spells them; the tracker's store is each shipped
+// task driver's; each of today's places holds its sample, is no log, and
+// names the phase from 29.11 to 29.17 that retires it (E4); and the suites'
+// layout helper names only places the table holds.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -17,7 +17,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, isLog } = require('../../skills/workflow-engine/scripts/domain/layout.cjs');
+const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace } = require('../../skills/workflow-engine/scripts/domain/layout.cjs');
 const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
 const { WRITE_VERBS } = require('../../skills/workflow-engine/scripts/domain/ledger-write.cjs');
 const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/ledger-events.cjs');
@@ -137,13 +137,6 @@ describe('4.11\'s places (4.11.17)', () => {
       assert.strictEqual(layoutPlace(rel, IN_LOWER_CASE)?.path, place, `${rel} folded`);
       assert.strictEqual(layoutPlace(rel), null, `${rel} as written`);
     }
-  });
-
-  it('the logs are 4.11\'s four — the product\'s and discovery\'s sessions, a topic\'s log and the build\'s — and today\'s session logs are none (6.3.2); a log\'s names are compared as the fold spells them', () => {
-    const logs = ['.product/sessions/session-001.md', 'pay/discovery/session-001.md', 'pay/topics/auth/log.md', 'pay/build/log.md'];
-    assert.deepStrictEqual(logs.filter((rel) => !isLog(rel)), []);
-    assert.deepStrictEqual(['pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', 'pay/topics/auth/brief.md'].filter((rel) => isLog(rel)), []);
-    assert.deepStrictEqual([isLog('PAY/Build/LOG.md', IN_LOWER_CASE), isLog('PAY/Build/LOG.md')], [true, false]);
   });
 
   it('the ledger\'s refusal names every verb that writes it', () => {
