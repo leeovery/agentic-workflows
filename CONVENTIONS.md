@@ -71,7 +71,9 @@ Some requests can come wherever the phase is: put an idea or a bug aside, postpo
 - a topic cancelled or postponed from its own session hands off to a menu: an epic's topic to the epic's menu, any other to the start menu;
 - an experiment spawned now hands off to the laboratory;
 - a move up to the epic's discovery leaves the topic, in the same conversation;
-- a quick-fix that needs a decision beyond a quick call moves to a feature or a bugfix, which changes the work. A gate that was waiting was set aside, and the framework says how it comes back; the section never restates it.
+- a quick-fix that needs a decision beyond a quick call moves to a feature or a bugfix, which changes the work.
+
+A gate that was waiting was set aside, and the framework says how it comes back; the section never restates it.
 
 ### The Skeleton
 

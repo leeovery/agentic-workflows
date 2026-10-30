@@ -652,8 +652,8 @@ function checkInertLoadChrome(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 13 — a fenced block prose authors is static (CONVENTIONS' Engine
-// Output Sections). A fence headed by a rendering instruction — a display, a
+// Check 13 — a fenced block prose authors is static (CONVENTIONS →
+// Display). A fence headed by a rendering instruction — a display, a
 // marker, a signpost, an ask — carrying anything that varies (a braced token
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
@@ -700,7 +700,7 @@ function checkNoTemplatedRenders(files, root = REPO) {
     .flatMap((file) => templatedRenderSites(file).map((line) => ({
       file,
       line,
-      message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → What the engine renders)",
+      message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → Display)",
     })));
 }
 
@@ -1664,7 +1664,7 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
     const v1 = checkNoTemplatedRenders([fresh], dir);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
-    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → What the engine renders\)/);
+    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → Display\)/);
 
     const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
     assert.deepStrictEqual(sites(numbered), [2], 'an instruction after a numbered marker is caught');
