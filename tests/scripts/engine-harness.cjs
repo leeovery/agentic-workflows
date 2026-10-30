@@ -308,7 +308,8 @@ function traced(fn) {
  * The time limit of each child `fn` starts through a fresh copy of the
  * module at `file`, in the order started — the `timeout` its `spawnSync` or
  * `execFileSync` was given, undefined where none. The copy takes
- * `child_process` as the test watches it; every other module keeps its own.
+ * `child_process` as the test watches it, and the module's own entry in
+ * the require cache is put back after.
  * @param {import('node:test').TestContext} t @param {string} file @param {(module: any) => void} fn
  * @returns {(number|undefined)[]}
  */

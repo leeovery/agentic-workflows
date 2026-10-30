@@ -29,6 +29,7 @@ const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/
 const state = require(STATE);
 const ISOLATED_GIT = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
 const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout } = require(ISOLATED_GIT);
+const { GitError } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { WRITER_LOCK_TIMEOUT_MS } = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
@@ -80,7 +81,21 @@ function worktreeRecord(main, root) {
 
 /** Whether git ignores the path in the state worktree. @param {string} root @param {string} rel */
 function ignored(root, rel) {
-  return spawnSync('git', ['check-ignore', '-q', rel], { cwd: root, timeout: CHILD_TIMEOUT_MS }).status === 0;
+  try {
+    git(root, ['check-ignore', '-q', rel]);
+    return true;
+  } catch (err) {
+    if (/** @type {{status?: number}} */ (err).status === 1) return false;
+    throw err;
+  }
+}
+
+/**
+ * A child's stderr, led by the limit where the limit killed it.
+ * @param {NodeJS.Signals|null} signal @param {string} stderr
+ */
+function childStderr(signal, stderr) {
+  return signal ? `killed by ${signal} past ${CHILD_TIMEOUT_MS / 1000}s\n${stderr}` : stderr;
 }
 
 /** A repo of its own with one commit, for the environment to point at. @param {string} name */
@@ -205,6 +220,16 @@ describe('the isolated runner', () => {
     });
 
     assert.deepStrictEqual(limits, [CALL_TIMEOUT_MS, CALL_TIMEOUT_MS, CALL_TIMEOUT_MS, 1234]);
+  });
+
+  it('throws for a call past its time limit, naming it, from tryRun as from run — never the null of a git that said no', () => {
+    const runner = isolatedGit(world);
+    const waits = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'alias.wait', GIT_CONFIG_VALUE_0: '!sleep 3' };
+
+    assert.strictEqual(runner.tryRun(['rev-parse', '--git-dir']), null, 'outside a repository git says no');
+    for (const call of [() => runner.tryRun(['wait'], { timeoutMs: 100, env: waits }), () => runner.run(['wait'], { timeoutMs: 100, env: waits })]) {
+      assert.throws(call, (/** @type {Error} */ err) => err instanceof GitError && err.message === 'git wait timed out after 0.1s');
+    }
   });
 
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {
@@ -725,7 +750,8 @@ describe('the writer lock', () => {
     const holder = spawn(process.execPath, ['-e', HOLDER, STATE, root, world], { timeout: CHILD_TIMEOUT_MS, killSignal: 'SIGKILL' });
     let stderr = '';
     holder.stderr.on('data', (chunk) => { stderr += chunk; });
-    const exited = new Promise((resolve) => holder.on('exit', resolve));
+    /** @type {Promise<{code: number|null, signal: NodeJS.Signals|null}>} */
+    const exited = new Promise((resolve) => holder.on('exit', (code, signal) => resolve({ code, signal })));
     try {
       await until(() => fs.existsSync(path.join(world, 'held')));
 
@@ -735,7 +761,8 @@ describe('the writer lock', () => {
     } finally {
       fs.writeFileSync(path.join(world, 'go'), '');
     }
-    assert.strictEqual(await exited, 0, stderr);
+    const { code, signal } = await exited;
+    assert.strictEqual(code, 0, childStderr(signal, stderr));
     assert.ok(!fs.existsSync(lock));
   });
 
@@ -1270,7 +1297,7 @@ describe('a state commit interrupted between its steps', () => {
 
     const res = commitInterrupted(root, { MOVE_AFTER: 'commit-tree', MOVE_TO: elsewhere });
 
-    assert.strictEqual(res.status, 3, res.stderr);
+    assert.strictEqual(res.status, 3, childStderr(res.signal, res.stderr));
     assert.match(res.stdout, /^git update-ref failed: /);
     assert.strictEqual(tip(root, STATE_BRANCH), elsewhere);
   });
@@ -1289,7 +1316,7 @@ describe('a state commit interrupted between its steps', () => {
       createFile(root, 'u/c/d.md', 'd\n');
 
       const killed = commitInterrupted(root, { KILL_AFTER: step });
-      assert.strictEqual(killed.signal, 'SIGKILL', `the verb was not killed: ${killed.stderr}`);
+      assert.strictEqual(killed.signal, 'SIGKILL', killed.signal === 'SIGTERM' ? childStderr(killed.signal, killed.stderr) : `the verb was not killed: ${killed.stderr}`);
       const landed = tip(root, STATE_BRANCH);
       assert.ok(landed === before || git(root, ['rev-parse', `${landed}^`]).trim() === before, 'the branch moved somewhere else');
 
@@ -1368,7 +1395,7 @@ describe('two sessions writing state at once (4.S3)', () => {
     const proc = spawn(process.execPath, ['-e', SESSION, STATE, root, who, String(turns)], { timeout: CHILD_TIMEOUT_MS, killSignal: 'SIGKILL' });
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
-    return new Promise((resolve) => proc.on('exit', (code, signal) => resolve({ code, stderr: signal ? `killed by ${signal} past ${CHILD_TIMEOUT_MS / 1000}s\n${stderr}` : stderr })));
+    return new Promise((resolve) => proc.on('exit', (code, signal) => resolve({ code, stderr: childStderr(signal, stderr) })));
   }
 
   it('writes one after the other: every line kept, one line per commit, a linear branch with no merge', async () => {

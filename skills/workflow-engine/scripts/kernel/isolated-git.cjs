@@ -78,7 +78,8 @@ const CALL_TIMEOUT_MS = 300000;
 
 /**
  * A runner bound to one cwd: `run` answers stdout, empty where it went to a
- * file, and throws a GitError on failure; `tryRun` answers null instead.
+ * file, and throws a GitError on failure; `tryRun` answers null instead,
+ * but for a call past its time limit, which throws for both.
  * @typedef {{
  *   run: (args: string[], opts?: RunOptions) => string,
  *   tryRun: (args: string[], opts?: RunOptions) => string|null,
@@ -140,31 +141,33 @@ function isolatedGit(cwd) {
   /** @type {Record<string, string>|null} */
   let base = null;
 
-  /** @param {string[]} args @param {RunOptions} opts @param {number} limit */
-  function spawn(args, { input, env, out }, limit) {
+  /**
+   * Run git, throwing where it ran past its time limit: a call cut short has
+   * no answer, never a "no".
+   * @param {string[]} args @param {RunOptions} opts
+   */
+  function spawn(args, { input, timeoutMs = CALL_TIMEOUT_MS, env, out }) {
     base ??= hooksOffEnv(cwd);
-    return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
-      cwd, encoding: 'utf8', input, timeout: limit, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
+    const res = spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
+      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
+    if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') {
+      throw new GitError(`git ${args[0]} timed out after ${timeoutMs / 1000}s`);
+    }
+    return res;
   }
 
   return {
     run(args, opts = {}) {
-      const limit = opts.timeoutMs ?? CALL_TIMEOUT_MS;
-      const res = spawn(args, opts, limit);
-      if (res.error) {
-        const timedOut = /** @type {NodeJS.ErrnoException} */ (res.error).code === 'ETIMEDOUT';
-        throw new GitError(timedOut
-          ? `git ${args[0]} timed out after ${limit / 1000}s`
-          : `git ${args[0]} failed: ${res.error.message}`);
-      }
+      const res = spawn(args, opts);
+      if (res.error) throw new GitError(`git ${args[0]} failed: ${res.error.message}`);
       if (res.status !== 0) {
         throw new GitError(`git ${args[0]} failed: ${(res.stderr || res.stdout || `exit ${res.status}`).trim()}`);
       }
       return res.stdout ?? '';
     },
     tryRun(args, opts = {}) {
-      const res = spawn(args, opts, opts.timeoutMs ?? CALL_TIMEOUT_MS);
+      const res = spawn(args, opts);
       return res.error || res.status !== 0 ? null : res.stdout ?? '';
     },
   };
