@@ -72,6 +72,7 @@ const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
+const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -277,6 +278,7 @@ ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
+${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1469,6 +1471,22 @@ function runCut(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// checklist — a closing point's checklist shown, an item marked done or
+// skipped with its reason, and the checklist closed (domain/checklist.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runChecklist(call, argv) {
+  const [verb, ...rest] = argv;
+  const { opts, positional } = parseArgs(rest);
+  try {
+    respond(call, runChecklistVerb(call.cwd, verb, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
 // commit for the whole set.
@@ -2513,6 +2531,7 @@ const COMMANDS = Object.freeze({
   gate: runGate,
   raise: runRaise,
   cut: runCut,
+  checklist: runChecklist,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
@@ -2535,10 +2554,10 @@ const COMMANDS = Object.freeze({
 // project; `gate` writes the trust log, under its own lock, and the
 // conversation's folder; and the rest read: `layout guard` among them, run
 // before every file Claude writes, `brief guard`, before every dispatch of
-// an agent, and `shell guard`, before every shell command. `manifest` takes
-// it to write alone, `commit` but for a code commit (`--paths`), and a
-// brief's fill whole, since its read of the task may commit the tracker's
-// set-up.
+// an agent, `shell guard`, before every shell command, and `checklist
+// show`. `manifest` takes it to write alone, `commit` but for a code
+// commit (`--paths`), and a brief's fill whole, since its read of the
+// task may commit the tracker's set-up.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2557,6 +2576,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   gate: '*',
   raise: '*',
   brief: ['guard'],
+  checklist: ['show'],
 }));
 
 /** @param {string[]} argv @returns {boolean} */

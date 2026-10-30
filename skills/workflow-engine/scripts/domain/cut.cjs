@@ -33,6 +33,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { phaseStarted } = require('./checklist.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
 
@@ -52,9 +53,6 @@ const FIELDS = Object.freeze({
 
 /** The fields of a phase, in the order the manifest keeps them. */
 const PHASE_FIELDS = /** @type {Array<keyof Phase>} */ (Object.keys(FIELDS));
-
-/** The checklist a phase's start closes, as the unit's manifest keys it (6.4.12). @param {number} number */
-const startPoint = (number) => `phase-${number}-start`;
 
 /** @param {string[]} faults @returns {never} */
 function refuse(faults) {
@@ -158,7 +156,7 @@ function reliesFaults(phases, root, unit) {
 function lastStarted(manifest) {
   /** @type {Phase[]} */
   const phases = manifest.cut?.phases ?? [];
-  return phases.reduce((last, _, at) => (manifest.checklists?.[startPoint(at + 1)]?.closed === undefined ? last : at + 1), 0);
+  return phases.reduce((last, _, at) => (phaseStarted(manifest, at + 1) ? at + 1 : last), 0);
 }
 
 /**
