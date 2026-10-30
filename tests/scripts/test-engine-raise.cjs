@@ -13,8 +13,8 @@
 //
 // Layer: verb. World: the ledger suites' unit with four questions asked —
 // three on one topic, one on another — and a feature with one, built once
-// and only read but for one decision: a raise writes the conversation's
-// folder alone. Each test keeps its conversation
+// and only read but for one decision and a question moved to the roadmap: a
+// raise writes the conversation's folder alone. Each test keeps its conversation
 // in a config folder of its own. The separate call is the stub binary
 // (claude-stub.cjs): unarmed it has no login, so every row is drawn
 // unchecked; armed per test where the check is the subject.
@@ -261,6 +261,17 @@ describe('the seal (P1, P6)', () => {
     });
   });
 
+  it('9.S12: decides nothing until the person answers — the ledger as it was, the question open on its map with no answer, the lean sealed in the conversation alone (9.3.9)', async () => {
+    const { ledgerText } = ledgerHelpers(() => dir);
+    const before = ledgerText();
+
+    const { res } = await draw();
+
+    assert.strictEqual(ledgerText(), before);
+    const row = ok(dir, ['ledger', 'map', 'fumi', 'note-window']).questions.find((/** @type {{id: string}} */ q) => q.id === asked.where);
+    assert.deepStrictEqual([row.stands, row.answers, Object.keys(seals())], ['open', [], [res.raise]]);
+  });
+
   it('a second raise of the question in the conversation — the same place, the same question — keeps the first seal and draws it, its lean unchanged; another question at the place is sealed beside it', async () => {
     const first = await draw();
     const sealed = seals();
@@ -434,6 +445,15 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.deepStrictEqual(seals(), sealed);
     const elsewhere = await refusesAsync(dir, ['raise', NOTE, '--answers', asked.title], { env: conversation({ CLAUDE_CODE_SESSION_ID: 'c0ffee00-0000-4abc-8def-0123456789ab' }), stdin: JSON.stringify(CALL) });
     assert.strictEqual(elsewhere.error, again.error);
+  });
+
+  it('a question moved to the roadmap as later', async () => {
+    const { write } = ledgerHelpers(() => dir);
+    const syncing = write('ask', NOTE, [], { ...MADE, text: 'Do notes sync across Macs?' }, WRITER).id;
+    ok(dir, ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
+    write('move', NOTE, ['--question', syncing, '--to', 'roadmap:sync'], MADE, WRITER);
+
+    assert.strictEqual(await refusedDraw([NOTE, '--answers', syncing], JSON.stringify(CALL)), `raise --answers names ${syncing}, which is moved to the roadmap as later, roadmap:sync — a raise asks an open question`);
   });
 
   it('stdin holding no JSON object', async () => {

@@ -18,6 +18,11 @@
 // - A unit is finished once its status reads completed; until then it is
 //   still under way.
 // - A unit's live topics: those it names that are live.
+// - A roadmap item, which a question moves to as later (9.5.4): an item of
+//   the project's roadmap, by its name.
+// - What a unit's experiments measure while they run (9.1.11): each
+//   experiment neither concluded nor abandoned that names the question it
+//   measures, by the question's full id, on its record's `question`.
 // - What is live, marked unit by unit: a value two reads of a unit's
 //   manifest answer alike exactly when they set the same of its topics, or
 //   the unit, aside, so a change to what is live is seen however it was
@@ -27,7 +32,8 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { isObject, workUnitManifestPath, readWorkUnitManifest, workUnitNames, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
+const { isObject, workUnitManifestPath, readWorkUnitManifest, readProjectManifest, workUnitNames, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
+const { EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
@@ -53,6 +59,26 @@ function hasTopic(manifest, topic) {
 /** A unit's manifest, or null where the unit has none. @param {string} root @param {string} unit @returns {Record<string, any>|null} */
 function manifestOf(root, unit) {
   return fs.existsSync(workUnitManifestPath(root, unit)) ? readWorkUnitManifest(root, unit) : null;
+}
+
+/** Whether the project's roadmap holds an item named `item`. @param {string} root @param {string} item */
+function hasRoadmapItem(root, item) {
+  const items = readProjectManifest(root).roadmap?.items;
+  return isObject(items) && Object.hasOwn(items, item) && isObject(items[item]);
+}
+
+/**
+ * The questions a unit's experiments measure while they run, each with the
+ * experiment's id.
+ * @param {Record<string, any>} manifest the unit's
+ * @returns {{experiment: string, question: string}[]}
+ */
+function experimentWaits(manifest) {
+  const items = manifest.phases?.experiment?.items;
+  if (!isObject(items)) return [];
+  return Object.values(items).flatMap((item) => (isObject(item) && isObject(item.experiments) ? Object.entries(item.experiments) : []))
+    .filter(([, record]) => isObject(record) && typeof record.question === 'string' && !EXPERIMENT_TERMINAL_STATUSES.includes(record.status))
+    .map(([experiment, record]) => ({ experiment, question: record.question }));
 }
 
 /**
@@ -181,4 +207,6 @@ function changedUnits(root, before) {
   return [...new Set([...before.keys(), ...after.keys()])].filter((unit) => (before.get(unit) ?? '') !== (after.get(unit) ?? ''));
 }
 
-module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits };
+module.exports = {
+  TOPIC_PHASES, hasItem, hasTopic, manifestOf, hasRoadmapItem, experimentWaits, liveness, finishedUnits, liveTopics, unitMark, livenessMarks, manifestStamps, changedUnits,
+};

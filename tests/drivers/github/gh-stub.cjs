@@ -8,15 +8,16 @@
 // ssh beside this file, and `state.json` for what GitHub holds besides:
 // the pull requests, their bases and states, the stacks, GitHub's own
 // default branch, the repository's squash default, its rulesets and the
-// merge method last used. Every call is logged to `calls`, one line each.
+// merge method last used, and how long GitHub takes to work out whether a
+// pull request can merge. Every call is logged to `calls`, one line each.
 // It fails closed: it runs only with GH_CONFIG_DIR pinned to a temp folder,
 // never reaches a network, and refuses to run anywhere no fake GitHub was
 // made.
 //
 // What it answers, as gh and the stack extension do: its versions; `auth
 // status`; `api` reading the repository, changing its squash default, and
-// adding a ruleset; `pr list`, `create` — refused where the head holds no
-// commit past the base — `edit --base`, `merge` and `reopen`; `stack
+// adding a ruleset; `pr list`, `view`, `create` — refused where the head
+// holds no commit past the base — `edit --base`, `merge` and `reopen`; `stack
 // link`, bottom to top, the bottom based on `--base` or else GitHub's
 // default branch, each other on the one before, a stack's members only ever
 // added; and `stack merge`, every unmerged pull request up to the one named,
@@ -26,7 +27,13 @@
 // — onto the branch it merges into, as one commit under the subject and
 // body given, else as the repository's squash default makes them — GitHub's
 // own, unless changed: a lone commit's message, or the title over the
-// commits' — the subject ending " (#N)". GH_STUB_FAULT makes calls fail as
+// commits' — the subject ending " (#N)". Whether a pull request can merge
+// is whether its head merges with its base — but once either's tip moves,
+// by a push, a merge into its base, `edit --base` or a stack's link, it is
+// unknown for as many of `view`'s reads as the state's `lag` (none unless
+// a test sets it) — or, after a push where the lag is `stale`, answered as
+// before it: the head it was at, mergeable — and a merge of it refused
+// meanwhile in GitHub's words. GH_STUB_FAULT makes calls fail as
 // gh does: `signed-out`, `rate-limit`, `offline`, `refused` or
 // `unmergeable`, every call or, after an `@`, only the one whose words
 // begin so (`rate-limit@pr create`), the extension's calls exiting 4 as it
@@ -53,9 +60,14 @@ const SIGNED_OUT_STATUS = 'You are not logged into any GitHub hosts. To log in, 
 /** GitHub's own squash default. */
 const GITHUB_SQUASH = Object.freeze({ squash_merge_commit_title: 'COMMIT_OR_PR_TITLE', squash_merge_commit_message: 'COMMIT_MESSAGES' });
 
-/** @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string}} Pull */
+/**
+ * A pull request, with where GitHub last saw it stand (`seen`), where it
+ * stood before (`was`), and how many more reads it is unknown since it
+ * moved (`unknown`).
+ * @typedef {{number: number, state: 'OPEN'|'CLOSED'|'MERGED', head: string, base: string, title: string, body: string, seen?: string, was?: string, unknown?: number}} Pull
+ */
 /** @typedef {{number: number, base: string, pulls: number[]}} Stack */
-/** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[]}} Github */
+/** @typedef {{repo: string, default: string, next: number, method: string, squash: Record<string, string>, rulesets: object[], pulls: Pull[], stacks: Stack[], lag?: number, stale?: boolean}} Github */
 
 /** A call's refusal, as gh's: its words on stderr, its exit code. */
 class Refused extends Error {
@@ -97,6 +109,41 @@ function pullOf(state, number) {
   const pull = state.pulls.find((held) => held.number === Number(number));
   if (pull === undefined) throw new Refused(`GraphQL: Could not resolve to a PullRequest with the number of ${number}.`);
   return pull;
+}
+
+/** Where a pull request stands: its head's tip, and its base's. @param {string} bare @param {Pull} pull */
+const standing = (bare, pull) => `${tipOf(bare, pull.head)} ${tipOf(bare, pull.base)}`;
+
+/**
+ * Whether GitHub is still working out if a pull request can merge: for
+ * `lag` reads once its head's tip or its base's moves.
+ * @param {string} bare @param {Github} state @param {Pull} pull
+ */
+function unknown(bare, state, pull) {
+  const now = standing(bare, pull);
+  if (pull.seen !== now) Object.assign(pull, { was: pull.seen, seen: now, unknown: state.lag ?? 0 });
+  return (pull.unknown ?? 0) > 0;
+}
+
+/**
+ * A read of whether a pull request can merge, and at what head: while
+ * GitHub is working it out, the read counted, UNKNOWN — or, where its head
+ * was pushed to and the state's lag is `stale`, its answer from before:
+ * the head it stood at then, mergeable; else whether its head merges with
+ * its base.
+ * @param {string} bare @param {Github} state @param {Pull} pull
+ * @returns {{head: string|null, mergeable: 'MERGEABLE'|'CONFLICTING'|'UNKNOWN'}}
+ */
+function readOf(bare, state, pull) {
+  const head = tipOf(bare, pull.head);
+  if (pull.state !== 'OPEN') return { head, mergeable: 'UNKNOWN' };
+  if (unknown(bare, state, pull)) {
+    pull.unknown = (pull.unknown ?? 0) - 1;
+    const before = pull.was?.split(' ')[0];
+    return state.stale && before !== undefined && before !== head ? { head: before, mergeable: 'MERGEABLE' } : { head, mergeable: 'UNKNOWN' };
+  }
+  const merged = spawnSync('git', ['merge-tree', '--write-tree', `refs/heads/${pull.base}`, `refs/heads/${pull.head}`], { cwd: bare });
+  return { head, mergeable: merged.status === 0 ? 'MERGEABLE' : 'CONFLICTING' };
 }
 
 /**
@@ -178,6 +225,16 @@ function prList(at, state, args) {
 }
 
 /** @param {string} at @param {Github} state @param {string[]} args @returns {string} */
+function prView(at, state, args) {
+  const pull = pullOf(state, args[0]);
+  const fields = (take(args, '--json').value ?? 'number').split(',');
+  const { head, mergeable } = readOf(bareOf(at, state), state, pull);
+  /** @type {Record<string, unknown>} */
+  const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: head, mergeable };
+  return `${JSON.stringify(Object.fromEntries(fields.map((field) => [field, all[field]])))}\n`;
+}
+
+/** @param {string} at @param {Github} state @param {string[]} args @returns {string} */
 function prCreate(at, state, args) {
   const [base, head, title, body] = ['--base', '--head', '--title', '--body'].map((flag) => take(args, flag).value);
   if (base === undefined || head === undefined || title === undefined) throw new Refused('must provide --base, --head and --title when not running interactively');
@@ -191,7 +248,9 @@ function prCreate(at, state, args) {
   if (twin !== undefined) throw new Refused(`a pull request for branch "${head}" into branch "${base}" already exists:\nhttps://github.com/${state.repo}/pull/${twin.number}`);
   const number = state.next;
   state.next += 1;
-  state.pulls.push({ number, state: 'OPEN', head, base, title, body: body ?? '' });
+  /** @type {Pull} */
+  const pull = { number, state: 'OPEN', head, base, title, body: body ?? '' };
+  state.pulls.push({ ...pull, seen: standing(bare, pull), unknown: 0 });
   return `https://github.com/${state.repo}/pull/${number}\n`;
 }
 
@@ -208,6 +267,7 @@ function prMerge(at, state, args) {
   const method = methodIn(args);
   if (method === undefined) throw new Refused('--merge, --rebase, or --squash required when not running interactively');
   const pull = pullOf(state, args[0]);
+  if (unknown(bareOf(at, state), state, pull)) throw new Refused('GraphQL: Pull Request is not mergeable (mergePullRequest)');
   mergePulls(at, state, [pull], method, { into: pull.base, subject: take(args, '--subject').value, body: take(args, '--body').value });
   return '';
 }
@@ -263,6 +323,10 @@ function stackMerge(at, state, args) {
   const shut = merging.find((pull) => pull.state !== 'OPEN');
   if (shut !== undefined) throw new Refused(`cannot merge the stack: pull request #${shut.number} is closed`);
   const method = methodIn(args) ?? state.method;
+  if (merging.some((pull) => unknown(bareOf(at, state), state, pull))) {
+    throw new Refused(`Merging ${merging.map((pull) => `#${pull.number}`).join(', ')} into ${stack.base} via ${method}...\n`
+      + '✗ merge failed: Pull request cannot be merged because it has a merge conflict. Stack merges are atomic, so nothing was merged.');
+  }
   state.method = method;
   mergePulls(at, state, merging, method, { into: stack.base });
   return `Merged ${merging.length} pull requests\n`;
@@ -293,7 +357,7 @@ const authStatus = () => `github.com\n  ✓ Logged in to github.com account stub
 
 const COMMANDS = Object.freeze({
   'auth status': authStatus,
-  'pr list': prList, 'pr create': prCreate, 'pr edit': prEdit, 'pr merge': prMerge, 'pr reopen': prReopen,
+  'pr list': prList, 'pr view': prView, 'pr create': prCreate, 'pr edit': prEdit, 'pr merge': prMerge, 'pr reopen': prReopen,
   'stack link': stackLink, 'stack merge': stackMerge, api,
 });
 

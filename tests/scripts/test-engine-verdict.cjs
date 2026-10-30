@@ -168,7 +168,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
 
     const [row] = ok(dir, ['verdict', 'queue']).departures;
     const shown = ok(dir, ['ledger', 'record', UNIT, 'note-window']).decisions.find((/** @type {{id: string}} */ d) => d.id === departed);
-    const { holds: _holds, kept: _kept, replaced: _replaced, ...line } = shown;
+    const { holds: _holds, kept: _kept, assets: _assets, replaced: _replaced, ...line } = shown;
     assert.deepStrictEqual(row, { ...line, standing: { unit: UNIT, topic: 'note-window' }, lean: 'A panel.' });
   });
 
@@ -187,7 +187,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     const agreed = await answered(LEAN);
     const cameRound = await answered('A frameless window.', { lean: 'A frameless window.', moved: 'claude-moved-person' });
     const call = decide('Notes snap to the grid.', MADE);
-    write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it' });
+    write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it', known: 'read' });
     assert.deepStrictEqual(ok(dir, ['verdict', 'queue']), { ok: true, departures: [] });
     const raises = logText();
 
@@ -221,7 +221,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
 
   it('never takes a replacement for a new fact or another topic\'s decision as a departure: new information, not disagreement', () => {
     const call = decide('A panel.', MADE);
-    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike' });
+    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike', known: 'spike' });
     const theirs = decide('A note opens on the active Space.', MADE, SPACE);
     assert.strictEqual(refused(...replacing(call, 'new-fact', persons('person-moved-claude'), ['--cause', fact])),
       'ledger replace: who_moved_whom is person-moved-claude — a replacement for a new fact brings new information, never the person standing over Claude\'s lean: none or claude-moved-person');
@@ -251,7 +251,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
 
   it('takes the person\'s replacement for a changed mind as a reversal where Claude leaned down its chain: Claude\'s call, replaced by the person for a new fact, then changed, the new fact\'s answer as the lean', () => {
     const call = decide('A panel.', MADE);
-    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike' });
+    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike', known: 'spike' });
     const updated = write(...replacing(call, 'new-fact', persons('none'), ['--cause', fact]));
 
     const reversed = write(...replacing(updated, 'changed-mind', { by: 'person' }));
@@ -315,7 +315,7 @@ describe('giving a verdict (16.10.1, 16.10.9)', () => {
   it('refuses, logging nothing, an entry that is no departure — Claude\'s call, the person\'s answer that took Claude\'s lean, a finding — a prefix naming no entry, a verdict outside the four, a point where no verdict is given, and argv of another shape', async () => {
     const call = decide('A panel.', MADE);
     const agreed = await answered(LEAN);
-    const finding = write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it' });
+    const finding = write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it', known: 'read' });
     const departed = await answered('A sheet.');
     const usage = /^Usage: engine verdict give <entry> <nothing\|fix\|loss\|skip> --at <decided\|ready-to-build\|conclusion\|finish\|close\|queue>$/;
 

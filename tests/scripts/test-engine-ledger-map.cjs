@@ -8,7 +8,9 @@
 // set aside on a row of its own; a reworded question keeps its answers and
 // its parts; a merged duplicate is no second entry; a question moved in or
 // away shown by a live move the map's own unit made alone, led to its
-// current wording and the topic it stands on now.
+// current wording and the topic it stands on now; a question moved to the
+// roadmap standing later where it is; and an open question an experiment
+// of its unit measures marked waiting on it while it runs.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there.
@@ -19,8 +21,9 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { ok, refuses, cleanupFixture } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 
-const { UNIT, SESSION, MADE, NOTE, SPACE, ids, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, PHASES, ids, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 const MINT = 'mint.discussion.mint';
 
@@ -48,10 +51,10 @@ describe('a topic\'s map (5.8.5)', () => {
     const map = read('map', UNIT, 'note-window');
 
     assert.deepStrictEqual(map.questions, [
-      { id: open, text: 'Does a note snap to the grid?', by: 'claude', at: line(open).at, stands: 'open', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] },
+      { id: open, text: 'Does a note snap to the grid?', by: 'claude', at: line(open).at, stands: 'open', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [], waiting_on: null },
       {
         id: asked, text: 'Is a note a window?', by: 'person', at: line(asked).at, stands: 'answered', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [],
-        answers: [{ id: answer, unit: UNIT, topic: 'note-window', by: 'person', text: 'A panel.' }],
+        answers: [{ id: answer, unit: UNIT, topic: 'note-window', by: 'person', given: 'own', text: 'A panel.' }], waiting_on: null,
       },
     ]);
     assert.deepStrictEqual([map.unit, map.topic, map.live], [UNIT, 'note-window', true]);
@@ -97,7 +100,7 @@ describe('a topic\'s map (5.8.5)', () => {
     assert.deepStrictEqual(rawLines().slice(0, -1), before, 'the merge edited a line before it');
     assert.deepStrictEqual(entries().filter((e) => e.event === 'decided' || e.event === 'replaced').map((e) => e.id), [full(owners)], 'the ledger holds a second decision');
     const [rowShown] = read('map', UNIT, 'space-homing').questions;
-    assert.deepStrictEqual([rowShown.id, rowShown.stands, rowShown.answers], [reached, 'merged', [{ id: owners, unit: UNIT, topic: 'note-window', by: 'claude', text: 'Notes float above every Space.' }]]);
+    assert.deepStrictEqual([rowShown.id, rowShown.stands, rowShown.answers], [reached, 'merged', [{ id: owners, unit: UNIT, topic: 'note-window', by: 'claude', given: 'own', text: 'Notes float above every Space.' }]]);
     const record = read('record', UNIT, 'space-homing');
     assert.deepStrictEqual([record.decisions, record.merged, record.other_topics], [[], [shownMerge(merged, null, true)], [{ ...line(owners), named: [reached, owners] }]]);
     assertAgree('space-homing');
@@ -172,8 +175,8 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     const moved = write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE).id;
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
 
-    const { id, unit, topic, by, text, at } = line(framed);
-    const unjudged = { id, unit, topic, by, text, at, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] };
+    const { id, unit, topic, by, given, text, at } = line(framed);
+    const unjudged = { id, unit, topic, by, given, text, at, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [], waiting_on: null };
     assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[1], unjudged);
     ok(dir, ['ledger', 'late-check'], { env: { CLAUDE_CODE_SESSION_ID: 'session-2', CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) } });
     const row = { ...unjudged, late_check: 'one' };
@@ -213,5 +216,49 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'menu-bar']);
     assert.deepStrictEqual(maps(), [[[once, 'moved-away', null, 'space-homing']], [[once, 'open', 'note-window', null]], []]);
+  });
+});
+
+describe('a question moved to the roadmap (9.5.4)', () => {
+  it('stands later where it was asked, naming the roadmap\'s item, the move on its record, until a decision answers it or a later move of its unit takes it to a topic; a move to an item the roadmap lacks is refused', () => {
+    const syncing = ask(NOTE, 'Do notes sync across Macs?');
+    const sharing = ask(NOTE, 'Can a note be shared?');
+    const toSync = ['--question', syncing, '--to', 'roadmap:sync'];
+    const lacking = refuses(dir, ['ledger', 'move', NOTE, ...toSync], { env: SESSION, stdin: JSON.stringify(MADE) });
+    assert.strictEqual(lacking.error, 'ledger move: --to names roadmap:sync, and the roadmap has no item "sync" — put it on the roadmap first');
+    ok(dir, ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
+
+    const moved = write('move', NOTE, toSync, MADE).id;
+    write('move', NOTE, ['--question', sharing, '--to', 'roadmap:sync'], MADE);
+
+    assert.deepStrictEqual(moves(UNIT, 'note-window'), [[syncing, 'later', null, 'roadmap:sync'], [sharing, 'later', null, 'roadmap:sync']]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').moved.slice(0, 1), [{ ...line(moved), text: 'Do notes sync across Macs?' }]);
+    const shared = decide(NOTE, sharing, 'A note is shared as a link.');
+    write('move', NOTE, ['--question', syncing, '--to', 'space-homing'], MADE);
+    assert.deepStrictEqual([answered('note-window'), moves(UNIT, 'space-homing')], [[[syncing, 'moved-away', []], [sharing, 'answered', [shared]]], [[syncing, 'open', 'note-window', null]]]);
+  });
+});
+
+describe('a question an experiment measures (9.1.11)', () => {
+  it('marks an open question waiting on the experiment of its unit that names it, in any wording, while the experiment runs: no longer once it is concluded or abandoned, nor once the question is answered', () => {
+    const timing = ask(NOTE, 'How fast does a panel open?');
+    const snapping = ask(NOTE, 'Does a note snap to the grid?');
+    /** The unit's manifest with experiment E1 at `status`, measuring the question. @param {string} status */
+    const measuring = (status) => createManifest(dir, UNIT, {
+      work_type: 'epic', phases: { ...PHASES, experiment: { items: { 'note-window': { status: 'in-progress', experiments: { E1: { slug: 'open-time', status, question: full(timing) } } } } } },
+    });
+    const waits = () => read('map', UNIT, 'note-window').questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.waiting_on]);
+
+    measuring('running');
+
+    const reworded = reword(NOTE, timing, 'How fast does a panel open, cold?');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, 'E1']]);
+    for (const status of ['concluded', 'abandoned']) {
+      measuring(status);
+      assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]], `a question waits on an experiment ${status}`);
+    }
+    measuring('running');
+    decide(NOTE, reworded, 'In 4 ms.');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]]);
   });
 });

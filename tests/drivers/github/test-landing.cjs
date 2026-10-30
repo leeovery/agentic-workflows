@@ -6,12 +6,14 @@
 // suite's): the calls it makes on gh and the stack extension for a stack of
 // three tasks — each branch pushed as its pull request opens, each pull
 // request based on the one before, the stack linked with the default branch
-// as its base whatever GitHub's own default is, and merged whole, each pull
-// request squashed under its title and " (#N)", the default branch here
-// brought to the merge (7.S7, 7.S13); a stack merged only once the
-// repository squashes into the pull request's title and description, a
-// lone pull request whatever it squashes into (7.2.18); a phase stacked on
-// a higher one, merged after it; which pull request is a task's, and which
+// as its base whatever GitHub's own default is, and merged whole once
+// GitHub has worked out that each pull request can merge, each squashed
+// under its title and " (#N)", the default branch here brought to the
+// merge (7.S7, 7.S13); a stack merged only once the repository squashes
+// into the pull request's title and description, a lone pull request
+// whatever it squashes into (7.2.18); a phase stacked on a higher one,
+// merged after it, its lone pull request based on the default branch and
+// merged once GitHub has worked it out again; which pull request is a task's, and which
 // is no task's. What stops it, and where it leaves the default branch here,
 // are test-landing-stops.cjs's; across nested repositories,
 // test-landing-nested.cjs's. Git layer: the landing world on a fake GitHub
@@ -28,7 +30,7 @@ const { TASKS, openArgs, own, cutTask, mergeBack, landedOn, useLandingWorld } = 
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
-const { github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
+const { github, onGithub, bareOf, calls, closeByHand, defaultOnGithub, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
 const { git, tip } = harness;
 const { card, total, rounding } = TASKS;
@@ -36,6 +38,8 @@ const project = useLandingWorld('github-landing-', side.prepare);
 
 /** The query every verb reads the unit's pull requests by. */
 const LIST = 'pr list --state all --limit 1000 --json number,state,headRefName,baseRefName,headRefOid,title,body';
+/** The read of whether a pull request can merge. @param {number} number */
+const view = (number) => `pr view ${number} --json mergeable,headRefOid,baseRefName`;
 
 describe('the remotes it serves (22.4.3)', () => {
   it('reads a GitHub repository off every form a remote URL takes, and serves those alone', () => {
@@ -94,7 +98,7 @@ describe('a stack of three tasks on GitHub (7.S7, 7.S13)', () => {
       LIST, 'stack link --base main --remote origin 1 2',
       LIST, `pr create --base ${total.branch} --head ${tax.branch} --title feat(pay): Add tax --body Task: pay-1-4`,
       LIST, 'stack link --base main --remote origin 1 2 4',
-      LIST, 'api repos/acme/portal', 'stack link --base main --remote origin 1 2 4', 'stack merge 4 --yes --squash',
+      LIST, 'api repos/acme/portal', 'stack link --base main --remote origin 1 2 4', view(1), view(2), view(4), 'stack merge 4 --yes --squash',
     ]);
   });
 });
@@ -129,7 +133,7 @@ describe('the squash default (7.2.18)', () => {
 });
 
 describe('phases and their pull requests', () => {
-  it('a phase built on a higher phase not yet merged: its pull request based on that phase\'s top, its merge refused naming it, and finish merging that one first', () => {
+  it('a phase built on a higher phase not yet merged: its pull request based on that phase\'s top, its merge refused naming it, and finish merging that one first — then the lone pull request based on the default branch, and merged once GitHub has worked out again that it can', () => {
     const dir = project();
     const four = cutTask(dir, '4.1', 'feat', 'Add four', 'main', { 'four.txt': 'four\n' });
     const more = cutTask(dir, '4.2', 'feat', 'Add more', four.branch, { 'more.txt': 'more\n' });
@@ -142,13 +146,16 @@ describe('phases and their pull requests', () => {
     assert.strictEqual(refused(dir, ['land', 'phase', 'pay', '3']), 'land: phase 3 stacks on phase 4, which has not merged — merge it first with `land phase pay 4`, then land again');
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), []);
 
+    lagOnGithub(dir, 2);
     assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [4, 3]);
     assert.deepStrictEqual(landedOn(bareOf(dir), 'main'), [
       { subject: 'feat(pay): Add four (#1)', task: 'pay-4-1', paths: ['four.txt'] },
       { subject: 'feat(pay): Add more (#2)', task: 'pay-4-2', paths: ['more.txt'] },
       { subject: 'fix(pay): Fix four (#4)', task: 'pay-3-2', paths: ['fix.txt'] },
     ]);
-    assert.ok(calls(dir).includes('pr edit 4 --base main'), 'the lone pull request is based on the default branch before it merges');
+    const made = calls(dir);
+    assert.deepStrictEqual(made.filter((call) => call.startsWith('pr view ')), [view(1), view(2), view(4), view(4), view(4)], 'phase 4, which nothing moved, is read once');
+    assert.deepStrictEqual(made.slice(-6, -1), ['pr edit 4 --base main', view(4), view(4), view(4), 'pr merge 4 --squash --subject fix(pay): Fix four (#4) --body Task: pay-3-2']);
   });
 
   it('a task opened into a phase merged already: refused, to number it in a phase not yet merged, nothing pushed', () => {

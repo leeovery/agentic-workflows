@@ -48,7 +48,7 @@ describe('where an entry stands (5.3.3, 5.8.4)', () => {
     assert.strictEqual(line(replacement).topic, null);
     assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(replacement, [decided])]);
     const [rowShown] = read('map', UNIT, 'note-window').questions;
-    assert.deepStrictEqual(rowShown.answers, [{ id: replacement, unit: UNIT, topic: null, by: 'claude', text: 'A sheet.' }]);
+    assert.deepStrictEqual(rowShown.answers, [{ id: replacement, unit: UNIT, topic: null, by: 'claude', given: 'own', text: 'A sheet.' }]);
     assert.deepStrictEqual(read('record', UNIT).decisions, [current(replacement, [decided])]);
     assertAgree('note-window');
   });
@@ -61,7 +61,7 @@ describe('where an entry stands (5.3.3, 5.8.4)', () => {
     const replacement = change('mint.discussion.mint', decided, 'A sheet.');
 
     assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(replacement, [decided])]);
-    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[0].answers, [{ id: replacement, unit: 'mint', topic: 'mint', by: 'claude', text: 'A sheet.' }]);
+    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[0].answers, [{ id: replacement, unit: 'mint', topic: 'mint', by: 'claude', given: 'own', text: 'A sheet.' }]);
     for (const minted of [read('record', 'mint'), read('record', 'mint', 'mint')]) {
       assert.deepStrictEqual([minted.questions, minted.decisions, minted.other_topics], [[], [], [{ ...line(replacement), named: [] }]]);
     }

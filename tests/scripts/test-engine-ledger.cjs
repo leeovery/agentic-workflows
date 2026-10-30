@@ -69,14 +69,23 @@ const FUMI = Object.freeze({ name: 'fumi', state: true });
 
 /** A question's fields. @param {Record<string, unknown>} [fields] */
 function question(fields = {}) {
-  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], ...fields };
+  return { event: 'asked', ...TAGS, ...MADE, text: 'What is a fumi, at its most basic?', part_of: null, relies_on: [], cites: [], ...fields };
+}
+
+/** A finding's fields. @param {Record<string, unknown>} [fields] */
+function finding(fields = {}) {
+  return {
+    event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', relies_on: [], product_wide: false,
+    known: 'documented', command: null, result: null, cites: [], ...fields,
+  };
 }
 
 /** A decision's fields, closing `answers`. @param {string} answers @param {Record<string, unknown>} [fields] */
 function decision(answers, fields = {}) {
   return {
     event: 'decided', ...TAGS, ...MADE, answers, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.',
-    rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: false, ...fields,
+    rules_out: ['a title bar'], relies_on: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: false,
+    given: 'own', cites: [], ...fields,
   };
 }
 
@@ -124,14 +133,14 @@ function stopped(root) {
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
   const BY = ['by', 'who_moved_whom'];
-  const QUESTION = ['text', 'part_of', 'relies_on'];
-  const FINDING = ['text', 'how', 'relies_on', 'product_wide'];
-  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked'];
+  const QUESTION = ['text', 'part_of', 'relies_on', 'cites'];
+  const FINDING = ['text', 'how', 'relies_on', 'product_wide', 'known', 'command', 'result', 'cites'];
+  const DECISION = ['answers', 'text', 'why', 'rules_out', 'relies_on', 'product_wide', 'sealed', 'alternatives', 'evidence', 'kind', 'unchecked', 'given', 'cites'];
 
-  it('writes every event §5 names, and merged, checked and kept, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
+  it('writes every event §5 names, and merged, checked, kept and asset, each with its fields in its schema\'s order on a line of its own, ended by LF alone', () => {
     const { root } = codeProject(world, FUMI);
     const q = /** @type {string} */ (appendEntry(root, question(), []).id);
-    const f = /** @type {string} */ (appendEntry(root, { event: 'found', ...TAGS, ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'documented', relies_on: [], product_wide: false }, []).id);
+    const f = /** @type {string} */ (appendEntry(root, finding(), []).id);
     const d = /** @type {string} */ (appendEntry(root, decision(q, { relies_on: [f] }), []).id);
     const r = /** @type {string} */ (appendEntry(root, {
       ...decision(q, { text: 'A frameless surface.' }), event: 'replaced', replaces: d, reason: 'new-fact', cause: f, drops: ['a title bar'], of: 'decision',
@@ -141,6 +150,7 @@ describe('the events and their schemas', () => {
     appendEntry(root, { event: 'merged', ...TAGS, ...MADE, question: q, into: d, duplicate: null }, []);
     appendEntry(root, { event: 'checked', ...TAGS, entry: d, rules: 'one' }, []);
     appendEntry(root, { event: 'kept', ...TAGS, by: 'person', who_moved_whom: 'person-moved-claude', entry: r, reason: 'new-fact', cause: f, why: 'They float every note.', sealed: 'A floating panel.' }, []);
+    appendEntry(root, { event: 'asset', ...TAGS, entry: r, path: 'fumi/assets/note-window.png', status: 'canonical', into: null }, []);
 
     const text = ledgerText(root);
     assert.ok(text.endsWith('\n') && !text.includes('\r'), 'a line ends with LF alone');
@@ -155,8 +165,9 @@ describe('the events and their schemas', () => {
       [...HEADER, ...BY, 'question', 'into', 'duplicate'],
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed'],
+      [...HEADER, 'entry', 'path', 'status', 'into'],
     ]);
-    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
+    assert.deepStrictEqual(Object.keys(SCHEMA.events).sort(), ['asked', 'asset', 'checked', 'decided', 'found', 'kept', 'merged', 'moved', 'replaced', 'still-holds']);
   });
 
   it('holds a keep to its shape: the person\'s alone, standing over Claude\'s proposal, a reason of the four, Claude\'s account of their reason, and that proposal sealed in it, never none', () => {
@@ -172,40 +183,40 @@ describe('the events and their schemas', () => {
 
   it('carries in a replacement the content of what it replaces: a question\'s, a finding\'s or a decision\'s', () => {
     const shapes = {
-      question: { text: 'Where does a note go?', part_of: null, relies_on: [] },
-      finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true },
+      question: { text: 'Where does a note go?', part_of: null, relies_on: [], cites: [] },
+      finding: { text: 'Spaces keep their ids.', how: 'seen in a spike', relies_on: [], product_wide: true, known: 'spike', command: null, result: null, cites: [] },
     };
     for (const [of, content] of Object.entries(shapes)) {
-      const event = validEvent({ v: 1, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of, ...content });
+      const event = validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of, ...content });
       assert.deepStrictEqual(Object.keys(event).slice(-Object.keys(content).length), Object.keys(content));
     }
-    assert.throws(() => validEvent({ v: 1, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'finding', ...shapes.question }),
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'finding', ...shapes.question }),
       /the replaced event needs how/);
-    assert.throws(() => validEvent({ v: 1, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'rule', ...shapes.question }),
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'was-wrong', cause: null, drops: [], of: 'rule', ...shapes.question }),
       /its of is not one of question, finding, decision/);
-    assert.throws(() => validEvent({ v: 1, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'a whim', cause: null, drops: [], of: 'question', ...shapes.question }),
+    assert.throws(() => validEvent({ v: LEDGER_VERSION, id: newId(), event: 'replaced', ...TAGS, at: AT, ...MADE, replaces: newId(), reason: 'a whim', cause: null, drops: [], of: 'question', ...shapes.question }),
       /its reason is not one of new-fact, other-topic, changed-mind, was-wrong/);
   });
 
   it('refuses a value that is no event of the shape its version names, saying why', () => {
-    const base = { v: 1, id: newId(), ...TAGS, at: AT, ...question() };
+    const base = { v: LEDGER_VERSION, id: newId(), ...TAGS, at: AT, ...question() };
     const cases = [
       [[], /not a JSON object/],
       [{ ...base, v: 0 }, /its v, 0, is not a schema version/],
       [{ ...base, v: '1' }, /its v, "1", is not a schema version/],
       [{ ...base, v: 1.5 }, /its v, 1.5, is not a schema version/],
-      [{ ...base, event: 'noted' }, /its event "noted" is none of version 1's: asked, found/],
+      [{ ...base, event: 'noted' }, /its event "noted" is none of version 2's: asked, found/],
       [{ ...base, id: 'Q1' }, /its id is not an entry id/],
       [{ ...base, unit: '' }, /its unit is not non-empty text/],
       [{ ...base, at: 'yesterday' }, /its at is not a UTC time/],
       [{ ...base, by: 'someone' }, /its by is not one of person, claude, review/],
       [{ ...base, relies_on: ['Q1'] }, /its relies_on is not a list of an entry id/],
       [{ ...base, part_of: undefined }, /its part_of is not an entry id, or null/],
-      [{ ...base, kind: 'look' }, /the asked event has no field kind at version 1/],
+      [{ ...base, kind: 'look' }, /the asked event has no field kind at version 2/],
       [Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'text')), /the asked event needs text/],
-      [{ ...decision(newId()), v: 1, id: newId(), at: AT, by: 'review' }, /its by is not one of person, claude/],
-      [{ ...decision(newId()), v: 1, id: newId(), at: AT, kind: 'taste' }, /its kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null/],
-      [{ ...decision(newId()), v: 1, id: newId(), at: AT, answers: null }, /its answers is not an entry id/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, by: 'review' }, /its by is not one of person, claude/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, kind: 'taste' }, /its kind is not one of process, danger, contract, scope, look, words, behaviour, internals, or null/],
+      [{ ...decision(newId()), v: LEDGER_VERSION, id: newId(), at: AT, answers: null }, /its answers is not an entry id/],
     ];
     for (const [value, message] of cases) assert.throws(() => validEvent(value), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(value)} was not refused as ${message}`);
   });
@@ -276,7 +287,7 @@ describe('the streamed reader', () => {
     const committed = ledgerText(root);
     const cases = [
       ['not json\n', /line 2 of the ledger is not JSON: not json/],
-      [`${JSON.stringify({ ...q, id: newId(), why: 'a decision\'s field' })}\n`, /line 2 of the ledger is no ledger entry: the asked event has no field why at version 1/],
+      [`${JSON.stringify({ ...q, id: newId(), why: 'a decision\'s field' })}\n`, /line 2 of the ledger is no ledger entry: the asked event has no field why at version 2/],
       [JSON.stringify({ ...q, id: newId() }).slice(0, 40), /line 2 of the ledger is not JSON/],
       ['\n', /line 2 of the ledger is not JSON/],
     ];
@@ -291,22 +302,23 @@ describe('the streamed reader', () => {
     const q = appendEntry(root, question(), []);
     const line = ledgerText(root).trim();
     const flag = { is: 'true or false', test: (/** @type {unknown} */ v) => typeof v === 'boolean' };
+    const next = LEDGER_VERSION + 1;
     const later = {
-      version: 2,
+      version: next,
       events: {
         ...SCHEMA.events,
-        asked: { since: 1, fields: [...SCHEMA.events.asked.fields, { name: 'raised', type: flag, added: { version: 2, default: false } }] },
-        noted: { since: 2, fields: [{ name: 'text', type: { is: 'text', test: (/** @type {unknown} */ v) => typeof v === 'string' } }] },
+        asked: { since: 1, fields: [...SCHEMA.events.asked.fields, { name: 'raised', type: flag, added: { version: next, default: false } }] },
+        noted: { since: next, fields: [{ name: 'text', type: { is: 'text', test: (/** @type {unknown} */ v) => typeof v === 'string' } }] },
       },
     };
 
     assert.deepStrictEqual(parseEntry(line, 1, later), { ...q, raised: false });
-    assert.strictEqual(parseEntry(JSON.stringify({ ...q, v: 2, raised: true }), 1, later).raised, true);
-    assert.throws(() => parseEntry(JSON.stringify({ ...q, v: 2 }), 1, later), /line 1 of the ledger is no ledger entry: the asked event needs raised/);
-    assert.throws(() => parseEntry(JSON.stringify({ ...q, raised: true }), 1, later), /the asked event has no field raised at version 1/);
-    const noted = { v: 2, id: newId(), event: 'noted', ...TAGS, at: AT, text: 'Seen.' };
+    assert.strictEqual(parseEntry(JSON.stringify({ ...q, v: next, raised: true }), 1, later).raised, true);
+    assert.throws(() => parseEntry(JSON.stringify({ ...q, v: next }), 1, later), /line 1 of the ledger is no ledger entry: the asked event needs raised/);
+    assert.throws(() => parseEntry(JSON.stringify({ ...q, raised: true }), 1, later), new RegExp(`the asked event has no field raised at version ${LEDGER_VERSION}`));
+    const noted = { v: next, id: newId(), event: 'noted', ...TAGS, at: AT, text: 'Seen.' };
     assert.strictEqual(parseEntry(JSON.stringify(noted), 1, later).text, 'Seen.');
-    assert.throws(() => parseEntry(JSON.stringify({ ...noted, v: 1 }), 1, later), /its event "noted" is none of version 1's/);
+    assert.throws(() => parseEntry(JSON.stringify({ ...noted, v: LEDGER_VERSION }), 1, later), new RegExp(`its event "noted" is none of version ${LEDGER_VERSION}'s`));
     assert.deepStrictEqual(parseEntry(line, 1), q);
   });
 
@@ -314,22 +326,22 @@ describe('the streamed reader', () => {
     const { main, root } = codeProject(world, FUMI);
     const q = appendEntry(root, question(), []);
     commitLedger(root);
-    const newer = JSON.stringify({ ...q, v: 2, id: newId(), raised: true });
+    const newer = JSON.stringify({ ...q, v: 3, id: newId(), raised: true });
     writeLedger(root, `${ledgerText(root)}${newer}\n`);
     const gitDir = gitDirOf(root);
 
     const read = [];
     assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
       (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
-        && /holds entries a newer Leeway wrote, at schema version 2, and the workflows here read up to version 1 — update the workflows on this machine \(pull the project's code\) and start again/.test(err.message));
+        && /holds entries a newer Leeway wrote, at schema version 3, and the workflows here read up to version 2 — update the workflows on this machine \(pull the project's code\) and start again/.test(err.message));
     assert.deepStrictEqual(read, [q]);
-    assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: 2, reads: 1 });
+    assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: 3, reads: 2 });
     assert.strictEqual(ledgerStopSurface(main, {}), [
       '=== DISPLAY: ledger stop (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ The engine stopped: the ledger holds entries a newer Leeway wrote',
       '',
       '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
-      "> Fumi's ledger holds entries at schema version 2, and the workflows on this machine read up to version 1, so the engine reads none of it.",
+      "> Fumi's ledger holds entries at schema version 3, and the workflows on this machine read up to version 2, so the engine reads none of it.",
       '>',
       "> Update the workflows on this machine — pull the project's code — and start again.",
       '',
@@ -351,7 +363,7 @@ describe('the streamed reader', () => {
     let last = '';
     try {
       while (size <= READ_BUDGET_BYTES) {
-        last = `${JSON.stringify(validEvent({ v: 1, id: newId(), event: 'found', ...TAGS, at: AT, ...MADE, text: 'x'.repeat(2000), how: 'measured', relies_on: [], product_wide: false }))}\n`;
+        last = `${JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...finding({ text: 'x'.repeat(2000) }) }))}\n`;
         fs.writeSync(fd, last);
         size += Buffer.byteLength(last);
         count += 1;
@@ -496,7 +508,7 @@ describe('the append', () => {
     const { main, root } = codeProject(world, FUMI);
     const [first] = threeCommitted(root);
     const committed = [ledgerText(root), tip(main, STATE_BRANCH)];
-    const kept = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Left by a kill?' }) }));
+    const kept = JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Left by a kill?' }) }));
     const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
     for (const [after, refusal] of /** @type {[string, RegExp][]} */ ([
       ['oops, not JSON\n', /^line 5 of the ledger is not JSON: oops, not JSON$/],
@@ -562,7 +574,7 @@ describe('the append-only check on a read', () => {
   it('reads the branch before the file: an append committed between the two reads never reads as a change, and the check waits on no lock', (t) => {
     const { root } = codeProject(world, FUMI);
     threeCommitted(root);
-    const later = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Landed between the reads?' }) }));
+    const later = JSON.stringify(validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Landed between the reads?' }) }));
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
     fs.writeFileSync(path.join(wrapper, 'git'), [
@@ -751,7 +763,7 @@ describe('the stop\'s screen (5.4.4)', () => {
     const { main, root } = codeProject(world, FUMI);
     const twin = `${newId().slice(0, 7)}`;
     const [a, b] = [`${twin}${newId().slice(0, 14)}`, `${twin}${newId().slice(0, 14)}`];
-    const lines = [a, b].map((id) => JSON.stringify(validEvent({ v: 1, id, at: AT, ...question() })));
+    const lines = [a, b].map((id) => JSON.stringify(validEvent({ v: LEDGER_VERSION, id, at: AT, ...question() })));
     writeLedger(root, `${lines.join('\n')}\n`);
     commitLedger(root);
     assert.throws(() => ledgerStopSurface(main, {}), /render ledger-stop: no stop on the ledger is kept — nothing stopped the engine/);
@@ -760,7 +772,7 @@ describe('the stop\'s screen (5.4.4)', () => {
     assert.throws(() => checkLedger(root, []), LedgerChanged);
 
     const shared = [...a].findIndex((ch, i) => ch !== b[i]);
-    assert.ok(ledgerStopSurface(main, {}).includes(`{"v":1,"id":"${b.slice(0, Math.max(6, shared + 1))}…"`));
+    assert.ok(ledgerStopSurface(main, {}).includes(`{"v":${LEDGER_VERSION},"id":"${b.slice(0, Math.max(6, shared + 1))}…"`));
     writeLedger(root, `${lines.join('\n')}\n`);
     fs.writeFileSync(path.join(root, layout.projectManifest), '{}\n');
     withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: a commit lands'));
@@ -787,12 +799,12 @@ function migrationAt(rel, convert) {
 }
 
 // The shape before: each event's name under `type`, at version 0.
-const TO_CURRENT = 'function* (events) { for (const { v, type, ...rest } of events) yield { v: 1, event: type, ...rest }; }';
+const TO_CURRENT = `function* (events) { for (const { v, type, ...rest } of events) yield { v: ${LEDGER_VERSION}, event: type, ...rest }; }`;
 
 /** A question and its decision committed in the shape before: the ledger's text. @param {string} root */
 function oldShapeCommitted(root) {
-  const q = validEvent({ v: 1, id: newId(), at: AT, ...question() });
-  const d = validEvent({ v: 1, id: newId(), at: AT, ...decision(/** @type {string} */ (q.id)) });
+  const q = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question() });
+  const d = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...decision(/** @type {string} */ (q.id)) });
   const text = [q, d].map(({ v, event, ...rest }) => `${JSON.stringify({ v: 0, type: event, ...rest })}\n`).join('');
   writeLedger(root, text);
   commitLedger(root, 'state: the ledger in the shape before');
@@ -834,10 +846,10 @@ describe('the conversion door (5.S25)', () => {
     const original = oldShapeCommitted(root);
     const [first, second] = original.trim().split('\n').map((line) => JSON.parse(line).id);
     const converters = [
-      ['function* (events) { let n = 0; for (const { v, type, ...rest } of events) if (n++ === 0) yield { v: 1, event: type, ...rest }; }', `at line 2 the ledger holds ${second} and the copy none`],
+      [`function* (events) { let n = 0; for (const { v, type, ...rest } of events) if (n++ === 0) yield { v: ${LEDGER_VERSION}, event: type, ...rest }; }`, `at line 2 the ledger holds ${second} and the copy none`],
       [`function* (events) { yield* (${TO_CURRENT})(events); yield { id: 'added' }; }`, 'at line 3 the ledger holds no event and the copy added'],
       [`function* (events) { const all = [...(${TO_CURRENT})(events)]; yield all[0]; yield* all; }`, `at line 2 the ledger holds ${second} and the copy ${first}`],
-      ['function* (events) { for (const { v, type, ...rest } of events) yield { v: 1, event: type, ...rest, id: `${rest.id}x` }; }', `at line 1 the ledger holds ${first} and the copy ${first}x`],
+      [`function* (events) { for (const { v, type, ...rest } of events) yield { v: ${LEDGER_VERSION}, event: type, ...rest, id: \`\${rest.id}x\` }; }`, `at line 1 the ledger holds ${first} and the copy ${first}x`],
       [`function* (events) { yield* [...(${TO_CURRENT})(events)].reverse(); }`, `at line 1 the ledger holds ${first} and the copy ${second}`],
       ['function* (events) { for (const e of events) yield null; }', 'line 1 of the converted copy is not an entry with an id'],
     ];
@@ -901,7 +913,7 @@ describe('the conversion door (5.S25)', () => {
   it('commits first the lines an earlier write left uncommitted, never stopping on them, so every line it rewrites is in git as written', () => {
     const { main, root } = codeProject(world, FUMI);
     const original = oldShapeCommitted(root);
-    const { v, event, ...rest } = validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Left uncommitted?' }) });
+    const { v, event, ...rest } = validEvent({ v: LEDGER_VERSION, id: newId(), at: AT, ...question({ text: 'Left uncommitted?' }) });
     const tail = `${JSON.stringify({ v: 0, type: event, ...rest })}\n`;
     writeLedger(root, `${original}${tail}`);
     const before = tip(main, STATE_BRANCH);
