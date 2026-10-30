@@ -138,7 +138,7 @@ const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
-const { commitStateTail } = require('./commit.cjs');
+const { commitStateTail, HELD_NOTE } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs');
@@ -1027,7 +1027,7 @@ function commitLedger(cwd, { at, write }, id, warnings) {
  * committed to the state branch. Answers the entry's short id, the commit,
  * and the entry the ledger already held, or null.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
- * @returns {{id: string, outcome: {committed: string|null, failed: boolean}, held: Record<string, unknown>|null}}
+ * @returns {{id: string, outcome: {committed: string|null, failed: boolean, held?: true}, held: Record<string, unknown>|null}}
  */
 function land(cwd, request, warnings) {
   const { said, at, write, given, logs } = request;
@@ -1063,7 +1063,8 @@ function landed(cwd, request, warnings) {
   refreshLedgerCopies(cwd, warnings);
   /** @type {Landed} */
   const result = { id, committed: outcome.committed };
-  if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
+  if (outcome.held) result.note = HELD_NOTE;
+  else if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
   if (warnings.length > 0) result.warnings = warnings;
   return { landed: result, held };
 }
