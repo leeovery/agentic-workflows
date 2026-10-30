@@ -4,7 +4,10 @@
 // Boot through the repo's real scripts (leeway-engine/scripts/domain/boot.cjs
 // with leeway-migrate/scripts/migrate.cjs and the knowledge base): the
 // real migrations and index against an isolated project, a migration's
-// checks handed back, and its notices told once.
+// checks handed back, and its notices told once. A project with a legacy
+// `.workflows/` meets the reshape's directives: boot stops at each, bare,
+// until the session records it, and the boot that completes the run hands
+// back everything the migrations before them journaled.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), made once per
 // process and copied; the engine is the repo's own.
@@ -26,6 +29,26 @@ const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { createFile } = require('./discovery-test-utils.cjs');
 const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrate.cjs'));
 const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
+
+/** What boot answers where it stops at a directive, and nothing else. */
+const DIRECTIVE_STOP = ['ok', 'state', 'id', 'file', 'done', 'of', 'warnings'];
+
+/**
+ * Boot run through the migration's directives: each stop carries none of
+ * the run's handbacks, its directive is recorded — its check passing on a
+ * unit with no topics — and boot runs again, until a boot completes.
+ * @param {string} project
+ */
+function bootThroughDirectives(project) {
+  let res = runEngine(real, project, ['boot']);
+  for (let stops = 0; res.state === 'directive'; stops += 1) {
+    assert.ok(stops < 10, 'boot stops at each directive once');
+    assert.deepStrictEqual(Object.keys(res).filter((key) => !DIRECTIVE_STOP.includes(key)), [], `the stop is bare: ${JSON.stringify(res)}`);
+    runEngine(real, project, ['checklist', 'close', 'directive', res.id]);
+    res = runEngine(real, project, ['boot']);
+  }
+  return res;
+}
 
 describe('engine boot (real scripts)', () => {
   let root;
@@ -107,7 +130,7 @@ describe('engine boot (real scripts)', () => {
     commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();
 
-    const res = runEngine(real, project, ['boot']);
+    const res = bootThroughDirectives(project);
 
     assert.strictEqual(res.migrations.changed, true, 'the review gate owns the commit');
     assert.strictEqual(res.session_hooks_installed, true);
@@ -137,7 +160,7 @@ describe('engine boot verification addenda (real scripts)', () => {
     createFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
-    const res = runEngine(real, project, ['boot']);
+    const res = bootThroughDirectives(project);
 
     assert.strictEqual(res.ok, true);
     const entry = res.migrations.verify.find((v) => v.id === '054');
@@ -155,7 +178,7 @@ describe('engine boot verification addenda (real scripts)', () => {
     createFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage:\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
-    const res = runEngine(real, project, ['boot']);
+    const res = bootThroughDirectives(project);
 
     assert.strictEqual(res.ok, true);
     const addenda = res.migrations.verify.filter((v) => v.id === '054' || v.id === '071');
@@ -179,7 +202,7 @@ describe('engine boot migration notices (real scripts)', () => {
     createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
     git(project, ['commit', '-q', '-am', 'plan mode on']);
 
-    const res = runEngine(real, project, ['boot']);
+    const res = bootThroughDirectives(project);
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.migrations.notices.map((n) => n.id), ['067']);
