@@ -274,14 +274,19 @@ function holdsCommit(root, sha) {
 }
 
 /**
- * The refusal of a landing whose default branch points a submodule at a
- * commit the submodule here does not hold — as a pull of the repository
- * holding it, the submodule not fetched, leaves it.
- * @param {string} into @param {string} folder the submodule's @param {string} sha
+ * The refusal of a landing whose default branch, `into`, points a submodule
+ * at `sha`, where what the submodule lands onto, `onto`, does not descend
+ * from it — as a pull of the repository holding it leaves it, the
+ * submodule's default branch not pulled — so the submodule's landing would
+ * move the pointer off it; null where `onto` descends from it, which it
+ * never does from a commit the submodule lacks.
+ * @param {string} into @param {string} folder the submodule's @param {{root: string, into: string}} sub @param {string} sha @param {string} onto
+ * @returns {string|null}
  */
-function unheldPointer(into, folder, sha) {
+function pointerAhead(into, folder, sub, sha, onto) {
+  if (isAncestor(sub.root, sha, onto)) return null;
   const named = plain(folder);
-  return `land: ${into} points ${named} at ${short(sha)}, a commit ${named} here does not hold — fetch it into ${named}, as \`git -C ${quoted(folder)} fetch\` does where its remote holds it, and land again`;
+  return `land: ${into} points ${named} at ${short(sha)}, a commit ${named}'s ${sub.into} does not hold — bring ${named}'s ${sub.into} up to it, as \`git -C ${quoted(folder)} pull\` does where its remote holds it, and land again`;
 }
 
 /**
@@ -293,9 +298,9 @@ function unheldPointer(into, folder, sha) {
  * landed, read off its default branch's first-parent line from where
  * `since` points it to its tip (`tipOf`, read when first needed), for a
  * submodule the walk lands in; else the commit's own pointer. One taken
- * out stays out. Refused, never in git's words, where the submodule here
- * does not hold the commit `since` points it at (`unheldPointer`).
- * @template {{root: string, unit: string}} Sub
+ * out stays out. Refused, never in git's words, where the submodule's tip
+ * does not descend from the commit `since` points it at (`pointerAhead`).
+ * @template {{root: string, unit: string, into: string}} Sub
  * @param {{root: string, into: string, gitlinks: string[], submodules: {path: string, ctx: Sub}[]}} repo the repository's merge context (landing.cjs)
  * @param {{sha: string, parents: string[], tasks: string[]}[]} commits @param {string} since the default branch's tip @param {(sub: Sub) => string} tipOf
  * @returns {Map<string, string|null>[]}
@@ -315,7 +320,8 @@ function stackMoves(repo, commits, since, tipOf) {
     if (sub === undefined || start === null) return undefined;
     if (!landings.has(at)) {
       const tip = tipOf(sub);
-      if (!holdsCommit(sub.root, start)) throw new Error(unheldPointer(repo.into, at, start));
+      const ahead = pointerAhead(repo.into, at, sub, start, tip);
+      if (ahead !== null) throw new Error(ahead);
       landings.set(at, names.landingsByTask(sub.unit, firstParentLine(sub.root, start, tip)));
     }
     return [...tasks].reverse().map((task) => landings.get(at)?.get(task)).find((sha) => sha !== undefined);
@@ -1034,6 +1040,6 @@ function defaultBranch(root, remote, nested = false) {
 
 module.exports = {
   short, branches, branchesHeldBy, holdsBeyond, refsUnder, updateRefs, isAncestor, mergeBase, treesOf, firstParentLine, messagesPast, commitsNamed, messageOf, commitWithTree, treesPast,
-  prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, unheldPointer, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
+  prefixOf, pointersAt, treeWithPointers, pointedLike, holdsCommit, pointerAhead, stackMoves, commitsPast, changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, remedy, moveTo, movedSinceOpened, rewrite, scratchBlock, rebaseBlock, checkoutBlock, pathsChanged, dirtBlock, moveBranch,
   defaultBranch, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, nothingPast,
 };

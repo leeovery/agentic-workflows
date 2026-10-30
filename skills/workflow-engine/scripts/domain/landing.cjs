@@ -42,8 +42,9 @@
 // it records its pointer, as each driver records it; a merge is told, for
 // that, each submodule of its repository, and which of them the walk lands
 // in. A merge is refused before anything merges where a default branch
-// points a submodule the walk lands in at a commit the submodule here does
-// not hold, once the driver has fetched what each lands on (`landsOn`). A
+// points a submodule the walk lands in at a commit the submodule's own
+// default branch does not descend from — each as it lands, what its driver
+// lands onto (`landsOn`) — so no landing moves a pointer off it. A
 // driver that lands through a host refuses, before anything moves, a
 // repository it walks whose remote it does not serve (`assertServes`). A
 // refusal in a nested repository names it, and one after a repository moved
@@ -416,35 +417,42 @@ function refuseUnheldMoves(project, repo, task, from) {
 
 /**
  * Refuse, before anything merges, a repository whose default branch points
- * a submodule the walk lands in at a commit the submodule here does not
- * hold, once the driver has fetched what each lands on (`landsOn`): the
- * submodule's landing could not be read against it.
+ * a submodule the walk lands in at a commit the submodule's own default
+ * branch does not descend from, each as it lands (`pointerAhead`).
  * @param {LandingDriver} driver @param {LandingContext[]} merging
  */
-function refuseUnheldDefaults(driver, merging) {
+function refuseDefaultsAhead(driver, merging) {
   for (const ctx of merging.filter(({ submodules }) => submodules.length > 0)) {
     inRepo(ctx.repo, () => {
-      const onto = driver.landsOn?.(ctx) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
-      const [pointers] = lg.pointersAt(ctx.root, [onto], ctx.submodules.map(({ path }) => path));
+      const [pointers] = lg.pointersAt(ctx.root, [landsOn(driver, ctx)], ctx.submodules.map(({ path }) => path));
       for (const { path, ctx: sub } of ctx.submodules) {
         const sha = pointers.get(path) ?? null;
-        if (sha === null || lg.holdsCommit(sub.root, sha)) continue;
-        driver.landsOn?.(sub);
-        if (!lg.holdsCommit(sub.root, sha)) throw new Error(lg.unheldPointer(ctx.into, path, sha));
+        const ahead = sha === null ? null : lg.pointerAhead(ctx.into, path, sub, sha, landsOn(driver, sub));
+        if (ahead !== null) throw new Error(ahead);
       }
     });
   }
 }
 
 /**
+ * The commit a repository's merge lands onto: its driver's answer
+ * (`landsOn`), else its default branch's tip here.
+ * @param {LandingDriver} driver @param {LandingContext} ctx
+ * @returns {string}
+ */
+function landsOn(driver, ctx) {
+  return driver.landsOn?.(ctx) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
+}
+
+/**
  * Each repository's part of a merge, children first, `act` run in each —
- * once no default branch points a submodule at a commit it lacks.
+ * once no default branch points a submodule at a commit its own lacks.
  * @param {Project} project @param {LandingDriver} driver @param {Repo[]} walking @param {(ctx: LandingContext) => Record<string, any>|null} act
  * @returns {Step[]}
  */
 function mergeSteps(project, driver, walking, act) {
   const merging = walking.map((repo) => mergingIn(project, repo, walking));
-  refuseUnheldDefaults(driver, merging);
+  refuseDefaultsAhead(driver, merging);
   return merging.map((ctx) => ({ ctx, act: () => act(ctx) }));
 }
 

@@ -14,11 +14,12 @@
 // default branch though the person's git recurses into submodules; a clone
 // with no default branch, the unit's branches in it holding nothing, passed
 // over; a project that is a folder of a larger repository records its
-// submodule's pointer at the path from the repository's top (7.2.17); and a
-// pointer at a commit the submodule here does not hold refused, naming
-// both, before anything moves — a task's branch moving it there at the
-// open, the default branch pointing there at the merge — and landed once
-// the commit is fetched. Git
+// submodule's pointer at the path from the repository's top (7.2.17); a
+// task's branch moving the pointer to a commit the submodule here does not
+// hold refused at the open, naming both, and opened once it is fetched; and
+// a default branch pointing the submodule at a commit the submodule's own
+// does not hold refused before anything merges, naming it, a fetch of it no
+// way on, and landed past it once the submodule's is pulled up to it. Git
 // layer: the nested world (landing-world.cjs), built once and copied for
 // each test.
 // ---------------------------------------------------------------------------
@@ -130,7 +131,7 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     assert.deepStrictEqual(ok(at.dir, openArgs(task)).repos.map((/** @type {{repo: string}} */ { repo }) => repo), ['ext', '.']);
   });
 
-  it('refuses, before anything merges, a phase whose default branch points the submodule at a commit the submodule here does not hold — the project pulled, the submodule not fetched — naming it, and lands once it is fetched', () => {
+  it('refuses, before anything merges, a phase whose default branch points the submodule at a commit the submodule\'s own default branch does not hold — the project pulled, the submodule not — naming it, though the commit is fetched, and lands past it once the submodule\'s default branch is pulled up to it', () => {
     const at = project();
     const pulled = commitFiles(upstreamOf(at), 'main', 'main', { 'ext-pulled.txt': 'pulled\n' });
     commitFiles(at.dir, 'main', 'main', {}, { gitlinks: { [NESTED.ext.folder]: pulled }, message: 'bump ext' });
@@ -140,15 +141,16 @@ describe('land phase: the local driver\'s submodule pointer', () => {
     commitFiles(at.dir, task.branch, 'main', { 'more.txt': 'more\n' }, { gitlinks: { [NESTED.ext.folder]: more } });
     ok(at.dir, openArgs(task));
     const ext = tip(at.ext, 'main');
+    const refusal = `land: main points ext at ${pulled.slice(0, 7)}, a commit ext's main does not hold — bring ext's main up to it, as \`git -C ext pull\` does where its remote holds it, and land again`;
 
-    assert.strictEqual(
-      refuses(at.dir, ['land', 'phase', 'pay', '2']).error,
-      `land: main points ext at ${pulled.slice(0, 7)}, a commit ext here does not hold — fetch it into ext, as \`git -C ext fetch\` does where its remote holds it, and land again`,
-    );
-    assert.strictEqual(tip(at.ext, 'main'), ext);
+    assert.strictEqual(refuses(at.dir, ['land', 'phase', 'pay', '2']).error, refusal);
     git(at.ext, ['fetch', '-q', upstreamOf(at), 'main']);
+    assert.strictEqual(refuses(at.dir, ['land', 'phase', 'pay', '2']).error, refusal);
+    assert.strictEqual(tip(at.ext, 'main'), ext);
+    git(at.ext, ['pull', '-q', '--ff-only', upstreamOf(at), 'main']);
     ok(at.dir, ['land', 'phase', 'pay', '2']);
-    assert.deepStrictEqual(pointers(at.dir).slice(-1), [['pay-2-2', tip(at.ext, 'main')]]);
+    const [[landed, pointer]] = pointers(at.dir).slice(-1);
+    assert.deepStrictEqual([landed, pointer, git(at.ext, ['rev-parse', `${pointer}^`]).trim()], ['pay-2-2', tip(at.ext, 'main'), pulled]);
   });
 
   it('records the pointer of a submodule in a project that is a folder of a larger repository at its path from the repository\'s top (7.2.17)', () => {

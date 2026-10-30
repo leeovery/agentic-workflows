@@ -63,9 +63,10 @@
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
 //   moves (`assertServes`). A merge lands onto the default branch on GitHub,
-//   fetched (`landsOn`), which the seam reads to check every submodule here
-//   holds what it points it at. A repository's submodules' pointers are
-//   settled before its stack merges, each submodule's stack merged first
+//   fetched (`landsOn`), which the seam reads to check each submodule's
+//   there descends from what the repository holding it points it at. A
+//   repository's submodules' pointers are settled before its stack merges,
+//   each submodule's stack merged first
 //   (landing.cjs merges children first), squashed into new commits the
 //   pointers its tasks carry do not name. A stack moves a pointer only
 //   where its own commits do — those no pull request below it, no other
