@@ -2,10 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the layout on disk (4.11) — every place the workflows keep
-// under `.leeway/`, one table with one reader, `layoutPlace`; `isLog` asks
-// it for the logs. The layout hook refuses Claude's write to any path the
-// table has no place for, and to a file only the engine writes
-// (layout-hook.cjs, 6.2.3).
+// under `.leeway/`, one table with one reader, `layoutPlace`, whose row's
+// kind says what a path is, a log among them. The layout hook refuses
+// Claude's write to any path the table has no place for (layout-hook.cjs,
+// 6.2.3), and it and the hook before Bash a write to a file only the engine
+// writes (shell-guard.cjs), each for the reason `engineRefusal` gives.
 //
 // A place is a row: its path, state-relative, as 4.11.17's tree draws it,
 // and its kind —
@@ -24,7 +25,7 @@
 // `{phase}.{n}`; `{YYYY-MM-DD}` a date; and `{a,b}` one of the names listed.
 // Whatever a placeholder matches, it matches in lower case too, and the
 // literal names are spelled by `fold`, so a path matches as `fold` spells
-// it: in lower case where the filesystem ignores case.
+// it: in lower case where the filesystem ignores case (`folding`).
 //
 // The tracker's store is the task driver's to name (7.1.10): its places are
 // the files each shipped task driver keeps on the state branch.
@@ -34,6 +35,9 @@
 // phase whose rewrite retires it; 29.17 empties the list. None is a log:
 // today's session logs keep their own commits.
 // ---------------------------------------------------------------------------
+
+const { ignoresCase } = require('../kernel/state-root.cjs');
+const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {'file'|'free'|'engine'|'log'} PlaceKind */
 
@@ -46,14 +50,13 @@
 
 /** @typedef {(name: string) => string} Fold */
 
-const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const WHOLE = '[1-9][0-9]*';
 
 /** What each placeholder in a path stands for. */
 const PLACEHOLDERS = Object.freeze({
-  unit: SLUG,
-  slug: SLUG,
-  area: SLUG,
+  unit: KEBAB_SLUG,
+  slug: KEBAB_SLUG,
+  area: KEBAB_SLUG,
   topic: '[^/.]+',
   N: WHOLE,
   n: WHOLE,
@@ -142,6 +145,15 @@ const AS_WRITTEN = (name) => name;
 /** A name spelled as a filesystem that ignores case reads it. @type {Fold} */
 const IN_LOWER_CASE = (name) => name.toLowerCase();
 
+/**
+ * How names are spelled on the filesystem the existing `folder` is on: in
+ * lower case where it ignores case.
+ * @param {string} folder @returns {Fold}
+ */
+function folding(folder) {
+  return ignoresCase(folder) ? IN_LOWER_CASE : AS_WRITTEN;
+}
+
 /** @type {Place[]|null} */
 let places = null;
 
@@ -211,9 +223,16 @@ function layoutPlace(rel, fold = AS_WRITTEN) {
   return patternsFor(fold).find(({ pattern }) => pattern.test(spelled))?.at ?? null;
 }
 
-/** Whether the state-relative path `rel` is one of the layout's logs. @param {string} rel */
-function isLog(rel) {
-  return layoutPlace(rel)?.kind === 'log';
+/**
+ * Why a write to the state-relative `rel`, at the place `at`, is refused as
+ * a file only the engine writes, naming the verb that writes it where one
+ * does; null where `at` is no such file, or none.
+ * @param {Place|null} at @param {string} rel
+ * @returns {string|null}
+ */
+function engineRefusal(at, rel) {
+  if (at?.kind !== 'engine') return null;
+  return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, AS_WRITTEN, IN_LOWER_CASE, layoutPlace, isLog };
+module.exports = { LAYOUT, TODAY, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, engineRefusal };

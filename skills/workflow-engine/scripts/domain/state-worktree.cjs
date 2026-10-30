@@ -72,8 +72,7 @@ const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolat
 const { GitError, literally } = require('../kernel/git.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
-const { ignoresCase } = require('../kernel/state-root.cjs');
-const { AS_WRITTEN, IN_LOWER_CASE, layoutPlace } = require('./layout.cjs');
+const { folding, layoutPlace } = require('./layout.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
@@ -743,7 +742,7 @@ function changedAt(git, head, spec, change) {
  * @returns {PlacedChange[]}
  */
 function placedChanges({ git, root }) {
-  const fold = ignoresCase(root) ? IN_LOWER_CASE : AS_WRITTEN;
+  const fold = folding(root);
   return git.run(['status', '--porcelain', '-z', '--untracked-files=all', '--no-renames']).split('\0')
     .filter((entry) => entry !== '' && !SIDECAR_NAME.test(path.posix.basename(entry.slice(3))))
     .map((entry) => {

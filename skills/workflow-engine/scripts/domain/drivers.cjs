@@ -31,7 +31,6 @@ const path = require('path');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
-const { remoteUrl } = require('./remote.cjs');
 
 /** @typedef {typeof DRIVER_KINDS[number]} DriverKind */
 
@@ -321,7 +320,11 @@ function settingOf(project, kind) {
 function chosenDriver(cwd, kind, root = DRIVERS_ROOT) {
   const set = settingOf(readProjectManifest(cwd), kind);
   if (set !== null) return { driver: loadDriver(kind, set, root), set: true };
-  return { driver: defaultDriver(kind, listDrivers(kind, root), kind === 'landing' ? remoteUrl(cwd) : null), set: false };
+  // Loaded here, not with the module: the layout guard reads the drivers
+  // before every write under the state, and remote.cjs brings the state
+  // worktree's modules with it.
+  const url = kind === 'landing' ? require('./remote.cjs').remoteUrl(cwd) : null;
+  return { driver: defaultDriver(kind, listDrivers(kind, root), url), set: false };
 }
 
 /**

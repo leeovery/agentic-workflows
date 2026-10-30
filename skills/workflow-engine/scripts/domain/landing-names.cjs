@@ -14,12 +14,12 @@
 // from its template (12.4.1): a lowercase word, as feat or fix.
 // ---------------------------------------------------------------------------
 
+const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
 const { assertUnit, taskId, parseTaskId, shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
 const TYPE = /^[a-z]+$/;
-const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const NUMBER = '[1-9][0-9]*';
 const SLUG_MAX = 48;
 const NO_SLUG = 'task';
@@ -79,7 +79,7 @@ function phaseOfBranch(unit, branch) {
 
 /** The unit's task a branch is the branch of, or null. @param {string} unit @param {string} branch @returns {TaskRef|null} */
 function taskOfBranch(unit, branch) {
-  const named = new RegExp(`^[a-z]+/${unit}-(${NUMBER})\\.(${NUMBER})-${SLUG}$`).exec(branch);
+  const named = new RegExp(`^[a-z]+/${unit}-(${NUMBER})\\.(${NUMBER})-${KEBAB_SLUG}$`).exec(branch);
   return named === null ? null : { unit, phase: Number(named[1]), n: Number(named[2]) };
 }
 

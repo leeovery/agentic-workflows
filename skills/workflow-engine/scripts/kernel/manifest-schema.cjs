@@ -107,8 +107,10 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
-// A kebab-case slug — the key shape of a thread in a research register.
-const KEBAB_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// A kebab-case slug — a work unit's name, the key shape of a thread in a
+// research register — and its pattern unanchored, for a pattern that holds one.
+const KEBAB_SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
+const KEBAB_SLUG_PATTERN = new RegExp(`^${KEBAB_SLUG}$`);
 
 // One thread in a research topic's register
 // (`phases.research.items.{topic}.threads.{slug}.status`): descriptive
@@ -278,6 +280,7 @@ module.exports = {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   compareExperimentIds,
+  KEBAB_SLUG,
   KEBAB_SLUG_PATTERN,
   isPlainName,
   illegalNameReason,

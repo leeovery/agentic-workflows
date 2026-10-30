@@ -2,14 +2,22 @@
 
 // ---------------------------------------------------------------------------
 // The doors as one table (2.S1; 2.2.2, 2.2.9): for each contract an engine
-// verb holds, the other route Claude could take is refused, and the verb's
-// own route lands — an Edit of a unit's manifest, by the layout hook, where
-// `manifest set` lands; a Write to the ledger, by the layout hook, where a
-// ledger verb lands; a stray file under the state, by the state commit,
-// where a file in the layout lands; a raw `git commit` during a build, by
-// the hook before Bash, and a code commit naming no task, by the commit
-// door, where `commit --task` lands. Each door's own suite proves its
-// details; this one holds the table whole.
+// verb holds, each other route Claude could take is refused, and the verb's
+// own route lands — an Edit of a unit's manifest, by the layout hook, and a
+// shell write to it, by the hook before Bash, where `manifest set` lands; a
+// Write to the ledger, by the layout hook, and a shell append to it, by the
+// hook before Bash, where a ledger verb lands; a stray file under the
+// state, by the state commit, and a raw `git commit` in the state worktree,
+// by the hook before Bash, where the state commit lands a file in the
+// layout; a raw `git commit` during a build, by the hook before Bash, and a
+// code commit naming no task, by the commit door, where `commit --task`
+// lands. Each door's own suite proves its details; this one holds the table
+// whole. The contracts no verb lands through are proven in their doors'
+// suites alone: the files at user level only the engine writes, refused to
+// Claude's Write and Edit (test-engine-layout-hook.cjs) and to a shell
+// command naming them (test-engine-shell-guard.cjs), and the state worktree
+// and its branch, unlocked, removed, deleted or force-pushed by a shell
+// command (test-engine-shell-guard.cjs, 4.S7).
 //
 // Layer: verb. World: a unit with a task written, its discussion under way
 // and its code committed; the task started in one conversation; built once
@@ -23,7 +31,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  call, ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readManifest, ledgerEntries, touched,
+  call, ok, refusedPristine, git, commitAll, fixtureFrom, cleanupFixture, statePath, layout, createFile, readManifest, ledgerEntries, touched, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -79,8 +87,28 @@ function committedForTask(dir) {
   return git(dir, ['log', '-1', '--format=%B']);
 }
 
+/** `manifest set` on the unit's manifest, landing. @param {string} dir */
+function manifestSet(dir) {
+  ok(dir, ['manifest', 'set', UNIT, 'description', 'Cards']);
+  assert.strictEqual(readManifest(dir, UNIT).description, 'Cards');
+}
+
+/** A finding the ledger verb writes, landing. @param {string} dir */
+function ledgerFind(dir) {
+  ok(dir, ['ledger', 'find', `${UNIT}.discussion.${UNIT}`], { ...AS_BUILDER, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Cards settle in a day.', how: 'The processor\'s terms' }) });
+  assert.deepStrictEqual(ledgerEntries(statePath(dir)).map(({ event, text }) => [event, text]), [['found', 'Cards settle in a day.']]);
+}
+
+/** A file in the layout committed by the state commit's verb, landing. @param {string} dir */
+function stateCommitted(dir) {
+  const brief = layout.topic(UNIT, UNIT, 'brief.md');
+  createFile(statePath(dir), brief, '# pay\n');
+  const { committed } = ok(dir, ['commit', UNIT, '-m', 'discussion(pay): notes']);
+  assert.deepStrictEqual(touched(statePath(dir), committed), [`A\t${brief}`]);
+}
+
 /**
- * Each contract: the route around its verb, refused, and the verb's own,
+ * Each contract: a route around its verb, refused, and the verb's own,
  * landing — each on its own copy of the world.
  * @type {{contract: string, refused: (dir: string) => void, lands: (dir: string) => void}[]}
  */
@@ -91,10 +119,15 @@ const DOORS = [
       hook(dir, 'layout', 'Edit', { file_path: statePath(dir, layout.manifest(UNIT)), old_string: 'Test: pay', new_string: 'Cards' }),
       /engine manifest set/,
     ),
-    lands: (dir) => {
-      ok(dir, ['manifest', 'set', UNIT, 'description', 'Cards']);
-      assert.strictEqual(readManifest(dir, UNIT).description, 'Cards');
-    },
+    lands: manifestSet,
+  },
+  {
+    contract: 'a unit\'s manifest: a shell write, by the hook before Bash; `manifest set` lands',
+    refused: (dir) => assertBlocked(
+      hook(dir, 'shell', 'Bash', { command: `sed -i '' 's/"in-progress"/"completed"/' ${STATE_DIR_NAME}/${layout.manifest(UNIT)}` }),
+      /engine manifest set/,
+    ),
+    lands: manifestSet,
   },
   {
     contract: 'the ledger: a Write, by the layout hook; a ledger verb lands',
@@ -102,10 +135,15 @@ const DOORS = [
       hook(dir, 'layout', 'Write', { file_path: statePath(dir, layout.ledger), content: '{}\n' }),
       /engine ledger ask\|find\|decide/,
     ),
-    lands: (dir) => {
-      ok(dir, ['ledger', 'find', `${UNIT}.discussion.${UNIT}`], { ...AS_BUILDER, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Cards settle in a day.', how: 'The processor\'s terms' }) });
-      assert.deepStrictEqual(ledgerEntries(statePath(dir)).map(({ event, text }) => [event, text]), [['found', 'Cards settle in a day.']]);
-    },
+    lands: ledgerFind,
+  },
+  {
+    contract: 'the ledger: a shell append, by the hook before Bash; a ledger verb lands',
+    refused: (dir) => assertBlocked(
+      hook(dir, 'shell', 'Bash', { command: `echo '{"event":"found","text":"Cards settle in a day."}' >> ${STATE_DIR_NAME}/${layout.ledger}` }),
+      /engine ledger ask\|find\|decide/,
+    ),
+    lands: ledgerFind,
   },
   {
     contract: 'the layout: a stray file under the state, by the state commit; a file in the layout lands',
@@ -115,11 +153,13 @@ const DOORS = [
     },
     lands: (dir) => {
       fs.rmSync(statePath(dir, layout.unit(UNIT, 'tmp')), { recursive: true });
-      const brief = layout.topic(UNIT, UNIT, 'brief.md');
-      createFile(statePath(dir), brief, '# pay\n');
-      const { committed } = ok(dir, ['commit', UNIT, '-m', 'discussion(pay): notes']);
-      assert.deepStrictEqual(touched(statePath(dir), committed), [`A\t${brief}`]);
+      stateCommitted(dir);
     },
+  },
+  {
+    contract: 'a state commit: a raw `git commit` in the state worktree, by the hook before Bash; the state commit lands',
+    refused: (dir) => assertBlocked(hook(dir, 'shell', 'Bash', { command: `git -C ${STATE_DIR_NAME} commit -am "discussion(pay): notes"` }), /every state commit is the engine's/),
+    lands: stateCommitted,
   },
   {
     contract: 'a code commit during a build: a raw `git commit`, by the hook before Bash; `commit --task` lands',

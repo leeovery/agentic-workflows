@@ -129,4 +129,4 @@ function userLevelRefusal(file, fold, below) {
   return userRefusal(file, fold, below) ?? briefRefusal(file, fold, below) ?? claudeRefusal(file, fold, below);
 }
 
-module.exports = { TRUST_LOG, PENDING, SHOWN, RAISE_SHOWN, PRESSED, userFiles, userLevelRefusal };
+module.exports = { TRUST_LOG, PENDING, SHOWN, RAISE_SHOWN, PRESSED, userLevelRefusal };
