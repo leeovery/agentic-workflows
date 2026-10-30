@@ -598,32 +598,28 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
   }
 
   it('renders the now-or-later choice over a recorded spawn, consequences named', () => {
-    holderWith('research', ['E1']);
-    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing', id: 'E1' });
+    holderWith('discussion', ['E1']);
+    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.discussion.timing', id: 'E1' });
     assert.match(out, /=== MENU: experiment spawn gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
     assert.match(out, /◆ Work E1 now\?/);
     const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
     assert.ok(n > -1 && l > n, 'yes leads, later follows');
-    assert.match(unwrap(out), /Pause this research here and return to the epic menu with E1 queued/);
+    assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1 queued/);
     assert.ok(!out.includes('the session ends'), 'the pause returns through the bridge — the row never describes a session ending');
-    assert.match(unwrap(out), /Keep the conversation going — this research cannot conclude until E1's evidence lands/);
-  });
-
-  it('addresses the spawning discussion identically', () => {
-    holderWith('discussion', ['E3']);
-    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.discussion.timing', id: 'E3' });
-    assert.match(unwrap(out), /this discussion cannot conclude until E3's evidence lands/);
+    assert.match(unwrap(out), /Keep the conversation going — this discussion cannot conclude until E1's evidence lands/);
   });
 
   it('refuses a missing id, an unawaited id, and a non-spawn address', () => {
-    holderWith('research', ['E1']);
-    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing' }),
+    holderWith('discussion', ['E1']);
+    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.discussion.timing' }),
       /--id is required/);
-    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.research.timing', id: 'E9' }),
-      /research "timing" holds no evidence wait on E9 — the gate follows the recorded spawn/);
-    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.experiment.timing', id: 'E1' }),
-      /address must be <work_unit>\.<research\|discussion>\.<topic>/);
+    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.discussion.timing', id: 'E9' }),
+      /discussion "timing" holds no evidence wait on E9 — the gate follows the recorded spawn/);
+    for (const phase of ['research', 'experiment']) {
+      assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: `lab.${phase}.timing`, id: 'E1' }),
+        /address must be <work_unit>\.<discussion>\.<topic>/);
+    }
   });
 
   it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the yes/keep menu', () => {
@@ -640,10 +636,10 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
   });
 
   it('the wait gate is empty over an item with no live wait, and refuses an address outside the waiting phases', () => {
-    holderWith('research');
-    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.research.timing' }), '');
+    holderWith('discussion');
+    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' }), '');
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.timing' }),
-      /address must be <work_unit>\.<research\|discussion\|planning>\.<topic>/);
+      /address must be <work_unit>\.<discussion\|planning>\.<topic>/);
   });
 });
 
@@ -703,8 +699,8 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
     billingWith(undefined, { status: 'in-progress' });
     assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
-    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.research.billing' }),
-      /no research item "billing" — nothing to hold shut/, 'an absent item is a misrouted address, never a clear conclusion');
+    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.invoicing' }),
+      /no discussion item "invoicing" — nothing to hold shut/, 'an absent item is a misrouted address, never a clear conclusion');
   });
 
   it('a feature\'s discussion waits on its research the same way — the pause names the work unit\'s next step, never a menu', () => {
@@ -726,17 +722,17 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
     writeManifest(dir, 'feat', {
       work_type: 'feature',
-      phases: { research: { items: { feat: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
+      phases: { discussion: { items: { feat: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
     });
-    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.research.feat', id: 'E1' });
-    assert.match(unwrap(out), /Pause this research here and open the laboratory for E1/);
+    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.discussion.feat', id: 'E1' });
+    assert.match(unwrap(out), /Pause this discussion here and open the laboratory for E1/);
     assert.ok(!out.includes('menu'), 'no menu on a linear unit');
   });
 
   it('refuses a phase that holds no wait', () => {
     billingWith({ status: 'in-progress' }, { status: 'in-progress' });
     assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.billing' }),
-      /address must be <work_unit>\.<research\|discussion\|planning>\.<topic>/);
+      /address must be <work_unit>\.<discussion\|planning>\.<topic>/);
   });
 
   it('a plan waits on its specification — the blocker names why it is unsettled, the guidance the way out', () => {

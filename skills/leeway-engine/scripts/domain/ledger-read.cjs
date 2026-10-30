@@ -32,9 +32,10 @@
 //   record shows it, those standing elsewhere that it shows for what was
 //   made on it, and each current answer placed on it that no current
 //   question answers, a row headed by the answer as a row shows one; an
-//   open question one of the unit's experiments measures while it runs is
-//   marked waiting on it (9.1.11). A unit or topic that is not live has no
-//   current entry to show.
+//   open question one of the unit's experiments measures is marked waiting
+//   on it, running or concluded, until the discussion writes the result;
+//   an abandoned one leaves it open (9.1.11). A unit or topic that is not
+//   live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version; a decision the late one-decision
 //   check judged shows beside it what the check found, `late_check`, one
@@ -210,7 +211,7 @@ function rowHead(shower, row) {
 }
 
 /**
- * The questions the unit's experiments measure while they run, by the
+ * The questions the unit's experiments measure, none abandoned, by the
  * first entry of each question's chain, with the experiment's id: a
  * question the ledger lacks is passed over.
  * @param {Folded} folded @param {string} root @param {string} unit

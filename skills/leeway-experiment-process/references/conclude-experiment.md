@@ -40,6 +40,6 @@ Commit:
 node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} concluded"
 ```
 
-When the conclude response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carried `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles.
+When the conclude response carried `released_waits`, say in one line where the ball sits: the spawning conversation's wait on this experiment is released, and the evidence surfaces when it next opens. When it carried `reconcile_flagged`, name the flagged item the same way — evidence arrived after its decision, and its next entry reconciles. When it carried `report_sent`, say in one line that the question this experiment measured was closed before the report landed, so the report waits in the topic's mail — reopening the topic, where `reopened` is true.
 
 → Return to caller.

@@ -302,8 +302,8 @@ function auditState(dir, label) {
 // while one leads, later where the last live move the map's unit made of it
 // took it to the roadmap and it is neither, moved in from where the last
 // live move to a topic the map's unit made of it was made, while that is
-// live, and waiting on the last experiment of the unit neither concluded
-// nor abandoned that names any wording of it while it is open; a row for
+// live, and waiting on the last experiment of the unit not abandoned that
+// names any wording of it while it is open; a row for
 // each shown question standing on another topic of the map's unit that the
 // unit moved away from the topic by a live move, leading to where it stands
 // now; and a row for each other shown question placed on the topic or with
@@ -414,11 +414,11 @@ function auditLedger(dir, ctx) {
     const last = movesOf(id, standing(id).unit).at(-1);
     return last === undefined || toTopic(last) ? null : last.to;
   };
-  /** The last experiment of `unit` neither concluded nor abandoned that names any wording of `id`'s question, or null. @param {string} unit @param {string} id */
+  /** The last experiment of `unit` not abandoned that names any wording of `id`'s question, or null. @param {string} unit @param {string} id */
   const waitingOn = (unit, id) => {
     const items = manifests.get(unit)?.phases?.experiment?.items ?? {};
     const named = Object.values(items).flatMap((item) => Object.entries(item?.experiments ?? {}))
-      .filter(([, r]) => byId.has(r.question) && !schema.EXPERIMENT_TERMINAL_STATUSES.includes(r.status) && firstOf(r.question).id === firstOf(id).id);
+      .filter(([, r]) => byId.has(r.question) && r.status !== 'abandoned' && firstOf(r.question).id === firstOf(id).id);
     return named.at(-1)?.[0] ?? null;
   };
   /** What the late check last found of each entry it judged. @type {Map<string, string>} */

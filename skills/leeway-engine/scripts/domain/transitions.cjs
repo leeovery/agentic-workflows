@@ -1107,12 +1107,6 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, item));
     }
-    // A superseded holder is terminal — its evidence waits would strand with
-    // live records and no consumer.
-    const awaiting = awaitedExperiments(manifest, phase, topic);
-    if (awaiting.length > 0) {
-      throw new Error(`${phase} item "${topic}" holds live evidence waits (${awaiting.join(', ')}) — a superseded holder would strand those experiments with no consumer; conclude or abandon them first`);
-    }
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
