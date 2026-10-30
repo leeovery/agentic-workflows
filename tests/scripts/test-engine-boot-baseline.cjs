@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // What boot reads of the project for the start menu
-// (leeway-engine/scripts/domain/boot.cjs): the baseline's status, the
+// (leeway-engine/scripts/domain/boot.cjs): the baseline's status, a moved
+// project's remembered brownfield answer standing for it, the
 // walkthrough's recorded answer, and the baseline signal — the code history
 // from before the workflows arrived; and no worktree include written.
 //
@@ -60,6 +61,16 @@ describe('engine boot', () => {
     // No project manifest at all → none.
     fs.rmSync(projManifest);
     assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
+  });
+
+  it('baseline: a moved project\'s remembered brownfield answer reads as its status, so boot hands over no signal and the judgment and the offer are not made again (21.S50, 8.12.11)', () => {
+    const projManifest = statePath(fix.project, layout.projectManifest);
+
+    for (const answer of ['native', 'skipped', 'completed']) {
+      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, brownfield_offer: answer }));
+      const res = runEngine(stubbed, fix.project, ['boot']);
+      assert.deepStrictEqual([res.baseline, 'baseline_signal' in res], [answer, false], answer);
+    }
   });
 
   it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {

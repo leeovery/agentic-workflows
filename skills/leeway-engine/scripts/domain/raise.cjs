@@ -167,6 +167,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
+const { carrying } = require('./ledger.cjs');
 const { entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
@@ -429,14 +430,15 @@ function entryOf(call, row) {
 }
 
 /**
- * Every row judged by the one-decision check, the calls put at once. Answers
- * the keys of the rows it judged to hold one rule; refuses where any row
- * holds several, naming each such row and its rules.
- * @param {Call} call
+ * Every row judged by the one-decision check, the calls put at once, each
+ * run logged as `run` says. Answers the keys of the rows it judged to hold
+ * one rule; refuses where any row holds several, naming each such row and
+ * its rules.
+ * @param {Call} call @param {import('./ledger-one-decision.cjs').Run} run
  * @returns {Promise<string[]>}
  */
-async function checkedRows(call) {
-  const judged = await Promise.all(call.rows.map((row) => judgeDecisionAsync(entryOf(call, row))));
+async function checkedRows(call, run) {
+  const judged = await Promise.all(call.rows.map((row) => judgeDecisionAsync(entryOf(call, row), run)));
   const several = call.rows.flatMap((row, i) => {
     const one = judged[i];
     return 'rules' in one && one.rules.length > 1 ? [{ row: row.key, rules: one.rules }] : [];
@@ -444,7 +446,7 @@ async function checkedRows(call) {
   if (several.length > 0) {
     const listed = several.map(({ row, rules }) => `  row ${row}:\n${rules.map((rule, n) => `    ${n + 1}. ${rule}`).join('\n')}`).join('\n');
     const err = new Error(`raise: ${several.length === 1 ? `row ${several[0].row} holds` : `rows ${several.map((s) => s.row).join(', ')} each hold`} several rules, and the entry a row lands as holds one — nothing drawn. Make each row one answer to the question, and raise what else it decides as a question of its own:\n${listed}`);
-    throw Object.assign(err, { payload: { several } });
+    throw carrying(Object.assign(err, { payload: { several } }), run.warnings);
   }
   return call.rows.filter((_, i) => 'rules' in judged[i]).map((row) => row.key);
 }
@@ -716,7 +718,7 @@ async function drawRaise(cwd, args, stdin) {
   }
   if (fact) return askedRaise(session, place, target, { call: /** @type {Fact} */ (given), fact: true }, [], ONLY_YOU_KNOW, warnings);
   const call = /** @type {Call} */ (given);
-  const judged = await checkedRows(call);
+  const judged = await checkedRows(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decisionPoint.decide(call);
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
