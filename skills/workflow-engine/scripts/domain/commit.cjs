@@ -116,15 +116,20 @@ function commitLockPath(cwd) {
   return gitPath(cwd, 'workflows-commit.lock');
 }
 
+/** Why a tree with the state branch checked out takes no code commit, after the tree's name. */
+const STATE_BRANCH_HELD = `has the state branch ${STATE_BRANCH} checked out — the state commits through its own door`;
+
+/** Whether a tree has the state branch checked out. @param {string} cwd */
+function onStateBranch(cwd) {
+  return tryGit(cwd, ['symbolic-ref', '-q', 'HEAD'])?.trim() === `refs/heads/${STATE_BRANCH}`;
+}
+
 /**
  * Refuse a code commit in a tree that has the state branch checked out.
  * @param {string} cwd the tree the commit would land in
  */
 function refuseStateBranch(cwd) {
-  const head = tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']);
-  if (head !== null && head.trim() === `refs/heads/${STATE_BRANCH}`) {
-    throw new Error(`refusing a code commit in ${cwd}: it has the state branch ${STATE_BRANCH} checked out — the state commits through its own door`);
-  }
+  if (onStateBranch(cwd)) throw new Error(`refusing a code commit in ${cwd}: it ${STATE_BRANCH_HELD}`);
 }
 
 /**
@@ -318,6 +323,8 @@ module.exports = {
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,
+  onStateBranch,
+  STATE_BRANCH_HELD,
   discoveryScope,
   OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,

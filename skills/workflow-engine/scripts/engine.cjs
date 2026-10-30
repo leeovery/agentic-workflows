@@ -37,7 +37,9 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
+const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
+const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.cjs');
+const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
@@ -309,6 +311,7 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --topic <phase>/<topic> [--sweep]]
+  commit --paths <file> … -m <message> --task <work-unit> <N.M>
   commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
   commit --inbox -m <message>
   commit --roadmap -m <message>
@@ -1903,7 +1906,8 @@ function runStateMerge(call, argv) {
 // work unit, the inbox, the roadmap, the whole state, one topic's artifacts
 // (`--topic`), the discovery session's paths (`--discovery`), the imports
 // home and the manifest that records its entries (`--imports`). The code
-// tree's commit on the branch checked out: declared code paths (`--paths`).
+// tree's commit on the branch checked out: declared code paths (`--paths`),
+// for the task in flight (`--task`) or a code topic (`--for`).
 // Two forms make one commit on each side: a plan (`--plan`), its state and
 // its declared storage, and the migration review (`--migrations`), the state
 // and the files the workflows own in the code tree. A clean scope is fine:
@@ -2014,7 +2018,8 @@ function assertCommittable(repos, spec, given) {
  * rebase may be in progress there: the commit would take on its state. And
  * it must be on a branch: a commit on a detached HEAD (a submodule after
  * `git submodule update`) is orphaned by the next checkout there. The
- * operation is asked first, as a rebase detaches HEAD while it runs.
+ * operation is asked first, as a rebase detaches HEAD while it runs. Nor
+ * may it have the state branch checked out (4.9.3).
  * @param {import('./kernel/repos.cjs').Repo} repo
  */
 function assertCommitsHere(repo) {
@@ -2025,6 +2030,7 @@ function assertCommitsHere(repo) {
   if (!onBranch(repo.path)) {
     throw new Error(`commit --paths: ${repoName(repo)} is on a detached HEAD — check out a branch there, then run the commit again`);
   }
+  if (onStateBranch(repo.path)) throw new Error(`commit --paths: ${repoName(repo)} ${STATE_BRANCH_HELD}`);
 }
 
 /**
@@ -2048,29 +2054,87 @@ function assertCodeTarget(cwd, target) {
 }
 
 /**
- * The code commit: the declared paths, each committed confined in the repo
- * that owns it under that repo's commit lock, answering with what the
- * project's repos still hold. `left_dirty` is the backstop for a forgotten
- * path — every tracked modification and untracked file left in the code
- * (the state is never code dirt).
- * @param {string} cwd @param {string[]} paths @param {string} message
- * @param {{workUnit: string, phase: string, topic: string}} target
- * @returns {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}}
+ * @typedef {{task?: string, checks?: import('./domain/commit-task.cjs').CheckRun[]}} CodeCommitTask
+ * @typedef {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string} & CodeCommitTask} CodeCommitted
  */
-function commitCodePaths(cwd, paths, message, target) {
-  assertCodeTarget(cwd, target);
+
+/**
+ * The project's repos and the code commit's share of the declared paths in
+ * each, every path and every repo checked before any repo commits.
+ * @param {string} cwd @param {string[]} paths
+ */
+function checkedGroups(cwd, paths) {
   const repos = projectRepos(cwd);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
   groups.forEach(({ repo }) => assertCommitsHere(repo));
-  const committed = commitAcrossRepos(groups, message);
-  beatQuietly(cwd, target.workUnit, target.phase, target.topic);
-  /** @type {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}} */
-  const result = { committed, left_dirty: projectDirtyEntries(repos).map((e) => e.path) };
+  return { repos, groups };
+}
+
+/**
+ * The code commit's answer: the commits made, with what the project's repos
+ * still hold. `left_dirty` is the backstop for a forgotten path — every
+ * tracked modification and untracked file left in the code (the state is
+ * never code dirt).
+ * @param {import('./kernel/repos.cjs').Repo[]} repos @param {{repo: string, sha: string}[]} committed @param {CodeCommitTask} [more]
+ * @returns {CodeCommitted}
+ */
+function codeCommitted(repos, committed, more = {}) {
+  /** @type {CodeCommitted} */
+  const result = { committed, left_dirty: projectDirtyEntries(repos).map((e) => e.path), ...more };
   if (committed.length === 0) result.note = 'nothing to commit';
   return result;
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
+/**
+ * The code commit for a code topic: the declared paths, each committed
+ * confined in the repo that owns it under that repo's commit lock, and the
+ * topic beaten.
+ * @param {string} cwd @param {string[]} paths @param {string} message
+ * @param {{workUnit: string, phase: string, topic: string}} target
+ * @returns {CodeCommitted}
+ */
+function commitCodePaths(cwd, paths, message, target) {
+  assertCodeTarget(cwd, target);
+  const { repos, groups } = checkedGroups(cwd, paths);
+  const committed = commitAcrossRepos(groups, message);
+  beatQuietly(cwd, target.workUnit, target.phase, target.topic);
+  return codeCommitted(repos, committed);
+}
+
+/**
+ * The code commit for a task in flight in the calling conversation
+ * (domain/commit-task.cjs): the task and the paths checked, then the
+ * project's checks run — before any lock is taken — then the paths
+ * committed as `commitCodePaths` commits them, under a message naming the
+ * task. Answers the task's id and each check run.
+ * @param {string} cwd @param {string[]} paths @param {string} message @param {string} unit @param {string} given
+ */
+function commitTaskPaths(cwd, paths, message, unit, given) {
+  const ref = inFlightTask(cwd, unit, given);
+  const { repos, groups } = checkedGroups(cwd, paths);
+  const checks = runChecks(cwd);
+  const committed = commitAcrossRepos(groups, workMessage(message, ref));
+  return codeCommitted(repos, committed, { task: taskId(ref), checks });
+}
+
+/**
+ * The code commit its target names: `--task <unit> <N.M>`, or today's
+ * `--for <work-unit> <implementation|review>/<topic>`.
+ * @param {string} cwd @param {string[]} paths @param {string} message @param {string[]} forSpec @param {string[]} taskSpec
+ */
+function commitCode(cwd, paths, message, forSpec, taskSpec) {
+  if (taskSpec.length > 0) {
+    const [unit, given] = taskSpec;
+    if (forSpec.length > 0 || taskSpec.length !== 2 || !unit || !given) throw new Error(COMMIT_USAGE);
+    return commitTaskPaths(cwd, paths, message, unit, given);
+  }
+  const [workUnit, topicSpec] = forSpec;
+  const [phase, topic, ...more] = (topicSpec || '').split('/');
+  if (forSpec.length !== 2 || !workUnit || more.length > 0 || !CODE_PHASES.includes(phase) || !topic) throw new Error(COMMIT_USAGE);
+  return commitCodePaths(cwd, paths, message, { workUnit, phase, topic });
+}
+
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -2081,6 +2145,7 @@ function runCommit(call, argv) {
     /** @type {string|null} */ let topicSpec = null;
     /** @type {string[]} */ const files = [];
     /** @type {string[]} */ const forSpec = [];
+    /** @type {string[]} */ const taskSpec = [];
     let paths = false;
     let discovery = false;
     let stateScope = false;
@@ -2096,9 +2161,11 @@ function runCommit(call, argv) {
       else if (a === '--plan') plan = argv[++i];
       else if (a === '--topic') topicSpec = argv[++i];
       else if (a === '--paths') paths = true;
-      // The code commit's target: work unit and phase/topic, in containment
-      // order, for the beat and nothing else.
+      // The code commit's target, each in containment order: the work unit
+      // and phase/topic, for the beat and nothing else, or the unit and the
+      // task in flight.
       else if (a === '--for') forSpec.push(argv[++i], argv[++i]);
+      else if (a === '--task') taskSpec.push(argv[++i], argv[++i]);
       else if (a === '--sweep') sweep = true;
       else if (a === '--discovery') discovery = true;
       else if (a === '--imports') importsScope = true;
@@ -2116,14 +2183,11 @@ function runCommit(call, argv) {
     if (paths) {
       // Code commits are the one scope no layout derives (P7): declared,
       // validated, confined, and answered with the residual dirt.
-      const [forWorkUnit, forTopicSpec] = forSpec;
-      const parts = (forTopicSpec || '').split('/');
-      if (!message || files.length === 0 || forSpec.length !== 2 || !forWorkUnit || parts.length !== 2
-          || !CODE_PHASES.includes(parts[0]) || !parts[1] || plan !== null || topicSpec !== null
+      if (!message || files.length === 0 || plan !== null || topicSpec !== null
           || discovery || importsScope || stateScope || inbox || workflows || migrationsScope || roadmapScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
-      respond(call, commitCodePaths(cwd, files, message, { workUnit: forWorkUnit, phase: parts[0], topic: parts[1] }));
+      respond(call, commitCode(cwd, files, message, forSpec, taskSpec));
       return;
     }
 
@@ -2132,7 +2196,7 @@ function runCommit(call, argv) {
     const globalState = stateScope && workUnit === null;
     const scopeCount = [inbox, workflows, migrationsScope, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [plan !== null, topicSpec !== null, discovery, importsScope, stateScope && workUnit !== null].filter(Boolean).length;
-    if (!message || scopeCount !== 1 || forSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
+    if (!message || scopeCount !== 1 || forSpec.length > 0 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
         topicSpec === '' || topicSpec === undefined ||
         (sweep && topicSpec === null)) {

@@ -16,7 +16,8 @@
 //                  one list item: its id, whose it is, its answer and why,
 //                  every line after its first indented
 //   linters        the project's linters, each its name and its command,
-//                  from the environment on the project manifest (22.5.12)
+//                  from the environment on the project manifest (22.5.12,
+//                  environment.cjs)
 //   diff-range     in each repository holding the task's branch, by the
 //                  landing's rule (landing-git.cjs), under a heading naming
 //                  the repository, the range from its base to the branch,
@@ -46,8 +47,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { readProjectManifest } = require('../kernel/manifest.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { linters } = require('./environment.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { recordOf, standingOf } = require('./ledger-fold.cjs');
 const { readCitedSections, headingLevels } = require('./spec-sections.cjs');
@@ -128,19 +128,9 @@ function drawDecidedCalls(filling, warnings) {
   ));
 }
 
-/** Whether a value is text with something in it. @param {unknown} value */
-const filled = (value) => typeof value === 'string' && value.trim() !== '';
-
 /** @param {Filling} filling */
 function drawLinters({ cwd }) {
-  const { environment } = readProjectManifest(cwd);
-  if (environment === undefined) return NONE;
-  const linters = isObject(environment) ? environment.linters : null;
-  if (linters === undefined) return NONE;
-  if (!Array.isArray(linters) || !linters.every((linter) => isObject(linter) && filled(linter.name) && filled(linter.command))) {
-    throw new Error('the project manifest\'s environment.linters is not a list of {name, command}');
-  }
-  return listed(linters.map(({ name, command }) => `- ${name}: ${command}`));
+  return listed(linters(cwd).map(({ name, command }) => `- ${name}: ${command}`));
 }
 
 // Off a terminal git fits a stat to 80 columns, cutting a long path from its

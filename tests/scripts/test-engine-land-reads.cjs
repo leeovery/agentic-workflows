@@ -12,10 +12,11 @@
 // a commit naming tasks of two phases no task of either; a phase merged on
 // a merge's second parent; a task whose commits change nothing past the tip
 // opening as a landing that changes nothing, and why; landings squashed
-// into one commit, each landing; the oldest task a stacked phase's base
-// lacks named first; and a subject, title or path the person wrote named
-// with no backquote left to open a command. Its stacks are
-// test-engine-land-local.cjs's. Git layer: the landing world
+// into one commit, each landing; a work commit naming its task by the
+// commit door's trailer never read as that task landed; the oldest task a
+// stacked phase's base lacks named first; and a subject, title or path the
+// person wrote named with no backquote left to open a command. Its stacks
+// are test-engine-land-local.cjs's. Git layer: the landing world
 // (landing-world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
 
@@ -29,6 +30,8 @@ const { ok, git, tip, initRepo } = require('./engine-harness.cjs');
 const {
   TASKS, openArgs, own, track, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short,
 } = require('./landing-world.cjs');
+const { workMessage } = require('../../skills/workflow-engine/scripts/domain/commit-task.cjs');
+const { parseShownTask } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
 
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
@@ -190,5 +193,18 @@ describe('land: what the local driver records, and the shapes of landing it read
     ok(dir, openArgs(cutTask(dir, '3.2', 'fix', 'Currency down', down.branch, { 'cd.txt': 'cd\n' })));
     git(dir, ['branch', '-D', 'feat/pay-phase-2']);
     assert.match(refusedMoving(dir, ['land', 'phase', 'pay', '3']), /^land: phase 3 is built on task 2\.1, which main does not hold/);
+  });
+
+  it('never reads the commit door\'s trailer as a task landed: a work commit brought onto a phase\'s branch by hand is no task of the phase, and one merged into the default branch merges no phase', () => {
+    const onPhase = project();
+    ok(onPhase, openArgs(card));
+    commitFiles(onPhase, 'feat/pay-phase-1', 'feat/pay-phase-1', { 'more.txt': 'more\n' }, { message: workMessage('Show more', parseShownTask('pay', '1.2')) });
+    assert.match(refusedMoving(onPhase, openArgs(total)), /^land: feat\/pay-phase-1 holds \w+ "Show more", which is no task of phase 1 — /);
+
+    const onMain = project();
+    ok(onMain, openArgs(card));
+    commitFiles(onMain, 'wip', 'main', { 'more.txt': 'more\n' }, { message: workMessage('Add more', parseShownTask('pay', '1.1')) });
+    mergeBack(onMain, 'main', 'wip');
+    assert.deepStrictEqual(own(ok(onMain, ['land', 'phase', 'pay', '1'])).merged, ['1.1']);
   });
 });

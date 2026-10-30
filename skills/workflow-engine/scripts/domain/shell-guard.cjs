@@ -51,7 +51,7 @@
 const path = require('path');
 const { simpleCommands } = require('../kernel/shell-reader.cjs');
 const { STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
-const { taskInFlight } = require('./conversation.cjs');
+const { tasksInFlight } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
@@ -70,8 +70,12 @@ const REFUSED = Object.freeze({
   stateCommit: `a raw git commit in the state worktree (${STATE_DIR_NAME}) is refused — every state commit is the engine's, made by the verb that changes the state`,
 });
 
-/** Why a raw commit is refused during a build, with the door's call for its task. @param {InFlight} inFlight */
-const buildCommit = ({ unit, task }) => `a raw git commit is refused while task ${task} of ${unit} is in flight — the build commits through the commit door: \`engine commit --paths <file>… --task ${unit} ${task} -m "<message>"\``;
+/** Why a raw commit is refused during a build, with the door's call for each task in flight. @param {InFlight[]} tasks */
+function buildCommit(tasks) {
+  const named = tasks.map(({ unit, task }) => `task ${task} of ${unit}`).join(', ');
+  const doors = tasks.map(({ unit, task }) => `\`engine commit --paths <file>… --task ${unit} ${task} -m "<message>"\``).join(' or ');
+  return `a raw git commit is refused while ${named} ${tasks.length === 1 ? 'is' : 'are'} in flight — the build commits through the commit door: ${doors}`;
+}
 
 /** What a refusal of a file at user level says beyond the layout hook's reason. */
 const NAMED = 'a shell command naming it is refused, and the Read and Grep tools read it';
@@ -202,16 +206,16 @@ function pushRefusal(git) {
   return forcesOurs ? REFUSED.force : null;
 }
 
-/** @param {GitCommand} git @param {() => InFlight|null} inFlight */
+/** @param {GitCommand} git @param {() => InFlight[]} inFlight */
 function commitRefusal(git, inFlight) {
   if (inStateWorktree(git)) return REFUSED.stateCommit;
-  const task = inFlight();
-  return task === null ? null : buildCommit(task);
+  const tasks = inFlight();
+  return tasks.length === 0 ? null : buildCommit(tasks);
 }
 
 /**
  * Each refusal of a git command, by its subcommand.
- * @type {Readonly<Record<string, (git: GitCommand, inFlight: () => InFlight|null) => string|null>>}
+ * @type {Readonly<Record<string, (git: GitCommand, inFlight: () => InFlight[]) => string|null>>}
  */
 const GIT_REFUSALS = Object.freeze({
   worktree: worktreeRefusal,
@@ -252,7 +256,7 @@ function namedRefusal({ words, targets, cwd }) {
   return null;
 }
 
-/** @param {SimpleCommand} command @param {() => InFlight|null} inFlight */
+/** @param {SimpleCommand} command @param {() => InFlight[]} inFlight */
 function gitRefusal(command, inFlight) {
   const git = gitCommand(command);
   if (git === null || git.sub === null || !Object.hasOwn(GIT_REFUSALS, git.sub)) return null;
@@ -261,7 +265,7 @@ function gitRefusal(command, inFlight) {
 
 /**
  * Why the hook refuses one simple command, or null.
- * @param {SimpleCommand} command @param {() => InFlight|null} inFlight
+ * @param {SimpleCommand} command @param {() => InFlight[]} inFlight
  * @returns {string|null}
  */
 function commandRefusal(command, inFlight) {
@@ -269,16 +273,16 @@ function commandRefusal(command, inFlight) {
 }
 
 /**
- * The task in flight in the conversation `input` names, read once and only
+ * The tasks in flight in the conversation `input` names, read once and only
  * when asked.
- * @param {Record<string, unknown>} input @returns {() => InFlight|null}
+ * @param {Record<string, unknown>} input @returns {() => InFlight[]}
  */
 function inFlightOf({ session_id: session }) {
-  /** @type {{read: InFlight|null}|null} */
+  /** @type {InFlight[]|null} */
   let known = null;
   return () => {
-    known ??= { read: typeof session === 'string' && session !== '' ? taskInFlight(session) : null };
-    return known.read;
+    known ??= typeof session === 'string' && session !== '' ? tasksInFlight(session) : [];
+    return known;
   };
 }
 

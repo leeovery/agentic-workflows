@@ -1429,7 +1429,7 @@ describe('commit door: never a code commit on the state branch', () => {
   beforeEach(() => { dir = setupGitFixture('engine-commit-'); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('refuses a tree that has leeway-state checked out, running nothing there', () => {
+  it('4.S20: refuses a tree that has leeway-state checked out, running nothing there', () => {
     const state = statePath(dir);
     createFile(state, 'stray.md', '# stray\n');
     const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
