@@ -1235,7 +1235,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.1.4 `ledger` (new): ask, find, decide, replace, hold, move, merge; and reads of the record, the map, the product record, "since you last looked", and what a replacement affects (§5). [plan 6.1; Claude's]
 
-6.1.5 `raise` (new): puts a call through the decision point and returns ask, proceed or ask blind; records the person's answer, "I don't follow" included (§16). [plan 6.1; Claude's]
+6.1.5 `raise` (new): puts a call through the decision point and returns ask, proceed or ask blind; records the person's answer, "I don't follow" included (§16). A raise marked as a fact (16.3.8) carries no lean and may have no rows. [plan 6.1; Claude's; Claude's proposal]
 
 6.1.6 `verdict` (new): the queue, and giving a verdict (§16). [plan 6.1; Claude's]
 
@@ -1247,7 +1247,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.1.10 `checklist` (new): show, done, skip with a reason, and close, which refuses while an item is open and records the close (6.4). [plan 6.1; Claude's; Claude's derivation 2026-10-30, 29.8 slicing: the closing verb of 6.4.4 is `checklist`'s]
 
-6.1.11 `asset` (new): add with its status, change the status (§9). [plan 6.1; Claude's]
+6.1.11 `asset` (new): add with its status, change the status, record a lift into the project (9.10.16) (§9). [plan 6.1; Claude's; Claude's derivation, C43 assessment: a lift is the asset event's (5.3.15), so the verb records it; 29.11 builds it]
 
 6.1.12 `verify` (new): run and record a proof, and the bug-proven run (§15). [plan 6.1; Claude's]
 
@@ -5972,7 +5972,7 @@ captured screen · 41 lines                              ▸ open
 
 16.3.7 Telling a call with one defensible answer from one with several is Claude's judgement, by the existing ask-or-decide reference (16.1.5), and a call with one defensible answer proceeds as Claude's (16.16.3) while the count of such calls allows (16.4.10). Every call on a question of intent or taste, those with one defensible answer included, reaches the decision point (16.2.1): the separate call labels it (16.19), it lands in the ledger and the trust log, where it can be overruled, it can be drawn as a blind question (16.17), and an overrule of it counts in the evidence (16.12). The always-ask rules outrank the sort: a call with one defensible answer still asks where it is a danger question (16.5.1), falls under a care entry (16.5.2), or would replace an entry the person decided (16.5.7). [R24, R25; ruled by the person 2026-10-13 and 2026-10-21; Claude's derivation, O65; 16.5.1, 16.5.2, 16.5.7]
 
-16.3.8 A fact Claude cannot check and only the person holds — a deadline, an outside constraint, an account Claude cannot reach — goes to the person through `raise` as a fact (2.2.9). It is always asked, never settled on Claude's lean, and counts for nothing in the trust layer: it takes no label, adds no evidence and meets no threshold (16.3.2). Its rows are optional, and the person answers in their own words. [Claude's proposal: 16.3.1 checks what Claude can find out and 16.3.2 admits only intent and taste, so a fact only the person holds had no way to them]
+16.3.8 A fact Claude cannot check and only the person holds — a deadline, an outside constraint, an account Claude cannot reach — goes to the person through `raise` as a fact (2.2.9). It carries no lean, is always asked, and counts for nothing in the trust layer: it takes no label, adds no evidence and meets no threshold (16.3.2). Its rows are optional, and the person answers in their own words. [Claude's proposal: 16.3.1 checks what Claude can find out and 16.3.2 admits only intent and taste, so a fact only the person holds had no way to them]
 
 ### 16.4 The ask rule
 
@@ -7561,7 +7561,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents, postpones the topic as the discovery row does and reports it in one line, and the session moves to the epic's menu; given a feature in session, when the person asks inside it to cancel the feature, then Claude confirms, cancels it as manage does, and the session moves to the start menu; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4, 18.4.9, 18.3.4)
 
-18.S57 Given a topic held by another live session, when the epic menu shows, then it is never the recommended row; when the person enters it, then `enter` answers with the question alone, naming when that session was last active, and writes nothing; yes enters through `enter … --take`, and no hands back to the epic menu, or, for a single-topic unit, leads nowhere. (18.4.21, 6.1.21)
+18.S57 Given a topic held by another live session, when the epic menu shows, then it is never the recommended row; when the person enters it from the menu, then they meet `enter`'s question. (18.4.21)
 
 18.S58 Given a topic with an open experiment, when the topic is cancelled, then the experiment ends abandoned with the cancel as its reason; when the topic is reactivated, the experiment stays abandoned. (18.4.22)
 
@@ -7588,6 +7588,8 @@ Ask    → Ask anything about triage or the inbox
 18.S69 Given a topic whose session has ended, when the epic menu renders, then the topic is not shown in session. (18.4.3, 18.4.8)
 
 18.S70 Given any project, when the start menu renders, then it shows the p row, "Talk about the product", whatever else is running, with the session count and last date once the product's conversation has sessions, and the roadmap's own row beside it. (18.2.12, 18.2.13)
+
+18.S71 Given a place another live session holds, when it is entered through `enter`, then `enter` answers with the question alone, naming when that session was last active, and writes nothing; yes enters through `enter … --take`, and no hands back to the epic menu, or, for a single-topic unit, leads nowhere. (18.4.21, 6.1.21)
 
 ## 19. Work types
 
@@ -11831,11 +11833,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.3 The mailboxes between topics come with it (§10). [plan 3.4]
 
-29.11.5 Draws on: §9, §10, §2.2, §2.4, §2.5, §2.10, §2.12, §3.1, §3.2, §5.6, §5.9, §6.1, §6.4, §6.6, §8.9, §16.2, §16.3, §16.9, §16.10, §16.11, §17.1, §17.2, §21.5, §21.6, §21.7, §21.10, §21.12, §22.6, §24.1, §24.2, §26.1, §26.5, §27.2, §16.12, §16.4, §16.7, §5.8, §16.13, §12.4, §7.1, §7.5, §4.10, §4.11, §8.14, §5.5, §5.3. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.S40, proven here, reads 5.8.17; Claude's derivation 2026-10-28: the move mints the project's id; Claude's derivation 2026-10-28: the move moves the tracker's store and types its open tasks (21.5.18, 21.5.21); Claude's derivation 2026-10-30, 29.11 planning: the move drops what 4.10 drops and retires today's experiment folders (4.11.15), 9.S67 reads the log's header (8.14), and the one-decision check's log is built here (5.5.9); Claude's derivation, 29.11 slice 11.2 review: 9.S51, proven here, reads the asset event (5.3.15)]
+29.11.5 Draws on: §9, §10, §2.2, §2.4, §2.5, §2.10, §2.12, §3.1, §3.2, §5.6, §5.9, §6.1, §6.4, §6.6, §8.9, §16.2, §16.3, §16.9, §16.10, §16.11, §17.1, §17.2, §21.5, §21.6, §21.7, §21.10, §21.12, §22.6, §24.1, §24.2, §26.1, §26.5, §27.2, §16.12, §16.4, §16.7, §5.8, §16.13, §12.4, §7.1, §7.5, §4.10, §4.11, §8.14, §5.5, §5.3, §18.4. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.S40, proven here, reads 5.8.17; Claude's derivation 2026-10-28: the move mints the project's id; Claude's derivation 2026-10-28: the move moves the tracker's store and types its open tasks (21.5.18, 21.5.21); Claude's derivation 2026-10-30, 29.11 planning: the move drops what 4.10 drops and retires today's experiment folders (4.11.15), 9.S67 reads the log's header (8.14), and the one-decision check's log is built here (5.5.9); Claude's derivation, 29.11 slice 11.2 review: 9.S51, proven here, reads the asset event (5.3.15); Claude's derivation, C43 assessment: 18.S71, proven here, reads 18.4.21]
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
-29.11.7 Proven by: 2.S17, 3.S2, 5.S11, 5.S26, 5.S40, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 26.S3, 27.S4, 21.S49, 2.S18, 21.S52 (116). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S18 and 21.S52 replace 2.S13 and 21.S51, and 2.S15, a walk's alone, goes to 29.20 (29.1.11)]
+29.11.7 Proven by: 2.S17, 3.S2, 5.S11, 5.S26, 5.S40, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 26.S3, 27.S4, 21.S49, 2.S18, 21.S52, 18.S71, 16.S75 (118). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S18 and 21.S52 replace 2.S13 and 21.S51, and 2.S15, a walk's alone, goes to 29.20 (29.1.11); Claude's derivation, C43 assessment: 18.S71 is `enter`'s question (29.11.13); Claude's proposal: 16.S75, a fact raise's engine half (29.11.14)]
 
 29.11.8 Its first part rewrites the framework every phase loads — its instructions, the rule for what reaches `raise`, and the voice and altitude guidance — to CONVENTIONS.md's new shape (29.10), so each phase after builds on it (2.10.9, 16.1, 16.3). [Claude's derivation 2026-10-30, 29.10's review]
 
@@ -11847,7 +11849,9 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.12 `/leeway {unit} {topic}` (10.3.1) comes with it: today's start skill takes the two words and hands off into the topic's discussion, boot first, until 29.16 rebuilds the start around it. [Claude's derivation 2026-10-30, 29.11 planning: 10.S2 is this phase's, and the start is 29.16's rewrite]
 
-29.11.13 The held-topic question (18.4.21) is `enter`'s and comes with it: where another live session holds the place, `enter` answers with the question alone and writes nothing, and `--take` enters. Until 29.16 rebuilds the start, the start skill skips the menus and hands into the topic (29.11.12), so the question is met at the entry; the epic menu's own gate stays, in the same words, for each phase not yet entered through `enter`. This phase proves 18.S57's question, its code half; the scenario stays listed under 29.16, which builds the menu's half, the later of the two (29.1.10). [Claude's derivation, 29.11 slice 11.4]
+29.11.13 The held-topic question (18.4.21) is `enter`'s and comes with it: where another live session holds the place, `enter` answers with the question alone and writes nothing, and `--take` enters. Until 29.16 rebuilds the start, the start skill skips the menus and hands into the topic (29.11.12), so the question is met at the entry; the epic menu's own gate stays, in the same words, for each phase not yet entered through `enter`. This phase proves 18.S71. [Claude's derivation, 29.11 slice 11.4; Claude's derivation, C43 assessment: the question is a scenario of its own, so each scenario is listed under one phase (29.1.10)]
+
+29.11.14 The engine's half of a fact raise (16.3.8) comes with it: a raise marked as a fact never proceeds, takes no label, adds no evidence, meets no threshold and carries no lean, and it may have no rows, the person answering in their own words. [Claude's proposal: `raise` can already proceed on Claude's lean, and the framework sends a fact to `raise` from this phase on, so 29.19 would be too late]
 
 ### 29.12 Discovery
 
@@ -11921,7 +11925,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (106). [R14; Claude's derivation; Claude's derivation, 29.11 slice 11.4: 18.S57's question is `enter`'s, its code half proven by 29.11 (29.11.13)]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (106). [R14; Claude's derivation; Claude's derivation, C43 assessment: 18.S57 keeps the menu's half, and `enter`'s question is 18.S71, under 29.11 (29.11.13)]
 
 29.16.6 `inbox` close and file come with it (6.1.15). [Claude's derivation 2026-10-30, 29.8 slicing: 18.S24 and 18.S25 observe them here]
 
@@ -11967,11 +11971,9 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.19.5 Relies on: 29.3 to 29.5, 29.8, 29.11 to 29.18. [R14; Claude's derivation]
 
-29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69, 16.S75 (85). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75's engine half, a fact raise never proceeding or counting, is built here with `proceed` (29.19.8)]
+29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69 (84). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75 goes to 29.11 (29.11.14)]
 
 29.19.7 An automatic step's response carrying the `next` of the row it ran comes with it (6.6.14). [Claude's derivation 2026-10-30, 29.10's review]
-
-29.19.8 The engine's half of a fact raise (16.3.8) comes with it, with `proceed`: a fact raise never proceeds and never counts, and its rows are optional. [Claude's proposal]
 
 ### 29.20 Rehearsal and the release
 
@@ -11995,7 +11997,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 868 listed are the 868 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 869 listed are the 869 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
