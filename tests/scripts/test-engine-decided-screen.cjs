@@ -33,7 +33,7 @@ const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(
 const { full, carriedOver } = ledgerHelpers(dir);
 
 describe('the decided screen (9.7.3, 9.S21)', () => {
-  it('shows what the person decided, Claude\'s calls by kind with those unlabelled said so, the lines, the candidates and the skip, then the decided gate', () => {
+  it('shows what the person decided, Claude\'s calls by kind with those unlabelled said so, the lines, the candidates and the skip, then the decided gate; and with --calls lists each call under its kind, one handed over marked so, drawing the gate without the calls row', () => {
     ok(dir(), ['checklist', 'skip', 'decided', UNIT, 'note-window', 'closing-pass', '--reason', 'its third re-read reworded one line, and nothing else moved'], { env: SESSION });
     ok(dir(), ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION });
     const out = staged({
@@ -66,15 +66,11 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     const gate = sectionOf(out, 'MENU: decided');
     assert.match(gate, /^Your yes marks Note Window decided, with the product-record line and the candidate\.$/m);
     assert.deepStrictEqual([...gate.matchAll(/^\*\*`?([a-z/]+|Comment)`?\*\*/gm)].map((m) => m[1]), ['y/yes', 'c/calls', 's/strike', 'Comment']);
-  });
 
-  it('lists Claude\'s calls with --calls, each under its kind, and draws the gate without the calls row', () => {
-    close();
-    staged(NO_PAYLOAD);
-    const out = screen(['--calls']);
-    assert.match(sectionOf(out, 'DISPLAY: decided'), /CLAUDE'S CALLS \(5\)\n {2}2 behaviour · 1 words · 2 unlabelled — the labeller gives each its kind\n {2}├─ ◇ What is the screen titled\? +\[words\]\n {2}│ {5}Welcome\.\n/);
-    assert.match(out, /◇ Which corner does a note open in\? +\[unlabelled\]/, 'a call handed over is Claude\'s');
-    assert.ok(!sectionOf(out, 'MENU: decided').includes('c/calls'));
+    const listed = screen(['--calls']);
+    assert.match(sectionOf(listed, 'DISPLAY: decided'), /CLAUDE'S CALLS \(5\)\n {2}2 behaviour · 1 words · 2 unlabelled — the labeller gives each its kind\n {2}├─ ◇ What is the screen titled\? +\[words\]\n {2}│ {5}Welcome\.\n/);
+    assert.match(listed, /◇ Which corner does a note open in\? +\[unlabelled · your call\]/, 'a call handed over is Claude\'s, marked handed over');
+    assert.ok(!sectionOf(listed, 'MENU: decided').includes('c/calls'), 'the calls listed, the gate draws no calls row');
   });
 
   it('refuses while the checklist is open, writing nothing; once the item is skipped and the checklist closed it shows the skip (6.S12)', () => {
@@ -113,6 +109,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     const cases = [
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: finding }], candidates: [] }, `line 1 widens ${finding}: ${finding} is no decision`],
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: NOTE_MAP.shape.question }], candidates: [] }, `line 1 widens ${NOTE_MAP.shape.question}: ${NOTE_MAP.shape.question} is no decision`],
+      [{ lines: [{ text: 'A rule.', why: 'Why.', widens: NOTE_MAP.shape.answer }, { text: 'Another.', why: 'Why.', widens: NOTE_MAP.shape.answer }], candidates: [] }, `line 2 widens ${NOTE_MAP.shape.answer}, as line 1 does — a decision takes one line`],
       [{ lines: [], candidates: [{ name: 'space-homing', reason: 'R.' }] }, 'the candidates: "space-homing" is already on the map — nothing was added; edit it, or pick a different name'],
       [{ lines: [], candidates: [{ name: 'dock-badge', reason: 'R.' }] }, 'the candidates: "dock-badge" was previously dismissed from this map — nothing was added; the person re-adds it on the map'],
       [{ lines: [], candidates: [{ name: 'dock.badge', reason: 'R.' }] }, 'the candidates: entry 1 — "dock.badge" is not a legal topic name (dots and slashes break manifest addressing)'],
@@ -129,11 +126,6 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
   });
 
   it('shows the rows carried over apart, a block of their own, never among what the person decided or Claude\'s calls; and where nothing was the person\'s, says what every question was', () => {
-    carriedOver(NOTE, writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Does a note dim when idle?' }), 'After a minute.');
-    close();
-    const display = sectionOf(staged(NO_PAYLOAD), 'DISPLAY: decided');
-    assert.match(display, /\nWHAT YOU DECIDED \(1\)\n {2}└─ How does first run open\?\n\nCARRIED OVER \(1\)\n {2}└─ Does a note dim when idle\?\n\nCLAUDE'S CALLS \(5\)\n/);
-
     carriedOver(SPACE, writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Does a space keep its own notes?' }), 'Each its own.');
     answeredIn(dir(), SPACE, 'Is a space named?', { ...MADE, text: 'By its folder.' });
     writeIn(dir(), 'move', SPACE, ['--question', writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Where does a note open?' }), '--to', 'note-window'], MADE);

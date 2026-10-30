@@ -6,8 +6,10 @@
 // - the decided screen (9.7.3): what the person decided, and apart from it
 //   what was carried over, never passing as theirs (21.6.5); Claude's calls
 //   counted by kind, a call not yet labelled counted as such until the
-//   labeller gives it one (16.11), opened to list them; the proposed
-//   product-record lines (8.9.7); the new-topic candidates, each with its
+//   labeller gives it one (16.11), opened to list them, one the person
+//   handed over marked so (9.5.4); the proposed product-record lines
+//   (8.9.7), one replacing a line the record holds shown with the text it
+//   replaces (8.9.2); the new-topic candidates, each with its
 //   reason, struck ones marked; and every checklist item skipped, with its
 //   reason (6.4.5). Then the first departure on the topic still to be asked
 //   its verdict (16.10.2) — the verdict gate, one at a time — and once none
@@ -30,9 +32,9 @@ const { ROW_MAX, counted } = require('./map.cjs');
  * @typedef {{
  *   unit: string, topic: string,
  *   decided: string[], carried: string[], moved: number,
- *   calls: {question: string|null, answer: string, kind: string|null}[],
+ *   calls: {question: string|null, answer: string, kind: string|null, handed: string|null}[],
  *   listed: boolean,
- *   lines: string[],
+ *   lines: {text: string, replaces: string|null}[],
  *   candidates: {name: string, reason: string, struck: boolean}[],
  *   skips: {text: string, reason: string}[],
  *   verdict: {entry: string, at: number, of: number, question: string, lean: string|null, yours: string}|null,
@@ -83,18 +85,20 @@ function kindCounts(calls) {
   return [...labelled, ...(unlabelled > 0 ? [`${unlabelled} unlabelled — the labeller gives each its kind`] : [])].join(' · ');
 }
 
-/** Each of Claude's calls, its question cut to keep its kind on the line, its answer beneath. @param {DecidedView['calls']} calls */
+/** Each of Claude's calls, its question cut to keep its tag on the line — its kind, and how the person handed it over where they did — its answer beneath. @param {DecidedView['calls']} calls */
 function callTree(calls) {
-  return renderTree(calls.map(({ question, answer, kind }) => ({
+  return renderTree(calls.map(({ question, answer, kind, handed }) => ({
     title: `◇ ${clipped(question ?? answer, ROW_MAX)}`,
-    tag: kind ?? 'unlabelled',
+    tag: [kind ?? 'unlabelled', ...(handed === null ? [] : [handed])].join(' · '),
     body: question === null ? [] : [answer],
   })), { width: TREE_WIDTH });
 }
 
-/** A line of the product record, its continuations hung under its text. @param {string} line */
-function recordLine(line) {
-  return wrapWithPrefix(`· ${line}`, { width: TREE_WIDTH, prefix: INDENT, hang: 2 }).join('\n');
+/** A line of the product record, its continuations hung under its text, and beneath it the line it replaces. @param {DecidedView['lines'][number]} line */
+function recordLine({ text, replaces }) {
+  const shown = wrapWithPrefix(`· ${text}`, { width: TREE_WIDTH, prefix: INDENT, hang: 2 });
+  if (replaces !== null) shown.push(...wrapWithPrefix(`↳ Replaces: ${replaces}`, { width: TREE_WIDTH, prefix: `${INDENT}  `, hang: 2 }));
+  return shown.join('\n');
 }
 
 /** The candidates, each with its reason beneath, a struck one marked. @param {DecidedView['candidates']} candidates */

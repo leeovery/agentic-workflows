@@ -59,6 +59,11 @@ function answersOn(row) {
   return row.stands === 'question-set-aside' ? [/** @type {RowAnswer} */ (/** @type {unknown} */ (row))] : row.answers;
 }
 
+/** How the person handed an answer over to Claude — "your call", "don't care" — or null where they did not. @param {{given?: string}} answer */
+function handedTag({ given }) {
+  return given !== undefined && Object.hasOwn(HANDED_TAGS, given) ? HANDED_TAGS[/** @type {keyof typeof HANDED_TAGS} */ (given)] : null;
+}
+
 /**
  * Whose a decided row is, and its tag: the person's, where any answer is
  * theirs; carried over, where an answer came by migration; else Claude's —
@@ -70,8 +75,8 @@ function answersOn(row) {
 function closedBy(answers) {
   if (answers.some((a) => a.by === 'person')) return { whose: 'yours', tag: 'yours' };
   if (answers.some((a) => a.given === 'carried')) return { whose: 'carried', tag: CARRIED };
-  const handed = answers.find((a) => Object.hasOwn(HANDED_TAGS, a.given));
-  return { whose: 'claudes', tag: handed === undefined ? CLAUDES_CALL : HANDED_TAGS[/** @type {keyof typeof HANDED_TAGS} */ (handed.given)] };
+  const handed = answers.map(handedTag).find((tag) => tag !== null);
+  return { whose: 'claudes', tag: handed ?? CLAUDES_CALL };
 }
 
 /**
@@ -195,4 +200,4 @@ function mapSurface(cwd, { dotpath }) {
   }
 }
 
-module.exports = { rowStanding, answersOn, claudesCalls, topicAddress, mapSurface };
+module.exports = { rowStanding, answersOn, claudesCalls, handedTag, topicAddress, mapSurface };
