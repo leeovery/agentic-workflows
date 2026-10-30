@@ -51,7 +51,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
-const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { OURS, ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
@@ -83,6 +83,8 @@ const REFUNDS = ['## 2. Refunds', '', 'A refund names its charge.'].join('\n');
 const PAY_BRANCH = taskBranch({ unit: UNIT, phase: 1, n: 1 }, 'feat', 'Take a card');
 const REFUND_BRANCH = taskBranch({ unit: 'refund', phase: 1, n: 1 }, 'feat', 'Refund');
 const NESTED = 'lib';
+/** The refund task's file: a path past the 80 columns git fits a stat to off a terminal. */
+const DEEP = 'packages/payments-service/src/components/checkout/refund-form/validation/refund-amount-validator.test.ts';
 /** The line each task branch adds, which no brief carries. */
 const CHANGED = 'export const token = (card) => card.token;';
 
@@ -188,7 +190,7 @@ const unitWorld = fixtureFrom('brief-', (dir) => {
   DRIVER.createTask(root, { unit: 'refund', phase: 1, n: 1 }, readTaskText(taskText('Refund', '§2')));
   commitAll(dir, 'the first phase written');
   branchWith(dir, PAY_BRANCH, 'src/card.js');
-  branchWith(dir, REFUND_BRANCH, 'src/refund.js');
+  branchWith(dir, REFUND_BRANCH, DEEP);
   commitFile(dir, 'src/main.js');
   const nested = initRepo(path.join(dir, NESTED));
   fs.writeFileSync(path.join(nested, 'README.md'), 'The card library.\n');
@@ -367,10 +369,10 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1' });
   });
 
-  it('a task whose branch holds work in the project\'s repository alone: its range there, and none in a repository naming the branch with nothing on it', () => {
+  it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
     const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main']);
 
-    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, 'src/refund.js')}\n\n# The linters\n`), brief);
+    assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, DEEP)}\n\n# The linters\n`), brief);
   });
 
   it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
@@ -389,10 +391,15 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# The linters\n`), brief);
   });
 
-  it('13.S20: the template carries the stance on a failed review (13.5.7), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {
+  it('13.S20: the template carries the stance on a failed review (13.5.7), a call on every finding, when it is serious, with the edge list, and what a nit is (13.4.1, 13.4.5, 13.6), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {
     const template = fs.readFileSync(path.join(TEMPLATES, 'reviewer.md'), 'utf8');
 
+    assert.match(template, /\nThe edge list:\n\n(- [^\n]+;\n){4,}- [^\n]+\.\n/, 'the edge list, an item a line');
     for (const line of [
+      'Every finding you report carries a user scenario and a call: serious, a real bug that is not serious, or a nit.',
+      'A finding is serious unless its scenario needs an item from the edge list and the report names that item.',
+      'A scenario built only from ordinary use is serious, however many of its parts combine.',
+      'A nit is mechanical with no ripple: a comment, a name, a test\'s wording.',
       'A failed review is met as a senior engineer would, between two extremes, taking neither',
       'The starting point is that the work stands',
       'The builder weighs each finding professionally: its cause, whether it is the symptom of a deeper fault',
@@ -530,6 +537,11 @@ describe('the refusals, nothing written and no brief stored', () => {
 describe('the templates and the store', () => {
   afterEach(() => {
     fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true });
+  });
+
+  it('every role is dispatched as an agent named as the workflows\' are, so the hook stands before each', () => {
+    assert.strictEqual(OURS, 'leeway-');
+    for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {

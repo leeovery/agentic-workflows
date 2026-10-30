@@ -42,10 +42,9 @@ const { messageOf } = require('../kernel/call.cjs');
 const { isoNow } = require('./dates.cjs');
 const { subagentType } = require('./conversation.cjs');
 const { projectOf } = require('./trust-log.cjs');
-const { ROLES, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId } = require('./brief-names.cjs');
-
-/** How the workflows' agents are named. */
-const OURS = 'leeway-';
+const {
+  OURS, POINTER, ROLES, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId,
+} = require('./brief-names.cjs');
 
 /** @typedef {Record<string, unknown>} HookInput */
 /** @typedef {{reason: string, brief: string|null, detail: string}} Refusal */
@@ -117,7 +116,7 @@ function carriedPointer(input, agent) {
   const carriers = DISPATCHES[/** @type {string} */ (input.tool_name)].carriers.filter((field) => typeof toolInput[field] === 'string');
   const id = carriers.map((field) => pointedId(/** @type {string} */ (toolInput[field]))).find((pointed) => pointed !== null) ?? null;
   if (id === null) {
-    return refusal('no-brief', null, `a call of ${agent} carries the pointer to its brief, brief:{id}, as \`engine brief\` answers it — this one names no brief`);
+    return refusal('no-brief', null, `a call of ${agent} carries the pointer to its brief, ${POINTER}{id}, as \`engine brief\` answers it — this one names no brief`);
   }
   const loose = carriers.filter((field) => toolInput[field] !== pointerOf(id));
   if (loose.length > 0) {

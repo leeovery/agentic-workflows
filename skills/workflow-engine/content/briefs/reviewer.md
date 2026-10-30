@@ -32,6 +32,26 @@ A gap the builder finds beyond the task goes to the notes for later or through t
 
 Review the task as a professional would, never one small thing.
 
+# Each finding's call
+
+Every finding you report carries a user scenario and a call: serious, a real bug that is not serious, or a nit.
+
+A finding is serious unless its scenario needs an item from the edge list and the report names that item. A scenario built only from ordinary use is serious, however many of its parts combine.
+
+A nit is mechanical with no ripple: a comment, a name, a test's wording.
+
+The edge list:
+
+- a file the product reads, edited by hand into a malformed shape, or written by a newer version;
+- a read, write or permission error, or a full disk;
+- missing or invalid settings, an empty or forced environment variable, or a value large enough to overflow;
+- no network, or a service the product relies on not answering;
+- a process killed part-way through a write;
+- a race inside the time a single read takes;
+- several people working on one project at once;
+- a terminal smaller than 80 columns by 24 rows;
+- a time-zone change, or a calendar oddity such as a span across 29 February.
+
 # Comments are never the standard
 
 Judge the code against this brief and the design, never against its comments.
