@@ -305,6 +305,38 @@ function traced(fn) {
 }
 
 /**
+ * The time limit of each child `fn` starts through a fresh copy of the
+ * module at `file`, in the order started — the `timeout` its `spawnSync` or
+ * `execFileSync` was given, undefined where none. The copy takes
+ * `child_process` as the test watches it, and the module's own entry in
+ * the require cache is put back after.
+ * @param {import('node:test').TestContext} t @param {string} file @param {(module: any) => void} fn
+ * @returns {(number|undefined)[]}
+ */
+function childLimits(t, file, fn) {
+  const childProcess = require('child_process');
+  /** @type {(number|undefined)[]} */
+  const limits = [];
+  for (const name of /** @type {const} */ (['spawnSync', 'execFileSync'])) {
+    const real = childProcess[name];
+    t.mock.method(childProcess, name, (/** @type {any[]} */ ...args) => {
+      limits.push(args[2]?.timeout);
+      return /** @type {Function} */ (real)(...args);
+    });
+  }
+  const id = require.resolve(file);
+  const loaded = require.cache[id];
+  delete require.cache[id];
+  try {
+    fn(require(id));
+  } finally {
+    if (loaded === undefined) delete require.cache[id];
+    else require.cache[id] = loaded;
+  }
+  return limits;
+}
+
+/**
  * The code tree in `dir` committed whole, its state left as it stands.
  * @param {string} dir @param {string} message
  */
@@ -822,7 +854,7 @@ module.exports = {
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
-  git, stateGit, commitOnState, head, lastMessage, treeSnapshot, traced, ledgerEntries, tip, remoteTip,
+  git, stateGit, commitOnState, head, lastMessage, treeSnapshot, traced, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,

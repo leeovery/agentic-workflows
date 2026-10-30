@@ -21,6 +21,11 @@
 // logged whatever the config says (`core.logAllRefUpdates`), so a worktree's
 // HEAD log always says which commit its files were last put at.
 //
+// No call waits without bound: each runs within the time limit it names, or
+// `CALL_TIMEOUT_MS`, and one that runs past it fails, naming itself. A git
+// that stalls — on a filter the repository configures, say — never holds the
+// verb, and the writer lock with it, for ever.
+//
 // It also finds a repository's main checkout, the folder the workflows keep
 // their state in, refusing the repositories and folders that have none; its
 // refusals say so. It knows nothing else of the state.
@@ -61,16 +66,20 @@ const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.f
 const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
 const REFS_LOGGED = Object.freeze(['-c', 'core.logAllRefUpdates=true']);
 
+// The time limit of a call that names none: far past any the workflows make.
+const CALL_TIMEOUT_MS = 300000;
+
 /**
- * A call's stdin, its time limit, variables layered over the isolated
- * environment, and a file descriptor its output is written to whole rather
- * than answered, for output of any size.
+ * A call's stdin, its time limit (`CALL_TIMEOUT_MS` where it names none),
+ * variables layered over the isolated environment, and a file descriptor its
+ * output is written to whole rather than answered, for output of any size.
  * @typedef {{input?: string, timeoutMs?: number, env?: Record<string, string>, out?: number}} RunOptions
  */
 
 /**
  * A runner bound to one cwd: `run` answers stdout, empty where it went to a
- * file, and throws a GitError on failure; `tryRun` answers null instead.
+ * file, and throws a GitError on failure; `tryRun` answers null instead,
+ * but for a call past its time limit, which throws for both.
  * @typedef {{
  *   run: (args: string[], opts?: RunOptions) => string,
  *   tryRun: (args: string[], opts?: RunOptions) => string|null,
@@ -98,7 +107,7 @@ function isolatedEnv() {
  * @returns {string[]}
  */
 function configuredHookNames(cwd, env) {
-  const res = spawnSync('git', ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'], { cwd, env, encoding: 'utf8' });
+  const res = spawnSync('git', ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'], { cwd, env, encoding: 'utf8', timeout: CALL_TIMEOUT_MS });
   if (res.error || res.status !== 0) return [];
   return res.stdout.split('\0').filter((key) => key !== '').map((key) => key.slice('hook.'.length, -'.command'.length));
 }
@@ -132,23 +141,26 @@ function isolatedGit(cwd) {
   /** @type {Record<string, string>|null} */
   let base = null;
 
-  /** @param {string[]} args @param {RunOptions} opts */
-  function spawn(args, { input, timeoutMs, env, out } = {}) {
+  /**
+   * Run git, throwing where it ran past its time limit: a call cut short has
+   * no answer, never a "no".
+   * @param {string[]} args @param {RunOptions} opts
+   */
+  function spawn(args, { input, timeoutMs = CALL_TIMEOUT_MS, env, out }) {
     base ??= hooksOffEnv(cwd);
-    return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
+    const res = spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
       cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
+    if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') {
+      throw new GitError(`git ${args[0]} timed out after ${timeoutMs / 1000}s`);
+    }
+    return res;
   }
 
   return {
     run(args, opts = {}) {
       const res = spawn(args, opts);
-      if (res.error) {
-        const timedOut = /** @type {NodeJS.ErrnoException} */ (res.error).code === 'ETIMEDOUT';
-        throw new GitError(timedOut
-          ? `git ${args[0]} timed out after ${Number(opts.timeoutMs) / 1000}s`
-          : `git ${args[0]} failed: ${res.error.message}`);
-      }
+      if (res.error) throw new GitError(`git ${args[0]} failed: ${res.error.message}`);
       if (res.status !== 0) {
         throw new GitError(`git ${args[0]} failed: ${(res.stderr || res.stdout || `exit ${res.status}`).trim()}`);
       }
@@ -266,4 +278,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };
+module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };

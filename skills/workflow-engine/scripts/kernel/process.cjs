@@ -21,9 +21,12 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+// How long `ps` has to answer, far past the moment it takes.
+const PS_TIMEOUT_MS = 10000;
+
 /**
- * The process's kernel-recorded start time. Null when the pid is gone or
- * `ps` is unavailable.
+ * The process's kernel-recorded start time. Null when the pid is gone, or
+ * `ps` is unavailable or has not answered within PS_TIMEOUT_MS.
  * @param {number} pid @returns {string|null}
  */
 function processStartTime(pid) {
@@ -32,7 +35,7 @@ function processStartTime(pid) {
     // string is compared verbatim by whichever session reads it later, so
     // both are pinned or two terminals with different TZs never match.
     const out = execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], {
-      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' },
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' }, timeout: PS_TIMEOUT_MS,
     });
     return out.trim() || null;
   } catch { return null; }
@@ -99,4 +102,4 @@ function ownsRow(record) {
   return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
 }
 
-module.exports = { handedSession, sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };
+module.exports = { PS_TIMEOUT_MS, handedSession, sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };

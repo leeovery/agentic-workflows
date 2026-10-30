@@ -6,10 +6,10 @@
 // stdout, `ok` and `refuses` failing on the wrong outcome, and `okSections`
 // — the git fixture is a repo with its state worktree that an engine commit
 // lands in, every remote in the tests is a bare repo that runs no
-// maintenance, a world made once is copied whole and apart, a keyword-only
-// checkout is one a transaction's index builds a real store in, a call's
-// attempts at a lock are seen as it makes them, and the `ps` that fails
-// does.
+// maintenance, a test's git runs within a time limit, a world made once is
+// copied whole and apart, a keyword-only checkout is one a transaction's
+// index builds a real store in, a call's attempts at a lock are seen as it
+// makes them, and the `ps` that fails does.
 
 require('./hermetic-env.cjs');
 
@@ -21,6 +21,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { GIT_TIMEOUT_MS } = require('./discovery-test-utils.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
@@ -170,6 +171,14 @@ describe('engine harness — the git fixture', () => {
       .filter((name) => /\binit\b.*--bare/.test(fs.readFileSync(path.join(tests, name), 'utf8')))
       .sort();
     assert.deepStrictEqual(inits, ['scripts/discovery-test-utils.cjs']);
+  });
+
+  it('runs a test\'s git within GIT_TIMEOUT_MS, so a git that hangs fails its test', (t) => {
+    const limits = harness.childLimits(t, path.join(__dirname, 'discovery-test-utils.cjs'), (/** @type {typeof import('./discovery-test-utils.cjs')} */ fresh) => {
+      fresh.git(dir, ['--version']);
+    });
+
+    assert.deepStrictEqual(limits, [GIT_TIMEOUT_MS]);
   });
 });
 

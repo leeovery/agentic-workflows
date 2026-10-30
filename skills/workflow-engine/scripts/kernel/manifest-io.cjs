@@ -361,17 +361,16 @@ function acquireLockFile(lockFile, timeoutMessage, timeoutMs = LOCK_TIMEOUT_MS, 
       if (!(e && typeof e === 'object' && 'code' in e) || e.code !== 'EEXIST') throw e;
     }
 
-    // Check stale lock
+    let stat;
     try {
-      const stat = fs.statSync(lockFile);
-      if (Date.now() - stat.mtimeMs > staleMs) {
-        breakStaleLockFile(lockFile, staleMs);
-        continue;
-      }
+      stat = fs.statSync(lockFile);
     } catch {
       // Lock was removed between check and stat — retry
       continue;
     }
+    // A stale lock this process broke is tried for again at once; one another
+    // breaker holds, or that would not go, is waited on as a live one is.
+    if (Date.now() - stat.mtimeMs > staleMs && breakStaleLockFile(lockFile, staleMs)) continue;
 
     if (Date.now() >= deadline) {
       throw new Error(
