@@ -86,6 +86,14 @@ describe('hermetic environment — the pins', () => {
     );
   });
 
+  it('the released migrations\' name for the user-level folder is set to a directory of its own, which exists and holds nothing — a migration never reaches the developer\'s ~/.config/workflows', () => {
+    const dir = process.env.WORKFLOWS_CONFIG_DIR;
+    assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
+    assert.notStrictEqual(dir, process.env.LEEWAY_CONFIG_DIR);
+    assert.ok(fs.existsSync(dir), `${dir} exists`);
+    assert.deepStrictEqual(fs.readdirSync(dir), []);
+  });
+
   it('Claude Code\'s config directory is set, exists, and holds nothing — no test reaches the developer\'s own', () => {
     const dir = process.env.CLAUDE_CONFIG_DIR;
     assert.ok(dir, 'CLAUDE_CONFIG_DIR is set');
@@ -176,6 +184,7 @@ describe('hermetic environment — the pins', () => {
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
       LEEWAY_CONFIG_DIR: process.env.LEEWAY_CONFIG_DIR,
+      WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
       CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
       GH_CONFIG_DIR: process.env.GH_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
@@ -186,11 +195,12 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEEWAY_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEEWAY_GATE_SURFACE ?? null, handoff: process.env.LEEWAY_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEEWAY_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEEWAY_CONFIG_DIR, legacy: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEEWAY_GATE_SURFACE ?? null, handoff: process.env.LEEWAY_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEEWAY_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
       dir: process.env.LEEWAY_CONFIG_DIR,
+      legacy: process.env.WORKFLOWS_CONFIG_DIR,
       claude: process.env.CLAUDE_CONFIG_DIR,
       key: null,
       surface: null,

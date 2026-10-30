@@ -130,7 +130,7 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     assert.ok(!fs.existsSync(first.cwd) && !fs.existsSync(second.cwd), 'a call left its folder behind');
   });
 
-  it('clears the environment of the calling session, the project, the session\'s plugins and harness settings and the workflows\' and Leeway\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
+  it('clears the environment of the calling session, the project, the session\'s plugins and harness settings and Leeway\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
     const session = {
       CLAUDE_CODE_SESSION_ID: 'c6b74014', CLAUDE_PROJECT_DIR: '/work/portal', CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1',
       CLAUDE_CODE_SESSION_ATTENDED: '1', CLAUDE_PID: '8618', AI_AGENT: 'claude-code_2-1-311_agent', CLAUDE_EFFORT: 'xhigh',
@@ -148,7 +148,7 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     askClaude(ASK);
 
     const { env } = calls()[0];
-    assert.deepStrictEqual(Object.keys(env).filter((key) => Object.hasOwn(session, key) || /^(WORKFLOWS|LEEWAY)_/.test(key)), []);
+    assert.deepStrictEqual(Object.keys(env).filter((key) => Object.hasOwn(session, key) || /^LEEWAY_/.test(key)), []);
     for (const [key, value] of Object.entries(login)) assert.strictEqual(env[key], value, `${key} did not reach the call`);
     assert.strictEqual(env.HOME, process.env.HOME);
     assert.strictEqual(env.PATH, process.env.PATH);

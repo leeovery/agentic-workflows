@@ -77,8 +77,7 @@ describe('migration 061: label positions move into the conversation folders', ()
     skips = 0;
   });
   afterEach(() => {
-    if (pinned === undefined) delete process.env.WORKFLOWS_CONFIG_DIR;
-    else process.env.WORKFLOWS_CONFIG_DIR = pinned;
+    process.env.WORKFLOWS_CONFIG_DIR = pinned;
     for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 

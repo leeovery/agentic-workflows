@@ -19,9 +19,9 @@
 // entries into it. `test-hermetic-env.cjs` guards both.
 //
 // A suite that fakes `$HOME` to reach a system config takes the pinned
-// LEEWAY_CONFIG_DIR back off the environment it passes down, since that
-// answers ahead of `$HOME`. The shell tiers pin their own subset in their npm
-// scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
+// LEEWAY_CONFIG_DIR, or WORKFLOWS_CONFIG_DIR for a released migration, back
+// off the environment it passes down, since each answers ahead of `$HOME`.
+// The shell tiers pin their own subset in their npm scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
 // runs the mod suites against its own stand-in environment and files.
 
 const fs = require('fs');
@@ -64,6 +64,8 @@ const GH_LOGIN = Object.freeze(['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN
 
 const HERMETIC_ENV = Object.freeze({
   LEEWAY_CONFIG_DIR: pinnedDir('LEEWAY_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  // The released migrations' name for the user-level folder.
+  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyDir, 'wf-legacy-config-'),
   CLAUDE_CONFIG_DIR: pinnedDir('CLAUDE_CONFIG_DIR', isEmptyDir, 'wf-claude-config-'),
   GH_CONFIG_DIR: pinnedDir('GH_CONFIG_DIR', isEmptyDir, 'wf-gh-config-'),
   GIT_CONFIG_GLOBAL: '/dev/null',
