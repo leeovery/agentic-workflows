@@ -164,7 +164,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 
 ## Skill Authoring
 
-Skill authoring rules — prose economy, display/output conventions, structural conventions, skill file structure, the phase skill contract, navigation patterns, reference file naming — live in [CONVENTIONS.md](CONVENTIONS.md).
+Skill authoring rules — where a rule goes, the phase skill, what the engine owns, writing for the model pass, prose, agents and briefs, handoffs and recovery, display, files — live in [CONVENTIONS.md](CONVENTIONS.md).
 
 **MANDATORY**: Read [CONVENTIONS.md](CONVENTIONS.md) in full **before** creating or editing any file matching `skills/**/SKILL.md`, `skills/**/references/**/*.md`, or any new skill scaffold. Do not rely on memory or pattern-matching from sibling files — the conventions are dense, exact, and frequently updated. Skipping this step has produced silently non-compliant skills in the past.
 
