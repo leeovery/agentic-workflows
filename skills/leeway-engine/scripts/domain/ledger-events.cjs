@@ -17,11 +17,12 @@
 //   finding is a question the review asked (5.3.9).
 // - found: a fact, how it is known, what it relies on, and whether it is
 //   product-wide (5.2.5). How it is known is said in words, `how`, and
-//   from version 2 by its kind, `known` (9.2.12): measured, by running
-//   something, whose command and result are recorded so the closing pass
-//   can run it again (9.9.7); exploratory, measured in the conversation
-//   without an experiment; documented; seen in a spike; or read. A finding
-//   written before version 2 says it in words alone, its kind null.
+//   from version 2 by its kind, `known` (9.2.12): measured, or
+//   exploratory — measured in the conversation without an experiment —
+//   each by running something, whose command and result are recorded so
+//   the closing pass can run it again (9.9.7); documented; seen in a spike;
+//   or read. A finding written before version 2 says it in words alone, its
+//   kind null.
 // - decided: an answer to the question it closes (5.5.1): who, why, what it
 //   rules out and relies on, whether it is product-wide; beside a person's
 //   answer Claude's sealed one, beside Claude's own call its alternatives
@@ -57,15 +58,18 @@
 //   still holds (ledger-affected.cjs) — and a departure owed a verdict
 //   (16.10.1).
 // - asset (version 2): a file linked from an entry (9.10.5–9.10.7, 9.10.16):
-//   the entry, the file's path from the state root, and the status the
-//   link gives it — canonical, reference, or lifted into the product, with
-//   the path in the project it went to. It is no entry and is never
-//   replaced: for an entry and a path, the latest live one stands
-//   (ledger-fold.cjs).
+//   the entry and the file's path from the state root; the status the link
+//   gives it, canonical or reference; and the lift, the path in the project
+//   the file was lifted into — each, or both, but never neither. The first
+//   link of an entry and a path gives its status, which the asset verb
+//   holds. It is no entry and is never replaced: for an entry and a path,
+//   the latest live status stands, and apart from it the latest live lift,
+//   which no status after it undoes (ledger-fold.cjs).
 //
 // From version 2 every entry may cite where it came from (21.6.3, 21.6.4):
 // sections of files — a topic's log, a spec — each by its path from the
-// state root and its heading.
+// state root and its heading. Every path is written plain, so one file is
+// one path: relative, no part of it empty, `.` or `..`.
 //
 // The engine assigns every link; it constrains links and identity, never
 // content (5.1.8). Lines are written with their fields in the schema's
@@ -95,15 +99,15 @@ const MOVED = ['none', 'claude-moved-person', 'person-moved-claude'];
 const REASONS = ['new-fact', 'other-topic', 'changed-mind', 'was-wrong'];
 const GIVEN = ['own', 'your-call', 'dont-care', 'carried'];
 const KNOWN = ['measured', 'exploratory', 'documented', 'spike', 'read'];
-const ASSET_STATUSES = ['canonical', 'reference', 'lifted'];
+const ASSET_STATUSES = ['canonical', 'reference'];
 
-/** Whether `v` is a relative path that never climbs out of where it starts. @param {unknown} v */
-function isRelative(v) {
-  return typeof v === 'string' && v !== '' && !v.startsWith('/') && !v.split('/').includes('..');
+/** Whether `v` is a path written plain: relative, no part of it empty, `.` or `..`. @param {unknown} v */
+function isPlainPath(v) {
+  return typeof v === 'string' && v.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
 }
 
-const PATH = type('a path from the state root, with no .. in it', isRelative);
-const CODE_PATH = type('a path in the project from its root, with no .. in it', isRelative);
+const PATH = type('a path from the state root, written plain: no part of it empty, . or ..', isPlainPath);
+const CODE_PATH = type('a path in the project from its root, written plain: no part of it empty, . or ..', isPlainPath);
 const CITE = type('a citation, {path, section}: a path from the state root and a heading', (v) => isObject(v)
   && Object.keys(v).length === 2 && PATH.test(v.path) && TEXT.test(v.section));
 
@@ -155,7 +159,7 @@ const CONTENT = {
     field('how', TEXT),
     field('relies_on', listOf(ID)),
     field('product_wide', FLAG),
-    field('known', oneOf(...KNOWN), sinceTwo(null)),
+    field('known', nullable(oneOf(...KNOWN)), sinceTwo(null)),
     field('command', nullable(TEXT), sinceTwo(null)),
     field('result', nullable(TEXT), sinceTwo(null)),
     CITES,
@@ -204,7 +208,11 @@ const SCHEMA = {
       field('why', TEXT),
       field('sealed', TEXT),
     ]),
-    asset: event([field('entry', ID), field('path', PATH), field('status', oneOf(...ASSET_STATUSES)), field('into', nullable(CODE_PATH))], 2),
+    asset: event(
+      [field('entry', ID), field('path', PATH), field('status', nullable(oneOf(...ASSET_STATUSES))), field('into', nullable(CODE_PATH))],
+      2,
+      ({ status, into }) => (status === null && into === null ? 'an asset link gives a status, a lift into the project, or both' : null),
+    ),
   },
 };
 
@@ -309,8 +317,9 @@ function linkFields(event) {
 /**
  * `value` as an event of the shape its version names: every field that
  * version holds, in the schema's order, and each field a later version added
- * at its default. Refuses anything else, saying why; and a version above the
- * schema's, as a newer release's.
+ * at its default, keeping any rule its fields keep together. Refuses
+ * anything else, saying why; and a version above the schema's, as a newer
+ * release's.
  * @param {unknown} value @param {Schema} [schema]
  * @returns {Record<string, unknown>}
  */
@@ -323,8 +332,11 @@ function validEvent(value, schema = SCHEMA) {
   if (typeof value.event !== 'string' || !known.includes(value.event)) {
     throw new LedgerLineError(`its event ${JSON.stringify(value.event)} is none of version ${v}'s: ${known.join(', ')}`);
   }
-  const read = readFields(value, fieldsOf(value, schema.events[value.event]), v, value.event);
+  const shape = schema.events[value.event];
+  const read = readFields(value, fieldsOf(value, shape), v, value.event);
   if ('not' in read) throw new LedgerLineError(read.not);
+  const broken = shape.holds?.(read.event) ?? null;
+  if (broken !== null) throw new LedgerLineError(broken);
   return read.event;
 }
 

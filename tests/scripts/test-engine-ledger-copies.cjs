@@ -112,7 +112,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.deepStrictEqual(fs.readdirSync(statePath(dir(), UNIT)), ['manifest.json'], 'a record file sits in the unit\'s tree');
   });
 
-  it('says who decided each answer in its five forms, how a finding is known with the command run, its result and the day it was found, what an entry cites, the files linked from it with their status, and a question moved to the roadmap as later; a linked file\'s words reach neither the copy nor the store (9.2.2, 9.2.12, 9.2.14, 9.2.16, 9.5.4, 9.10.5)', () => {
+  it('says who decided each answer in its five forms, how a finding is known with the command run, its result and the day it was found, what an entry cites, the files linked from it with their status and their lift, and a question moved to the roadmap as later; a linked file\'s words reach neither the copy nor the store (9.2.2, 9.2.12, 9.2.14, 9.2.16, 9.5.4, 9.10.5, 9.10.16)', () => {
     const cites = [{ path: `${UNIT}/discussion/note-window.md`, section: 'Session 1' }];
     const window = ask(NOTE, 'Is a note a window?');
     const persons = decide(NOTE, window, 'A panel.', [], { by: 'person', cites });
@@ -125,10 +125,12 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       [call('Does a note dim?', 'It dims.', 'carried'), 'Carried over, who decided it unrecorded'],
     ];
     const measured = write('find', NOTE, [], { ...MADE, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites }).id;
-    const mock = `${UNIT}/assets/note-mock.md`;
-    fs.mkdirSync(path.dirname(statePath(dir(), mock)), { recursive: true });
-    fs.writeFileSync(statePath(dir(), mock), 'Corduroy marmalade.\n');
-    appendEntry(statePath(dir()), { event: 'asset', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, entry: full(persons), path: mock, status: 'canonical', into: null }, []);
+    const frame = `${UNIT}/spikes/001-frame/Frame.swift`;
+    fs.mkdirSync(path.dirname(statePath(dir(), frame)), { recursive: true });
+    fs.writeFileSync(statePath(dir(), frame), 'Corduroy marmalade.\n');
+    for (const gives of [{ status: 'canonical', into: null }, { status: null, into: 'Sources/Note/Frame.swift' }]) {
+      appendEntry(statePath(dir()), { event: 'asset', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, entry: full(persons), path: frame, ...gives }, []);
+    }
     stateGit(dir(), ['add', layout.ledger]);
     stateGit(dir(), ['commit', '-q', '-m', 'state: a file linked']);
     ok(dir(), ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
@@ -138,7 +140,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     const text = /** @type {string} */ (copy(NOTE_COPY));
 
     for (const block of [
-      ['## Is a note a window?', '', `Asked by Claude. Entry ${window}.`, '', 'A panel.', '', 'Why: It follows the person.', '', 'Cites:', '- fumi/discussion/note-window.md: Session 1', '', 'Assets:', `- ${mock}, canonical`, '', `Decided by the person. Entry ${persons}.`, ''],
+      ['## Is a note a window?', '', `Asked by Claude. Entry ${window}.`, '', 'A panel.', '', 'Why: It follows the person.', '', 'Cites:', '- fumi/discussion/note-window.md: Session 1', '', 'Assets:', `- ${frame}, canonical, lifted into Sources/Note/Frame.swift`, '', `Decided by the person. Entry ${persons}.`, ''],
       ...forms.map(([id, decided]) => [`${decided}. Entry ${id}.`, '']),
       ['## Do notes sync across Macs?', '', `Asked by Claude. Entry ${syncing}.`, '', 'Later: moved to the roadmap, roadmap:sync.', ''],
       ['## Finding: A panel opens in 4 ms.', '', 'A panel opens in 4 ms.', '', 'How it is known: measured, timed the open', '', 'Command: swift run bench open', 'Result: median 4.1 ms', '', 'Cites:', '- fumi/discussion/note-window.md: Session 1', '', `Found by Claude on ${writtenOn(measured)}. Entry ${measured}.`, ''],

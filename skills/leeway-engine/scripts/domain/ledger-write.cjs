@@ -65,9 +65,10 @@
 // - What the content says of itself: the person's decision is their own,
 //   never given as "your call", "don't care" or carried over, each of which
 //   is Claude's line (9.2.14, 9.2.16, 21.6.5); a finding says how it is
-//   known (9.2.12), a measured one with the command run and its result
-//   (9.9.7), and a command never comes without its result, nor a result
-//   without its command.
+//   known (9.2.12), a measurement — measured, or exploratory, in the
+//   conversation — with the command run and its result (9.9.7), and a
+//   command never comes without its result, nor a result without its
+//   command.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -363,6 +364,9 @@ const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP].flatMap((w) => w.fl
 
 /** The fields the engine gives an entry, never its content. */
 const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked']);
+
+/** The kinds of finding that are measurements, whose command the closing pass runs again (9.9.7). */
+const MEASURED = Object.freeze(['measured', 'exploratory']);
 
 /** The content a write may leave out, and what it takes instead. @type {Readonly<Record<string, unknown>>} */
 const DEFAULTS = Object.freeze({
@@ -809,8 +813,9 @@ function trustEventOf(kind, content, reason, replaced) {
 /**
  * Refuse, in the words of `said`, the command asking, content that says
  * of itself what cannot be: the person's decision given as anything but
- * their own, a measured finding with no command run or no result, and a
- * command or a result without the other.
+ * their own, a finding saying no kind, a measurement — measured or
+ * exploratory — with no command run or no result, and a command or a
+ * result without the other.
  * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
  */
 function checkSaid(said, kind, { by, given, known, command, result }) {
@@ -818,7 +823,10 @@ function checkSaid(said, kind, { by, given, known, command, result }) {
     throw new Error(`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`);
   }
   if (kind !== 'finding') return;
-  if (known === 'measured' && command === null) throw new Error(`${said}: a measured finding records the command run and its result — the content needs command and result`);
+  if (known === null) throw new Error(`${said}: the content's known is null — a finding written now says how it is known`);
+  if (MEASURED.includes(/** @type {string} */ (known)) && command === null) {
+    throw new Error(`${said}: ${known === 'exploratory' ? 'an exploratory' : 'a measured'} finding records the command run and its result — the content needs command and result`);
+  }
   if ((command === null) !== (result === null)) throw new Error(`${said}: a finding's command comes with its result — the content gives ${command === null ? 'a result and no command' : 'a command and no result'}`);
 }
 

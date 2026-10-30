@@ -7,18 +7,18 @@
 // query can land on — the question it answers, a finding, or an entry from
 // elsewhere made in the record's place or that the record rests on — with
 // its why and what it rules out; a finding with how it is known and when
-// (9.2.12); every entry with what it cites, the files linked from it and
-// their status, never a file's own words (9.2.2), and who made it, a
-// decision who decided it (9.2.14); and a question with no answer, open or
-// moved to the roadmap as later (9.5.4). The product record's file is for
-// a CLAUDE.md line to point at.
+// (9.2.12); every entry with what it cites, the files linked from it with
+// their status and any lift, never a file's own words (9.2.2), and who
+// made it, a decision who decided it (9.2.14); and a question with no
+// answer, open or moved to the roadmap as later (9.5.4). The product
+// record's file is for a CLAUDE.md line to point at.
 // ---------------------------------------------------------------------------
 
 const { entryKind, decidedBy } = require('../ledger-events.cjs');
 
 /** @typedef {import('../ledger-fold.cjs').Standing} Standing */
 
-/** A file linked from an entry: its path, its status, and where it was lifted into. @typedef {{path: string, status: string, into: string|null}} Asset */
+/** A file linked from an entry: its path, its status, and where it was lifted into the project. @typedef {{path: string, status: string|null, into: string|null}} Asset */
 
 /**
  * An entry's line as a read shows it, the files linked from it, and where
@@ -107,7 +107,7 @@ function listed(label, items) {
 function sources({ line, assets }) {
   return [
     ...listed('Cites', line.cites.map((/** @type {{path: string, section: string}} */ cite) => `${cite.path}: ${heading(cite.section)}`)),
-    ...listed('Assets', assets.map(({ path, status, into }) => `${path}, ${status}${into === null ? '' : ` into ${into}`}`)),
+    ...listed('Assets', assets.map(({ path, status, into }) => [path, ...(status === null ? [] : [status]), ...(into === null ? [] : [`lifted into ${into}`])].join(', '))),
   ];
 }
 

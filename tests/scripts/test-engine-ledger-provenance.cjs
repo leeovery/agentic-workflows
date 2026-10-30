@@ -8,9 +8,9 @@
 // person handing it over, the builder, or carried over, who decided it
 // unrecorded — how a finding is known, a measurement with the command run
 // and its result, the sections each entry cites, and the files linked from
-// an entry, each with the status its latest live link gives it; and a
-// ledger version 1 wrote, read through every projection at version 2's
-// defaults.
+// an entry, each with its latest live status and, apart from it, its lift
+// into the project; and a ledger version 1 wrote, read through every
+// projection at version 2's defaults.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there; the asset links appended
@@ -93,11 +93,13 @@ describe('how a finding is known (9.2.12, 9.9.7)', () => {
     assert.deepStrictEqual(ids(record.decisions), [decided]);
   });
 
-  it('refuses a finding saying no kind, a measured one without the command run and its result, and a command without its result or a result without its command, appending nothing', () => {
+  it('refuses a finding saying no kind, a measurement — measured, or exploratory — without the command run and its result, and a command without its result or a result without its command, appending nothing', () => {
     const fact = { ...MADE, text: 'A panel opens in 4 ms.', how: 'timed the open' };
 
     refused('find', NOTE, [], fact, /^ledger find: the content needs known$/);
+    refused('find', NOTE, [], { ...fact, known: null }, /^ledger find: the content's known is null — a finding written now says how it is known$/);
     refused('find', NOTE, [], { ...fact, known: 'measured' }, /^ledger find: a measured finding records the command run and its result — the content needs command and result$/);
+    refused('find', NOTE, [], { ...fact, known: 'exploratory' }, /^ledger find: an exploratory finding records the command run and its result — the content needs command and result$/);
     refused('find', NOTE, [], { ...fact, known: 'exploratory', command: 'swift run bench open' }, /^ledger find: a finding's command comes with its result — the content gives a command and no result$/);
     refused('find', NOTE, [], { ...fact, known: 'documented', result: '4.1 ms' }, /^ledger find: a finding's command comes with its result — the content gives a result and no command$/);
   });
@@ -119,42 +121,64 @@ describe('what an entry cites (21.6.3, 21.6.4)', () => {
       [asked, CITES], [snapping, []], [found, CITES], [decided, spec], [changed, CITES],
     ]);
     assert.deepStrictEqual(record.decisions[1].replaced.map((/** @type {Record<string, unknown>} */ e) => [e.id, e.cites]), [[plain, []]]);
-    for (const cite of [{ path: '../notes.md', section: 'Windows' }, { path: '/notes.md', section: 'Windows' }, { path: 'notes.md' }, { path: 'notes.md', section: 'Windows', line: 3 }, { path: 'notes.md', section: '' }]) {
+    const unplain = ['../notes.md', '/notes.md', './notes.md', 'fumi//notes.md', 'fumi/./notes.md', 'fumi/notes/'].map((at) => ({ path: at, section: 'Windows' }));
+    for (const cite of [...unplain, { path: 'notes.md' }, { path: 'notes.md', section: 'Windows', line: 3 }, { path: 'notes.md', section: '' }]) {
       refused('ask', NOTE, [], { ...MADE, text: 'Is a note a sheet?', cites: [cite] }, /^ledger ask: the content's cites is not a list of a citation, \{path, section\}: a path from the state root and a heading$/);
     }
   });
 });
 
 describe('the files an entry links (9.10.5–9.10.7, 9.10.16)', () => {
+  const NOTE_AT = Object.freeze({ unit: UNIT, topic: 'note-window' });
+
   /**
-   * A file linked from `entry` where `at` says, as the asset verb will link
-   * one, committed.
-   * @param {string} entry @param {string} file @param {string} status @param {string|null} [into]
-   * @param {{unit: string, topic: string}} [at]
+   * A link from `entry` to `file` where `at` says, giving the status and
+   * the lift `gives` names, as the asset verb will append it.
+   * @param {string} entry @param {string} file @param {{status?: string, into?: string}} gives @param {{unit: string, topic: string}} [at]
    */
-  function link(entry, file, status, into = null, at = { unit: UNIT, topic: 'note-window' }) {
-    appendEntry(statePath(dir), { event: 'asset', ...at, phase: 'discussion', session: SESSION_ID, entry: full(entry), path: file, status, into }, []);
+  function link(entry, file, { status = null, into = null }, at = NOTE_AT) {
+    return appendEntry(statePath(dir), { event: 'asset', ...at, phase: 'discussion', session: SESSION_ID, entry: full(entry), path: file, status, into }, []);
+  }
+
+  /** `link`, committed. @param {Parameters<typeof link>} args */
+  function linked(...args) {
+    link(...args);
     stateGit(dir, ['add', layout.ledger]);
     stateGit(dir, ['commit', '-q', '-m', 'state: a file linked']);
   }
 
-  it('folds the links per entry and file, the latest live one standing, in the order each file was first linked: a link made in a unit since cancelled stands no more, and a link is no entry of any record or map', () => {
+  it('folds the links per entry and file, in the order each file was first linked: the latest live status, and apart from it the latest live lift, which a status after it never undoes; a link made in a unit since cancelled stands no more, and a link is no entry of any record or map', () => {
     mint();
     const asked = ask(NOTE, 'What does a note look like?');
     const decided = decide(NOTE, asked, 'A frameless panel.');
     const mock = `${UNIT}/assets/note-mock.png`;
     const frame = `${UNIT}/spikes/001-frame/Frame.swift`;
-    link(decided, mock, 'reference');
-    link(decided, frame, 'reference');
-    link(decided, mock, 'canonical');
-    link(decided, frame, 'lifted', 'Sources/Note/Frame.swift', { unit: 'mint', topic: 'mint' });
+    linked(decided, mock, { status: 'reference' });
+    linked(decided, frame, { status: 'reference' });
+    linked(decided, mock, { status: 'canonical' });
+    linked(decided, frame, { into: 'Sources/Note/Frame.swift' });
+    linked(decided, frame, { status: 'canonical' }, { unit: 'mint', topic: 'mint' });
 
     const record = read('record', UNIT, 'note-window');
 
-    assert.deepStrictEqual(record.decisions[0].assets, [{ path: mock, status: 'canonical', into: null }, { path: frame, status: 'lifted', into: 'Sources/Note/Frame.swift' }]);
+    assert.deepStrictEqual(record.decisions[0].assets, [{ path: mock, status: 'canonical', into: null }, { path: frame, status: 'canonical', into: 'Sources/Note/Frame.swift' }]);
     assert.deepStrictEqual([ids(record.questions), ids(record.findings), ids(record.decisions), ids(read('map', UNIT, 'note-window').questions)], [[asked], [], [decided], [asked]]);
     ok(dir, ['workunit', 'cancel', 'mint']);
-    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions[0].assets, [{ path: mock, status: 'canonical', into: null }, { path: frame, status: 'reference', into: null }]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions[0].assets, [{ path: mock, status: 'canonical', into: null }, { path: frame, status: 'reference', into: 'Sources/Note/Frame.swift' }]);
+  });
+
+  it('refuses a link that gives neither a status nor a lift, a status that is neither canonical nor reference, and a path or a lift not written plain, appending nothing', () => {
+    const decided = decide(NOTE, ask(NOTE, 'What does a note look like?'), 'A frameless panel.');
+    const before = rawLines();
+    const unplain = ['./a.png', 'fumi//a.png', 'fumi/./a.png', 'fumi/assets/', '/fumi/a.png', 'fumi/../a.png'];
+
+    assert.throws(() => link(decided, 'fumi/assets/a.png', {}), { message: 'an asset link gives a status, a lift into the project, or both' });
+    assert.throws(() => link(decided, 'fumi/assets/a.png', { status: 'lifted' }), { message: 'its status is not one of canonical, reference, or null' });
+    for (const at of unplain) {
+      assert.throws(() => link(decided, at, { status: 'reference' }), { message: 'its path is not a path from the state root, written plain: no part of it empty, . or ..' }, at);
+      assert.throws(() => link(decided, 'fumi/assets/a.png', { into: at }), { message: 'its into is not a path in the project from its root, written plain: no part of it empty, . or .., or null' }, at);
+    }
+    assert.deepStrictEqual(rawLines(), before);
   });
 });
 

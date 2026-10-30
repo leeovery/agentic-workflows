@@ -13,16 +13,17 @@
 // Claude leaned on its chain — it, or an entry down its chain, Claude's own
 // call or carrying Claude's sealed answer (ledger-verdicts.cjs); the unit
 // and topic it was written on; the first entry of its chain; its links, an
-// asset link's path among them; every entry linking back to it — the
-// replacements naming it, the merges that took it as a duplicate, the
-// confirmations that it still holds, the person's keeps of it against
-// Claude's proposed replacement, which change nothing current, the asset
-// links giving a file a status beside it, and on the first entry of a
-// question's chain, the answers to, the parts of (5.3.11), the merges of
-// and the moves of any wording; and where its line sits, so a
-// read shows an entry by reading that one line again. It keeps one thing a
-// read shows that the entry's line never holds: what the late one-decision
-// check last found of a decision that landed unchecked (16.19.8).
+// asset link's path and whether it gives a status or a lift among them;
+// every entry linking back to it — the replacements naming it, the merges
+// that took it as a duplicate, the confirmations that it still holds, the
+// person's keeps of it against Claude's proposed replacement, which change
+// nothing current, the asset links giving a file a status or a lift beside
+// it, and on the first entry of a question's chain, the answers to, the
+// parts of (5.3.11), the merges of and the moves of any wording; and where
+// its line sits, so a read shows an entry by reading that one line again.
+// It keeps one thing a read shows that the entry's line never holds: what
+// the late one-decision check last found of a decision that landed
+// unchecked (16.19.8).
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -122,9 +123,10 @@
 //   unit on no topic. Every place's record is built in one pass, each id's
 //   places worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
-// - An entry's assets (9.10.5–9.10.7): for each file linked from it, the
-//   latest live link standing, a link made where it is set aside counting
-//   for nothing, as a replacement made there does (5.8.17).
+// - An entry's assets (9.10.5–9.10.7, 9.10.16): for each file linked from
+//   it, the latest live link giving a status, and apart from it the latest
+//   live lift, which no status after it undoes; a link made where it is set
+//   aside counts for nothing, as a replacement made there does (5.8.17).
 // - Whether the ledger names a topic: an event written on it, or a move to
 //   it, live or not. The ledger keeps every line (5.3.4), so a topic it
 //   names keeps its name for good.
@@ -168,6 +170,8 @@ const { entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs')
  *   after: string|null,
  *   cause: string|null,
  *   path: string|null,
+ *   gives_status: boolean,
+ *   lifts: boolean,
  *   replaced_by: readonly string[],
  *   merged_by: readonly string[],
  *   answered_by: readonly string[],
@@ -261,6 +265,8 @@ const ID_FACTS = {
       after: idOrNull(event.after),
       cause: idOrNull(event.cause),
       path: event.event === 'asset' ? idOrNull(event.path) : null,
+      gives_status: event.event === 'asset' && event.status !== null,
+      lifts: event.event === 'asset' && event.into !== null,
       replaced_by: NONE,
       merged_by: NONE,
       answered_by: NONE,
@@ -662,16 +668,26 @@ function keptOf(folded, id) {
 }
 
 /**
- * The asset links standing beside `id`: for each file linked from it, the
- * latest live link, in the order each file was first linked.
+ * A file linked from an entry: its path, the link whose status stands, and
+ * the link whose lift stands, each null where none live gives one.
+ * @typedef {{path: string, status: string|null, lift: string|null}} Asset
+ */
+
+/**
+ * The files linked from `id`, in the order each was first linked: for each,
+ * the latest live link giving a status, and the latest live lift (9.10.16).
  * @param {Folded} folded @param {string} id
- * @returns {string[]}
+ * @returns {Asset[]}
  */
 function assetsOf(folded, id) {
-  /** @type {Map<string|null, string>} */
-  const latest = new Map();
-  for (const link of factsOf(folded, id).assets) if (isLive(folded, link)) latest.set(factsOf(folded, link).path, link);
-  return [...latest.values()];
+  /** @type {Map<string, Asset>} */
+  const files = new Map();
+  for (const link of factsOf(folded, id).assets.filter((each) => isLive(folded, each))) {
+    const { path, gives_status: givesStatus, lifts } = factsOf(folded, link);
+    const file = files.get(/** @type {string} */ (path)) ?? { path: /** @type {string} */ (path), status: null, lift: null };
+    files.set(file.path, { ...file, ...(givesStatus ? { status: link } : {}), ...(lifts ? { lift: link } : {}) });
+  }
+  return [...files.values()];
 }
 
 /**

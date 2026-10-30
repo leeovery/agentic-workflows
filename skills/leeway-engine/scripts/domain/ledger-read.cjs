@@ -19,15 +19,15 @@
 //   with the live entries it replaced folded beneath it, newest first, the
 //   live confirmations that it still holds (5.6.5), the person's live
 //   keeps of it against a replacement Claude proposed, and the files
-//   linked from it, each with the status its latest live link gives it
-//   (9.10.5–9.10.7); its findings in a section of their own, each saying
-//   how and when it is known (9.2.12), and its decisions who decided them,
-//   by `by` and `given` (9.2.14); the moves made
-//   there, as history, which the map can differ from; the merges made
-//   there, each with the duplicate it named and whether it holds; and, read
-//   from their own current entries, never copied, the entries standing
-//   elsewhere that were made there, that it relies on, that its merges that
-//   hold went into, or that answer its questions (5.8.4, 5.8.19). `ledger
+//   linked from it, each with its latest live status and lift
+//   (9.10.5–9.10.7, 9.10.16); its findings in a section of their own, each
+//   saying how and when it is known (9.2.12), and its decisions who decided
+//   them, by `by` and `given` (9.2.14); the moves made there, as history,
+//   which the map can differ from; the merges made there, each with the
+//   duplicate it named and whether it holds; and, read from their own
+//   current entries, never copied, the entries standing elsewhere that were
+//   made there, that it relies on, that its merges that hold went into, or
+//   that answer its questions (5.8.4, 5.8.19). `ledger
 //   map` reads a topic's questions as they stand now, each answered as its
 //   record shows it, those standing elsewhere that it shows for what was
 //   made on it, and each current answer placed on it that no current
@@ -119,15 +119,17 @@ function showerOf(folded, entryAt) {
 
 /**
  * The files linked from an entry, each by its path, with the status its
- * latest live link gives it, and for one lifted into the product, where.
+ * latest live status link gives it, and where its latest live lift took it
+ * into the project — each null where none gives one.
  * @param {Shower} shower @param {string} id
- * @returns {{path: string, status: string, into: string|null}[]}
+ * @returns {{path: string, status: string|null, into: string|null}[]}
  */
 function assetRows({ folded, show }, id) {
-  return assetsOf(folded, id).map((link) => {
-    const { path, status, into } = show(link);
-    return { path: /** @type {string} */ (path), status: /** @type {string} */ (status), into: /** @type {string|null} */ (into) };
-  });
+  return assetsOf(folded, id).map(({ path, status, lift }) => ({
+    path,
+    status: status === null ? null : /** @type {string} */ (show(status).status),
+    into: lift === null ? null : /** @type {string} */ (show(lift).into),
+  }));
 }
 
 /**

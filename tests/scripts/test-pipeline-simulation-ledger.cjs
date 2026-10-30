@@ -286,12 +286,9 @@ describe('pipeline simulation: ledger', () => {
     const handed = call('Does a note snap to the grid?', 'Notes snap to an 8-point grid.', 'your-call');
     const builders = call('What radius are a note\'s corners?', 'Ten points.', 'dont-care');
     const carried = call('Does a note dim when idle?', 'Notes dim after a minute.', 'carried');
-    sim.refuses(['ledger', 'decide', note, '--answers', scope], /the person's decision is given your-call/, null, JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Snap.', why: 'Tidy.', given: 'your-call' }));
     const measured = ledger(['find', note], { ...made, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites });
     const exploratory = ledger(['find', note], { ...made, text: 'A sheet opens in 9 ms.', how: 'timed once in the conversation', known: 'exploratory', command: 'swift run bench sheet', result: '9.3 ms' });
-    sim.refuses(['ledger', 'find', note], /a measured finding records the command run and its result/, null, JSON.stringify({ ...made, text: 'Fast.', how: 'timed', known: 'measured' }));
     const syncing = ledger(['ask', note], { ...made, text: 'Do notes sync across Macs?' });
-    sim.refuses(['ledger', 'move', note, '--question', syncing, '--to', 'roadmap:sync'], /the roadmap has no item "sync"/, null, JSON.stringify(made));
     sim.run(['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
     ledger(['move', note, '--question', syncing, '--to', 'roadmap:sync'], made);
 

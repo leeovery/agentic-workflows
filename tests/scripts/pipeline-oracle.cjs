@@ -316,12 +316,13 @@ function auditState(dir, label) {
 // there, that its entries rely on, its leading merges went into or that
 // answer its questions; its live moves and merges, a merge's duplicate
 // where it is live and whether the merge leads; each entry's live
-// confirmations, the latest live link for each file linked from it, in the
-// order each file was first linked, what the late one-decision check last
-// found of it where it found anything, and its chain down to the first
-// entry not in a live place — a question's, the earlier wordings of its
-// line. A place that is not live shows nothing; the product record holds
-// the shown entries marked product-wide.
+// confirmations, for each file linked from it, in the order each was
+// first linked, the latest live status and apart from it the latest live
+// lift, what the late one-decision check last found of it where it found
+// anything, and its chain down to the first entry not in a live place — a
+// question's, the earlier wordings of its line. A place that is not live
+// shows nothing; the product record holds the shown entries marked
+// product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
   const root = statePath(dir);
@@ -398,8 +399,16 @@ function auditLedger(dir, ctx) {
   const confirmations = liveEvents('still-holds');
   const keeps = liveEvents('kept');
   const links = liveEvents('asset');
-  /** The links standing beside `id`: the latest live one for each file, in the order each was first linked. @param {string} id */
-  const assetsOf = (id) => [...new Map(links.filter((a) => a.entry === id).map((a) => [a.path, a])).values()].map(({ path: file, status, into }) => ({ path: file, status, into }));
+  /** The files linked from `id`, in the order each was first linked: for each, the latest live status and, apart from it, the latest live lift. @param {string} id */
+  const assetsOf = (id) => {
+    /** @type {Map<string, {path: string, status: string|null, into: string|null}>} */
+    const files = new Map();
+    for (const { path: file, status, into } of links.filter((a) => a.entry === id)) {
+      const was = files.get(file) ?? { path: file, status: null, into: null };
+      files.set(file, { path: file, status: status ?? was.status, into: into ?? was.into });
+    }
+    return [...files.values()];
+  };
   /** The roadmap `id`'s question went to as later, where the last live move its unit made of it went there: `roadmap:{item}`, or null. @param {string} id */
   const laterOf = (id) => {
     const last = movesOf(id, standing(id).unit).at(-1);
