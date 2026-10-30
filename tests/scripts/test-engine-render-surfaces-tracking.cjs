@@ -58,14 +58,6 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
       'only in-progress holders are paused conversations — a completed item\'s stale field is never a wait');
   });
 
-  it('the research phase pauses on evidence alone — the spawn\'s pause', () => {
-    writeManifest(dir, 'lab', {
-      phases: { research: { items: { layout: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
-    });
-    assert.match(renderSurface(dir, 'phase-paused', { dotpath: 'lab', phase: 'research' }),
-      /^.*\nResearch paused for "Lab" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
-  });
-
   it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the banner', () => {
     writeManifest(dir, 'pay', {
       work_type: 'feature',
@@ -146,8 +138,10 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
   it('is loud on a missing phase, a phase that never pauses, a dotted address, and an unknown unit', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'implementation' }),
-      /--phase must be <research\|discussion\|planning\|specification> — the phases that pause; got "implementation"/);
+    for (const phase of ['research', 'implementation']) {
+      assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase }),
+        new RegExp(`--phase must be <discussion\\|planning\\|specification> — the phases that pause; got "${phase}"`));
+    }
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
   });

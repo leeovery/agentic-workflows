@@ -1,10 +1,10 @@
 # Experiment Spawn
 
-*Shared reference. Loaded by the research and discussion sessions when a number is about to bear a decision.*
+*Shared reference. Loaded by the discussion session when a number is about to bear a decision.*
 
 ---
 
-The caller provides `work_unit`, `topic`, and `phase` (`research` or `discussion` — the session's own). The conversation has hit a point where a controlled measurement would settle a choice being weighed. Offer the laboratory; on yes, record the spawn right here, while the conversation still holds the knowledge.
+The caller provides `work_unit`, `topic`, and `phase` (`discussion`, the session's own). The conversation has hit a point where a controlled measurement would settle a choice being weighed. Offer the laboratory; on yes, record the spawn right here, while the conversation still holds the knowledge.
 
 ## A. The Offer
 
@@ -26,12 +26,12 @@ Continue the conversation. An inline measurement, no ceremony, stays part of the
 
 ## B. Record the Spawn
 
-1. Write the problem statement to the session's cache scratch, `.workflows/.cache/{work_unit}/{phase}/{topic}/problem.md` — the problem in plain terms: what we need to pick or learn, the space around it, what we hope. Close with a provenance line naming where it was born — `Spawned from the "{topic}" {phase}, at {the point, in a few words}, on {today}.` **No design content** — no hypothesis, no prediction, no decision rule, no setup. The spawning phase is the client at the laboratory door: it states the problem and stops; question refinement, prediction, decision rule, and method are all the laboratory's.
+1. Write the problem statement to the session's cache scratch, `.leeway/.cache/{work_unit}/{phase}/{topic}/problem.md` — the problem in plain terms: what we need to pick or learn, the space around it, what we hope. Close with a provenance line naming where it was born — `Spawned from the "{topic}" {phase}, at {the point, in a few words}, on {today}.` **No design content** — no hypothesis, no prediction, no decision rule, no setup. The spawning phase is the client at the laboratory door: it states the problem and stops; question refinement, prediction, decision rule, and method are all the laboratory's.
 
 2. Derive a kebab-case slug from the problem, then allocate the record — the create installs the scratch as the record's `problem.md`, and the response's `id` is the experiment (`E{n}`) and `dir` its directory. The same transaction locks this conversation's item: `awaiting_experiments` gains the id, and the topic cannot conclude until the wait releases:
 
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from {phase} --problem .workflows/.cache/{work_unit}/{phase}/{topic}/problem.md
+   node .claude/skills/leeway-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from discussion --problem .leeway/.cache/{work_unit}/{phase}/{topic}/problem.md
    ```
 
    A refused create records nothing — no id, no lock, and the scratch survives. Say why in one line and skip the note and both commits:

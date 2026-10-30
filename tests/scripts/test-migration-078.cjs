@@ -8,22 +8,36 @@
 // whose building started, a feature, a bugfix, a completed quick-fix, a
 // quick-fix being built, a cross-cutting unit holding a topic the first epic
 // promoted, and a cancelled unit, with the project's inbox,
-// environment setup, cache and old migrations record beside them. The move
-// runs once over that project, and each test reads one rule off what it
-// left: the state worktree on an unborn `leeway-state`, locked, with nothing
-// committed, nothing staged but the code tree's `.gitignore`, and
-// `.workflows/` untouched; each unit's files in the layout, a person's files
-// named for tracking or analysis kept beside the reviews' tracking files
-// dropped; nothing in a topic's folder no topic owns; its manifest less
-// research and the retired state; the project's manifest with its id; every
-// file written in a place the layout holds; the files the layout has no
-// place for, named, the tools' sidecars not. A small project of its own
+// environment setup, cache, old migrations record, roadmap and baseline
+// beside them, the tracker's store, settings hooks and `.worktreeinclude` in
+// its code tree, and today's user-level folder holding its config,
+// credentials and a conversation. The move runs once over that project, and
+// each test reads one rule off what it left: the state worktree on an unborn
+// `leeway-state`, locked, with nothing committed, nothing staged but the
+// project's own files, and `.workflows/` and the store untouched; each
+// unit's files in the layout, a person's files named for tracking or
+// analysis kept beside the reviews' tracking files dropped; nothing in a
+// topic's folder no topic owns; its manifest less research and the retired
+// state; the project's manifest with its id, the baseline's skip its
+// brownfield answer and the roadmap's sources following their files; the
+// roadmap as the product, the baseline's docs its assets; the store in the
+// state; the hooks naming the engine's new path and the workflows' lines
+// gone from `.worktreeinclude`; the user-level folder moved and linked;
+// every file written in a place the layout holds; the files the layout has
+// no place for, named, the tools' sidecars not. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
 // `.leeway/` ignore line staged with hooks off and the caller's git
 // environment cleared, the move run again over one cut short and over one
 // whose `.leeway/` the person removed, a project nested in its repository,
-// one run from a linked worktree, a merge stopped in the main checkout, and
-// the projects with nothing to move.
+// one run from a linked worktree, a merge stopped in the main checkout, the
+// projects with nothing to move, a native baseline, a completed one and
+// one under way, a `.worktreeinclude` of the workflows' lines alone,
+// settings that do not parse, a user-level folder the engine's holds a
+// different copy of a file in, and one that is a link elsewhere. The
+// tracker's store is where its driver's frozen declaration says a project
+// from before Leeway keeps it, read as the move reads it.
+// Each test that runs the move points both user-level folders at its own,
+// never the machine's.
 //
 
 require('./hermetic-env.cjs');
@@ -41,6 +55,62 @@ const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layou
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
+const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
+
+// Where a project from before Leeway keeps the tracker's store, as the task
+// driver that declares it says, read from its module as the move reads it;
+// and one file its tool keeps local, named from the first pattern.
+const TASK_DRIVERS = path.join(__dirname, '../../skills/leeway-engine/scripts/drivers/task');
+const [PRE_LEEWAY] = fs.readdirSync(TASK_DRIVERS).map((name) => require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore).filter(Boolean);
+const [STORE] = PRE_LEEWAY.files;
+const LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
+const STORE_LINES = '{"id":"a1","title":"Ranking"}\n{"id":"a2","title":"Ranking, phase 2"}\n';
+
+const OLD_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const NEW_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
+const FOREIGN_HOOK = { type: 'command', command: 'npx prettier --check .' };
+/**
+ * The project's settings, its hooks naming the engine at `engine` and its
+ * permission rules the state at `state`.
+ * @param {string} engine @param {string} state
+ */
+const settings = (engine, state) => ({
+  permissions: { allow: ['Bash(npm test)', `Edit(${state}/**)`, `Bash(mv ${state}/:*)`], deny: [`Read(${state}/.cache/**)`] },
+  hooks: {
+    SessionEnd: [{ hooks: [{ type: 'command', command: `${engine} presence cleanup` }, { type: 'command', command: `${engine} conversation end` }, FOREIGN_HOOK] }],
+    SessionStart: [{ matcher: 'resume', hooks: [{ type: 'command', command: `${engine} session resume` }] }],
+    PreToolUse: [{ matcher: 'Bash', hooks: [FOREIGN_HOOK] }],
+  },
+});
+const WORKTREE_INCLUDE = '.env.local\n.workflows/.knowledge/store.bin\n.workflows/.knowledge/metadata.json\n.workflows/.knowledge/config.json\n';
+
+// The user-level folders the move reads, pinned for the whole file, never the
+// machine's: each test that runs the move names its own pair first.
+const HOMES = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-078-homes-')));
+process.on('exit', () => fs.rmSync(HOMES, { recursive: true, force: true }));
+
+/**
+ * A pair of user-level folders the move reads from now on, the old one
+ * holding `files` where any are given, the new one `fresh`.
+ * @param {string} name @param {Record<string, string>} [files] @param {Record<string, string>} [fresh]
+ */
+function homes(name, files = {}, fresh = {}) {
+  const old = path.join(HOMES, name, 'workflows');
+  const leeway = path.join(HOMES, name, 'leeway');
+  for (const [rel, content] of Object.entries(files)) write(old, rel, content);
+  for (const [rel, content] of Object.entries(fresh)) write(leeway, rel, content);
+  process.env.WORKFLOWS_CONFIG_DIR = old;
+  process.env.LEEWAY_CONFIG_DIR = leeway;
+  return { old, leeway };
+}
+
+// Today's user-level folder: its config, its credentials and a conversation's folder.
+const USER_FOLDER = {
+  'config.json': '{"provider":"openai"}\n',
+  'credentials.json': '{"openai":"sk-test"}\n',
+  'conversations/s1/position.json': '{"at":"workflows"}\n',
+  '.DS_Store': 'sidecar\n',
+};
 
 /** @param {string} prefix */
 const tempProject = (prefix) => initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix))));
@@ -92,7 +162,24 @@ const PROJECT_MANIFEST = {
     typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
   defaults: { plan_format: 'sample-format', linters: [{ name: 'eslint', command: 'npx eslint .' }] },
-  roadmap: { horizons: ['v1'], items: { loyalty: { horizon: 'v1', summary: 'rewards', kind: 'idea', origin: 'harvest' } } },
+  roadmap: {
+    horizons: ['v1'],
+    active_session: '002',
+    imports: [{ path: 'imports/market.md', imported_at: '2026-01-04T10:00:00Z', origin: 'roadmap' }],
+    items: {
+      loyalty: { horizon: 'v1', summary: 'rewards', kind: 'idea', origin: 'harvest', sources: ['.roadmap/sessions/session-001.md', '.roadmap/imports/market.md'] },
+      'points-expiry': { horizon: 'v1', summary: 'expiry', kind: 'bug', origin: 'inbox', sources: ['.roadmap/notes/bugs/2026-01-03--points-expiry.md'] },
+      alpha: {
+        horizon: 'v1', summary: 'Alpha', kind: 'idea', origin: 'postpone:core', postponed_from: { work_unit: 'core', topic: 'alpha' },
+        sources: ['core/discovery/briefs/alpha.md', 'core/research/alpha.md', 'core/discussion/alpha.md', 'core/implementation/gone.md'],
+      },
+      exploration: {
+        horizon: 'v1', summary: 'Exploration', kind: 'idea', origin: 'harvest',
+        sources: ['core/research/exploration-superseded-2026-01-01-1200.md', 'core/research/gamma.md', 'core/discussion/.mailbox/beta/001-third.md'],
+      },
+    },
+  },
+  baseline: { status: 'skipped' },
 };
 
 /** An epic mid-discussion, nothing built: research, mail, experiments, a spec proposed, imports. */
@@ -225,6 +312,24 @@ function todaysProject(dir) {
   w('scratch/notes.txt', 'a folder that is no unit\n');
   w('Thumbs.db', 'sidecar\n');
 
+  w('.roadmap/sessions/session-001.md', '# Roadmap Session 001\n\nSee [market](../imports/market.md).\n');
+  w('.roadmap/sessions/session-002.md', '# Roadmap Session 002\n');
+  w('.roadmap/notes/bugs/2026-01-03--points-expiry.md', '# Points expiry\n\nPer [market](../../imports/market.md).\n');
+  w('.roadmap/notes/ideas/2026-01-03--points-expiry.md', '# Points expiry, an idea of the same name\n');
+  w('.roadmap/imports/market.md', '# Market\n');
+  w('.roadmap/imports/chart.png', PNG);
+  w('.roadmap/imports/.DS_Store', 'sidecar\n');
+  w('.roadmap/draft.txt', 'a file of no place\n');
+  w('.baseline/auth.md', '# Auth\n\nSee [billing](billing.md).\n');
+  w('.baseline/billing.md', '# Billing\n');
+  w('.baseline/.state/dossier-auth.md', 'dossier\n');
+  w('.baseline/.state/agenda-auth.md', '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
+
+  write(dir, STORE, STORE_LINES);
+  write(dir, LOCAL, 'the tool\'s own\n');
+  write(dir, '.claude/settings.json', json(settings(OLD_ENGINE, '.workflows')));
+  write(dir, '.worktreeinclude', WORKTREE_INCLUDE);
+
   w('core/manifest.json', json(CORE));
   w('core/discovery/sessions/session-001.md', '# Discovery Session 001\n');
   w('core/discovery/sessions/session-002.md', '# Discovery Session 002\n\nSee [notes](../../imports/notes.md).\n');
@@ -323,6 +428,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   let headBefore;
   /** @type {ReturnType<typeof run>} */
   let result;
+  /** @type {ReturnType<typeof homes>} */
+  let user;
   const read = (/** @type {string} */ rel) => fs.readFileSync(path.join(state, rel), 'utf8');
   const manifestOf = (/** @type {string} */ name) => JSON.parse(read(`${name}/manifest.json`));
 
@@ -332,6 +439,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     todaysProject(dir);
     commitAll(dir);
     headBefore = git(dir, ['rev-parse', 'HEAD']).trim();
+    user = homes('today', USER_FOLDER, { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'], 'conversations/s2/position.json': '{"at":"leeway"}\n', '.DS_Store': 'the engine side\'s own sidecar\n' });
+    fs.chmodSync(path.join(user.old, 'credentials.json'), 0o600);
     result = run(dir);
     state = path.join(dir, '.leeway');
   });
@@ -347,8 +456,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     it('commits nothing, stages nothing in the state, and leaves the default branch\'s .workflows/ as it was', () => {
       assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), headBefore);
       assert.strictEqual(git(state, ['ls-files']).trim(), '', 'nothing staged in the state worktree');
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore', 'the code tree\'s one staged change');
-      assert.strictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows']).trim(), '');
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.claude/settings.json\n.gitignore\n.worktreeinclude', 'the project\'s own files, staged');
+      assert.strictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows', STORE]).trim(), '', '.workflows/ and the tracker\'s store as they were');
     });
 
     it('writes every file into a place the layout holds', () => {
@@ -359,41 +468,131 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 9, skips: 0 });
       assert.deepStrictEqual(result.returned, {
         verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/.inbox/ideas/rough-notes.md, '
+          + '.workflows/.roadmap/draft.txt, .workflows/.roadmap/notes/ideas/2026-01-03--points-expiry.md, '
           + '.workflows/core/discovery/briefs/zeta.md, .workflows/core/discussion/stray.md, '
           + '.workflows/core/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, '
           + '.workflows/core/notes.txt, .workflows/core/specification/search/order-tracking-notes.md, .workflows/scratch. '
-          + 'Each stays in .workflows/ until the migration\'s commit; move any still wanted into its unit\'s assets/.',
+          + 'Each stays in .workflows/ until the migration\'s commit; move any still wanted into its unit\'s assets/, or the product\'s.',
       });
     });
   });
 
-  describe('the project (21.5.20)', () => {
-    it('carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them', () => {
+  describe('the project (21.5.20, 21.11.2)', () => {
+    it('carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, and the baseline\'s status gone, its skip the brownfield offer\'s answer', () => {
       const project = JSON.parse(read('manifest.json'));
       assert.match(project.project_id, /^[0-9A-Za-z]{21}$/);
+      const { items } = PROJECT_MANIFEST.roadmap;
       assert.deepStrictEqual(project, {
         project_id: project.project_id,
         work_units: PROJECT_MANIFEST.work_units,
         defaults: { plan_format: 'sample-format' },
-        roadmap: PROJECT_MANIFEST.roadmap,
+        roadmap: {
+          horizons: ['v1'],
+          active_session: '002',
+          imports: [{ path: 'assets/market.md', imported_at: '2026-01-04T10:00:00Z', origin: 'roadmap' }],
+          items: {
+            loyalty: { ...items.loyalty, sources: ['.product/sessions/session-001.md', '.product/assets/market.md'] },
+            'points-expiry': { ...items['points-expiry'], sources: ['.product/notes/2026-01-03--points-expiry.md'] },
+            alpha: { ...items.alpha, sources: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'] },
+            exploration: { ...items.exploration, sources: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'] },
+          },
+        },
+        brownfield_offer: 'skipped',
         environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }] },
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
     });
 
-    it('carries the inbox and the environment setup as they are, and writes the state\'s own ignore file', () => {
+    it('carries the inbox and the environment setup as they are, and writes the state\'s own ignore file, ignoring the files the tracker\'s tool keeps local (7.5.4)', () => {
       assert.deepStrictEqual(tree(state, '.inbox').filter((rel) => !rel.startsWith('ideas/' + TODAY)), [
         '.archived/bugs/2026-01-02--old-crash.md', 'ideas/2026-02-01--dark-mode.md',
       ]);
       assert.strictEqual(read('.inbox/ideas/2026-02-01--dark-mode.md'), '# Dark mode\n');
       assert.strictEqual(read('.state/environment-setup.md'), 'No special setup required.\n');
-      assert.strictEqual(read('.gitignore'), '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n');
+      assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEEWAY.localFiles.join('\n')}\n`);
+    });
+
+    it('carries the tracker\'s store, found where the task driver says it lives, as it is, and none of its tool\'s local files (21.5.18)', () => {
+      assert.strictEqual(read(STORE), STORE_LINES);
+      assert.ok(!fs.existsSync(path.join(state, LOCAL)));
+      assert.strictEqual(fs.readFileSync(path.join(dir, STORE), 'utf8'), STORE_LINES, 'the code tree\'s store left for finish to drop');
     });
 
     it('leaves the old cache and the old migrations record where they were, carrying neither (21.S17)', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/.cache/core/discussion/alpha/session.json'), 'utf8'), '{"live":true}\n');
       assert.deepStrictEqual(tree(state, '.cache'), [], 'no cache carried, no scratch file left');
       assert.ok(!fs.existsSync(path.join(state, '.state/migrations')));
+    });
+  });
+
+  describe('the product (21.5.7, 21.11.1)', () => {
+    it('makes .roadmap/ .product/: its sessions as they are, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
+      assert.deepStrictEqual(tree(state, '.product'), [
+        'assets/baseline/agenda-auth.md',
+        'assets/baseline/auth.md',
+        'assets/baseline/billing.md',
+        'assets/chart.png',
+        'assets/market.md',
+        'notes/2026-01-03--points-expiry.md',
+        'sessions/session-001.md',
+        'sessions/session-002.md',
+      ]);
+      assert.deepStrictEqual(fs.readFileSync(path.join(state, '.product/assets/chart.png')), PNG);
+      assert.strictEqual(read('.product/assets/baseline/auth.md'), '# Auth\n\nSee [billing](billing.md).\n');
+      assert.strictEqual(read('.product/assets/baseline/agenda-auth.md'), '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
+    });
+
+    it('points the product\'s documents\' links into its imports at the assets, from where each now sits', () => {
+      assert.strictEqual(read('.product/sessions/session-001.md'), '# Roadmap Session 001\n\nSee [market](../assets/market.md).\n');
+      assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md).\n');
+    });
+
+    it('points each roadmap item\'s sources at the new places, a unit\'s files among them, once each, and its imports at the assets (21.S15)', () => {
+      const { roadmap } = JSON.parse(read('manifest.json'));
+      assert.deepStrictEqual(Object.fromEntries(Object.entries(roadmap.items).map(([name, item]) => [name, item.sources])), {
+        loyalty: ['.product/sessions/session-001.md', '.product/assets/market.md'],
+        'points-expiry': ['.product/notes/2026-01-03--points-expiry.md'],
+        alpha: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'],
+        exploration: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'],
+      });
+      for (const source of [...roadmap.items.loyalty.sources, ...roadmap.items.alpha.sources.slice(0, 2), ...roadmap.items.exploration.sources]) assert.ok(fs.existsSync(path.join(state, source)), source);
+      assert.deepStrictEqual(roadmap.imports.map((/** @type {{path: string}} */ entry) => entry.path), ['assets/market.md']);
+    });
+  });
+
+  describe('the project\'s own files (21.5.19, 21.S52)', () => {
+    it('names the engine by its new path in each settings hook and the state as .leeway/ in each permission rule, every other hook, rule and key as it was, staged', () => {
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.leeway')));
+      assert.strictEqual(git(dir, ['show', ':.claude/settings.json']), json(settings(NEW_ENGINE, '.leeway')));
+    });
+
+    it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept, staged', () => {
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.worktreeinclude'), 'utf8'), '.env.local\n');
+      assert.strictEqual(git(dir, ['show', ':.worktreeinclude']), '.env.local\n');
+    });
+  });
+
+  describe('the user-level folder (21.5.19, P7, 21.S52)', () => {
+    it('moves today\'s folder\'s contents into the engine\'s unchanged, beside what the engine already wrote there — a folder both hold merged where nothing in it differs — and leaves a link to it in its place', () => {
+      assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+      for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.leeway, rel), 'utf8'), content, rel);
+      assert.strictEqual(fs.statSync(path.join(user.leeway, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
+      assert.strictEqual(fs.readlinkSync(user.old), user.leeway);
+      assert.strictEqual(fs.readFileSync(path.join(user.old, 'credentials.json'), 'utf8'), USER_FOLDER['credentials.json'], 'read through the link as today\'s skills read it');
+    });
+
+    it('finds the link already there for the machine\'s next project, and leaves it', () => {
+      const next = tempProject('migration-078-next-');
+      try {
+        write(next, '.workflows/manifest.json', json({ work_units: {} }));
+        commitAll(next);
+        const { returned } = run(next);
+        assert.strictEqual(returned, undefined);
+        assert.strictEqual(fs.readlinkSync(user.old), user.leeway);
+        assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+      } finally {
+        cleanupFixture(next);
+      }
     });
   });
 
@@ -627,6 +826,101 @@ describe('migration 078: a small project', () => {
     commitAll(dir);
   };
   const DROPPED_IDEA = '# Dropped\n*From: pay · discussion · 2026-01-01*\n\nDetails of dropped.\n';
+  before(() => { homes('none'); });
+
+  /** The project manifest the move wrote, from the project at `dir`. */
+  const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+
+  it('keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
+    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
+    for (const [status, answer] of cases) {
+      dir = tempProject(`migration-078-baseline-${status}-`);
+      try {
+        write(dir, '.workflows/manifest.json', json({ work_units: {}, baseline: { status, areas: { auth: 'completed', billing: 'pending' } } }));
+        commitAll(dir);
+        run(dir);
+        const { project_id: _id, ...project } = movedProject();
+        assert.deepStrictEqual(project, { work_units: {}, ...answer }, status);
+      } finally {
+        cleanupFixture(dir);
+      }
+    }
+  });
+
+  it('removes a .worktreeinclude that held only the workflows\' lines, the removal staged; renames the permission rules of settings holding no hook of the engine\'s, staged; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
+    dir = tempProject('migration-078-include-');
+    const user = homes('none');
+    try {
+      write(dir, '.worktreeinclude', '.workflows/.knowledge/store.bin\n\n.workflows/.knowledge/config.json\n');
+      write(dir, '.claude/settings.json', json({ permissions: { allow: ['Edit(.workflows/**)'] } }));
+      feature();
+      run(dir);
+      assert.ok(!fs.existsSync(path.join(dir, '.worktreeinclude')));
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.leeway/**)'] } }));
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'M\t.claude/settings.json\nA\t.gitignore\nD\t.worktreeinclude');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
+      assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('leaves settings that do not parse as they are, and says so', () => {
+    dir = tempProject('migration-078-settings-');
+    try {
+      write(dir, '.claude/settings.json', `{ "hooks": ${OLD_ENGINE}`);
+      feature();
+      const { returned } = run(dir);
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), `{ "hooks": ${OLD_ENGINE}`);
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore');
+      assert.deepStrictEqual(returned, {
+        verify: `${dir}/.claude/settings.json does not parse, so it was left naming the engine at .claude/skills/workflow-engine/scripts/engine.cjs and the state at .workflows/: `
+          + 'once it parses, name .claude/skills/leeway-engine/scripts/engine.cjs in each hook and .leeway/ in each permission rule.',
+      });
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('moves nothing of the old user-level folder where the engine\'s holds a different copy of any file, even down a folder both hold, naming every clash; a copy the same byte for byte no clash', () => {
+    dir = tempProject('migration-078-clash-');
+    const fresh = { 'config.json': '{"provider":"ollama"}\n', 'credentials.json': USER_FOLDER['credentials.json'], 'conversations/s1/position.json': '{"at":"elsewhere"}\n' };
+    const user = homes('clash', USER_FOLDER, fresh);
+    try {
+      feature();
+      const { returned } = run(dir);
+      assert.deepStrictEqual(Object.fromEntries(tree(user.old).map((rel) => [rel, fs.readFileSync(path.join(user.old, rel), 'utf8')])), USER_FOLDER, 'the old folder whole, and readable where it was');
+      assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
+      assert.deepStrictEqual(Object.fromEntries(tree(user.leeway).map((rel) => [rel, fs.readFileSync(path.join(user.leeway, rel), 'utf8')])), fresh);
+      assert.deepStrictEqual(returned, {
+        verify: `Nothing in ${user.old} was moved: ${user.leeway} already holds a different config.json, conversations/s1/position.json. `
+          + `${user.old} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`,
+      });
+    } finally {
+      homes('none');
+      cleanupFixture(dir);
+    }
+  });
+
+  it('moves nothing of an old user-level folder that is a link elsewhere, and says so', () => {
+    dir = tempProject('migration-078-dotfiles-');
+    const user = homes('dotfiles');
+    const dotfiles = path.join(HOMES, 'dotfiles', 'dotfiles-workflows');
+    try {
+      write(dotfiles, 'config.json', USER_FOLDER['config.json']);
+      fs.symlinkSync(dotfiles, user.old);
+      feature();
+      const { returned } = run(dir);
+      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.leeway)], [dotfiles, ['config.json'], false]);
+      assert.deepStrictEqual(returned, {
+        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.leeway}: move what the workflows keep there into ${user.leeway} yourself.`,
+      });
+    } finally {
+      homes('none');
+      cleanupFixture(dir);
+    }
+  });
+
 
   it('puts the runner\'s record and journals, written in a plain .leeway/ before the move, inside the state worktree, the journals ignored', () => {
     dir = tempProject('migration-078-record-');

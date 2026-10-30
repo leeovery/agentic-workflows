@@ -76,16 +76,18 @@ describe('workunit projections: status display', () => {
     // phase already alive, so the row reads ◐ [in-progress], never → [ready].
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+        discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
     });
     const unit = unitOf(dir, 'feature', 'pay');
     assert.strictEqual(unit.phase_label, 'experiment (awaiting evidence)');
     assert.strictEqual(workUnitStatus('feature', unit), [
       'PIPELINE (feature)',
-      '  ├─ ◐ Research      [in-progress]',
-      '  └─ ◐ Experiment    [in-progress]',
+      '  ├─ ✓ Research      [completed]',
+      '  ├─ ◐ Experiment    [in-progress]',
+      '  └─ ◐ Discussion    [in-progress]',
       '',
     ].join('\n'));
   });
@@ -93,8 +95,9 @@ describe('workunit projections: status display', () => {
   it('feature: the continue row routes the waiting unit into the laboratory', () => {
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
+        discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
     });
     const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));

@@ -393,17 +393,17 @@ describe('engine workunit absorb — happy path', () => {
       },
     };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/design.md', '# Design\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/report.md', '# Report\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/data/deliveries.csv', 'evt,count\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md', '# Sub problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E2-retry-window/problem.md', '# Problem 2\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/design.md', '# Design\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/report.md', '# Report\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/data/deliveries.csv', 'evt,count\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md', '# Sub problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
     commitAll(fix.project, 'series');
 
     const res = engine(fix, ABSORB);
     assert.deepStrictEqual(res.experiment, {
-      path: inEpic(fix, 'experiment/auth'),
+      path: inEpic(fix, 'topics/auth/experiments'),
       status: 'in-progress',
       experiments: ['E1', 'E1.1', 'E2'],
     });
@@ -416,12 +416,12 @@ describe('engine workunit absorb — happy path', () => {
     // The directory moved whole under the topic name — nested sub-experiment
     // and data extracts included; nothing remains behind.
     for (const rel of [
-      'experiment/auth/E1-webhook-dup-rate/problem.md',
-      'experiment/auth/E1-webhook-dup-rate/design.md',
-      'experiment/auth/E1-webhook-dup-rate/report.md',
-      'experiment/auth/E1-webhook-dup-rate/data/deliveries.csv',
-      'experiment/auth/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md',
-      'experiment/auth/E2-retry-window/problem.md',
+      'topics/auth/experiments/E1-webhook-dup-rate/problem.md',
+      'topics/auth/experiments/E1-webhook-dup-rate/design.md',
+      'topics/auth/experiments/E1-webhook-dup-rate/report.md',
+      'topics/auth/experiments/E1-webhook-dup-rate/data/deliveries.csv',
+      'topics/auth/experiments/E1-webhook-dup-rate/E1.1-sandbox-only/problem.md',
+      'topics/auth/experiments/E2-retry-window/problem.md',
     ]) {
       assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments', rel)), `moved: ${rel}`);
     }
@@ -456,8 +456,8 @@ describe('engine workunit absorb — happy path', () => {
   it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {
     const feature = featureManifest({
       phases: {
-        research: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1'], reconcile_needed: 'experiment' } } },
-        discussion: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E2'] } } },
+        research: { items: { 'auth-flow': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1', 'E2'], reconcile_needed: 'experiment' } } },
         experiment: {
           items: {
             'auth-flow': {
@@ -473,29 +473,25 @@ describe('engine workunit absorb — happy path', () => {
     });
     fix = setupFixture({ feature });
     writeFile(fix.project, '.leeway/auth-flow/research/auth-flow.md', '# Research\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E2-retry-window/problem.md', '# Problem 2\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
     commitAll(fix.project, 'series');
 
-    // The holder-named research item must land at the topic name for the
+    // The holder-named discussion item lands at the topic name for the
     // wait's release join — same-name absorb keeps it.
     engine(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth-flow']);
 
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.research.items['auth-flow'],
-      { status: 'in-progress', awaiting_experiments: ['E1'], reconcile_needed: 'experiment' },
-      'the research wait and evidence flag travel untouched');
-    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'],
-      { status: 'in-progress', awaiting_experiments: ['E2'] },
-      'the discussion wait travels untouched');
+    assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items['auth-flow'],
+      { status: 'in-progress', awaiting_experiments: ['E1', 'E2'], reconcile_needed: 'experiment' },
+      'the discussion wait and evidence flag travel untouched');
 
     // The lock's semantics survive the move: completion still refuses, and a
     // conclusion at the epic address releases the moved holder.
     assert.match(engineFails(fix, ['topic', 'complete', 'payments', 'discussion', 'auth-flow']).error,
-      /awaits experiment evidence \(E2\)/);
+      /awaits experiment evidence \(E1, E2\)/);
     const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth-flow', 'E1', '--verdict', 'held']);
-    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
-    assert.strictEqual(readManifest(fix, 'payments').phases.research.items['auth-flow'].awaiting_experiments, undefined);
+    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: ['E2'] }]);
+    assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items['auth-flow'].awaiting_experiments, ['E2']);
   });
 
   it('KB failures are warnings, never blocks — the absorb still lands and commits', () => {
@@ -800,16 +796,16 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     setupRoadmap({ webhooks: { horizon: 'v1', summary: 'webhooks', kind: 'idea', origin: 'harvest', sources: [
       'auth-flow/imports/notes.md',
       'auth-flow/seeds/seed.md',
-      'auth-flow/experiment/auth-flow/E1-dup-rate/problem.md',
+      'auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md',
     ] } }, { feature });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
     engine(fix, ABSORB);
 
     assert.deepStrictEqual(readProject().roadmap.items.webhooks.sources, [
       'payments/imports/notes-2.md',
       'payments/seeds/seed.md',
-      'payments/experiment/auth/E1-dup-rate/problem.md',
+      'payments/topics/auth/experiments/E1-dup-rate/problem.md',
     ]);
     assertSourcesOnDisk();
   });
@@ -951,16 +947,16 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const epic = epicManifest();
     epic.phases.experiment = { items: { auth: { status: 'completed', experiments: { E1: { slug: 'other', status: 'concluded', verdict: 'stands' } } } } };
     fix = setupFixture({ feature: withSeries(), epic });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
     refusedPristine(ABSORB, /experiment topic "auth" already exists in payments/);
     fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture({ feature: withSeries() });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
-    writeFile(fix.project, '.leeway/payments/experiment/auth/stray.md', '# Orphan dir\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/payments/topics/auth/experiments/stray.md', '# Orphan dir\n');
     commitAll(fix.project, 'orphan series dir');
-    refusedPristine(ABSORB, /experiment\/auth already exists/);
+    refusedPristine(ABSORB, /topics\/auth\/experiments already exists/);
   });
 
   it('refuses a mailbox already at the topic in the epic — the messages never merge into it', () => {
@@ -971,28 +967,25 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /\.leeway\/payments\/discussion\/\.mailbox\/auth already exists — pick a different name/);
   });
 
-  it('the research lands at the topic name — a renamed absorb keeps every experiment join intact', () => {
+  it('the discussion lands at the topic name — a renamed absorb keeps every experiment join intact', () => {
     // The wait's release edge and the register both address
-    // `phases.experiment.items.{topic}` — the research landing at the topic
+    // `phases.experiment.items.{topic}` — the discussion landing at the topic
     // name is what keeps the join true after a renamed absorb.
     const feature = featureManifest();
-    feature.phases.research.items['auth-flow'].awaiting_experiments = ['E1'];
+    feature.phases.discussion.items['auth-flow'] = { status: 'in-progress', awaiting_experiments: ['E1'] };
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'webhook-dup-rate', status: 'running' } } } } };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/auth-flow/E1-webhook-dup-rate/problem.md', '# Problem\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
     commitAll(fix.project, 'series');
-    const res = engine(fix, ABSORB);
-    assert.deepStrictEqual(res.research,
-      [{ from: 'auth-flow', topic: 'auth', status: 'completed' }]);
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.research.items.auth,
-      { status: 'completed', awaiting_experiments: ['E1'] });
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/research/auth.md')),
-      'the research lands at the topic name on disk too');
+    engine(fix, ABSORB);
+    assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items.auth,
+      { status: 'in-progress', awaiting_experiments: ['E1'] });
+    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/topics/auth/experiments/E1-webhook-dup-rate/problem.md')),
+      'the series lands at the topic name on disk too');
     // The join holds end to end: the conclusion at the epic address releases
     // the moved wait.
     const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth', 'E1', '--verdict', 'held']);
-    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'research', released: ['E1'], remaining: [] }]);
+    assert.deepStrictEqual(concluded.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
   });
 
   it('refuses a research collision on the topic name — item or file on disk', () => {
@@ -1023,7 +1016,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     const feature = featureManifest();
     feature.phases.experiment = { items: { stray: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } };
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/experiment/stray/E1-x/problem.md', '# P\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/stray/experiments/E1-x/problem.md', '# P\n');
     commitAll(fix.project, 'foreign series');
     refusedPristine(ABSORB, /experiment item "stray" not named after it — a feature's experiment is single and self-named/);
   });

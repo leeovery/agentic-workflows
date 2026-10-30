@@ -109,7 +109,10 @@ const METHODS = Object.freeze({
  * `setType` replaces its type. `ready` answers every task, of the phase or
  * of every written phase, waiting to be started with nothing it is linked
  * after still to finish: a task done or closed holds nothing up. `list`
- * answers a phase's tasks in order.
+ * answers a phase's tasks in order. A driver whose tracker projects used
+ * before Leeway may declare where they kept its store, `preLeewayStore`
+ * (`{files, localFiles}`, project-relative): frozen, since migration 078
+ * reads it from the module alone, outside this loader.
  * @typedef {DriverDeclaration & MethodsOf<typeof METHODS.task> & {
  *   ensureStore: (root: string) => boolean,
  *   storeFiles: () => string[],

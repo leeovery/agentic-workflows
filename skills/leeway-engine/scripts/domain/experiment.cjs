@@ -2,11 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the experiment series — the ordered run of experiments a
-// topic's conversations ever spawned (`phases.experiment.items.{topic}
-// .experiments.{id}`), each a frozen design plus a report on disk under
-// `{wu}/experiment/{topic}/{id}-{slug}/` in the state. The engine records the
-// lifecycle; every document is model-authored — the engine never writes
-// prose.
+// topic's discussion ever spawned (`phases.experiment.items.{topic}
+// .experiments.{id}`), each a frozen design plus a report on disk in the
+// topic's folder, `{wu}/topics/{topic}/experiments/{id}-{slug}/`, in the
+// state (4.11.15). The engine records the lifecycle; every document is
+// model-authored — the engine never writes prose.
 //
 // The record lifecycle is the design-before-data invariant made mechanical:
 // conceived → designed → approved (the briefing's freeze) → running →
@@ -15,12 +15,18 @@
 // is deliberately its own verb — the user-confirmed freeze, never a step a
 // loop drifts past. The spawn (`create`) is the phase's one door: it
 // allocates the id, installs the spawning session's problem statement
-// (moved from a cache scratch — the engine still never writes prose), and
-// locks the spawning research or discussion item
+// (moved from a cache scratch — the engine still never writes prose),
+// records the question on the topic's map it measures, where one is named
+// (experiment-question.cjs), and locks the spawning discussion
 // (`awaiting_experiments`); a split creates sub-experiments (`E{n}.{m}`)
 // under a running parent, and the lock stays on the parent — it releases
 // once, when the parent concludes or is abandoned. The release edges live in
 // transitions, the one home for the reconcile machinery.
+//
+// The question an experiment measures stays open on the map, waiting on it,
+// until the discussion writes the result (9.1.11). A report concluding after
+// that question closed reaches the topic as a message, through `topic send`,
+// which reopens a decided topic and commits its own delivery.
 //
 // The phase item is derived bookkeeping over the records: the spawn opens it
 // (and reopens a completed series), the last record's terminal transition
@@ -42,8 +48,11 @@ const {
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
-const { settleItemStatus } = require('./derivations.cjs');
-const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
+const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
+const { flagDownstream, releaseExperimentWaits, assertLegalTopicName, sendMessage } = require('./transitions.cjs');
+const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
+const { rebaseLinks } = require('./markdown-links.cjs');
+const { recordDir } = require('./experiment-paths.cjs');
 const { statePath, stateRelative } = require('../kernel/state-root.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
@@ -70,6 +79,7 @@ function assertOneLine(label, value) {
  * @property {string} status   one of VALID_EXPERIMENT_STATUSES
  * @property {string} [verdict]  one line, recorded at conclusion
  * @property {string} [reason]   one line, recorded at abandonment
+ * @property {string} [question] the full ledger id of the question on the topic's map it measures
  */
 
 /**
@@ -126,20 +136,6 @@ function liveSubs(item, parentId) {
 }
 
 /**
- * The record's on-disk home, state-relative. A sub-experiment's record
- * nests inside its parent's — the split is the laboratory's internal method,
- * so the parent directory holds the whole tree.
- * @param {string} workUnit @param {string} topic @param {string} id
- * @param {Record<string, ExperimentRecord>} experiments
- */
-function recordDir(workUnit, topic, id, experiments) {
-  const base = `${workUnit}/experiment/${topic}`;
-  if (isParentExperimentId(id)) return `${base}/${id}-${experiments[id].slug}`;
-  const parentId = id.slice(0, id.indexOf('.'));
-  return `${base}/${parentId}-${experiments[parentId].slug}/${id}-${experiments[id].slug}`;
-}
-
-/**
  * @typedef {object} ExperimentOpResult
  * @property {string} topic
  * @property {string} id
@@ -152,8 +148,11 @@ function recordDir(workUnit, topic, id, experiments) {
  * @property {string} [reason]
  * @property {string} [parent]   sub-experiment creation — the running parent
  * @property {{phase: string, ids: string[]}} [awaiting]  the lock the spawn placed
+ * @property {string} [question]  the question the spawn measures, by its short id
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
  * @property {{phase: string, topic: string}[]} [reconcile_flagged]
+ * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
+ * @property {string[]} [warnings]
  */
 
 /**
@@ -164,27 +163,29 @@ function recordDir(workUnit, topic, id, experiments) {
  * create moves it in as `{dir}/problem.md`), opens the experiment item
  * (creating it, or setting a completed series back to in-progress — a new
  * spawn reopens the series), and locks the spawning item:
- * `awaiting_experiments` gains the id on the in-progress research or
- * discussion the question came from, identically for both. A split (`parent`
+ * `awaiting_experiments` gains the id on the in-progress discussion the
+ * question came from. `question` names, by a prefix of its ledger id, the
+ * question open on the topic's map the experiment measures; the record keeps
+ * its full id, and the map shows the question waiting on it. A split (`parent`
  * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
  * (the wait stays on the parent and releases once, when the parent as a
- * whole ends), and no problem file: the sub-record's design frames its
- * question. The record's directory is the
- * response's `dir`, where the design is authored before anything is
- * measured.
+ * whole ends), and no problem file or question: the sub-record's design
+ * frames its question, and the parent measures the map's. The record's
+ * directory is the response's `dir`, where the design is authored before
+ * anything is measured.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
- * @param {{slug: string, from?: string, parent?: string, problem?: string}} opts
+ * @param {{slug: string, from?: string, parent?: string, problem?: string, question?: string}} opts
  * @returns {ExperimentOpResult}
  */
-function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem }) {
+function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, question }) {
   assertLegalTopicName(topic);
   if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
     throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
   }
   if ((from === undefined) === (parent === undefined)) {
-    throw new Error('exactly one of --from <research|discussion> (a spawn) or --parent <E{n}> (a split) is required');
+    throw new Error(`exactly one of --from <${EXPERIMENT_SPAWN_PHASES.join('|')}> (a spawn) or --parent <E{n}> (a split) is required`);
   }
   if (from !== undefined && !EXPERIMENT_SPAWN_PHASES.includes(from)) {
     throw new Error(`--from must be one of ${EXPERIMENT_SPAWN_PHASES.join('|')} — the phases whose sessions spawn experiments; got "${from}"`);
@@ -196,6 +197,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
     }
     if (problem !== undefined) {
       throw new Error('--problem is refused with --parent — a split carries no spawn-side problem statement; the sub-record\'s design frames its question');
+    }
+    if (question !== undefined) {
+      throw new Error('--question is refused with --parent — the parent measures the map\'s question; the sub-record\'s design frames its own');
     }
   }
   /** @type {string|null} */
@@ -219,6 +223,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
     }
     if (problemBody.trim() === '') throw new Error(`problem file is empty: ${problem}`);
   }
+  /** @type {string[]} */
+  const warnings = [];
+  const measured = question === undefined ? null : measuredQuestion(cwd, workUnit, topic, question, warnings);
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
 
@@ -263,7 +270,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
       .filter(Boolean)
       .reduce((max, digits) => Math.max(max, Number(digits)), 0) + 1;
     const id = `E${n}`;
-    experiments[id] = { slug, status: 'conceived' };
+    experiments[id] = { slug, status: 'conceived', ...(measured === null ? {} : { question: measured.id }) };
     const awaiting = Array.isArray(spawner.awaiting_experiments) ? spawner.awaiting_experiments : [];
     spawner.awaiting_experiments = [...awaiting, id];
     const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
@@ -278,12 +285,13 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
       topic, id, slug, status: 'conceived',
       dir,
       awaiting: { phase: /** @type {string} */ (from), ids: spawner.awaiting_experiments },
+      ...(measured === null ? {} : { question: measured.short }),
     };
   });
   if (scratchAbs !== null) {
     try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
   }
-  return result;
+  return warnings.length > 0 ? { ...result, warnings } : result;
 }
 
 /**
@@ -357,6 +365,52 @@ function approveExperiment(cwd, workUnit, topic, id) {
 }
 
 /**
+ * The report a top-level conclusion owes as a message: its record's folder
+ * and the topic it goes to. Owed where the running record measures a
+ * question that no longer stands open on the spawning topic's map — the
+ * person closed or moved it while the experiment ran — to the topic the
+ * question stands on now (`reportRoute`). Null where none is owed; refused
+ * where one is owed and the record holds no report to send.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {string[]} warnings
+ * @returns {{record: string, to: string}|null}
+ */
+function reportOwed(cwd, workUnit, topic, id, warnings) {
+  if (!isParentExperimentId(id)) return null;
+  const item = experimentItem(loadWorkUnitManifest(cwd, workUnit), topic);
+  const record = seriesRecord(item, topic, id);
+  if (record.status !== 'running' || record.question === undefined) return null;
+  const to = reportRoute(cwd, workUnit, topic, record.question, warnings);
+  if (to === null) return null;
+  const dir = recordDir(workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments));
+  if (!fs.existsSync(statePath(cwd, `${dir}/report.md`))) {
+    throw new Error(`experiment ${id} ("${topic}") has no report.md — its question left the topic's open questions while it ran, so the report reaches "${to}" as a message; write the report first`);
+  }
+  return { record: dir, to };
+}
+
+/**
+ * Send the report to the discussion of the topic it is owed to as a message
+ * is sent (9.1.11, 10.2.7), through `topic send`: copied to a cache scratch,
+ * which the send consumes, each relative link rebased to resolve from the
+ * mailbox, and delivered there — a decided topic reopened, the delivery
+ * committed.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {{record: string, to: string}} owed
+ * @returns {NonNullable<ExperimentOpResult['report_sent']>}
+ */
+function sendReport(cwd, workUnit, topic, id, { record, to }) {
+  const scratch = statePath(cwd, `.cache/${workUnit}/experiment/${topic}/${id}-report.md`);
+  fs.mkdirSync(path.dirname(scratch), { recursive: true });
+  const report = fs.readFileSync(statePath(cwd, `${record}/report.md`), 'utf8');
+  fs.writeFileSync(scratch, rebaseLinks(report, record, mailboxDir(workUnit, 'discussion', to)));
+  const sent = sendMessage(cwd, workUnit, 'discussion', to, {
+    contentFile: scratch,
+    slug: `${id.toLowerCase()}-report`,
+    message: `discussion(${workUnit}/${to}): ${topic}'s ${id} report, its question no longer open there when it landed`,
+  });
+  return { topic: to, message_path: sent.message_path, reopened: sent.reopened === true, committed: sent.committed ?? null };
+}
+
+/**
  * Conclude a running experiment with its one-line verdict — the decision
  * rule's mechanical outcome, recorded on the register row. A parent whose
  * sub-experiments are still live refuses: its verdict synthesises them. A
@@ -365,7 +419,10 @@ function approveExperiment(cwd, workUnit, topic, id) {
  * on the topic's completed downstream neighbour — evidence arriving after a
  * decision must surface before the record is trusted; a sub-experiment's
  * conclusion moves neither — the parent's carries them. The item's derived
- * status settles after every terminal transition.
+ * status settles after every terminal transition. Where the question the
+ * experiment measures left the open questions of the spawning topic while
+ * it ran, the report then reaches as a message the topic the question
+ * stands on now (`reportOwed`, `sendReport`).
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{verdict: string}} opts
@@ -373,7 +430,10 @@ function approveExperiment(cwd, workUnit, topic, id) {
  */
 function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
   assertOneLine('--verdict', verdict);
-  return recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
+  /** @type {string[]} */
+  const warnings = [];
+  const report = reportOwed(cwd, workUnit, topic, id, warnings);
+  const result = recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
     assertNotTerminal(record, topic, id);
     if (record.status !== 'running') {
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — only a running experiment concludes; the design exists before the data, and the data before the verdict`);
@@ -397,6 +457,8 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
     extra.item_status = settleItemStatus(item);
     return extra;
   });
+  if (report !== null) result.report_sent = sendReport(cwd, workUnit, topic, id, report);
+  return warnings.length > 0 ? { ...result, warnings } : result;
 }
 
 /**
@@ -436,4 +498,4 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
   });
 }
 
-module.exports = { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment, recordDir };
+module.exports = { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment };

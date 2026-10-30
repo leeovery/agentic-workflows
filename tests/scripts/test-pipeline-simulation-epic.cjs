@@ -127,7 +127,7 @@ describe('pipeline simulation: epic', () => {
     sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /carries reconcile_needed: research/);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
     sim.run(['topic', 'absorb', wu, 'discussion', 'alpha', '--file', path.basename(decision.message_path),
-      '--subtopic', 'a-decision', '-m', `discussion(${wu}/alpha): absorb a-decision`]);
+      '-m', `discussion(${wu}/alpha): absorb a-decision`]);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
     // A concluded discussion is held the same way: a research-side landing
