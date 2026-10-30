@@ -10,11 +10,15 @@
 // environment setup, cache and old migrations record beside them. The move
 // runs once over that project, and each test reads one rule off what it
 // left: the state worktree on an unborn `leeway-state`, locked, with nothing
-// committed or staged and `.workflows/` untouched; each unit's files in the
-// layout, its manifest less research and the retired state; the project's
-// manifest with its id; the files the layout has no place for, named. A
-// small project of its own covers the runner's record already in `.leeway/`,
-// the move run again, and the projects with nothing to move.
+// committed, nothing staged but the code tree's `.gitignore`, and
+// `.workflows/` untouched; each unit's files in the layout, a person's files
+// named for tracking or analysis kept beside the reviews' tracking files
+// dropped; its manifest less research and the retired state; the project's
+// manifest with its id; the files the layout has no place for, named, the
+// tools' sidecars not. A small project of its own covers the runner's record
+// already in `.leeway/`, the `.leeway/` ignore line staged with hooks off and
+// the caller's git environment cleared, the move run again, and the projects
+// with nothing to move.
 //
 
 require('./hermetic-env.cjs');
@@ -87,26 +91,27 @@ const CORE = {
   created: '2026-01-01',
   seeds: [{ path: 'seeds/2026-01-01--search.md', source: 'inbox' }],
   imports: [
-    { path: 'imports/notes.md', origin: 'discussion/alpha', added: '2026-01-02' },
-    { path: 'imports/diagram.png', origin: 'discovery', added: '2026-01-02' },
+    { path: 'imports/notes.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/alpha' },
+    { path: 'imports/diagram.png', imported_at: '2026-01-02T10:00:00Z', origin: 'discovery' },
   ],
   phases: {
     discovery: {
       active_session: '002',
+      gap_analysis_cache: { checksum: 'def', generated: '2026-01-03', input_files: ['research/alpha.md'] },
       analysis_staging: { 'discovery-gap-analysis': { gate_mode: 'gated', candidates: { zeta: { status: 'pending' } } } },
       items: {
         alpha: { routing: 'research', source: 'discovery', summary: 'Alpha', order: 1, brief_path: 'discovery/briefs/alpha.md' },
         beta: { routing: 'discussion', source: 'message:alpha', summary: 'Beta', order: 2 },
         gamma: { routing: 'discussion', source: 'discovery', summary: 'Gamma' },
-        delta: { routing: 'discussion', source: 'discovery', summary: 'Delta', cancelled: true },
+        delta: { routing: 'discussion', source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
         epsilon: { routing: 'research', source: 'discovery', summary: 'Epsilon' },
         eta: { routing: 'research', source: 'discovery', summary: 'Eta', postponed: true },
       },
     },
     research: {
       items: {
-        alpha: { status: 'completed', threads: { why: { question: 'Why?', status: 'learned', origin: 'seed' } } },
-        epsilon: { status: 'completed' },
+        alpha: { status: 'in-progress', reconcile_needed: 'experiment', threads: { why: { question: 'Why?', status: 'learned', origin: 'seed' } } },
+        epsilon: { status: 'in-progress', awaiting_experiments: ['E2'] },
         eta: { status: 'postponed', previous_status: 'completed' },
         'exploration-superseded-2026-01-01-1200': { status: 'superseded' },
       },
@@ -128,6 +133,7 @@ const CORE = {
           status: 'in-progress', order: 1, review_cycle: 2, tracking: { 'review-input-tracking-c1.md': 'open' },
           sources: { alpha: { status: 'incorporated' } },
         },
+        old: { status: 'cancelled', previous_order: 2, sources: {} },
       },
     },
   },
@@ -142,7 +148,7 @@ const SHOP = {
   created: '2026-01-01',
   phases: {
     discovery: { items: { ranking: { routing: 'discussion', source: 'discovery', summary: 'Ranking' } } },
-    discussion: { items: { ranking: { status: 'completed' } } },
+    discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
     specification: { items: { ranking: { status: 'completed', order: 1, sources: { ranking: { status: 'incorporated' } } } } },
     planning: {
       items: {
@@ -179,12 +185,13 @@ function todaysProject(dir) {
   w('.state/migrations', '001\n072\n');
   w('.cache/core/discussion/alpha/session.json', '{"live":true}\n');
   w('scratch/notes.txt', 'a folder that is no unit\n');
+  w('Thumbs.db', 'sidecar\n');
 
   w('core/manifest.json', json(CORE));
   w('core/discovery/sessions/session-001.md', '# Discovery Session 001\n');
   w('core/discovery/sessions/session-002.md', '# Discovery Session 002\n\nSee [notes](../../imports/notes.md).\n');
   w('core/discovery/briefs/alpha.md', '# Alpha brief\n\nFrom [notes](../../imports/notes.md).\n');
-  w('core/research/alpha.md', '# Research: Alpha\n\nRead [notes](../imports/notes.md) and ![d](../imports/diagram.png).\n');
+  w('core/research/alpha.md', '# Research: Alpha\n\nRead [notes](../imports/notes.md) and ![d](../imports/diagram.png), not [code](../imports/util.js).\n');
   w('core/research/epsilon.md', '# Research: Epsilon\n');
   w('core/research/exploration-superseded-2026-01-01-1200.md', '# Research: Exploration\n\nSee ../imports/notes.md.\n');
   w('core/discussion/alpha.md', '# Discussion: Alpha\n\nThe research said so, and so do we.\n');
@@ -199,6 +206,7 @@ function todaysProject(dir) {
   w('core/experiment/alpha/E1-frame-budget/E1.1-one-monitor/problem.md', '# Sub-problem\n');
   w('core/specification/search/specification.md', '# Specification: Search\n\n[n](../../imports/notes.md)\n');
   w('core/specification/search/review-input-tracking-c1.md', 'tracking\n');
+  w('core/specification/search/order-tracking-notes.md', 'the person\'s own\n');
   w('core/imports/notes.md', '# Notes\n');
   w('core/imports/diagram.png', PNG);
   w('core/seeds/2026-01-01--search.md', '# Search\n');
@@ -218,6 +226,16 @@ function todaysProject(dir) {
   w('shop/review/ranking/report.md', '# Review\n');
   w('shop/review/ranking/report-1-1.md', '# Task review\n');
   w('shop/review/ranking/change-set-c1-ranking.md', '# Change set\n');
+  w('shop/review/ranking/change-set-c2-order-tracking.md', '# Change set: Order Tracking\n');
+  w('shop/review/ranking/change-set-c3-cost-analysis.md', '# Change set: Cost Analysis\n');
+  w('shop/discussion/event-tracking.md', '# Discussion: Event Tracking\n');
+  w('shop/planning/event-tracking/planning.md', '# Plan: Event Tracking\n');
+  w('shop/planning/event-tracking/tasks/event-tracking-1-1.md', '# Task 1.1\n');
+  w('shop/planning/usage-analysis/usage-analysis-1-1.md', '# Task 1.1, as an older plan kept it\n');
+  w('shop/review/usage-analysis/report-1-1.md', '# Task review\n');
+  w('shop/imports/.DS_Store', 'sidecar\n');
+  w('shop/imports/sketch.md', '# Sketch\n');
+  w('shop/Thumbs.db', 'sidecar\n');
 
   w('tally/manifest.json', json(unit('tally', 'feature', 'in-progress', {
     research: { items: { tally: { status: 'completed' } } },
@@ -279,16 +297,17 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.match(String(listed), /^locked leeway state, do not remove$/m);
     });
 
-    it('commits nothing, stages nothing, and leaves the default branch\'s .workflows/ as it was', () => {
+    it('commits nothing, stages nothing in the state, and leaves the default branch\'s .workflows/ as it was', () => {
       assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), headBefore);
       assert.strictEqual(git(state, ['ls-files']).trim(), '', 'nothing staged in the state worktree');
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore', 'the code tree\'s one staged change');
       assert.strictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows']).trim(), '');
     });
 
     it('reports an update for the project and one for each unit, and hands back what it could not carry', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 8, skips: 0 });
       assert.deepStrictEqual(result.returned, {
-        verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/core/notes.txt, .workflows/scratch. '
+        verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/core/notes.txt, .workflows/core/specification/search/order-tracking-notes.md, .workflows/scratch. '
           + 'Each stays in .workflows/ until the migration\'s commit; move any still wanted into its unit\'s assets/.',
       });
     });
@@ -397,7 +416,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('points every moved document\'s links into imports at the assets, from where the document now sits (21.5.7)', () => {
-      assert.match(read('core/topics/alpha/log.md'), /Read \[notes\]\(\.\.\/\.\.\/assets\/notes\.md\) and !\[d\]\(\.\.\/\.\.\/assets\/diagram\.png\)\./);
+      assert.match(read('core/topics/alpha/log.md'), /Read \[notes\]\(\.\.\/\.\.\/assets\/notes\.md\) and !\[d\]\(\.\.\/\.\.\/assets\/diagram\.png\), not \[code\]\(\.\.\/imports\/util\.js\)\./, 'a link to a name no import holds left as written');
       assert.match(read('core/discovery/session-002.md'), /See \[notes\]\(\.\.\/assets\/notes\.md\)\./);
       assert.strictEqual(read('core/topics/alpha/experiments/E1-frame-budget/problem.md'), '# Problem\n\nAgainst [notes](../../../../assets/notes.md).\n');
     });
@@ -411,8 +430,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         created: '2026-01-01',
         seeds: [{ path: 'seeds/2026-01-01--search.md', source: 'inbox' }],
         imports: [
-          { path: 'assets/notes.md', origin: 'discussion/alpha', added: '2026-01-02' },
-          { path: 'assets/diagram.png', origin: 'discovery', added: '2026-01-02' },
+          { path: 'assets/notes.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/alpha' },
+          { path: 'assets/diagram.png', imported_at: '2026-01-02T10:00:00Z', origin: 'discovery' },
         ],
         phases: {
           discovery: {
@@ -421,24 +440,23 @@ describe('migration 078: the move into the layout in .leeway/', () => {
               alpha: { source: 'discovery', summary: 'Alpha', order: 1, brief_path: 'topics/alpha/brief.md' },
               beta: { source: 'message:alpha', summary: 'Beta', order: 2 },
               gamma: { source: 'discovery', summary: 'Gamma' },
-              delta: { source: 'discovery', summary: 'Delta', cancelled: true },
+              delta: { source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
               epsilon: { source: 'discovery', summary: 'Epsilon' },
               eta: { source: 'discovery', summary: 'Eta', postponed: true },
             },
           },
           discussion: {
-            analysis_cache: { checksum: 'abc', generated: '2026-01-03' },
             items: {
-              alpha: { status: 'completed' },
+              alpha: { status: 'completed', reconcile_needed: 'experiment' },
               beta: { status: 'unstarted' },
               gamma: { status: 'promoted', promoted_to: 'shared' },
               delta: { status: 'cancelled' },
-              epsilon: { status: 'in-progress' },
+              epsilon: { status: 'in-progress', awaiting_experiments: ['E2'] },
               eta: { status: 'postponed', previous_status: 'in-progress' },
             },
           },
           experiment: CORE.phases.experiment,
-          specification: { items: { search: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } } } },
+          specification: { items: { search: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } }, old: { status: 'cancelled', sources: {} } } },
         },
       });
       assert.strictEqual(read('core/manifest.json'), json(manifestOf('core')), 'in the engine\'s serialisation');
@@ -448,14 +466,22 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   describe('an epic whose building started (21.S49)', () => {
     it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, leaves its built spec for the cut, and drops implementation and tracking', () => {
       assert.deepStrictEqual(tree(state, 'shop'), [
+        'assets/plans/event-tracking/planning.md',
+        'assets/plans/event-tracking/tasks/event-tracking-1-1.md',
         'assets/plans/ranking/phase-1-tasks.md',
         'assets/plans/ranking/planning.md',
         'assets/plans/ranking/tasks/ranking-1-1.md',
+        'assets/plans/usage-analysis/usage-analysis-1-1.md',
         'assets/reviews/ranking/change-set-c1-ranking.md',
+        'assets/reviews/ranking/change-set-c2-order-tracking.md',
+        'assets/reviews/ranking/change-set-c3-cost-analysis.md',
         'assets/reviews/ranking/report-1-1.md',
         'assets/reviews/ranking/report.md',
+        'assets/reviews/usage-analysis/report-1-1.md',
+        'assets/sketch.md',
         'discovery/session-001.md',
         'manifest.json',
+        'topics/event-tracking/log.md',
         'topics/ranking/log.md',
       ]);
     });
@@ -463,7 +489,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     it('drops staging, review cycles, plan review tracking and dependencies, keeping the build\'s standing', () => {
       assert.deepStrictEqual(manifestOf('shop').phases, {
         discovery: { items: { ranking: { source: 'discovery', summary: 'Ranking' } } },
-        discussion: { items: { ranking: { status: 'completed' } } },
+        discussion: { items: { ranking: { status: 'completed' }, 'event-tracking': { status: 'completed' }, 'usage-analysis': { status: 'completed' } } },
         specification: { items: { ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' } } } } },
         planning: { items: { ranking: { status: 'completed', format: 'tick', phase: 2, task: 1, task_map: { 'ranking-1-1': 'tick-a1' }, storage_paths: ['.tick'] } } },
         implementation: { items: { ranking: { status: 'in-progress', current_phase: 2, current_task: 'ranking-2-1', completed_tasks: ['ranking-1-1'], bank: [{ finding: 'later' }] } } },
@@ -488,10 +514,23 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.deepStrictEqual(tree(state, 'patch'), ['assets/plans/patch/planning.md', 'assets/specs/patch.md', 'manifest.json']);
     });
 
-    it('drops every tracking and analysis file, the review reports kept (21.S46)', () => {
+    it('drops every tracking and analysis file by its whole name, the review reports and the person\'s files named for tracking or analysis kept (21.S46)', () => {
       const moved = tree(state).filter((rel) => !rel.startsWith('.'));
-      assert.deepStrictEqual(moved.filter((rel) => /tracking|analysis/.test(rel)), []);
+      assert.deepStrictEqual(moved.filter((rel) => /tracking|analysis/.test(rel)), [
+        'shop/assets/plans/event-tracking/planning.md',
+        'shop/assets/plans/event-tracking/tasks/event-tracking-1-1.md',
+        'shop/assets/plans/usage-analysis/usage-analysis-1-1.md',
+        'shop/assets/reviews/ranking/change-set-c2-order-tracking.md',
+        'shop/assets/reviews/ranking/change-set-c3-cost-analysis.md',
+        'shop/assets/reviews/usage-analysis/report-1-1.md',
+        'shop/topics/event-tracking/log.md',
+      ]);
       assert.ok(moved.includes('shop/assets/reviews/ranking/report.md'));
+    });
+
+    it('neither carries nor names the files the person\'s tools leave beside theirs', () => {
+      assert.ok(!fs.existsSync(path.join(state, 'shop/assets/.DS_Store')));
+      assert.doesNotMatch(String(result.returned && result.returned.verify), /Thumbs\.db|\.DS_Store/);
     });
 
     it('moves a cancelled unit as any other, its status cancelled (21.5.14)', () => {
@@ -539,8 +578,45 @@ describe('migration 078: a small project', () => {
       const second = Object.fromEntries(tree(state).filter((rel) => rel !== '.git').map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')]));
       assert.deepStrictEqual(second, first);
       assert.deepStrictEqual(tree(state, '.inbox'), [`ideas/${TODAY}--dropped.md`]);
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n', 'the ignore line written once');
     } finally {
       cleanupFixture(dir);
+    }
+  });
+
+  it('ignores .leeway/ in the code tree\'s .gitignore, staged alone, with hooks off and the caller\'s git environment cleared', () => {
+    dir = tempProject('migration-078-code-');
+    const decoy = tempProject('migration-078-decoy-');
+    const marker = path.join(decoy, 'hook-ran');
+    try {
+      write(dir, '.gitignore', 'node_modules/');
+      write(dir, 'src/app.js', 'code\n');
+      feature();
+      write(dir, 'src/app.js', 'code, edited\n');
+      write(dir, '.git/hooks/post-checkout', `#!/bin/sh\ntouch "${marker}"\n`);
+      fs.chmodSync(path.join(dir, '.git/hooks/post-checkout'), 0o755);
+      write(decoy, 'README.md', 'decoy\n');
+      commitAll(decoy);
+      const held = process.env.GIT_DIR;
+      process.env.GIT_DIR = path.join(decoy, '.git');
+      let counts;
+      let during;
+      try {
+        counts = run(dir);
+        during = process.env.GIT_DIR;
+      } finally {
+        if (held === undefined) delete process.env.GIT_DIR;
+        else process.env.GIT_DIR = held;
+      }
+      assert.deepStrictEqual({ updates: counts.updates, skips: counts.skips }, { updates: 2, skips: 0 });
+      assert.strictEqual(during, path.join(decoy, '.git'), 'the caller\'s environment put back');
+      assert.strictEqual(git(path.join(dir, '.leeway'), ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
+      assert.ok(!fs.existsSync(marker), 'no hook ran');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules/\n.leeway/\n');
+      assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort(), [' M src/app.js', 'M  .gitignore']);
+    } finally {
+      cleanupFixture(dir);
+      cleanupFixture(decoy);
     }
   });
 

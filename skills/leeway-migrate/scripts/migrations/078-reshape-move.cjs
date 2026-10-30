@@ -16,8 +16,11 @@
 // cleared. A plain `.leeway/` already there — the runner's migrations record,
 // written before this step runs — is set aside while the worktree is added,
 // then put back inside it. A `.leeway/` already on `leeway-state` is written
-// again: a move cut short is run again from the start. Nothing is committed
-// (21.9.3), and nothing is staged: the migration's commit, made at finish,
+// again: a move cut short is run again from the start. The code tree's
+// `.gitignore` gains the `.leeway/` line at once — an unignored worktree with
+// no commit checked out refuses `git add -A` in the main checkout — staged
+// for the migration's commit (21.9.2). Nothing is committed (21.9.3), and
+// nothing in the state is staged: the migration's commit, made at finish,
 // takes the whole state. `.workflows/` stays where it is, read as it stands,
 // and is never changed; finish drops it from the default branch.
 //
@@ -45,9 +48,10 @@
 //   - its brief is `topics/{topic}/brief.md`, and its experiment records sit
 //     in `topics/{topic}/experiments/` as they stood (21.5.13);
 //   - discovery's sessions are `discovery/session-NNN.md`, numbers kept;
-//   - `imports/` is `assets/`, and every moved document's links into it
-//     (`../imports/{name}`) are rewritten to the asset's place from the
-//     document's own; each `imports[]` entry's path follows its file (21.5.7);
+//   - `imports/` is `assets/`, and every moved document's links to a file
+//     there (`../imports/{name}`, the name one `imports/` holds) are
+//     rewritten to the asset's place from the document's own; each
+//     `imports[]` entry's path follows its file (21.5.7);
 //   - plans go to `assets/plans/{topic}/` and review folders to
 //     `assets/reviews/{topic}/`, names kept; a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
@@ -56,16 +60,24 @@
 //     quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed its spec is its `summary.md` and its
 //     plan goes (21.5.15, 21.5.16);
-//   - implementation folders, the unit's `.state/`, and every tracking or
-//     analysis file go (21.5.17); seeds stay as they are;
+//   - implementation folders and the unit's `.state/` go whole, holding
+//     tracking and analysis files only, and so do the spec and plan reviews'
+//     tracking files, each matched by its whole name as those reviews write
+//     it, never by a fragment a topic's or a section's slug can hold
+//     (21.5.17); seeds stay as they are;
+//   - the files the person's tools leave beside theirs (`.DS_Store` and the
+//     rest of the engine's list) are neither carried nor named;
 //   - a cancelled unit moves as any other (21.5.14).
 //
 // The unit's manifest is today's shape, less research and the retired state
 // (21.5.8): the research phase goes, a topic whose research joined its log
 // and that has no discussion yet taking a discussion item of the research's
-// standing; scoping goes; and so do the map's routing, staging, the spec's
-// build order and review cycles, and the plan's review tracking and
-// dependencies. Everything else carries as it stood, the fields 21.5.9 names
+// standing, and its discussion taking the research's wait on its
+// experiments; scoping goes; and so do the map's routing, staging, the
+// spec's build order (a cancelled spec's stashed one too) and review cycles,
+// the plan's review tracking and dependencies, and the caches of the
+// discovery gap analysis and the discussion analysis, whose files go with
+// them (21.5.17). Everything else carries as it stood, the fields 21.5.9 names
 // among them, a brief's path following its brief. Each later reshape of a
 // manifest updates this move until it is released (E4): the reshape's own
 // steps written for `.leeway/` before this one — 073's linters — find
@@ -76,6 +88,16 @@
 // the verification addendum. A project with no `.workflows/`, or in no
 // repository, has nothing to move, and a state branch with a commit already
 // is never written over.
+//
+// Known edges, not built:
+//   - a second clone holding `origin/leeway-state` but no local branch is
+//     moved into a state of its own (only the local branch is read);
+//   - the state worktree's HEAD log records the code HEAD it was added at,
+//     which boot's repair of a lost branch would read — 29.17's wiring of the
+//     unborn branch;
+//   - `worktree add` failing, or a kill between it and `switch`, strands the
+//     set-aside folder or the registered worktree;
+//   - staging `.gitignore` takes the person's own unstaged edits to it too.
 //
 
 const fs = require('fs');
@@ -90,6 +112,8 @@ const SET_ASIDE = '.leeway-set-aside';
 const STATE_BRANCH = 'leeway-state';
 const STATE_LOCK_REASON = 'leeway state, do not remove';
 const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', '/.lock', '/.lock.*', '.manifest.json.*.tmp', '/.ledger.jsonl.*.tmp', ''].join('\n');
+const CODE_GITIGNORE = '.gitignore';
+const STATE_IGNORE_LINE = `${STATE_DIR}/`;
 
 const REPOSITORY_ENV = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR',
@@ -101,13 +125,19 @@ const LOG_PHASES = ['research', 'discussion', 'investigation'];
 const LOG_HEADINGS = { research: 'Research', discussion: 'Discussion', investigation: 'Investigation' };
 const STAGING = ['staging', 'analysis_staging'];
 const RETIRED_PHASES = ['research', 'scoping'];
-const RETIRED_PHASE_FIELDS = { specification: ['build_order_stale'] };
+const RETIRED_PHASE_FIELDS = {
+  discovery: ['gap_analysis_cache'],
+  discussion: ['analysis_cache'],
+  specification: ['build_order_stale'],
+};
 const RETIRED_ITEM_FIELDS = {
   discovery: ['routing'],
-  specification: ['order', 'review_cycle', 'tracking'],
+  specification: ['order', 'previous_order', 'review_cycle', 'tracking'],
   planning: ['review_cycle', 'review_baseline_words', 'approvals', 'tracking', 'external_dependencies'],
 };
 const RESEARCH_STANDING = { unstarted: 'unstarted', cancelled: 'cancelled', postponed: 'postponed' };
+// A research item's wait on its experiments, carried to its topic's discussion.
+const RESEARCH_WAITS = ['awaiting_experiments', 'reconcile_needed'];
 
 const DELIVERY_PHASES = ['specification', 'planning', 'review'];
 // Folders carried whole under a name of the layout's, their files as they are.
@@ -118,7 +148,23 @@ const STAYS = Symbol('stays');
 const IMPORT_LINK = /(?:\.\.\/)+imports\/([A-Za-z0-9._-]+)/g;
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
 const SESSION = /^discovery\/sessions\/(session-([0-9]{3,})\.md)$/;
-const TRACKING_OR_ANALYSIS = /(?:^|-)(?:tracking|analysis)(?:-|\.)/;
+// The review tracking files today's spec and plan reviews write at the top
+// of their folders, each named whole: a topic's or a section's slug never
+// makes one of these.
+const TRACKING_FILES = {
+  specification: /^review-(?:input|gap-analysis|claims)-tracking-c[0-9]+\.md$/,
+  planning: /^review-(?:traceability|integrity)-tracking-c[0-9]+\.md$/,
+};
+// The files the person's tools leave beside theirs, by base name, `*` any
+// run of characters, as the engine lists them (TOOL_SIDECARS): never carried,
+// never named as left behind.
+const TOOL_SIDECARS = [
+  '.DS_Store', 'Thumbs.db', 'desktop.ini', '._*',
+  '.*.swp', '.*.swo', '.*.swx',
+  '*~', '#*#', '.#*',
+  '*___jb_tmp___', '*___jb_old___',
+];
+const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(/[^\w*]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`);
 
 const ID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const ID_LENGTH = 21;
@@ -149,11 +195,25 @@ function newId() {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** @param {string} cwd @param {string[]} args @returns {{ok: boolean, stdout: string, stderr: string}} */
+/**
+ * `fn` run with the variables that point git at a repository cleared from
+ * the process, then put back: every git call the move makes, 073's among
+ * them, names its repository by its folder alone.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function withoutRepositoryEnv(fn) {
+  const held = REPOSITORY_ENV.filter((name) => name in process.env).map((name) => [name, process.env[name]]);
+  for (const [name] of held) delete process.env[name];
+  try {
+    return fn();
+  } finally {
+    for (const [name, value] of held) process.env[name] = value;
+  }
+}
+
+/** A git call with hooks off. @param {string} cwd @param {string[]} args @returns {{ok: boolean, stdout: string, stderr: string}} */
 function git(cwd, args) {
-  const env = { ...process.env };
-  for (const name of REPOSITORY_ENV) delete env[name];
-  const res = spawnSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, env, encoding: 'utf8' });
+  const res = spawnSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, encoding: 'utf8' });
   return { ok: !res.error && res.status === 0, stdout: res.stdout || '', stderr: res.stderr || '' };
 }
 
@@ -205,14 +265,15 @@ function placeStateWorktree(main) {
   return root;
 }
 
-/** Every file under `dir`, as posix paths relative to it. @param {string} dir @param {string} [at] @returns {string[]} */
+/** Every file under `dir`, the tools' sidecars aside, as posix paths relative to it. @param {string} dir @param {string} [at] @returns {string[]} */
 function filesUnder(dir, at = '') {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(path.join(dir, at), { withFileTypes: true })
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .flatMap((entry) => {
       const rel = at === '' ? entry.name : `${at}/${entry.name}`;
-      return entry.isDirectory() ? filesUnder(dir, rel) : [rel];
+      if (entry.isDirectory()) return filesUnder(dir, rel);
+      return SIDECAR_NAME.test(entry.name) ? [] : [rel];
     });
 }
 
@@ -232,13 +293,17 @@ function readManifest(file) {
 }
 
 /**
- * A document's links into its unit's imports, pointed at the assets from
- * the place it now sits, both state-relative.
- * @param {string} text @param {string} at @param {string} unit
+ * A document's links to its unit's imports, each naming a file `imported`
+ * holds, pointed at the assets from the place it now sits, state-relative;
+ * a link to any other name is left as written.
+ * @param {string} text @param {string} at @param {string} unit @param {Set<string>} imported
  */
-function relinked(text, at, unit) {
+function relinked(text, at, unit, imported) {
   const hops = path.posix.relative(path.posix.dirname(at), `${unit}/assets`);
-  return text.replace(IMPORT_LINK, (_link, name) => `${hops}/${name}`);
+  return text.replace(IMPORT_LINK, (link, named) => {
+    const name = named.replace(/\.+$/, '');
+    return imported.has(name) ? `${hops}/${name}${named.slice(name.length)}` : link;
+  });
 }
 
 /** @param {Record<string, any>} manifest @param {string} phase @returns {Record<string, any>} */
@@ -265,14 +330,21 @@ const standingOf = (status) => RESEARCH_STANDING[String(status)] ?? 'in-progress
 
 /**
  * A discussion item, of its research's standing, for each topic whose
- * research joined its log and that has no discussion yet.
+ * research joined its log and that has no discussion yet; and the
+ * research's wait on its experiments carried onto its topic's discussion,
+ * where the discussion has none of its own.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  */
 function foldResearch(manifest, topics) {
   const discussion = itemsOf(manifest, 'discussion');
   for (const [topic, item] of Object.entries(itemsOf(manifest, 'research'))) {
-    if (!topics.has(topic) || Object.hasOwn(discussion, topic) || !isObject(item)) continue;
-    discussion[topic] = { status: standingOf(item.status), ...('previous_status' in item ? { previous_status: standingOf(item.previous_status) } : {}) };
+    if (!topics.has(topic) || !isObject(item)) continue;
+    if (!Object.hasOwn(discussion, topic)) {
+      discussion[topic] = { status: standingOf(item.status), ...('previous_status' in item ? { previous_status: standingOf(item.previous_status) } : {}) };
+    }
+    const target = discussion[topic];
+    if (!isObject(target)) continue;
+    for (const field of RESEARCH_WAITS) if (field in item && !(field in target)) target[field] = item[field];
   }
   if (Object.keys(discussion).length > 0) manifest.phases.discussion = { ...manifest.phases.discussion, items: discussion };
 }
@@ -337,6 +409,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   from: string,
  *   state: string,
  *   files: string[],
+ *   imported: Set<string>,
  *   accounted: Set<string>,
  *   topics: Set<string>,
  *   cancelled: Set<string>,
@@ -354,7 +427,7 @@ function take(move, rel) {
 
 /** A document of the unit's, accounted for, its links pointed from `at`, state-relative. @param {UnitMove} move @param {string} rel @param {string} at */
 function takeDocument(move, rel, at) {
-  return relinked(take(move, rel).toString('utf8'), at, move.unit);
+  return relinked(take(move, rel).toString('utf8'), at, move.unit, move.imported);
 }
 
 /** @param {UnitMove} move @param {string} at unit-relative @param {string|Buffer} content */
@@ -448,7 +521,7 @@ function moveMail(move) {
  * @returns {string|symbol|null}
  */
 function deliveryPlace(move, top, topic, below) {
-  if (TRACKING_OR_ANALYSIS.test(path.posix.basename(below))) return DROP;
+  if (Object.hasOwn(TRACKING_FILES, top) && TRACKING_FILES[top].test(below)) return DROP;
   if (top === 'planning') return move.quickFixDone ? DROP : `assets/plans/${topic}/${below}`;
   if (top === 'review') return `assets/reviews/${topic}/${below}`;
   if (below !== 'specification.md') return null;
@@ -486,12 +559,14 @@ function moveUnit(from, state, unit) {
   const manifest = readManifest(path.join(from, 'manifest.json'));
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
+  const files = filesUnder(from);
   /** @type {UnitMove} */
   const move = {
     unit,
     from,
     state,
-    files: filesUnder(from),
+    files,
+    imported: new Set(files.filter((f) => /^imports\/[^/]+$/.test(f)).map((f) => f.slice('imports/'.length))),
     accounted: new Set(['manifest.json']),
     topics,
     cancelled: cancelledTopics(reshaped),
@@ -513,6 +588,20 @@ function moveUnit(from, state, unit) {
 }
 
 /**
+ * The code tree's `.gitignore` ignoring the state folder, the line added
+ * where none ignores it whole, and staged for the migration's commit: a
+ * worktree with no commit checked out, unignored, refuses `git add -A`.
+ * @param {string} main
+ */
+function ignoreState(main) {
+  const file = path.join(main, CODE_GITIGNORE);
+  const held = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const ignored = held.split('\n').some((line) => !line.trim().startsWith('!') && [STATE_DIR, STATE_IGNORE_LINE].includes(line.trim().replace(/^\//, '')));
+  if (!ignored) writeFile(file, `${held}${held === '' || held.endsWith('\n') ? '' : '\n'}${STATE_IGNORE_LINE}\n`);
+  mustGit(main, ['add', '--', CODE_GITIGNORE]);
+}
+
+/**
  * The project's manifest, its id minted, the inbox, the environment setup
  * and the state's own ignore file.
  * @param {string} from @param {string} state
@@ -529,35 +618,45 @@ function moveProject(from, state) {
   writeFile(path.join(state, '.gitignore'), STATE_GITIGNORE);
 }
 
+/**
+ * The move, from wherever in the repository `projectDir` is.
+ * @param {string} projectDir @param {() => void} reportUpdate @param {() => void} reportSkip
+ * @returns {{verify: string}|undefined}
+ */
+function move(projectDir, reportUpdate, reportSkip) {
+  const main = mainCheckout(projectDir);
+  if (main === null || !fs.existsSync(path.join(main, CODE_TREE_STATE)) || stateBorn(main)) {
+    reportSkip();
+    return undefined;
+  }
+  const from = path.join(main, CODE_TREE_STATE);
+  const state = placeStateWorktree(main);
+  ignoreState(main);
+  moveProject(from, state);
+  reportUpdate();
+  const left = fs.readdirSync(from, { withFileTypes: true })
+    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json' && !SIDECAR_NAME.test(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+    .flatMap((name) => {
+      if (!fs.existsSync(path.join(from, name, 'manifest.json'))) return [name];
+      const unitLeft = moveUnit(path.join(from, name), state, name);
+      reportUpdate();
+      return unitLeft.map((rel) => `${name}/${rel}`);
+    });
+  const carried = linters.run({ projectDir, reportUpdate: () => {}, reportSkip: () => {} });
+  const notes = [
+    ...(left.length === 0 ? [] : [`These were not carried into ${STATE_DIR}/, the layout having no place for them: ${left.map((rel) => `${CODE_TREE_STATE}/${rel}`).join(', ')}. Each stays in ${CODE_TREE_STATE}/ until the migration's commit; move any still wanted into its unit's assets/.`]),
+    ...(carried && carried.verify ? [carried.verify] : []),
+  ];
+  return notes.length === 0 ? undefined : { verify: notes.join(' ') };
+}
+
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary; implementation folders, tracking and analysis files and the retired manifest state go. .workflows/ is left as it is until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing; the code tree\'s .gitignore gains the .leeway/ line, staged. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary; implementation folders, the reviews\' tracking files and the retired manifest state go. .workflows/ is left as it is until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
-    const main = mainCheckout(projectDir);
-    if (main === null || !fs.existsSync(path.join(main, CODE_TREE_STATE)) || stateBorn(main)) {
-      reportSkip();
-      return undefined;
-    }
-    const from = path.join(main, CODE_TREE_STATE);
-    const state = placeStateWorktree(main);
-    moveProject(from, state);
-    reportUpdate();
-    const left = fs.readdirSync(from, { withFileTypes: true })
-      .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json')
-      .map((entry) => entry.name)
-      .sort()
-      .flatMap((name) => {
-        if (!fs.existsSync(path.join(from, name, 'manifest.json'))) return [name];
-        const unitLeft = moveUnit(path.join(from, name), state, name);
-        reportUpdate();
-        return unitLeft.map((rel) => `${name}/${rel}`);
-      });
-    const carried = linters.run({ projectDir, reportUpdate: () => {}, reportSkip: () => {} });
-    const notes = [
-      ...(left.length === 0 ? [] : [`These were not carried into ${STATE_DIR}/, the layout having no place for them: ${left.map((rel) => `${CODE_TREE_STATE}/${rel}`).join(', ')}. Each stays in ${CODE_TREE_STATE}/ until the migration's commit; move any still wanted into its unit's assets/.`]),
-      ...(carried && carried.verify ? [carried.verify] : []),
-    ];
-    return notes.length === 0 ? undefined : { verify: notes.join(' ') };
+    return withoutRepositoryEnv(() => move(projectDir, reportUpdate, reportSkip));
   },
 };
