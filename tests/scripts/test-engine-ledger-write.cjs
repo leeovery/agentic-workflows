@@ -8,6 +8,7 @@
 // ledger to the state branch; its content as JSON on stdin and its links as
 // flags, each naming an entry by a prefix of its id that the engine resolves
 // to the full id; every refusal appending nothing and committing nothing;
+// Claude's own close of a question its experiment still measures refused;
 // the writer lock taken by the verb itself, a refusal it needs no ledger for
 // answering while a peer holds it; two processes appending at once; and a
 // ledger changed outside the engine stopping the next write, showing the
@@ -400,6 +401,29 @@ describe('refusals', () => {
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
     write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
     write('ask', SPACE, [], content);
+  });
+
+  it('refuses Claude\'s own close of a question an experiment still running measures — a decision, a move or a merge — while the person closes it, their own answer or one handed over, a move or a merge, and once it concludes Claude writes the result (9.1.11)', () => {
+    const [timing, placing, sizing, moving, merging, sharing] = ['How fast does a note open?', 'Where does a note open?', 'How big is a note?', 'Does a note follow its space?', 'Can a note be sent?', 'Is a note shared?']
+      .map((text) => ask(text).id);
+    const shared = decide(sharing).id;
+    /** The unit's manifest, its experiments at `status`, measuring `questions`. @param {string} status @param {string[]} questions */
+    const measuring = (status, ...questions) => createManifest(dir, UNIT, {
+      work_type: 'epic',
+      phases: { ...WRITE_PHASES, experiment: { items: { 'note-window': { status: 'in-progress', experiments: Object.fromEntries(questions.map((q, i) => [`E${i + 1}`, { slug: `e${i + 1}`, status, question: full(q) }])) } } } },
+    });
+    const held = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb}: ${timing} is measured by experiment E1, still running — Claude never closes a question its experiment measures; the person may, and once it ends the discussion writes the result$`);
+
+    measuring('running', timing, placing, sizing, moving, merging);
+    refused('decide', NOTE, ['--answers', timing], { ...MADE, text: 'In 4 ms.', why: 'Measured.' }, held('decide'));
+    refused('move', NOTE, ['--question', timing, '--to', 'space-homing'], MADE, held('move'));
+    refused('merge', NOTE, ['--question', timing, '--into', shared], MADE, held('merge'));
+    decide(placing, { by: 'person', given: 'own' });
+    decide(sizing, { given: 'your-call' });
+    write('move', NOTE, ['--question', moving, '--to', 'space-homing'], { by: 'person', who_moved_whom: 'none' });
+    write('merge', NOTE, ['--question', merging, '--into', shared], { by: 'person', who_moved_whom: 'none' });
+    measuring('concluded', timing);
+    decide(timing, { text: 'In 4 ms.', why: 'E1 measured it.' });
   });
 
   it('refuses a move to a topic the unit does not have, and a move made at the unit\'s level, from no topic', () => {

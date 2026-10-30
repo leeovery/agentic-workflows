@@ -52,6 +52,7 @@ const { incorporations } = require('./domain/specification.cjs');
 const { mailboxDir } = require('./domain/derivations.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
+const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -62,6 +63,7 @@ const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
+const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
@@ -195,6 +197,7 @@ ${RAISE_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
+${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
@@ -231,7 +234,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>
   topic mailbox <work-unit> <phase> <topic>
   topic incorporations <work-unit> <topic>
-  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
+  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
   topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
@@ -254,7 +257,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
-  experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
+  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
@@ -373,8 +376,8 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
-  render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
-  render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
+  render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
+  render wait-gate        <wu.discussion|planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
@@ -401,7 +404,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render author-task-gate <wu.planning.topic> --m N --total N --title STR --file <payload.json> | --phase N  (--phase: empty while gated)
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <research|discussion|planning|specification>
+  render phase-paused      <wu> --phase <discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render step-opening      <wu.phase.topic> --step session|conclude|consolidation|do-now [--resumed]
   render format-version-check --file <payload.json>
@@ -548,6 +551,23 @@ function runLedger(call, argv) {
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
     else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
     else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}`);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// asset — a spike's folder, and the links from the ledger's entries to the
+// files that inform them (domain/asset.cjs): a link holds the writer lock
+// around its read of the ledger, the append and the commit, as a ledger
+// write does, and a spike around taking its number.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runAsset(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    respond(call, runAssetVerb(call.cwd, verb, rest));
   } catch (err) {
     failJson(call, err);
   }
@@ -1211,19 +1231,17 @@ function runTopic(call, argv) {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
       /** @type {string|undefined} */ let message;
-      /** @type {string|undefined} */ let subtopic;
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '--file') file = rest[++i];
-        else if (a === '--subtopic') subtopic = rest[++i];
         else if (a === '-m' || a === '--message') message = rest[++i];
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
-        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
+        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message, subtopic });
+      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message });
       beatQuietly(call.cwd, workUnit, phase, topic);
       respond(call, absorbed);
       return;
@@ -1302,8 +1320,8 @@ function runTopic(call, argv) {
 // walk. Manifest writes with no git commit — the session's commit cadence
 // picks the change up.
 //
-// Beats follow the acting session: `create --from` is the spawning research
-// or discussion session recording the spawn on its own item, so it beats
+// Beats follow the acting session: `create --from` is the spawning
+// discussion session recording the spawn on its own item, so it beats
 // that phase; every other verb (splits included) is the laboratory session
 // working its own topic, so it beats the experiment slot — and a top-level
 // conclude or abandon clears it: the record's close is the session's release.
@@ -1318,9 +1336,9 @@ function runExperiment(call, argv) {
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
-        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)');
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)');
       }
-      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem });
+      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem, question: opts.question });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
       respond(call, created);
       return;
@@ -1971,7 +1989,7 @@ function runStateMerge(call, argv) {
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
   research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
-  experiment: (wu, t) => [`${wu}/experiment/${t}`],
+  experiment: (wu, t) => [seriesDir(wu, t)],
   discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
   investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
   specification: (wu, t) => [`${wu}/specification/${t}`],
@@ -2528,6 +2546,7 @@ const COMMANDS = Object.freeze({
   'github-squash': runGithubSquash,
   manifest: runManifest,
   ledger: runLedger,
+  asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
   'discussion-map': runDiscussionMap,
@@ -2568,8 +2587,9 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `raise` and `enter`, and none but they waits on the lock:
-// `knowledge` writes the store the state ignores, under a lock of its own;
+// `boot`, `ledger`, `asset`, `raise` and `enter`, and none but they waits on
+// the lock: `knowledge` writes the store the state ignores, under a lock of
+// its own;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2579,14 +2599,16 @@ const COMMANDS = Object.freeze({
 // conversation's folder alone — its seal, and the gate shown it clears —
 // and its answer, or a draw that proceeds, holds it around its ledger write
 // as a `ledger` write does; `enter` holds it around a start and its commit
-// alone, its question and reads taking none; `presence`, `session label`,
-// `repair`, `cleanup` and `resume`, and the hold `topic mailbox` refreshes
-// write only the session files the state ignores, as `enter` does beside
-// its start; a conversation's folder is outside the project; `gate`
-// writes the trust log, under its own lock, and the conversation's folder;
-// and the rest read: `layout guard` among them, run before every file Claude
-// writes, `brief guard`, before every dispatch of an agent, `shell guard`,
-// before every shell command, `checklist show`, and `migrate check`.
+// alone, its question and reads taking none; an `asset` link holds it as a
+// `ledger` write does, and a spike around taking its number; `presence`,
+// `session label`, `repair`, `cleanup` and `resume`, and the hold
+// `topic mailbox` refreshes write only the session files the state ignores,
+// as `enter` does beside its start; a conversation's folder is outside the
+// project; `gate` writes the trust log, under its own lock, and the
+// conversation's folder; and the rest read: `layout guard` among them, run
+// before every file Claude writes, `brief guard`, before every dispatch of
+// an agent, `shell guard`, before every shell command, `checklist show`,
+// and `migrate check`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2594,6 +2616,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   knowledge: '*',
   boot: '*',
   ledger: '*',
+  asset: '*',
   verdict: ['queue'],
   presence: '*',
   conversation: '*',

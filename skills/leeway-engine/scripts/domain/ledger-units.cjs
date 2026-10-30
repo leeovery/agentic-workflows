@@ -20,9 +20,11 @@
 // - A unit's live topics: those it names that are live.
 // - A roadmap item, which a question moves to as later (9.5.4): an item of
 //   the project's roadmap, by its name.
-// - What a unit's experiments measure while they run (9.1.11): each
-//   experiment neither concluded nor abandoned that names the question it
-//   measures, by the question's full id, on its record's `question`.
+// - What a unit's experiments measure (9.1.11): each experiment but an
+//   abandoned one that names the question it measures, by the question's
+//   full id, on its record's `question`, and whether it still runs —
+//   neither concluded nor abandoned. A concluded one's question still waits
+//   on it, until the discussion writes the result.
 // - What is live, marked unit by unit: a value two reads of a unit's
 //   manifest answer alike exactly when they set the same of its topics, or
 //   the unit, aside, so a change to what is live is seen however it was
@@ -68,17 +70,17 @@ function hasRoadmapItem(root, item) {
 }
 
 /**
- * The questions a unit's experiments measure while they run, each with the
- * experiment's id.
+ * The questions a unit's experiments measure, each with the experiment's id
+ * and whether it still runs: an abandoned experiment measures nothing.
  * @param {Record<string, any>} manifest the unit's
- * @returns {{experiment: string, question: string}[]}
+ * @returns {{experiment: string, question: string, running: boolean}[]}
  */
 function experimentWaits(manifest) {
   const items = manifest.phases?.experiment?.items;
   if (!isObject(items)) return [];
   return Object.values(items).flatMap((item) => (isObject(item) && isObject(item.experiments) ? Object.entries(item.experiments) : []))
-    .filter(([, record]) => isObject(record) && typeof record.question === 'string' && !EXPERIMENT_TERMINAL_STATUSES.includes(record.status))
-    .map(([experiment, record]) => ({ experiment, question: record.question }));
+    .filter(([, record]) => isObject(record) && typeof record.question === 'string' && record.status !== 'abandoned')
+    .map(([experiment, record]) => ({ experiment, question: record.question, running: !EXPERIMENT_TERMINAL_STATUSES.includes(record.status) }));
 }
 
 /**

@@ -40,7 +40,6 @@ const {
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
-const { settleFoldedSubtopic } = require('./agent-state.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
 const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cjs');
 
@@ -645,8 +644,6 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
  * @property {string} topic
  * @property {string} absorbed  the message-file basename removed
  * @property {number} remaining  message files left after the removal
- * @property {boolean} [arming_settled]  discussion only: the fold's ground was settled into the review anchor
- * @property {string} [arming_note]      discussion only: why it wasn't, when it wasn't
  * @property {string|null} [committed]
  * @property {string[]} [warnings]
  * @property {string} [note]
@@ -657,26 +654,15 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
  * delete its message file and commit the fold action-scoped (the phase
  * artifact, this deletion, the work-unit manifest) under the caller's
  * message. The response answers `remaining` so the caller routes
- * loop-or-exit with no follow-up read. A discussion absorb names the
- * fold's subtopic and settles it into the review-arming anchor
- * (`settleFoldedSubtopic`): message folds are settled ground, never map
- * movement, so a sitting that only drained the mailbox arms no review —
- * tolerant, because wedging the mailbox's drain would be worse than a
- * missed settle.
+ * loop-or-exit with no follow-up read.
  * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{file: string, message: string, subtopic?: string}} opts
+ * @param {string} topic @param {{file: string, message: string}} opts
  * @returns {TopicAbsorbResult}
  */
-function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic }) {
+function absorbMessage(cwd, workUnit, phase, topic, { file, message }) {
   const mailbox = mailboxStatus(cwd, workUnit, phase, topic);
   if (file !== path.basename(file) || !file.endsWith('.md')) {
     throw new Error(`topic absorb: --file must be a message-file name, not a path (got "${file}")`);
-  }
-  if (phase === 'discussion' && !subtopic) {
-    throw new Error('topic absorb: a discussion fold names its ground — pass --subtopic <name> (the subtopic the raise armed) so the fold settles into the review anchor instead of counting as map movement');
-  }
-  if (phase !== 'discussion' && subtopic !== undefined) {
-    throw new Error(`topic absorb: --subtopic settles a discussion fold into the review anchor — not legal in ${phase}`);
   }
   const rel = `${mailboxDir(workUnit, phase, topic)}/${file}`;
   if (!mailbox.files.includes(statePath(cwd, rel))) {
@@ -685,11 +671,6 @@ function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic })
   fs.unlinkSync(statePath(cwd, rel));
   /** @type {TopicAbsorbResult} */
   const result = { phase, topic, absorbed: file, remaining: mailbox.count - 1 };
-  if (phase === 'discussion' && subtopic) {
-    const settled = settleFoldedSubtopic(cwd, workUnit, topic, subtopic);
-    result.arming_settled = settled.settled;
-    if (!settled.settled && settled.reason) result.arming_note = settled.reason;
-  }
   const artifactRel = `${workUnit}/${phase}/${topic}.md`;
   /** @type {string[]} */
   const warnings = [];
@@ -1069,9 +1050,7 @@ function staleSources(cwd, workUnit, discussion, opts = {}) {
  * list. The absorbing topic must already exist in the same phase (every
  * supersession runs after the superseding item completed). A proposed item is
  * refused — it has no artifact; reconcile deletes it instead — and a
- * cancelled item must go through reactivate. An item holding live evidence
- * waits refuses: a superseded holder is terminal, and the lock would strand
- * with live records and no consumer. No git commit — supersession is
+ * cancelled item must go through reactivate. No git commit — supersession is
  * batch-oriented; the calling flow commits the whole set.
  * @param {string} cwd project root
  * @param {string} workUnit
@@ -1106,12 +1085,6 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     }
     if (item.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, item));
-    }
-    // A superseded holder is terminal — its evidence waits would strand with
-    // live records and no consumer.
-    const awaiting = awaitedExperiments(manifest, phase, topic);
-    if (awaiting.length > 0) {
-      throw new Error(`${phase} item "${topic}" holds live evidence waits (${awaiting.join(', ')}) — a superseded holder would strand those experiments with no consumer; conclude or abandon them first`);
     }
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {

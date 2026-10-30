@@ -185,13 +185,12 @@ function isImportOrigin(origin) {
   return IMPORT_PHASES.includes(origin.slice(0, slash)) && isPlainName(topic);
 }
 
-// The two conversation phases — the ones whose sessions spawn experiments
-// (each spawn locks the spawning phase's own item, `awaiting_experiments`,
-// research and discussion identically).
-const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
+// The phase whose sessions spawn experiments (9.1.4): each spawn locks the
+// spawning discussion's own item, `awaiting_experiments`.
+const EXPERIMENT_SPAWN_PHASES = ['discussion'];
 
 // Every phase whose conclusion the wait gate holds on an upstream that has
-// not landed: the two conversations, plus planning, which stands on its
+// not landed: discussion, plus planning, which stands on its
 // specification. The wait gate addresses these and no others.
 const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
 

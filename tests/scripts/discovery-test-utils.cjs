@@ -257,7 +257,7 @@ const layout = Object.freeze({
   /** A topic's waiting messages, or one of them. @param {string} unit @param {string} phase @param {string} topic @param {string} [name] */
   mailbox: (unit, phase, topic, name) => [unit, phase, '.mailbox', topic, ...(name === undefined ? [] : [name])].join('/'),
   /** A topic's experiment record, or a path in it. @param {string} unit @param {string} topic @param {...string} segments */
-  experiment: (unit, topic, ...segments) => [unit, 'experiment', topic, ...segments].join('/'),
+  experiment: (unit, topic, ...segments) => [unit, 'topics', topic, 'experiments', ...segments].join('/'),
   /** @param {string} unit @param {string} topic */
   spec: (unit, topic) => `${unit}/specification/${topic}/specification.md`,
   /** @param {string} unit @param {string} topic */

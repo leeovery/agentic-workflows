@@ -69,7 +69,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
 const { factsOf, standingOf, wordingOf, answersOf, laterOf, placeRecords, productOf } = require('./ledger-fold.cjs');
-const { readShown, assetRows } = require('./ledger-read.cjs');
+const { readShown } = require('./ledger-read.cjs');
 const { manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
@@ -95,7 +95,7 @@ const { syncKnowledge } = require('./knowledge/sync.cjs');
  * @returns {Placed}
  */
 function placed(shower, id, inCopy) {
-  return { line: shower.show(id), assets: assetRows(shower, id), from: inCopy(id) ? null : standingOf(shower.folded, id) };
+  return { line: shower.show(id), assets: shower.assets(id), from: inCopy(id) ? null : standingOf(shower.folded, id) };
 }
 
 /** An entry's text. @param {Shower} shower @param {string} id @returns {string} */

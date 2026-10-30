@@ -193,7 +193,7 @@ function ignoreLocalFiles(root, driver) {
 function commitTracker(cwd, paths, message, setUp) {
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, setUp.contents);
+  const outcome = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, { contents: setUp.contents });
   /** @type {{committed: string|null, note?: string, warnings?: string[]}} */
   const out = { committed: outcome.committed };
   if (outcome.held) noteCommitOutcome(out, outcome);

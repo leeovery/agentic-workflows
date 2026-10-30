@@ -74,15 +74,17 @@ function discoveryScope(workUnit) {
  * file outside the layout refuses it (`commitHere`). A push that fails
  * comes back as a warning; the commit stands. The sha is short, as the code
  * tree's commits answer it. A file in `contents` is committed as its change
- * makes it of the branch's own (`commitState`). While the migration runs,
- * the commit is held (`held`).
+ * makes it of the branch's own, and of `kept` what is on disk is taken as
+ * additions and edits alone, never a removal (`commitState`). While the
+ * migration runs, the commit is held (`held`).
  * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
- * @param {string} message @param {Record<string, import('./state-worktree.cjs').Change>} [contents]
+ * @param {string} message
+ * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[]}} [opts]
  * @returns {{committed: string|null, held?: true, warnings: string[]}}
  */
-function commitStateScoped(cwd, paths, message, contents = {}) {
+function commitStateScoped(cwd, paths, message, { contents = {}, kept = [] } = {}) {
   const root = stateRoot(cwd);
-  const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents }));
+  const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents, kept }));
   return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), ...(held ? { held } : {}), warnings };
 }
 
@@ -92,12 +94,12 @@ function commitStateScoped(cwd, paths, message, contents = {}) {
  * fails the verb. A push that fails is a warning beside it.
  * @param {string} cwd @param {string|string[]} paths state-relative
  * @param {string} message @param {string[]} warnings
- * @param {Record<string, import('./state-worktree.cjs').Change>} [contents] as `commitStateScoped`'s
+ * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[]}} [opts] as `commitStateScoped`'s
  * @returns {{committed: string|null, failed: boolean, held?: true}}
  */
-function commitStateTail(cwd, paths, message, warnings, contents = {}) {
+function commitStateTail(cwd, paths, message, warnings, opts = {}) {
   try {
-    const out = commitStateScoped(cwd, paths, message, contents);
+    const out = commitStateScoped(cwd, paths, message, opts);
     warnings.push(...out.warnings);
     return { committed: out.committed, failed: false, ...(out.held ? { held: out.held } : {}) };
   } catch (err) {
