@@ -29,7 +29,7 @@ const { ok, refuses, stateGit, statePath, layout, keywordOnlyKnowledge, cleanupF
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
-const { UNIT, SESSION_ID, MADE, NOTE, SPACE, NOTE_COPY, ids, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION_ID, MADE, NOTE, SPACE, NOTE_COPY, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const CITES = Object.freeze([{ path: `${UNIT}/discussion/note-window.md`, section: 'Session 1 — 2026-10-30' }]);
@@ -47,6 +47,7 @@ afterEach(() => {
 
 const { write, ask, find, decide, read, rawLines, full, line, mint } = ledgerReadHelpers(() => dir);
 const { refused } = ledgerWriteHelpers(() => dir);
+const { carriedOver } = ledgerHelpers(() => dir);
 
 /** Who decided each answer on the note window's map, by its `by` and `given`. */
 function answeredBy() {
@@ -64,10 +65,10 @@ describe('who decided (9.2.14–9.2.16, 21.6.5)', () => {
     assert.deepStrictEqual([shown.id, shown.by, shown.given, shown.kind], [decided, 'person', 'own', 'scope']);
   });
 
-  it('9.S7: lands "your call" as Claude\'s answer handed over and "don\'t care" as the builder\'s, Claude\'s calls both, and one carried over as Claude\'s line, no call — never the person\'s, whose decision given any way but their own is refused', () => {
+  it('9.S7: lands "your call" as Claude\'s answer handed over and "don\'t care" as the builder\'s, Claude\'s calls both, and reads one the migration carried over as Claude\'s line, no call — never the person\'s, whose decision given any way but their own is refused', () => {
     const handed = decide(NOTE, ask(NOTE, 'Does a note snap to the grid?'), 'Notes snap to an 8-point grid.', [], { given: 'your-call' });
     const builders = decide(NOTE, ask(NOTE, 'What radius are a note\'s corners?'), 'Ten points.', [], { given: 'dont-care' });
-    decide(NOTE, ask(NOTE, 'Does a note dim when idle?'), 'Notes dim after a minute.', [], { given: 'carried' });
+    carriedOver(NOTE, ask(NOTE, 'Does a note dim when idle?'), 'Notes dim after a minute.');
     const open = ask(NOTE, 'Is a note a window?');
 
     for (const given of ['your-call', 'dont-care', 'carried']) {
@@ -76,6 +77,11 @@ describe('who decided (9.2.14–9.2.16, 21.6.5)', () => {
     }
     assert.deepStrictEqual(answeredBy(), [[['claude', 'your-call']], [['claude', 'dont-care']], [['claude', 'carried']], []]);
     assert.deepStrictEqual(ids(read('since', UNIT, 'note-window').calls), [handed, builders]);
+  });
+
+  it('refuses Claude\'s decision carried over outside the migration, which would hide a call from the trust log, appending nothing — the migration\'s side is test-migration-directives.cjs\'s', () => {
+    refused('decide', NOTE, ['--answers', ask(NOTE, 'Does a note dim when idle?')], { ...MADE, text: 'Notes dim after a minute.', why: 'Quiet.', given: 'carried' },
+      /^ledger decide: the decision is given carried — a decision is carried over only by the migration, while it runs; Claude's own call is given own$/);
   });
 });
 

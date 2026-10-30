@@ -8,14 +8,16 @@
 // whose building started, a feature, a bugfix, a completed quick-fix, a
 // quick-fix being built, a cross-cutting unit holding a topic the first epic
 // promoted, and a cancelled unit, with the project's inbox,
-// environment setup, cache, old migrations record, roadmap and baseline
+// environment setup, cache — its old agent stores holding reviews never
+// folded in — old migrations record, roadmap and baseline
 // beside them, the tracker's store, settings hooks and `.worktreeinclude` in
 // its code tree, and today's user-level folder holding its config,
 // credentials and a conversation. The move runs once over that project, and
 // each test reads one rule off what it left: the state worktree on an unborn
 // `leeway-state`, locked, with nothing committed, nothing staged but the
 // project's own files, and `.workflows/` and the store untouched; each
-// unit's files in the layout, a person's files named for tracking or
+// unit's files in the layout, each review never folded in folded into its
+// topic's log, a person's files named for tracking or
 // analysis kept beside the reviews' tracking files dropped; nothing in a
 // topic's folder no topic owns; its manifest less research and the retired
 // state; the project's manifest with its id, the baseline's skip its
@@ -312,6 +314,11 @@ function todaysProject(dir) {
   w('.state/environment-setup.md', 'No special setup required.\n');
   w('.state/migrations', '001\n072\n');
   w('.cache/core/discussion/alpha/session.json', '{"live":true}\n');
+  w('.cache/core/discussion/alpha/state.json', json({ agents: { 'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' }, 'review-002': { id: 'review-002', kind: 'review', status: 'incorporated' } } }));
+  w('.cache/core/discussion/alpha/review-001.md', '### F1: Ranking ties\n\nTwo results of one age have no order.\n');
+  w('.cache/core/discussion/alpha/review-002.md', '### F1: Stale\n\nFolded in long ago.\n');
+  w('.cache/core/discussion/gamma/state.json', json({ agents: { 'review-003': { id: 'review-003', kind: 'review', status: 'acknowledged' } } }));
+  w('.cache/core/discussion/gamma/review-003.md', '### F1: Token reuse\n\nA token outlives its session.\n');
   w('scratch/notes.txt', 'a folder that is no unit\n');
   w('Thumbs.db', 'sidecar\n');
 
@@ -609,8 +616,15 @@ describe('migration 078: the move into the layout in .leeway/', () => {
 
     it('joins a promoted topic\'s research to its log in the cross-cutting unit, ahead of its discussion, its links to the imports it came with (21.5.2)', () => {
       assert.strictEqual(read('shared/topics/gamma/log.md'),
-        '## Research\n\n# Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n# Discussion: Gamma\n');
+        '## Research\n\n# Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n# Discussion: Gamma\n\n## Review review-003, never folded in\n\n### F1: Token reuse\n\nA token outlives its session.\n');
       assert.ok(!fs.existsSync(path.join(state, 'core/topics/gamma/log.md')), 'not in the epic');
+    });
+
+    it('folds each review the old agent store holds that landed and was never folded in into its topic\'s log, verbatim under a heading of its own, a promoted topic\'s from the unit it came from; one incorporated is not (21.5.12, 21.S19)', () => {
+      const log = read('core/topics/alpha/log.md');
+
+      assert.ok(log.endsWith('\n\n## Review review-001, never folded in\n\n### F1: Ranking ties\n\nTwo results of one age have no order.\n'), log);
+      assert.ok(!log.includes('Folded in long ago.'), log);
     });
 
     it('makes a bugfix\'s investigation its topic\'s log (21.S11)', () => {

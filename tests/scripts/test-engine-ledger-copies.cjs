@@ -43,7 +43,7 @@ const dir = useCopiesWorld();
 afterEach(clearSeams);
 
 const { write, ask, decide, copy, indexedText, floatingPanel } = copiesHelpers(dir);
-const { entries, full } = ledgerHelpers(dir);
+const { entries, full, carriedOver } = ledgerHelpers(dir);
 
 /** The day an entry was written, as a copy shows it. @param {string} short */
 function writtenOn(short) {
@@ -122,7 +122,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       [call('Does a note float?', 'It floats.', 'own'), 'Decided by Claude'],
       [call('Does a note snap?', 'It snaps.', 'your-call'), 'Decided by Claude, the person\'s "your call"'],
       [call('What radius are its corners?', 'Ten points.', 'dont-care'), 'Left to the builder, the person\'s "don\'t care"'],
-      [call('Does a note dim?', 'It dims.', 'carried'), 'Carried over, who decided it unrecorded'],
+      [carriedOver(NOTE, ask(NOTE, 'Does a note dim?'), 'It dims.'), 'Carried over, who decided it unrecorded'],
     ];
     const measured = write('find', NOTE, [], { ...MADE, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites }).id;
     const frame = `${UNIT}/spikes/001-frame/Frame.swift`;
