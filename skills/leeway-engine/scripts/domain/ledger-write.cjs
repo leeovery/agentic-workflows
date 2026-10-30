@@ -90,9 +90,10 @@
 //   ledger-verdicts.cjs). A decision carried over is no call of Claude's,
 //   and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
 //   raise lands logs the event the raise gives it: a raise answered, or a
-//   call carrying the decision point's sort. The event is built in the
-//   command that writes its line, under the writer lock, and kept waiting
-//   in the conversation ahead of its line before the ledger's
+//   call carrying the decision point's sort; a fact's answer logs none, as
+//   it counts for nothing in the trust layer (16.3.8). The event is built
+//   in the command that writes its line, under the writer lock, and kept
+//   waiting in the conversation ahead of its line before the ledger's
 //   append, so what refuses it writes nothing, a project manifest holding
 //   no project_id among it; it lands after the ledger's append and before
 //   its commit, the trust log's own lock taken inside the writer's, where
@@ -256,9 +257,9 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
  * name it; where the raise was drawn; how it lands, and its links by full
  * id, as the raise sealed them; the line's content; the id it lands as,
  * minted at the draw, or null for one minted under the lock; the trust
- * log's event it logs; and what it checks of the ledger under the lock
- * before its links resolve.
- * @typedef {{said: string, place: Place, lands: Lands, linked: Linked, content: Record<string, unknown>, id: string|null, logs: Logs, checkRead: ReadCheck}} Raised
+ * log's event it logs, or null — a fact's answer logs none; and what it
+ * checks of the ledger under the lock before its links resolve.
+ * @typedef {{said: string, place: Place, lands: Lands, linked: Linked, content: Record<string, unknown>, id: string|null, logs: Logs|null, checkRead: ReadCheck}} Raised
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */

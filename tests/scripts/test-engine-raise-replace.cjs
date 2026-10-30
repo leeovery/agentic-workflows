@@ -187,7 +187,7 @@ describe('the draw (16.5.7, 29.5.2)', () => {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'discussion', topic: 'note-window' },
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
-      call: CALL, rows_judged: [], reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0,
+      call: CALL, fact: false, rows_judged: [], reason: EVERY_CALL_ASKS, at: sealed.at, answered: null, didnt_follow: 0,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
