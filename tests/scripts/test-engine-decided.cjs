@@ -14,10 +14,14 @@
 // (8.S25), the candidates not struck on the epic's map, the topic decided
 // and what comes next; `engine decided strike` and `render decided-strike`
 // (P8); a product-record line changed through a comment, never struck
-// (9.S55); the screen refused while the checklist is open, and a topic a
-// message set back in progress closed afresh before its gate shows again
-// (P9); a running experiment holding the close (9.S61); and the wait for
-// the topic's agents still running (9.S63).
+// (9.S55); the screen refused while the checklist is open, a payload
+// staged for an earlier close refused, a refused yes writing nothing and a
+// yes run again after a kill landing nothing twice; a restage keeping the
+// strikes; a message delivered or a question opened since the close voiding
+// it, a decision changed since voiding nothing, and a topic a message set
+// back in progress closed afresh before its gate shows again (P9); a
+// running experiment holding the close (9.S61); and the wait for the
+// topic's agents still running (9.S63).
 //
 // Layer: verb. Worlds, built once and copied: an epic, `fumi`, its two
 // topics under discussion, the note window's map written through the
@@ -35,7 +39,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, output, refusedPristine, readManifest, statePath, layout, fixtureFrom, cleanupFixture, lastMessage } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, readManifest, statePath, fixtureFrom, cleanupFixture, lastMessage, killedAt } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, row, ledgerHelpers } = require('./ledger-world.cjs');
 
@@ -241,10 +245,10 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     const cases = [
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: finding }], candidates: [] }, `line 1 widens ${finding}: ${finding} is no decision`],
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: NOTE_MAP.shape.question }], candidates: [] }, `line 1 widens ${NOTE_MAP.shape.question}: ${NOTE_MAP.shape.question} is no decision`],
-      [{ lines: [], candidates: [{ name: 'space-homing', reason: 'R.' }] }, 'candidate 1, "space-homing", is on the map already'],
-      [{ lines: [], candidates: [{ name: 'dock-badge', reason: 'R.' }] }, 'candidate 1, "dock-badge", was dismissed from the map — the person re-adds it there'],
-      [{ lines: [], candidates: [{ name: 'Dock Badge', reason: 'R.' }] }, 'candidate 1, "Dock Badge", is no topic name — lowercase words joined by hyphens'],
-      [{ lines: [], candidates: [{ name: 'a', reason: 'R.' }, { name: 'a', reason: 'S.' }] }, 'candidate 2, "a", is named twice'],
+      [{ lines: [], candidates: [{ name: 'space-homing', reason: 'R.' }] }, 'the candidates: "space-homing" is already on the map — nothing was added; edit it, or pick a different name'],
+      [{ lines: [], candidates: [{ name: 'dock-badge', reason: 'R.' }] }, 'the candidates: "dock-badge" was previously dismissed from this map — nothing was added; the person re-adds it on the map'],
+      [{ lines: [], candidates: [{ name: 'dock.badge', reason: 'R.' }] }, 'the candidates: entry 1 — "dock.badge" is not a legal topic name (dots and slashes break manifest addressing)'],
+      [{ lines: [], candidates: [{ name: 'a', reason: 'R.' }, { name: 'a', reason: 'S.' }] }, 'the candidates: "a" appears more than once in the batch'],
       [{ lines: [] }, 'the payload must be {lines, candidates}'],
     ];
     for (const [given, refusal] of cases) {
@@ -279,12 +283,17 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
 
     const yes = answer('decided', 'y');
     assert.deepStrictEqual(yes, { kind: 'engine', argv: ['decided', 'yes', UNIT, 'note-window'] });
+    const map = ok(dir, ['ledger', 'map', UNIT, 'note-window']).questions;
     const res = run(yes);
     const lines = entries().slice(before);
-    assert.deepStrictEqual(lines.map(({ event, by, given, who_moved_whom: moved, product_wide: wide, answers, relies_on: reliesOn, text }) => ({ event, by, given, moved, wide, answers, reliesOn, text })), [
-      { event: 'decided', by: 'person', given: 'own', moved: 'none', wide: true, answers: full(NOTE_MAP.sync.question), reliesOn: [full(NOTE_MAP.sync.answer)], text: 'Sync stays off until you turn it on.' },
-      { event: 'decided', by: 'person', given: 'own', moved: 'none', wide: true, answers: full(NOTE_MAP.shape.question), reliesOn: [full(NOTE_MAP.shape.answer)], text: 'First run shows the product before it asks.' },
+    assert.deepStrictEqual(lines.map(({ event, topic, by, given, who_moved_whom: moved, product_wide: wide, relies_on: reliesOn, text }) => ({ event, topic, by, given, moved, wide, reliesOn, text })), [
+      { event: 'asked', topic: null, by: 'claude', given: undefined, moved: 'none', wide: undefined, reliesOn: [full(NOTE_MAP.sync.answer)], text: 'Is sync on at first run?' },
+      { event: 'decided', topic: null, by: 'person', given: 'own', moved: 'none', wide: true, reliesOn: [full(NOTE_MAP.sync.answer)], text: 'Sync stays off until you turn it on.' },
+      { event: 'asked', topic: null, by: 'claude', given: undefined, moved: 'none', wide: undefined, reliesOn: [full(NOTE_MAP.shape.answer)], text: 'How does first run open?' },
+      { event: 'decided', topic: null, by: 'person', given: 'own', moved: 'none', wide: true, reliesOn: [full(NOTE_MAP.shape.answer)], text: 'First run shows the product before it asks.' },
     ]);
+    assert.deepStrictEqual([lines[1].answers, lines[3].answers], [lines[0].id, lines[2].id], 'each line answers its own question, at the unit\'s level');
+    assert.deepStrictEqual(ok(dir, ['ledger', 'map', UNIT, 'note-window']).questions, map, 'the topic\'s map is as it was: a line answers none of its questions');
     assert.deepStrictEqual(ok(dir, ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync stays off until you turn it on.', 'First run shows the product before it asks.']);
     const manifest = readManifest(dir, UNIT);
     assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { routing: 'discussion', source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
@@ -293,6 +302,48 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
     assert.deepStrictEqual([res.lines.length, res.candidates], [2, ['removing-fumi']]);
     assert.strictEqual(lastMessage(dir), 'decided(fumi): note-window');
     assert.ok(!fs.existsSync(statePath(dir, '.cache', UNIT, 'discussion', 'note-window', 'decided.json')), 'the staged payload goes');
+  });
+
+  it('checks every line before it writes one: a refused yes lands nothing, and once staged again each line lands once', () => {
+    close();
+    const lines = [
+      { text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer },
+      { text: 'Sync is on once a folder is picked.', why: 'The sync call holds for the whole product.', widens: NOTE_MAP.sync.answer },
+    ];
+    staged({ lines, candidates: [] });
+    const replacement = writeIn(dir, 'replace', NOTE, ['--replaces', NOTE_MAP.sync.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['on by default'], text: 'Sync is off until turned on.', why: 'A comment at the gate.' });
+    const before = entries().length;
+    assert.match(refusedPristine(dir, ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; it is staged again with --file$/);
+    assert.strictEqual(entries().length, before, 'line 1 never landed');
+    staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [{ name: 'removing-fumi', reason: 'R.' }] });
+    ok(dir, ['discovery-map', 'add', UNIT, 'removing-fumi', 'discussion', '--summary', 'Added at the map meanwhile.'], { env: SESSION });
+    assert.strictEqual(refusedPristine(dir, ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error,
+      'decided yes: the candidates: "removing-fumi" is already on the map — nothing was added; edit it, or pick a different name');
+    assert.strictEqual(entries().length, before, 'a candidate the map now refuses lands no line either');
+    staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [] });
+    run(answer('decided', 'y'));
+    assert.deepStrictEqual(ok(dir, ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['First run shows the product before it asks.', 'Sync is off until turned on.']);
+  });
+
+  it('lands no line twice when a yes killed after its lines landed is run again, each line keeping the ids it was staged with', () => {
+    close();
+    staged({ lines: [{ text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer }], candidates: [] });
+    killedAt({ method: 'renameSync', file: `${UNIT}/manifest.json`, when: 'before' }, dir, ['decided', 'yes', UNIT, 'note-window'], { env: SESSION });
+    assert.deepStrictEqual(ok(dir, ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['First run shows the product before it asks.'], 'the line landed before the kill');
+    assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-window'].status, 'in-progress');
+    run(answer('decided', 'y'));
+    assert.deepStrictEqual(ok(dir, ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['First run shows the product before it asks.']);
+    assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-window'].status, 'completed');
+  });
+
+  it('refuses a payload staged for an earlier close, the screen and the yes alike', () => {
+    close();
+    staged(NO_PAYLOAD);
+    markAllButTheClosingPass(dir, UNIT, 'note-window');
+    close();
+    const earlier = 'what is staged for note-window was drawn for an earlier close — it is staged again with --file';
+    assert.strictEqual(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: ${earlier}`);
+    assert.strictEqual(refusedPristine(dir, ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${earlier}`);
   });
 
   it('hands a feature\'s decided topic off to its specification', () => {
@@ -348,6 +399,16 @@ describe('striking a candidate (P8)', () => {
     assert.deepStrictEqual(run(answer('decided', 'y')).candidates, ['removing-fumi', 'menu-extra']);
   });
 
+  it('keeps the strike of every candidate a restage still names', () => {
+    close();
+    const candidates = [{ name: 'removing-fumi', reason: 'R.' }, { name: 'dock-icon', reason: 'S.' }];
+    staged({ lines: [], candidates });
+    ok(dir, ['decided', 'strike', UNIT, 'note-window', '1'], { env: SESSION });
+    const again = staged({ lines: [{ text: 'Sync is on.', why: 'Why.', widens: NOTE_MAP.sync.answer }], candidates: [...candidates].reverse() });
+    assert.match(again, /└─ ⊘ Removing Fumi +\[struck\]/);
+    assert.deepStrictEqual(run(answer('decided', 'y')).candidates, ['dock-icon']);
+  });
+
   it('refuses a candidate the payload lacks, and one struck already', () => {
     close();
     staged({ lines: [], candidates: [{ name: 'removing-fumi', reason: 'R.' }] });
@@ -360,7 +421,7 @@ describe('striking a candidate (P8)', () => {
 describe('a topic set back in progress (P9, 10.2.7)', () => {
   it('shows its gate again only once closed afresh, and the next decided takes the gate\'s yes again', () => {
     close();
-    staged(NO_PAYLOAD);
+    staged({ lines: [{ text: 'Sync is on once a folder is picked.', why: 'It holds for the product.', widens: NOTE_MAP.sync.answer }], candidates: [] });
     run(answer('decided', 'y'));
     const scratch = statePath(dir, '.cache', 'scratch', 'note.md');
     fs.writeFileSync(scratch, 'A login item needs a banner\n\nThe space-homing topic found one.\n');
@@ -374,19 +435,44 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     assert.match(refusedPristine(dir, ['checklist', 'close', 'decided', UNIT, 'note-window'], { env: SESSION }).error, /has items open: closing-pass, decisions-entered/, 'marks before the last close count for nothing');
     markAllButTheClosingPass(dir, UNIT, 'note-window');
     close();
-    assert.match(output(dir, shown, { env: SESSION }), /WHAT YOU DECIDED \(2\)[\s\S]*MENU: decided/);
+    assert.match(output(dir, shown, { env: SESSION }), /WHAT YOU DECIDED \(2\)\n {2}├─ How does first run open\?\n {2}└─ Does a login item need a banner\?\n\nCLAUDE'S CALLS \(5\)[\s\S]*MENU: decided/,
+      'the call the product-record line widened is still Claude\'s');
     assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-window'].status, 'in-progress', 'the topic is decided only by the gate\'s yes');
     run(answer('decided', 'y'));
     assert.strictEqual(readManifest(dir, UNIT).phases.discussion.items['note-window'].status, 'completed');
   });
 
-  it('refuses the screen where mail landed since the close, the mailbox no longer empty', () => {
+  it('voids the close with a message delivered since, its answer leaving it void, and the payload staged against it with it', () => {
     close();
+    staged({ lines: [{ text: 'Sync is on everywhere.', why: 'Why.', widens: NOTE_MAP.sync.answer }], candidates: [] });
     const scratch = payload(NO_PAYLOAD);
-    fs.writeFileSync(scratch, 'One more thing\n\nBody.\n');
-    ok(dir, ['topic', 'send', UNIT, 'note-window', '--from', 'space-homing', '--content', scratch, '--slug', 'more'], { env: SESSION });
-    assert.strictEqual(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`, '--file', payload(NO_PAYLOAD)], { env: SESSION }).error,
-      'render decided: decided.note-window has items open since its close: mailbox-empty — they are worked, and it is closed again');
+    fs.writeFileSync(scratch, 'Sync off\n\nSpace homing decided sync stays off.\n');
+    ok(dir, ['topic', 'send', UNIT, 'note-window', '--from', 'space-homing', '--content', scratch, '--slug', 'sync-off'], { env: SESSION });
+    const asked = NOTE_MAP.sync.question;
+    ok(dir, ['topic', 'answered', UNIT, 'note-window', '001-sync-off', '--entry', asked], { env: SESSION });
+    const voided = 'decided.note-window was closed before a message delivered to note-window — its items are worked afresh and it is closed again';
+    assert.strictEqual(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: ${voided}`);
+    assert.strictEqual(refusedPristine(dir, ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, `decided yes: ${voided}`);
+    markAllButTheClosingPass(dir, UNIT, 'note-window');
+    close();
+    assert.match(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, /drawn for an earlier close/);
+  });
+
+  it('voids the close with a question opened on the topic since — asked there, or moved to it — and never with a decision changed', () => {
+    close();
+    staged(NO_PAYLOAD);
+    writeIn(dir, 'replace', NOTE, ['--replaces', NOTE_MAP.title.answer, '--reason', 'changed-mind'], { ...MADE, drops: ['welcome'], text: 'Hello.', why: 'A comment at the gate.' });
+    assert.match(screen(), /MENU: decided/, 'a decision changed at a comment leaves the close standing');
+    const opened = 'was closed before a question opened on note-window — its items are worked afresh and it is closed again';
+    writeIn(dir, 'decide', NOTE, ['--answers', writeIn(dir, 'ask', NOTE, [], { ...MADE, text: 'Is the window resizable?' })], { ...MADE, text: 'Yes.', why: 'Because.' });
+    assert.strictEqual(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, `render decided: decided.note-window ${opened}`);
+    markAllButTheClosingPass(dir, UNIT, 'note-window');
+    close();
+    assert.match(staged(NO_PAYLOAD), /MENU: decided/);
+    const homing = `${UNIT}.discussion.space-homing`;
+    const moved = writeIn(dir, 'ask', homing, [], { ...MADE, text: 'Does a note remember its space?' });
+    writeIn(dir, 'move', homing, ['--question', moved, '--to', 'note-window'], MADE);
+    assert.match(refusedPristine(dir, ['render', 'decided', `${UNIT}.note-window`], { env: SESSION }).error, new RegExp(opened));
   });
 });
 

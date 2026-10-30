@@ -15,10 +15,14 @@
 //   candidates — is staged in the topic's cache with `--file`, against the
 //   close it was drawn for, and nothing reaches the ledger or the map
 //   before the person's yes (8.9.7). A line widens a decision on the
-//   topic's map into a rule for the product: it will answer that decision's
-//   question, in its wording as staged, and rely on the decision. Each line
-//   takes its id as staged, so a yes run again after a kill lands no line
-//   twice. Candidates are an epic's alone, each a name the map can take.
+//   topic's map into a rule for the product: an entry of its own at the
+//   unit's level, off the topic's map — a question in the wording of the
+//   one the decision answers, relying on it, and the line answering that
+//   question, relying on the decision too — so neither the map nor the
+//   screen changes as it lands. Each line takes its ids as staged, so a yes
+//   run again after a kill lands no line twice; a restage keeps the strike
+//   of every candidate it still names. Candidates are an epic's alone, each
+//   checked by the map's own rules for adding a topic (discovery-map.cjs).
 //   The screen draws from the staged payload again without `--file`, the
 //   calls listed with `--calls`.
 // - Claude's calls are counted by the kind each decision carries; a call
@@ -30,14 +34,17 @@
 //   made (16.10.5). The verdict is `verdict give … --at decided`.
 // - The decided gate never learns: it stops in every position (3.2.3), and
 //   its name is `decided` for good (16.11.9). Its yes, `decided yes`, stands
-//   on the screen as drawn: the close the payload was staged against, no
-//   verdict still to ask, and each candidate still one the map can take.
-//   It lands each line as the person's product-wide decision (by the
-//   person, their own, moving no one: their yes over Claude's line), each
-//   through the ledger's lock with its commit; then, in one manifest save
-//   and its commit, adds the candidates not struck to the epic's map, each
-//   routed to discussion from the topic, marks the topic decided, and
-//   records that the yes took the close. The staged payload goes. It
+//   on the screen as drawn: the close the payload was staged against, and
+//   no verdict still to ask. Every line and every candidate not struck is
+//   checked against the ledger and the map as they stand, by the checks
+//   their landing makes, before anything is written, so a refused yes
+//   writes nothing. Then it lands each line — its question, then the
+//   person's product-wide decision answering it (by the person, their own,
+//   moving no one: their yes over Claude's line) — each through the
+//   ledger's lock with its commit; then, in one manifest save and its
+//   commit, adds the candidates not struck to the epic's map, each routed
+//   to discussion from the topic, marks the topic decided, and records
+//   that the yes took the close. The staged payload goes. It
 //   answers what comes next: an epic's menu, else today's specification
 //   (9.7.6 waits on 29.15).
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
@@ -60,11 +67,12 @@ const { newId, resolveId } = require('./ledger-ids.cjs');
 const { factsOf, isLive } = require('./ledger-fold.cjs');
 const { readShown, answerMap } = require('./ledger-read.cjs');
 const { departureRow } = require('./ledger-verdicts.cjs');
-const { landRaised } = require('./ledger-write.cjs');
+const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { itemOf } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
+const { checkBatchEntries, addBatchTo } = require('./discovery-map.cjs');
 const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -77,15 +85,18 @@ const { decidedScreen, strikePick, waitAgents } = require('./projections/decided
 /** @typedef {import('./projections/decided.cjs').DecidedView} DecidedView */
 
 /**
- * A product-record line as staged: the id it lands as, its text and why,
- * the decision it widens and the question it answers, each by full id.
- * @typedef {{id: string, text: string, why: string, widens: string, answers: string}} StagedLine
+ * A product-record line as staged: the ids its question and it land as, its
+ * text and why, the decision it widens by full id, and its question's
+ * wording.
+ * @typedef {{id: string, question: string, asks: string, text: string, why: string, widens: string}} StagedLine
  */
+
+/** A new-topic candidate as staged, struck or standing. @typedef {{name: string, reason: string, struck: boolean}} StagedCandidate */
 
 /**
  * Claude's payload as staged in the topic's cache, against the close it was
  * drawn for.
- * @typedef {{closed: string, lines: StagedLine[], candidates: {name: string, reason: string, struck: boolean}[]}} Staged
+ * @typedef {{closed: string, lines: StagedLine[], candidates: StagedCandidate[]}} Staged
  */
 
 const PHASE = 'discussion';
@@ -135,7 +146,7 @@ function shaped(v, what, keys) {
 }
 
 /**
- * The full id of the map's question a line's decision answers there, by the
+ * The wording of the map's question a line's decision answers there, by the
  * decision's short id: refused where the decision is on no row of the map,
  * or stands alone, its question set aside.
  * @param {Shower} shower @param {Row[]} rows @param {string} decision a full id
@@ -145,12 +156,13 @@ function questionOn(shower, rows, decision) {
   const row = rows.find((r) => answersOn(r).some((a) => a.id === short));
   if (row === undefined) throw new Error(`${short} is no decision on the topic's map`);
   if (row.stands === 'question-set-aside') throw new Error(`${short}'s question is set aside, so there is no question for its line to answer`);
-  return resolveId(row.id, shower.folded.facts.keys());
+  return row.text;
 }
 
 /**
- * A line as Claude's payload gives it, staged: refused where it is not
- * `{text, why, widens}` or `widens` names no decision on the map.
+ * A line as Claude's payload gives it, staged, its ids minted: refused
+ * where it is not `{text, why, widens}` or `widens` names no decision on
+ * the map.
  * @param {Shower} shower @param {Row[]} rows @param {unknown} given @param {number} at
  * @returns {StagedLine}
  */
@@ -159,46 +171,59 @@ function stagedLine(shower, rows, given, at) {
   const { text, why, widens } = shaped(given, what, ['text', 'why', 'widens']);
   if (!filled(text) || !filled(why) || !filled(widens)) throw new Error(`${what}'s text, why and widens are each a non-empty string`);
   let decision;
+  let asks;
   try {
     decision = resolveId(widens, shower.folded.facts.keys());
     if (factsOf(shower.folded, decision).kind !== 'decision') throw new Error(`${widens} is no decision`);
-    return { id: newId(), text, why, widens: decision, answers: questionOn(shower, rows, decision) };
+    asks = questionOn(shower, rows, decision);
   } catch (err) {
     throw new Error(`${what} widens ${widens}: ${messageOf(err)}`);
   }
+  return { id: newId(), question: newId(), asks, text, why, widens: decision };
+}
+
+/** How a candidate dismissed from the map is re-added: by the person, on the map. */
+const RE_ADD = 'the person re-adds it on the map';
+
+/**
+ * The candidates as the map adds them: each a topic routed to discussion
+ * from this one, its reason its summary.
+ * @param {string} topic @param {{name: string, reason: string}[]} candidates
+ */
+function mapEntries(topic, candidates) {
+  return candidates.map(({ name, reason }) => ({ name, routing: PHASE, summary: reason, source: `topic:${topic}` }));
 }
 
 /**
- * Why the epic's map cannot take a candidate of that name, or null where it
- * can: a name the map refuses, one on the map already, or one dismissed
- * from it.
- * @param {Record<string, any>} manifest @param {string} name
- * @returns {string|null}
+ * Refused, in the words of `said`, where the epic's map would refuse to add
+ * the candidates as it stands — by the map's own rules, writing nothing.
+ * @param {Record<string, any>} manifest @param {string} topic @param {{name: string, reason: string}[]} candidates @param {string} said
  */
-function mapRefusal(manifest, name) {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) return 'is no topic name — lowercase words joined by hyphens';
-  const discovery = manifest.phases?.discovery ?? {};
-  if (isObject(discovery.items?.[name])) return 'is on the map already';
-  if (Array.isArray(discovery.dismissed) && discovery.dismissed.includes(name)) return 'was dismissed from the map — the person re-adds it there';
-  return null;
+function checkCandidates(manifest, topic, candidates, said) {
+  if (candidates.length === 0) return;
+  const entries = mapEntries(topic, candidates);
+  checkBatchEntries(entries, said);
+  addBatchTo(structuredClone(manifest), entries, said, RE_ADD);
 }
 
 /**
  * The candidates as Claude's payload gives them, staged: an epic's alone,
- * each `{name, reason}`, its name once and one the map can take.
- * @param {Record<string, any>} manifest @param {unknown[]} given
+ * each `{name, reason}` the map can take, struck where the candidate of
+ * that name staged before was.
+ * @param {Record<string, any>} manifest @param {string} topic @param {unknown[]} given @param {StagedCandidate[]} before
+ * @returns {StagedCandidate[]}
  */
-function stagedCandidates(manifest, given) {
+function stagedCandidates(manifest, topic, given, before) {
   if (given.length > 0 && manifest.work_type !== 'epic') throw new Error(`a ${manifest.work_type} has no map to add a topic to — candidates are an epic's`);
-  return given.map((candidate, at) => {
+  const candidates = given.map((candidate, at) => {
     const what = `candidate ${at + 1}`;
     const { name, reason } = shaped(candidate, what, ['name', 'reason']);
     if (!filled(name) || !filled(reason)) throw new Error(`${what}'s name and reason are each a non-empty string`);
-    const refused = mapRefusal(manifest, name);
-    if (refused !== null) throw new Error(`${what}, "${name}", ${refused}`);
-    if (given.findIndex((other) => isObject(other) && other.name === name) !== at) throw new Error(`${what}, "${name}", is named twice`);
-    return { name, reason, struck: false };
+    return { name, reason };
   });
+  checkCandidates(manifest, topic, candidates, 'the candidates');
+  const struck = new Set(before.filter((candidate) => candidate.struck).map(({ name }) => name));
+  return candidates.map(({ name, reason }) => ({ name, reason, struck: struck.has(name) }));
 }
 
 /**
@@ -218,10 +243,25 @@ function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
   const { lines, candidates } = shaped(parsed, 'the payload', ['lines', 'candidates']);
   if (!Array.isArray(lines) || !Array.isArray(candidates)) throw new Error('the payload\'s lines and candidates are each a list');
   /** @type {Staged} */
-  const staged = { closed, lines: lines.map((line, i) => stagedLine(shower, rows, line, i)), candidates: stagedCandidates(manifest, candidates) };
+  const staged = {
+    closed,
+    lines: lines.map((line, i) => stagedLine(shower, rows, line, i)),
+    candidates: stagedCandidates(manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
+  };
   fs.mkdirSync(path.dirname(stagedFile(cwd, unit, topic)), { recursive: true });
   writeJsonAtomic(stagedFile(cwd, unit, topic), staged);
   return staged;
+}
+
+/**
+ * The candidates staged for the topic, whatever close they were drawn for:
+ * none where nothing is.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {StagedCandidate[]}
+ */
+function stagedBefore(cwd, unit, topic) {
+  const file = stagedFile(cwd, unit, topic);
+  return fs.existsSync(file) ? /** @type {Staged} */ (JSON.parse(fs.readFileSync(file, 'utf8'))).candidates : [];
 }
 
 /**
@@ -278,7 +318,7 @@ function verdictAsked(shower, root, unit, topic) {
  */
 function recordSide(shower, root, unit, topic) {
   const rows = /** @type {Row[]} */ (answerMap(shower, { unit, topic }, root).questions);
-  const decided = rows.filter((row) => DECIDED_STANDS.includes(row.stands) && closedBy(answersOn(row)) === 'yours').map((row) => row.text);
+  const decided = rows.filter((row) => DECIDED_STANDS.includes(row.stands) && closedBy(answersOn(row)).tag === 'yours').map((row) => row.text);
   const calls = claudesCalls(rows).map(({ answer, question }) => ({
     question,
     answer: answer.text,
@@ -383,46 +423,59 @@ function nextAfter(manifest, unit) {
 }
 
 /**
- * A staged line landed as the person's product-wide decision, as its id.
- * @param {string} cwd @param {string} unit @param {string} topic @param {StagedLine} line @param {string[]} warnings
+ * The two raises a staged line lands as, at the unit's level: its question,
+ * relying on the decision it widens, and the person's product-wide
+ * decision answering it.
+ * @param {string} unit @param {StagedLine} line
+ * @returns {[import('./ledger-write.cjs').Raised, import('./ledger-write.cjs').Raised]}
  */
-function landLine(cwd, unit, topic, { id, text, why, widens, answers }, warnings) {
-  return landRaised(cwd, {
-    said: 'decided yes',
-    place: { unit, phase: PHASE, topic },
-    lands: 'decide',
-    linked: { answers, relies_on: [widens] },
-    content: { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true },
-    id,
-    logs: null,
-    checkRead: () => {},
-  }, warnings).landed;
+function lineRaises(unit, { id, question, asks, text, why, widens }) {
+  const place = { unit, phase: PHASE, topic: null };
+  const common = { said: 'decided yes', place, logs: null, checkRead: () => {} };
+  return [
+    { ...common, lands: 'ask', linked: { relies_on: [widens] }, content: { by: 'claude', who_moved_whom: 'none', text: asks }, id: question },
+    { ...common, lands: 'decide', linked: { answers: question, relies_on: [widens] }, content: { by: 'person', who_moved_whom: 'none', given: 'own', text, why, product_wide: true }, id },
+  ];
 }
 
 /**
- * `decided yes <unit> <topic>`: the person's yes at the decided gate.
+ * Refused where a staged line could not land as the ledger stands — the
+ * decision it widens no longer current, or the unit no longer taking
+ * writes — by the check its question's landing makes, writing nothing.
+ * @param {string} cwd @param {string} unit @param {StagedLine[]} lines @param {string[]} warnings
+ */
+function checkLines(cwd, unit, lines, warnings) {
+  lines.forEach((line, at) => {
+    try {
+      checkRaised(cwd, lineRaises(unit, line)[0], warnings);
+    } catch (err) {
+      throw new Error(`line ${at + 1} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; it is staged again with --file`);
+    }
+  });
+}
+
+/**
+ * `decided yes <unit> <topic>`: the person's yes at the decided gate,
+ * everything it writes checked before any of it is written.
  * @param {string} cwd @param {string} unit @param {string} topic
  */
 function decidedYes(cwd, unit, topic) {
   if (handedSession() === null) throw new Error('no conversation to write in — Claude Code hands every command it runs a session id, and this one has none');
-  const staged = onClosedTopic(cwd, unit, topic, ({ manifest, closed, side }) => {
-    const ready = stagedFor(cwd, unit, topic, closed);
-    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
-    for (const { name } of ready.candidates.filter(({ struck }) => !struck)) {
-      const refused = mapRefusal(manifest, name);
-      if (refused !== null) throw new Error(`the candidate "${name}" ${refused} since it was staged — it is staged again with --file`);
-    }
-    return ready;
-  });
   /** @type {string[]} */
   const warnings = [];
-  const lines = staged.lines.map((line) => landLine(cwd, unit, topic, line, warnings).id);
+  const staged = onClosedTopic(cwd, unit, topic, ({ closed, side }) => {
+    const ready = stagedFor(cwd, unit, topic, closed);
+    if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
+    return ready;
+  });
   const added = staged.candidates.filter(({ struck }) => !struck);
+  checkCandidates(loadWorkUnitManifest(cwd, unit), topic, added, 'the candidates');
+  checkLines(cwd, unit, staged.lines, warnings);
+  const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id)[1]);
   const at = new Date().toISOString();
   const manifest = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
-    const items = ((fresh.phases.discovery ??= {}).items ??= {});
-    for (const { name, reason } of added) items[name] = { routing: PHASE, source: `topic:${topic}`, summary: reason };
+    if (added.length > 0) addBatchTo(fresh, mapEntries(topic, added), 'the candidates', RE_ADD);
     fresh.phases[PHASE].items[topic].status = 'completed';
     takeDecidedClose(fresh, topic, at);
     saveWorkUnitManifest(cwd, unit, fresh);

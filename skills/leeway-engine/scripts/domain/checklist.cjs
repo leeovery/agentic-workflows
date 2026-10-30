@@ -16,8 +16,10 @@
 //
 // A record is `{items: {key: {state: 'done'|'skipped', reason?, at}},
 // closed?: at}` (6.4.12): Claude's marks alone, each skip with its reason,
-// and the close; decided's also `taken?: at`, when the decided gate's yes
-// took its close (decided.cjs). What the engine checks is worked out at every call and
+// and the close. Decided's also keeps `ledger_at`, the ledger's last line
+// as it closed; `voided?: at`, when a message was delivered to the topic
+// since (mail.cjs); and `taken?: at`, when the decided gate's yes took its
+// close (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
 // `topics/{topic}/mail/`; each phase of the cut naming its scenarios and
@@ -30,9 +32,12 @@
 //
 // A mark counts only once made after the record's last close, so a point
 // closed again — a decided topic a message set back in progress (10.2.7,
-// mail.cjs) — is worked afresh. The decided gate stands on a close its yes
-// has not taken (`decidedClose`): a topic reopened after its yes shows its
-// gate again only once closed again, every engine item holding still. A skip shows on the screen of the next
+// mail.cjs) — is worked afresh. The decided gate stands on a close nothing
+// new has come to since (`decidedClose`): a message delivered to the topic
+// or a question opened on it — asked there, or moved to it — after the
+// close voids it, as the yes taking it does, so the topic is worked afresh
+// and closed again before its gate shows again, every engine item holding
+// still. A decision changed since voids nothing. A skip shows on the screen of the next
 // authority gate over its work (6.4.5): decided's, ready to build's and
 // finish's each their own, and finish's every phase start's and close's too,
 // as each record keeps them. An engine item is never marked or skipped, so
@@ -56,7 +61,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { messageOf } = require('../kernel/call.cjs');
 
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
-/** @typedef {{items: Record<string, Mark>, closed?: string, taken?: string}} Checklist */
+/** @typedef {{items: Record<string, Mark>, closed?: string, ledger_at?: number, voided?: string, taken?: string}} Checklist */
 
 /**
  * A checklist named: its point; where its record sits under the manifest's
@@ -81,13 +86,15 @@ const { messageOf } = require('../kernel/call.cjs');
 
 /**
  * A point: what names its checklist after the point, and where that places
- * it; its items; the skips its gate shows, given its own; and what its
- * close does beyond recording itself, where it does more.
+ * it; its items; the skips its gate shows, given its own; what its close
+ * keeps beside the time, where it keeps more; and what its close does
+ * beyond recording itself, where it does more.
  * @typedef {{
  *   takes: string[],
  *   place: (cwd: string, args: string[]) => Place,
  *   items: Item[],
  *   shows: (named: Named, own: Skip[]) => Skip[],
+ *   seals?: (named: Named) => Record<string, unknown>,
  *   closes?: (named: Named) => void,
  * }} Point
  */
@@ -112,6 +119,23 @@ function questionsClosed({ cwd, unit, topic, warnings }) {
   const root = stateRoot(cwd);
   const folded = { facts: foldLedger(root, ID_FACTS, warnings), live: liveness(root) };
   return mapOf(folded, /** @type {string} */ (unit), /** @type {string} */ (topic)).every((row) => row.stands !== 'open');
+}
+
+/**
+ * The ledger's last line, and whether a line past `after` opened a question
+ * on the topic: one asked there, or moved to it.
+ * @param {string} root @param {string} unit @param {string} topic @param {number} after @param {string[]} warnings
+ * @returns {{last: number, opened: boolean}}
+ */
+function ledgerPast(root, unit, topic, after, warnings) {
+  return foldLedger(root, {
+    start: () => /** @type {{last: number, opened: boolean}} */ ({ last: 0, opened: false }),
+    step: (state, event, place) => {
+      state.last = place.number;
+      const opens = event.unit === unit && ((event.event === 'asked' && event.topic === topic) || (event.event === 'moved' && event.to === topic));
+      if (opens && place.number > after) state.opened = true;
+    },
+  }, warnings);
 }
 
 /** No message waiting in the topic's mail (10.2.7). @param {Named} named */
@@ -201,6 +225,7 @@ const POINTS = Object.freeze({
       { key: 'product-lines-shown', text: 'the product-record lines and any candidates are on the screen' },
     ],
     shows: ownSkips,
+    seals: ({ cwd, unit, topic, warnings }) => ({ ledger_at: ledgerPast(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic), Infinity, warnings).last }),
   },
   'ready-to-build': {
     takes: ['<work-unit>'],
@@ -414,6 +439,7 @@ function close(checklist) {
     const open = itemStates(fresh).filter((item) => item.state === 'open').map((item) => item.key);
     if (open.length > 0) throw new Error(`${nameOf(checklist)} has items open: ${open.join(', ')}`);
     record.closed = at;
+    Object.assign(record, POINTS[checklist.point].seals?.(fresh));
   }, { ...answering(checklist), closed: at });
   POINTS[checklist.point].closes?.(checklist);
   return answer;
@@ -448,9 +474,10 @@ function runChecklistVerb(cwd, verb, positional, opts) {
  * The close the decided gate stands on (9.7.3, 10.2.7): the record's close,
  * and the skips it shows (6.4.5), each marked before it. Refused while the
  * checklist is open: closed never; its close taken by the gate's yes
- * already, the topic set back in progress since, so it is worked afresh and
- * closed again; or an item the engine checks failing now, as mail landing
- * since the close fails the mailbox's.
+ * already, the topic set back in progress since; a message delivered to the
+ * topic, or a question opened on it, since the close — each worked afresh
+ * and closed again; or an item the engine checks failing now, as mail
+ * waiting fails the mailbox's.
  * @param {string} cwd @param {string} unit @param {string} topic
  * @returns {{closed: string, skips: Skip[], warnings: string[]}}
  */
@@ -463,6 +490,12 @@ function decidedClose(cwd, unit, topic) {
   if (record.taken !== undefined && record.taken >= closedAt) {
     throw new Error(`${name}'s close was taken by the decided gate's yes, and the topic was set back in progress since — its items are worked afresh and it is closed again`);
   }
+  if (record.voided !== undefined && record.voided >= closedAt) {
+    throw new Error(`${name} was closed before a message delivered to ${topic} — its items are worked afresh and it is closed again`);
+  }
+  if (ledgerPast(stateRoot(cwd), unit, topic, /** @type {number} */ (record.ledger_at), checklist.warnings).opened) {
+    throw new Error(`${name} was closed before a question opened on ${topic} — its items are worked afresh and it is closed again`);
+  }
   const items = itemsOf(checklist);
   const failing = items.filter((item) => item.check !== undefined && !item.check(checklist)).map((item) => item.key);
   if (failing.length > 0) throw new Error(`${name} has items open since its close: ${failing.join(', ')} — they are worked, and it is closed again`);
@@ -474,6 +507,19 @@ function decidedClose(cwd, unit, topic) {
 }
 
 /**
+ * Record on the unit's manifest, as it is saved, that a message delivered
+ * to the topic now voids its decided close, where it has one standing:
+ * whether it did.
+ * @param {Record<string, any>} manifest @param {string} topic @param {string} at
+ */
+function voidDecidedClose(manifest, topic, at) {
+  const record = recordAt(manifest, ['decided', topic]);
+  if (record?.closed === undefined) return false;
+  record.voided = at;
+  return true;
+}
+
+/**
  * Record on the unit's manifest, as it is saved, that the decided gate's
  * yes took the topic's close.
  * @param {Record<string, any>} manifest @param {string} topic @param {string} at
@@ -482,4 +528,4 @@ function takeDecidedClose(manifest, topic, at) {
   /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, phaseStarted, decidedClose, takeDecidedClose };
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, phaseStarted, decidedClose, takeDecidedClose, voidDecidedClose };
