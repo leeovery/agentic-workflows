@@ -156,6 +156,9 @@ function run(dir) {
 /** A message as today's send writes it. @param {string} title @param {string} from */
 const message = (title, from) => `### ${title}\n*From: ${from} · discussion · 2026-01-01*\n\nDetails of ${title.toLowerCase()}.\n`;
 
+/** A message as the move leaves it, its sender line as the waiting mail heads it. @param {string} title @param {string} sender */
+const moved = (title, sender) => `### ${title}\nFrom ${sender} · 1 Jan\n\nDetails of ${title.toLowerCase()}.\n`;
+
 const PROJECT_MANIFEST = {
   work_units: {
     core: { work_type: 'epic' }, shop: { work_type: 'epic' }, tally: { work_type: 'feature' }, stall: { work_type: 'bugfix' },
@@ -346,6 +349,8 @@ function todaysProject(dir) {
   w('core/research/.mailbox/beta/002-second.md', message('Second', 'alpha'));
   w('core/discussion/.mailbox/beta/001-third.md', message('Third', 'gamma'));
   w('core/discussion/.mailbox/gamma/004-late.md', message('Late', 'alpha'));
+  w('core/discussion/.mailbox/gamma/005-ranking-input.md', message('Ranking input', 'shop.ranking'));
+  w('core/discussion/.mailbox/gamma/006-tally-input.md', message('Tally input', 'tally.tally'));
   w('core/discussion/.mailbox/delta/001-a-dropped-thought.md', message('A dropped thought', 'alpha'));
   w('core/experiment/alpha/E1-frame-budget/problem.md', '# Problem\n\nAgainst [notes](../../../imports/notes.md).\n');
   w('core/experiment/alpha/E1-frame-budget/report.md', '# Report\n');
@@ -624,19 +629,26 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     it('moves a topic\'s mail from both its boxes into one sequence, renumbered, and keeps a single box\'s names (21.S13)', () => {
       assert.deepStrictEqual(
         ['001-first', '002-second', '003-third'].map((name) => read(`core/topics/beta/mail/${name}.md`)),
-        [message('First', 'alpha'), message('Second', 'alpha'), message('Third', 'gamma')],
+        [moved('First', 'Alpha'), moved('Second', 'Alpha'), moved('Third', 'Gamma')],
       );
-      assert.strictEqual(read('core/topics/gamma/mail/004-late.md'), message('Late', 'alpha'));
+      assert.strictEqual(read('core/topics/gamma/mail/004-late.md'), moved('Late', 'Alpha'));
     });
 
-    it('sends a cancelled topic\'s mail to the inbox as an idea, its first line the title (21.S14, P5)', () => {
+    it('heads each message moved with who sent it as the waiting mail does, the phase gone: a topic of the unit, another unit\'s topic with its unit, a single-topic unit by its name, any other origin as written (10.4.2)', () => {
+      assert.deepStrictEqual(
+        ['core/topics/gamma/mail/005-ranking-input.md', 'core/topics/gamma/mail/006-tally-input.md', 'stall/topics/stall/mail/001-retry-window.md'].map(read),
+        [moved('Ranking input', 'Ranking, on Shop'), moved('Tally input', 'Tally'), moved('Retry window', 'Pay')],
+      );
+    });
+
+    it('sends a cancelled topic\'s mail to the inbox as an idea, its first line the title, who sent it under it as the waiting mail heads it (21.S14, P5, 10.4.2)', () => {
       assert.deepStrictEqual(tree(state, '.inbox/ideas').filter((rel) => rel.startsWith(TODAY)), [`${TODAY}--a-dropped-thought.md`, `${TODAY}--cache-sizes.md`, `${TODAY}--theta-note.md`]);
       assert.strictEqual(read(`.inbox/ideas/${TODAY}--a-dropped-thought.md`),
-        '# A dropped thought\n*From: alpha · discussion · 2026-01-01*\n\nDetails of a dropped thought.\n');
+        '# A dropped thought\nFrom Alpha · 1 Jan\n\nDetails of a dropped thought.\n');
     });
 
     it('sends the mail of a name no topic holds to the inbox as ideas, the same way', () => {
-      assert.strictEqual(read(`.inbox/ideas/${TODAY}--cache-sizes.md`), '# Cache sizes\n*From: alpha · discussion · 2026-01-01*\n\nDetails of cache sizes.\n');
+      assert.strictEqual(read(`.inbox/ideas/${TODAY}--cache-sizes.md`), '# Cache sizes\nFrom Alpha · 1 Jan\n\nDetails of cache sizes.\n');
     });
 
     it('leaves a brief, experiment records and a discussion under a name no topic holds behind, the experiments\' items with them', () => {
@@ -673,7 +685,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'topics/beta/mail/002-second.md',
         'topics/beta/mail/003-third.md',
         'topics/epsilon/log.md',
-        'topics/gamma/mail/004-late.md',
+        'topics/gamma/mail/004-late.md', 'topics/gamma/mail/005-ranking-input.md', 'topics/gamma/mail/006-tally-input.md',
         'topics/theta/log.md',
       ]);
     });
@@ -825,7 +837,7 @@ describe('migration 078: a small project', () => {
     write(at, '.workflows/tally/discussion/.mailbox/tally/001-dropped.md', message('Dropped', 'pay'));
     commitAll(dir);
   };
-  const DROPPED_IDEA = '# Dropped\n*From: pay · discussion · 2026-01-01*\n\nDetails of dropped.\n';
+  const DROPPED_IDEA = '# Dropped\nFrom Pay · 1 Jan\n\nDetails of dropped.\n';
   before(() => { homes('none'); });
 
   /** The project manifest the move wrote, from the project at `dir`. */

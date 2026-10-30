@@ -618,8 +618,8 @@ function auditLedger(dir, ctx) {
 // state whose every read answers as it did passes as it did. A path the
 // audit starts to read joins the key as it does, so no read can be left out
 // of it; and every VERIFY_EVERY-th pass in a row runs the audit in full and
-// fails where its reads differ from the ones keyed — an input reaching the
-// audit by some other way than these.
+// fails where the paths it reads differ from the ones keyed — an input that
+// changes which paths the audit reads.
 const VERIFY_EVERY = 8;
 const TRACKED_READS = ['readFileSync', 'openSync', 'existsSync', 'statSync', 'lstatSync', 'readdirSync', 'accessSync', 'realpathSync', 'opendirSync'];
 /** The last full audit of each state, by its folder. @type {Map<string, {reads: string[], key: string, passes: number}>} */
