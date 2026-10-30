@@ -31,14 +31,17 @@
 // The project's own files, in its folder in the main checkout, are taken to
 // the new names and staged for the migration's commit (21.5.19, 21.9.2):
 // `.gitignore`, where boot keeps the line, gains `.leeway/` at once — an
-// unignored worktree with no commit checked out refuses `git add -A`; each
-// settings hook naming the engine at `.claude/skills/workflow-engine/`
-// names it at `.claude/skills/leeway-engine/`; and `.worktreeinclude` loses
-// the lines naming `.workflows/`, the file going where it holds nothing
-// else. Nothing is committed (21.9.3), and nothing in the state is staged:
-// the migration's commit, made at finish, takes the whole state.
-// `.workflows/` and the tracker's store stay where they are, read as they
-// stand, and are never changed; finish drops them from the default branch.
+// unignored worktree with no commit checked out refuses `git add -A`; in
+// `.claude/settings.json`, each hook naming the engine at
+// `.claude/skills/workflow-engine/` names it at `.claude/skills/leeway-
+// engine/`, and each permission rule naming `.workflows/` names `.leeway/`,
+// every other key as it was; and `.worktreeinclude` loses the lines naming
+// `.workflows/`, the file going where it holds nothing else. Each is staged
+// only where it changed. Nothing is committed (21.9.3), and nothing in the
+// state is staged: the migration's commit, made at finish, takes the whole
+// state. `.workflows/` and the tracker's store stay where they are, read as
+// they stand, and are never changed; finish drops them from the default
+// branch.
 //
 // The project: its manifest is carried, with the project's id minted on it
 // (21.5.20) — kept where a move cut short already minted one — less the
@@ -46,29 +49,44 @@
 // kept as `brownfield_offer`, the brownfield offer's remembered answer, in
 // today's words — the offer is made once per project, and a completed
 // assessment was offered it — and one still under way kept as nothing, so
-// the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's sources follow their files, once
-// each, and the roadmap's imports' paths follow theirs. The inbox and the
-// environment setup file are carried as they are, but for an inbox file
-// whose name is no item's (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`,
-// archived or not), left behind. `.roadmap/` is `.product/` (21.5.7): its
-// sessions as they are, each note out of its kind's folder under its inbox
-// name, and `imports/` as `assets/`, the documents' links to an import
-// rewritten as a unit's are. `.baseline/`'s docs are reference in
-// `.product/assets/baseline/`, names kept, its `.state/` of dossiers and
-// agendas going as tracking and analysis (21.11.1, 4.10.3). The tracker's
-// store, wherever the task driver the project names, or the default, says
-// it lives, is carried into the state as it is (21.5.18), and the files its
-// tool keeps local are ignored in the state's own `.gitignore`, written
-// otherwise as the engine writes it (7.5.4). The user-level folder's
-// contents, `WORKFLOWS_CONFIG_DIR` or `~/.config/workflows/`, move to the
-// engine's, `LEEWAY_CONFIG_DIR` or `~/.config/leeway/`, unchanged, merged
-// into what is there already, and a link to it is left in its place, so a
-// project on the machine still on today's skills keeps its settings,
-// credentials and conversations; a later project's move finds the link and
-// does nothing (21.5.19, P7). A file both folders hold stays in the old one,
-// which is then not linked, and the verification addendum names it; a
-// sidecar both hold is dropped. The old cache, the knowledge store and the
-// old migrations record are left where they are (21.5.10).
+// the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's
+// sources follow their files, once each, and the roadmap's imports' paths
+// follow theirs. The inbox and the environment setup file are carried as
+// they are, but for an inbox file whose name is no item's
+// (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
+// behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are,
+// each note out of its kind's folder under its inbox name, and `imports/` as
+// `assets/`, the documents' links to an import rewritten as a unit's are.
+// `.baseline/`'s docs are reference in `.product/assets/baseline/`, names
+// kept, and so is each interview agenda in `.baseline/.state/`, beside them:
+// it holds the person's answers, which an area under way has woven into no
+// doc yet. Only the status fields go (21.11.1); the research dossiers there
+// go with the analysis (4.10.3).
+//
+// The tracker's store (21.5.18): the move names no tracker, and reads no
+// driver's live contract either, which a later release may change. A task
+// driver that knew today's projects declares, once and for good, where a
+// project from before Leeway keeps its store — `preLeewayStore`, the store's
+// files and the ones its tool keeps local; a released migration reads it, so
+// it never changes. Each task driver's module is loaded on its own, one that
+// fails to load passed by, and each declared store found in the project
+// folder is carried into the state as it is, the files its tool keeps local
+// ignored in the state's own `.gitignore`, written otherwise as the engine
+// writes it (7.5.4).
+//
+// The user-level folder (21.5.19, P7): `WORKFLOWS_CONFIG_DIR` or
+// `~/.config/workflows/` moves into `LEEWAY_CONFIG_DIR` or
+// `~/.config/leeway/` unchanged, merged into what is there already, and a
+// link to it is left in its place, so a project on the machine still on
+// today's skills keeps its settings, credentials and conversations; a later
+// project's move finds the link and does nothing. The two are compared
+// first and moved after: a file both hold byte for byte, or a sidecar both
+// hold, is no clash and goes, and a folder both hold is compared entry by
+// entry, down. Where any file differs, nothing moves, every clash is named
+// in the verification addendum, and the next project's move compares again.
+// An old folder that is itself a link elsewhere — a dotfiles link — moves
+// nothing, and the addendum says so. The old cache, the knowledge store and
+// the old migrations record are left where they are (21.5.10).
 //
 // Each unit, a folder under `.workflows/` holding a manifest:
 //   - a topic's log, `topics/{topic}/log.md`, is its research, its discussion
@@ -124,11 +142,10 @@
 // discussion analysis, whose files go with them (21.5.17), and a discussion's
 // own wait on research, a phase gone. Everything else carries as it stood,
 // the fields 21.5.9 names among them, a brief's path following its brief.
-// Each later reshape of a
-// manifest updates this move until it is released (E4): the reshape's own
-// steps written for `.leeway/` before this one — 073's linters — find
-// nothing there when a project comes from `.workflows/`, so this move runs
-// them over what it wrote.
+// Each later reshape of a manifest updates this move until it is released
+// (E4): the reshape's own steps written for `.leeway/` before this one —
+// 073's linters — find nothing there when a project comes from
+// `.workflows/`, so this move runs them over what it wrote.
 //
 // A file the move has no place for is left in `.workflows/` and named in
 // the verification addendum. A project with no `.workflows/`, or in no
@@ -169,7 +186,12 @@
 //   - the user-level folders on two filesystems abort the run at the move,
 //     which a run again meets the same way; a kill between the move and the
 //     link leaves the old folder gone and no link, so a project still on
-//     today's skills starts without its settings.
+//     today's skills starts without its settings;
+//   - a session on today's skills writing the old folder between the move
+//     and the link makes the link fail (EEXIST), the run unrecorded; a run
+//     again merges what it wrote;
+//   - a project still on today's skills rewrites the shared `config.json`
+//     through the link, as it would have its own.
 //
 
 const fs = require('fs');
@@ -178,7 +200,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const linters = require('./073-environment-linters.cjs');
-const { listDrivers, loadDriver, defaultDriver, settingOf } = require('../../../leeway-engine/scripts/domain/drivers.cjs');
+const TASK_DRIVERS = path.join(__dirname, '../../../leeway-engine/scripts/drivers/task');
 
 const CODE_TREE_STATE = '.workflows';
 const STATE_DIR = '.leeway';
@@ -193,10 +215,14 @@ const WORKTREE_INCLUDE = '.worktreeinclude';
 const WORKFLOWS_LINE = /^\/?\.workflows(?:\/|$)/;
 const OLD_ENGINE = '.claude/skills/workflow-engine/scripts/engine.cjs';
 const NEW_ENGINE = '.claude/skills/leeway-engine/scripts/engine.cjs';
+const PERMISSION_LISTS = ['allow', 'deny', 'ask'];
+const OLD_RULE_PATH = `${CODE_TREE_STATE}/`;
+const NEW_RULE_PATH = `${STATE_DIR}/`;
 
 const ROADMAP = '.roadmap';
 const PRODUCT = '.product';
 const BASELINE = '.baseline';
+const BASELINE_AGENDA = /^\.state\/(agenda-[^/]+\.md)$/;
 const ROADMAP_SESSION = /^sessions\/session-[0-9]{3,}\.md$/;
 const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md)$/;
 // The baseline's answers the brownfield offer remembers (21.11.2).
@@ -866,25 +892,48 @@ function hooksIn(settings) {
     .filter(isObject);
 }
 
+/** Each hook naming the engine at its old path named at its new one; whether any was. @param {unknown} settings */
+function renameHooks(settings) {
+  const named = hooksIn(settings).filter((hook) => typeof hook.command === 'string' && hook.command.includes(OLD_ENGINE));
+  for (const hook of named) hook.command = hook.command.split(OLD_ENGINE).join(NEW_ENGINE);
+  return named.length > 0;
+}
+
+/** Each permission rule naming `.workflows/` naming `.leeway/`; whether any was. @param {unknown} settings */
+function renameRules(settings) {
+  const permissions = isObject(settings) && isObject(settings.permissions) ? settings.permissions : {};
+  let renamed = false;
+  for (const list of PERMISSION_LISTS.filter((name) => Array.isArray(permissions[name]))) {
+    permissions[list] = permissions[list].map((/** @type {unknown} */ rule) => {
+      if (typeof rule !== 'string' || !rule.includes(OLD_RULE_PATH)) return rule;
+      renamed = true;
+      return rule.split(OLD_RULE_PATH).join(NEW_RULE_PATH);
+    });
+  }
+  return renamed;
+}
+
 /**
- * The project's settings hooks naming the engine by its new name, staged
- * (21.5.19); or, where the file does not parse, the sentence saying its
- * hooks were left as they were.
+ * The project's settings taken to the new names — its hooks naming the
+ * engine's new path, its permission rules `.leeway/` — and staged where
+ * either changed (21.5.19); or, where the file does not parse, the sentence
+ * saying it was left as it was.
  * @param {string} project
  * @returns {string|null}
  */
-function renameEngineHooks(project) {
+function renameInSettings(project) {
   const file = path.join(project, SETTINGS);
   if (!fs.existsSync(file)) return null;
   let settings;
   try {
     settings = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
-    return `${path.join(project, SETTINGS)} does not parse, so its hooks were left naming the engine at ${OLD_ENGINE}: once it parses, name ${NEW_ENGINE} in each.`;
+    return `${file} does not parse, so it was left naming the engine at ${OLD_ENGINE} and the state at ${OLD_RULE_PATH}: `
+      + `once it parses, name ${NEW_ENGINE} in each hook and ${NEW_RULE_PATH} in each permission rule.`;
   }
-  const named = hooksIn(settings).filter((hook) => typeof hook.command === 'string' && hook.command.includes(OLD_ENGINE));
-  if (named.length === 0) return null;
-  for (const hook of named) hook.command = hook.command.split(OLD_ENGINE).join(NEW_ENGINE);
+  const hooks = renameHooks(settings);
+  const rules = renameRules(settings);
+  if (!hooks && !rules) return null;
   writeFile(file, jsonText(settings), modeOf(file));
   stage(project, SETTINGS);
   return null;
@@ -907,32 +956,44 @@ function dropIncludeLines(project) {
   stage(project, WORKTREE_INCLUDE);
 }
 
+/** @param {unknown} value @returns {value is string[]} */
+const isPaths = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+
 /**
- * The task driver the project's setting names, or its kind's default: what
- * says where the tracker's store lives, so the move names no tracker
- * (7.1.10).
- * @param {Record<string, any>} project the project manifest
+ * Where a project from before Leeway keeps a tracker's store, as each task
+ * driver that knew one declares it, frozen: the store's files and the ones
+ * its tool keeps local, project-relative. Each driver's module is loaded on
+ * its own, so the move names no tracker (7.1.10) and leans on no driver's
+ * live contract; one that fails to load, or declares none, is passed by.
+ * @returns {{files: string[], localFiles: string[]}[]}
  */
-function taskDriver(project) {
-  const set = settingOf(project, 'task');
-  return /** @type {import('../../../leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (
-    set === null ? defaultDriver('task', listDrivers('task'), null) : loadDriver('task', set));
+function preLeewayStores() {
+  return fs.readdirSync(TASK_DRIVERS).sort().flatMap((name) => {
+    let declared;
+    try {
+      declared = require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore;
+    } catch {
+      return [];
+    }
+    return isObject(declared) && isPaths(declared.files) && isPaths(declared.localFiles) ? [{ files: declared.files, localFiles: declared.localFiles }] : [];
+  });
 }
 
 /**
- * The tracker's store, where the project folder holds one, carried into the
- * state as it is (21.5.18); finish drops it from the default branch.
- * @param {string} project @param {string} state @param {Record<string, any>} manifest the project's
- * @returns {string[]} the files its tool keeps local, for the state to ignore beside the store (7.5.4); none where there is no store
+ * Each declared store the project folder holds carried into the state as it
+ * is (21.5.18); finish drops it from the default branch.
+ * @param {string} project @param {string} state
+ * @returns {string[]} the files their tools keep local, for the state to ignore beside the stores (7.5.4); none where there is no store
  */
-function moveStore(project, state, manifest) {
-  const driver = taskDriver(manifest);
-  const files = driver.storeFiles().filter((rel) => fs.existsSync(path.join(project, rel)));
-  for (const rel of files) {
-    const file = path.join(project, rel);
-    writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
-  }
-  return files.length === 0 ? [] : driver.localFiles();
+function moveStores(project, state) {
+  return [...new Set(preLeewayStores().flatMap(({ files, localFiles }) => {
+    const held = files.filter((rel) => fs.existsSync(path.join(project, rel)));
+    for (const rel of held) {
+      const file = path.join(project, rel);
+      writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
+    }
+    return held.length === 0 ? [] : localFiles;
+  }))];
 }
 
 /**
@@ -968,11 +1029,25 @@ function productPlace(rel) {
 }
 
 /**
+ * Where a file of `.baseline/` goes, `.product/`-relative: a doc as it is,
+ * an interview agenda beside the docs; or null for one of the working
+ * files that go, the research dossiers among them (4.10.3).
+ * @param {string} rel
+ * @returns {string|null}
+ */
+function baselinePlace(rel) {
+  const agenda = BASELINE_AGENDA.exec(rel);
+  if (agenda !== null) return `assets/baseline/${agenda[1]}`;
+  return rel.startsWith('.state/') ? null : `assets/baseline/${rel}`;
+}
+
+/**
  * `.roadmap/` as `.product/`, its documents' links to its imports pointed at
- * the assets (21.5.7), and `.baseline/`'s docs in `.product/assets/baseline/`
- * as reference, its working files gone with the tracking and analysis
- * (21.11.1, 4.10.3): each file's place recorded in `relocations`. A note
- * whose name another kind's note took is left behind.
+ * the assets (21.5.7), and `.baseline/`'s docs and its interview agendas,
+ * which hold the person's answers, in `.product/assets/baseline/` as
+ * reference, only its status fields and its dossiers gone (21.11.1, 4.10.3):
+ * each file's place recorded in `relocations`. A note whose name another
+ * kind's note took is left behind.
  * @param {string} from @param {string} state @param {Relocations} relocations
  * @returns {string[]} the files left behind, `.workflows/`-relative
  */
@@ -981,8 +1056,10 @@ function moveProduct(from, state, relocations) {
   const imported = importedNames(roadmap);
   const files = [
     ...filesUnder(roadmap).map((rel) => ({ source: `${ROADMAP}/${rel}`, at: productPlace(rel), relink: rel.endsWith('.md') && !rel.startsWith('imports/') })),
-    ...filesUnder(path.join(from, BASELINE)).filter((rel) => !rel.startsWith('.state/'))
-      .map((rel) => ({ source: `${BASELINE}/${rel}`, at: `assets/baseline/${rel}`, relink: false })),
+    ...filesUnder(path.join(from, BASELINE)).flatMap((rel) => {
+      const at = baselinePlace(rel);
+      return at === null ? [] : [{ source: `${BASELINE}/${rel}`, at, relink: false }];
+    }),
   ];
   /** @type {Set<string>} */
   const taken = new Set();
@@ -1046,49 +1123,83 @@ function lstatOf(at) {
 /** A folder, never a link to one. @param {string} at */
 const isFolder = (at) => lstatOf(at)?.isDirectory() === true;
 
+/** A file, never a link to one. @param {string} at */
+const isFile = (at) => lstatOf(at)?.isFile() === true;
+
+/** Whether two files hold the same bytes. @param {string} a @param {string} b */
+const sameBytes = (a, b) => isFile(a) && isFile(b) && fs.readFileSync(a).equals(fs.readFileSync(b));
+
 /**
- * What `from` holds moved into `to` as it is: an entry `to` lacks moved
- * whole, a folder both hold merged, a tools' sidecar both hold dropped from
- * `from`, and a folder of `from`'s emptied gone.
- * @param {string} from @param {string} to @param {string} [at] `from`'s place, for what is kept
- * @returns {string[]} what both held, left in `from`
+ * What `from` and `to` both hold and differ in, `from`'s places: a file
+ * both hold byte for byte, or a sidecar both hold, is no clash, and a folder
+ * both hold is compared entry by entry, down.
+ * @param {string} from @param {string} to @param {string} [at] `from`'s place
+ * @returns {string[]}
  */
-function mergeInto(from, to, at = '') {
+function clashes(from, to, at = '') {
+  if (lstatOf(to) === null) return [];
+  if (isFolder(from) && isFolder(to)) {
+    return fs.readdirSync(from).sort().flatMap((name) => clashes(path.join(from, name), path.join(to, name), at === '' ? name : `${at}/${name}`));
+  }
+  if (isFolder(from) || isFolder(to)) return [at];
+  return SIDECAR_NAME.test(path.basename(from)) || sameBytes(from, to) ? [] : [at];
+}
+
+/**
+ * What `from` holds moved into `to`, where nothing clashes: an entry `to`
+ * lacks moved whole, a folder both hold merged, a file `to` holds already
+ * dropped from `from`, and each folder of `from`'s, emptied, gone.
+ * @param {string} from @param {string} to
+ */
+function mergeInto(from, to) {
   if (lstatOf(to) === null) {
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.renameSync(from, to);
-    return [];
+    return;
   }
-  if (!isFolder(from) && SIDECAR_NAME.test(path.basename(from))) {
+  if (!isFolder(from)) {
     fs.rmSync(from);
-    return [];
+    return;
   }
-  if (!isFolder(from) || !isFolder(to)) return [at];
-  const kept = fs.readdirSync(from).sort().flatMap((name) => mergeInto(path.join(from, name), path.join(to, name), at === '' ? name : `${at}/${name}`));
-  if (kept.length === 0) fs.rmdirSync(from);
-  return kept;
+  for (const name of fs.readdirSync(from)) mergeInto(path.join(from, name), path.join(to, name));
+  fs.rmdirSync(from);
+}
+
+/** Whether `from` is a link to `to`, both there. @param {string} from @param {string} to */
+function linksTo(from, to) {
+  try {
+    return fs.realpathSync(from) === fs.realpathSync(to);
+  } catch {
+    return false;
+  }
 }
 
 /**
  * The user-level folder's contents moved to the engine's unchanged, and a
  * link to it left in its place, so a project on the machine still on
  * today's skills keeps its settings, credentials and conversations (21.5.19,
- * P7): once per machine, a later project finding the link. Where both
- * folders held a file, the old one stays, the folder is not linked, and the
- * sentence says so; else null.
+ * P7): once per machine, a later project finding the link. Compared first,
+ * moved after: where any file both hold differs, nothing moves and the
+ * sentence names every clash; where the old folder is a link elsewhere,
+ * nothing moves and the sentence says so; else null.
  * @returns {string|null}
  */
 function moveUserFolder() {
   const from = oldUserFolder();
   const to = userFolder();
-  if (!isFolder(from)) return null;
-  const kept = mergeInto(from, to);
-  if (kept.length === 0) {
-    fs.symlinkSync(to, from);
-    return null;
+  const held = lstatOf(from);
+  if (held?.isSymbolicLink()) {
+    return linksTo(from, to) ? null : `${from} is a link to ${fs.readlinkSync(from)}, not a folder of its own, so nothing in it was moved to ${to}: move what the workflows keep there into ${to} yourself.`;
   }
-  return `${to} already held its own of these, so they stay in ${from}, which is left as a folder rather than a link to ${to}: ${kept.join(', ')}. `
-    + `Once each is settled, ${from} can go and a link to ${to} take its place.`;
+  if (held?.isDirectory() !== true) return null;
+  const clashing = clashes(from, to);
+  if (clashing.length > 0) {
+    return `Nothing in ${from} was moved: ${to} already holds a different ${clashing.map((rel) => rel || to).join(', ')}. `
+      + `${from} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`;
+  }
+  mergeInto(from, to);
+  fs.symlinkSync(to, from);
+  return null;
 }
 
 /**
@@ -1128,14 +1239,14 @@ function move(projectDir, reportUpdate, reportSkip) {
   }
   const state = placeStateWorktree(main);
   ignoreState(project);
-  const settingsNote = renameEngineHooks(project);
+  const settingsNote = renameInSettings(project);
   dropIncludeLines(project);
   const manifestFile = path.join(from, 'manifest.json');
   const projectManifest = fs.existsSync(manifestFile) ? readManifest(manifestFile) : {};
   /** @type {Relocations} */
   const relocations = new Map();
   const projectLeft = [
-    ...moveProjectFiles(from, state, moveStore(project, state, projectManifest)),
+    ...moveProjectFiles(from, state, moveStores(project, state)),
     ...moveProduct(from, state, relocations),
   ];
   reportUpdate();

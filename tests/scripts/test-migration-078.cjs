@@ -32,8 +32,10 @@
 // one run from a linked worktree, a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, a `.worktreeinclude` of the workflows' lines alone,
-// settings that do not parse, and a user-level folder whose files the
-// engine's already holds.
+// settings that do not parse, a user-level folder the engine's holds a
+// different copy of a file in, and one that is a link elsewhere. The
+// tracker's store is where its driver's frozen declaration says a project
+// from before Leeway keeps it, read as the move reads it.
 // Each test that runs the move points both user-level folders at its own,
 // never the machine's.
 //
@@ -49,25 +51,31 @@ const path = require('path');
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
 const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
 const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 
-const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
-// The tracker's store as the default driver keeps it, and one file its tool keeps local, named from the first pattern.
-const [STORE] = DRIVER.storeFiles();
-const LOCAL = DRIVER.localFiles()[0].replace(/^\//, '').replace(/\*.*$/, '');
+// Where a project from before Leeway keeps the tracker's store, as the task
+// driver that declares it says, read from its module as the move reads it;
+// and one file its tool keeps local, named from the first pattern.
+const TASK_DRIVERS = path.join(__dirname, '../../skills/leeway-engine/scripts/drivers/task');
+const [PRE_LEEWAY] = fs.readdirSync(TASK_DRIVERS).map((name) => require(path.join(TASK_DRIVERS, name, 'driver.cjs')).preLeewayStore).filter(Boolean);
+const [STORE] = PRE_LEEWAY.files;
+const LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 const STORE_LINES = '{"id":"a1","title":"Ranking"}\n{"id":"a2","title":"Ranking, phase 2"}\n';
 
 const OLD_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const NEW_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
 const FOREIGN_HOOK = { type: 'command', command: 'npx prettier --check .' };
-/** The project's settings, its hooks naming the engine at `engine`. @param {string} engine */
-const settings = (engine) => ({
-  permissions: { allow: ['Bash(npm test)'] },
+/**
+ * The project's settings, its hooks naming the engine at `engine` and its
+ * permission rules the state at `state`.
+ * @param {string} engine @param {string} state
+ */
+const settings = (engine, state) => ({
+  permissions: { allow: ['Bash(npm test)', `Edit(${state}/**)`, `Bash(mv ${state}/:*)`], deny: [`Read(${state}/.cache/**)`] },
   hooks: {
     SessionEnd: [{ hooks: [{ type: 'command', command: `${engine} presence cleanup` }, { type: 'command', command: `${engine} conversation end` }, FOREIGN_HOOK] }],
     SessionStart: [{ matcher: 'resume', hooks: [{ type: 'command', command: `${engine} session resume` }] }],
@@ -315,11 +323,11 @@ function todaysProject(dir) {
   w('.baseline/auth.md', '# Auth\n\nSee [billing](billing.md).\n');
   w('.baseline/billing.md', '# Billing\n');
   w('.baseline/.state/dossier-auth.md', 'dossier\n');
-  w('.baseline/.state/agenda-auth.md', 'agenda\n');
+  w('.baseline/.state/agenda-auth.md', '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
 
   write(dir, STORE, STORE_LINES);
   write(dir, LOCAL, 'the tool\'s own\n');
-  write(dir, '.claude/settings.json', json(settings(OLD_ENGINE)));
+  write(dir, '.claude/settings.json', json(settings(OLD_ENGINE, '.workflows')));
   write(dir, '.worktreeinclude', WORKTREE_INCLUDE);
 
   w('core/manifest.json', json(CORE));
@@ -431,7 +439,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     todaysProject(dir);
     commitAll(dir);
     headBefore = git(dir, ['rev-parse', 'HEAD']).trim();
-    user = homes('today', USER_FOLDER, { 'conversations/s2/position.json': '{"at":"leeway"}\n', '.DS_Store': 'sidecar\n' });
+    user = homes('today', USER_FOLDER, { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'], 'conversations/s2/position.json': '{"at":"leeway"}\n', '.DS_Store': 'the engine side\'s own sidecar\n' });
     fs.chmodSync(path.join(user.old, 'credentials.json'), 0o600);
     result = run(dir);
     state = path.join(dir, '.leeway');
@@ -501,7 +509,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
       assert.strictEqual(read('.inbox/ideas/2026-02-01--dark-mode.md'), '# Dark mode\n');
       assert.strictEqual(read('.state/environment-setup.md'), 'No special setup required.\n');
-      assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${DRIVER.localFiles().join('\n')}\n`);
+      assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEEWAY.localFiles.join('\n')}\n`);
     });
 
     it('carries the tracker\'s store, found where the task driver says it lives, as it is, and none of its tool\'s local files (21.5.18)', () => {
@@ -518,8 +526,9 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the product (21.5.7, 21.11.1)', () => {
-    it('makes .roadmap/ .product/: its sessions as they are, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs as reference there, its working files gone', () => {
+    it('makes .roadmap/ .product/: its sessions as they are, each note out of its kind\'s folder, its imports as assets, and the baseline\'s docs and its interview agendas, holding the person\'s answers, as reference there, its dossiers gone', () => {
       assert.deepStrictEqual(tree(state, '.product'), [
+        'assets/baseline/agenda-auth.md',
         'assets/baseline/auth.md',
         'assets/baseline/billing.md',
         'assets/chart.png',
@@ -530,6 +539,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
       assert.deepStrictEqual(fs.readFileSync(path.join(state, '.product/assets/chart.png')), PNG);
       assert.strictEqual(read('.product/assets/baseline/auth.md'), '# Auth\n\nSee [billing](billing.md).\n');
+      assert.strictEqual(read('.product/assets/baseline/agenda-auth.md'), '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
     });
 
     it('points the product\'s documents\' links into its imports at the assets, from where each now sits', () => {
@@ -551,9 +561,9 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the project\'s own files (21.5.19, 21.S52)', () => {
-    it('names the engine by its new path in each settings hook, every other hook and key as it was, staged', () => {
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE)));
-      assert.strictEqual(git(dir, ['show', ':.claude/settings.json']), json(settings(NEW_ENGINE)));
+    it('names the engine by its new path in each settings hook and the state as .leeway/ in each permission rule, every other hook, rule and key as it was, staged', () => {
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.leeway')));
+      assert.strictEqual(git(dir, ['show', ':.claude/settings.json']), json(settings(NEW_ENGINE, '.leeway')));
     });
 
     it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept, staged', () => {
@@ -563,7 +573,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the user-level folder (21.5.19, P7, 21.S52)', () => {
-    it('moves today\'s folder\'s contents into the engine\'s unchanged, beside what the engine already wrote there, and leaves a link to it in its place', () => {
+    it('moves today\'s folder\'s contents into the engine\'s unchanged, beside what the engine already wrote there — a folder both hold merged where nothing in it differs — and leaves a link to it in its place', () => {
       assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
       for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.leeway, rel), 'utf8'), content, rel);
       assert.strictEqual(fs.statSync(path.join(user.leeway, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
@@ -837,15 +847,17 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('removes a .worktreeinclude that held only the workflows\' lines, the removal staged; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
+  it('removes a .worktreeinclude that held only the workflows\' lines, the removal staged; renames the permission rules of settings holding no hook of the engine\'s, staged; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
     dir = tempProject('migration-078-include-');
     const user = homes('none');
     try {
       write(dir, '.worktreeinclude', '.workflows/.knowledge/store.bin\n\n.workflows/.knowledge/config.json\n');
+      write(dir, '.claude/settings.json', json({ permissions: { allow: ['Edit(.workflows/**)'] } }));
       feature();
       run(dir);
       assert.ok(!fs.existsSync(path.join(dir, '.worktreeinclude')));
-      assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'A\t.gitignore\nD\t.worktreeinclude');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.leeway/**)'] } }));
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'M\t.claude/settings.json\nA\t.gitignore\nD\t.worktreeinclude');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
       assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
     } finally {
@@ -862,26 +874,46 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), `{ "hooks": ${OLD_ENGINE}`);
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.gitignore');
       assert.deepStrictEqual(returned, {
-        verify: `${dir}/.claude/settings.json does not parse, so its hooks were left naming the engine at .claude/skills/workflow-engine/scripts/engine.cjs: `
-          + 'once it parses, name .claude/skills/leeway-engine/scripts/engine.cjs in each.',
+        verify: `${dir}/.claude/settings.json does not parse, so it was left naming the engine at .claude/skills/workflow-engine/scripts/engine.cjs and the state at .workflows/: `
+          + 'once it parses, name .claude/skills/leeway-engine/scripts/engine.cjs in each hook and .leeway/ in each permission rule.',
       });
     } finally {
       cleanupFixture(dir);
     }
   });
 
-  it('keeps today\'s file in the old user-level folder where the engine\'s already holds its own, moving the rest, linking nothing, and says so', () => {
+  it('moves nothing of the old user-level folder where the engine\'s holds a different copy of any file, even down a folder both hold, naming every clash; a copy the same byte for byte no clash', () => {
     dir = tempProject('migration-078-clash-');
-    const user = homes('clash', USER_FOLDER, { 'config.json': '{"provider":"ollama"}\n' });
+    const fresh = { 'config.json': '{"provider":"ollama"}\n', 'credentials.json': USER_FOLDER['credentials.json'], 'conversations/s1/position.json': '{"at":"elsewhere"}\n' };
+    const user = homes('clash', USER_FOLDER, fresh);
     try {
       feature();
       const { returned } = run(dir);
-      assert.deepStrictEqual(tree(user.old), ['config.json']);
-      assert.strictEqual(fs.readFileSync(path.join(user.leeway, 'config.json'), 'utf8'), '{"provider":"ollama"}\n');
-      assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'credentials.json']);
+      assert.deepStrictEqual(Object.fromEntries(tree(user.old).map((rel) => [rel, fs.readFileSync(path.join(user.old, rel), 'utf8')])), USER_FOLDER, 'the old folder whole, and readable where it was');
+      assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
+      assert.deepStrictEqual(Object.fromEntries(tree(user.leeway).map((rel) => [rel, fs.readFileSync(path.join(user.leeway, rel), 'utf8')])), fresh);
       assert.deepStrictEqual(returned, {
-        verify: `${user.leeway} already held its own of these, so they stay in ${user.old}, which is left as a folder rather than a link to ${user.leeway}: config.json. `
-          + `Once each is settled, ${user.old} can go and a link to ${user.leeway} take its place.`,
+        verify: `Nothing in ${user.old} was moved: ${user.leeway} already holds a different config.json, conversations/s1/position.json. `
+          + `${user.old} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`,
+      });
+    } finally {
+      homes('none');
+      cleanupFixture(dir);
+    }
+  });
+
+  it('moves nothing of an old user-level folder that is a link elsewhere, and says so', () => {
+    dir = tempProject('migration-078-dotfiles-');
+    const user = homes('dotfiles');
+    const dotfiles = path.join(HOMES, 'dotfiles', 'dotfiles-workflows');
+    try {
+      write(dotfiles, 'config.json', USER_FOLDER['config.json']);
+      fs.symlinkSync(dotfiles, user.old);
+      feature();
+      const { returned } = run(dir);
+      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.leeway)], [dotfiles, ['config.json'], false]);
+      assert.deepStrictEqual(returned, {
+        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.leeway}: move what the workflows keep there into ${user.leeway} yourself.`,
       });
     } finally {
       homes('none');
