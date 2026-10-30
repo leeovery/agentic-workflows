@@ -67,7 +67,7 @@ function ask(address, text, flags = []) {
 
 /** @param {string} address @param {string} text @param {string[]} [flags] */
 function find(address, text, flags = []) {
-  return write('find', address, flags, { ...MADE, text, how: 'seen in a spike' });
+  return write('find', address, flags, { ...MADE, text, how: 'seen in a spike', known: 'spike' });
 }
 
 /** A decision answering the place's question. @param {string} address @param {string} text @param {string[]} [flags] */
@@ -110,7 +110,7 @@ function changes() {
 /** An entry's line as a read shows it, from the record of where it stands. @param {string} id @param {string} unit @param {string} topic */
 function shown(id, unit, topic) {
   const record = ok(dir, ['ledger', 'record', unit, topic]);
-  const { holds: _holds, kept: _kept, replaced: _replaced, ...line } = [...record.questions, ...record.findings, ...record.decisions].find((e) => e.id === id);
+  const { holds: _holds, kept: _kept, assets: _assets, replaced: _replaced, ...line } = [...record.questions, ...record.findings, ...record.decisions].find((e) => e.id === id);
   return line;
 }
 

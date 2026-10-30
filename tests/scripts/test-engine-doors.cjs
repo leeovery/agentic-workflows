@@ -95,7 +95,7 @@ function manifestSet(dir) {
 
 /** A finding the ledger verb writes, landing. @param {string} dir */
 function ledgerFind(dir) {
-  ok(dir, ['ledger', 'find', `${UNIT}.discussion.${UNIT}`], { ...AS_BUILDER, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Cards settle in a day.', how: 'The processor\'s terms' }) });
+  ok(dir, ['ledger', 'find', `${UNIT}.discussion.${UNIT}`], { ...AS_BUILDER, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Cards settle in a day.', how: 'The processor\'s terms', known: 'documented' }) });
   assert.deepStrictEqual(ledgerEntries(statePath(dir)).map(({ event, text }) => [event, text]), [['found', 'Cards settle in a day.']]);
 }
 

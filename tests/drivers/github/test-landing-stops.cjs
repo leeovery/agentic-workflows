@@ -7,7 +7,9 @@
 // person meets, each saying what is missing or what happened and the way
 // on, never an install command (22.4.7) — gh not installed or not signed
 // in, the extension missing, GitHub's rate limit, no network, a merge
-// GitHub refuses, a stack merged in part by hand on GitHub, a task with
+// GitHub refuses, a pull request GitHub finds conflicting with its base,
+// GitHub's answer for a pull request's head before a push never taken, a
+// stack merged in part by hand on GitHub, a task with
 // nothing to land or opened into a merged phase, a default branch here
 // holding commits GitHub's lacks at the open, naming them, and a push
 // refused; a task opened already, and a phase merged, answered as done
@@ -17,8 +19,10 @@
 // default branch here left where the person's work, a failed fetch or git
 // itself stops it, warned once with the way to bring it up, the merge
 // standing; the stand-in gh at the driver's floors, failing closed,
-// merging a stack all or none; and the live run refusing without the
-// person's word (7.3.7, 7.S15). The
+// merging a stack all or none, and slow, where a test arms it, to work out
+// whether a pull request pushed to can merge; and the live run refusing
+// without the person's word (7.3.7, 7.S15). GitHub still working it out
+// when the driver's wait ends is test-landing-nested-merge-up.cjs's. The
 // driver's calls and stacks are test-landing.cjs's. Git layer: the landing
 // world on a fake GitHub (world.cjs), built once and copied for each test.
 // ---------------------------------------------------------------------------
@@ -36,7 +40,7 @@ const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
 const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
-const { GH_ENV, ghEnv, github, bareOf, closeByHand, mergeByHand, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
+const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, mergeByHand, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
 const { git, tip } = harness;
 const { card, total, rounding } = TASKS;
@@ -189,6 +193,31 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual(pulls(dir).map(({ state }) => state), ['MERGED', 'MERGED']);
   });
 
+  it('a pull request GitHub finds conflicting with its base: its phase refused before anything merges, naming it, and how to settle it', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    const main = commitFiles(dir, 'theirs', 'main', { 'card.txt': 'theirs\n' });
+    git(bareOf(dir), ['fetch', '-q', dir, 'theirs:refs/heads/main']);
+
+    assert.strictEqual(
+      refused(dir, ['land', 'phase', 'pay', '1']),
+      `land: task 1.1's pull request #1 conflicts with main on GitHub, so phase 1's stack was not merged — merge origin/main into ${card.branch}, settling the conflict, push it, and land again`,
+    );
+    assert.deepStrictEqual([tipOnGithub(dir, 'main'), pulls(dir).map(({ state }) => state), calls(dir).filter((call) => call.startsWith('pr merge'))], [main, ['OPEN'], []]);
+  });
+
+  it('GitHub answering, after a push, for the head before it: that answer never taken, the pull request read again until GitHub answers for the head pushed, and merged then', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    commitFiles(dir, card.branch, card.branch, { 'card.txt': 'card, again\n' });
+    git(dir, ['push', '-q', 'origin', card.branch]);
+    lagOnGithub(dir, 2, { stale: true });
+
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual(calls(dir).filter((call) => /^(pr view|pr merge) /.test(call)).map((call) => call.split(' --')[0]), ['pr view 1', 'pr view 1', 'pr view 1', 'pr merge 1']);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task, paths }) => [task, paths]), [['pay-1-1', ['card.txt']]]);
+  });
+
   it('a pull request closed by hand on GitHub: its phase refused, naming it and how to reopen it — and merged once it is', () => {
     const dir = project();
     ok(dir, openArgs(card));
@@ -301,6 +330,38 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
     const merged = spawnSync(path.join(__dirname, 'bin', 'gh'), ['stack', 'merge', '2', '--yes', '--squash'], { cwd: dir, encoding: 'utf8', env: ghEnv() });
     assert.deepStrictEqual([merged.status, merged.stderr], [1, 'Pull request #2 is not mergeable: the merge commit cannot be cleanly created.\n']);
     assert.deepStrictEqual([tipOnGithub(dir, 'main'), pulls(dir).map(({ state }) => state)], [main, ['OPEN', 'OPEN']]);
+  });
+
+  it('the stand-in, once a pull request\'s head is pushed to, reads it as unknown for the reads armed — or, armed stale, as at the head before — refusing its merge alone or in its stack meanwhile in GitHub\'s words, then as GitHub works it out', () => {
+    const dir = project();
+    ok(dir, openArgs(card));
+    onGithub(dir, (state) => {
+      state.stacks.push({ number: 2, base: 'main', pulls: [1] });
+      state.next = 3;
+    });
+    const gh = (/** @type {string[]} */ args) => {
+      const ran = spawnSync(path.join(__dirname, 'bin', 'gh'), args, { cwd: dir, encoding: 'utf8', env: ghEnv() });
+      return [ran.status, ran.status === 0 ? ran.stdout : ran.stderr];
+    };
+    const view = () => gh(['pr', 'view', '1', '--json', 'mergeable,headRefOid']);
+    const read = (/** @type {string} */ can, /** @type {string} */ head) => [0, `${JSON.stringify({ mergeable: can, headRefOid: head })}\n`];
+    const push = (/** @type {string} */ text) => {
+      commitFiles(dir, card.branch, card.branch, { 'card.txt': text });
+      git(dir, ['push', '-q', 'origin', card.branch]);
+      return tip(dir, card.branch);
+    };
+
+    const first = push('card, again\n');
+    lagOnGithub(dir, 2);
+    assert.deepStrictEqual(gh(['stack', 'merge', '1', '--yes', '--squash']), [
+      1, 'Merging #1 into main via squash...\n✗ merge failed: Pull request cannot be merged because it has a merge conflict. Stack merges are atomic, so nothing was merged.\n',
+    ]);
+    assert.deepStrictEqual(gh(['pr', 'merge', '1', '--squash']), [1, 'GraphQL: Pull Request is not mergeable (mergePullRequest)\n']);
+    assert.deepStrictEqual([view(), view(), view()], [read('UNKNOWN', first), read('UNKNOWN', first), read('MERGEABLE', first)]);
+    const second = push('card, once more\n');
+    lagOnGithub(dir, 1, { stale: true });
+    assert.deepStrictEqual([view(), view()], [read('MERGEABLE', first), read('MERGEABLE', second)]);
+    assert.deepStrictEqual(gh(['pr', 'merge', '1', '--squash']), [0, '']);
   });
 
   it('the stand-in refuses a pull request whose head holds nothing past its base, as GitHub does', () => {

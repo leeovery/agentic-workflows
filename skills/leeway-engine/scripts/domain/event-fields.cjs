@@ -26,7 +26,11 @@ const { isId } = require('./ledger-ids.cjs');
  * @typedef {{name: string, type: Type, added?: {version: number, default: unknown}}} Field
  */
 
-/** An event's fields after the header, and the version that added it. @typedef {{since: number, fields: Field[]}} EventSchema */
+/**
+ * An event's fields after the header, the version that added it, and any
+ * rule its fields keep together: why a line breaks it, or null.
+ * @typedef {{since: number, fields: Field[], holds?: (event: Record<string, unknown>) => string|null}} EventSchema
+ */
 
 /** A stream's shape: the latest version, and every event. @typedef {{version: number, events: Record<string, EventSchema>}} Schema */
 
@@ -56,14 +60,24 @@ function listOf(item) {
   return { ...type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test)), ...(item.names === undefined ? {} : { names: 'many' }) };
 }
 
-/** @param {string} name @param {Type} fieldType @returns {Field} */
-function field(name, fieldType) {
-  return { name, type: fieldType };
+/**
+ * A field; one a release after the stream's first added names that version
+ * and the default a line written before it takes.
+ * @param {string} name @param {Type} fieldType @param {{version: number, default: unknown}} [added]
+ * @returns {Field}
+ */
+function field(name, fieldType, added) {
+  return added === undefined ? { name, type: fieldType } : { name, type: fieldType, added };
 }
 
-/** An event of the first version. @param {Field[]} fields @returns {EventSchema} */
-function event(fields) {
-  return { since: 1, fields };
+/**
+ * An event, of the first version unless `since` names a later, and the rule
+ * its fields keep together, where there is one.
+ * @param {Field[]} fields @param {number} [since] @param {EventSchema['holds']} [holds]
+ * @returns {EventSchema}
+ */
+function event(fields, since = 1, holds = undefined) {
+  return holds === undefined ? { since, fields } : { since, fields, holds };
 }
 
 // 16.11.3's composed kinds.

@@ -333,7 +333,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
 describe('nothing on disk (4.11.9)', () => {
   it('leaves no record, map, product record, list of calls, list of what a replacement affects or verdict queue on the state branch or in the unit\'s folder, a look\'s mark in the cache alone (4.S24, 5.S18)', () => {
     const relied = call(NOTE, 'A note is a panel.');
-    writeIn(dir, 'find', SPACE, ['--relies-on', relied], { ...MADE, text: 'A panel takes no focus.', how: 'a spike', product_wide: true });
+    writeIn(dir, 'find', SPACE, ['--relies-on', relied], { ...MADE, text: 'A panel takes no focus.', how: 'a spike', known: 'spike', product_wide: true });
     writeIn(dir, 'replace', NOTE, ['--replaces', relied, '--reason', 'changed-mind'], { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['a panel'], text: 'A frameless window.', why: 'Lighter.' });
     call(SPACE, 'A note opens on the active Space.');
     stateGit(dir, ['add', '-A']);

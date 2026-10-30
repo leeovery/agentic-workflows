@@ -27,7 +27,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { checkLedger, appendEntry, ledgerStopSurface, commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
-const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { LEDGER_VERSION, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { catchUpState } = require(MERGE);
@@ -38,11 +38,11 @@ const { useWorld, machinesSharing, blobId, commitUnpushed, pushFailing, entry, l
 const world = useWorld();
 
 describe('the ledger through a catch-up', () => {
-  const ASKED = { event: 'asked', unit: 'fumi', topic: 'a', phase: 'discussion', session: 's1', by: 'claude', who_moved_whom: 'none', part_of: null, relies_on: [] };
+  const ASKED = { event: 'asked', unit: 'fumi', topic: 'a', phase: 'discussion', session: 's1', by: 'claude', who_moved_whom: 'none', part_of: null, relies_on: [], cites: [] };
 
   /** A ledger line of a question asked. @param {string} text */
   function askedLine(text) {
-    return entry(validEvent({ ...ASKED, v: 1, id: newId(), at: '2026-10-27T09:00:00Z', text }));
+    return entry(validEvent({ ...ASKED, v: LEDGER_VERSION, id: newId(), at: '2026-10-27T09:00:00Z', text }));
   }
 
   const CHART = 'unit/assets/chart.png';

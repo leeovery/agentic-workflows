@@ -17,18 +17,24 @@
 //   entry of its chain in a live place was made, a question's wording on
 //   the topic its unit's last live move took it to — each current entry
 //   with the live entries it replaced folded beneath it, newest first, the
-//   live confirmations that it still holds (5.6.5), and the person's live
-//   keeps of it against a replacement Claude proposed; the moves made
-//   there, as history, which the map can differ from; the merges made
-//   there, each with the duplicate it named and whether it holds; and, read
-//   from their own current entries, never copied, the entries standing
-//   elsewhere that were made there, that it relies on, that its merges that
-//   hold went into, or that answer its questions (5.8.4, 5.8.19). `ledger
+//   live confirmations that it still holds (5.6.5), the person's live
+//   keeps of it against a replacement Claude proposed, and the files
+//   linked from it, each with its latest live status and lift
+//   (9.10.5–9.10.7, 9.10.16); its findings in a section of their own, each
+//   saying how and when it is known (9.2.12), and its decisions who decided
+//   them, by `by` and `given` (9.2.14); the moves made there, as history,
+//   which the map can differ from; the merges made there, each with the
+//   duplicate it named and whether it holds; and, read from their own
+//   current entries, never copied, the entries standing elsewhere that were
+//   made there, that it relies on, that its merges that hold went into, or
+//   that answer its questions (5.8.4, 5.8.19). `ledger
 //   map` reads a topic's questions as they stand now, each answered as its
 //   record shows it, those standing elsewhere that it shows for what was
 //   made on it, and each current answer placed on it that no current
-//   question answers, a row headed by the answer as a row shows one. A unit
-//   or topic that is not live has no current entry to show.
+//   question answers, a row headed by the answer as a row shows one; an
+//   open question one of the unit's experiments measures while it runs is
+//   marked waiting on it (9.1.11). A unit or topic that is not live has no
+//   current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version; a decision the late one-decision
 //   check judged shows beside it what the check found, `late_check`, one
@@ -43,8 +49,8 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, keptOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
-const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
+const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, keptOf, assetsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
+const { hasTopic, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown } = require('./ledger-since.cjs');
 
@@ -112,12 +118,29 @@ function showerOf(folded, entryAt) {
 }
 
 /**
- * An entry with the live confirmations that it still holds, and the
- * person's live keeps of it against a replacement Claude proposed.
+ * The files linked from an entry, each by its path, with the status its
+ * latest live status link gives it, and where its latest live lift took it
+ * into the project — each null where none gives one.
+ * @param {Shower} shower @param {string} id
+ * @returns {{path: string, status: string|null, into: string|null}[]}
+ */
+function assetRows({ folded, show }, id) {
+  return assetsOf(folded, id).map(({ path, status, lift }) => ({
+    path,
+    status: status === null ? null : /** @type {string} */ (show(status).status),
+    into: lift === null ? null : /** @type {string} */ (show(lift).into),
+  }));
+}
+
+/**
+ * An entry with the live confirmations that it still holds, the person's
+ * live keeps of it against a replacement Claude proposed, and the files
+ * linked from it.
  * @param {Shower} shower @param {string} id @returns {Shown}
  */
-function held({ folded, show }, id) {
-  return { ...show(id), holds: holdsOf(folded, id).map(show), kept: keptOf(folded, id).map(show) };
+function held(shower, id) {
+  const { folded, show } = shower;
+  return { ...show(id), holds: holdsOf(folded, id).map(show), kept: keptOf(folded, id).map(show), assets: assetRows(shower, id) };
 }
 
 /** A current entry with its chain folded beneath it, newest first (5.6.5). @param {Shower} shower @param {string} id @returns {Shown} */
@@ -165,13 +188,14 @@ function answerRecord(shower, { unit, topic }) {
 }
 
 /**
- * A question's answer as its map row shows it: whose, where, and what, and
- * what the late one-decision check found of it, where it found anything.
+ * A question's answer as its map row shows it: whose and how given, where,
+ * and what, and what the late one-decision check found of it, where it
+ * found anything.
  * @param {Shower} shower @param {string} answer
  */
 function rowAnswer({ show }, answer) {
-  const { id, unit, topic, by, text, late_check: lateCheck } = show(answer);
-  return { id, unit, topic, by, text, ...(lateCheck === undefined ? {} : { late_check: lateCheck }) };
+  const { id, unit, topic, by, given, text, late_check: lateCheck } = show(answer);
+  return { id, unit, topic, by, given, text, ...(lateCheck === undefined ? {} : { late_check: lateCheck }) };
 }
 
 /**
@@ -186,12 +210,27 @@ function rowHead(shower, row) {
 }
 
 /**
- * `ledger map`: a topic's questions, each with where it stands and its
- * current answers.
- * @param {Shower} shower @param {Place} place
+ * The questions the unit's experiments measure while they run, by the
+ * first entry of each question's chain, with the experiment's id: a
+ * question the ledger lacks is passed over.
+ * @param {Folded} folded @param {string} root @param {string} unit
+ * @returns {Map<string, string>}
  */
-function answerMap(shower, { unit, topic }) {
+function waitingOn(folded, root, unit) {
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(root, unit));
+  return new Map(experimentWaits(manifest).filter(({ question }) => folded.facts.has(question))
+    .map(({ experiment, question }) => [factsOf(folded, question).root, experiment]));
+}
+
+/**
+ * `ledger map`: a topic's questions, each with where it stands and its
+ * current answers, and an open one an experiment measures marked waiting
+ * on it.
+ * @param {Shower} shower @param {Place} place @param {string} root
+ */
+function answerMap(shower, { unit, topic }, root) {
   const rows = mapOf(shower.folded, /** @type {string} */ (unit), /** @type {string} */ (topic));
+  const waiting = waitingOn(shower.folded, root, /** @type {string} */ (unit));
   return {
     unit,
     topic,
@@ -205,6 +244,7 @@ function answerMap(shower, { unit, topic }) {
       part_of: row.part_of === null ? null : shower.short(row.part_of),
       parts: row.parts.map(shower.short),
       answers: row.answers.map((answer) => rowAnswer(shower, answer)),
+      waiting_on: row.stands === 'open' ? waiting.get(factsOf(shower.folded, row.id).root) ?? null : null,
     })),
   };
 }
@@ -281,4 +321,4 @@ function readLedgerVerb(cwd, verb, args) {
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, assetRows };

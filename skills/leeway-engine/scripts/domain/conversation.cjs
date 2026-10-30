@@ -80,7 +80,8 @@
 // keeps in its config directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`); a
 // transcript's last assistant message names the model it runs on, which the
 // trust log keys its evidence by (16.4.4) — read past the messages Claude
-// Code writes itself, which name the model `<synthetic>`. A subagent's
+// Code writes itself, which name the model `<synthetic>` — and its path is
+// what a log the conversation writes names it by (topic-log.cjs). A subagent's
 // commands carry the conversation's session id and nothing naming the
 // subagent, so the model of a command's caller is told by where the command
 // runs: in the worktree of one of the conversation's subagents still at
@@ -405,4 +406,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

@@ -68,8 +68,8 @@ const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
-const { factsOf, standingOf, wordingOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
-const { readShown } = require('./ledger-read.cjs');
+const { factsOf, standingOf, wordingOf, answersOf, laterOf, placeRecords, productOf } = require('./ledger-fold.cjs');
+const { readShown, assetRows } = require('./ledger-read.cjs');
 const { manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
@@ -89,12 +89,13 @@ const { syncKnowledge } = require('./knowledge/sync.cjs');
  */
 
 /**
- * `id`'s line, and where it stands where that is not in the copy.
+ * `id`'s line, the files linked from it, and where it stands where that is
+ * not in the copy.
  * @param {Shower} shower @param {string} id @param {(id: string) => boolean} inCopy
  * @returns {Placed}
  */
 function placed(shower, id, inCopy) {
-  return { line: shower.show(id), from: inCopy(id) ? null : standingOf(shower.folded, id) };
+  return { line: shower.show(id), assets: assetRows(shower, id), from: inCopy(id) ? null : standingOf(shower.folded, id) };
 }
 
 /** An entry's text. @param {Shower} shower @param {string} id @returns {string} */
@@ -125,7 +126,7 @@ function byQuestion(shower, decisions, inCopy) {
   for (const id of decisions) {
     const question = questionOf(shower, id) ?? id;
     /** @type {Asked} */
-    const group = asked.get(question) ?? { text: textOf(shower, question), question: null, answers: [] };
+    const group = asked.get(question) ?? { text: textOf(shower, question), question: null, answers: [], later: null };
     group.answers.push(placed(shower, id, inCopy));
     asked.set(question, group);
   }
@@ -147,7 +148,9 @@ function recordText(shower, unit, topic, ids) {
   const asked = ids.questions.map((question) => {
     const answers = answersOf(shower.folded, question);
     for (const answer of answers) answered.add(answer);
-    return { text: textOf(shower, question), question: placed(shower, question, inCopy), answers: answers.map((answer) => placed(shower, answer, inCopy)) };
+    return {
+      text: textOf(shower, question), question: placed(shower, question, inCopy), answers: answers.map((answer) => placed(shower, answer, inCopy)), later: laterOf(shower.folded, question),
+    };
   });
   return recordCopy({
     unit,

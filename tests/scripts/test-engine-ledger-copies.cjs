@@ -8,7 +8,9 @@
 // against the ledger — each record holding a current entry, a topic's or a
 // unit's own level's, its current answers only, and the product record's
 // file — and the knowledge base indexes the records, never the product
-// record's file nor the ledger. A replaced answer leaves the copy and the
+// record's file nor the ledger. Each entry says who made it — a decision who
+// decided it — a finding how and when it is known, and every entry what it
+// cites and the files linked from it, never a file's words. A replaced answer leaves the copy and the
 // search at once; a record relying on it renders again; a cancelled or
 // postponed place loses its copy until it is back.
 //
@@ -27,19 +29,26 @@ const path = require('path');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
-const { UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
-const { ok, callAsync, indexedFiles, statePath, stateGit } = require('./engine-harness.cjs');
+const { UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, ledgerHelpers, useCopiesWorld } = require('./ledger-world.cjs');
+const { ok, callAsync, indexedFiles, statePath, stateGit, layout } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
 const MINT_COPY = '.knowledge/records/mint/mint.md';
 
 const dir = useCopiesWorld();
 afterEach(clearSeams);
 
-const { write, ask, decide, copy, floatingPanel } = copiesHelpers(dir);
+const { write, ask, decide, copy, indexedText, floatingPanel } = copiesHelpers(dir);
+const { entries, full } = ledgerHelpers(dir);
+
+/** The day an entry was written, as a copy shows it. @param {string} short */
+function writtenOn(short) {
+  return entries().find((e) => e.id === full(short)).at.slice(0, 10);
+}
 
 /** `old` replaced at `address`, a changed mind: the response. @param {string} address @param {string} old @param {Record<string, unknown>} content */
 function change(address, old, content) {
@@ -62,7 +71,7 @@ async function byArea(...terms) {
 describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   it('is rendered and indexed once its topic\'s entries change: each question a heading with its answer, why and what it rules out, a finding and an open question beside them, outside every tracked file (4.S25, 22.S18)', () => {
     const { question, decision } = floatingPanel();
-    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike' }).id;
+    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }).id;
     const open = ask(NOTE, 'Does a panel take focus?');
 
     assert.strictEqual(copy(NOTE_COPY), [
@@ -92,15 +101,54 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       '',
       'Panels float above every Space.',
       '',
-      'How it is known: a spike',
+      'How it is known: seen in a spike, a spike',
       '',
-      `Found by Claude. Entry ${finding}.`,
+      `Found by Claude on ${writtenOn(finding)}. Entry ${finding}.`,
       '',
     ].join('\n'));
     assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
     assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--', '.knowledge', '.cache']), '');
     assert.strictEqual(stateGit(dir(), ['ls-tree', '-r', '--name-only', 'HEAD', '--', '.knowledge', '.cache']), '');
     assert.deepStrictEqual(fs.readdirSync(statePath(dir(), UNIT)), ['manifest.json'], 'a record file sits in the unit\'s tree');
+  });
+
+  it('says who decided each answer in its five forms, how a finding is known with the command run, its result and the day it was found, what an entry cites, the files linked from it with their status and their lift, and a question moved to the roadmap as later; a linked file\'s words reach neither the copy nor the store (9.2.2, 9.2.12, 9.2.14, 9.2.16, 9.5.4, 9.10.5, 9.10.16)', () => {
+    const cites = [{ path: `${UNIT}/discussion/note-window.md`, section: 'Session 1' }];
+    const window = ask(NOTE, 'Is a note a window?');
+    const persons = decide(NOTE, window, 'A panel.', [], { by: 'person', cites });
+    /** Claude's answer to a question of its own, given as `given` says: its short id. @param {string} text @param {string} answer @param {string} given */
+    const call = (text, answer, given) => decide(NOTE, ask(NOTE, text), answer, [], { given });
+    const forms = [
+      [call('Does a note float?', 'It floats.', 'own'), 'Decided by Claude'],
+      [call('Does a note snap?', 'It snaps.', 'your-call'), 'Decided by Claude, the person\'s "your call"'],
+      [call('What radius are its corners?', 'Ten points.', 'dont-care'), 'Left to the builder, the person\'s "don\'t care"'],
+      [call('Does a note dim?', 'It dims.', 'carried'), 'Carried over, who decided it unrecorded'],
+    ];
+    const measured = write('find', NOTE, [], { ...MADE, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites }).id;
+    const frame = `${UNIT}/spikes/001-frame/Frame.swift`;
+    fs.mkdirSync(path.dirname(statePath(dir(), frame)), { recursive: true });
+    fs.writeFileSync(statePath(dir(), frame), 'Corduroy marmalade.\n');
+    for (const gives of [{ status: 'canonical', into: null }, { status: null, into: 'Sources/Note/Frame.swift' }]) {
+      appendEntry(statePath(dir()), { event: 'asset', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, entry: full(persons), path: frame, ...gives }, []);
+    }
+    stateGit(dir(), ['add', layout.ledger]);
+    stateGit(dir(), ['commit', '-q', '-m', 'state: a file linked']);
+    ok(dir(), ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Notes sync across Macs']);
+    const syncing = ask(NOTE, 'Do notes sync across Macs?');
+    write('move', NOTE, ['--question', syncing, '--to', 'roadmap:sync'], MADE);
+
+    const text = /** @type {string} */ (copy(NOTE_COPY));
+
+    for (const block of [
+      ['## Is a note a window?', '', `Asked by Claude. Entry ${window}.`, '', 'A panel.', '', 'Why: It follows the person.', '', 'Cites:', '- fumi/discussion/note-window.md: Session 1', '', 'Assets:', `- ${frame}, canonical, lifted into Sources/Note/Frame.swift`, '', `Decided by the person. Entry ${persons}.`, ''],
+      ...forms.map(([id, decided]) => [`${decided}. Entry ${id}.`, '']),
+      ['## Do notes sync across Macs?', '', `Asked by Claude. Entry ${syncing}.`, '', 'Later: moved to the roadmap, roadmap:sync.', ''],
+      ['## Finding: A panel opens in 4 ms.', '', 'A panel opens in 4 ms.', '', 'How it is known: measured, timed the open', '', 'Command: swift run bench open', 'Result: median 4.1 ms', '', 'Cites:', '- fumi/discussion/note-window.md: Session 1', '', `Found by Claude on ${writtenOn(measured)}. Entry ${measured}.`, ''],
+    ]) {
+      assert.ok(text.includes(block.join('\n')), `the copy does not hold:\n${block.join('\n')}\n--- it reads:\n${text}`);
+    }
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+    assert.ok(!text.includes('Corduroy') && !indexedText().includes('Corduroy'), 'a linked file\'s words reached the copy or the store');
   });
 
   it('shows the answer that replaced one and drops the one replaced, from the copy and from a read by area, the ledger never indexed (5.S22, 22.S16, 5.S29)', async () => {
@@ -158,7 +206,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   it('keeps each entry inside its own section, whatever its text holds: a line that would open a heading or a fence reads as text', () => {
     const question = ask(NOTE, 'Is a note a window?');
     decide(NOTE, question, 'A panel.\n## Not a heading\n```', [], { why: 'It floats.\r# Nor this', rules_out: ['a window\n  ### nor this', 'a sheet\r\n\f\u00a0~~~'] });
-    write('find', NOTE, [], { ...MADE, text: 'Panels float.\n~~~', how: 'a spike\n\v## still the finding' });
+    write('find', NOTE, [], { ...MADE, text: 'Panels float.\n~~~', how: 'a spike\n\v## still the finding', known: 'spike' });
 
     const text = /** @type {string} */ (copy(NOTE_COPY));
     // Lines as the chunker breaks them, and its own matches for a heading and a fence.
@@ -249,10 +297,13 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
 
 describe('the product record\'s file (5.8.13, 8.9.13, 22.6.12)', () => {
   it('is rewritten to show the current product-wide entries whenever one changes, and is never indexed (5.S21, 8.S26, 22.S24)', async () => {
-    const finding = write('find', NOTE, [], { ...MADE, text: 'Notes are furniture.', how: 'the person said so', product_wide: true }).id;
-    assert.match(/** @type {string} */ (copy('.knowledge/product.md')), /^## Finding: Notes are furniture\.\n\nNotes are furniture\.\n\nHow it is known: the person said so\n\nFound by Claude, product-wide, in fumi \/ note-window\. Entry \w+\.$/m);
+    const finding = write('find', NOTE, [], { ...MADE, text: 'Notes are furniture.', how: 'the person said so', known: 'read', product_wide: true }).id;
+    assert.ok(/** @type {string} */ (copy('.knowledge/product.md')).includes([
+      '## Finding: Notes are furniture.', '', 'Notes are furniture.', '', 'How it is known: read, the person said so', '',
+      `Found by Claude on ${writtenOn(finding)}, product-wide, in fumi / note-window. Entry ${finding}.`,
+    ].join('\n')));
 
-    change(NOTE, finding, { text: 'Notes are tools.', how: 'a later spike' });
+    change(NOTE, finding, { text: 'Notes are tools.', how: 'a later spike', known: 'spike' });
 
     const product = /** @type {string} */ (copy('.knowledge/product.md'));
     assert.match(product, /^# The product record\n/);

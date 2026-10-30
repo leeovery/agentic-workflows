@@ -84,7 +84,7 @@ const FOCUS_CALL = Object.freeze({
 
 const { world, made } = writtenWorld('raise-replace-', PHASES, (write) => {
   const where = write('ask', NOTE, [], { ...MADE, text: 'Where does a new note open?' }).id;
-  const screens = write('find', NOTE, [], { ...MADE, text: 'Most people work on one screen.', how: 'seen in a study' }).id;
+  const screens = write('find', NOTE, [], { ...MADE, text: 'Most people work on one screen.', how: 'seen in a study', known: 'documented' }).id;
   const opens = write('decide', NOTE, ['--answers', where], { ...MADE, text: KEPT, why: 'A note follows the person.' }).id;
   const focus = write('ask', NOTE, ['--relies-on', opens], { ...MADE, text: 'Does a new note take focus?' }).id;
   return { where, screens, opens, focus };
@@ -142,17 +142,17 @@ async function refusedDraw(args, call = CALL) {
  */
 function replacementOf(id, own = {}) {
   return {
-    v: 1, id, event: 'replaced', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 2, id, event: 'replaced', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', replaces: full(made.opens), reason: 'changed-mind', cause: null, drops: [KEPT], of: 'decision',
     answers: full(made.where), text: MAIN.text, why: WHY, rules_out: [LAST.text], relies_on: [], product_wide: false, sealed: MAIN.text,
-    alternatives: [], evidence: [], kind: null, unchecked: true, ...own,
+    alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], ...own,
   };
 }
 
 /** The person's keep of Claude's decision a raise lands, its line but the time. @param {string} id */
 function keepOf(id) {
   return {
-    v: 1, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 2, id, event: 'kept', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: OVER, entry: full(made.opens), reason: 'changed-mind', cause: null, why: WHY, sealed: MAIN.text,
   };
 }
@@ -393,7 +393,7 @@ describe('a keep confirms the decision against its cause (5.6.10, 5.6.13)', () =
   it('a decision affected by a new finding, kept for no cause, stays affected; kept for that new fact, its cause the finding, the line holds both and the decision is no longer affected — until a newer finding flags it again', async () => {
     const takes = decideFocus(['--relies-on', made.screens]);
     const { write } = ledgerHelpers(() => dir);
-    const replaceScreens = (/** @type {string} */ finding, /** @type {string} */ was, /** @type {string} */ text) => write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: [was], text, how: 'seen in a second study' }).id;
+    const replaceScreens = (/** @type {string} */ finding, /** @type {string} */ was, /** @type {string} */ text) => write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: [was], text, how: 'seen in a second study', known: 'documented' }).id;
     const twoScreens = replaceScreens(made.screens, 'Most people work on one screen.', 'Most people work on two screens.');
     assert.deepStrictEqual(affected(), [full(takes)]);
     const keepFor = async (/** @type {string[]} */ more) => {

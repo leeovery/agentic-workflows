@@ -210,6 +210,18 @@ describe('the spinner', () => {
     })
   }
 
+  test('entering a phase moves the word: a work unit\'s menu to the discussion `enter` arrives at', async ($, on) => {
+    const { counts, places } = world(on, { positions: { s0: { name: 'pay' } } })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Sauteing…')
+
+    places({ name: 'pay', phase: 'discussion', topic: 'ledger' })
+    await $.tool.call({ tool: 'Bash', command: `${ENGINE} enter discussion pay ledger` })
+
+    expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Discussing…')
+    expect([counts.reads, counts.invalidations]).toEqual([2, 1])
+  })
+
   for (const command of ['boot', 'session repair']) {
     test(`arriving at the start menu through \`${command}\` gives the word back to Claude Code`, async ($, on) => {
       const { counts, drops } = world(on, { positions: { s0: { name: 'pay', phase: 'discussion', topic: 'ledger' } } })

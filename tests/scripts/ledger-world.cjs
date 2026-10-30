@@ -28,6 +28,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 
@@ -227,7 +228,7 @@ function ledgerReadHelpers(dir) {
 
   /** A finding at `address`: its short id. @param {string} address @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
   function find(address, text, flags = [], content = {}) {
-    return write('find', address, flags, { ...MADE, text, how: 'seen in a spike', ...content }).id;
+    return write('find', address, flags, { ...MADE, text, how: 'seen in a spike', known: 'spike', ...content }).id;
   }
 
   /** A decision answering `question` at `address`: its short id. @param {string} address @param {string} question @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
@@ -254,7 +255,7 @@ function ledgerReadHelpers(dir) {
     const all = entries();
     const shorts = shortIds(all.map((e) => e.id));
     const { v, ...event } = /** @type {Record<string, any>} */ (all.find((e) => e.id === full(short)));
-    assert.strictEqual(v, 1);
+    assert.strictEqual(v, LEDGER_VERSION);
     for (const field of LINKS) {
       if (Array.isArray(event[field])) event[field] = event[field].map((/** @type {string} */ id) => shorts.get(id));
       else if (typeof event[field] === 'string') event[field] = shorts.get(event[field]);
@@ -262,9 +263,9 @@ function ledgerReadHelpers(dir) {
     return event;
   }
 
-  /** An entry as a record shows it on its own or in a chain: its line, the confirmations that it holds, and the person's keeps of it. @param {string} short @param {string[]} [holds] @param {string[]} [kept] */
-  function held(short, holds = [], kept = []) {
-    return { ...line(short), holds: holds.map(line), kept: kept.map(line) };
+  /** An entry as a record shows it on its own or in a chain: its line, the confirmations that it holds, the person's keeps of it, and the files linked from it. @param {string} short @param {string[]} [holds] @param {string[]} [kept] @param {Record<string, unknown>[]} [assets] */
+  function held(short, holds = [], kept = [], assets = []) {
+    return { ...line(short), holds: holds.map(line), kept: kept.map(line), assets };
   }
 
   /** A current entry as a record shows it: its line, its confirmations, and the entries it replaced beneath it. @param {string} short @param {string[]} replaced @param {string[]} [holds] */
@@ -384,7 +385,7 @@ function ledgerWriteHelpers(dir) {
     const { id, at } = JSON.parse(raw);
     assert.match(id, ID);
     assert.ok(Math.abs(Date.parse(at) - Date.now()) < 60000, `${at} is not the time written`);
-    assert.strictEqual(raw, JSON.stringify({ v: 1, id, event, unit: UNIT, topic: place.topic, phase: place.phase, session: SESSION_ID, at, ...own }));
+    assert.strictEqual(raw, JSON.stringify({ v: LEDGER_VERSION, id, event, unit: UNIT, topic: place.topic, phase: place.phase, session: SESSION_ID, at, ...own }));
     return id;
   }
 
@@ -420,7 +421,7 @@ function ledgerWriteHelpers(dir) {
 
   /** A finding found on the note window, relying on what `flags` name: its response. @param {string[]} [flags] */
   function find(flags = []) {
-    return write('find', NOTE, flags, { ...MADE, text: 'Spaces keep their ids across restarts.', how: 'seen in a spike' });
+    return write('find', NOTE, flags, { ...MADE, text: 'Spaces keep their ids across restarts.', how: 'seen in a spike', known: 'spike' });
   }
 
   /** A decision answering `question` on the note window: its response. @param {string} question @param {Record<string, unknown>} [content] */

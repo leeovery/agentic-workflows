@@ -3,10 +3,11 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's feature scenarios: the whole pipeline from
 // discovery to a completed review; the start menu's working set of inbox
-// ideas seeding discovery; research parked beneath a live discussion, and
-// research landing beneath one in session; review skipped at the next-phase
-// gate, and a failed review reopening implementation; the implementation
-// loop's fix and analysis cycles surviving a resume.
+// ideas seeding discovery; a discussion entered through `enter`, begun and
+// then resumed by a later conversation; research parked beneath a live
+// discussion, and research landing beneath one in session; review skipped at
+// the next-phase gate, and a failed review reopening implementation; the
+// implementation loop's fix and analysis cycles surviving a resume.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -25,7 +26,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, send, handoffEntry, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, send, handoffEntry, enterEntry, carryOn, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -129,6 +130,27 @@ describe('pipeline simulation: feature', () => {
     // The commit moved the seeds out of the inbox, and the handoff checks each
     // is still there — so it can only come first.
     sim.refuses(['handoff', ...shellWords(route)], /inbox file not found/);
+  });
+
+  it('feature: a discussion entered through `enter` — the first entry starts it on what discovery left, a later conversation resumes it on its record and its log', () => {
+    const wu = 'filters';
+    const keys = () => [...sim.sections.matchAll(/^([a-z ]+): /gm)].map((m) => m[1]);
+    const header = () => /^log header: (.*)$/m.exec(sim.sections)?.[1];
+    const log = `.leeway/${wu}/topics/${wu}/log.md`;
+    startNew(sim, 'feature');
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
+    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    const first = enterEntry(sim, wu, 'discussion', wu);
+    assert.deepStrictEqual([first.started, typeof first.committed], [true, 'string'], 'the first entry starts the topic and commits the start');
+    assert.ok(!fs.existsSync(path.join(sim.dir, log)), 'nothing is written ahead of the opening');
+    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'log', 'log header']);
+    sim.write(log, `${header()}\n\nWhere it stands.\n`);
+    assert.doesNotMatch(carryOn(sim).text, /has not written to the log yet/, 'the conversation that wrote the log owes no header');
+
+    const again = enterEntry(sim, wu, 'discussion', wu);
+    assert.deepStrictEqual([again.started, again.committed], [false, undefined], 'a later entry resumes, starting nothing');
+    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'record', 'log', 'log header'], 'a new conversation owes its own header');
+    assert.match(carryOn(sim).text, /has not written to the log yet/);
   });
 
   it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
