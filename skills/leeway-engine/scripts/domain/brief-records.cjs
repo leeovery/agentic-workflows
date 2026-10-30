@@ -85,12 +85,16 @@
 //                  is read and how it is cited — its old map, its
 //                  research's threads still open and its reviews never
 //                  folded in; the unit's assets with where each came in
-//                  from; and where the topic's record is composed, the
+//                  from, the topic's to link, or its file gone and linked
+//                  by none; and where the topic's record is composed, the
 //                  verifier's findings on it written and a carry's refusal
 //                  of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON (21.10.7)
 //   verifier-findings the verifier's findings on that record, verbatim
 //   carry-refusal  what `ledger carry` refused that record for, verbatim
+//
+// The brief takes the findings and the refusal: drawn, each file is cleared,
+// so neither reaches a later brief.
 //
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
@@ -130,7 +134,7 @@ const { taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
-const { readWorkUnitManifest, isObject } = require('../kernel/manifest-io.cjs');
+const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { directiveOf } = require('./directives.cjs');
 const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
@@ -530,9 +534,11 @@ function drawMigratedTopic(filling) {
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
   });
   const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
-  const assets = (Array.isArray(manifest.imports) ? manifest.imports : []).filter((entry) => isObject(entry) && typeof entry.path === 'string')
-    .map((entry) => `- ${unit}/${entry.path}${typeof entry.origin === 'string' ? `, which came in from ${entry.origin}` : ''}`);
   const sources = recordsRules().sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
+  const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
+    const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
+    return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
+  });
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')}`,
@@ -589,6 +595,12 @@ function besideRecord(filling, rel) {
   return text === '' ? NONE : text;
 }
 
+/** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+function clearBeside(filling, rel) {
+  const { root, unit, topic } = migratedTopic(filling);
+  fs.rmSync(path.join(root, rel(unit, topic)), { force: true });
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -613,8 +625,8 @@ const RECORDS = Object.freeze({
   directive: { of: null, flags: [{ name: 'directive', value: 'id' }], draw: drawDirective },
   'migrated-topic': { of: null, flags: [MIGRATED], draw: drawMigratedTopic },
   'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
-  'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath) },
-  'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath) },
+  'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
+  'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

@@ -34,8 +34,11 @@
 //     folded in — in `.workflows/.cache/`, which the move leaves (21.5.10)
 //     — in its log, verbatim (21.5.12);
 //   - every import that came in from the topic, as the unit's manifest
-//     lists it, linked from one of its entries (21.5.7), a record of none
-//     included.
+//     lists it, whose file the state holds, linked from one of its entries
+//     (21.5.7), a record of none included — in a unit of one topic that is
+//     no epic, an import from its discovery, `discovery`, being the topic's.
+// A record of no entries keeps every rule but the cites: its old map, its
+// threads, its reviews and its imports are asked of it as of any.
 // A topic promoted to a cross-cutting unit took only its discussion there:
 // its research's threads and its agent store stay with the unit it came
 // from, and are read from there.
@@ -54,8 +57,10 @@
 // can make a cite another topic made into that log ambiguous; the joined
 // spec's headings are counted over every `specification.md` HEAD holds for
 // the unit, superseded and cancelled ones among them, as the cut and the
-// merges (080) are to join them; and the carried file sits in the cache,
-// where a per-topic agent, which may write files, could overwrite it.
+// merges (080) are to join them; the carried file sits in the cache,
+// where a per-topic agent, which may write files, could overwrite it; and an
+// epic's imports from its discovery as a whole, `discovery`, are owed by no
+// topic, staying in `assets/` unlinked until a topic links one.
 //
 
 const fs = require('fs');
@@ -88,7 +93,10 @@ function readJson(file) {
 }
 
 /** @param {string} file */
-const readText = (file) => (fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null);
+const isFile = (file) => fs.statSync(file, { throwIfNoEntry: false })?.isFile() ?? false;
+
+/** @param {string} file */
+const readText = (file) => (isFile(file) ? fs.readFileSync(file, 'utf8') : null);
 
 /** What git answers from `dir`, or null. @param {string} dir @param {string[]} args */
 function git(dir, args) {
@@ -128,6 +136,9 @@ function buildingStarted(manifest) {
   return Object.values(itemsOf(manifest?.phases?.implementation?.items))
     .some((item) => isObject(item) && (item.status === 'in-progress' || item.status === 'completed'));
 }
+
+/** Whether a unit's manifest holds the topic in the phase. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
+const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
 
 /** The topics of a unit's manifest the directive carries, once each, sorted. @param {Record<string, any>} manifest @returns {string[]} */
 function topicsOf(manifest) {
@@ -269,11 +280,24 @@ function unfoldedReviews(project, unit, topic) {
   }));
 }
 
-/** The unit's imports that came in from the topic, each by its path from the state. @param {Unit} unit @param {string} topic @returns {{path: string, origin: string}[]} */
-function importsOf(unit, topic) {
-  return (Array.isArray(unit.manifest.imports) ? unit.manifest.imports : [])
-    .filter((entry) => isObject(entry) && typeof entry.path === 'string' && typeof entry.origin === 'string' && entry.origin.split('/')[1] === topic)
-    .map((entry) => ({ path: `${unit.name}/${entry.path}`, origin: entry.origin }));
+/** The topic an import's origin names: its own, or a unit of one topic that is no epic's from its discovery. @param {Unit} unit @param {unknown} origin @returns {string|null} */
+function ownerOf(unit, origin) {
+  if (typeof origin !== 'string') return null;
+  if (origin !== 'discovery') return origin.split('/')[1] ?? null;
+  const topics = topicsOf(unit.manifest);
+  return unit.manifest.work_type !== 'epic' && topics.length === 1 ? topics[0] : null;
+}
+
+/**
+ * The unit's imports, each by its path from the state, with where it came
+ * in from, the topic owing its link, and whether the state holds its file.
+ * @param {Project} project @param {Unit} unit @returns {{path: string, origin: string|null, owner: string|null, held: boolean}[]}
+ */
+function importsOf(project, unit) {
+  return (Array.isArray(unit.manifest.imports) ? unit.manifest.imports : []).filter((entry) => isObject(entry) && typeof entry.path === 'string').map((entry) => {
+    const at = `${unit.name}/${entry.path}`;
+    return { path: at, origin: typeof entry.origin === 'string' ? entry.origin : null, owner: ownerOf(unit, entry.origin), held: isFile(path.join(project.stateDir, at)) };
+  });
 }
 
 /** What a cited section lacks, or null. @param {Project} project @param {Unit} unit @param {{path: string, section: string}} cite */
@@ -295,10 +319,10 @@ function citeProblem(project, unit, cite) {
  * @returns {string[]}
  */
 function problemsOf(project, unit, topic, record) {
-  const imports = importsOf(unit, topic)
+  const imports = importsOf(project, unit).filter((entry) => entry.owner === topic && entry.held)
     .filter((entry) => !record.some(({ assets }) => Array.isArray(assets) && assets.some((asset) => isObject(asset) && asset.path === entry.path)))
     .map((entry) => `${entry.path} came in from ${entry.origin}, and no entry links it`);
-  if (record.length === 0) return [...(logOf(project, unit, topic).trim() === '' ? [] : ['its record is empty, and its log is not']), ...imports];
+  const empty = record.length === 0 && logOf(project, unit, topic).trim() !== '' ? ['its record is empty, and its log is not'] : [];
   const cites = record.flatMap(({ ref, cites: given }) => {
     if (!Array.isArray(given) || given.length === 0) return [`entry ${ref} cites nothing`];
     return given.map((cite) => citeProblem(project, unit, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
@@ -315,7 +339,7 @@ function problemsOf(project, unit, topic, record) {
   const threads = threadsOf(project, unit, topic).filter(({ thread }) => !openThreads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no open question carries it`);
   const reviews = unfoldedReviews(project, unit, topic).map(({ id }) => `${id}, a review never folded in, is not in its log`);
-  return [...cites, ...mapped, ...threads, ...reviews, ...imports];
+  return [...empty, ...cites, ...mapped, ...threads, ...reviews, ...imports];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -353,6 +377,8 @@ module.exports = {
       return topicsOf(unit.manifest).map((topic) => ({ name: `${name}/${topic}`, problems: topicProblems(project, ids, unit, topic) }));
     });
   },
+  phases: TOPIC_PHASES,
+  holds,
   topicsOf,
   /**
    * What a topic's record breaks of the rules, before it is carried.
@@ -365,7 +391,8 @@ module.exports = {
   /**
    * A topic's sources as the rules read them: the project's folder they are
    * read in, its old map, its research's threads still open, its reviews
-   * never folded in, its specs, and the imports that came in from it.
+   * never folded in, its specs, and the unit's imports, each with the topic
+   * owing its link and whether the state holds its file.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -377,7 +404,7 @@ module.exports = {
       threads: threadsOf(project, unit, topic),
       reviews: unfoldedReviews(project, unit, topic).map(({ id, report }) => ({ id, report })),
       specs: specsOf(project, unit, topic),
-      imports: importsOf(unit, topic),
+      imports: importsOf(project, unit),
     };
   },
 };

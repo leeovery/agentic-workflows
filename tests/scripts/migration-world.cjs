@@ -137,15 +137,17 @@ function midMigration(dir) {
 // The records directive's world (079): four units on the code branch as
 // today's layout left them, and in the state as the move wrote them — an
 // epic nothing of which is built: two topics never started, one of them
-// with an import come in from it, two in discussion, one of them with its
-// research's threads, and one promoted to a cross-cutting unit, its
-// research's threads and its agent store left behind; an import come in
-// from a discussion, its spec grouped under another name and kept as an
-// asset, and a review the old agent store holds never folded in beside one
-// folded in; the cross-cutting unit the promoted topic went to, its import
-// copied with it, one of its decisions settling two subtopics; an epic
-// whose building started, its spec still on the code branch; and a
-// cancelled feature.
+// with an import come in from its research, which holds nothing, two in
+// discussion, one of them with its research's threads, and one promoted to
+// a cross-cutting unit, its research's threads and its agent store left
+// behind; an import come in from a discussion, and another whose file is
+// gone; a spec grouped under another name and kept as an asset, and a
+// review the old agent store holds never folded in beside one folded in;
+// the cross-cutting unit the promoted topic went to, its import copied with
+// it, one of its decisions settling two subtopics; an epic of one topic
+// whose building started, its spec still on the code branch, an import
+// come in from its discovery as a whole; and a cancelled feature, an import
+// come in from its discovery.
 const RECORDS_OLD = Object.freeze({
   'README.md': '# Fumi\n',
   '.workflows/fumi/manifest.json': jsonText({
@@ -153,12 +155,14 @@ const RECORDS_OLD = Object.freeze({
     imports: [
       { path: 'imports/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
       { path: 'imports/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
-      { path: 'imports/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'discovery/billing' },
+      { path: 'imports/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'research/billing' },
+      { path: 'imports/old.md', imported_at: '2026-01-05T10:00:00Z', origin: 'discussion/licensing' },
     ],
     phases: {
       discovery: { items: { billing: { status: 'pending' }, support: { status: 'pending' } } },
       research: {
         items: {
+          billing: { status: 'in-progress' },
           auth: { status: 'completed', threads: { 'token-expiry': { question: 'When do tokens expire?', status: 'open', origin: 'seed', parent: null } } },
           search: {
             status: 'completed',
@@ -189,6 +193,7 @@ const RECORDS_OLD = Object.freeze({
   }),
   '.workflows/shop/manifest.json': jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
+    imports: [{ path: 'imports/vision.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
     phases: {
       discussion: { items: { weights: { status: 'completed', subtopics: { 'tie-break': { status: 'decided', parent: null } } } } },
       specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
@@ -199,6 +204,7 @@ const RECORDS_OLD = Object.freeze({
     '# Specification: Weights\n\n## Ranking\n\nNewest first.\n\n### Detail\n\nBy day.\n\n## Corrigenda\n\nTies break by price, not by name.\n\n### Detail\n\nPrice before name.\n',
   '.workflows/gone/manifest.json': jsonText({
     name: 'gone', work_type: 'feature', status: 'cancelled',
+    imports: [{ path: 'imports/notes.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
     phases: { discussion: { items: { gone: { status: 'in-progress', subtopics: { cause: { status: 'decided', parent: null } } } } } },
   }),
 });
@@ -209,7 +215,8 @@ const RECORDS_MOVED = Object.freeze({
     imports: [
       { path: 'assets/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
       { path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
-      { path: 'assets/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'discovery/billing' },
+      { path: 'assets/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'research/billing' },
+      { path: 'assets/old.md', imported_at: '2026-01-05T10:00:00Z', origin: 'discussion/licensing' },
     ],
     phases: {
       discovery: { items: { billing: { status: 'pending' }, support: { status: 'pending' } } },
@@ -239,6 +246,7 @@ const RECORDS_MOVED = Object.freeze({
   [layout.assets('platform', 'sso.md')]: '# SSO\n',
   [layout.manifest('shop')]: jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
+    imports: [{ path: 'assets/vision.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
     phases: {
       discussion: { items: { weights: { status: 'completed' } } },
       specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
@@ -246,8 +254,14 @@ const RECORDS_MOVED = Object.freeze({
     },
   }),
   [layout.topic('shop', 'weights', 'log.md')]: '## Discussion\n\n# Discussion: Weights\n\n## Tie Break\n\nBy name.\n',
-  [layout.manifest('gone')]: jsonText({ name: 'gone', work_type: 'feature', status: 'cancelled', phases: { discussion: { items: { gone: { status: 'in-progress' } } } } }),
+  [layout.assets('shop', 'vision.md')]: '# Vision\n',
+  [layout.manifest('gone')]: jsonText({
+    name: 'gone', work_type: 'feature', status: 'cancelled',
+    imports: [{ path: 'assets/notes.md', imported_at: '2026-01-01T10:00:00Z', origin: 'discovery' }],
+    phases: { discussion: { items: { gone: { status: 'in-progress' } } } },
+  }),
   [layout.topic('gone', 'gone', 'log.md')]: '## Discussion\n\n# Discussion: Gone\n\n## Cause\n\nA race.\n',
+  [layout.assets('gone', 'notes.md')]: '# Notes\n\nIt fails under load.\n',
 });
 
 // The old agent store of fumi's search topic, which the move leaves: a review

@@ -3,10 +3,12 @@
 // ---------------------------------------------------------------------------
 // `engine ledger carry` (leeway-engine/scripts/domain/ledger-carry.cjs; 21.6,
 // 21.10.9): a topic's record carried into the ledger while the migration
-// runs — the whole record appended as one, each entry its event's content
-// with its links by id, moving no one, a decision unchecked, an asset link
-// after its entry; what was carried kept in the state's cache, ahead of the
-// append; the commit held for the migration's. A cancelled unit's topic
+// runs, read where it is composed in the state — the whole record appended
+// as one, each entry its event's content with its links by id, moving no
+// one, a decision unchecked, an asset link after its entry; what was
+// carried kept in the state's cache, ahead of the append; the verifier's
+// findings and a refusal beside the record cleared; the commit held for the
+// migration's. A cancelled unit's topic
 // carried as any other; a topic carried once, a session killed as the
 // ledger is renamed in leaving none of its entries, so the redo holds each
 // once; every refusal of the verb's own writing nothing, and each of what
@@ -31,7 +33,7 @@ const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixtu
 const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { carriedPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { carriedPath, composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';
 const QUESTION = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', map_item: 'trial-length', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] };
@@ -53,18 +55,18 @@ const world = () => recordsMigration(path.join(fs.mkdtempSync(path.join(os.tmpdi
 /** A call that must refuse, writing nothing: its error. @param {string[]} args @param {import('./engine-harness.cjs').CallOptions} [opts] */
 const untouched = (args, opts = { env: SESSION }) => refusedUntouched(dir, args, opts, harness);
 
-/** A record licensing's composer must mend, refused, nothing written but the refusal beside it: the refusal. @param {unknown} record */
-const mend = (record) => refusedKeeping(dir, ['ledger', 'carry', LICENSING, '--file', recordFile(record)], refusedPath('fumi', 'licensing')).replace(path.dirname(dir), '{dir}');
-
-/** A record written beside the project, its path. @param {unknown} record */
-function recordFile(record) {
-  const file = path.join(path.dirname(dir), 'record.json');
-  fs.writeFileSync(file, typeof record === 'string' ? record : JSON.stringify(record));
-  return file;
+/** A topic's record composed where the directive keeps it, the carry's argv. @param {string} dotpath @param {unknown} record */
+function composed(dotpath, record) {
+  const [unit, , topic] = dotpath.split('.');
+  writeState(dir, composedPath(unit, topic), typeof record === 'string' ? record : JSON.stringify(record));
+  return ['ledger', 'carry', dotpath];
 }
 
+/** A record licensing's composer must mend, refused, nothing written but the refusal beside it: the refusal. @param {unknown} record */
+const mend = (record) => refusedKeeping(dir, composed(LICENSING, record), refusedPath('fumi', 'licensing'));
+
 /** @param {string} dotpath @param {unknown[]} entries */
-const carry = (dotpath, entries) => ok(dir, ['ledger', 'carry', dotpath, '--file', recordFile({ entries })], { env: SESSION });
+const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: SESSION });
 
 /** What was kept of a topic carried. @param {string} unit @param {string} topic */
 const kept = (unit, topic) => JSON.parse(readState(dir, carriedPath(unit, topic)));
@@ -101,9 +103,9 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   });
 
   it('21.S44: a cancelled unit\'s topic is carried as any other, its entries in the ledger', () => {
-    carry('gone.discussion.gone', [{ ref: 'q1', event: 'asked', text: 'What caused it?', by: 'claude', map_item: 'cause', cites: [{ path: 'gone/topics/gone/log.md', section: 'Cause' }] }]);
+    carry('gone.discussion.gone', [{ ref: 'q1', event: 'asked', text: 'What caused it?', by: 'claude', map_item: 'cause', cites: [{ path: 'gone/topics/gone/log.md', section: 'Cause' }], assets: [{ path: 'gone/assets/notes.md', status: 'reference' }] }]);
 
-    assert.deepStrictEqual(lines().map(({ unit, topic, text }) => [unit, topic, text]), [['gone', 'gone', 'What caused it?']]);
+    assert.deepStrictEqual(lines().map(({ unit, topic, text, path: file }) => [unit, topic, text ?? file]), [['gone', 'gone', 'What caused it?'], ['gone', 'gone', 'gone/assets/notes.md']]);
   });
 
   it('a record of no entries, for a topic with no log and nothing come in from it, is kept, the ledger left as it was', () => {
@@ -111,12 +113,21 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
+  it('the verifier\'s findings and a refusal beside the record, cleared once it is carried', () => {
+    writeState(dir, findingsPath('fumi', 'licensing'), '## Trial Length\n\nDropped.\n');
+    writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
+
+    carry(LICENSING, [QUESTION, DECISION]);
+
+    assert.deepStrictEqual([findingsPath('fumi', 'licensing'), refusedPath('fumi', 'licensing')].map((rel) => fs.existsSync(statePath(dir, rel))), [false, false]);
+  });
+
   it('outside the migration: once the state branch has its first commit, refused, nothing written', () => {
     git(statePath(dir), ['add', '-A']);
     git(statePath(dir), ['commit', '-q', '-m', 'the migration\'s commit']);
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
 
-    const { error } = refuses(dir, ['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [QUESTION, DECISION] })], { env: SESSION });
+    const { error } = refuses(dir, composed(LICENSING, { entries: [QUESTION, DECISION] }), { env: SESSION });
 
     assert.strictEqual(error, 'ledger carry: a topic\'s record is carried into the ledger only while the migration runs — the state branch has its first commit, so the migration is done');
     assert.deepStrictEqual([fs.existsSync(statePath(dir, layout.ledger)), fs.existsSync(statePath(dir, carriedPath('fumi', 'licensing'))), git(statePath(dir), ['rev-parse', 'HEAD'])], [false, false, head]);
@@ -130,13 +141,13 @@ describe('a redo never duplicates (21.10.9)', () => {
   it('a topic\'s record is carried once: carried again, it is refused, nothing written', () => {
     carry(LICENSING, [QUESTION, DECISION]);
 
-    assert.strictEqual(untouched(['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [QUESTION, DECISION] })]),
+    assert.strictEqual(untouched(composed(LICENSING, { entries: [QUESTION, DECISION] })),
       'ledger carry: the ledger holds entries on fumi\'s licensing already — a topic\'s record is carried once');
     assert.strictEqual(lines().length, 3);
   });
 
   it('killed as the ledger is renamed in, the topic has none of its entries and its record is kept; carried again, the ledger holds each once', () => {
-    const args = ['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [QUESTION, DECISION] })];
+    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
     killedAt({ method: 'renameSync', file: layout.ledger, when: 'before' }, dir, args, { env: SESSION });
 
     assert.deepStrictEqual([fs.existsSync(statePath(dir, layout.ledger)), kept('fumi', 'licensing').entries.length], [false, 2]);
@@ -145,7 +156,7 @@ describe('a redo never duplicates (21.10.9)', () => {
   });
 
   it('killed once the ledger is renamed in, the topic has all of its entries, and is never carried again', () => {
-    const args = ['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [QUESTION, DECISION] })];
+    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
     killedAt({ method: 'renameSync', file: layout.ledger, when: 'after' }, dir, args, { env: SESSION });
 
     const landed = readState(dir, layout.ledger);
@@ -160,20 +171,21 @@ describe('the refusals, nothing written', () => {
   before(() => { dir = world(); });
   after(() => cleanupFixture(path.dirname(dir)));
 
-  it('no session, argv of another shape, and a place naming no topic, writing nothing; a file holding no record, writing its refusal beside the record', () => {
-    const file = recordFile({ entries: [QUESTION] });
-    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic> --file <record>   (the topic\'s record as JSON, {"entries": [...]})';
+  it('no session, argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
+    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
     assert.deepStrictEqual([
-      untouched(['ledger', 'carry', LICENSING, '--file', file], { env: {} }),
-      untouched(['ledger', 'carry', LICENSING]),
-      untouched(['ledger', 'carry', '--file', file]),
-      untouched(['ledger', 'carry', LICENSING, 'more', '--file', file]),
-      untouched(['ledger', 'carry', 'fumi.discussion', '--file', file]),
-      untouched(['ledger', 'carry', 'fumi.specification.licensing', '--file', file]),
-      untouched(['ledger', 'carry', 'nope.discussion.licensing', '--file', file]),
-      untouched(['ledger', 'carry', 'gone.investigation.gone', '--file', file]),
-      untouched(['ledger', 'carry', 'fumi.discussion.billing', '--file', file]),
-      refusedKeeping(dir, ['ledger', 'carry', LICENSING, '--file', path.join(path.dirname(dir), 'missing.json')], refusedPath('fumi', 'licensing')).replace(/: ENOENT[^]*$/, ''),
+      untouched(['ledger', 'carry', LICENSING], { env: {} }),
+      untouched(['ledger', 'carry']),
+      untouched(['ledger', 'carry', '--file', 'record.json']),
+      untouched(['ledger', 'carry', LICENSING, '--file', 'record.json']),
+      untouched(['ledger', 'carry', LICENSING, 'more']),
+      untouched(['ledger', 'carry', 'fumi.discussion']),
+      untouched(['ledger', 'carry', 'fumi.specification.licensing']),
+      untouched(['ledger', 'carry', 'fumi.research.search']),
+      untouched(['ledger', 'carry', 'nope.discussion.licensing']),
+      untouched(['ledger', 'carry', 'gone.investigation.gone']),
+      untouched(['ledger', 'carry', 'fumi.discussion.billing']),
+      refusedKeeping(dir, ['ledger', 'carry', LICENSING], refusedPath('fumi', 'licensing')).replace(/: ENOENT[^]*$/, ''),
       mend({ entries: [QUESTION], more: true }),
       mend({ entries: ['q1'] }),
     ], [
@@ -181,14 +193,16 @@ describe('the refusals, nothing written', () => {
       usage,
       usage,
       usage,
+      usage,
       'ledger carry: "fumi.discussion" names no topic — <work-unit>.<phase>.<topic>',
-      'ledger carry: no topic is in "specification" — one of discovery, research, experiment, discussion, investigation',
+      'ledger carry: the records carry no topic in "specification" — one of discovery, discussion, investigation',
+      'ledger carry: the records carry no topic in "research" — one of discovery, discussion, investigation',
       'ledger carry: there is no work unit "nope"',
-      'ledger carry: gone has no investigation phase',
+      'ledger carry: gone has no topic "gone" in investigation',
       'ledger carry: fumi has no topic "billing" in discussion',
-      `ledger carry: the record could not be read from ${path.join(path.dirname(dir), 'missing.json')}`,
-      'ledger carry: {dir}/record.json holds no record — a record is {"entries": [...]}, each entry an object',
-      'ledger carry: {dir}/record.json holds no record — a record is {"entries": [...]}, each entry an object',
+      'ledger carry: the record could not be read from .cache/migrate/records/fumi/licensing.json',
+      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object',
+      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object',
     ]);
   });
 

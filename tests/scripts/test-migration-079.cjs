@@ -9,7 +9,10 @@
 // promoted to a cross-cutting unit, carried there, its research's threads
 // and its agent store read where it was promoted from; each done once its
 // record is carried — an entry at least where its log holds anything, and
-// every import come in from it linked, a record of none included; every
+// every import come in from it whose file the state holds linked, a unit of
+// one topic's from its discovery among them and an epic's from its
+// discovery as a whole asked of none; a record of none keeping every rule
+// but the cites; every
 // entry citing a heading its file holds once — its log, its brief, an
 // experiment's record, a spec kept as an asset, or the unit's spec.md as the
 // code branch's HEAD holds its specs, where its building started — every
@@ -18,9 +21,11 @@
 // question, and every review never folded in in its log. A record breaking
 // a rule is refused at the carry, the refusal written beside the record and
 // nothing else, and carries once mended. `.workflows/` is read in the main
-// checkout, from a linked worktree too. The check rests on the record the
+// checkout, and the record where the state keeps it, from a linked worktree
+// too. The check rests on the record the
 // carry kept and its ids in the ledger. The directive's own example record
-// carries. The directive's head is linted with every directive's
+// carries, and the directive spells no path from the session's folder. The
+// directive's head is linted with every directive's
 // (test-migration-directives.cjs); the carry's mechanics are
 // test-engine-ledger-carry.cjs's.
 //
@@ -42,7 +47,7 @@ const { SESSION, OLD_REVIEWS, PROMOTED_REVIEWS, recordsMigration, refusedKeeping
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { composedPath, carriedPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, carriedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const DIRECTIVE = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations/079-records.md');
 
 const RECORDS = '079-records';
@@ -95,7 +100,7 @@ const GOOD = Object.freeze({
     { ref: 'd1', event: 'decided', answers: 'q1', text: 'By price.', why: 'The spec\'s corrigendum replaced by name.', by: 'claude', given: 'carried', map_item: 'tie-break', cites: [{ path: 'shop/spec.md', section: 'Corrigenda' }] },
   ],
   'gone.discussion.gone': [
-    { ref: 'q1', event: 'asked', text: 'What caused it?', by: 'claude', map_item: 'cause', cites: [logCite('gone', 'gone', 'Cause')] },
+    { ref: 'q1', event: 'asked', text: 'What caused it?', by: 'claude', map_item: 'cause', cites: [logCite('gone', 'gone', 'Cause')], assets: [{ path: layout.assets('gone', 'notes.md'), status: 'reference' }] },
   ],
 });
 
@@ -116,7 +121,7 @@ const unfinished = (at = dir) => Object.fromEntries(checked(at).unfinished.map((
 function carryArgs(at, dotpath, entries) {
   const [unit, , topic] = dotpath.split('.');
   writeState(at, composedPath(unit, topic), JSON.stringify({ entries }));
-  return ['ledger', 'carry', dotpath, '--file', statePath(at, composedPath(unit, topic))];
+  return ['ledger', 'carry', dotpath];
 }
 
 /** A topic's record carried. @param {string} dotpath @param {unknown[]} entries @param {string} [at] @param {string} [cwd] */
@@ -254,22 +259,49 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     mended('fumi.discussion.search');
   });
 
-  it('an import come in from the topic that no entry links, a record of no entries and a topic of no log among them', () => {
+  it('an import come in from the topic that no entry links, a record of no entries and a topic of no log among them, and in a unit of one topic one from its discovery; one whose file is gone, and an epic\'s from its discovery as a whole, asked of no topic', () => {
+    const { assets: _, ...cause } = GOOD['gone.discussion.gone'][0];
     assert.deepStrictEqual([
-      refused('fumi.discussion.licensing', GOOD['fumi.discussion.licensing'].map(({ assets: _, ...entry }) => entry)),
+      refused('fumi.discussion.licensing', GOOD['fumi.discussion.licensing'].map(({ assets: __, ...entry }) => entry)),
       refused('fumi.discovery.billing', []),
+      refused('gone.discussion.gone', [cause]),
     ], [
       breaks('fumi', 'licensing', ['fumi/assets/pricing.md came in from discussion/licensing, and no entry links it']),
-      breaks('fumi', 'billing', ['fumi/assets/rates.md came in from discovery/billing, and no entry links it']),
+      breaks('fumi', 'billing', ['fumi/assets/rates.md came in from research/billing, and no entry links it']),
+      breaks('gone', 'gone', ['gone/assets/notes.md came in from discovery, and no entry links it']),
     ]);
     mended('fumi.discussion.licensing');
     mended('fumi.discovery.billing');
+    mended('gone.discussion.gone');
+    mended('shop.discussion.weights');
+  });
+
+  it('an import from the discovery of a unit no epic but holding several topics is asked of none of them', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('platform')));
+    writeState(dir, layout.manifest('platform'), JSON.stringify({
+      ...manifest, imports: [...manifest.imports, { path: 'assets/keys.md', imported_at: '2026-01-06T10:00:00Z', origin: 'discovery' }],
+      phases: { discussion: { items: { ...manifest.phases.discussion.items, keys: { status: 'in-progress' } } } },
+    }));
+    writeState(dir, layout.assets('platform', 'keys.md'), '# Keys\n');
+    foldAuth();
+
+    mended('platform.discussion.auth');
   });
 
   it('an empty record, where the topic\'s log holds anything; a topic with no log and nothing come in from it carries one', () => {
-    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', ['its record is empty, and its log is not']));
+    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', ['its record is empty, and its log is not', 'tie-break is decided on its map, and no entry carries it']));
     mended('shop.discussion.weights');
     mended('fumi.discovery.support');
+  });
+
+  it('an empty record of a topic with no log still carries its old map, its threads and its review never folded in (21.12.7, 21.6.7, 21.5.12)', () => {
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'log.md')));
+
+    assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', [
+      'ranking is decided on its map, and no entry carries it', 'typo-tolerance is still open on its map, and no open question carries it',
+      'synonyms is deferred on its map, and no open question carries it', 'the thread index-size is still digging in its research, and no open question carries it',
+      'review-001, a review never folded in, is not in its log',
+    ]));
   });
 
   it('the unit\'s spec.md where its building never started; where it started, a heading its specs on HEAD lack, or hold more than once', () => {
@@ -285,7 +317,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
 });
 
 describe('from a linked worktree (4.1.4)', () => {
-  it('the carry and the check read `.workflows/` in the main checkout — its old map on HEAD and its agent store — not the worktree\'s branch, whose map differs and which holds no store', () => {
+  it('the carry reads the record where the state keeps it, and with the check reads `.workflows/` in the main checkout — its old map on HEAD and its agent store — not the worktree\'s branch, whose map differs and which holds no store; carried, what was said beside the record is cleared', () => {
     dir = world();
     const side = path.join(path.dirname(dir), 'side');
     git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);
@@ -303,7 +335,9 @@ describe('from a linked worktree (4.1.4)', () => {
       'review-001, a review never folded in, is not in its log',
     ]));
     foldSearch();
+    writeState(dir, findingsPath('fumi', 'search'), '## Ranking\n\nDropped.\n');
     carry('fumi.discussion.search', GOOD['fumi.discussion.search'], dir, side);
+    assert.deepStrictEqual([findingsPath('fumi', 'search'), refusedPath('fumi', 'search')].map((rel) => fs.existsSync(statePath(dir, rel))), [false, false]);
     assert.deepStrictEqual(unfinished(side), unfinished(dir));
     assert.strictEqual(unfinished(side)['fumi/search'], undefined);
   });
@@ -319,7 +353,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished(), {
       'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
       'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': ['its record is empty, and its log is not'],
+      'shop/weights': ['its record is empty, and its log is not', 'tie-break is decided on its map, and no entry carries it'],
     });
   });
 
@@ -345,5 +379,11 @@ describe('the directive\'s example record, frozen with 079', () => {
     carry('fumi.discussion.licensing', entries);
 
     assert.strictEqual(unfinished()['fumi/licensing'], undefined);
+  });
+
+  it('spells no path from the session\'s folder: every state path is the brief\'s or the engine\'s, the carry naming the topic alone', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([text.includes('.leeway/'), /ledger carry \{unit\}\.\{phase\}\.\{topic\}\n/.test(text)], [false, true]);
   });
 });

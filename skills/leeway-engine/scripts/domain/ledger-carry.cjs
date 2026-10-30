@@ -2,19 +2,21 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a topic's record carried into the ledger by the migration
-// (21.6, 21.10.9) — `ledger carry <unit>.<phase>.<topic> --file <record>`,
-// the records directive's one write.
+// (21.6, 21.10.9) — `ledger carry <unit>.<phase>.<topic>`, the records
+// directive's one write.
 //
 // - When: only while the migration runs (state-worktree.cjs's
 //   `migrationRuns`), so its commit is held for the migration's, and the
 //   trust log is told nothing (21.1.5, 21.9.3).
-// - Where: a topic of a unit, holding an item in the phase named, as a
-//   ledger write's place is read, but for its liveness: a cancelled unit's
-//   topics and a cancelled topic get their records too (21.6.2), their
-//   entries landing not current, by the rule every read decides by. A topic
-//   an epic promoted to a cross-cutting unit is that unit's to carry.
-// - What: the record as one JSON object in the file named, `{"entries":
-//   […]}`, each entry an `asked`, `found` or `decided` in the content its
+// - Where: a topic of a unit, holding an item in the phase named, one of the
+//   phases the records directive carries a topic of (079's check), live or
+//   not: a cancelled unit's topics and a cancelled topic get their records
+//   too (21.6.2), their entries landing not current, by the rule every read
+//   decides by. A topic an epic promoted to a cross-cutting unit is that
+//   unit's to carry.
+// - What: the record as one JSON object, `{"entries": […]}`, composed where
+//   the state keeps it (`.cache/migrate/records/{unit}/{topic}.json`), read
+//   from the state root whichever checkout the session runs in; each entry an `asked`, `found` or `decided` in the content its
 //   write takes (ledger-write.cjs) — who made it, and for a decision how it
 //   was given, `carried` where the log shows no maker (21.6.5) — beside its
 //   `ref`, a name the record gives it, unique in it; its links by ref, each
@@ -37,22 +39,25 @@
 //   — the record as given, and each entry's ref with the id it was given —
 //   so a session that dies leaves the topic with all of its entries or none
 //   (21.10.9), and the check tells the two apart. A topic the ledger holds
-//   an entry on already is refused: its record was carried.
+//   an entry on already is refused: its record was carried. Once carried,
+//   the verifier's findings on the record and any refusal of it beside it
+//   are cleared.
 // - Frozen with 079: the record this takes and the carried file it keeps
 //   are the directive's, released with it, so a later ledger version keeps
 //   taking them while 079 can run. The check rests on those two things
 //   alone: the carried file's record, and each of its ids standing as a
 //   line's `id` in the ledger, never another field of a line.
 // - It refuses, carrying nothing: outside the migration; no session; argv
-//   of another shape; a place of another shape, a phase no topic is in or
-//   the unit lacks, a topic with no item in it, a topic promoted. And what
-//   the record's composer answers — no file, or one holding no record; an
-//   entry of another event, a ref missing or given twice, a link naming no
-//   earlier entry of the kind it needs, a question answered twice, a map
-//   item or a thread on an entry that takes none, or of another shape,
-//   content its write refuses, who moved whom given, an asset the state
-//   lacks, and a record breaking the directive's rules, naming each thing
-//   it breaks — is written beside the record
+//   of another shape; a place of another shape, a phase the directive
+//   carries no topic of, a unit the project lacks, a topic with no item in
+//   the phase, a topic promoted. And what the record's composer answers —
+//   no record composed, or a file holding none; an entry of another event,
+//   a ref missing or given twice, a link naming no earlier entry of the
+//   kind it needs, a question answered twice, a map item or a thread on an
+//   entry that takes none, or of another shape, content its write refuses,
+//   who moved whom given, an asset the state lacks, and a record breaking
+//   the directive's rules, naming each thing it breaks — is written beside
+//   the record
 //   (`.cache/migrate/records/{unit}/{topic}.refused.md`), for the next
 //   per-topic agent's brief, and nothing else.
 // ---------------------------------------------------------------------------
@@ -61,21 +66,20 @@ const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { appendEntries, withLedger, carrying, commitLedger } = require('./ledger.cjs');
 const { newId, shortIds } = require('./ledger-ids.cjs');
-const { TOPIC_PHASES, hasItem, manifestOf } = require('./ledger-units.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { WRITES, phasesOf, contentFields, checkSaid, checkUnsealed } = require('./ledger-write.cjs');
+const { WRITES, contentFields, checkSaid, checkUnsealed } = require('./ledger-write.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
 const CARRY_VERB = 'carry';
-const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic> --file <record>   (the topic\'s record as JSON, {"entries": [...]})';
+const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic>   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
 const SAID = 'ledger carry';
 
 /** What the migration carried of each topic, state-relative: `{unit}/{topic}.json` beneath it. */
@@ -106,9 +110,15 @@ const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 const RECORDS_DIRECTIVE = '079-records';
 
 /**
- * The records directive's check: its rules and what it reads of a topic,
- * loaded where they are asked for.
- * @returns {{topicsOf: (manifest: Record<string, any>) => string[], recordProblems: (at: Record<string, unknown>) => string[], sourcesOf: (at: Record<string, unknown>) => Record<string, any>}}
+ * The records directive's check: the phases it carries a topic of, its
+ * rules and what it reads of a topic, loaded where they are asked for.
+ * @returns {{
+ *   phases: string[],
+ *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
+ *   topicsOf: (manifest: Record<string, any>) => string[],
+ *   recordProblems: (at: Record<string, unknown>) => string[],
+ *   sourcesOf: (at: Record<string, unknown>) => Record<string, any>,
+ * }}
  */
 const recordsRules = () => require(directiveOf(RECORDS_DIRECTIVE).check);
 
@@ -126,49 +136,43 @@ const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.r
 
 /**
  * A topic of a unit, from its dot-path, live or not. Refuses, in the words
- * of `said`, the command asking, a path of another shape, a phase no topic
- * is in, a unit the project lacks or whose work type has no such phase, and
- * a topic with no item in it.
+ * of `said`, the command asking, a path of another shape, a phase the
+ * records directive carries no topic of, a unit the project lacks, a topic
+ * with no item in the phase, and a topic promoted.
  * @param {string} cwd @param {string} dotpath @param {string} said @returns {Place}
  */
 function topicPlace(cwd, dotpath, said) {
   const parts = String(dotpath).split('.');
   if (parts.length !== 3 || parts.some((part) => part === '')) throw new Error(`${said}: "${dotpath}" names no topic — <work-unit>.<phase>.<topic>`);
   const [unit, phase, topic] = parts;
-  if (!VALID_PHASES.includes(phase) || !TOPIC_PHASES.includes(phase)) throw new Error(`${said}: no topic is in "${phase}" — one of ${TOPIC_PHASES.join(', ')}`);
+  const rules = recordsRules();
+  if (!rules.phases.includes(phase)) throw new Error(`${said}: the records carry no topic in "${phase}" — one of ${rules.phases.join(', ')}`);
   const root = stateRoot(cwd);
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
-  if (!phasesOf(manifest).includes(phase)) throw new Error(`${said}: ${unit} has no ${phase} phase`);
-  if (!hasItem(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
-  if (!recordsRules().topicsOf(manifest).includes(topic)) {
+  if (!rules.holds(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
+  if (!rules.topicsOf(manifest).includes(topic)) {
     throw new Error(`${said}: ${unit}'s ${topic} was promoted to ${manifest.phases.discussion.items[topic].promoted_to}, which carries its record`);
   }
   return { root, unit, phase, topic };
 }
 
-/**
- * The place and the record's file `args` give, refused for argv of another
- * shape.
- * @param {string[]} args @returns {{dotpath: string, file: string}}
- */
-function requestOf(args) {
-  const at = args.indexOf('--file');
-  const file = at === -1 ? undefined : args[at + 1];
-  const positional = args.filter((_, i) => i !== at && i !== at + 1);
-  if (file === undefined || file.startsWith('--') || positional.length !== 1 || positional[0].startsWith('--')) throw new Error(`Usage: engine ${CARRY_USAGE}`);
-  return { dotpath: positional[0], file };
+/** The place `args` give, refused for argv of another shape. @param {string[]} args @returns {string} */
+function dotpathOf(args) {
+  if (args.length !== 1 || args[0].startsWith('--')) throw new Error(`Usage: engine ${CARRY_USAGE}`);
+  return args[0];
 }
 
 /**
- * The record's entries, read from its file. Refuses a file that cannot be
- * read, and one holding no record.
- * @param {string} cwd @param {string} file @returns {Record<string, any>[]}
+ * The topic's record's entries, read where it is composed. Refuses a file
+ * that cannot be read, and one holding no record.
+ * @param {Place} place @returns {Record<string, any>[]}
  */
-function readRecord(cwd, file) {
+function readRecord({ root, unit, topic }) {
+  const file = composedPath(unit, topic);
   let record;
   try {
-    record = JSON.parse(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+    record = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
   } catch (err) {
     throw new Error(`${SAID}: the record could not be read from ${file}: ${messageOf(err)}`);
   }
@@ -312,11 +316,11 @@ function keepCarried({ root, unit, phase, topic }, entries, kept) {
  * The record read, its lines drawn and held to the directive's rules; where
  * the composer must answer something, the refusal written beside the
  * record.
- * @param {string} cwd @param {Place} place @param {string} file @param {string} session
+ * @param {string} cwd @param {Place} place @param {string} session
  */
-function composedRecord(cwd, place, file, session) {
+function composedRecord(cwd, place, session) {
   try {
-    const entries = readRecord(cwd, file);
+    const entries = readRecord(place);
     const { lines, kept } = recordLines(place, entries, session);
     checkRules(cwd, place, entries);
     return { entries, lines, kept };
@@ -326,10 +330,15 @@ function composedRecord(cwd, place, file, session) {
   }
 }
 
+/** What was said of a topic's record beside it cleared, once it is carried: the verifier's findings and any refusal. @param {Place} place */
+function clearBeside({ root, unit, topic }) {
+  for (const rel of [findingsPath(unit, topic), refusedPath(unit, topic)]) fs.rmSync(path.join(root, rel), { force: true });
+}
+
 /**
- * `ledger carry <unit>.<phase>.<topic> --file <record>`: the topic's record
- * appended in one write, what was carried kept, the ledger's commit held
- * for the migration's. Answers how many entries it carried, each entry's
+ * `ledger carry <unit>.<phase>.<topic>`: the topic's record appended in one
+ * write, what was carried kept, what was said of it beside it cleared, the
+ * ledger's commit held for the migration's. Answers how many entries it carried, each entry's
  * short id by its ref, the commit — null, held — and any warnings.
  * @param {string} cwd @param {string[]} args
  */
@@ -340,9 +349,8 @@ function carryRecord(cwd, args) {
     if (!migrationRuns(stateRoot(cwd))) throw new Error(`${SAID}: a topic's record is carried into the ledger only while the migration runs — the state branch has its first commit, so the migration is done`);
     const session = handedSession();
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
-    const { dotpath, file } = requestOf(args);
-    const place = topicPlace(cwd, dotpath, SAID);
-    const { entries, lines, kept } = composedRecord(cwd, place, file, session);
+    const place = topicPlace(cwd, dotpathOf(args), SAID);
+    const { entries, lines, kept } = composedRecord(cwd, place, session);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       keepCarried(place, entries, kept);
@@ -352,6 +360,7 @@ function carryRecord(cwd, args) {
         short: shortIds([...beside, ...lines.map(({ id }) => id)]),
       };
     });
+    clearBeside(place);
     if (lines.length > 0) refreshLedgerCopies(cwd, warnings);
     return {
       carried: kept.length,

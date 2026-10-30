@@ -11,9 +11,11 @@
 // research's threads still open and its reviews never folded in, a
 // promoted topic's where it was promoted from, all read in the main
 // checkout from a linked worktree too; the unit's assets with where each
-// came in from, where its record goes, the verifier's findings and the
-// carry's refusal where it has any, and the directive, its headings a level
-// down; the verifier's — the topic, its record as composed, verbatim,
+// came in from, those the topic owes a link and those whose file is gone
+// marked, where its record goes, the verifier's findings and the carry's
+// refusal where it has any, taken by the brief and cleared, and the
+// directive, its headings a level down; a cancelled unit's topic briefed
+// as any other; the verifier's — the topic, its record as composed, verbatim,
 // and the directive; every refusal storing nothing; and the two agents'
 // definitions (21.S35): each fixes its model and effort, and its tools hold
 // no shell, so no engine call and no ledger write is theirs.
@@ -99,9 +101,10 @@ const licensingDrawn = () => [
   '',
   '## The unit\'s assets',
   '',
-  '- fumi/assets/pricing.md, which came in from discussion/licensing',
+  '- fumi/assets/pricing.md, which came in from discussion/licensing — this topic\'s to link',
   '- fumi/assets/sso.md, which came in from discussion/auth',
-  '- fumi/assets/rates.md, which came in from discovery/billing',
+  '- fumi/assets/rates.md, which came in from research/billing',
+  '- fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it',
   '',
   '## Where the record goes',
   '',
@@ -120,7 +123,7 @@ function refusedUnissued(args, pattern) {
 }
 
 describe('the per-topic agent\'s brief (21.10.5)', () => {
-  it('the topic as the move left it — its files but its mail, its spec grouped under another name and kept as an asset, its old map, the unit\'s assets and where each came in from, where its record goes — no findings yet, and the directive', () => {
+  it('the topic as the move left it — its files but its mail, its spec grouped under another name and kept as an asset, its old map, the unit\'s assets and where each came in from, the one it owes a link and the one whose file is gone marked, where its record goes — no findings yet, and the directive', () => {
     writeState(dir, layout.topic('fumi', 'licensing', 'mail', '001-seats.md'), '### Seats\n');
 
     const { res, brief } = issued(['migration-topic', ...LICENSING]);
@@ -165,20 +168,31 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(brief.includes('- review-001: .workflows/.cache/fumi/discussion/search/review-001.md'), brief);
   });
 
-  it('briefed afresh after a carry refused its record, it carries the refusal verbatim', () => {
+  it('briefed afresh after a carry refused its record, it carries the refusal verbatim and clears it, so the next brief carries none', () => {
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: fumi\'s licensing breaks the records directive\'s rules, so nothing is carried — entry q1 cites nothing\n');
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
     assert.ok(brief.includes('# The carry\'s refusal\n\nledger carry: fumi\'s licensing breaks the records directive\'s rules, so nothing is carried — entry q1 cites nothing\n\n# The directive'), brief);
+    assert.strictEqual(fs.existsSync(statePath(dir, refusedPath('fumi', 'licensing'))), false);
+    assert.ok(issued(['migration-topic', ...LICENSING]).brief.includes('# The carry\'s refusal\n\nNone recorded.\n\n# The directive'));
   });
 
-  it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim', () => {
+  it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim and clears them, so the next brief carries none', () => {
     writeState(dir, findingsPath('fumi', 'licensing'), '## Trial Length\n\nThe record drops the trial\'s fourteen days.\n');
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
     assert.ok(brief.includes('# The verifier\'s findings\n\n## Trial Length\n\nThe record drops the trial\'s fourteen days.\n\n# The carry\'s refusal'));
+    assert.strictEqual(fs.existsSync(statePath(dir, findingsPath('fumi', 'licensing'))), false);
+    assert.ok(issued(['migration-topic', ...LICENSING]).brief.includes('# The verifier\'s findings\n\nNone recorded.\n\n# The carry\'s refusal'));
+  });
+
+  it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link', () => {
+    const { brief } = issued(['migration-topic', '--topic', 'gone.discussion.gone', '--directive', '079-records']);
+
+    assert.ok(brief.includes('- **Unit:** gone, feature, cancelled\n- **Topic:** gone, in discussion, in-progress\n'), brief);
+    assert.ok(brief.includes('## The unit\'s assets\n\n- gone/assets/notes.md, which came in from discovery — this topic\'s to link\n'), brief);
   });
 });
 
@@ -196,10 +210,11 @@ describe('the verifier\'s brief (21.10.7)', () => {
 });
 
 describe('the refusals, nothing stored', () => {
-  it('a directive the migrations lack, a place naming no topic, a topic the unit lacks, a topic promoted, and the verifier\'s brief with no record composed, or an empty one', () => {
+  it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '../079'], /^"\.\.\/079" is no directive's id/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.licensing', '--directive', '079-records'], /^brief: "fumi\.licensing" names no topic — <work-unit>\.<phase>\.<topic>$/);
+    refusedUnissued(['migration-topic', '--topic', 'fumi.research.search', '--directive', '079-records'], /^brief: the records carry no topic in "research" — one of discovery, discussion, investigation$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.billing', '--directive', '079-records'], /^brief: fumi has no topic "billing" in discussion$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.auth', '--directive', '079-records'], /^brief: fumi's auth was promoted to platform, which carries its record$/);
     refusedUnissued(['migration-verifier', ...LICENSING], /^fumi's licensing has no record composed — .*licensing\.json is no file$/);

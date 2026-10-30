@@ -4,10 +4,11 @@
 
 - The ledger, through `ledger carry`, one topic's record at a time, and
   through `raise` for the points raised at the end.
-- Each topic's log, `.leeway/{unit}/topics/{topic}/log.md`, to fold in a
-  review never folded in.
+- Each topic's log, `{unit}/topics/{topic}/log.md` in the state, to fold
+  in a review never folded in.
 - Each topic's record as composed, the verifier's findings on it, and a
-  carry's refusal of it, in `.leeway/.cache/migrate/records/{unit}/`.
+  carry's refusal of it, in the state's cache, where the topic's brief
+  names them.
 
 ## Asks
 
@@ -19,7 +20,7 @@
 
 Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic.
 
-Paths below are from `.leeway/` unless they name `.workflows/`. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
+Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
 
 ## A Topic's Sources
 
@@ -44,7 +45,7 @@ First append each review never folded in to the end of the topic's log, verbatim
 - **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`, a list where one question carries several.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 - **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
-- **Assets.** Each of the unit's assets that came in from the topic, or that its log or brief links to, is linked as `reference` from the entry that draws on it.
+- **Assets.** Each of the unit's assets its brief marks the topic's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic whose log holds anything has an entry at least.
 - **Points no source settles** — what was decided where the log is unclear, a log at odds with its spec — are open questions, kept for the raises at the end.
 
@@ -60,7 +61,7 @@ The record is one JSON object. Each entry names itself by its `ref`, and links t
 
 ## Working Through the Topics
 
-A topic the check names is composed from the start, never from what an earlier session left of it: first delete the verifier's findings and the carry's refusal an earlier session left beside its record, `{topic}.findings.md` and `{topic}.refused.md` in `.leeway/.cache/migrate/records/{unit}/`.
+A topic the check names is composed from the start, never from what an earlier session left of it. Each brief takes the verifier's findings and the carry's refusal waiting beside the topic's record, and clears them, as a carry does, so none reaches a later brief.
 
 Give each topic to the migration's per-topic agent; the topics run side by side. Its brief names where it writes the record:
 
@@ -74,13 +75,13 @@ Then the verifier reads each record against its sources and writes its findings 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-verifier --topic {unit}.{phase}.{topic} --directive 079-records
 ```
 
-Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent composes the record again, its brief carrying the findings, and the verifier reads it again, until it passes the record. Then carry it, which appends the whole record in one write:
+Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent composes the record again, its brief carrying the findings, and the verifier reads it again, until it passes the record. Then carry it, which reads the record where the brief said it goes and appends it whole in one write:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic} --file .leeway/.cache/migrate/records/{unit}/{topic}.json
+node .claude/skills/leeway-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic}
 ```
 
-Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming what it breaks, the refusal written beside the record as `{topic}.refused.md`, and nothing is carried: a fresh per-topic agent composes it again, its brief carrying the refusal, and it is verified and carried again. An agent's record is never edited by hand. The carry's answer gives each entry's id by its ref: keep the ids of the points to raise.
+Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming what it breaks, the refusal kept beside the record for the next brief, and nothing is carried: a fresh per-topic agent composes it again, its brief carrying the refusal, and it is verified and carried again. An agent's record is never edited by hand. The carry's answer gives each entry's id by its ref: keep the ids of the points to raise.
 
 ## The Raises at the End
 
@@ -89,7 +90,7 @@ Once every topic is carried and the check passes, and before the directive's che
 The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs raise {unit}.{phase}.{topic} --answers {question} --fact
+node .claude/skills/leeway-engine/scripts/engine.cjs raise {unit}.{phase}.{topic} --answers {question-id} --fact
 ```
 
 Emit its sections verbatim per their markers. Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic.
