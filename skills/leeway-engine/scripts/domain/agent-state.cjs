@@ -17,7 +17,12 @@
 // with `announced` (user told the file exists) and `surfaced[]` (finding
 // ids raised so far) tracked on acknowledged rows. `scan` is the one read
 // the surfacing protocol and conclusion gates need: it promotes finished
-// rows and answers with a decision-ready snapshot.
+// rows and answers with a decision-ready snapshot. Each row names the
+// Claude process and conversation that dispatched it, as a presence record
+// names its owner, so the entry can tell the agents a topic was left with
+// (`agentsLeft`): a report that landed since, or an agent lost with a
+// process that no longer runs — a resumed conversation keeps its session id,
+// never its process — and never re-dispatched by the engine.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -28,6 +33,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -374,6 +380,8 @@ function latestReview(cwd, workUnit, topic) {
  * snapshot arming measures against.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
+ * Each row names the dispatching process and conversation (`pid`,
+ * `pid_start`, `session_id`), null where Claude Code handed none.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {{kind: string, labels?: string[], set?: string, final?: boolean}} opts
  */
@@ -472,6 +480,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
       ? labels.map((label) => `${kind}-${nnn}-${label}`)
       : [`${kind}-${nnn}`];
     const created = new Date().toISOString();
+    const dispatcher = callerIdentity();
     const agents = ids.map((id, i) => {
       state.agents[id] = {
         id,
@@ -485,6 +494,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         findings: [],
         surfaced: [],
         created,
+        ...dispatcher,
         ...(mapSnapshot ? { map_snapshot: mapSnapshot } : {}),
       };
       return { id, file: path.join(dir, `${id}.md`) };
@@ -530,6 +540,36 @@ function publicRow(row) {
 
 // Kinds that are consumed by another agent, never surfaced to the user.
 const NEVER_SURFACED = ['perspective'];
+
+/**
+ * The agents a topic was left with, untaken, in dispatch order — never a
+ * peer's whose process still runs, which stay that peer's: `landed`, each with
+ * its report's path, where the report is on disk and not yet read in; `lost`
+ * where it is not and the process that dispatched it no longer runs — a
+ * conversation resumed after a crash keeps its session id, never its
+ * process, and a row naming no process is never verified alive. One of the
+ * caller's own still running is neither. Read without promoting or saving
+ * anything, and a store that does not read answers none, as a derivation's
+ * read does.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {{landed: {id: string, file: string}[], lost: string[]}}
+ */
+function agentsLeft(cwd, workUnit, phase, topic) {
+  const dir = agentDir(cwd, workUnit, phase, topic);
+  const startOf = startTimeReader();
+  /** @type {{landed: {id: string, file: string}[], lost: string[]}} */
+  const left = { landed: [], lost: [] };
+  const untaken = derivationRows(dir)
+    .filter((row) => phaseCarries(phase, row.kind) && (row.status === 'in-flight' || row.status === 'pending'))
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
+  for (const row of untaken) {
+    const alive = ownerAlive(row, startOf);
+    if (alive && !ownsRow(row)) continue;
+    if (contentFileExists(row, cwd, workUnit)) left.landed.push({ id: row.id, file: path.join(dir, `${row.id}.md`) });
+    else if (!alive) left.lost.push(row.id);
+  }
+  return left;
+}
 
 /**
  * Scan: promote every in-flight row whose content file now exists, then
@@ -704,6 +744,7 @@ module.exports = {
   completedReviewCycles,
   reviewArming,
   agentRows,
+  agentsLeft,
   latestReview,
   settleFoldedSubtopic,
 };

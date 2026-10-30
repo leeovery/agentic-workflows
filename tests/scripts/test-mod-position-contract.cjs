@@ -6,7 +6,7 @@
 // JSON, the rows mod knows a compaction's note by the engine's opening words,
 // and both name the record of the notes handed up alike; the gate mod's
 // spinner reads the position file the engine keeps, by its name and keys,
-// again after each task verb the engine moves it with;
+// again after the entry and each task verb the engine moves it with;
 // and the gate mod records the executor the implementation dispatches
 // through the verb the engine answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
@@ -124,6 +124,22 @@ describe('the mods read conversation position as the engine writes it', () => {
       assert.match(`node ${engine} task ${verb} pay 1.1`, new RegExp(moves[1]), `task ${verb}`);
     }
     assert.match(`node ${engine} task complete pay ledger ledger-1-1`, new RegExp(moves[1]), 'task complete');
+  });
+
+  it('the spinner reads the position again after the entry the engine records it through', () => {
+    const moves = /const MOVES =\s*\/(.+)\/\n/.exec(source('skills/leeway-gates/hooks/spinner.ts'));
+    assert.ok(moves, 'the spinner declares the calls that move the position');
+    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: {
+        discovery: { items: { ledger: { order: 1, summary: 'The ledger', routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { ledger: { status: 'in-progress' } } },
+      },
+    }));
+    harness.ok(dir, ['enter', 'discussion', 'pay', 'ledger'], { env: env() });
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/leeway-gates/hooks/folder.ts', 'POSITION'));
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { name: 'pay', phase: 'discussion', topic: 'ledger' });
+    assert.match(`node ${literal('skills/leeway-gates/hooks/folder.ts', 'ENGINE')} enter discussion pay ledger`, new RegExp(moves[1]));
   });
 
   it('the spinner has a word for every phase and project-level place the engine records', () => {

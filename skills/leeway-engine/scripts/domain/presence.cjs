@@ -43,7 +43,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { callerIdentity, startTimeReader, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
@@ -116,15 +116,10 @@ function beatPresence(cwd, workUnit, phase, topic) {
   assertArgs(cwd, workUnit, phase, topic);
   const p = presencePath(cwd, workUnit, phase, topic);
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  const pid = Number(process.env.CLAUDE_PID) || null;
-  if (!pid) throw new Error('presence beat: CLAUDE_PID is not set — a heartbeat without identity is never held, so none is written');
+  const owner = callerIdentity();
+  if (!owner.pid) throw new Error('presence beat: CLAUDE_PID is not set — a heartbeat without identity is never held, so none is written');
   /** @type {PresenceRecord} */
-  const record = {
-    pid,
-    pid_start: processStartTime(pid),
-    session_id: handedSession(),
-    checkout: workTree(codeRoot(cwd)),
-  };
+  const record = { ...owner, checkout: workTree(codeRoot(cwd)) };
   fs.writeFileSync(p, JSON.stringify(record) + '\n');
   return { work_unit: workUnit, phase, topic, beat: true };
 }
@@ -159,8 +154,8 @@ function beatQuietly(cwd, workUnit, phase, topic) {
  * — a foreign topic's mailbox is legitimately checked from another session —
  * so creating a hold here would manufacture a phantom, and stamping over a
  * peer's record would re-attribute a hold. Ownership was established by
- * the write-shaped verbs that are self-referential by construction (`topic
- * start`, the entry renders, the cadence commit); this keeps that hold's
+ * the write-shaped verbs that are self-referential by construction (`enter`,
+ * `topic start`, the entry renders, the cadence commit); this keeps that hold's
  * last-active age honest through quiet polling turns. Same silence as
  * `beatQuietly`.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
@@ -214,19 +209,6 @@ function clearOwnQuietly(cwd, workUnit, phase, topic) {
  */
 
 /**
- * Memoised process start times — one `ps` per pid across a whole scan.
- * @returns {(pid: number) => string|null|undefined}
- */
-function startTimeReader() {
-  /** @type {Map<number, string|null>} */
-  const cache = new Map();
-  return (pid) => {
-    if (!cache.has(pid)) cache.set(pid, processStartTime(pid));
-    return cache.get(pid);
-  };
-}
-
-/**
  * Is the heartbeat held — its owning process verified alive (the kernel's
  * liveness rule)? A missing record is never held.
  * @param {PresenceRecord|null} record
@@ -235,6 +217,30 @@ function startTimeReader() {
  */
 function heldBy(record, startOf) {
   return record !== null && ownerAlive(record, startOf);
+}
+
+/**
+ * One topic's heartbeat as a row, the held verdict applied; null where the
+ * topic has none.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @param {(pid: number) => string|null|undefined} startOf
+ * @returns {PresenceRow|null}
+ */
+function rowAt(cwd, workUnit, phase, topic, startOf) {
+  const file = presencePath(cwd, workUnit, phase, topic);
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch { return null; }
+  const record = readRecord(file);
+  return {
+    phase, topic,
+    age_seconds: Math.max(0, Math.floor((Date.now() - stat.mtimeMs) / 1000)),
+    held: heldBy(record, startOf),
+    session_id: record ? record.session_id || null : null,
+    pid: record ? record.pid ?? null : null,
+    checkout: record ? record.checkout ?? null : null,
+  };
 }
 
 /**
@@ -254,23 +260,24 @@ function collectRows(cwd, workUnit, startOf) {
       topics = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
     } catch { /* phase never cached */ }
     for (const topic of topics) {
-      const file = path.join(dir, topic, 'presence');
-      let stat;
-      try {
-        stat = fs.statSync(file);
-      } catch { continue; }
-      const record = readRecord(file);
-      rows.push({
-        phase, topic,
-        age_seconds: Math.max(0, Math.floor((Date.now() - stat.mtimeMs) / 1000)),
-        held: heldBy(record, startOf),
-        session_id: record ? record.session_id || null : null,
-        pid: record ? record.pid ?? null : null,
-        checkout: record ? record.checkout ?? null : null,
-      });
+      const row = rowAt(cwd, workUnit, phase, topic, startOf);
+      if (row !== null) rows.push(row);
     }
   }
   return rows;
+}
+
+/**
+ * The hold a peer has on one topic — its row, naming when it was last
+ * active — or null where none does, or the caller holds it. The entry's read
+ * (enter.cjs), which asks before it takes a topic another session holds.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {PresenceRow|null}
+ */
+function peerHold(cwd, workUnit, phase, topic) {
+  if (!PHASES.includes(phase)) return null;
+  const row = rowAt(cwd, workUnit, phase, topic, startTimeReader());
+  return row !== null && row.held && !ownsRow(row) ? row : null;
 }
 
 /**
@@ -430,6 +437,6 @@ function deferralSection(scan) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
-  scanPresence, scanProject, heldCodeSessions, heldDocument, cleanupPresence, deferralSection,
+  scanPresence, scanProject, heldCodeSessions, heldDocument, peerHold, cleanupPresence, deferralSection,
   fmtAge, ownsRow, CODE_PHASES, SOURCE_PHASES,
 };

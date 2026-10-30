@@ -74,9 +74,10 @@ const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
-const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
+const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
-const { assertPlace, recordPosition, recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
+const { recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
+const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -243,6 +244,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   conversation end
   conversation position [session-id]
   conversation executor <session-id> <agent-id>
+  ${ENTER_USAGE}
   layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   shell guard                        (hook before Bash; its JSON on stdin)
   topic complete <work-unit> <phase> <topic>
@@ -1054,10 +1056,7 @@ function runSession(call, argv) {
       if (![1, 3].includes(rest.length) || rest.some((a) => !a)) {
         throw new Error('Usage: engine session label <name> [<phase> <topic>]');
       }
-      assertPlace(call.cwd, name, phase, topic);
-      const labelled = applySessionLabel(call.cwd, name, phase, topic);
-      recordPosition(call.cwd, name, phase, topic);
-      respond(call, labelled);
+      respond(call, arriveAt(call.cwd, name, phase, topic));
       return;
     }
     if (command === 'label-config') {
@@ -1084,6 +1083,22 @@ function runSession(call, argv) {
       return;
     }
     throw new Error('Usage: engine session <label|label-config|repair|cleanup|resume> …');
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// enter — the one call a phase is entered by (domain/enter.cjs): its
+// response line, then any question and the DATA naming what to read.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runEnter(call, argv) {
+  try {
+    const { response, sections } = enter(call.cwd, argv);
+    respond(call, response);
+    respondSections(call, sections);
   } catch (err) {
     failJson(call, err);
   }
@@ -2509,6 +2524,7 @@ const COMMANDS = Object.freeze({
   presence: runPresence,
   session: runSession,
   conversation: runConversation,
+  enter: runEnter,
   layout: guardFamily('layout'),
   shell: guardFamily('shell'),
   task: runTask,
@@ -2534,7 +2550,7 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger` and `raise`, and none but they waits on the lock:
+// `boot`, `ledger`, `raise` and `enter`, and none but they waits on the lock:
 // `knowledge` writes the store the state ignores, under a lock of its own;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
@@ -2544,16 +2560,17 @@ const COMMANDS = Object.freeze({
 // `ledger` read takes none; a `raise` draw or `show` writes the
 // conversation's folder alone — its seal, and the gate shown it clears —
 // and its answer, or a draw that proceeds, holds it around its ledger write
-// as a `ledger` write does; `presence`, `session label`, `repair`, `cleanup`
-// and `resume`, and the hold `topic mailbox` refreshes write only the
-// session files the state ignores; a conversation's folder is outside the
-// project; `gate` writes the trust log, under its own lock, and the
-// conversation's folder; and the rest read: `layout guard` among them, run
-// before every file Claude writes, `brief guard`, before every dispatch of
-// an agent, `shell guard`, before every shell command, and `checklist
-// show`. `manifest` takes it to write alone, `commit` but for a code
-// commit (`--paths`), and a brief's fill whole, since its read of the
-// task may commit the tracker's set-up.
+// as a `ledger` write does; `enter` holds it around a start and its commit
+// alone, its question and reads taking none; `presence`, `session label`,
+// `repair`, `cleanup` and `resume`, and the hold `topic mailbox` refreshes
+// write only the session files the state ignores, as `enter` does beside
+// its start; a conversation's folder is outside the project; `gate`
+// writes the trust log, under its own lock, and the conversation's folder;
+// and the rest read: `layout guard` among them, run before every file Claude
+// writes, `brief guard`, before every dispatch of an agent, `shell guard`,
+// before every shell command, and `checklist show`. `manifest` takes it to
+// write alone, `commit` but for a code commit (`--paths`), and a brief's
+// fill whole, since its read of the task may commit the tracker's set-up.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2561,6 +2578,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   verdict: ['queue'],
   presence: '*',
   conversation: '*',
+  enter: '*',
   layout: '*',
   shell: '*',
   code: '*',

@@ -571,16 +571,19 @@ describe('structurally corrupt manifests refuse writes', () => {
 
 /**
  * One call per entry of the writer lock's exempt table, each one that
- * succeeds in the epic fixture with a specification beside its research, in
- * a conversation — the gate it answers rendered just before it. Boot and the
- * ledger's writes are the table's verbs that wait on the lock, each taking
- * it itself around the state writes it makes, so they have none: the
- * ledger's suite holds its writes to waiting.
+ * succeeds in the epic fixture with a discussion and a specification beside
+ * its research, in a conversation — the gate it answers rendered just before
+ * it. Boot and the ledger's writes are the table's verbs that wait on the
+ * lock, each taking it itself around the state writes it makes, so they have
+ * none: the ledger's suite holds its writes to waiting. `enter` takes it
+ * around a topic's start alone, so its call resumes the discussion under
+ * way, and its own suite holds the start to waiting.
  */
 const EXEMPT_CALLS = [
   ['knowledge', 'status'],
   ['presence', 'scan', 'payments'],
   ['conversation', 'position', 'sess-1'],
+  ['enter', 'discussion', 'payments', 'auth-flow'],
   ['code', 'status'],
   ['render', 'signpost', 'Hello'],
   ['handoff', 'leeway-continue-epic', 'payments'],
@@ -661,13 +664,14 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', async (t) => {
+  it('every exempt command answers without trying the lock while a live holder has it — none but boot, the ledger, a raise\'s answer and an entry\'s start take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
     assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'raise'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside, and a raise after them');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
+    manifest.phases.discussion = { items: { 'auth-flow': { status: 'in-progress' } } };
     manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
     const env = { CLAUDE_CODE_SESSION_ID: 'sess-1' };
