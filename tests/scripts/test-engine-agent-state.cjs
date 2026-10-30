@@ -21,6 +21,7 @@ const path = require('path');
 
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const { ok: engineJson, refuses: engineFails } = require('./engine-harness.cjs');
+const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
 
 /** Agent-store runner: the verb prefix is the suite's subject. */
 const runJson = (dir, args) => engineJson(dir, ['agent', ...args]);
@@ -62,11 +63,12 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
 
-  it('each row names the conversation that dispatched it — none where no session id names one', () => {
-    const named = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } });
-    const unnamed = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: undefined } });
-    const store = readStore(dir, 'pay', 'discussion', 'alpha');
-    assert.deepStrictEqual([store.agents[named.id].session, 'session' in store.agents[unnamed.id]], ['sess-1', false]);
+  it('each row names the process and conversation that dispatched it — null where Claude Code handed none', () => {
+    const named = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid) } });
+    const unnamed = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: undefined } });
+    const { agents } = readStore(dir, 'pay', 'discussion', 'alpha');
+    const dispatcher = (/** @type {string} */ id) => [agents[id].session_id, agents[id].pid, agents[id].pid_start];
+    assert.deepStrictEqual([dispatcher(named.id), dispatcher(unnamed.id)], [['sess-1', process.pid, processStartTime(process.pid)], [null, null, null]]);
   });
 
   it('dispatch numbers past legacy files already in the cache dir', () => {

@@ -18,9 +18,11 @@
 // ids raised so far) tracked on acknowledged rows. `scan` is the one read
 // the surfacing protocol and conclusion gates need: it promotes finished
 // rows and answers with a decision-ready snapshot. Each row names the
-// conversation that dispatched it, so the entry can tell a topic's agents
-// an earlier conversation left (`earlierAgents`): a report that landed after
-// it ended, or an agent lost with it — never re-dispatched by the engine.
+// Claude process and conversation that dispatched it, as a presence record
+// names its owner, so the entry can tell the agents a topic was left with
+// (`earlierAgents`): a report that landed since, or an agent lost with a
+// process that no longer runs — a resumed conversation keeps its session id,
+// never its process — and never re-dispatched by the engine.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -31,7 +33,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { handedSession } = require('../kernel/process.cjs');
+const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -378,7 +380,8 @@ function latestReview(cwd, workUnit, topic) {
  * snapshot arming measures against.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
- * Each row names the dispatching conversation, where Claude Code handed one.
+ * Each row names the dispatching process and conversation (`pid`,
+ * `pid_start`, `session_id`), null where Claude Code handed none.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {{kind: string, labels?: string[], set?: string, final?: boolean}} opts
  */
@@ -477,7 +480,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
       ? labels.map((label) => `${kind}-${nnn}-${label}`)
       : [`${kind}-${nnn}`];
     const created = new Date().toISOString();
-    const session = handedSession();
+    const dispatcher = callerIdentity();
     const agents = ids.map((id, i) => {
       state.agents[id] = {
         id,
@@ -491,7 +494,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         findings: [],
         surfaced: [],
         created,
-        ...(session === null ? {} : { session }),
+        ...dispatcher,
         ...(mapSnapshot ? { map_snapshot: mapSnapshot } : {}),
       };
       return { id, file: path.join(dir, `${id}.md`) };
@@ -539,27 +542,33 @@ function publicRow(row) {
 const NEVER_SURFACED = ['perspective'];
 
 /**
- * A topic's agents an earlier conversation dispatched and left untaken —
- * every row the conversation `sessionId` did not dispatch, in dispatch
- * order: `landed`, each with its report's path, where the report is on disk
- * and has not been read in yet; `lost` where it never landed, its
- * conversation having ended with it in flight. Read without promoting or
- * saving anything, and a store that does not read answers none, as a
- * derivation's read does.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {string|null} sessionId
+ * The agents a topic was left with, untaken, in dispatch order — those a
+ * peer whose process still runs dispatched left to it: `landed`, each with
+ * its report's path, where the report is on disk and not yet read in; `lost`
+ * where it is not and the process that dispatched it no longer runs — a
+ * conversation resumed after a crash keeps its session id, never its
+ * process, and a row naming no process is never verified alive. One of the
+ * caller's own still running is neither. Read without promoting or saving
+ * anything, and a store that does not read answers none, as a derivation's
+ * read does.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {{landed: {id: string, file: string}[], lost: string[]}}
  */
-function earlierAgents(cwd, workUnit, phase, topic, sessionId) {
+function agentsLeft(cwd, workUnit, phase, topic) {
   const dir = agentDir(cwd, workUnit, phase, topic);
-  const earlier = derivationRows(dir)
-    .filter((row) => phaseCarries(phase, row.kind) && (sessionId === null || row.session !== sessionId))
+  const startOf = startTimeReader();
+  /** @type {{landed: {id: string, file: string}[], lost: string[]}} */
+  const left = { landed: [], lost: [] };
+  const untaken = derivationRows(dir)
+    .filter((row) => phaseCarries(phase, row.kind) && (row.status === 'in-flight' || row.status === 'pending'))
     .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
-  const untaken = earlier.filter((row) => row.status === 'in-flight' || row.status === 'pending');
-  const landed = untaken.filter((row) => contentFileExists(row, cwd, workUnit));
-  return {
-    landed: landed.map((row) => ({ id: row.id, file: path.join(dir, `${row.id}.md`) })),
-    lost: untaken.filter((row) => !landed.includes(row)).map((row) => row.id),
-  };
+  for (const row of untaken) {
+    const alive = ownerAlive(row, startOf);
+    if (alive && !ownsRow(row)) continue;
+    if (contentFileExists(row, cwd, workUnit)) left.landed.push({ id: row.id, file: path.join(dir, `${row.id}.md`) });
+    else if (!alive) left.lost.push(row.id);
+  }
+  return left;
 }
 
 /**
@@ -735,7 +744,7 @@ module.exports = {
   completedReviewCycles,
   reviewArming,
   agentRows,
-  earlierAgents,
+  agentsLeft,
   latestReview,
   settleFoldedSubtopic,
 };

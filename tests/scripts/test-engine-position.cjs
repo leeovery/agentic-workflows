@@ -638,7 +638,7 @@ describe('conversation position', () => {
     install('leeway-discussion-process');
     write('.leeway/pay/topics/ledger/log.md');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
-    const closed =(text) => assert.deepStrictEqual(reads(), {
+    const closed = (text) => assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
       position: { name: 'pay', phase: 'discussion', topic: 'ledger' },
       place: 'pay › discussion › ledger',

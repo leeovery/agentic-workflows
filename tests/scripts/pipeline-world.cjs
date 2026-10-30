@@ -375,6 +375,7 @@ function handoffEntry(sim, wu, phase, topic) {
 function enterEntry(sim, wu, phase, topic) {
   sim.handOver();
   const res = sim.run(['enter', phase, wu, topic]);
+  assert.strictEqual(res.entered, true, `no other session holds the topic, so the entry asks nothing (${phase})`);
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the entry records its place (${phase})`);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),

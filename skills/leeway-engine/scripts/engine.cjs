@@ -2560,8 +2560,8 @@ const COMMANDS = Object.freeze({
 // `ledger` read takes none; a `raise` draw or `show` writes the
 // conversation's folder alone — its seal, and the gate shown it clears —
 // and its answer, or a draw that proceeds, holds it around its ledger write
-// as a `ledger` write does; `enter` holds it around a topic's start and its
-// commit alone, its reads taking none; `presence`, `session label`,
+// as a `ledger` write does; `enter` holds it around a start and its commit
+// alone, its question and reads taking none; `presence`, `session label`,
 // `repair`, `cleanup` and `resume`, and the hold `topic mailbox` refreshes
 // write only the session files the state ignores, as `enter` does beside
 // its start; a conversation's folder is outside the project; `gate`

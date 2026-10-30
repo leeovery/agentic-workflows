@@ -141,7 +141,7 @@ describe('pipeline simulation: feature', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
     const first = enterEntry(sim, wu, 'discussion', wu);
-    assert.deepStrictEqual([first.started, first.committed !== undefined], [true, true], 'the first entry starts the topic and commits the start');
+    assert.deepStrictEqual([first.started, typeof first.committed], [true, 'string'], 'the first entry starts the topic and commits the start');
     assert.ok(!fs.existsSync(path.join(sim.dir, log)), 'nothing is written ahead of the opening');
     assert.deepStrictEqual(keys(), ['discovery log', 'product', 'log', 'log header']);
     sim.write(log, `${header()}\n\nWhere it stands.\n`);
