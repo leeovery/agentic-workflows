@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a topic's close as the person sees it (9.7), drawn from the
 // record and Claude's staged payload (decided.cjs):
-// - the decided screen (9.7.3): what the person decided; Claude's calls
+// - the decided screen (9.7.3): what the person decided, and apart from it
+//   what was carried over, never passing as theirs (21.6.5); Claude's calls
 //   counted by kind, a call not yet labelled counted as such until the
 //   labeller gives it one (16.11), opened to list them; the proposed
 //   product-record lines (8.9.7); the new-topic candidates, each with its
@@ -28,7 +29,7 @@ const { ROW_MAX, counted } = require('./map.cjs');
  * The decided screen as it is drawn.
  * @typedef {{
  *   unit: string, topic: string,
- *   decided: string[],
+ *   decided: string[], carried: string[], moved: number,
  *   calls: {question: string|null, answer: string, kind: string|null}[],
  *   listed: boolean,
  *   lines: string[],
@@ -54,6 +55,22 @@ function addressOf({ unit, topic }) {
 /** What answering a row runs: an engine command, by its argv after `engine`. @param {string[]} argv @returns {{next: Next}} */
 function runs(argv) {
   return { next: { kind: 'engine', argv } };
+}
+
+/** Alternatives as the person reads them: `a`, `a or b`, `a, b or c`. @param {string[]} words */
+function either(words) {
+  return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} or ${words.at(-1)}`;
+}
+
+/** What stands where nothing was the person's decision: what every question was instead. @param {DecidedView} view */
+function noneOfYours({ calls, carried, moved }) {
+  const was = [...(calls.length > 0 ? ['a call of mine'] : []), ...(carried.length > 0 ? ['carried over'] : []), ...(moved > 0 ? ['moved on'] : [])];
+  return was.length === 0 ? 'Nothing of yours — no question was asked' : `Nothing of yours — every question was ${either(was)}`;
+}
+
+/** Rows by their question alone, each cut to the map's length. @param {string[]} texts */
+function questionTree(texts) {
+  return renderTree(texts.map((text) => ({ title: clipped(text, ROW_MAX) })), { width: TREE_WIDTH });
 }
 
 /** Claude's calls by kind, most first, the unlabelled last: `2 behaviour · 1 look · 3 unlabelled`. @param {DecidedView['calls']} calls */
@@ -102,11 +119,10 @@ function verdictBlock({ at, of, question, lean, yours }) {
  * @param {DecidedView} view
  */
 function decidedDisplay(view) {
-  const { topic, decided, calls, listed, lines, candidates, skips, verdict } = view;
+  const { topic, decided, carried, calls, listed, lines, candidates, skips, verdict } = view;
   const blocks = [`${titlecase(topic)} — decided`];
-  blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0
-    ? `${INDENT}Nothing of yours — every question was a call of mine, handed over or moved on`
-    : renderTree(decided.map((text) => ({ title: clipped(text, ROW_MAX) })), { width: TREE_WIDTH })));
+  blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0 ? `${INDENT}${noneOfYours(view)}` : questionTree(decided)));
+  if (carried.length > 0) blocks.push(block(`CARRIED OVER (${carried.length})`, questionTree(carried)));
   if (calls.length > 0) blocks.push(block(`CLAUDE'S CALLS (${calls.length})`, `${INDENT}${kindCounts(calls)}${listed ? `\n${callTree(calls)}` : ''}`));
   if (lines.length > 0) blocks.push(block(`FOR THE PRODUCT RECORD (${counted(lines.length, 'line')})`, lines.map(recordLine).join('\n')));
   if (candidates.length > 0) blocks.push(block(`NEW-TOPIC CANDIDATES (${candidates.length})`, candidateTree(candidates)));

@@ -251,22 +251,16 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     assert.strictEqual(item.experiments.E1.verdict, 'all six layouts placed correctly; adopted');
   });
 
-  it('the conclusion releases the wait and flags the spawning item for its next entry', () => {
+  it('the conclusion releases the wait and flags nothing — the conversation concludes once its research lands', () => {
     walkTo(dir, 'E1', 'running');
     const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'rule held']);
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     const item = readManifest(dir, 'lab').phases.discussion.items.timing;
     assert.strictEqual(item.awaiting_experiments, undefined, 'the emptied lock is removed');
-    assert.strictEqual(item.reconcile_needed, 'experiment', 'the next entry or check surfaces the evidence');
-    // Research feeds discussion: timing's research is still in flight, so it
-    // lands first — then the released conversation reads the evidence (the
-    // flag's clear is the read's), and only then can it conclude.
+    assert.strictEqual(item.reconcile_needed, undefined, 'the result reaches the discussion on its map or as mail, never as a flag');
     engine(dir, ['topic', 'complete', 'lab', 'research', 'timing']);
-    assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']).error,
-      /carries reconcile_needed: experiment — an experiment wait released beneath this conversation/);
-    engine(dir, ['manifest', 'delete', 'lab.discussion.timing', 'reconcile_needed']);
     const done = engine(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']);
-    assert.strictEqual(done.status, 'completed', 'the released conversation can conclude once the evidence is read');
+    assert.strictEqual(done.status, 'completed');
   });
 
   it('a waiting conversation cannot conclude, naming each wait', () => {
@@ -276,17 +270,16 @@ describe('engine experiment conclude / abandon — the release edges', () => {
       /^discussion "timing" awaits research on the topic — [^;]*; and awaits experiment evidence \(E1, E2\)/);
   });
 
-  it('conclusion flags a completed same-topic discussion — evidence after the decision must surface', () => {
+  it('conclusion never flags a completed same-topic discussion', () => {
     const m = readManifest(dir, 'lab');
     m.phases.discussion.items.timing.status = 'completed';
     writeManifest(dir, 'lab', m);
     walkTo(dir, 'E1', 'running');
-    const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'rule held']);
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
-    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, 'experiment');
+    engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'rule held']);
+    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, undefined);
   });
 
-  it('abandon keeps the row with its reason, releases the wait, and never hops downstream', () => {
+  it('abandon keeps the row with its reason, releases the wait, and flags nothing', () => {
     const m = readManifest(dir, 'lab');
     m.phases.discussion.items.timing.status = 'completed';
     writeManifest(dir, 'lab', m);
@@ -294,10 +287,9 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     assert.strictEqual(res.status, 'abandoned');
     assert.strictEqual(res.reason, 'question dissolved in design');
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
-    assert.strictEqual(res.reconcile_flagged, undefined, 'no evidence landed — nothing hops downstream');
     const after = readManifest(dir, 'lab');
     assert.strictEqual(after.phases.experiment.items.timing.experiments.E1.reason, 'question dissolved in design');
-    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment', 'the waiting point reverts to open, surfaced at re-entry');
+    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, undefined);
     assert.match(engineFails(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'again']).error, /abandonment is terminal/);
   });
 
@@ -599,7 +591,7 @@ describe('epic topic cancel takes the series with its topic', () => {
     const discussion = after.phases.discussion.items.timing;
     assert.strictEqual(discussion.status, 'cancelled');
     assert.strictEqual(discussion.awaiting_experiments, undefined);
-    assert.strictEqual(discussion.reconcile_needed, 'experiment', 'the release flagged the discussion while it was still live');
+    assert.strictEqual(discussion.reconcile_needed, undefined, 'the release flags nothing');
     assert.strictEqual(after.phases.research.items.timing.status, 'cancelled');
     assert.deepStrictEqual(after.phases.discovery.items.timing, { routing: 'discussion', summary: 'Timing behaviour', cancelled: true, previous_order: 1 });
   });
@@ -621,7 +613,7 @@ describe('epic topic cancel takes the series with its topic', () => {
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.reason, 'moot');
   });
 
-  it('the reactivate restores both conversations with their flags live; the series is never reactivated on its own, and the next spawn revives it', () => {
+  it('the reactivate restores both conversations; the series is never reactivated on its own, and the next spawn revives it', () => {
     engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
     assert.match(engineFails(dir, ['topic', 'reactivate', 'lab', 'experiment', 'timing']).error,
       /^reactivate is topic-level per stage — discovery/);
@@ -631,8 +623,6 @@ describe('epic topic cancel takes the series with its topic', () => {
       { phase: 'discussion', status: 'in-progress' },
     ]);
     const after = readManifest(dir, 'lab');
-    assert.strictEqual(after.phases.discussion.items.timing.reconcile_needed, 'experiment',
-      'the restored holder carries the advisory live — the abandonment surfaces at its next entry');
     assert.strictEqual(after.phases.experiment.items.timing.status, 'completed', 'the series stays where the cancel left it');
     const revived = spawn(dir, 'discussion', 'successor');
     assert.strictEqual(revived.id, 'E3', 'the revival allocates the next id, never reusing a closed row');

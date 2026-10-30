@@ -80,10 +80,9 @@ describe('pipeline simulation: feature', () => {
     assert.ok(fs.existsSync(statePath(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
     // The engine's own door reads back what the close indexed in process: the
-    // records — the topic's, and the unit's own, which holds the line — and
-    // the discussion beside them.
+    // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
-    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n {2}discussion: 1$/m);
+    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);

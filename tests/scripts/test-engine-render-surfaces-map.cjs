@@ -6,10 +6,12 @@
 // map <unit>.<topic>` — the person's questions and Claude's calls, one line
 // each, with where each stands: open, a question moved in shown as the
 // message it came as and one an experiment still measures shown waiting on
-// it (9.1.11, 9.S61); decided, the person's, handed over, or Claude's own
-// call; moved on to another topic — and Claude's calls since the person
-// last looked (9.5.5, 9.S18), drawing the map in the conversation moving
-// the last-looked mark in the same call (5.8.14, 9.5.11).
+// it (9.1.11, 9.S61); decided, the person's, handed over, Claude's own
+// call, or carried over and counted apart (21.6.5); moved on to another
+// topic — each tag in one column across the sections; and Claude's calls
+// since the person last looked (9.5.5, 9.S18), drawing the map in the
+// conversation moving the last-looked mark in the same call (5.8.14,
+// 9.5.11).
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its two
 // topics under discussion, the note window's map written through the
@@ -51,6 +53,7 @@ const world = fixtureFrom('map-', (dir) => {
   decideIn(dir, askIn(dir, 'How does first run open?'), { ...PERSON, text: 'The tour first.' });
   decideIn(dir, askIn(dir, 'Is pricing mentioned?'), { ...MADE, text: 'No price line anywhere in first run.' });
   decideIn(dir, askIn(dir, 'Which corner does a note open in?'), { ...MADE, given: 'your-call', text: 'Top left.' });
+  decideIn(dir, askIn(dir, 'Does a note dim when idle?'), { ...MADE, given: 'carried', text: 'After a minute.' });
   writeIn(dir, 'move', NOTE, ['--question', askIn(dir, 'Where does a space keep its notes?'), '--to', 'space-homing'], MADE);
   createManifest(dir, UNIT, {
     work_type: 'epic',
@@ -70,12 +73,12 @@ const map = (topic = 'note-window') => output(dir, ['render', 'map', `${UNIT}.${
 const shown = (out) => out.slice(out.indexOf('\n') + 1);
 
 describe('render map (9.5.6)', () => {
-  it('shows the person\'s questions and Claude\'s calls, one line each, where each stands — a call handed over Claude\'s, so the two counts are the rows — and Claude\'s calls since the person last looked', () => {
+  it('shows the person\'s questions and Claude\'s calls, one line each, where each stands — a call handed over Claude\'s, one carried over counted apart, so the counts are the rows — each tag in one column, and Claude\'s calls since the person last looked', () => {
     const out = map();
     assert.match(out, /^=== DISPLAY: map \(emit verbatim as a text code block/);
     assert.strictEqual(shown(out), [
       'Map — Note Window',
-      '4 of yours: 1 decided, 2 open, 1 moved on · 2 calls by Claude',
+      '4 of yours: 1 decided, 2 open, 1 moved on · 2 calls by Claude · 1 carried over',
       '',
       'SINCE YOU LAST LOOKED (2 calls by Claude)',
       '  ├─ ◇ Is pricing mentioned?',
@@ -89,13 +92,14 @@ describe('render map (9.5.6)', () => {
       '  └─ ○ How fast does a note open?                  [yours]',
       '        ↳ Waiting on experiment E1, still running',
       '',
-      'DECIDED (1 of yours · 2 calls by Claude)',
-      '  ├─ ✓ How does first run open?             [yours]',
-      '  ├─ ◇ Is pricing mentioned?                [Claude\'s call]',
-      '  └─ ◇ Which corner does a note open in?    [your call]',
+      'DECIDED (1 of yours · 2 calls by Claude · 1 carried over)',
+      '  ├─ ✓ How does first run open?                    [yours]',
+      '  ├─ ◇ Is pricing mentioned?                       [Claude\'s call]',
+      '  ├─ ◇ Which corner does a note open in?           [your call]',
+      '  └─ ✓ Does a note dim when idle?                  [carried over]',
       '',
       'MOVED ON (1 of yours)',
-      '  └─ → Where does a space keep its notes? [moved to Space Homing]',
+      '  └─ → Where does a space keep its notes?          [moved to Space Homing]',
       '',
     ].join('\n'));
   });
@@ -114,11 +118,11 @@ describe('render map (9.5.6)', () => {
       '2 of yours: 0 decided, 1 open, 1 moved on · 0 calls by Claude',
       '',
       'OPEN (1 of yours)',
-      '  └─ ○ Where does a space keep its notes?    [yours]',
+      '  └─ ○ Where does a space keep its notes?          [yours]',
       '        ↳ From Note Window\'s message',
       '',
       'MOVED ON (1 of yours)',
-      '  └─ → Does an unlicensed Fumi open on a licen… [moved to Note Window]',
+      '  └─ → Does an unlicensed Fumi open on a licen…    [moved to Note Window]',
       '',
     ].join('\n'));
     createManifest(dir, 'solo', { phases: { discussion: { items: { solo: { status: 'in-progress' } } } } });

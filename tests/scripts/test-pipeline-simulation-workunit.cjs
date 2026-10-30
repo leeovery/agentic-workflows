@@ -164,8 +164,6 @@ describe('pipeline simulation: workunit', () => {
     const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
     assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     assert.strictEqual(sim.manifest(epic).phases.discussion.items['stray-topic'].awaiting_experiments, undefined);
-    assert.strictEqual(sim.manifest(epic).phases.discussion.items['stray-topic'].reconcile_needed, 'experiment',
-      'the moved holder is flagged for its next entry when the evidence lands');
   });
 
   it('reference imports: a research session lands files, absorb re-homes them over a collision, promote carries the linked one', () => {

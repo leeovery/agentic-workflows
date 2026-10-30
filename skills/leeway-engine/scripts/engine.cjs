@@ -1498,7 +1498,7 @@ function runChecklist(call, argv) {
 
 // ---------------------------------------------------------------------------
 // decided — the person's yes at a topic's decided gate, and a candidate
-// struck from its screen (domain/decided.cjs).
+// struck from its screen or its strike undone (domain/decided.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

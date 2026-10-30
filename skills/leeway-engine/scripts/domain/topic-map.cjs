@@ -7,12 +7,13 @@
 // in the same call (5.8.14, 9.5.11): the calls it lists since the person
 // last looked are the ones it marks shown.
 //
-// - Whose a row is: Claude's call where every answer on it is Claude's —
-//   its own, or one the person handed over with "your call" or "don't
-//   care", marked so (9.5.3, 9.5.4); every other row is the person's
-//   question — open, closed by their decision, carried over, or gone on:
-//   moved to another topic, later on the roadmap, or standing elsewhere for
-//   what was made on the topic. So the person's rows and Claude's calls
+// - Whose a row is: the person's, where an answer on it is theirs, and
+//   where it is open or gone on — moved to another topic, later on the
+//   roadmap, or standing elsewhere for what was made on the topic; carried
+//   over, where an answer on it came by migration, never passing as the
+//   person's decision (21.6.5); else Claude's call — its own, or one the
+//   person handed over with "your call" or "don't care", marked so (9.5.3,
+//   9.5.4). So the person's rows, the carried rows and Claude's calls
 //   together are the map's rows.
 // - Claude's calls are the map's answers Claude made, those handed over
 //   among them and none carried over (`claudesCall`), each counted once.
@@ -59,18 +60,28 @@ function answersOn(row) {
 }
 
 /**
- * Who closed a decided row, and its tag: the person, where any answer is
- * theirs; the person too where an answer was carried over; else Claude —
+ * Whose a decided row is, and its tag: the person's, where any answer is
+ * theirs; carried over, where an answer came by migration; else Claude's —
  * marked handed over where the person handed it over, else Claude's own
  * call.
  * @param {RowAnswer[]} answers
- * @returns {{claudes: boolean, tag: string}}
+ * @returns {{whose: 'yours'|'carried'|'claudes', tag: string}}
  */
 function closedBy(answers) {
-  if (answers.some((a) => a.by === 'person')) return { claudes: false, tag: 'yours' };
-  if (answers.some((a) => a.given === 'carried')) return { claudes: false, tag: CARRIED };
+  if (answers.some((a) => a.by === 'person')) return { whose: 'yours', tag: 'yours' };
+  if (answers.some((a) => a.given === 'carried')) return { whose: 'carried', tag: CARRIED };
   const handed = answers.find((a) => Object.hasOwn(HANDED_TAGS, a.given));
-  return { claudes: true, tag: handed === undefined ? CLAUDES_CALL : HANDED_TAGS[/** @type {keyof typeof HANDED_TAGS} */ (handed.given)] };
+  return { whose: 'claudes', tag: handed === undefined ? CLAUDES_CALL : HANDED_TAGS[/** @type {keyof typeof HANDED_TAGS} */ (handed.given)] };
+}
+
+/**
+ * Where a row stands for the person: open, gone on, or decided — theirs,
+ * carried over, or Claude's.
+ * @param {Row} row @returns {'open'|'moved'|'yours'|'carried'|'claudes'}
+ */
+function rowStanding(row) {
+  if (row.stands === 'open') return 'open';
+  return DECIDED_STANDS.includes(row.stands) ? closedBy(answersOn(row)).whose : 'moved';
 }
 
 /** Where a row gone on stands now: moved to a topic, later on the roadmap, or elsewhere. @param {Row} row */
@@ -97,20 +108,20 @@ function openNotes({ moved_from: from, waiting_on: waiting }) {
 function mapSections(rows) {
   /** @type {{open: DrawnRow[], decided: DrawnRow[], moved: DrawnRow[]}} */
   const drawn = { open: [], decided: [], moved: [] };
-  let yoursDecided = 0;
+  const decided = { yours: 0, carried: 0, claudes: 0 };
   for (const row of rows) {
-    if (row.stands === 'open') {
+    const standing = rowStanding(row);
+    if (standing === 'open') {
       drawn.open.push({ glyph: '○', text: row.text, tag: 'yours', notes: openNotes(row) });
-    } else if (DECIDED_STANDS.includes(row.stands)) {
-      const { claudes, tag } = closedBy(answersOn(row));
-      if (!claudes) yoursDecided += 1;
-      drawn.decided.push({ glyph: claudes ? '◇' : '✓', text: row.text, tag, notes: [] });
-    } else {
+    } else if (standing === 'moved') {
       drawn.moved.push({ glyph: '→', text: row.text, tag: goneTo(row), notes: [] });
+    } else {
+      decided[standing] += 1;
+      drawn.decided.push({ glyph: standing === 'claudes' ? '◇' : '✓', text: row.text, tag: closedBy(answersOn(row)).tag, notes: [] });
     }
   }
   const calls = claudesCalls(rows).length;
-  const counts = { yours: drawn.open.length + yoursDecided + drawn.moved.length, decided: yoursDecided, open: drawn.open.length, moved: drawn.moved.length, calls };
+  const counts = { yours: drawn.open.length + decided.yours + drawn.moved.length, decided: decided.yours, open: drawn.open.length, moved: drawn.moved.length, calls, carried: decided.carried };
   return { counts, ...drawn };
 }
 
@@ -184,4 +195,4 @@ function mapSurface(cwd, { dotpath }) {
   }
 }
 
-module.exports = { closedBy, answersOn, claudesCalls, topicAddress, mapSurface };
+module.exports = { rowStanding, answersOn, claudesCalls, topicAddress, mapSurface };
