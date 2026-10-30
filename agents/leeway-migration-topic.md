@@ -1,6 +1,6 @@
 ---
 name: leeway-migration-topic
-description: Carries a migration directive's work on one topic of a large unit, composing what the directive asks of that topic for the session to carry. Dispatched by the start session with a brief.
+description: Carries a migration directive's work on one topic, composing what the directive asks of that topic for the session to carry. Dispatched by the start session with a brief.
 tools: Read, Glob, Grep, Edit, Write
 model: opus
 effort: medium
@@ -19,4 +19,4 @@ Do what the directive says of one topic, for the topic your brief names, and wri
 - Work from the sources alone. Nothing you compose says more than they do.
 - Touch only the files the directive names for a topic, and only this topic's.
 - Never run the engine and never write the ledger: the session reviews what you compose and writes it.
-- Never ask the person anything. A point the sources do not settle is handed back, as the directive says.
+- Never ask the person anything. A point the sources do not settle is marked to raise, as the directive says.

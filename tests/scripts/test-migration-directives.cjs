@@ -30,7 +30,7 @@ const os = require('os');
 const path = require('path');
 const { git, statePath, layout, readState, writeState, cleanupFixture, ledgerEntries, holdLock, lockAttempts } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { headProblems, lintDirectives } = require('./directive-lint.cjs');
+const { headProblems, modelProblems, lintDirectives } = require('./directive-lint.cjs');
 const {
   UNIT, SESSION, RECORDED, FIXTURES, directiveEngine, midMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
 } = require('./migration-world.cjs');
@@ -88,6 +88,22 @@ describe('a directive\'s head (21.S34)', () => {
       ['its head\'s first section is not ## Touches', 'its head\'s second section is not ## Asks'],
       ['## Touches lists nothing'],
       ['## Asks holds more than its list'],
+    ]);
+  });
+});
+
+describe('a directive names no model or effort (21.10.5)', () => {
+  it('a directive naming a model or an effort is refused, an agent\'s definition fixing its own', () => {
+    assert.deepStrictEqual([
+      modelProblems('Dispatch each brief\'s agent with its pointer alone.'),
+      modelProblems('Dispatch the agent on Opus.'),
+      modelProblems('Run it at high effort.'),
+      modelProblems('Pick the model that fits.'),
+    ], [
+      [],
+      ['it names "Opus" — an agent\'s model and effort are its definition\'s'],
+      ['it names "effort" — an agent\'s model and effort are its definition\'s'],
+      ['it names "model" — an agent\'s model and effort are its definition\'s'],
     ]);
   });
 });

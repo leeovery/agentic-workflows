@@ -1,10 +1,10 @@
 # Your task
 
-Carry the migration's records step for one topic: compose the topic's record from its sources, as the directive below says of a topic's record, and write it as JSON where the topic says the record goes. Fold in any review never folded in first, as the directive says; one its log holds already stays as it is.
+Carry the migration's records step for one topic: compose the topic's record from its sources, as the directive below says of a topic's record, and write it as JSON where the topic says the record goes.
 
 Where the verifier's findings or the carry's refusal below name anything, compose the record from the start, each answered.
 
-Hand back the points no source settles, a line each, by their entries' refs, or that there are none.
+Hand back how many entries the record holds, and the refs of the points it marks to raise, or that there are none.
 
 # The topic
 

@@ -14,13 +14,15 @@
 // before it appends a line (ledger-carry.cjs), so a record carried keeps
 // them by construction:
 //   - a topic whose log holds anything has a record of an entry at least;
-//   - every entry cites a section that exists, once: a heading in a file the
-//     state holds — the topic's log or brief, an experiment's record, a spec
-//     kept in `assets/` — or, cited as `{unit}/spec.md` in a unit whose
-//     building started, where the state has none yet, a heading of the
-//     unit's specs the code branch's HEAD holds under `.workflows/`, which
-//     the cut and the merges join into it verbatim (21.8.5). A heading its
-//     file holds more than once names no one section (21.12.7);
+//   - every entry cites a section that exists, once, in a file of the topic's
+//     own or the unit's: the topic's log or brief or one of its experiments'
+//     records, or a file of the unit's `assets/` — a spec kept there, an
+//     import — or, cited as `{unit}/spec.md` in a unit whose building
+//     started, where the state has none yet, a heading of the unit's specs
+//     the code branch's HEAD holds under `.workflows/`, which the cut and
+//     the merges join into it verbatim (21.8.5); nothing in the cache, and
+//     nothing of another topic's. A heading its file holds more than once
+//     names no one section (21.12.7);
 //   - every subtopic its old discussion map shows decided — in the unit's
 //     manifest as HEAD holds it, which the move dropped the map from
 //     (21.5.8) — named by an entry's map item, and every one it shows still
@@ -30,18 +32,21 @@
 //     settles several;
 //   - every thread of its research the register shows still open or digging,
 //     as HEAD holds it, named by an open question's thread, a name or a list;
-//   - every review the old agent store holds that landed and was never
-//     folded in — in `.workflows/.cache/`, which the move leaves (21.5.10)
-//     — in its log, verbatim (21.5.12);
 //   - every import that came in from the topic, as the unit's manifest
 //     lists it, whose file the state holds, linked from one of its entries
 //     (21.5.7), a record of none included — in a unit of one topic that is
 //     no epic, an import from its discovery, `discovery`, being the topic's.
 // A record of no entries keeps every rule but the cites: its old map, its
-// threads, its reviews and its imports are asked of it as of any.
-// A topic promoted to a cross-cutting unit took only its discussion there:
-// its research's threads and its agent store stay with the unit it came
-// from, and are read from there.
+// threads and its imports are asked of it as of any. A topic promoted to a
+// cross-cutting unit took only its discussion there: its research's threads
+// stay with the unit it came from, and are read from there. Its reviews
+// never folded in are in its log already, where the move folded them
+// (078), cited as any section of it is.
+//
+// Beside the check, the points to raise (21.6.10): each question of a
+// carried record marked to raise, on a topic still live — its unit and its
+// item neither cancelled nor postponed — which the engine answers, once the
+// check passes, where it has no raise yet.
 //
 // `.workflows/` is read where the move read it: the project's folder in the
 // repository's main checkout, whichever checkout the session runs in (4.1.4).
@@ -49,18 +54,16 @@
 // answers a topic's sources as the rules read them, which the per-topic
 // agent's brief draws (brief-records.cjs).
 //
-// Known edges: a review's report the old store holds no row for — a legacy
-// `review-*.md` — is not asked for; a unit's manifest left dirty in the
-// working tree is moved from there but read here as HEAD holds it; a log
-// with CRLF endings has no heading this reads, nor does a fence nested in a
-// four-backtick block end where it should; a review folded into a log later
-// can make a cite another topic made into that log ambiguous; the joined
-// spec's headings are counted over every `specification.md` HEAD holds for
-// the unit, superseded and cancelled ones among them, as the cut and the
-// merges (080) are to join them; the carried file sits in the cache,
-// where a per-topic agent, which may write files, could overwrite it; and an
-// epic's imports from its discovery as a whole, `discovery`, are owed by no
-// topic, staying in `assets/` unlinked until a topic links one.
+// Known edges: a unit's manifest left dirty in the working tree is moved
+// from there but read here as HEAD holds it; a log with CRLF endings has no
+// heading this reads, nor does a fence nested in a four-backtick block end
+// where it should; the joined spec's headings are counted over every
+// `specification.md` HEAD holds for the unit, superseded and cancelled ones
+// among them, as the cut and the merges (080) are to join them; the carried
+// file sits in the cache, where a per-topic agent, which may write files,
+// could overwrite it; and an epic's imports from its discovery as a whole,
+// `discovery`, are owed by no topic, staying in `assets/` unlinked until a
+// topic links one.
 //
 
 const fs = require('fs');
@@ -69,12 +72,12 @@ const { spawnSync } = require('child_process');
 
 const CODE_TREE_STATE = '.workflows';
 const TOPIC_PHASES = ['discovery', 'discussion', 'investigation'];
-const AGENT_PHASES = ['research', 'discussion', 'investigation'];
 const CARRIED = '.cache/migrate/carried';
 const LEDGER = '.ledger.jsonl';
 // What the old map's states say a subtopic still undecided is, where an open question must carry it.
 const OPEN_ITEMS = { pending: 'still open', exploring: 'still open', converging: 'still open', deferred: 'deferred' };
 const OPEN_THREADS = ['open', 'digging'];
+const SET_ASIDE = ['cancelled', 'postponed'];
 const HEADING = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const FENCE = /^ {0,3}(```|~~~)/;
 
@@ -206,8 +209,8 @@ function unitOf(project, name) {
 }
 
 /**
- * The units a topic's research and agent store are read from: its own, and
- * each unit HEAD shows promoted the topic to it, which kept them (078).
+ * The units a topic's research is read from: its own, and each unit HEAD
+ * shows promoted the topic to it, which kept it (078).
  * @param {Project} project @param {Unit} unit @param {string} topic @returns {string[]}
  */
 function homesOf(project, unit, topic) {
@@ -259,26 +262,9 @@ function threadsOf(project, unit, topic) {
 /** The topic's log, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic */
 const logOf = (project, unit, topic) => readText(path.join(project.stateDir, unit.name, 'topics', topic, 'log.md')) ?? '';
 
-/**
- * The reviews of a topic's old agent store, wherever it stayed, that landed
- * and were never folded in, and are not in its log yet: each its id, its
- * report's path from the project, and its text.
- * @param {Project} project @param {Unit} unit @param {string} topic
- * @returns {{id: string, report: string, text: string}[]}
- */
-function unfoldedReviews(project, unit, topic) {
-  const logged = logOf(project, unit, topic);
-  return homesOf(project, unit, topic).flatMap((home) => AGENT_PHASES.flatMap((phase) => {
-    const dir = path.posix.join(CODE_TREE_STATE, '.cache', home, phase, topic);
-    const store = readJson(path.join(project.dir, dir, 'state.json'));
-    const rows = isObject(store) && isObject(store.agents) ? Object.values(store.agents) : [];
-    return rows.filter((row) => isObject(row) && row.kind === 'review' && row.status !== 'incorporated' && typeof row.id === 'string').flatMap((row) => {
-      const report = path.posix.join(dir, `${row.id}.md`);
-      const text = (readText(path.join(project.dir, report)) ?? '').trim();
-      return text === '' || logged.includes(text) ? [] : [{ id: row.id, report, text }];
-    });
-  }));
-}
+/** Whether a topic is still live: its unit and its item neither cancelled nor postponed. @param {Record<string, any>} manifest @param {string} topic */
+const isLive = (manifest, topic) => !SET_ASIDE.includes(manifest.status)
+  && TOPIC_PHASES.every((phase) => !SET_ASIDE.includes(itemsOf(manifest.phases?.[phase]?.items)[topic]?.status));
 
 /** The topic an import's origin names: its own, or a unit of one topic that is no epic's from its discovery. @param {Unit} unit @param {unknown} origin @returns {string|null} */
 function ownerOf(unit, origin) {
@@ -300,8 +286,15 @@ function importsOf(project, unit) {
   });
 }
 
-/** What a cited section lacks, or null. @param {Project} project @param {Unit} unit @param {{path: string, section: string}} cite */
-function citeProblem(project, unit, cite) {
+/** Whether a cite's path is a file of the topic's own or the unit's. @param {Unit} unit @param {string} topic @param {string} cited */
+function citable(unit, topic, cited) {
+  const own = `${unit.name}/topics/${topic}/`;
+  return [`${own}log.md`, `${own}brief.md`, `${unit.name}/spec.md`].includes(cited) || cited.startsWith(`${own}experiments/`) || cited.startsWith(`${unit.name}/assets/`);
+}
+
+/** What a cited section lacks, or null. @param {Project} project @param {Unit} unit @param {string} topic @param {{path: string, section: string}} cite */
+function citeProblem(project, unit, topic, cite) {
+  if (typeof cite.path !== 'string' || !citable(unit, topic, cite.path)) return `cites ${cite.path}, which is none of its topic's log, brief or experiments, nor the unit's assets or spec.md`;
   const text = readText(path.join(project.stateDir, cite.path));
   const joined = text === null && unit.built && cite.path === `${unit.name}/spec.md`;
   if (text === null && !joined) return `cites ${cite.path}, which the state does not hold`;
@@ -325,7 +318,7 @@ function problemsOf(project, unit, topic, record) {
   const empty = record.length === 0 && logOf(project, unit, topic).trim() !== '' ? ['its record is empty, and its log is not'] : [];
   const cites = record.flatMap(({ ref, cites: given }) => {
     if (!Array.isArray(given) || given.length === 0) return [`entry ${ref} cites nothing`];
-    return given.map((cite) => citeProblem(project, unit, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
+    return given.map((cite) => citeProblem(project, unit, topic, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
   });
   const answered = new Set(record.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
   const open = record.filter(({ event, ref }) => event === 'asked' && !answered.has(ref));
@@ -338,8 +331,7 @@ function problemsOf(project, unit, topic, record) {
   const openThreads = new Set(open.flatMap((entry) => namesOf(entry.thread)));
   const threads = threadsOf(project, unit, topic).filter(({ thread }) => !openThreads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no open question carries it`);
-  const reviews = unfoldedReviews(project, unit, topic).map(({ id }) => `${id}, a review never folded in, is not in its log`);
-  return [...empty, ...cites, ...mapped, ...threads, ...reviews, ...imports];
+  return [...empty, ...cites, ...mapped, ...threads, ...imports];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -349,6 +341,16 @@ function ledgerIds(stateDir) {
   return new Set(lines.map((line) => JSON.parse(line).id));
 }
 
+/** Each unit of the state, by its name, sorted. @param {Project} project @returns {Unit[]} */
+function unitsOf(project) {
+  return fs.readdirSync(project.stateDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && fs.existsSync(path.join(project.stateDir, entry.name, 'manifest.json')))
+    .map((entry) => entry.name).sort().map((name) => unitOf(project, name));
+}
+
+/** What `ledger carry` kept of a topic, or null. @param {Project} project @param {Unit} unit @param {string} topic */
+const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir, CARRIED, unit.name, `${topic}.json`));
+
 /**
  * What one topic still lacks: its record carried, each of its ids in the
  * ledger, the record keeping the rules.
@@ -356,7 +358,7 @@ function ledgerIds(stateDir) {
  * @returns {string[]}
  */
 function topicProblems(project, ids, unit, topic) {
-  const carried = readJson(path.join(project.stateDir, CARRIED, unit.name, `${topic}.json`));
+  const carried = carriedOf(project, unit, topic);
   if (carried === null) return ['has no record yet'];
   if (!carried.entries.every(({ id }) => ids.has(id))) return ['its record never reached the ledger'];
   return problemsOf(project, unit, topic, carried.record.entries);
@@ -369,13 +371,23 @@ module.exports = {
   check({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
     const ids = ledgerIds(stateDir);
-    const names = fs.readdirSync(stateDir, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && fs.existsSync(path.join(stateDir, entry.name, 'manifest.json')))
-      .map((entry) => entry.name).sort();
-    return names.flatMap((name) => {
-      const unit = unitOf(project, name);
-      return topicsOf(unit.manifest).map((topic) => ({ name: `${name}/${topic}`, problems: topicProblems(project, ids, unit, topic) }));
-    });
+    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).map((topic) => ({ name: `${unit.name}/${topic}`, problems: topicProblems(project, ids, unit, topic) })));
+  },
+  /**
+   * The points to raise: each question a carried record marks `raise`, on a
+   * topic still live — its place, the question's id and its text.
+   * @param {{projectDir: string, stateDir: string}} dirs
+   * @returns {{place: string, answers: string, text: string}[]}
+   */
+  raises({ projectDir, stateDir }) {
+    const project = projectOf(projectDir, stateDir);
+    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
+      const carried = carriedOf(project, unit, topic);
+      if (carried === null) return [];
+      const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
+      return carried.record.entries.filter((entry) => entry.raise === true)
+        .map((entry) => ({ place: `${unit.name}.${carried.phase}.${topic}`, answers: ids.get(entry.ref), text: entry.text }));
+    }));
   },
   phases: TOPIC_PHASES,
   holds,
@@ -390,9 +402,9 @@ module.exports = {
   },
   /**
    * A topic's sources as the rules read them: the project's folder they are
-   * read in, its old map, its research's threads still open, its reviews
-   * never folded in, its specs, and the unit's imports, each with the topic
-   * owing its link and whether the state holds its file.
+   * read in, its old map, its research's threads still open, its specs, and
+   * the unit's imports, each with the topic owing its link and whether the
+   * state holds its file.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -402,7 +414,6 @@ module.exports = {
       project: project.dir,
       map: mapOf(unit, topic),
       threads: threadsOf(project, unit, topic),
-      reviews: unfoldedReviews(project, unit, topic).map(({ id, report }) => ({ id, report })),
       specs: specsOf(project, unit, topic),
       imports: importsOf(project, unit),
     };

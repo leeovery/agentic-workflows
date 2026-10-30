@@ -139,12 +139,13 @@ function midMigration(dir) {
 // epic nothing of which is built: two topics never started, one of them
 // with an import come in from its research, which holds nothing, two in
 // discussion, one of them with its research's threads, and one promoted to
-// a cross-cutting unit, its research's threads and its agent store left
-// behind; an import come in from a discussion, and another whose file is
-// gone; a spec grouped under another name and kept as an asset, and a
-// review the old agent store holds never folded in beside one folded in;
-// the cross-cutting unit the promoted topic went to, its import copied with
-// it, one of its decisions settling two subtopics; an epic of one topic
+// a cross-cutting unit, its research's threads left behind; an import come
+// in from a discussion, and another whose file is gone; a spec grouped under
+// another name and kept as an asset, and a review never folded in that the
+// move folded into its log; the cross-cutting unit the promoted topic went
+// to, its import copied with it, one of its decisions settling two
+// subtopics, its review left behind in the epic's store folded into its log
+// too; an epic of one topic
 // whose building started, its spec still on the code branch, an import
 // come in from its discovery as a whole; and a cancelled feature, an import
 // come in from its discovery.
@@ -231,6 +232,7 @@ const RECORDS_MOVED = Object.freeze({
     '## Research\n\n# Research: Search\n\n## Index Size\n\nStill digging.\n',
     '## Discussion\n\n# Discussion: Search\n\n## Ranking\n\n### Context\n\nOld results flood the page.\n\nBy recency.\n',
     '## Typo Tolerance\n\n### Context\n\nPeople misspell names.\n\nStill open.\n\n## Synonyms\n\nSet aside for now.\n',
+    '## Review review-001, never folded in\n\n### F1: Ranking ties\n\nTwo results of one age have no order.\n',
   ].join('\n'),
   [layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')]: '# Report\n\n## Result\n\n12ms at p95, from `npm run bench`.\n',
   [layout.assets('fumi', 'pricing.md')]: '# Pricing\n',
@@ -242,7 +244,7 @@ const RECORDS_MOVED = Object.freeze({
     imports: [{ path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' }],
     phases: { discussion: { items: { auth: { status: 'completed' } } } },
   }),
-  [layout.topic('platform', 'auth', 'log.md')]: '## Discussion\n\n# Discussion: Auth\n\n## Sessions\n\nThirty days, then sign in again, with tokens renewed on each.\n',
+  [layout.topic('platform', 'auth', 'log.md')]: '## Discussion\n\n# Discussion: Auth\n\n## Sessions\n\nThirty days, then sign in again, with tokens renewed on each.\n\n## Review review-003, never folded in\n\n### F1: Token reuse\n\nA token outlives its session.\n',
   [layout.assets('platform', 'sso.md')]: '# SSO\n',
   [layout.manifest('shop')]: jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
@@ -264,29 +266,9 @@ const RECORDS_MOVED = Object.freeze({
   [layout.assets('gone', 'notes.md')]: '# Notes\n\nIt fails under load.\n',
 });
 
-// The old agent store of fumi's search topic, which the move leaves: a review
-// acknowledged, never folded in, and one incorporated.
-const OLD_REVIEWS = Object.freeze({
-  dir: '.workflows/.cache/fumi/discussion/search',
-  store: { agents: { 'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' }, 'review-002': { id: 'review-002', kind: 'review', status: 'incorporated' } } },
-  reports: { 'review-001': '### F1: Ranking ties\n\nTwo results of one age have no order.\n', 'review-002': '### F1: Stale\n\nFolded in long ago.\n' },
-});
-
-// The old agent store of the auth topic fumi promoted to platform, left
-// behind in fumi's: a review never folded in.
-const PROMOTED_REVIEWS = Object.freeze({
-  dir: '.workflows/.cache/fumi/discussion/auth',
-  store: { agents: { 'review-003': { id: 'review-003', kind: 'review', status: 'acknowledged' } } },
-  reports: { 'review-003': '### F1: Token reuse\n\nA token outlives its session.\n' },
-});
-
 /** @param {string} dir */
 function buildRecords(dir) {
   buildUnborn(dir, RECORDS_OLD, RECORDS_MOVED);
-  for (const { dir: store, store: rows, reports } of [OLD_REVIEWS, PROMOTED_REVIEWS]) {
-    createFile(dir, `${store}/state.json`, jsonText(rows));
-    for (const [id, text] of Object.entries(reports)) createFile(dir, `${store}/${id}.md`, text);
-  }
 }
 
 /** @type {string|null} */
@@ -368,5 +350,5 @@ function refusedKeeping(dir, args, kept, opts = { env: SESSION }) {
 }
 
 module.exports = {
-  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, OLD_REVIEWS, PROMOTED_REVIEWS, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
+  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
 };

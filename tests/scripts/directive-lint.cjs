@@ -6,13 +6,17 @@
 // files it may touch, and `## Asks`, what it asks the person, each a list
 // of one item or more and nothing else, an item wrapped onto lines indented
 // beneath it — and its check sits beside it, `NNN-{slug}.check.cjs`,
-// exporting the check's shape as the engine reads it (`isCheck`).
+// exporting the check's shape as the engine reads it (`isCheck`). It names
+// no model and no effort: an agent it dispatches fixes its own in its
+// definition (21.10.5).
 
 const fs = require('fs');
 const path = require('path');
 const { isCheck } = require('../../skills/leeway-engine/scripts/domain/directives.cjs');
 
 const HEAD = ['Touches', 'Asks'];
+
+const MODEL_WORDS = /\b(model|effort|opus|sonnet|haiku)\b/i;
 
 /**
  * What a directive's text lacks of its title and its head, one sentence each.
@@ -38,6 +42,12 @@ function headProblems(text) {
   return problems;
 }
 
+/** What a directive's text says of a model or an effort, one sentence. @param {string} text @returns {string[]} */
+function modelProblems(text) {
+  const named = MODEL_WORDS.exec(text);
+  return named === null ? [] : [`it names "${named[0]}" — an agent's model and effort are its definition's`];
+}
+
 /**
  * Every problem of every directive in a migrations folder, each named by
  * its file: its head, and its check beside it.
@@ -48,11 +58,12 @@ function lintDirectives(folder) {
   return fs.readdirSync(folder).filter((name) => /^[0-9]+-.+\.md$/.test(name)).sort().flatMap((name) => {
     const check = path.join(folder, name.replace(/\.md$/, '.check.cjs'));
     /** @type {string[]} */
-    const problems = headProblems(fs.readFileSync(path.join(folder, name), 'utf8'));
+    const text = fs.readFileSync(path.join(folder, name), 'utf8');
+    const problems = [...headProblems(text), ...modelProblems(text)];
     if (!fs.existsSync(check)) problems.push('no check sits beside it');
     else if (!isCheck(require(check))) problems.push('its check exports no check() beside what it counts');
     return problems.map((problem) => `${name}: ${problem}`);
   });
 }
 
-module.exports = { headProblems, lintDirectives };
+module.exports = { headProblems, modelProblems, lintDirectives };

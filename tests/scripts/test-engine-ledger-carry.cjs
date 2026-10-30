@@ -206,7 +206,7 @@ describe('the refusals, nothing written', () => {
     ]);
   });
 
-  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a question answered twice, a map item of a finding, a thread of a decision, either of another shape, and content its write refuses', () => {
+  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a question answered twice, a map item of a finding, a thread of a decision, either of another shape, a point to raise that is no open question or marked otherwise, and content its write refuses', () => {
     const refused = (/** @type {unknown[]} */ entries) => mend({ entries });
     const { assets: _, ...decision } = DECISION;
     assert.deepStrictEqual([
@@ -226,6 +226,9 @@ describe('the refusals, nothing written', () => {
       refused([QUESTION, { ...decision, thread: 'index-size' }]),
       refused([{ ...QUESTION, map_item: [] }]),
       refused([{ ...QUESTION, thread: ['index-size', ''] }]),
+      refused([{ ...FINDING, relies_on: [], raise: true }]),
+      refused([{ ...QUESTION, raise: 'yes' }]),
+      refused([{ ...QUESTION, raise: true }, decision]),
       refused([{ ...QUESTION, text: '' }]),
       refused([{ ...QUESTION, why: 'Because.' }]),
       refused([QUESTION, { ...decision, by: 'person' }]),
@@ -247,6 +250,9 @@ describe('the refusals, nothing written', () => {
       'ledger carry: entry d1: a thread is a question\'s: a name, or a list of names',
       'ledger carry: entry q1: a map item is a question\'s or a decision\'s: a name, or a list of names',
       'ledger carry: entry q1: a thread is a question\'s: a name, or a list of names',
+      'ledger carry: entry f1: raise marks a question to raise, true',
+      'ledger carry: entry q1: raise marks a question to raise, true',
+      'ledger carry: entry q1: is marked to raise, and a decision of the record answers it — a point to raise is an open question',
       'ledger carry: entry q1: the content\'s text is not non-empty text',
       'ledger carry: entry q1: the content has no field why — it holds by, who_moved_whom, text, cites',
       'ledger carry: entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude',

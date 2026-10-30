@@ -95,10 +95,6 @@ const licensingDrawn = () => [
   '',
   'None recorded.',
   '',
-  '## Its reviews never folded in',
-  '',
-  'None recorded.',
-  '',
   '## The unit\'s assets',
   '',
   '- fumi/assets/pricing.md, which came in from discussion/licensing — this topic\'s to link',
@@ -135,7 +131,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'leeway-migration-topic', unit: null, task: null, topic: null });
   });
 
-  it('a topic\'s research threads still open, its map\'s undecided subtopics, its review never folded in; a building unit\'s spec read on the code branch and cited as its spec.md', () => {
+  it('a topic\'s research threads still open and its map\'s undecided subtopics; a building unit\'s spec read on the code branch and cited as its spec.md', () => {
     const search = issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief;
     const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
 
@@ -143,29 +139,31 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## Its specs', '', 'None recorded.', '',
       '## Its old map, as the code branch\'s HEAD holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
       '## Its research\'s threads still open', '', '- index-size, digging: How big does the index grow?', '',
-      '## Its reviews never folded in', '', '- review-001: .workflows/.cache/fumi/discussion/search/review-001.md', '',
+      '## The unit\'s assets', '',
     ].join('\n')), search);
     assert.ok(weights.includes('## Its specs\n\n- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md\n'), weights);
   });
 
-  it('a promoted topic\'s research threads and review never folded in, read where it was promoted from', () => {
+  it('a promoted topic\'s research threads, read where it was promoted from', () => {
     const { brief } = issued(['migration-topic', '--topic', 'platform.discussion.auth', '--directive', '079-records']);
 
-    assert.ok(brief.includes([
-      '## Its research\'s threads still open', '', '- token-expiry, open: When do tokens expire?', '',
-      '## Its reviews never folded in', '', '- review-003: .workflows/.cache/fumi/discussion/auth/review-003.md', '',
-    ].join('\n')), brief);
+    assert.ok(brief.includes('## Its research\'s threads still open\n\n- token-expiry, open: When do tokens expire?\n'), brief);
   });
 
-  it('issued from a linked worktree, it names the project in the main checkout and reads its sources there', () => {
+  it('issued from a linked worktree, it names the project in the main checkout and reads its sources there, not the worktree\'s branch', () => {
     const side = path.join(path.dirname(dir), 'side');
     git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);
+
+    const manifest = path.join(side, '.workflows/fumi/manifest.json');
+    const old = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+    fs.writeFileSync(manifest, JSON.stringify({ ...old, phases: { ...old.phases, research: {} } }));
+    git(side, ['commit', '-q', '-am', 'the side branch drops search\'s threads']);
 
     const res = ok(side, ['brief', 'migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records'], { env: SESSION });
     const brief = fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8');
 
     assert.ok(brief.includes(`- **The project:** ${dir} — each path under \`.workflows/\` is from there`), brief);
-    assert.ok(brief.includes('- review-001: .workflows/.cache/fumi/discussion/search/review-001.md'), brief);
+    assert.ok(brief.includes('- index-size, digging: How big does the index grow?'), brief);
   });
 
   it('briefed afresh after a carry refused its record, it carries the refusal verbatim and clears it, so the next brief carries none', () => {

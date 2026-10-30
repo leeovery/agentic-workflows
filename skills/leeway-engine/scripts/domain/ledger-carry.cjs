@@ -16,22 +16,24 @@
 //   unit's to carry.
 // - What: the record as one JSON object, `{"entries": […]}`, composed where
 //   the state keeps it (`.cache/migrate/records/{unit}/{topic}.json`), read
-//   from the state root whichever checkout the session runs in; each entry an `asked`, `found` or `decided` in the content its
-//   write takes (ledger-write.cjs) — who made it, and for a decision how it
-//   was given, `carried` where the log shows no maker (21.6.5) — beside its
-//   `ref`, a name the record gives it, unique in it; its links by ref, each
-//   to an entry before it: a question's `part_of`, a decision's `answers`,
-//   a question of the record no other decision answers, and any entry's
+//   from the state root whichever checkout the session runs in. Each entry
+//   is an `asked`, `found` or `decided` in the content its write takes
+//   (ledger-write.cjs) — who made it, and for a decision how it was given,
+//   `carried` where the log shows no maker (21.6.5) — beside its `ref`, a
+//   name the record gives it, unique in it; its links by ref, each to an
+//   entry before it: a question's `part_of`, a decision's `answers`, a
+//   question of the record no other decision answers, and any entry's
 //   `relies_on`; a question's or decision's `map_item`, the item of the
 //   topic's old map it carries, and a question's `thread`, the thread of
 //   its research it carries, each a name or, where one entry settles
-//   several, a list of them; and its `assets`, each `{path, status}`, a
-//   file the state holds, linked as it is canonical or reference. Every
-//   entry moves no one; a decision lands unchecked, for the late
-//   one-decision check after the migration.
+//   several, a list of them; an open question's `raise`, `true`, marking a
+//   point no source settles, to raise at the end (21.6.10); and its
+//   `assets`, each `{path, status}`, a file the state holds, linked as it
+//   is canonical or reference. Every entry moves no one; a decision lands
+//   unchecked, for the late one-decision check after the migration.
 // - Kept: the rules the records directive's check holds a topic's record to
-//   (079-records.check.cjs) — its sections cited, its old map, its threads,
-//   its reviews and its imports — run on the record before a line is
+//   (079-records.check.cjs) — its sections cited, its old map, its threads
+//   and its imports — run on the record before a line is
 //   written, so a record carried passes the check and one that would not is
 //   refused, nothing carried, to be composed again.
 // - Once: the whole record is appended in one write, after what it carried
@@ -53,7 +55,8 @@
 //   the phase, a topic promoted. And what the record's composer answers —
 //   no record composed, or a file holding none; an entry of another event,
 //   a ref missing or given twice, a link naming no earlier entry of the
-//   kind it needs, a question answered twice, a map item or a thread on an
+//   kind it needs, a question answered twice, a point to raise a decision of
+//   the record answers or marked otherwise, a map item or a thread on an
 //   entry that takes none, or of another shape, content its write refuses,
 //   who moved whom given, an asset the state lacks, and a record breaking
 //   the directive's rules, naming each thing it breaks — is written beside
@@ -96,7 +99,7 @@ const COMPOSED = '.cache/migrate/records';
 const EVENT_WRITES = Object.freeze({ asked: 'ask', found: 'find', decided: 'decide' });
 
 /** What an entry of a record carries beside its content: its name, its event, its links by name, and what the migration reads. */
-const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'assets']);
+const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'assets']);
 
 const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
@@ -231,7 +234,7 @@ function assetLines(said, place, assets, entry, tags) {
  * @returns {{lines: Line[], kept: Kept[]}}
  */
 function recordLines(place, entries, session) {
-  /** @type {Map<string, {id: string, event: string}>} */
+  /** @type {Map<string, {id: string, event: string, raised: boolean}>} */
   const before = new Map();
   const answered = new Set();
   /** @type {Line[]} */
@@ -240,7 +243,7 @@ function recordLines(place, entries, session) {
   const kept = [];
   const tags = { unit: place.unit, topic: place.topic, phase: place.phase, session };
   entries.forEach((entry, at) => {
-    const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], map_item: mapItem = null, thread = null, assets } = entry;
+    const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], map_item: mapItem = null, thread = null, raise, assets } = entry;
     const said = `${SAID}: entry ${typeof ref === 'string' ? ref : at + 1}`;
     if (typeof ref !== 'string' || ref === '') throw new Error(`${said}: gives no ref, the name the record links it by`);
     if (before.has(ref)) throw new Error(`${said}: its ref is given twice`);
@@ -250,6 +253,7 @@ function recordLines(place, entries, session) {
     if ((answers === undefined) !== (event !== 'decided')) throw new Error(`${said}: ${event === 'decided' ? 'a decision answers a question of the record' : 'only a decision answers'}`);
     if (mapItem !== null && (event === 'found' || !isNamed(mapItem))) throw new Error(`${said}: a map item is a question's or a decision's: a name, or a list of names`);
     if (thread !== null && (event !== 'asked' || !isNamed(thread))) throw new Error(`${said}: a thread is a question's: a name, or a list of names`);
+    if (raise !== undefined && (event !== 'asked' || raise !== true)) throw new Error(`${said}: raise marks a question to raise, true`);
     const links = {
       ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(said, 'part_of', [partOf], before, 'asked')[0] } : {}),
       ...(event === 'decided' ? { answers: linked(said, 'answers', [answers], before, 'asked')[0] } : {}),
@@ -264,11 +268,13 @@ function recordLines(place, entries, session) {
     checkUnsealed(said, content);
     checkSaid(said, event === 'decided' ? 'decision' : event === 'found' ? 'finding' : 'question', content);
     const id = newId();
-    before.set(ref, { id, event });
+    before.set(ref, { id, event, raised: raise === true });
     lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? { unchecked: true } : {}) }, id });
     lines.push(...assetLines(said, place, assets, id, tags));
     kept.push({ ref, id });
   });
+  const settled = kept.find(({ ref, id }) => before.get(ref)?.raised === true && answered.has(id));
+  if (settled !== undefined) throw new Error(`${SAID}: entry ${settled.ref}: is marked to raise, and a decision of the record answers it — a point to raise is an open question`);
   return { lines, kept };
 }
 
@@ -338,8 +344,9 @@ function clearBeside({ root, unit, topic }) {
 /**
  * `ledger carry <unit>.<phase>.<topic>`: the topic's record appended in one
  * write, what was carried kept, what was said of it beside it cleared, the
- * ledger's commit held for the migration's. Answers how many entries it carried, each entry's
- * short id by its ref, the commit — null, held — and any warnings.
+ * ledger's commit held for the migration's. Answers how many entries it
+ * carried, each entry's short id by its ref, the commit — null, held — and
+ * any warnings.
  * @param {string} cwd @param {string[]} args
  */
 function carryRecord(cwd, args) {

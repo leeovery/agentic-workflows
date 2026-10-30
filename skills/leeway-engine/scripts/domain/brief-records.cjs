@@ -78,15 +78,15 @@
 //   directive      the migration's directive `--directive` names, verbatim,
 //                  each of its headings a level down (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the
-//                  phases the topic is in, the state's place and the
-//                  project's in the main checkout, each file of the
-//                  topic's folder but its mail, and as the records
-//                  directive's check reads them its specs — each where it
-//                  is read and how it is cited — its old map, its
-//                  research's threads still open and its reviews never
-//                  folded in; the unit's assets with where each came in
-//                  from, the topic's to link, or its file gone and linked
-//                  by none; and where the topic's record is composed, the
+//                  phases the records directive carries a topic of that
+//                  the topic is in, the state's place and the project's in
+//                  the main checkout, each file of the topic's folder but
+//                  its mail, and as the records directive's check reads
+//                  them its specs — each where it is read and how it is
+//                  cited — its old map and its research's threads still
+//                  open; the unit's assets with where each came in from,
+//                  the topic's to link, or its file gone and linked by
+//                  none; and where the topic's record is composed, the
 //                  verifier's findings on it written and a carry's refusal
 //                  of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON (21.10.7)
@@ -97,8 +97,9 @@
 // so neither reaches a later brief.
 //
 // A record taking a flag names it, and its role takes every flag its records
-// name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
-// text that reaches the brief (6.5.6). A record the project holds none of
+// name, once, and no other — every one but a flag a record holds optional;
+// a flag carries a name, an id or a path, never text that reaches the brief
+// (6.5.6). A record the project holds none of
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
 // a task with no spec reference, a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
@@ -108,8 +109,9 @@
 // on; a dispatch the topic's store lacks, of another kind, no longer in
 // flight; a perspective of the set with no report, or briefed on no question
 // or another than its pair; a dive of no kind, a read naming no file, another
-// kind naming one; a conversation that has run no knowledge query; a directive the migrations
-// lack, a migrated topic its unit lacks, a composed record missing or empty. Nothing else of the project reaches a brief — its
+// kind naming one; a conversation that has run no knowledge query; a
+// directive the migrations lack, a migrated topic its unit lacks, a composed
+// record missing or empty. Nothing else of the project reaches a brief — its
 // CLAUDE.md and its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
@@ -123,7 +125,7 @@ const { linters } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const { recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
-const { manifestOf, liveTopics, TOPIC_PHASES, hasItem } = require('./ledger-units.cjs');
+const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
@@ -529,12 +531,13 @@ function filesBelow(from, dir) {
 function drawMigratedTopic(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   const manifest = readWorkUnitManifest(root, unit);
-  const phases = TOPIC_PHASES.filter((phase) => hasItem(manifest, phase, topic)).map((phase) => {
+  const rules = recordsRules();
+  const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
     const { status } = manifest.phases[phase].items[topic];
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
   });
   const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
-  const sources = recordsRules().sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
+  const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
     const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
     return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
@@ -560,10 +563,6 @@ function drawMigratedTopic(filling) {
     '## Its research\'s threads still open',
     '',
     listed(sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`)),
-    '',
-    '## Its reviews never folded in',
-    '',
-    listed(sources.reviews.map(({ id, report }) => `- ${id}: ${report}`)),
     '',
     '## The unit\'s assets',
     '',

@@ -99,6 +99,12 @@
 //     cut and the merges place it (21.5.4). A topic promoted to a
 //     cross-cutting unit took only its discussion there, so its research
 //     joins that unit's log for it, ahead of the discussion;
+//   - each review the old agent store holds of a topic — in
+//     `.workflows/.cache/{unit}/{phase}/{topic}/`, a promoted topic's in the
+//     unit it came from too — that landed and was never folded in, its
+//     report not in the log already, is appended to the topic's log, the
+//     report verbatim under `## Review {id}, never folded in` (21.5.12); a
+//     report the store holds no row for, a legacy `review-*.md`, is not;
 //   - its mail, from every box it had, is one sequence in `topics/{topic}/
 //     mail/`, renumbered where it had more than one box (21.5.5); the mail of
 //     a cancelled topic, or of a name no topic holds, goes to the inbox
@@ -618,6 +624,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   built: boolean,
  *   incoming: {topic: string, text: string}[],
  *   outgoing: Map<string, string>,
+ *   promotedFrom: Map<string, string>,
  *   holders: Map<string, Set<string>>,
  * }} UnitMove
  */
@@ -654,11 +661,34 @@ function relocate(move, rel, to) {
 const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(text)}`;
 
 /**
+ * The reviews of a topic's old agent store, its own unit's and the one it
+ * was promoted from, that landed and were never folded in, each its report
+ * under a heading of its own; a report `log` holds already is not. A topic
+ * promoted away has its reviews folded where it went.
+ * @param {UnitMove} move @param {string} topic @param {string} log @returns {string[]}
+ */
+function unfoldedReviews(move, topic, log) {
+  const homes = [move.unit, ...(move.promotedFrom.has(topic) ? [move.promotedFrom.get(topic)] : [])];
+  return homes.flatMap((home) => LOG_PHASES.flatMap((phase) => {
+    const dir = path.join(path.dirname(move.from), '.cache', home, phase, topic);
+    const file = path.join(dir, 'state.json');
+    const store = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+    const rows = isObject(store) && isObject(store.agents) ? Object.values(store.agents) : [];
+    return rows.filter((row) => isObject(row) && row.kind === 'review' && row.status !== 'incorporated' && typeof row.id === 'string').flatMap((row) => {
+      const report = path.join(dir, `${row.id}.md`);
+      const text = fs.existsSync(report) ? fs.readFileSync(report, 'utf8').trim() : '';
+      return text === '' || log.includes(text) ? [] : [`## Review ${row.id}, never folded in\n\n${text}\n`];
+    });
+  }));
+}
+
+/**
  * Each topic's log, its research, discussion and investigation each under
  * its own heading, a promoted topic's research coming from the unit it was
- * promoted from; and research no topic of its name holds, in a discovery
- * session of the migration's, numbered after the unit's last. A discussion
- * or an investigation no topic holds is left behind.
+ * promoted from, then each of its reviews never folded in; and research no
+ * topic of its name holds, in a discovery session of the migration's,
+ * numbered after the unit's last. A discussion or an investigation no topic
+ * holds is left behind.
  * @param {UnitMove} move
  */
 function moveLogs(move) {
@@ -683,7 +713,11 @@ function moveLogs(move) {
       relocate(move, rel, `${move.unit}/topics/${topic}/log.md`);
     }
   }
-  for (const [topic, parts] of logs) put(move, `topics/${topic}/log.md`, parts.join('\n'));
+  for (const topic of move.topics) {
+    const parts = logs.get(topic) ?? [];
+    const folded = move.outgoing.has(topic) ? parts : [...parts, ...unfoldedReviews(move, topic, parts.join('\n'))];
+    if (folded.length > 0) put(move, `topics/${topic}/log.md`, folded.join('\n'));
+  }
   if (spread.length === 0) return;
   const last = Math.max(0, ...move.files.map((f) => SESSION.exec(f)).filter((m) => m !== null).map((m) => Number(m[2])));
   const number = String(last + 1).padStart(3, '0');
@@ -828,15 +862,14 @@ const importedNames = (unitDir) => new Set(filesUnder(path.join(unitDir, 'import
 
 /**
  * Each topic promoted to a cross-cutting unit that holds it, whose research
- * stayed behind in the unit it came from.
- * @param {string} workflows @param {Map<string, Record<string, any>>} manifests @returns {Promoted[]}
+ * and agent store stayed behind in the unit it came from.
+ * @param {Map<string, Record<string, any>>} manifests @returns {Promoted[]}
  */
-function promotedResearch(workflows, manifests) {
+function promotions(manifests) {
   return [...manifests].flatMap(([source, manifest]) => Object.entries(itemsOf(manifest, 'discussion')).flatMap(([topic, item]) => {
     const target = isObject(item) ? item.promoted_to : undefined;
     const holder = typeof target === 'string' ? manifests.get(target) : undefined;
-    const held = holder !== undefined && topicNames(holder, target).has(topic) && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`));
-    return held ? [{ source, target, topic }] : [];
+    return holder !== undefined && topicNames(holder, target).has(topic) ? [{ source, target, topic }] : [];
   }));
 }
 
@@ -876,8 +909,10 @@ function moveUnit(workflows, state, unit, manifest, promoted, relocations, holde
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
     built: buildingStarted(manifest),
-    incoming: promoted.filter(({ target }) => target === unit).map((entry) => promotedText(workflows, entry)),
+    incoming: promoted.filter(({ source, target, topic }) => target === unit && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`)))
+      .map((entry) => promotedText(workflows, entry)),
     outgoing: new Map(promoted.filter(({ source }) => source === unit).map(({ topic, target }) => [topic, target])),
+    promotedFrom: new Map(promoted.filter(({ target }) => target === unit).map(({ topic, source }) => [topic, source])),
     holders,
   };
   moveLogs(move);
@@ -1296,7 +1331,7 @@ function move(projectDir, reportUpdate, reportSkip) {
     .sort();
   const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
-  const promoted = promotedResearch(from, manifests);
+  const promoted = promotions(manifests);
   const holders = new Map([...manifests].map(([name, manifest]) => [name, topicNames(manifest, name)]));
   const unitsLeft = folders.flatMap((name) => {
     const manifest = manifests.get(name);
