@@ -4658,30 +4658,62 @@ function specificationCancelStatement(manifest, spec) {
 
 /**
  * The cancel confirm over one unit — `<wu>.discovery.<topic>` or
- * `<wu>.specification.<spec>` — fetched by the epic menu and by a session
- * cancelling its own topic. The statement names exactly what the cancel
- * takes and stays context; the short question takes the glyph. A locked or
- * already-cancelled unit refuses: the menu never offers it.
+ * `<wu>.specification.<spec>` of an epic, or a single-topic unit by its bare
+ * name — fetched by the epic menu and by a session cancelling its own topic.
+ * The statement names exactly what the cancel takes and stays context; the
+ * short question takes the glyph. Yes runs the cancel, `topic cancel` or
+ * `workunit cancel`; no carries on. A locked or already-cancelled unit
+ * refuses: the menu never offers it.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function cancelGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-gate');
+  const { statement, cancel } = (dotpath || '').includes('.') ? epicUnitCancel(cwd, dotpath) : workUnitCancel(cwd, dotpath);
+  return section(
+    'MENU: cancel gate',
+    MENU_INSTRUCTION,
+    menu(statement, [
+      cmdOption('y', 'yes', 'Confirm cancellation', { next: { kind: 'engine', argv: cancel } }),
+      cmdOption('n', 'no', 'Keep it', { next: { kind: 'continue' } }),
+    ], { question: 'Cancel it?' }),
+  );
+}
+
+/**
+ * An epic's unit under the cancel gate: what the cancel takes, and the cancel.
+ * @param {string} cwd @param {string} dotpath
+ * @returns {{statement: string, cancel: string[]}}
+ */
+function epicUnitCancel(cwd, dotpath) {
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'cancel-gate');
   if (!(phase in UNIT_PHASES)) {
     throw new Error(`render cancel-gate: address must be <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>, got phase "${phase}"`);
   }
   const statement = phase === 'discovery'
     ? discoveryCancelStatement(manifest, topic)
     : specificationCancelStatement(manifest, topic);
-  return section(
-    'MENU: cancel gate',
-    MENU_INSTRUCTION,
-    menu(statement, [
-      cmdOption('y', 'yes', 'Confirm cancellation'),
-      cmdOption('n', 'no', 'Keep it'),
-    ], { question: 'Cancel it?' }),
-  );
+  return { statement, cancel: ['topic', 'cancel', workUnit, phase, topic] };
+}
+
+/**
+ * A single-topic unit under the cancel gate: the unit is its one topic, so
+ * the whole unit is called off.
+ * @param {string} cwd @param {string} dotpath
+ * @returns {{statement: string, cancel: string[]}}
+ */
+function workUnitCancel(cwd, dotpath) {
+  const { workUnit, manifest, typeLabel } = resolveWorkUnit(cwd, dotpath, 'cancel-gate');
+  if (manifest.work_type === 'epic') {
+    throw new Error(`render cancel-gate: "${workUnit}" is an epic — address the unit to cancel, <work_unit>.discovery.<topic> or <work_unit>.specification.<spec>`);
+  }
+  if (manifest.status !== 'in-progress') {
+    throw new Error(`render cancel-gate: "${workUnit}" is ${manifest.status} — only work in progress is cancelled`);
+  }
+  return {
+    statement: `Cancelling **${titlecase(workUnit)}** calls off the whole ${typeLabel.toLowerCase()} — it stops where it stands, and can be reactivated later.`,
+    cancel: ['workunit', 'cancel', workUnit],
+  };
 }
 
 /**
@@ -4732,9 +4764,9 @@ function postponeGate(cwd, { dotpath, horizon }) {
     'MENU: postpone gate',
     MENU_INSTRUCTION,
     menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project), [
-      cmdOption('y', 'yes', 'Postpone it'),
-      cmdOption('n', 'no', 'Keep it here'),
-      promptOption('Comment', 'Tell me what to change (the horizon)'),
+      cmdOption('y', 'yes', 'Postpone it', { next: { kind: 'engine', argv: ['topic', 'postpone', workUnit, topic, '--horizon', /** @type {string} */ (horizon)] } }),
+      cmdOption('n', 'no', 'Keep it here', { next: { kind: 'continue' } }),
+      promptOption('Comment', 'Tell me what to change (the horizon)', { next: { kind: 'continue' } }),
     ], { question: 'Postpone it?' }),
   );
 }
@@ -6099,8 +6131,27 @@ function roadmapAddGateSurface(cwd, args) {
   ].join('\n');
 }
 
-/** @param {string} cwd @param {object} _args @returns {string} */
-function horizonPick(cwd, _args) {
+/**
+ * The address of a topic leaving for the roadmap, checked as the postpone
+ * gate reads it.
+ * @param {string} cwd @param {string} dotpath @returns {string}
+ */
+function postponeAddress(cwd, dotpath) {
+  const { phase } = resolveAddress(cwd, dotpath, 'horizon-pick');
+  if (phase !== 'discovery') {
+    throw new Error(`render horizon-pick: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
+  }
+  return dotpath;
+}
+
+/**
+ * The pick over the roadmap's horizons. Addressed to a topic leaving for the
+ * roadmap, `<wu>.discovery.<topic>`, each horizon's row leads to that
+ * topic's postpone gate; a new horizon, named in words, carries on.
+ * @param {string} cwd @param {{dotpath?: string}} args @returns {string}
+ */
+function horizonPick(cwd, { dotpath }) {
+  const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
   if (!state.exists) {
     throw new Error('render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose');
@@ -6110,9 +6161,10 @@ function horizonPick(cwd, _args) {
   }
   const options = state.horizons.map((horizon, i) => {
     const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
-    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` });
+    const next = postponing === null ? undefined : { kind: /** @type {const} */ ('engine'), argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] };
+    return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, { next });
   });
-  options.push(cmdOption('n', 'new', 'A new horizon — name it'));
+  options.push(cmdOption('n', 'new', 'A new horizon — name it', postponing === null ? {} : { next: { kind: 'continue' } }));
   return section('MENU: horizon pick', MENU_INSTRUCTION, menu('Which horizon?', options));
 }
 

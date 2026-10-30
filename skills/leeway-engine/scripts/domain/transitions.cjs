@@ -40,6 +40,8 @@ const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
+const { closeInFlight } = require('./agent-state.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
@@ -99,6 +101,7 @@ function postponedRefusal(phase, topic) {
  * @property {string[]} abandoned  the open records closed as abandoned, reason recorded on each row — always empty for a specification unit
  * @property {WaitRelease[]} released_waits  the evidence waits the topic's conversations held — always empty for a specification unit
  * @property {string[]} [roadmap_reverted] discovery unit: roadmap items handed back to waiting by the cancel-revert hop
+ * @property {string[]} closed_agents  the agents still running on the items taken, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
@@ -903,6 +906,24 @@ function removeHeldChunks(cwd, workUnit, topic, held, warnings) {
 }
 
 /**
+ * The agents still running on each item a hold took, closed (agent-state's
+ * `closeInFlight`); a store that does not read is a warning, the hold standing.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ * @param {{phase: string}[]} held @param {string[]} warnings
+ * @returns {string[]} the ids closed
+ */
+function closeHeldAgents(cwd, workUnit, topic, held, warnings) {
+  return [...new Set(held.map(({ phase }) => phase))].flatMap((phase) => {
+    try {
+      return closeInFlight(cwd, workUnit, phase, topic);
+    } catch (err) {
+      warnings.push(`the ${phase} agents of "${topic}" were left as they stand: ${messageOf(err)}`);
+      return [];
+    }
+  });
+}
+
+/**
  * Re-index each restored `completed` artifact — the removal's mirror.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  * @param {RestoredItem[]} restored @param {string[]} warnings
@@ -1023,6 +1044,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   /** @type {string[]} */
   const warnings = [];
   removeHeldChunks(cwd, workUnit, topic, taken.cancelled, warnings);
+  const closedAgents = closeHeldAgents(cwd, workUnit, topic, taken.cancelled, warnings);
 
   for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
 
@@ -1043,7 +1065,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
     : `${workUnit}/manifest.json`;
   const outcome = commitStateTail(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
-  const result = { topic, phase: stage, status: 'cancelled', ...taken, committed: outcome.committed, warnings };
+  const result = { topic, phase: stage, status: 'cancelled', ...taken, closed_agents: closedAgents, committed: outcome.committed, warnings };
   if (stage === 'discovery') result.roadmap_reverted = reverted;
   // The manifest alone is narrower than any state scope, so the retry stays
   // generic — the commit door's own rule.
@@ -1170,6 +1192,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
  * @property {CancelledItem[]} postponed  the phase items the postpone stashed
  * @property {string[]} discarded  proposed groupings deleted with their source
  * @property {import('./roadmap.cjs').PostponeLanding} roadmap  the item that now waits for the topic
+ * @property {string[]} closed_agents  the agents still running on the items stashed, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
@@ -1237,6 +1260,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
   /** @type {string[]} */
   const warnings = [];
   removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
+  const closedAgents = closeHeldAgents(cwd, workUnit, topic, taken.postponed, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
 
   const outcome = commitStateTail(
@@ -1252,6 +1276,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
     postponed: taken.postponed,
     discarded: taken.discarded,
     roadmap: taken.roadmap,
+    closed_agents: closedAgents,
     committed: outcome.committed,
     warnings,
   };

@@ -55,7 +55,7 @@ Ask in the conversation; each answer lands through `ledger` as it is given.
 - A scope call agreed after the opening is a decision like any other. A point the person rules out as settled when the work was shaped takes no question and no message: acknowledge it and move on.
 - A changed mind is a replacement, never an edit, its cause named: the finding for a new fact, the other topic's decision, the question a message raised. The log says why.
 - A question another topic's current decision already answers merges into it; a decision is never written twice.
-- Nothing waits half-decided. A question closes by the person's decision, your call, don't care, a move to another topic (**Other Topics**), or later on the roadmap: park it through **Backlogging**, then move it to its item.
+- Nothing waits half-decided. A question closes by the person's decision, your call, don't care, a move to another topic (**Other Topics**), or later on the roadmap (**Backlogging**).
 - The person signing off with questions open is a pause, never a done-signal: bring the log up to date and fetch `render wait-agents {work_unit}.{topic}`. Where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then end the turn.
 
 ### Calls
@@ -108,8 +108,10 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
 - An experiment → `experiment create`, then `render experiment-spawn-gate`.
+- A question for later → `roadmap add`, then `ledger move --to roadmap:{item}`.
+- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`.
-- A gate's answer → `gate "{name}" --pick {key}`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
 
@@ -129,15 +131,38 @@ The screen asks a verdict of each call the person changed, one at a time: each a
 
 ## Backlogging
 
-The person says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+The person puts a question off for later — "roadmap it", "backlog that", "push it back": it waits on the roadmap and closes here. A point not on the map is asked first. The horizon is the person's: take it from their words, or ask in the conversation. Bring the log up to date, then add the item — a kebab-case `{name}` and a one-line `{summary}` saying the question in the product's terms — and move the question to it:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
+```
+
+A refused add records nothing; a name already on the roadmap takes another. Work that would be a new topic of this unit is a candidate for the decided screen, and a point another topic owns is a message (**A Message to Another Topic**).
 
 ## Postponing the Topic
 
-The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another by name, `{name}`. Load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `discussion`.
+The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another of the epic by name, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel. Say so in a line.
+
+Where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
+
+The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch the receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; then follow the postpone's `next`:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]
+```
 
 ## Cancelling the Topic
 
-The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`.
+The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Fetch the confirm — an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}` — emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the topic: say it in a line.
+
+An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; say in a line what went with it where the response names any — a proposed grouping `discarded`, an experiment `abandoned`. Then follow the cancel's `next`:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb cancel [--warn]
+```
+
+A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. Its receipt is `render workunit-receipt {work_unit} --verb cancel [--warn]`; the unit is closed, and the turn ends.
 
 ## A Shared File
 
