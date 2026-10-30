@@ -61,6 +61,7 @@ const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
+const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { guardDispatch } = require('./domain/brief-guard.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -266,6 +267,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
+  ${CUT_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1489,6 +1491,22 @@ function runBriefGuard(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// cut — the phase cut written onto a unit's manifest from a file, checked
+// against its spec first (domain/cut.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runCut(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${CUT_USAGE}`);
+    respond(call, writeCut(call.cwd, positional[0], opts.file));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
 // commit for the whole set.
@@ -2470,6 +2488,7 @@ const COMMANDS = Object.freeze({
   handoff: runHandoff,
   gate: runGate,
   raise: runRaise,
+  cut: runCut,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and
