@@ -10,7 +10,10 @@
 // locked, on a `leeway-state` with no commit yet, holding what the move
 // writes: the state's `.gitignore`, the project's manifest and id, the
 // unit's manifest with its three topics, and the migrations record, which
-// holds the fixture directives the boot suites never reach.
+// holds the fixture directives the boot suites never reach. And the records
+// directive's world (`recordsMigration`), made once and copied: three units
+// as today's layout left them and as the move wrote them, with the old agent
+// store the move leaves.
 
 require('./hermetic-env.cjs');
 
@@ -84,11 +87,17 @@ function directiveEngine() {
   return engine;
 }
 
-/** @param {string} dir */
-function buildMidMigration(dir) {
+/**
+ * A repository at `dir` whose code branch holds `old`, its files by path,
+ * committed as today's layout leaves them, and whose state worktree at
+ * `.leeway/`, locked, is on a `leeway-state` with no commit yet, holding the
+ * state's `.gitignore`, the project's manifest and id, and `moved`, its
+ * files by path, as the move writes them.
+ * @param {string} dir @param {Record<string, string>} old @param {Record<string, string>} moved
+ */
+function buildUnborn(dir, old, moved) {
   initRepo(dir);
-  createFile(dir, 'README.md', '# Fumi\n');
-  createFile(dir, `.workflows/${UNIT}/manifest.json`, jsonText(OLD_UNIT));
+  for (const [rel, text] of Object.entries(old)) createFile(dir, rel, text);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-q', '-m', 'the old layout']);
   fs.appendFileSync(path.join(dir, '.git/info/exclude'), `/${STATE_DIR_NAME}/\n`);
@@ -98,8 +107,15 @@ function buildMidMigration(dir) {
   git(dir, ['worktree', 'lock', '--reason', STATE_LOCK_REASON, root]);
   createFile(root, layout.gitignore, STATE_GITIGNORE);
   createFile(root, layout.projectManifest, jsonText({ project_id: newId() }));
-  createFile(root, layout.manifest(UNIT), jsonText(MOVED_UNIT));
-  createFile(root, layout.migrations, RECORDED.map((id) => `${id}\n`).join(''));
+  for (const [rel, text] of Object.entries(moved)) createFile(root, rel, text);
+}
+
+/** @param {string} dir */
+function buildMidMigration(dir) {
+  buildUnborn(dir, { 'README.md': '# Fumi\n', [`.workflows/${UNIT}/manifest.json`]: jsonText(OLD_UNIT) }, {
+    [layout.manifest(UNIT)]: jsonText(MOVED_UNIT),
+    [layout.migrations]: RECORDED.map((id) => `${id}\n`).join(''),
+  });
 }
 
 /** @type {string|null} */
@@ -116,6 +132,104 @@ function midMigration(dir) {
     buildMidMigration(template);
   }
   return copyWorld(template, dir);
+}
+
+// The records directive's world (079): three units on the code branch as
+// today's layout left them, and in the state as the move wrote them — an
+// epic nothing of which is built, two topics in discussion, an import come
+// in from one of them, its spec kept as an asset, and a review the old agent
+// store holds never folded in beside one folded in; an epic whose building
+// started, its spec still on the code branch; and a cancelled feature.
+const RECORDS_OLD = Object.freeze({
+  'README.md': '# Fumi\n',
+  '.workflows/fumi/manifest.json': jsonText({
+    name: 'fumi', work_type: 'epic', status: 'in-progress',
+    imports: [{ path: 'imports/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' }],
+    phases: {
+      discussion: {
+        items: {
+          licensing: { status: 'completed', subtopics: { 'trial-length': { status: 'decided', parent: null } } },
+          search: {
+            status: 'in-progress',
+            subtopics: { ranking: { status: 'decided', parent: null }, 'typo-tolerance': { status: 'exploring', parent: null }, synonyms: { status: 'deferred', parent: null } },
+          },
+        },
+      },
+      specification: { items: { licensing: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
+    },
+  }),
+  '.workflows/shop/manifest.json': jsonText({
+    name: 'shop', work_type: 'epic', status: 'in-progress',
+    phases: {
+      discussion: { items: { weights: { status: 'completed', subtopics: { 'tie-break': { status: 'decided', parent: null } } } } },
+      specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
+      implementation: { items: { weights: { status: 'in-progress' } } },
+    },
+  }),
+  '.workflows/shop/specification/weights/specification.md': '# Specification: Weights\n\n## Ranking\n\nNewest first.\n\n## Corrigenda\n\nTies break by price, not by name.\n',
+  '.workflows/gone/manifest.json': jsonText({
+    name: 'gone', work_type: 'feature', status: 'cancelled',
+    phases: { discussion: { items: { gone: { status: 'in-progress', subtopics: { cause: { status: 'decided', parent: null } } } } } },
+  }),
+});
+
+const RECORDS_MOVED = Object.freeze({
+  [layout.manifest('fumi')]: jsonText({
+    name: 'fumi', work_type: 'epic', status: 'in-progress',
+    imports: [{ path: 'assets/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' }],
+    phases: {
+      discussion: { items: { licensing: { status: 'completed' }, search: { status: 'in-progress' } } },
+      specification: { items: { licensing: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
+    },
+  }),
+  [layout.topic('fumi', 'licensing', 'log.md')]: '## Discussion\n\n# Discussion: Licensing\n\n## Trial Length\n\n### Decision\n\nFourteen days, the person said.\n',
+  [layout.topic('fumi', 'licensing', 'brief.md')]: '# Licensing\n\nHow the trial works.\n',
+  [layout.topic('fumi', 'search', 'log.md')]: '## Discussion\n\n# Discussion: Search\n\n## Ranking\n\nBy recency.\n\n## Typo Tolerance\n\nStill open.\n',
+  [layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')]: '# Report\n\n## Result\n\n12ms at p95, from `npm run bench`.\n',
+  [layout.assets('fumi', 'pricing.md')]: '# Pricing\n',
+  [layout.assets('fumi', 'specs', 'licensing.md')]: '# Specification: Licensing\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n',
+  [layout.manifest('shop')]: jsonText({
+    name: 'shop', work_type: 'epic', status: 'in-progress',
+    phases: {
+      discussion: { items: { weights: { status: 'completed' } } },
+      specification: { items: { weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } } } },
+      implementation: { items: { weights: { status: 'in-progress' } } },
+    },
+  }),
+  [layout.topic('shop', 'weights', 'log.md')]: '## Discussion\n\n# Discussion: Weights\n\n## Tie Break\n\nBy name.\n',
+  [layout.manifest('gone')]: jsonText({ name: 'gone', work_type: 'feature', status: 'cancelled', phases: { discussion: { items: { gone: { status: 'in-progress' } } } } }),
+  [layout.topic('gone', 'gone', 'log.md')]: '## Discussion\n\n# Discussion: Gone\n\n## Cause\n\nA race.\n',
+});
+
+// The old agent store of fumi's search topic, which the move leaves: a review
+// acknowledged, never folded in, and one incorporated.
+const OLD_REVIEWS = Object.freeze({
+  dir: '.workflows/.cache/fumi/discussion/search',
+  store: { agents: { 'review-001': { id: 'review-001', kind: 'review', status: 'acknowledged' }, 'review-002': { id: 'review-002', kind: 'review', status: 'incorporated' } } },
+  reports: { 'review-001': '### F1: Ranking ties\n\nTwo results of one age have no order.\n', 'review-002': '### F1: Stale\n\nFolded in long ago.\n' },
+});
+
+/** @param {string} dir */
+function buildRecords(dir) {
+  buildUnborn(dir, RECORDS_OLD, RECORDS_MOVED);
+  createFile(dir, `${OLD_REVIEWS.dir}/state.json`, jsonText(OLD_REVIEWS.store));
+  for (const [id, text] of Object.entries(OLD_REVIEWS.reports)) createFile(dir, `${OLD_REVIEWS.dir}/${id}.md`, text);
+}
+
+/** @type {string|null} */
+let recordsTemplate = null;
+
+/**
+ * The records directive's world at `dir`, the migration under way in it.
+ * @param {string} dir
+ * @returns {string} dir, symbolic links resolved
+ */
+function recordsMigration(dir) {
+  if (recordsTemplate === null) {
+    recordsTemplate = templateFolder('records-migration-template-');
+    buildRecords(recordsTemplate);
+  }
+  return copyWorld(recordsTemplate, dir);
 }
 
 /** Whether the project's `leeway-state` has no commit yet. @param {string} dir */
@@ -164,5 +278,5 @@ function recorded(dir) {
 }
 
 module.exports = {
-  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, directiveEngine, midMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
+  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, OLD_REVIEWS, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
 };

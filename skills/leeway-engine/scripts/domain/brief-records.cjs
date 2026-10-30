@@ -71,6 +71,21 @@
 //                  and what it returned, or that it failed and why, or that
 //                  it never finished
 //
+// The migration's records, for the agents of its records directive, each of
+// a topic `--topic` names, `<unit>.<phase>.<topic>`, as the migration moved
+// it — a topic of a unit cancelled among them (21.6.2):
+//
+//   directive      the migration's directive `--directive` names, verbatim,
+//                  each of its headings a level down (21.10.2)
+//   migrated-topic the topic: the unit, its work type and status, the
+//                  phases the topic is in, the state's place, each file of
+//                  the topic's folder but its mail and the spec kept for it,
+//                  the unit's assets with where each came in from, and where
+//                  the topic's record is composed and the verifier's
+//                  findings on it written (21.10.5)
+//   composed-record that topic's record as composed, fenced as JSON (21.10.7)
+//   verifier-findings the verifier's findings on that record, verbatim
+//
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
 // text that reaches the brief (6.5.6). A record the project holds none of
@@ -83,7 +98,8 @@
 // on; a dispatch the topic's store lacks, of another kind, no longer in
 // flight; a perspective of the set with no report, or briefed on no question
 // or another than its pair; a dive of no kind, a read naming no file, another
-// kind naming one; a conversation that has run no knowledge query. Nothing else of the project reaches a brief — its
+// kind naming one; a conversation that has run no knowledge query; a directive the migrations
+// lack, a migrated topic its unit lacks, a composed record missing or empty. Nothing else of the project reaches a brief — its
 // CLAUDE.md and its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
@@ -97,7 +113,7 @@ const { linters } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
 const { recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
-const { manifestOf, liveTopics } = require('./ledger-units.cjs');
+const { manifestOf, liveTopics, TOPIC_PHASES, hasItem } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
@@ -108,6 +124,9 @@ const { taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
+const { readWorkUnitManifest, isObject } = require('../kernel/manifest-io.cjs');
+const { directiveOf } = require('./directives.cjs');
+const { topicPlace, composedPath, findingsPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -476,6 +495,80 @@ function drawKnowledgeQuery({ session }) {
   return `${head}\n\nIt returned:\n\n${fenced('', query.outcome.returned.replace(/\n+$/, ''))}`;
 }
 
+/** The flag naming a migrated topic, by its place. @type {BriefFlag} */
+const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
+
+/** @param {Filling} filling */
+function drawDirective({ given }) {
+  return headingsDown(fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd());
+}
+
+/** @param {Filling} filling */
+const migratedTopic = ({ cwd, given }) => topicPlace(cwd, given.topic, 'brief');
+
+/** Every file under `dir`, as posix paths from `from`, sorted. @param {string} from @param {string} dir @returns {string[]} */
+function filesBelow(from, dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = path.join(dir, entry.name);
+    return entry.isDirectory() ? filesBelow(from, at) : [path.relative(from, at).split(path.sep).join('/')];
+  }).sort();
+}
+
+/** @param {Filling} filling */
+function drawMigratedTopic(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const manifest = readWorkUnitManifest(root, unit);
+  const phases = TOPIC_PHASES.filter((phase) => hasItem(manifest, phase, topic)).map((phase) => {
+    const { status } = manifest.phases[phase].items[topic];
+    return typeof status === 'string' ? `${phase}, ${status}` : phase;
+  });
+  const folder = path.join(root, unit, 'topics', topic);
+  const spec = path.posix.join(unit, 'assets', 'specs', `${topic}.md`);
+  const files = [
+    ...filesBelow(root, folder).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`)),
+    ...(fs.existsSync(path.join(root, spec)) ? [spec] : []),
+  ];
+  const assets = (Array.isArray(manifest.imports) ? manifest.imports : []).filter((entry) => isObject(entry) && typeof entry.path === 'string')
+    .map((entry) => `- ${unit}/${entry.path}${typeof entry.origin === 'string' ? `, which came in from ${entry.origin}` : ''}`);
+  return [
+    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    `- **Topic:** ${topic}, in ${phases.join('; ')}`,
+    `- **The state:** ${root} — each path below is from there, as an entry cites it`,
+    '',
+    '## Its files',
+    '',
+    listed(files.map((file) => `- ${file}`)),
+    '',
+    '## The unit\'s assets',
+    '',
+    listed(assets),
+    '',
+    '## Where the record goes',
+    '',
+    `- The record composed: ${composedPath(unit, topic)}`,
+    `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
+  ].join('\n');
+}
+
+/** @param {Filling} filling */
+function drawComposedRecord(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const file = path.join(root, composedPath(unit, topic));
+  const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
+  if (text === null) throw new Error(`${unit}'s ${topic} has no record composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${unit}'s ${topic} has no record composed — ${file} is empty`);
+  return fenced('json', text.trimEnd());
+}
+
+/** @param {Filling} filling */
+function drawVerifierFindings(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const file = path.join(root, findingsPath(unit, topic));
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  return text === '' ? NONE : text;
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -497,6 +590,10 @@ const RECORDS = Object.freeze({
   lens: { of: 'topic', flags: [AGENT], draw: drawLens },
   perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
+  directive: { of: null, flags: [{ name: 'directive', value: 'id' }], draw: drawDirective },
+  'migrated-topic': { of: null, flags: [MIGRATED], draw: drawMigratedTopic },
+  'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
+  'verifier-findings': { of: null, flags: [MIGRATED], draw: drawVerifierFindings },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

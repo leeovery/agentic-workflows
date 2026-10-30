@@ -51,10 +51,14 @@ describe('engine boot (real scripts)', () => {
     assert.ok(!first.migrations.output.includes('MIGRATIONS_RUN'));
     // The code-tree fleet has no `.workflows/` to upgrade: every one is
     // recorded unrun, none creates the folder, and the settings stay as found;
-    // the migrations past it run and find nothing to do.
-    const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrations'))
-      .map((f) => (f.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
-    assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION).length);
+    // the migrations past it run and find nothing to do, its directives
+    // recorded unrun beside it.
+    const names = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrations'))
+      .filter((f) => /^[0-9]+-/.test(f) && !f.endsWith('.check.cjs'));
+    const idOf = (/** @type {string} */ f) => f.slice(0, f.indexOf('-'));
+    const fleet = names.map(idOf).sort();
+    const directives = new Set(names.filter((f) => f.endsWith('.md')).map(idOf));
+    assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length);
     assert.deepStrictEqual(fs.readFileSync(statePath(project, layout.migrations), 'utf8').trim().split('\n').sort(), fleet);
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);

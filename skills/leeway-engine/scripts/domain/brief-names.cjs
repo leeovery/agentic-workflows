@@ -61,6 +61,8 @@ const ROLES = Object.freeze({
     records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'gap-review', 'report-to'],
   },
   'plain-search': { agent: 'leeway-plain-search', whose: 'the plain search\'s', records: ['knowledge-query'] },
+  'migration-topic': { agent: 'leeway-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'directive'] },
+  'migration-verifier': { agent: 'leeway-migration-verifier', whose: 'the migration verifier\'s', records: ['migrated-topic', 'composed-record', 'directive'] },
 });
 
 /** Where a conversation keeps a brief. @param {string} session @param {string} id */

@@ -41,7 +41,7 @@ const { TRUST_LOG, PENDING, trustLogPath, appendWaiting, readTrustLog } = requir
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
-const { SESSION_ID, SESSION, MADE, NOTE, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld, answeredRaise } = require('./ledger-world.cjs');
+const { SESSION_ID, SESSION, MADE, NOTE, WRITE_PHASES, ledgerHelpers, ledgerWriteHelpers, ledgerWorld, answeredRaise } = require('./ledger-world.cjs');
 const { trustLogHelpers } = require('./trust-world.cjs');
 
 const config = useTempFolder('ledger-trust-config-');
@@ -63,6 +63,7 @@ afterEach(() => {
 });
 
 const { write, ledgerText, entries, full, refused, ask, find, decide, change } = ledgerWriteHelpers(() => dir);
+const { carriedOver } = ledgerHelpers(() => dir);
 
 /** An event as these tests compare it: its type, the project it is keyed by and its own fields. @param {Record<string, unknown>} event */
 function keyed({ v: _v, id: _id, at: _at, project_name: _name, model: _model, session: _session, ...own }) {
@@ -135,10 +136,10 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.deepStrictEqual(logged(), [callOf(call), callOf(own), callOf(persons)]);
   });
 
-  it('reads an answer the person handed over or left to the builder as Claude\'s call: each logs a call, and the person\'s change of mind over it a reversal, waiting on a verdict with it as the lean; one carried over logs none, and the person\'s replacement of it no reversal (9.2.14, 9.2.16, 21.6.5)', () => {
+  it('reads an answer the person handed over or left to the builder as Claude\'s call: each logs a call, and the person\'s change of mind over it a reversal, waiting on a verdict with it as the lean; one the migration carried over is no call, and the person\'s replacement of it no reversal (9.2.14, 9.2.16, 21.6.5)', () => {
     const handed = decide(ask().id, { given: 'your-call' }).id;
     const builders = decide(ask('Does a note snap?').id, { text: 'Notes snap to the grid.', given: 'dont-care' }).id;
-    const carried = decide(ask('Does a note dim?').id, { text: 'Notes dim after a minute.', given: 'carried' }).id;
+    const carried = carriedOver(NOTE, ask('Does a note dim?').id, 'Notes dim after a minute.');
     assert.deepStrictEqual(logged(), [callOf(handed), callOf(builders)]);
 
     const reversal = overrule(handed).id;

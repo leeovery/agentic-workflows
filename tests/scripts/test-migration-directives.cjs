@@ -276,6 +276,15 @@ describe('while the migration runs (21.1.5, 21.9.3)', () => {
     assert.ok(stateUnborn(dir));
   });
 
+  it('takes Claude\'s decision carried over, which outside the migration is refused (test-engine-ledger-provenance.cjs)', () => {
+    const at = `${UNIT}.discussion.licensing`;
+    const asked = engine.ok(dir, ['ledger', 'ask', at], { env: SESSION, stdin: JSON.stringify({ text: 'How long is the trial?', by: 'claude', who_moved_whom: 'none' }) }).id;
+
+    engine.ok(dir, ['ledger', 'decide', at, '--answers', asked], { env: SESSION, stdin: JSON.stringify({ text: 'Fourteen days.', why: 'The log says so.', by: 'claude', who_moved_whom: 'none', given: 'carried' }) });
+
+    assert.deepStrictEqual(ledgerEntries(statePath(dir)).map((entry) => [entry.event, entry.given ?? null]), [['asked', null], ['decided', 'carried']]);
+  });
+
   it('holds a commit to the layout all the same: a file outside it refuses the commit at once, named', () => {
     writeState(dir, `${UNIT}/tmp/notes.md`, 'A stray.\n');
 
