@@ -134,19 +134,20 @@ function positionPath(sessionId) {
 }
 
 /**
- * The task in flight in the conversation `sessionId` — its unit and the
- * task's `{phase}.{n}` — as its position records it; null where none is, or
- * the position cannot be read. The one read of the position that loads
- * nothing of position.cjs's, for the hook before Bash, which stands before
- * every shell command (shell-guard.cjs).
- * @param {string} sessionId @returns {{unit: string, task: string}|null}
+ * The tasks in flight in the conversation `sessionId` — each its unit and
+ * the task's `{phase}.{n}` — as its position records them; none where it
+ * records none, or the position cannot be read. The position holds one
+ * today. The one read of the position that loads nothing of position.cjs's,
+ * for the hook before Bash, which stands before every shell command
+ * (shell-guard.cjs), and the commit door (commit-task.cjs).
+ * @param {string} sessionId @returns {{unit: string, task: string}[]}
  */
-function taskInFlight(sessionId) {
+function tasksInFlight(sessionId) {
   try {
     const { name, task } = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
-    return typeof name === 'string' && typeof task === 'string' && task !== '' ? { unit: name, task } : null;
+    return typeof name === 'string' && typeof task === 'string' && task !== '' ? [{ unit: name, task }] : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -404,4 +405,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, taskInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, positionPath, tasksInFlight, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };

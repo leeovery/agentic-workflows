@@ -213,7 +213,7 @@ describe('land: the default branch everything lands on', () => {
     assert.strictEqual(own(ok(dir, openArgs(card))).base, 'trunk');
   });
 
-  it('is never the state branch: the verb refuses, writing nothing (4.9.4)', () => {
+  it('4.S20: is never the state branch: the verb refuses, writing nothing (4.9.4)', () => {
     const dir = project();
     const before = stateAt(dir);
     git(dir, ['config', 'init.defaultBranch', 'leeway-state']);
