@@ -60,6 +60,7 @@ const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits } = require('
 const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
+const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -262,6 +263,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
                 [--next-task <id|~>] [--phase <N>] [--phase-complete]
   task analysis-cycle <work-unit> <topic>
 ${LAND_USAGE.replace(/^/gm, '  ')}
+${BRIEF_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1445,6 +1447,21 @@ function runLand(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// brief — a role's brief filled from its records and stored in the calling
+// conversation's folder, for the dispatch to carry by its pointer
+// (domain/brief.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runBrief(call, argv) {
+  try {
+    respond(call, issueBrief(call.cwd, argv));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
 // commit for the whole set.
@@ -2413,6 +2430,7 @@ const COMMANDS = Object.freeze({
   layout: runLayout,
   task: runTask,
   land: runLand,
+  brief: runBrief,
   inbox: runInbox,
   roadmap: runRoadmap,
   baseline: runBaseline,
@@ -2445,9 +2463,11 @@ const COMMANDS = Object.freeze({
 // and `resume`, and the hold `topic mailbox` refreshes write only the
 // session files the state ignores; a conversation's folder is outside the
 // project; `gate` writes the trust log, under its own lock, and the
-// conversation's folder; and the rest read, `layout guard` among them, run
-// before every file Claude writes. `manifest` takes it to write alone, and
-// `commit` but for a code commit (`--paths`).
+// conversation's folder; and the rest read: `layout guard` among them, run
+// before every file Claude writes, and `brief guard`, before every dispatch
+// of an agent. `manifest` takes it to write alone, `commit` but for a code
+// commit (`--paths`), and a brief's fill whole, since its read of the task
+// may commit the tracker's set-up.
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
@@ -2464,6 +2484,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   session: ['label', 'repair', 'cleanup', 'resume'],
   gate: '*',
   raise: '*',
+  brief: ['guard'],
 }));
 
 /** @param {string[]} argv @returns {boolean} */

@@ -636,7 +636,7 @@ describe('engine writes take the writer lock', () => {
   it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'raise'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside, and a raise after them');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'raise', 'brief guard'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the brief\'s guard, which 7.2 builds, aside, and a raise after them');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');

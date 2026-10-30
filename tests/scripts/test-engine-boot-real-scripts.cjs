@@ -24,6 +24,7 @@ const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
+const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrate.cjs'));
 const { FLAG, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot (real scripts)', () => {
@@ -49,10 +50,11 @@ describe('engine boot (real scripts)', () => {
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
     assert.ok(!first.migrations.output.includes('MIGRATIONS_RUN'));
     // The code-tree fleet has no `.workflows/` to upgrade: every one is
-    // recorded unrun, none creates the folder, and the settings stay as found.
-    assert.strictEqual(first.migrations.ran, 0);
+    // recorded unrun, none creates the folder, and the settings stay as found;
+    // the migrations past it run and find nothing to do.
     const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrations'))
       .map((f) => (f.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
+    assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION).length);
     assert.deepStrictEqual(fs.readFileSync(statePath(project, layout.migrations), 'utf8').trim().split('\n').sort(), fleet);
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);

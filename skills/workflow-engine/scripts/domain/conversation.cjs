@@ -45,6 +45,9 @@
 //                  where it was raised and the question it answers, and its
 //                  answer once given — what `raise show` draws again
 //                  (raise.cjs)
+//   briefs/        each brief the conversation issued, `{id}.md`, as its
+//                  template was filled (brief.cjs): what a dispatch of one of
+//                  the workflows' agents carries by its pointer
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press, or a handoff's
 //                  continuation with its line (the mod's; the rows mod
