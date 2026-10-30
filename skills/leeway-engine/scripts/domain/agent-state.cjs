@@ -17,7 +17,10 @@
 // with `announced` (user told the file exists) and `surfaced[]` (finding
 // ids raised so far) tracked on acknowledged rows. `scan` is the one read
 // the surfacing protocol and conclusion gates need: it promotes finished
-// rows and answers with a decision-ready snapshot.
+// rows and answers with a decision-ready snapshot. Each row names the
+// conversation that dispatched it, so the entry can tell a topic's agents
+// an earlier conversation left (`earlierAgents`): a report that landed after
+// it ended, or an agent lost with it — never re-dispatched by the engine.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -28,6 +31,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -374,6 +378,7 @@ function latestReview(cwd, workUnit, topic) {
  * snapshot arming measures against.
  * Numbering starts after both existing rows AND any legacy files already in
  * the cache dir (pre-programme skeletons keep their names; ids never collide).
+ * Each row names the dispatching conversation, where Claude Code handed one.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {{kind: string, labels?: string[], set?: string, final?: boolean}} opts
  */
@@ -472,6 +477,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
       ? labels.map((label) => `${kind}-${nnn}-${label}`)
       : [`${kind}-${nnn}`];
     const created = new Date().toISOString();
+    const session = handedSession();
     const agents = ids.map((id, i) => {
       state.agents[id] = {
         id,
@@ -485,6 +491,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         findings: [],
         surfaced: [],
         created,
+        ...(session === null ? {} : { session }),
         ...(mapSnapshot ? { map_snapshot: mapSnapshot } : {}),
       };
       return { id, file: path.join(dir, `${id}.md`) };
@@ -530,6 +537,30 @@ function publicRow(row) {
 
 // Kinds that are consumed by another agent, never surfaced to the user.
 const NEVER_SURFACED = ['perspective'];
+
+/**
+ * A topic's agents an earlier conversation dispatched and left untaken —
+ * every row the conversation `sessionId` did not dispatch, in dispatch
+ * order: `landed`, each with its report's path, where the report is on disk
+ * and has not been read in yet; `lost` where it never landed, its
+ * conversation having ended with it in flight. Read without promoting or
+ * saving anything, and a store that does not read answers none, as a
+ * derivation's read does.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {string|null} sessionId
+ * @returns {{landed: {id: string, file: string}[], lost: string[]}}
+ */
+function earlierAgents(cwd, workUnit, phase, topic, sessionId) {
+  const dir = agentDir(cwd, workUnit, phase, topic);
+  const earlier = derivationRows(dir)
+    .filter((row) => phaseCarries(phase, row.kind) && (sessionId === null || row.session !== sessionId))
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
+  const untaken = earlier.filter((row) => row.status === 'in-flight' || row.status === 'pending');
+  const landed = untaken.filter((row) => contentFileExists(row, cwd, workUnit));
+  return {
+    landed: landed.map((row) => ({ id: row.id, file: path.join(dir, `${row.id}.md`) })),
+    lost: untaken.filter((row) => !landed.includes(row)).map((row) => row.id),
+  };
+}
 
 /**
  * Scan: promote every in-flight row whose content file now exists, then
@@ -704,6 +735,7 @@ module.exports = {
   completedReviewCycles,
   reviewArming,
   agentRows,
+  earlierAgents,
   latestReview,
   settleFoldedSubtopic,
 };

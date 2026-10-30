@@ -159,8 +159,8 @@ function beatQuietly(cwd, workUnit, phase, topic) {
  * — a foreign topic's mailbox is legitimately checked from another session —
  * so creating a hold here would manufacture a phantom, and stamping over a
  * peer's record would re-attribute a hold. Ownership was established by
- * the write-shaped verbs that are self-referential by construction (`topic
- * start`, the entry renders, the cadence commit); this keeps that hold's
+ * the write-shaped verbs that are self-referential by construction (`enter`,
+ * `topic start`, the entry renders, the cadence commit); this keeps that hold's
  * last-active age honest through quiet polling turns. Same silence as
  * `beatQuietly`.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic

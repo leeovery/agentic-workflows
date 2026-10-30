@@ -62,6 +62,13 @@ describe('engine agent — lifecycle store', () => {
     assert.strictEqual(store.agents['review-001'].status, 'in-flight');
   });
 
+  it('each row names the conversation that dispatched it — none where no session id names one', () => {
+    const named = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: 'sess-1' } });
+    const unnamed = engineJson(dir, ['agent', 'dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review'], { env: { CLAUDE_CODE_SESSION_ID: undefined } });
+    const store = readStore(dir, 'pay', 'discussion', 'alpha');
+    assert.deepStrictEqual([store.agents[named.id].session, 'session' in store.agents[unnamed.id]], ['sess-1', false]);
+  });
+
   it('dispatch numbers past legacy files already in the cache dir', () => {
     writeContent(dir, '.leeway/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);

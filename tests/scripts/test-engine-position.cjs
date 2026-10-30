@@ -13,7 +13,11 @@
 // work, then the topic's documents this project has, each by its absolute
 // path under the project root, as the note a compaction hands up and one line
 // of JSON for the gate mod — nothing from a place no longer open, or one
-// whose skill the project lacks.
+// whose skill the project lacks. A discussion's note carries its recovery
+// whole (24.2.6): the topic's record and its log, the log caught up from the
+// conversation's transcript, and the line its first write opens with where
+// the log does not name the conversation yet (24.S10, 9.S67); every other
+// phase's sends Claude to its skill's own steps.
 //
 
 require('./hermetic-env.cjs');
@@ -28,12 +32,17 @@ const { skillAt } = require('../../skills/leeway-engine/scripts/domain/position.
 const { OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
+// The phases whose note carries the recovery whole, their skills keeping no
+// steps of their own for it.
+const WHOLE = ['discussion'];
+
 let dir; // a workflows project
 let config; // this test's system config directory
+let claude; // this test's Claude Code config directory
 
 /** The engine as the conversation `sessionId` runs it — null runs it with no id. */
 function env(sessionId = 'sess-1') {
-  return { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined, TMUX: undefined, TMUX_PANE: undefined };
+  return { LEEWAY_CONFIG_DIR: config, CLAUDE_CONFIG_DIR: claude, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined, TMUX: undefined, TMUX_PANE: undefined };
 }
 
 /** A call that must succeed, its response line parsed. */
@@ -101,6 +110,7 @@ function reads(args = [], sessionId = 'sess-1') {
 beforeEach(() => {
   dir = harness.setupGitFixture('engine-position-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-config-'));
+  claude = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-claude-'));
   workUnit('pay', 'epic', {
     implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } },
     planning: { items: { ledger: { status: 'completed', format: 'flat-files' } } },
@@ -109,7 +119,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  for (const d of [dir, config, claude]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe('the position every arrival records', () => {
@@ -348,11 +358,12 @@ describe('conversation position', () => {
     return files.length > 0 ? [`${follow}, then re-read these in full:`, ...files.map((f) => `- ${abs(f)}`)].join('\n') : `${follow}.`;
   }
 
-  it('names only skills that carry the recovery steps and open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu', () => {
+  it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
     assert.strictEqual(skills.length, 12);
-    for (const skill of skills) {
-      assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
+    for (const skill of skills) assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
+    const whole = WHOLE.map((phase) => skillAt('pay', phase));
+    for (const skill of skills.filter((named) => !whole.includes(named))) {
       const file = path.join(__dirname, '../../skills', skill, 'SKILL.md');
       assert.ok(fs.existsSync(file), `${skill} exists`);
       const text = fs.readFileSync(file, 'utf8');
@@ -392,28 +403,64 @@ describe('conversation position', () => {
     });
   });
 
-  it('a discussion: its phase skill\'s recovery steps, then the discussion', () => {
+  /** A discussion's note: its log named where written, the transcript found or not, the log's header line owed or not. */
+  function topicNote(where, unit, topic, { log = false, transcript = null, header = null } = {}) {
+    const logFile = abs(`.leeway/${unit}/topics/${topic}/log.md`);
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs('.claude/skills/leeway-discussion-process/SKILL.md')} and its framework`,
+      `- \`node .claude/skills/leeway-engine/scripts/engine.cjs ledger record ${unit} ${topic}\``,
+      ...(log ? [`- ${logFile}`] : []),
+      transcript === null
+        ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
+        : `Catch the log, ${logFile}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+      ...(header === null ? [] : [`This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+  }
+
+  /** The conversation's transcript, where Claude Code keeps it. */
+  function transcript(sessionId = 'sess-1') {
+    const file = path.join(claude, 'projects', '-Users-person-pay', `${sessionId}.jsonl`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '');
+    return file;
+  }
+
+  it('a discussion carries its recovery whole: the skill, the topic\'s record and its log, the log caught up from the conversation\'s transcript (24.S10)', () => {
     install('leeway-discussion-process');
-    write('.leeway/pay/discussion/ledger.md');
+    write('.leeway/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nWhere it stands.\n');
+    const file = transcript();
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const answer = reads();
-    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'discussion', topic: 'ledger' });
-    assert.strictEqual(answer.place, 'pay › discussion › ledger');
-    assert.strictEqual(answer.skill, abs('.claude/skills/leeway-discussion-process/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discussion/ledger.md')]);
-    assert.strictEqual(answer.text, [
-      `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "pay". Follow the leeway-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/leeway-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
-      `- ${dir}/.leeway/pay/discussion/ledger.md`,
-    ].join('\n'));
+    assert.deepStrictEqual([answer.position, answer.place, answer.skill, answer.files], [
+      { name: 'pay', phase: 'discussion', topic: 'ledger' }, 'pay › discussion › ledger',
+      abs('.claude/skills/leeway-discussion-process/SKILL.md'), [abs('.leeway/pay/topics/ledger/log.md')],
+    ]);
+    assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { log: true, transcript: file }));
+  });
+
+  it('a discussion whose log does not name the conversation yet: the line its first write opens with, and a transcript gone said in one line (9.S67)', () => {
+    install('leeway-discussion-process');
+    ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    const today = harness.FROZEN_AT.slice(0, 10);
+    const unwritten = harness.withFrozenClock(() => reads());
+    assert.deepStrictEqual(unwritten.files, []);
+    assert.strictEqual(unwritten.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { header: `## ${today} · session sess-1` }));
+    write('.leeway/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-2\n');
+    const file = transcript();
+    assert.strictEqual(harness.withFrozenClock(() => reads()).text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', {
+      log: true, transcript: file, header: `## ${today} · session sess-1 · transcript ${file}`,
+    }), 'another conversation\'s write leaves this one\'s line owed');
   });
 
   it('names the work unit by its work type, the topic collapsed where it is the work unit', () => {
     workUnit('auth', 'feature');
     install('leeway-discussion-process');
-    write('.leeway/auth/discussion/auth.md');
+    write('.leeway/auth/topics/auth/log.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'auth', 'discussion', 'auth']);
     const answer = reads();
-    assert.strictEqual(answer.text, note('the discussion of the feature "auth"', 'leeway-discussion-process', ['.leeway/auth/discussion/auth.md']));
+    assert.strictEqual(answer.text, topicNote('the discussion of the feature "auth"', 'auth', 'auth', { log: true }));
     assert.strictEqual(answer.place, 'auth › discussion');
   });
 
@@ -589,9 +636,9 @@ describe('conversation position', () => {
 
   it('a place no longer open carries nothing on — the work unit gone from this project or closed, the place\'s item closed', () => {
     install('leeway-discussion-process');
-    write('.leeway/pay/discussion/ledger.md');
+    write('.leeway/pay/topics/ledger/log.md');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
-    const closed = (text) => assert.deepStrictEqual(reads(), {
+    const closed =(text) => assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
       position: { name: 'pay', phase: 'discussion', topic: 'ledger' },
       place: 'pay › discussion › ledger',
@@ -696,16 +743,16 @@ describe('conversation position', () => {
 
   it('names each file under the root of the project the call runs in, a dashed or dotted root spelled as it is', () => {
     const root = harness.setupFixtureAt(path.join(dir, 'code', 'my-repo.app'));
-    fs.mkdirSync(path.join(root, '.claude', 'skills', 'leeway-discussion-process'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.claude', 'skills', 'leeway-discussion-process', 'SKILL.md'), '# discussion\n');
-    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.claude', 'skills', 'leeway-research-process'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude', 'skills', 'leeway-research-process', 'SKILL.md'), '# research\n');
+    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'research'), { recursive: true });
     fs.writeFileSync(path.join(root, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
-    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'discussion', 'ledger.md'), '# ledger\n');
-    writePosition({ name: 'pay', phase: 'discussion', topic: 'ledger' });
+    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'research', 'ledger.md'), '# ledger\n');
+    writePosition({ name: 'pay', phase: 'research', topic: 'ledger' });
     const out = harness.output(root, ['conversation', 'position'], { env: env() });
     const answer = JSON.parse(out.slice(out.indexOf('=== POSITION')).split('\n')[1]);
-    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/discussion/ledger.md')]);
-    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/discussion/ledger.md`), answer.text);
+    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/research/ledger.md')]);
+    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/research/ledger.md`), answer.text);
   });
 
   it('reads another conversation by its id, from any project the call runs in; the calling one\'s by default', () => {
