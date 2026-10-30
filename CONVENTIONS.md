@@ -1,171 +1,162 @@
 # Skill Authoring Conventions
 
-This file defines the mandatory display, structural, prose, state-ownership, and file-layout conventions for all skill files in this project. Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
+The rules for writing a skill on this repo: what a skill holds, where each of its rules goes, and how its prose reads. They are for authors. Nothing here is loaded at runtime, and no skill relies on it.
 
-## Prose Economy (MANDATORY)
+This file describes the skills as the reshape rewrites them. A skill not yet rewritten keeps its shape until its phase rewrites it; the rules it was written to are this file as it stands on `main`.
 
-Skill and reference files are agent instructions loaded into the runtime context. Write the **exact amount of words to describe the task perfectly** — not the most, not the least. The bar is "can Claude execute this flawlessly?", never "is it short?".
+## Who Holds What
 
-- **Write as if authored fresh, right now.** Each file is a clean set of instructions, not a record of how it was built. Cut historical references ("formerly", "used to", "now changed to"), previous-implementation notes, and migration backstory. When adding a feature to an existing file, leave it reading as though the feature was always there — no "(new)" markers, no justification bolted onto the old shape, no dangling references to what it replaced. No cruft.
-- **Cut the WHY when the WHAT suffices.** "Load X and do Y" needs no explanation of why X exists or what it's for. Keep rationale only when it changes what the agent does.
-- **This is not minimalism.** Keep every instruction, value, path, and distinction the agent needs to act correctly. Cutting a needed instruction is as wrong as over-explaining.
+The engine holds what the person sees and what gets recorded, the same every time. Claude holds how the work gets done. The person holds the product, and the calls put to them. A skill is written from that split: for everything the engine holds it names the engine's door, and for the rest it gives Claude a goal, a done-condition and guidance.
 
-## Display & Output Conventions (MANDATORY)
+Control flow lives in the engine, never in prose. A skill never branches on a status it read or on the person's answer at a gate: it does what the engine's verbs return.
 
-These are hard rules, not suggestions. All entry-point skills that present discovery state, menus, or interactive choices MUST follow these conventions exactly. When writing or editing skill files, read existing skills and references as working examples — they are the authoritative demonstration of these rules in practice.
+## Where a Rule Goes
 
-### Visual Hierarchy
+Every rule a skill would carry is one of three kinds, and each kind has one home.
 
-All user-facing output uses five distinct visual tiers, each with a specific purpose. From heaviest to lightest:
+| Kind | What it covers | Its home | What the prose keeps |
+|---|---|---|---|
+| Contract | where something lands, the shape it takes, what gets recorded, which door a change goes through, what the person sees | a verb that is the only door — it picks the path, writes the shape, records the event and refuses what is wrong — with the hooks and checks behind it | one line naming the verb |
+| Required procedure | steps that must all happen before a point, in any order: a topic's close, a phase's start and close, finish | an item on the engine's checklist for that point | the checklist's name, and guidance for an item that needs any |
+| How-to | everything else | deleted | the goal, the done-condition, and guidance |
 
-| Tier | Element | Purpose | Rendering |
-|------|---------|---------|-----------|
-| 1 | Phase title | "Where am I" — top-level anchor | Markdown — `# **`■ Title`**` |
-| 2 | Signpost blockquote | "What's happening" — guidance, context, closure | Markdown |
-| 3 | Step marker | Progress through the phase | Markdown — `**`□ Name`**` |
-| 4 | Sub-step marker | Progress within a step | Markdown — `**`▪ Name`**` |
-| 5 | Status / menu | Data displays and interactive choices | Text code block / markdown |
+Ask of each rule, in this order:
+1. If Claude did it another way, would a fixed thing the person sees change — a screen, a gate, an output, the process — or would the record take a different kind of entry, in another place or another shape? It is a contract. Claude's own wording, in a conversation or inside an entry, is not.
+2. Must each of these happen before the work moves past a point, in whatever order? It is a required procedure.
+3. Could a capable engineer do it another way and the outcome be as good? It is how-to.
 
-The chrome family is the square glyphs at falling weight — `■` filled, `□` hollow, `▪` small — all in bold inline code so they render blue, the H1 adding its underline to the title alone. Squares are structure; circles and arrows (`○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`) are item state, `◆` is a decision, `⚑` is an alert, and `⏺` belongs to the host UI's gutter.
+How-to survives as guidance only where a capable reader would get it wrong untold: a judgment the person cares about, the product's taste, the edge where the obvious move is the wrong one. A measurement behind a rule earns one line, and only where it changes what Claude does at the rule's edge.
 
-Every skill invocation should produce at most one phase title. Signpost blockquotes appear at phase entry, before steps where context helps, and at phase completion.
+A rule that fits none of the three is one of these:
+- **It holds in every conversation** — how a turn sounds, what a reply at a gate is. It belongs to the framework (The Framework Load), never to a skill.
+- **It guards a state only a crash or a failed tool produces.** Delete it. The engine makes the state unreachable, and Claude reruns a failed tool or agent unprompted.
+- **It is a contract no door can refuse** — a question for the person asked in plain prose in the build, an extra review round. It stays a line of prose, and the prose walks hold it, since they check outcomes.
+- **It is steps around a field's work that the spec puts in prose** — what is read before a topic's opening, discovery's re-read of its log before each move. They stay in prose, in the field's entry or close (Fields and Corridors).
+- **It is a contract the spec names no verb for, or a procedure with no checklist item.** Bring it to the person. It is never held in prose as a "must" until a verb or an item exists. A verb the spec names that is not built yet is built by its phase, never brought to the person.
 
-### Rendering Instructions
+A contract that keeps slipping gets a verb or a check, never more prose.
 
-Every **user-facing output** fenced block in skill files must be preceded by a rendering instruction naming its form. Fenced blocks that are model instructions (bash commands to execute, file paths to load) are exempt — they are not displayed to the user.
+## The Phase Skill
 
-There are four forms, each said exactly one way:
+A phase skill holds five things:
+- **Its goal** — what the phase is for, in a sentence or two.
+- **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
+- **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
+- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/workflow-engine/references/commands.md`.
+- **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none. Two types move them:
+  - **A feature's** discussion closes into its spec with no gate, once nothing of the person's is open and the closing pass has run; specification then works decided and ready to build together, on one screen.
+  - **A quick-fix's** finish is the close of its own session, and finish's checklist runs there; it reaches the review phase only when the person asks.
 
-```
-> *Output the next fenced block as markdown (not a code block):*
-> *Output the next fenced block as a text code block (```text fence):*
-> *Output the next fenced block as a properties code block (```properties fence):*
-> *Output the next fenced block as a diff code block (```diff fence):*
-```
+### Entered and Left Through Gates
 
-The template's own fence carries the tag its form names — ` ```text `, ` ```properties `, ` ```diff ` — so the template is what gets written; a markdown template's fence stays bare. A note the reader needs follows the form, before the closing `:*` (`as a properties code block (```properties fence) — it colours the art; …:*`). No other wording, and never a bare "code block": Claude Code draws a fence with no language in the menus' colour, so a plain display in one loses the contrast that marks a gate out, where a `text` fence renders plain. Lint check 24 holds the forms and their fences.
+Every phase is entered and left through gates. The gates are the engine's: its kind, whether it stops, what it shows and what each row leads to. An authority gate always stops. A product question goes through `raise`, and the ask rule decides whether it reaches the person. A process gate is learned: once the person always answers it alike, it runs as an automatic step whose surface draws a one-line report in place of the menu — except in the build's step position, where every process gate stops. The prose never says whether a gate stops, and never carries a branch for a position.
 
-A text code block is for informational displays (overviews, status, keys) — it preserves indentation for tree structures and aligned lists; a properties code block is for a prose-authored blocker and the banner, a diff code block for change content. Markdown is used for chrome (phase titles, step and sub-step markers), interactive elements (menus, prompts), and signpost blockquotes, where the renderer's own styling does the work. When content benefits from rendered formatting (headings, checkboxes, bold) and indentation control isn't needed, prefer markdown rendering even for informational displays. Neither stands in for the other: a tree written as markdown loses its indentation, and markdown written in a code block loses its formatting.
+**Entering.** A phase is moved into by a handoff, from a gate or a menu pick, except a move between discovery's levels, which carries the conversation on (Handoffs and Recovery). Its entry is one engine call, shared by every phase: the engine refuses what cannot be entered, records where the conversation is working, and answers what the phase needs to begin or resume. The skill does what the answer says and branches on no status of its own. A question whose answer may discard a record — whether to carry on or start again — comes before the reading: a gate needs only what the engine holds, and the record and log are read after the answer.
 
-The same four forms are said the same way wherever an instruction names how something renders — an engine section's marker (see Engine Output Sections) and content Claude composes: a report or summary is written as markdown (not a code block), and a code block Claude writes itself (a diagram, a sample) names its language on the fence, `text` for plain.
+**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows, where one does — a phase's start in the build has none. The skill emits the gate's sections verbatim per their markers, and the marker decides whether the turn ends:
+- **The gate stops.** Its MENU's marker ends the turn. The person's answer goes to `gate`, which logs it and returns `next` — an engine call to run, a handoff to make, or carry on — and the skill does what `next` says.
+- **The gate runs as an automatic step.** Its surface draws the one-line report in place of the menu, under a marker that says not to stop. Nothing goes to `gate`, and the skill carries on along the answer the step ran, which the report names.
 
-### Presentation Register
+**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row still goes to `gate "{name}" --typed`, which logs that the answer was free text, and then the gate is set aside; the framework says how it comes back. A Comment that changes what happens next is confirmed with the person before anything acts on it; the framework holds that rule too.
 
-Report-class content — findings, review summaries, validation gaps and risks, diagnostics, item summaries — renders as markdown narrative in the register defined by `skills/workflow-shared/references/product-lens.md`: manifestation first in product terms, `file:line` refs as anchors, glanceable depth with the record file authoritative. The level every conversational turn runs at — product first, code as evidence — is framework-level (`skills/workflow-shared/references/altitude.md`); the report register adds shape and depth on top of it. A `t/technical` option retells the same report from the code's perspective per `skills/workflow-shared/references/technical-lens.md` — a lens shift driven by Claude, never a file dump; where a raw view earns a place, it is a separate `v/view` option rendering the record file as markdown. The implementation task loop's report moments follow their own register instead — `skills/workflow-implementation-process/references/report-register.md`: labeled sections, one fact per sentence, lenses as the register names them. Artifact content the user approves as the thing itself (spec prose, plan phases, diffs) stays verbatim, in the form it will take — see Content Dividers & Frames.
+### Fields and Corridors
 
-### Engine Output Sections
+Most of a phase is a **field**: Claude works it as it judges best — the order of the tasks, parallel worktrees, which agents, how tests get written, where a conversation goes next. A field's prose is its goal, its done-condition and its guidance. It may order the steps around the work — its entry and its close, what is read before a topic's opening — never the work itself. In the build, nothing Claude does in the field leaves it except through a verb or a gate: what reaches the person, what gets recorded and every question to the person; the layout hook, the commit door and the checklists refuse the rest. In a phase that talks, the conversation itself reaches the person in plain prose; what gets recorded still goes through a verb, or into a log the layout keeps.
 
-Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {work_unit}`) receive one snapshot in demarcated sections. Each section is opened by a **section marker** — a line `=== NAME (instruction) ===` naming the section (`DATA`, `TITLE`, `DISPLAY[: label]`, `MENU[: label]`) and carrying its handling instruction. A section is everything beneath its marker up to the next; the marker line itself is never emitted. The runtime definition lives once, in `workflow-shared/references/instructions.md`, which every session loads — prose never restates it.
+A **corridor** is a short, linear stretch whose output has a fixed shape: the phase cut at the end of specification, writing a phase's tasks as it starts, and the final review. A corridor's prose gives the order of its few moves — each a dispatch, a verb or a checklist mark — and says nothing about how the artifact is made. The artifact is a named agent's (Agents and Briefs); whether the agent runs the corridor's verb, or the skill runs it on the agent's output, is as that phase's section of the spec says, or as its rewrite decides where the spec is silent.
 
-**Every call site defers to the marker, in one phrasing.** A sentence that emits a section — an emit verb (`emit`, `emits`, `emitting`, `re-emit…`) beside a section named by its kind or as a section — says so as `…section verbatim per its marker`, `…sections verbatim per their markers`, or `…, each verbatim per its marker` (`Emit the call's MENU section verbatim per its marker.`), and a sentence that names a section kind or emits a section never states a form of its own — `as markdown`, `(not a code block)`, `(markdown)`, a text, properties or diff code block or its fence, a bare `as a code block` or `in a code block`, before the deferral or after it — for TITLE, DISPLAY and MENU alike: the marker is the one instruction for its section, and a restated copy is a second one that can disagree with it. The sentence is the unit, so a neighbouring sentence's content and form are never the section's. Lint check 21 enforces both halves; a passive description (`is emitted`), fenced content, and the rendering instruction of a prose-authored block (`Output the next fenced block as …` — the one other mechanism) sit outside it. The markers direct:
+### Requests at Any Point
 
-- `=== DATA … ===` — reasoning surface. Read it to decide (flags, counts, the `ACTIONS` key table); never display or restate it, and never parse the rendered sections below for decisions. Every answer a menu can produce resolves from DATA or the prose, never from the menu's own text — a consumer may draw the menu itself and send only the pressed row's word, or its key where it has none. An `ACTIONS` table carries both (`key  word  …`, `—` for no word); a numbered pick states the list its numbers count — a table or dump the same call returns, a list an earlier call returned (`roadmap state`'s `horizons`, the bridge's `revisitable_phases`), or the order the prose handed the surface (a payload's rows, a `--blocking` list).
-- `=== TITLE … ===` — the view's chrome heading (`# **`■ Title`**`). Emit verbatim as markdown (not a code block), directly above the display.
-- `=== DISPLAY … ===` — emit verbatim **as the form its marker names**. The shared gateway marker says a text code block (```text fence) — any other grammar eventually colours a stray word in uncontrolled prose, and a fence with no language draws in the menus' colour. Labelled sections may name a colouring fence where the register calls for it — a properties code block (```properties fence) for blockers, a diff code block (```diff fence) for change content — or markdown (not a code block) where the register needs rendered formatting (worklists, the proposed-task and finding presentations). Indentation-dependent content (trees, aligned columns) breaks under markdown rendering and always keeps its fence.
-- `=== MENU … ===` — emit verbatim **as markdown (not a code block)** so option formatting (bold, backticks) renders.
-- `=== GATE … ===` — for code, never for a person: one line of JSON stating the gate the `MENU` directly beneath it draws. Present only while `WORKFLOWS_GATE_SURFACE=1` is in the environment, so a session without a gate surface never sees it. Never displayed, never restated, and never a substitute for the `MENU` — a flow reads neither.
-- `=== HANDOFF … ===` — for code, never for a person: one line of JSON naming the skill a handoff moves the work into, which the gate mod cuts from the result and carries into a fresh conversation. Present only while `WORKFLOWS_HANDOFF=1` is in the environment. Never displayed and never restated — a flow reads the handoff's DATA, and this section only to know the mod did not take the handoff: one still in the result is invoked in place.
-- `=== POSITION … ===` — for code, never for a person: `conversation position`'s one line of JSON, carrying the note its `DATA` section holds, for the gate mod to read. Never displayed and never restated; no flow calls the verb.
+Some requests can come wherever the phase is: put an idea or a bug aside, postpone or cancel the topic, a gap the person names during the build. Each is a section of its own, named for the request: the words that bring it, and the verb or reference that takes it. Afterwards the work carries on where it was, except where the request moves it:
+- a topic cancelled or postponed from its own session hands off to a menu: an epic's topic to the epic's menu, any other to the start menu;
+- an experiment spawned now hands off to the laboratory;
+- a move up to the epic's discovery leaves the topic, in the same conversation;
+- a quick-fix that needs a decision beyond a quick call moves to a feature or a bugfix, which changes the work.
 
-Every TITLE, DISPLAY and MENU marker's instruction opens `emit verbatim as ` and one of the four forms (see Rendering Instructions), then its behaviour clause where the surface gives one — `, directly above the menu`, `, then STOP for the user's response`, ` — do not stop; continue as the workflow instructs`; a moment the section waits for sits after the form (`… (```text fence) after the result summary — …`). The render sweep the engine suites run through `tests/scripts/gate-audit.cjs` fails any marker that opens otherwise.
+A gate that was waiting was set aside, and the framework says how it comes back; the section never restates it.
 
-**What the engine renders.** The engine renders every menu and gate, every step or sub-step marker naming anything that varies (see Step Markers), any display with layout (a tree, columns, a list, a worklist), anything assembled from state the conversation does not hold (the manifest, the cache, git, the agent store, the inbox), and anything that pivots data or turns its wording on state through a directive. Prose never draws layout by hand; a hand-drawn display drifts where an engine render cannot. A plain line or short paragraph is Claude's own when its only varying parts are values the conversation already holds — a name it was passed, a count it tallied or a value its own step read, its own words, a path the layout fixes — and it needs no form beyond a line or a one-line blockquote. The prose states that line inline, never fenced: its exact wording in a code span where the wording is fixed (``Say `Review cycle {N} complete — findings applied. Running follow-up cycle.` ``), as a dispatch's closing sentence is (see Dispatch Lines), or `In your own words, …` where it is judgment. A fenced block the prose authors is static — a marker, a signpost, an ask or a blocker whose every word is fixed — and whether one shows at all stays the prose's (see Step Markers → Conditional chrome). Lint check 13 reads each fence a rendering instruction heads and refuses one carrying a placeholder or a directive. Judgment-authored content that must appear inside an engine display travels to the engine as a payload file (the planning task list, the working-set summaries, the line a baseline area's interview opens on); a fact only the session holds, never a state the engine can read, travels as a flag (`--resumed`, a tally of what the session did). The capture skills (`workflow-log-*`) are exempt from the rule and the check: they are not workflow skills, and stay deliberately structureless (see The Framework Load).
+### The Skeleton
 
-Section content is never redrawn, reflowed, trimmed, or re-derived — its marker says how it is emitted. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
+```markdown
+---
+name: {skill}
+user-invocable: false
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+---
 
-**A section is emitted from the call that produced it, in the step that shows it — always.** Transaction verbs answer with one JSON line and render nothing; every gate, menu, and advisory, and every receipt beyond a plain line, is served by a render surface (`engine render …`) or a snapshot verb, fetched by the prose at the exact point that displays it. Never author a flow that carries a section forward — "emit the section from the earlier response" is the displays-at-a-distance pattern that render surfaces exist to kill; when a later step needs a section, that step runs its own fetch. The one sanctioned variant: a surface's contract may prescribe session-composed content between its DISPLAY and MENU emissions from one call — composed and emitted in the same turn as the call, never carried across steps. **A MENU in a tool result is a live gate at that call**: a call returns a MENU only where the prose shows that gate at that call — a gate shown later, or a view fetched only for its data or display, is fetched through a call that carries no MENU, and a response with no gate carries no MENU section at all. The same verbatim rules apply to every form.
+# {Phase}
 
-### Phase Titles
+{What the phase is for, and the part Claude plays in it.}
 
-A markdown H1 carrying the chrome family's heaviest register — bold inline code with the filled square, so it renders blue, underlined, and italic. One per skill invocation. Serves as the top-level anchor telling the user where they are.
+## Arguments
 
-```
-# **`■ Specification Overview`**
-```
+{Each positional argument, as the engine's handoff table declares it.}
 
-Rules:
-- Exactly this shape: `# ` + `**` + backtick + `■ ` + title + backtick + `**`
-- Title text is the phase or context name (e.g., "Workflow Overview", "Planning Overview")
-- **Emitted as markdown** (use the markdown rendering instruction) — the styling comes from the renderer, so the title is correct at any terminal width
-- The glyph is always `■`. Squares are structure (`■` phase, `□` step, `▪` sub-step); circles and arrows are item state (`○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`), `◆` is a decision, and `⏺` is the host UI's own gutter — chrome never borrows another family's shape
+## Instructions
 
-Engine views carry their heading as a TITLE section — the same markdown H1 shape, emitted above the DISPLAY fence (see Engine Output Sections). Nothing draws boxes.
+Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
 
-### Step Markers
+## Done When
 
-Progress indicators in the chrome family's middle register — bold inline code with the hollow square, rendering as a blue label. Embedded at the step boundaries that earn them — never instructed once at the top of a file.
+{The done-condition, as what the engine holds.}
 
-**Markers are earned, not automatic.** A step carries a marker only when the user gets something between it and the next visible output: an interaction (menu, `**STOP.**` gate), substantive watchable activity (analysis, agent dispatch, engine transactions, multi-file work), or rendered content. Consecutive markers with nothing between them read as step-by-step progress that isn't happening — noise, not orientation.
+## Entering
 
-- **Silent step**: a step whose body is plumbing — loading a reference, one quick command, evaluating a branch — keeps its `## Step N` heading (routing target, load boundary) but authors no marker and no signpost. The step renders nothing.
-- **Conditional chrome**: a step whose common path is a no-op places its marker and signpost inside the branch that acts, not at step entry. The no-op path renders nothing — a header announcing a non-event is the noise this rule exists to prevent.
+{The entry call, and what is read once any question that may discard it is answered.}
 
-Every step marker must be followed by a signpost blockquote explaining what the step does and why — the marker names the step, the signpost explains it.
+## {The Work}
 
-```
-**`□ Construct Specification`**
-```
+{A field: guidance, under headings named for what each covers.
+A corridor: its moves, in order.}
 
-Variations for loops and routing:
+## Doors
 
-```
-**`□ Task Execution (3 of 12)`**
-**`□ Review (cycle 2)`**
-**`□ Returning to Discussion Session`**
-```
+- {What lands} → `{verb}`.
 
-Rules:
-- Exactly this shape: `**` + backtick + `□ ` + name + backtick + `**` — no fill, no padding; the styling comes from the renderer, so the marker is correct at any terminal width
-- **No step numbers** — steps may be skipped based on conditionals and routing is non-linear. Names alone are sufficient
-- Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
-- Route-back uses `Returning to {Name}`
-- A static marker over a static signpost is emitted as markdown with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
-- **A marker naming anything that varies — a loop count, an item's name, a phase number — is drawn by the engine** as the first line of one markdown section, its signpost beneath it; so is a static marker whose signpost turns on state the engine reads or on a fact the session passes as a flag (`engine render step-opening` serves the steps that have no surface of their own). The prose carries the fetch at the step boundary, never the marker
+## Closing
 
-Engine-drawn dividers inside a fenced DISPLAY block (the epic dashboard's `── STAGE ──` lines) are a different object: markdown cannot reach inside a fence, so they stay drawn, sized to the content they divide.
+{Each checklist by name, where its closing point falls; guidance for any item that needs it, by its key; then the gate.}
 
-### Sub-step Markers
+## {A Request at Any Point}
 
-Markers for stages within a step, in the chrome family's lightest register — the small square marks the nesting.
-
-```
-**`▪ Extract Sources`**
+{The words that bring it, and the verb or reference that takes it.}
 ```
 
-Rules:
-- Exactly this shape: `**` + backtick + `▪ ` + name + backtick + `**`
-- Named only — no numbering or lettered suffixes
-- Same loop/iteration conventions as step markers
-- A static marker, over a static signpost where it has one, is emitted as markdown with its own rendering instruction; one naming anything that varies, or over a signpost the engine draws, is drawn by the engine, as a step marker is
-- **A marker heading an engine-rendered display is drawn by that surface**, as the first line of its section — never authored above the fetch, where the tool result would land between the marker and the display it heads. What the marker names the engine reads from state, or takes from the payload where it is judgment content
+A section the phase has nothing for is left out. `## Instructions` is there only in a skill a conversation opens on (The Framework Load).
 
-### Signpost Blockquotes
+## What the Engine Owns
 
-Guidance text rendered as markdown blockquotes. Used for phase entry context, pre-step guidance, post-phase closure, and explaining blockers or gates. Never for status data or interactive choices.
+The prose names the verb and stops. It never:
+- **Draws a menu, a gate or a row.** The engine draws every one and prints it as text; the gate mod shows its rows as buttons where it runs. Lint check 3 refuses a menu drawn in prose.
+- **Writes state.** State changes only through verbs. The prose names verbs, never manifest fields, and reads a manifest value only where no verb's response carries it. The layout hook refuses a write under `.leeway/` to a path the layout has no place for, and any write to a manifest, the ledger or `spec-review.json`. Scratch goes in `.leeway/.cache/`.
+- **Commits.** Every verb commits its own state writes, with any log changed since. A phase whose content no verb commits — the spec, a review report, a task's account, a summary, an asset, a spike — adds the route to the engine in the same phase. A code commit goes through `commit`, naming the task in flight, and the door runs the project's checks first. A raw `git commit` in a code worktree during a build is refused.
+- **Lists a checklist's items.** The engine holds them, works out the ones it can check, and shows the rest with their text. The prose names the checklist.
+- **Writes a brief.** `brief` fills the role's template from the records (Agents and Briefs).
+- **Chooses how something reaches the person.** It reaches them in a gate, a raise or a mod surface. Nothing asks the person to open a file; material they may want but need not read is one keystroke away on a mod surface, or asked for in words where the mod does not run.
 
-```
-> Your completed discussions will be synthesised into a formal spec. Expect questions about gaps, contradictions, and missing edge cases. The output is a standalone document that drives planning.
-```
+What Claude and the agents write themselves is content, in the places the layout keeps for it: a log, the spec, a spike, an asset. Everything else is written through a verb. A decision or a finding is a ledger entry, written through `ledger`, and the person's answer to a raise through `raise answer`, which also logs who moved whom; a topic's record and its map are projections of the ledger, never files. Markdown carries content only: never frontmatter, never a status in a heading. A feature that needs state gets a field behind a verb.
 
-Rules:
-- A static signpost is authored in prose and rendered as markdown (use the markdown rendering instruction)
-- **A signpost naming state the engine reads is drawn by the engine** — a count the engine derives, a wording that turns on state — as a markdown blockquote section: beside the gate it heads where the step fetches one (`analysis-proceed-gate`, the legacy split's remove confirm), under its step's marker where it follows one
-- A signpost whose only varying parts are values the conversation holds is Claude's own line, said inline as a one-line blockquote (``Say, as a blockquote, `Paused with {id} queued — …` ``), never fenced (see Engine Output Sections)
-- **One authored line per paragraph** — never hand-wrap. The renderer reflows a long `>` line and carries the blockquote border across every soft-wrapped continuation, so the line is correct at any terminal width; a bare `>` line separates paragraphs
-- **Bold is available, with judgment** — it survives the wrap and renders understated inside a blockquote. Use it where an emphasis genuinely helps (`**Two decisions are owed** before this can close`), not as decoration
-- Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
-- 1-3 sentences maximum — never compete with the actual content
-- Placement: after phase titles, before menus where context helps the decision, at phase transitions, explaining soft gates or blockers
-- No trailing blank line inside the fenced block — natural block separation provides enough spacing
-- Never between two code blocks that are part of the same logical display
+In discussion, questions are asked in the conversation and each answer lands through `ledger`. Until a topic's shape is agreed, Claude makes no call of intent or taste alone: it works each through in the conversation, putting ideas forward or setting out how it sees the thing working for the person to pull apart, never in set phrases. Once the shape is agreed, a call Claude has a lean on goes through `raise`, which decides whether it reaches the person, and slots in at a natural pause; its answer lands through `raise answer`, never `ledger`. In discovery nothing is decided: what the person says is input, kept in discovery's log, and only what is observed in the code lands, as findings saying how they are known. In the build, every question for the person goes through `raise`; a question asked in plain prose in the build is a slip. Questions reach the person one at a time.
 
-### Workflow Banner
+## Writing for the Model Pass
 
-The `workflow-start` skill opens with an ASCII art banner (see skill file for exact art) emitted as a properties code block (```properties fence) — the fence is what colours the art: each line's first token renders turquoise and everything after the first space red, so the single space between the two words is load-bearing. The shipped version stamps as a fourth line inside that block, right-aligned under the `WS` of `WORKFLOWS` (the art is 63 columns; `vN.N.NN` is exactly as wide as those two letters). The release tooling pattern-matches the bare token, so the padding is the skill's to own. No borders. The banner is branding, not chrome: the phase title beneath it (`# **`■ Workflow Start`**`) names where the user is, and never repeats what the art already says.
+When the workflows move to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
+- **Guidance a better model could do without is prose.** It stays in the skill, where the pass can cut it.
+- **What the hard layers hold is there for the person, whatever the model.** A new engine piece is proposed with the failure it prevents and how often that failure happened; one with no failure behind it is brought to the person as a cut.
+- **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, the model or effort of a call the engine makes itself — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs. An agent's model and effort need none: they sit in its definition, which the pass edits in place.
 
-### Template Placeholders
+## Prose
 
-Placeholders mark what varies in a command block (the arguments of an engine call), a model-instruction block (a template the session fills in and writes to disk, a payload it composes), and a line Claude says whose wording the prose fixes in a code span (``Say `Finding {n} of {total}: {title} — fixed.` ``, a dispatch's closing sentence). No fence a rendering instruction heads carries one. The syntax is:
+Skill and reference files are instructions loaded into Claude's context. Write the exact amount the work needs, never the most and never the least. Cutting a needed instruction is as wrong as over-explaining.
+- **Lean.** Clear, executable instructions: no why, no backstory, no "what this file is for". Keep a reason only where it changes what Claude does. Test each sentence: does the work hit this case; does a consumer use this feature; would a competent reader need it told? A no to any deletes it.
+- **The clean path.** No retry branch for a tool or agent that fails, no guard for a state only a crash produces, no workaround for the harness. Interruption and resume stay first-class: they are the entry's job.
+- **Written fresh.** Each file reads as though authored now: no "formerly", no "(new)", no note of what a change replaced.
+- **Plain words.** Name things as an engineer would, over coined terms. A compressed claim must be literally true.
+- **Context.** A phase loads no reference it does not use, and what it loads before its first question is counted.
+- **Decisions before commands.** Anything a command depends on — a flag, a derived value — is stated before the fenced command, never after it.
+- **Emphasis.** A bold label and a colon, `**IMPORTANT**:`, and rarely: a rule is obeyed for being explicit, never for being loud.
+
+**Placeholders** mark what varies in a command, a payload Claude composes, and a line Claude says whose wording is fixed:
 
 ```
 {name}                                    — raw value, output as-is
@@ -174,769 +165,118 @@ Placeholders mark what varies in a command block (the arguments of an engine cal
 {name:[option1|option2]:(casing)}         — options and casing
 ```
 
-Casing hints: `titlecase`, `lowercase`, `kebabcase`. No hint means output the raw value.
+Casing hints are `titlecase`, `lowercase` and `kebabcase`. A placeholder never wraps across lines, and a flag carrying the person's words is quoted, `--summary "{summary}"` (lint check 22).
 
-Each part is optional — use only what's needed for clarity. In a model-instruction block, the anonymous enumeration shorthand `{option1|option2}` is acceptable where a name adds nothing.
+## Agents and Briefs
 
-A placeholder never wraps across lines — long example text stays on one line inside its braces, where lint check 13 reads it.
+Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, deep dives, experiment write-ups — is written by a named agent on the roster. The conversation and the build's orchestration stay in the main session.
 
-**No block that skill prose renders carries a placeholder or a directive** — a display, a menu, a marker, a signpost, an ask, a blocker. What varies is the engine's to render, or Claude's own line said inline (see Engine Output Sections); lint check 13 refuses one.
+**An agent's definition** (`agents/{name}.md`) holds what is true of it whatever it is dispatched for:
+- its one job, the artifact, with its rules and references boxed inside it;
+- its tools, the Skill tool among them where it must find the project's skills itself;
+- every skill reference or engine script it names, written as installed, from the project root (`.claude/skills/…`); a brief template that names one does the same;
+- its model and effort, fixed in its frontmatter: Opus at medium until a measurement says otherwise, and investigation's root-cause validator at extra-high. Never chosen at dispatch, and never raised by a task's size.
 
-**Conditional directives** pick between two wordings of a line in a template the session writes to disk, by state the session holds when it writes:
+**A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/workflow-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
-```
-@if(condition) truthy content @else falsy content @endif
-```
+**The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
-Example, from the discussion template's derivation marker: `Determined by {what determined the call}@if(from_review_finding) ({id} {finding})@endif.`
+**A refusal.** When a door refuses what an agent made, the skill dispatches the agent again, with a fresh brief carrying the refusal; Claude never edits the agent's work itself. Where the role's template has no slot for a refusal, the phase that builds the corridor adds one.
 
-### List Display
+A dispatched agent runs in the background and hands back when it is done. A skill names no dispatch mode. The work goes on meanwhile where it can — discussion's reviews and deep dives run while the conversation carries on, their results taken up at a natural pause — and waits only where it needs the agent's result.
 
-Two fenced styles, chosen by whether items have sub-detail. A transient list the session works through takes neither — see Worklists.
+An agent works from the record, never the conversation. Its calls come back to the orchestrator and go where any call goes: the ledger, or `raise`. An agent never asks the person.
 
-**Bullets (`•`)** — flat list under a shared heading. Each item is self-contained on one line with no child data.
+## Handoffs and Recovery
 
-```
-⚑ Discussions not ready for specification:
-  These discussions are still in progress and must be completed
-  before they can be included in a specification.
+**Handing off** moves the work into a skill that starts it afresh. The engine names the move — `handoff`, or a gate's `next` of kind `handoff` — and composes the continuation. Where the gate mod runs it clears the conversation and carries the continuation into the next one; elsewhere the skill is invoked in place. Nothing crosses but the skill and its arguments: what the next skill needs is on disk first.
 
-  • auth-flow
-  • data-model
-```
+Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn leaves the topic: the laboratory opens in a clean conversation, by a handoff. One orchestrator runs a build across all its phases and straight into the review phase. A move between discovery's levels, or from a topic up to its epic's discovery or the product's conversation, carries the conversation on in the same session.
 
-**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session (last active 2m ago)`) rather than a tag column — except a register whose glyph carries the state and whose tag carries provenance (the research thread register: `○ ◐ ● ◌` + `[origin]`), which keeps the column and hangs a `↳` note only beneath the rows that have one. A row whose title is a sentence rather than a label wraps under its own first column instead of clamping (`renderTree`'s `wrapTitles`), the tag column reserved out of the wrap.
+**Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads guidance into the running context, nothing more.
 
-```
-1. Auth Flow
-   ├─ Plan: in-progress
-   └─ Spec: completed
+**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming. Where its work needs a document re-read, the note names it: that is a change to the engine's note, never prose. Re-reading the skill re-runs its framework load. What the verbs record outlasts a compaction. A log may lag the conversation — how often Claude writes it is Claude's — and after a compaction it is caught up from the transcript of the conversation that wrote it: a topic's log names the conversations that wrote it, and in discovery the note names the log's transcript.
 
-2. Data Model
-   ├─ Plan: [no plan]
-   └─ Spec: in-progress
-```
+## Display
 
-Richer hierarchies nest naturally:
+**Claude's own words:**
+- **The conversation**, in the framework's voice and altitude: product first, code as evidence beneath it.
+- **A line made only of values the conversation holds** — a name it was passed, a count it tallied, a path the layout fixes. It is said inline, never fenced: its wording in a code span where the wording is fixed (``Say `Phase {N} merged.` ``), or `In your own words, …` where it is judgment.
+- **A report or summary Claude composes**, as markdown, in the register of `skills/workflow-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
+- **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
-```
-1. Billing
-   ├─ Spec: in-progress (1 of 2 extracted)
-   └─ Discussions:
-      ├─ invoicing [extracted]
-      └─ refunds [pending]
-```
+**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. The one exception is the banner, which stays in the start skill's prose because the release writes the version into it (`.mint.toml`). Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
 
-Unnumbered trees follow the same structure:
+**Content the person approves as the thing itself** — a change, spec prose — is shown verbatim in the form it will take, never framed in drawn borders, with a label or a line saying what it is.
 
-```
-⚑ Plans not ready for implementation:
-  These plans have unresolved dependencies that must be
-  addressed first.
+### Engine Sections
 
-  Core Features
-  └─ Blocked by data-model:data-model-1-2
+An engine call that renders answers in sections, each opened by a marker, `=== NAME (instruction) ===`, whose instruction says how its section is emitted. The marker line is never emitted.
+- `DATA` — read it to decide; never shown or restated.
+- `TITLE`, `DISPLAY`, `MENU` — emitted verbatim, as the marker says.
+- `GATE`, `HANDOFF`, `POSITION` — for the gate mod; never shown or restated.
 
-  Advanced Features
-  ├─ Blocked by core-features:core-2-3
-  └─ Blocked by auth
-```
+A sentence that emits a section says `…section verbatim per its marker` (`…sections verbatim per their markers`) and never states a form of its own: the marker is the one instruction (lint check 21). A section is emitted from the call that produced it, in the turn that shows it: never carried to a later moment, never redrawn, reflowed, trimmed or composed from memory. A transaction verb answers one JSON line and renders nothing.
 
-### Worklists
+**A MENU in a tool result is a live gate at that call**: `gate` takes the answer against the gate last shown. A call returns a MENU only where the skill shows that gate there; a view fetched for its data or its display is fetched without one.
 
-A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the mail agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown (not a code block)**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
+### The Design System
 
-```
-**Integrity Review** — 3 findings · 1 remaining
+Every screen the engine draws keeps to the existing design system; a new screen or variant fits it, and the menu frame in `domain/projections/surfaces.cjs` refuses some breaks outright.
+- **Glyphs.** Squares are structure: `■` a title, `□` a step, `▪` a sub-step. Circles and arrows are an item's state: `○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`. `◆` is a decision, `⚑` an alert; `⏺` is the host's own.
+- **Chrome.** A title is `# **`■ Title`**`, one per skill invocation. A marker is `**`□ Name`**` or `**`▪ Name`**`: no numbers, a loop's count in parentheses (`(3 of 12)`, `(cycle 2)`). A marker whose text varies — a count, a position — is the engine's; a fixed one Claude says itself, inline. A marker shows only where something follows it before the next one. A signpost is a markdown blockquote of one to three sentences, one authored line per paragraph.
+- **Forms.** A section's marker names one of four forms: markdown (not a code block), for chrome, menus and anything that needs rendered formatting; a text code block (```text fence), for layout — trees, columns, aligned lists; a properties code block (```properties fence), for a blocker and the banner — the product's name drawn in ASCII art at the head of the start menu; a diff code block (```diff fence), for change content. Every `TITLE`, `DISPLAY` and `MENU` marker's instruction opens `emit verbatim as ` and its form, then any behaviour clause (`, then STOP for the user's response`); the render sweep in `tests/scripts/gate-audit.cjs` holds it. The fence decides how demoted content reads: italic in a menu, a `↳` line in a fenced display, a backticked `[tag]` with a `↳` note in a markdown worklist.
+- **Menus.** A dot rule, `· · · · · · · · · · · ·`, opens the menu, and none closes it. Every menu asks one question, glyphed `**`◆ Question?`**` (sixty characters or fewer, ending in `?`); anything to say first is a plain statement above it. Rows are `**`k/word`** → Label`, arrows aligned as rendered. A label says what choosing it does, naming a hard-to-reverse consequence plainly. Command rows come first and one prompt row last, whose label tells the person what to say (`**Comment** → Tell me what to change`). A yes is `y/yes`, never a synonym; `n/no` is for plain refusal only. A bare yes/no pair carries no labels: the question above it already says what yes means. The same action keeps the same key on every menu: `a` archive, `w` work, `b` back, `h` help. `b/back` draws the surface before it; it never re-invokes a skill and never exits. Every menu has `h` help; gates and raises do not. Anything with a fixed shape is its own row, and typing stays open for a question. Items appear once, in the menu; a row's metadata tail reads italic. With one item to act on, the auto-select line stands in for the menu.
+- **Lists.** `•` bullets for a flat list, and `·` for quiet sub-detail within an item. A tree, `├─` for each child and `└─` for the last, for items with child data, a blank line between top-level items. A status sits in a right-aligned `[term]` column, or on a `↳` line beneath a row with a body.
+- **Worklists.** A transient list worked through and thrown away, drawn as markdown: a glyph per row (`○` pending, `✓` approved, `⊘` skipped), done rows struck through, one short term per tag, detail on the `↳` note. Strikethrough means done here.
+- **Callouts and blockers.** An advisory inside a display opens on `⚑` and stays plain. A state the person cannot proceed past renders red, in its own properties fence, one logical line with the flag at column zero, guidance beneath it as a signpost. Red is for a blocked state and the strongest advisory only.
+- **Inside a display**, `── Title ──` divides grouped content. No drawn border frames content. A key sits under the display it explains, listing only what that display shows.
 
-✓ 1. ~~Extract the shared restyle sequence~~ `[Minor]`
-⊘ 2. ~~Add the missing persister round trip~~ `[Important]`
-○ 3. Split the loader's panel-assembly responsibility `[Minor]`
-       ↳ The loader assembles the panel and enumerates themes.
-```
+## Files
 
-- **Header**: bold label, em dash, count — plus ` · N remaining` once any walked row is decided. A batch list opens on its lane's intro line instead — no header, no counts.
-- **Rows**: walked lists carry a state glyph (`○` pending, `✓` approved, `⊘` skipped); decided rows strike through and shed their `↳` note, so the list collapses toward what's left. Batch lists (all-or-nothing, never walked) carry no glyph column; their rows open on an escaped number (`1\.`) so a markdown renderer never parses them as an ordered list, padded with NBSP for 10+-row alignment.
-- **Strikethrough means done here.** The epic menu's struck option means *held by another session* — the two never share a surface.
-- **Tags**: one short term in a backticked bracket — `` `[high]` ``, `` `[→ target]` `` for a route row's destination. One term only; compound tags are how sibling surfaces drift apart, and multi-word source vocabularies map to short tokens at the payload site. Anything longer belongs in the `↳` note. A tag that cannot fit its row's last line drops to its own line at the title column.
-- **The `↳` note** is the one home for row detail and provenance — a summary, `From {topic} · {phase} · {date}` — indented two columns past the title column.
-- **A walked list that flows straight into its walk closes on the walk statement** ("Let's work through these one at a time.") — numberless, because a resume re-renders with rows already decided. A walked list handed to a gate menu (the mail agenda's offer) closes on that menu instead; the menu's own option carries the walk.
-- Layout stays engine-owned: rows and notes wrap at the detected display width with continuations aligned under the text, and leading indents are non-breaking spaces (four leading real spaces reads as a code block). The header and a batch intro are prose lines left to soft-wrap in the display. Row text is markdown-escaped by the engine.
+The capture skills (`workflow-log-*`) write to the inbox and nothing else. They are not workflow skills, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
 
-### Status Terms
+### Frontmatter
 
-Engine-rendered tree rows carry their status as a right-aligned `[term]` column — one shared column per tree, computed against the longest row (`├─ ◐ Menu Management    [researching]`). Rows that carry a body (summaries, provenance) skip the column and spell their state on a trailing `↳ State` line instead — unless the column carries provenance and the glyph the state; see List Display. Square brackets `[term]` are also the form everywhere a column can't exist: plain list rows (selection sub-views, completed pickers, inbox items) and prose references. Menu options carry status as an italic metadata tail — see Menus. Phase header count summaries use parentheses `(N completed, M pending)`. Never dash-separated.
+- `user-invocable: false` on every skill the person does not type themselves.
+- No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
+- Every `allowed-tools` Bash grant carries a `*`; a grant for the workflows' own script ends in ` *` (lint check 28).
+- No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).
 
-**Which register applies is decided by the fence, not by taste.** Demoted content — status, provenance, the note under a row — reads italic in a menu, takes `↳` inside a fenced display, and takes the backticked `[term]` tag plus `↳` note in a markdown worklist, because markdown emphasis inside a code fence renders as literal asterisks. A display that wants italics is a display that should not be fenced (`DISPLAY: proposed task`, `DISPLAY: finding`); a display that needs columns or a tree keeps its fence and its `↳`.
+### Headings
 
-Core vocabulary: `in-progress`, `completed`, `ready`, `extracted`, `pending`, `reopened`, `promoted`. Discussion Map uses `pending`, `exploring`, `converging`, `decided`, `deferred`. Phase-specific terms are fine; the tree column and an inline bracket form never mix on one line.
+One H1 per file, its title — except the skills that only hand the work on, the start skill, the continue menus and the bridge, which open on their frontmatter alone (lint check 8). Discovery is a phase that talks: it takes an H1, and lint check 8's sets change with its rewrite. H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
 
-### Callout Flag
-
-Advisory and gating messages inside code blocks use a `⚑` prefix to visually separate them from data. The flag sits at 2-space indent (aligned with tree rows). Multi-line callouts wrap at the display width and align continuation lines under the text (4-space, no flag), as in the example — never hand-wrapped at a fixed column.
-
-```
-  ⚑ Pending discussion topic(s) from research remain.
-    Consider starting these before specification.
-```
-
-"Not ready" blocks use the same flag on their heading line, with the explanatory text 2-space indented beneath:
-
-```
-⚑ Discussions not ready for specification:
-  These discussions are still in progress and must be completed
-  before they can be included in a specification.
-```
-
-**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own properties code block (```properties fence): the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. Red also marks the system's strongest advisory — a gate whose default is refusal and whose override requires stated knowledge the machine cannot have (the code-session gate: "only proceed if you know that session is no longer working"). Those two uses are the whole of it: a warning or suggestion the user may act on or ignore is not a blocked state, and keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`. A prose-authored blocker takes the same shape and is static text; one naming anything that varies is the engine's.
-
-### Content Dividers & Frames
-
-Inside a single DISPLAY/code block, `── {Title} ──` dividers separate grouped content — the epic dashboard's stage dividers (left-anchored, filled to the content width). They are content dividers, not step markers — engine-drawn, no signpost pairing.
-
-**Drawn borders never frame content.** Artefact content — a proposed diff, spec-bound prose, a plan's phases, anything the user is approving as the thing itself — is shown verbatim in the form it will take: change content as a diff code block (```diff fence) (colouring keys on column-0 `+`/`-` markers; context lines carry a leading space), prose as markdown (not a code block) so it reads as it will in the record, and a structured view such as the phase tree as the engine's text code block (```text fence) display. A label or a line says what the content is — `**{label}**` above a finding's wording, "This is exactly what I'll write into the specification:" above a specification's. Narration stays outside the content. Hand-drawn boxes never frame artefact content — prose cannot know the terminal width, while markdown and fences re-flow.
-
-### Cross-Plan References
-
-Use colon notation to reference a task within a plan: `{plan}:{internal_id}`.
-
-```
-  · advanced-features (blocked by core-features:core-2-3)
-```
-
-Reads as: "advanced-features is blocked by task core-2-3 in the core-features plan."
-
-### Key / Legend
-
-Separate text code block (engine snapshots compose the Key into the same DISPLAY block, beneath the display it explains). Categorized. Em dash (`—`) separators. **No `---` separator before the Key block.** Only show statuses that appear in the current display. **Blank line between categories.**
-
-```
-Key:
-
-  Plan status:
-    in-progress — planning work is ongoing
-    completed   — plan is done
-
-  Spec status:
-    in-progress — specification work is ongoing
-    completed   — specification is done
-    promoted    — promoted to cross-cutting work unit
-```
-
-### Menus / Interactive Prompts
-
-Rendered as markdown (not a code block). An opening `· · · · · · · · · · · ·` dot rule sits above the menu — **never a closing rule**: output stops for the user's response, so their own input closes the block more definitively than a drawn line could. **Every menu asks a question.** The question opens the options: the question, a blank line, then the options — always; the blank line is what marks the question as the menu's label. The ask is never a trailing `Select an option:` line after the options. Verb-based labels for selection menus.
-
-**The question carries the decision glyph.** A short plain question (≤60 characters, ending in `?`, no markup, no template placeholders) is wrapped as `**`◆ Question?`**` — bold inline code, so it renders blue; `◆` marks a decision point (squares are structure, the diamond is the one place the user must act). Anything the menu needs to say first — a longer line, or one carrying its own emphasis, code spans, or placeholders that could expand past the ceiling — is a statement: it stays plain prose above the question, a blank line between, because markup cannot nest inside the glyph span. The menu frame in `surfaces.cjs` holds this rule: it refuses a menu with no glyphed question above its rows and a menu with no single key to press — a range row is typed, never pressed.
-
-**A yes/no gate asks its question.** When a menu's answer is yes/no (or yes/skip, yes/back — consent shapes), its glyphed label is a short question: `**`◆ Proceed?`**`, `**`◆ Mark it completed?`**`. The affirmative key is `y/yes`, never a verb synonym (proceed, approve, continue); the alternative keeps its honest verb where it names a destination (later, skip, back, keep — `proceed` on a reloop gate, where yes runs another cycle and the alternative moves on) and is `n/no` only for plain refusal. The menu frame holds both halves, whether the menu was grouped by `menu()` or composed by a projection: a `y/yes` row sits beneath a glyphed question as every row does, and an `n/no` row without its `y/yes` is refused. When the situation needs explaining first, split it — the statement stays as plain prose context, a blank line, then the glyphed question, so the diamond rides the ask rather than the information:
-
-```
-· · · · · · · · · · · ·
-Cancelling **Data Export** takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.
-
-**`◆ Cancel it?`**
-
-**`y/yes`** → Confirm cancellation
-**`n/no`**  → Return to menu
-```
-
-Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. The split serves every menu, not only consent gates: a route menu (several destinations, no yes to answer — the off-topic send family, the resume continue/restart gates) keeps its statement as context and asks beneath it (`**`◆ Where should it go?`**`, `**`◆ How would you like to proceed?`**`), and a conversational instruction line takes the statement's place where the opening needs guidance (the working-set menu's shape).
-
-**Options state their consequences.** A label says what choosing it does — a terse clause, weight scaled to the effect; a terminal or hard-to-reverse consequence is always named plainly, never softened into a display preference.
-
-**Option types** — menus contain two kinds of option:
-
-- **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`r/revisit`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`s/skip`** and **`t/stop`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
-- **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`); where the bare label reads awkwardly as a condition, a descriptive form naming the intent is equally valid (`#### If the user provides feedback` for a **Provide feedback** option). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
-
-**A reply that picks no option sets the gate aside.** What a reply at a gate is — an answer, a question, a comment — is the framework's rule (`workflow-shared/references/instructions.md`), never restated in a branch. A branch for a question — an **Ask** row, a number that asks, a Comment that asks back — keeps its own mechanics (what the answer draws on, which call puts the gate back) and never re-presents the gate straight after the answer: before the route or fetch that puts the gate back it says `The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:` (`The exchange sets the gate aside; once it looks settled, ask …` where the branch holds a conversation), or it delegates the answer to `answering-how-it-works.md`, whose put-back carries the same rule. A standing section's return into the flow it interrupted carries the same ask for the gate left pending (`→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — …`). A branch that acts on a comment which changes what happens next — moves past the gate, dispatches work on its reading — first confirms that reading with the person (`Confirm your reading of the comment with the person before anything acts on it, then …`); a branch that re-presents the revised content at its own gate is that confirmation already. A gate in `auto` or `bounded` emits no menu and waits on nobody, so neither applies there. Lint check 23 enforces the question half and the return.
-
-**Option lines are bare, not bulleted, and the arrow is the separator**: `**`k/word`** → Label`. Arrows align into one column across the whole menu — pad with spaces *outside* the closing `**`, measured against the widest key in the block **as rendered** (blank lines inside the menu don't reset the column). Rendered, not authored: `**` and backticks are markup the renderer consumes, so a command option's head measures its `k/word` alone and a prompt option's its bare label — counting the authored characters instead lands a mixed block two columns out. A label may still carry ` — sub-detail` after its opening verb — **metadata tails render italic**: `— *feature, ready for specification*`, `— *research completed*`. The italics mark the tail as metadata against the plain label; alert cues (`· input moved`, `blocked by …`) and `(recommended)` markers stay plain so they read as flags, not state. Long labels wrap at the detected display width with continuations aligned under the label column (`surfaces.cjs`), so the key column and the label column never bleed into one another: continuation indents are non-breaking spaces (the worklist rule), and a span open at the break closes at the line end and reopens on the continuation, keeping every emitted line self-contained markdown.
-
-**Menus are engine-rendered, never authored in prose — static option sets included.** Build the options in code (`workflow-engine/scripts/domain/projections/surfaces.cjs`) and serve them through a render surface or a gateway section; the prose carries only the fetch and the verbatim emission, and the conventions lint (check 3) refuses a menu anywhere in skill prose. One renderer means one alignment rule and one register, and a menu can grow a conditional row without a prose rewrite — a new `engine render` verb is cheap and has precedents throughout the catalogue. Displays follow the same line (see Engine Output Sections → What the engine renders). (The formatting rules in this section describe what the engine emits.)
-
-**Ordering — command options first, prompt option last.** Mixed menus list all command options before the (single) prompt option. The command set reads as a discrete vocabulary first; the prompt option then sits at the end as the "or respond naturally" tail.
-
-**Prompt option descriptions direct the user's response, not Claude's action.** For a command option, the option *is* the user's input — describing what Claude will do reads naturally (`**`y/yes`** → Conclude investigation`). For a prompt option, the user's *natural response* is the trigger — the description should tell them what to say. The format is `**{prompt label}** → {user-directive description}`.
-
-- ✗ `**Keep going** → Continue exploring` — describes Claude's action; ambiguous (should the user type "keep going" or respond naturally?)
-- ✓ `**Keep going** → Tell me what else to explore` — directs the user's response
-
-Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Tell me what to change`. When the description starts with "Tell me…" or names the user's expected response, it lands correctly. When it starts with a verb describing Claude's action, it lands wrong.
-
-**Mixed prompt** — command and prompt options together:
-
-```
-· · · · · · · · · · · ·
-**`◆ Investigation complete. Ready to conclude?`**
-
-**`y/yes`**      → Conclude investigation
-**Keep going** → Tell me what else to explore
-```
-
-**Selection menu** — use concrete examples showing verb-to-state mapping. Numbered items use the same format as command options so the menu has a unified visual style, and the way back is a row of its own — never folded into the question or a prompt line:
-
-```
-· · · · · · · · · · · ·
-**`◆ Which topic?`**
-
-**`1`**      → Create "Auth Flow" — *completed spec, no plan*
-**`2`**      → Continue "Data Model" — *plan in-progress*
-**`3`**      → Review "Billing" — *plan completed*
-**`b/back`** → Return to menu
-```
-
-**Single source of truth** — items appear once, inside the menu. Do not display items as a numbered list (or tree) above the menu and then re-list them as numbered options below. The menu IS the display. Sub-detail (statuses, sources, plan progress) goes inline on each option using `[term]` or ` — sub-detail`. The exception is when items have rich multi-line child detail (blocking reasons, dependency chains) that genuinely doesn't fit a one-line option — in that case keep the tree display above the menu that takes the pick, but this should be rare.
-
-**Yes/no prompt:**
-
-```
-· · · · · · · · · · · ·
-**`◆ Proceed?`**
-
-**`y/yes`**
-**`n/no`**
-```
-
-**Multi-choice prompt:**
-
-```
-· · · · · · · · · · · ·
-**`◆ Where should it go?`**
-
-**`l/log`**     → Capture it as an idea in the inbox for later
-**`r/roadmap`** → Put it on the product roadmap for a later release
-**`i/ignore`**  → Note it in the Summary and move on
-```
-
-**Meta options** in selection menus get italic descriptions — the menu metadata register:
-
-```
-**`3`** → Unify all into single specification
-   *All discussions combined into one specification.*
-   *Existing specifications are incorporated and superseded.*
-```
-
-### Auto-Select
-
-When only one actionable item exists, the surface at that step draws the auto-select line (`autoSelectLine` in `surfaces.cjs`) in place of a menu:
-
-```
-Automatically proceeding with "Auth Flow".
-```
-
-### Block / Terminal Messages
-
-When a phase can't proceed — the phase title, the blocking fact in the red register (see Callout Flag → blocked states), then guidance as a signpost:
-
-```
-# **`■ Planning Overview`**
-```
-
-```properties
-⚑ No specification found for this topic
-```
-
-> The planning phase requires a completed specification.
-
-Engine entry gates emit this shape as two sections (`DISPLAY: entry blocker` + `DISPLAY: blocker guidance`), built by `blocker()`. A prose-authored terminal message takes the same shape and is static text; one naming anything that varies is the engine's.
-
-### Bullet Characters
-
-Use `•` for all bulleted lists (sources, files, not-ready items, etc.).
-
-Within a numbered item, `·` marks quiet sub-detail: a wrapped summary paragraph or a subsection header (`· Edge cases`) whose tree hangs beneath it. Continuation lines always align under the text — never column zero.
-
-### Spacing Rules
-
-**Between blocks**: One blank line after the phase title before any content (code block, blockquote, or step marker). No `---` separators between code blocks (overview → not-ready → key → menu) — just natural block separation.
-
-**Inside code blocks**: One blank line between:
-- Each numbered tree item
-- Section headings and their content
-- Key categories
-
-## State Ownership (MANDATORY)
-
-Workflow state is engine-owned, always. Durable state (gate decisions, approvals, tracking, lifecycle) lives in the work-unit manifest; ephemeral session machinery lives in the engine's per-topic `state.json` under the cache; and what belongs to one conversation rather than a work unit lives in that conversation's folder beside the system config, `{config}/conversations/{session-id}/` (`domain/conversation.cjs`), one file per concern. Skills and agents never write or read file frontmatter, and never encode state in prose or headings — markdown files carry content only (findings, drafts, reports, feedback notes). The sole exception is the local-markdown output format's task files, whose frontmatter is that format's declared backend. When a new feature needs state, give it a manifest field or an engine verb — never a file marker. A setting with a project default (`plan_format`, `project_skills`, `linters`) records the value in use at the topic level, `project.defaults` only suggesting it for the user to confirm or override, and never at the phase level.
-
-## Structural Conventions (MANDATORY)
-
-These are hard rules, not suggestions. All skill files MUST follow these conventions exactly.
-
-### Stop Gates
-
-Use `**STOP.**` (bold, period). This is the only pattern for user interaction boundaries.
-
-Two categories:
-
-**Interaction stop** — waiting for real user input to continue:
-```
-**STOP.** Wait for user response.
-**STOP.** Wait for user response before proceeding.
-```
-
-**Terminal stop** — skill is done, nothing to process:
-```
-**STOP.** Do not proceed — terminal condition.
-```
-
-Never use `Stop here.`, `Command ends.`, `Wait for user to acknowledge before ending.`, or other variations.
-
-**A gate's step shows its own lead-in.** A display or summary that leads into a gate sits in the gate's own step, never in the step before it, so the step that ends the turn always has something to write when a gate surface draws the menu itself. A lead-in that applies on some paths only is written inline inside that step — `Where X, load Y before the gate.`, the shape the task loop's convergence line and the review gate's out-of-scope line take — and an H4 branch never stands in for it. Any arrival at a gate but its first — a return from a lens or an answer, a pause for a backlog, postpone or cancel request, a put-back — re-runs the gate fetch alone.
-
-### Dispatch Lines
-
-Claude Code runs an agent in the background unless the dispatch passes `run_in_background: false`, so every dispatch names its mode. A background dispatch the flow waits on ends the turn there: it says `run_in_background: true` and prescribes the turn's closing text inline, beside it — the turn's own sentence, never a fenced display:
-
-```
-The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.`
-```
-
-One sentence in that shape, naming the agent and what it works on — `task {phase}.{task}`, `phase {N}`, `review cycle {N}`, `the pending areas` — never an internal id or a topic slug. A dispatch whose file re-invokes the same agent says so once (`This dispatch and every re-invocation of the designer below run in the background (…) and end the turn on exactly …`). A foreground dispatch says `run_in_background: false`, and a background dispatch the conversation carries on past says `run_in_background: true`; neither carries a sentence. Lint check 25 holds all three.
-
-A path an agent is handed is written as installed, from the project root — `.claude/skills/{skill}/references/{file}`, `.claude/agents/{name}.md`, a work artifact as `.workflows/…` — never relative to the instruction file: the session hands it over as written. Lint check 26 holds it.
-
-### Heading Hierarchy
-
-- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; the start, navigation, discovery, and bridge SKILL.md files carry none (frontmatter and the one-liner open the backbone)
-- **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
-- **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Boot`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
-- **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
-
-### Step Numbering
-
-Sequential: `## Step 0`, `## Step 1`, `## Step 2`, etc.
-
-- **Step 0** hosts initialisation; `workflow-start` runs migrations and the knowledge gate via `engine boot`
-- Steps are separated by `---` horizontal rules
-- Each step completes fully before the next begins
-- User-facing step markers (see Display & Output Conventions → Step Markers) use names only — no numbers. Only steps that earn chrome carry them; silent steps produce no user-facing output
-- When consecutive steps always run together — nothing routes into the later step and no gate sits between them — they are one step; author them as one
-
-### Sub-Steps (Early Setup Steps Only)
-
-Early setup steps — Step 0 in particular — bundle multiple discrete pre-disclosure actions that all run unconditionally: running migrations, gating on prerequisites. These actions must execute inline (they are not progressive-disclosure work), but each needs its own routing target so conditional branches inside one action can route to the next action by name without duplicating shared content downstream.
-
-Decompose these steps into **sub-steps** using H3 decimal numbering:
-
-```
-## Step 0: Initialisation
-
-### Step 0.1: Boot
-
-#### If `migrations.changed` is `true`
-Load **[migration-review.md](references/migration-review.md)** … [diff review + summary + confirm gate]
-→ On return, proceed to **Step 0.2**.
-
-#### Otherwise
-[up-to-date display]
-→ Proceed to **Step 0.2**.
-
-### Step 0.2: Claude Code Setup
-[a loaded reference when the boot response says the mod is not running or this Claude Code is too old for it; otherwise silent]
-→ Proceed to **Step 0.3**.
-
-### Step 0.3: Walkthrough
-[a loaded one-time offer when the boot response says so — records the answer, and a yes loads the walk; otherwise silent]
-→ Proceed to **Step 0.4**.
-
-### Step 0.4: Session Labels
-[a loaded one-time prompt when the boot response says so; otherwise silent]
-→ Proceed to **Step 0.5**.
-
-### Step 0.5: Knowledge Gate
-[branch on the boot response: not-ready → the loaded knowledge gate sets the store up in conversation and returns to Step 0.6; ready → proceed]
-→ Proceed to **Step 0.6**.
-
-### Step 0.6: Baseline Judgment
-[a loaded one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
-→ Proceed to **Step 1**.
-```
-
-Rules:
-
-- Heading format: `### Step {parent}.{sub}: {Name}` (e.g., `### Step 0.1: Boot`)
-- Sub-steps are **unconditional, sequential** units — they always run when the parent step runs. Use H4 `#### If` *inside* a sub-step for branching; the branches route to the next sub-step by name
-- Each sub-step is a valid routing target: `→ Proceed to **Step 0.2**`
-- The final sub-step routes to the parent's next top-level step: `→ Proceed to **Step 1**`
-- **Sub-steps are reserved for early setup steps** (typically Step 0) where content must run inline before progressive disclosure begins — migrations must complete before anything else, knowledge check gates the entire pipeline
-- **Later steps must use reference files and progressive disclosure instead.** `Load **[reference.md](...)**` is the mechanism for decomposing later-step content, not sub-steps
-
-### Conditional Routing
-
-Use H4 headings for if/else branches within a step:
-
-```
-#### If scenario is "no_specs"
-{content}
-
-#### If scenario is "has_options"
-{content}
-```
-
-**Nested conditionals** — use bold text for conditionals inside an H4 block:
-
-```
-#### If yes
-
-1. Shared setup steps...
-
-**If work_type is set** (feature, bugfix, or epic):
-
-{branch content}
-
-**If work_type is not set:**
-
-{branch content}
-```
-
-**Avoid double-nesting** — if a bold conditional would contain further bold conditionals, flatten by combining conditions:
-
-```
-**If work_type is not set and other discussions exist:**
-...
-**If work_type is not set and no discussions remain:**
-...
-```
-
-**Prelude and post-STOP exception** — at file prelude (above any `## A.` lettered section) and immediately after STOP-gate responses, bold `**If ...:**` is acceptable for top-level conditionals. H4 in these positions visually competes with the lettered section headings that follow, and disrupts the prelude flow. Inside a lettered section's body, top-level conditionals stay H4.
-
-```
-**Trigger checklist** — evaluate after every commit:
-- □ Meaningful content committed?
-- □ All prior reviews drained?
-
-**If all checked:**
-
-→ Proceed to **A. Dispatch**.
-
-**If any unchecked:**
-
-No dispatch needed. Continue with the session loop.
-```
-
-Rules:
-- Never use else-if chains — each condition gets its own `#### If` heading
-- Lowercase after "If" (e.g., `#### If completed_count == 1`)
-- Use `#### Otherwise` for else branches
-- Use backticks around specific values, variables, and statuses in H4 headings (e.g., `` #### If `STATUS` is `clean` ``, `` #### If work type is `feature` ``). Natural language conditions stay plain text (e.g., `#### If no plan provided`)
-- Use "and" between conditions, not commas
-- Drop implied conditions (e.g., if Step 2 already gates on `completed_count >= 1`, Step 3 doesn't need to repeat it on every branch)
-- H4 for top-level conditionals inside lettered sections, bold text for nested or for prelude/post-STOP positions — never use H5/H6 for conditional nesting
-- If double-nesting would occur, flatten by combining the parent and child conditions into a single bold conditional
-- Every conditional branch must include its own routing instruction (`→ Proceed to` or `→ Return to`). Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
-
-### Command Preludes
-
-Any decision an invocation depends on — a flag choice, a derived parameter, a value to substitute — is stated **before** the fenced command, never after. A step-executing reader runs the command when it reaches it; guidance placed below the fence arrives too late.
-
-### Navigation Arrows
-
-Use `→` for flow control between steps or to external files:
-
-```
-→ Proceed to **Step 4**.
-→ Proceed to **Step 7** to invoke the skill.
-→ Load **[file.md](file.md)** and follow its instructions.
-```
-
-### Reference File Headers
-
-Reference files loaded by skills use this header pattern:
-
-```
-# Title
-
-*Reference for **[parent-skill](../SKILL.md)***
-
----
-```
-
-Attribution variants by loading context:
-
-- **Loaded by another reference file** (not the backbone): attribute to the loading file — `*Reference for **[spec-review](spec-review.md)***`. A short context clause may follow the link (`— loaded at phase start`).
-- **Shared references** (`workflow-shared/references/`, no parent SKILL.md): use the shared form — `*Shared reference. Loaded by {callers}.*` or `*Shared reference for all workflow skills.*`
-- **Multi-consumer content files** (output-format per-concern adapters loaded by several skills): no attribution line — a single-parent attribution would be inaccurate. The format contract documents this exemption.
-
-### Critical / Important Markers
-
-Use bold labels with colons for emphasis levels:
-
-```
-**CRITICAL**: This guidance is mandatory.
-**IMPORTANT**: Use ONLY this script for discovery.
-**CHECKPOINT**: Summarize progress before continuing.
-```
-
-### Zero Output Rule
-
-Skills that hand the work on to another — `workflow-start`, the navigation skills, the bridge, discovery, the roadmap — use this exact blockquote to prevent narration:
+A skill that only hands the work on carries this blockquote, byte for byte (lint check 9); a phase that talks, discovery among them, carries none:
 
 ```
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 ```
 
-### Auto-Mode Gates
-
-Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP gates — and, where the gate's flow defines a bound, `b/bounded` beside it. This pattern is used in implementation (task + fix gates, whose bound is the plan phase), planning (task list approval + task authoring + review findings), and specification (construction + review findings).
-
-**Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated`, `auto`, or `bounded`) — every gate, no exceptions. This ensures they survive context refresh.
-
-**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate, and the gate's own surface renders the auto branch's one-line announcement in place of its menu — `task-gate`, `proposed-task --gate auto`, `author-task-gate --phase` — so the branch shows an artifact rather than passing in silence:
-
-```
-Task approved [auto]. Committing and moving to the next task.
-```
-
-**Lifecycle**:
-- Default: `gated` (set in manifest on creation)
-- Opt-in: user chooses `a/auto` (full — the rest of the session) or `b/bounded` (auto to the end of the bound the gate's flow defines) at any per-item gate → manifest updated via `engine manifest` before next commit
-- Bound: `bounded` is one generic value — the schema's `GATE_FIELDS` table (`kernel/manifest-schema.cjs`) places each gate on its phase and names its bound, the field surface refuses `bounded` on any gate without one, and the engine returns the gate to `gated` at the bound's close, never the prose. The implementation task and fix gates are bound to the plan phase: `task complete --phase-complete` resets them, so a bounded auto holds through every task the phase gains before it records. A gate with no bound never offers `b/bounded`
-- Reset: each phase skill resets its gates to `gated` at session start — fresh invocation or resume. Either opt-in is session-scoped, never carried across sessions
-- Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
-
-**Menu option format**: The gate's surface places the row between the primary action and secondary options — the bounded row beside it where the gate has a bound:
-```
-**`a/auto`**    → Approve this and all remaining {items} automatically
-**`b/bounded`** → Approve this and the remaining {items} in this {bound} automatically
-```
-
-**Re-loop safety cap**: When auto-mode enables automatic re-analysis loops, cap at 5 cycles. This prevents infinite cascading. Under `auto` the specification and planning review loops end themselves — at the convergence diagnostic's first churning verdict from cycle 2, or at the cap — the diagnostic rendered either way and one line said; under `gated` the cap escalates to the user with the diagnostic beside the gate. That diagnostic (shared reference at `skills/workflow-shared/references/convergence-analysis.md`) reads prior cycle tracking files and presents what's resolving, what's recurring, and a trend assessment.
-
-### Rendering Instructions for Ask Blocks
-
-When a step asks the user a question whose every word is fixed, wrap it in a rendering instruction — never a bare `Ask:` label. **The fence is for asks whose structure carries meaning**: a question with enumerated prompts beneath it, where the list is part of what is being asked. A conversational opening — Claude speaking a paragraph to the user — is emitted as markdown (not a code block) instead, one authored line per paragraph, so the renderer reflows it at any width. A fence would hand-wrap prose at a column the author had to guess. An ask carrying a value the conversation holds is said inline in a code span (``Say `New summary for "{item.name:(titlecase)}":` ``), and one in Claude's own words — a question over what the session found — is instructed inline (`In your own words, ask the specific question, with what was tried and why it blocks the trace.`); each is followed by its STOP, never fenced.
-
-```
-> *Output the next fenced block as a text code block (```text fence):*
-
-\```text
-What's on your mind?
-
-- What idea or topic do you want to explore?
-- What prompted this - a problem, opportunity, curiosity?
-\```
-
-**STOP.** Wait for user response before proceeding.
-```
-
-## Skill File Structure (MANDATORY)
-
-Every skill uses a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives.
-
-### Backbone Structure
-
-```
-Frontmatter
-One-liner purpose statement
-Workflow context table
-"Stay in your lane" instruction
----
-## Instructions — Load directive → framework.md (a skill a conversation opens on — see The Framework Load)
----
-Step 0: Run Migrations (always inline)
----
-Step 1: {Name}
-Load directive → reference file
-→ On return, proceed to Step 2.
----
-Step 2: {Name}
-Load directive → reference file
-```
-
-**Stays inline:** Migrations (Step 0), simple routing conditionals (a few lines), frontmatter.
-
-**Frontmatter never declares a `SessionEnd` hook.** Claude Code does not fire SessionEnd hooks declared in skill frontmatter; session-end cleanup is the settings-level hook the engine installs in `.claude/settings.json`. Other hook events may be declared where a skill needs them. (Lint check 18.)
-
-**Every `allowed-tools` Bash grant carries a `*`.** A grant is a Claude Code permission rule, and one without a wildcard matches only that exact command, never a call with arguments: a grant for the workflows' own script ends in ` *` (`Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)`), and no other grant is written without one. (Lint check 28.)
-
 ### The Framework Load
 
-The framework loads once per conversation, at the head of the skill the conversation opens on — `workflow-start`, or a skill a handoff lands on (`OPENING_SKILLS` in `workflow-engine/scripts/domain/handoff.cjs`). Each of those skills opens its `## Instructions` section with one line and nothing else:
+The framework holds what is true in every conversation. It loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`OPENING_SKILLS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
 
 ```markdown
-## Instructions
-
 Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
 ```
 
-Where one of them is opened later in a conversation — the epic menu from the start menu — it carries on from the load already made. A skill only ever opened in place — the bridge, help, the linear continue skill, the legacy research split — carries no framework load and no `## Instructions` section. Lint check 27 holds both halves.
+An opening skill met later in a conversation — without the mod, a handoff invokes the next skill in the same one — carries on from the load already made. A skill only ever opened in place carries neither the section nor the load (lint check 27). `framework.md` only composes the shared references every conversation holds. A rule universal to every conversation joins that list; a rule only some phases use loads from those phases. A skill never restates a framework rule: a second copy is a second source of truth.
 
-`framework.md` is pure composition — it loads the conventions that hold for every skill (`instructions.md`, `casing-conventions.md`, `voice.md`, `altitude.md`, `ask-or-decide.md`) and carries no content of its own. Anything universal joins that list rather than being copied into skill heads — except a rule that fires only at a moment, which a line in `instructions.md` loads at that moment (`answering-how-it-works.md`, at a question about how the workflows work). A rule only some phases use loads from those phases' own guidelines (`devils-advocate.md`), never the framework. Never restate a framework rule inline in a skill: a second copy is a second source of truth, and the copies drift.
+### References
 
-Skills with a `## Resuming After Context Refresh` protocol re-load `framework.md` by name in its first numbered step, alongside re-reading the skill file. A compaction summary keeps conclusions and drops the instructions that produced them, so anything held only by reference evaporates unless the recovery path names it.
+A skill splits a part into a reference when the part is needed only at a moment — a request at any point, an item's guidance at the close, a corridor's move — so the phase loads it then, and only then.
+- **Named** for what it covers, in kebab-case: `closing-pass.md`, `postponing-the-topic.md`.
+- **Headed** with its title, an attribution line, and a rule (lint check 10):
 
-Capture skills (`workflow-log-*`) are exempt — they are deliberately structureless, with no steps, no references, and no gates.
+  ```markdown
+  # {Title}
 
-**Gets extracted:** User interaction sequences, display/output formatting, context-block templates, discovery parsing, analysis logic, routing logic with significant conditional content.
+  *Reference for **[{skill}](../SKILL.md)***
 
-### Load Directive Format
+  ---
+  ```
 
-```markdown
-## Step N: {Step Name}
-
-Load **[name.md](references/name.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step N+1**.
-```
-
-Rules:
-- No arrow (`→`) before the Load line — it's the step's content, not a routing instruction
-- Bold the markdown link: `**[name.md](path)**`
-- `→ On return, proceed to` is the footer after a Load directive, separated by a blank line — the loaded reference runs to completion (its STOP gates and loops included) before the proceed applies. A bare `→ Proceed to` here reads as the immediate next action and overshoots the reference. A backward target takes `→ On return, return to **A. Section Name**.`
-- When a `**STOP.**` gate or a bold conditional sits between the Load directive and the routing line, the routing is keyed to the user's response or the branch, not the return — those use the bare `→ Proceed to`
-- The final step has no routing footer (it's terminal)
-- A footer governs only the reference's bare `→ Return to caller.` exits — never the branches the reference routes itself (see Navigation & Return Patterns → backbone escape). Where every exit routes to a named step, no branch is left for a footer to serve and naming one would name a step that never runs: the footer instead defers, `→ On return, proceed as the reference directed.` A step is never left with no footer at all — silence reads as the end of the step, and the next heading gets treated as the fall-through
-- Within reference files routing to other reference files, use `→` before Load (it IS a routing instruction in that context)
-
-**Parameter passing**: When a shared reference needs context from the caller, append `with` followed by named assignments. String literals and variable values are both backtick-wrapped; variables use curly brace placeholders:
-
-```
-→ Load **[name.md](path)** with param = `literal`, other = `{variable}`.
-```
-
-### Loading, Invoking, and Handing Off
-
-Three mechanisms move a flow forward; never blur them:
-
-- **Loading a reference** reads a file into the running context — progressive disclosure, nothing more. No parameters pass mechanically: state the variables in prose before the Load (`with topic = `{topic}``) and the loaded file references them, already in context.
-- **Invoking a skill** is a Skill tool call at a boundary within the work (phase end → bridge), between menus (start → a continue menu, anything → help), or on a move that carries a live conversation on (discovery into the roadmap's genesis or a recognition pull, the roadmap's epic pull into discovery). It adds the skill's instructions to the running context — **nothing is cleared**. Its arguments are positional, as the skill declares them (`$0`/`$1`/… — the phase skills a handoff lands on, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place. The imperative is never put inside a fence — a fence is payload; an instruction buried there gets printed, not executed.
-- **Handing off** is a move into work: the skill it names starts the work afresh. A menu's pick into work hands off — start into discovery, the roadmap or the baseline, a continue menu into a phase — and so does every conclusion, the bridge deciding where its work goes; a move that carries a live conversation on is invoked instead. `workflow-shared/references/handing-off.md` carries every move, loaded with the move as the skill's slash command and its arguments (`with route = `/workflow-continue-epic {work_unit} {completed_phase} {outcome}``) — a route the engine built passes as it stands. The engine's `handoff` command checks the move; where the gate mod carries it, the conversation is cleared and the skill starts in the next one, and elsewhere it is invoked in place. Nothing passes but the skill and its arguments — what the next skill needs is on disk before the handoff. A site loads the reference and never branches on the answer itself. Within a phase, nothing clears.
-
-### Phase Skill Contract
-
-Every phase skill — `phaseSkill(phase)` in `workflow-engine/scripts/domain/handoff.cjs` names it — takes three positional arguments, no exceptions: `$0` work_type, `$1` work_unit, `$2` topic. Every phase is entered at a topic. An epic always names it — the handoff refuses an epic route without one, so a menu picks or names the topic before it hands off. A single-topic unit's topic is the work unit, so `$2` may be left off: `topic = $2 || $1`. Nothing else crosses: the phase reads its status — new, resume or reopen — and every input it needs from disk. A durable input (the seed, a topic's brief, a pulled-back topic's prior record, the discovery session log, completed research, a specification's sources) is read at initialisation or session setup, never relayed through a handoff.
-
-A phase skill's Step 0 runs its gates in one order, each sub-step present only where the phase has it:
-
-1. The code gate, where code is written or checked — implementation and review (`workflow-shared/references/code-session-gate.md`).
-2. The entry gate (`render entry-gate`) — discussion, specification, planning, implementation and review; the experiment's series check stands in its place.
-3. An epic implementation's dependency check (`check-dependencies.md`).
-4. The map row for an epic topic — research and discussion (`workflow-shared/references/ensure-discovery-item.md`).
-5. `engine session label {work_unit} {phase} {topic}`.
-6. One status branch merged with resume detection: a new item initialises, `in-progress` resumes, `completed` is reopened and resumes, and a postponed, cancelled, superseded or promoted item stops. The phase note (`render phase-note … --verb Resuming|Reopening|Starting`) heads the resume surface, and a resume loads `workflow-shared/references/reconcile-advisory.md` in every phase but investigation and scoping.
-
-The experiment carries no status branch: it resolves its record (`select-record.md`) before the label.
-
-### Reference File Structure
-
-```markdown
-# {Step Name}
-
-*Reference for **[skill-name](../SKILL.md)***
-
----
-
-{content}
-```
-
-- Header matches the step concept, not the filename
-- Italic attribution line links back to the parent SKILL.md
-- Horizontal rule separates header from content
-
-### Navigation & Return Patterns
-
-Skill files form a call stack. The backbone (SKILL.md) loads reference files via Load directives. Reference files may load other reference files. Two verbs control all movement through this stack:
-
-- `→ Proceed to` — forward movement (next step, next section)
-- `→ Return to` — backward/upward movement (back to caller, back to earlier section, up to backbone)
-
-No other verbs — never `→ Go to`, `→ Jump to`, `→ Skip to`, `→ Continue to`, `→ Enter`. No adverbs — `→ Proceed to`, never `→ Proceed directly to`.
-
-#### Forward (within a file)
-
-| Instruction | Context |
-|---|---|
-| `→ Proceed to **Step N**.` | Next step in the backbone |
-| `→ Proceed to **B. Section Name**.` | Next lettered section in a reference file |
-| `→ On return, proceed to **Step N**.` | Footer after a Load directive — applies when the loaded reference returns (see Load Directive Format) |
-
-
-#### Backward (within a file)
-
-| Instruction | Context |
-|---|---|
-| `→ Return to **A. Section Name**.` | Earlier lettered section in the same reference file |
-| `→ On return, return to **A. Section Name**.` | Footer after a Load directive with a backward target — the loaded reference completes, then flow re-enters an earlier section. The bare `→ Return to` after a Load remains valid; the footer form makes the after-the-reference timing explicit |
-
-Internal routing (both forward and backward) uses bold text, never links.
-
-#### Exiting a reference file
-
-This is the critical decision. Use this flowchart:
-
-```
-How should this reference file exit?
-│
-├─ Is the final action invoking a skill or handing off?
-│  └─ YES → Terminal. No routing instruction needed.
-│
-├─ Are you going back to whoever loaded this file?
-│  │
-│  ├─ Just returning (caller's next line takes over)?
-│  │  └─ → Return to caller.
-│  │
-│  └─ Returning to a specific section in the caller?
-│     └─ → Return to caller for **B. Section Name**.
-│
-└─ Are you routing to the backbone (not your caller)?
-   │
-   ├─ To the backbone generally?
-   │  └─ → Return to **[the skill](../SKILL.md)**.
-   │
-   └─ To a specific backbone step?
-      └─ → Return to **[the skill](../SKILL.md)** for **Step N**.
-```
-
-**`→ Return to caller.`** is the default exit. It works identically whether the caller is the backbone or another reference file — you never need to check who loaded you. The caller's next routing instruction handles onward sequencing.
-
-**Backbone escape** (`→ Return to **[the skill](../SKILL.md)**`) is for two scenarios:
-1. **Short-circuiting the call stack** — a reference file loaded by another reference file needs to skip past its caller and land on the backbone directly. Like an exception bubbling up past intermediate frames.
-2. **Directing to a specific backbone step** — different conditional paths within a file need to route to different backbone steps (e.g., one path → Step 4, another → Step 5). The caller's single `→ Proceed to` line can only go one place, so the file overrides it. This applies regardless of whether the caller is the backbone or another reference file.
-
-**A `b/back` renders the surface before it — never re-invokes a skill, never exits.** Where that surface is the start menu (the continue menus, the roadmap, the baseline, help), the branch loads `workflow-start/references/start-menu.md` across the skill boundary: `/workflow-start` is never re-invoked — model invocation is disabled on it.
-
-#### Exit pattern summary
-
-| File type | Exit pattern |
-|---|---|
-| Single-exit reference file | `→ Return to caller.` |
-| Multi-exit, all paths resume at caller | Each path ends with `→ Return to caller.` |
-| Multi-exit, paths need different backbone steps | Each path ends with `→ Return to **[the skill](../SKILL.md)** for **Step N**.` |
-| Terminal (invokes a skill or hands off) | No routing instruction |
-
-#### Formatting rules
-
-- Bold the target: `**Step N**`, `**B. Section Name**`, `**[the skill](../SKILL.md)**`
-- Links only for backbone escapes (`**[the skill](../SKILL.md)**`). All other routing is linkless — `→ Return to caller.` has no link, internal routing has no link.
-- Every conditional branch must include its own routing instruction. Never place routing outside a conditional expecting it to apply to all branches — each branch is self-contained. Even if multiple branches route to the same destination, each states it explicitly.
-
-### Internal Reference File Sections
-
-Complex reference files use lettered headings to organise sequential sections, avoiding collision with backbone step numbers:
-
-```markdown
-## A. First Section
-
-...
-→ Proceed to **B. Second Section**.
-
-## B. Second Section
-
-...
-→ Proceed to **C. Third Section**.
-```
-
-Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge`) without letters.
-
-### Reference File Naming
-
-| Name | Purpose |
-|------|---------|
-| `gather-context.md` | User interview / context gathering questions |
-| `display-{variant}.md` | Display outputs (for skills with multiple displays) |
-| `analysis-flow.md` | Multi-step analysis logic |
-
-Not every skill needs all of these.
+  A reference loaded by another reference names that file instead. A shared reference, under `skills/workflow-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
+- **Loaded** by one line, the link bold and resolving (lint check 7): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
+- **Deferring to the owner.** A reference that needs another skill's mechanic invokes that skill or loads its reference, carrying only what the caller knows. It never restates the owner's paths, naming or format. Where two files say the same thing, delete one rather than keep them aligned.

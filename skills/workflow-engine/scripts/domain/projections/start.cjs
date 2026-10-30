@@ -15,7 +15,7 @@
 // carry machine action keys so skills route on keys, never on labels.
 // ---------------------------------------------------------------------------
 
-const { box, renderTree } = require('../../kernel/render.cjs');
+const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
 const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, autoSelectLine } = require('./surfaces.cjs');

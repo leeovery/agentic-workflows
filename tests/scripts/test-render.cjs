@@ -11,7 +11,6 @@ const {
   wrap,
   wrapWithPrefix,
   signpost,
-  box,
   renderTree,
 } = require('../../skills/workflow-engine/scripts/kernel/render.cjs');
 
@@ -160,24 +159,6 @@ describe('render shape: signpost', () => {
   it('rejects an empty label and an unknown style', () => {
     assert.throws(() => signpost('   '));
     assert.throws(() => signpost('X', { style: 'bogus' }));
-  });
-});
-
-describe('render shape: box (phase title)', () => {
-  it('renders a 49-wide bullet-bordered box with a trailing blank line', () => {
-    const out = box('Planning Overview');
-    const lines = out.split('\n');
-    // border, title, border, <visible blank>, "" (final terminator)
-    assert.strictEqual(lines[0], '●' + '─'.repeat(WIDTH - 2) + '●');
-    assert.strictEqual(lines[0].length, WIDTH);
-    assert.strictEqual(lines[1], '  Planning Overview');
-    assert.strictEqual(lines[2], lines[0]);
-    assert.strictEqual(lines[3], ''); // the breathing-room blank line
-    assert.ok(out.endsWith('\n\n'));
-  });
-
-  it('rejects an empty title', () => {
-    assert.throws(() => box(''));
   });
 });
 

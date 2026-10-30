@@ -2466,8 +2466,9 @@ function sendCandidates(cwd, { dotpath, file }) {
 const { markerRefusal, MARKER_VERBS } = require('./discovery-map.cjs');
 
 // A bare yes/no pair — no labels, because the question above them already
-// says what yes means (CONVENTIONS.md: Yes/no prompt). Composed per render,
-// as every option set is: a row records itself where it is built.
+// says what yes means (CONVENTIONS.md: The Design System, Menus). Composed
+// per render, as every option set is: a row records itself where it is
+// built.
 const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
 
 // The map-operation family: op → the confirm question its gate asks. The

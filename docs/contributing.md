@@ -130,11 +130,30 @@ it, so an old checkout will look set up and quietly not be.
 
 ## Conventions
 
-Skill authoring — prose economy, display conventions, file structure,
-navigation patterns — lives in `CONVENTIONS.md`, and it is mandatory
-reading before editing anything under `skills/`. It is dense and changes
-often; skipping it has produced silently non-compliant skills more than
-once.
+Skill authoring — where each rule goes, what a phase skill holds, prose,
+display and the design system, file structure — lives in
+`CONVENTIONS.md`, and it is mandatory reading before editing anything
+under `skills/`. It is dense and changes often; skipping it has produced
+silently non-compliant skills more than once.
+
+## Moving to a new model
+
+When the workflows move to a new model, the prose is walked on it and one
+pass cuts what that model no longer needs. Beyond the prose, the pass
+re-weighs each item below, each held as it is for today's model:
+
+- the brief templates in the engine's content folder
+  (`skills/workflow-engine/content/briefs/`);
+- the checklist items held for the model: a topic's close's "every
+  decision in the conversation has an entry", and the closing pass's
+  second reader;
+- the habit-hook entries;
+- the reviewer count;
+- the effort threshold;
+- the raw calls' models and efforts: the one-decision check, the
+  labeller, and the typed-answer reader;
+- the one-decision check's hit rate;
+- the knowledge eval's index arm.
 
 ## Raising changes
 

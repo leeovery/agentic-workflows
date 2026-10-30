@@ -118,21 +118,6 @@ function signpost(label, { style = 'step', width = WIDTH } = {}) {
   return fillTo(s.lead + text + ' ', s.fill, width);
 }
 
-// Phase-title box — bullet-bordered, fixed width, 2-space title padding, with a
-// trailing blank line inside the block (CONVENTIONS.md: phase titles).
-//
-//   ●───…───●
-//     Title
-//   ●───…───●
-//   <blank>
-/** @param {string} title @param {{width?: number}} [opts] */
-function box(title, { width = WIDTH } = {}) {
-  const text = String(title).trim();
-  if (!text) throw new Error('box: title is required');
-  const border = '●' + '─'.repeat(width - 2) + '●';
-  return `${border}\n  ${text}\n${border}\n\n`;
-}
-
 // ---------------------------------------------------------------------------
 // Shapes: tree (continuous-gutter, recursive)
 // ---------------------------------------------------------------------------
@@ -273,4 +258,4 @@ function columniseTags(rows, width) {
   return rows.map((r) => (r.tag ? r.text.padEnd(column) + `[${r.tag}]` : r.text));
 }
 
-module.exports = { WIDTH, TAG_GAP, fillTo, wrap, wrapWithPrefix, signpost, box, renderTree };
+module.exports = { WIDTH, TAG_GAP, fillTo, wrap, wrapWithPrefix, signpost, renderTree };

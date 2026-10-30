@@ -11,7 +11,7 @@
 // The `render` command group serves two audiences: the surface catalogue
 // (domain/render.cjs) — named runtime surfaces skill flows call at prescribed
 // points, returning demarcated sections emitted verbatim — and the dev/debug
-// primitives (signpost, box, wrap, tree), which remain authoring aids only.
+// primitives (signpost, wrap, tree), which remain authoring aids only.
 // Static chrome stays literal in prose; anything parameterised or
 // state-branching renders here.
 //
@@ -35,7 +35,7 @@ if (require.main === module && guardDoor(process.argv.slice(2))) return;
 
 const fs = require('fs');
 const path = require('path');
-const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
+const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
 const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.cjs');
@@ -482,7 +482,6 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render ledger-stop
   render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
-  render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
 
@@ -2467,10 +2466,6 @@ function runRender(call, argv) {
     case 'signpost':
       if (!positional.length) die(call, 'Usage: engine render signpost <label> [--style step|substep] [--width N]');
       call.out(signpost(positional.join(' '), { style: /** @type {'step'|'substep'} */ (opts.style) || 'step', width }) + '\n');
-      break;
-    case 'box':
-      if (!positional.length) die(call, 'Usage: engine render box <title> [--width N]');
-      call.out(box(positional.join(' '), { width }));
       break;
     case 'wrap': {
       if (!positional.length) die(call, 'Usage: engine render wrap <text> [--width N] [--prefix STR]');

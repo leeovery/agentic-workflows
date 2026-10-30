@@ -10,7 +10,7 @@
 // Layout goes through the kernel renderer — no character arithmetic here.
 // ---------------------------------------------------------------------------
 
-const { signpost, box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { signpost, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
 const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
@@ -364,7 +364,7 @@ function plansNotReadyBlock(detail) {
 }
 
 /**
- * Section A — the epic state display. One code-block string: box cap, stage
+ * Section A — the epic state display. One code-block string: stage
  * dividers, map/phase trees, recommendation, and the plans-not-ready block.
  * @param {string} workUnit
  * @param {EpicDetail} detail
@@ -1160,9 +1160,8 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
       text = `${r.row} · ${r.locked}`;
     }
     const lastInGroup = i === rows.length - 1 || groupOf(rows[i + 1]) !== group;
-    // Sub-views are plain list rows (CONVENTIONS: selection sub-views use
-    // the [term] form, not trees) — the branch glyphs are visual grouping,
-    // so wrapped continuations align under the row text with no rail.
+    // The branch glyphs only group the rows, so a wrapped continuation aligns
+    // under the row text with no rail beneath it.
     const glyph = lastInGroup ? '└─' : '├─';
     displayLines.push(...wrapWithPrefix(text, { width: TREE_WIDTH, prefix: `  ${glyph} `, hang })
       .map((line, li) => (li === 0 ? line : line.replace(`  ${glyph} `, '     '))));

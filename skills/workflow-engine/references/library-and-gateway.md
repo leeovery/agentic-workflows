@@ -13,7 +13,6 @@ const engine = require('.../skills/workflow-engine/scripts/lib.cjs');
 
 // kernel: pure layout
 engine.render.signpost(label, { style, width })   // → string (one line)
-engine.render.box(title, { width })               // → string (block)
 engine.render.renderTree(nodes, { width })        // → string (recursive tree)
 engine.render.wrapWithPrefix(text, { width, prefix }) // → string[] (prefixed lines)
 engine.render.wrap(text, budget)                  // → string[] (segments ≤ budget)
@@ -105,7 +104,7 @@ engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, di
 engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
 engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
-engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (box + tier header + rows)
+engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (tier header + rows)
 engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 engine.project.startOverview(detail)              // → Workflow Overview display block
@@ -122,7 +121,7 @@ engine.project.manageUnitView(md)                 // → { data, menu } — the 
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
 engine.project.planTopicsPick(md)                 // → DISPLAY: plan topic auto-select for one plan, MENU: plan topics for several — the render plan-topics surface
 engine.project.completedView(detail)              // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing is closed
-engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
+engine.project.workUnitStatus(type, unit)         // → status display block (pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
 engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one) — the bridge gateway's `next_route` and `revisit_routes`

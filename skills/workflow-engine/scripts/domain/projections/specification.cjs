@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 const { menuFrame, cmdOption, bulletRow, optionDetail, autoSelectLine } = require('./surfaces.cjs');
 
