@@ -286,6 +286,22 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
     assert.deepStrictEqual(fs.readdirSync(dir), [layout.lock], 'a breaker\'s guard left beside the lock');
   });
 
+  it('a stale lock another breaker is breaking is waited on as a live one is: a try a retry interval, given up at the deadline', (t) => {
+    const lock = path.join(dir, layout.lock);
+    fs.writeFileSync(lock, '99999');
+    makeStale(lock);
+    fs.writeFileSync(`${lock}.breaking`, '1'); // fresh — its breaker still at work
+    const timeoutMs = 4 * io.LOCK_RETRY_MS;
+    const most = timeoutMs / io.LOCK_RETRY_MS + 1;
+    const attempts = lockAttempts(t, lock, (taken) => {
+      if (taken > most) throw new Error(`${taken} attempts in ${timeoutMs}ms — a busy wait`);
+    });
+
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', timeoutMs), /^Error: Timed out \(lock file: /);
+    assert.deepStrictEqual([...new Set(attempts)], ['taken'], 'every attempt found the lock taken');
+    assert.deepStrictEqual(fs.readdirSync(dir).sort(), [layout.lock, `${layout.lock}.breaking`], 'the lock and the breaker\'s guard left as they were');
+  });
+
   it('contenders racing a dead holder\'s claim through withProjectLock: each holds it in turn while the rest wait, never two at once', async () => {
     const lock = path.join(dir, layout.lock);
     fs.writeFileSync(lock, DEAD);
