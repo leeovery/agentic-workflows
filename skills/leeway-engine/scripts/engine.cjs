@@ -232,7 +232,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>
   topic mailbox <work-unit> <phase> <topic>
   topic incorporations <work-unit> <topic>
-  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
+  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
   topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
@@ -1212,19 +1212,17 @@ function runTopic(call, argv) {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
       /** @type {string|undefined} */ let message;
-      /** @type {string|undefined} */ let subtopic;
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '--file') file = rest[++i];
-        else if (a === '--subtopic') subtopic = rest[++i];
         else if (a === '-m' || a === '--message') message = rest[++i];
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
-        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
+        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message, subtopic });
+      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message });
       beatQuietly(call.cwd, workUnit, phase, topic);
       respond(call, absorbed);
       return;
@@ -1894,7 +1892,8 @@ function runGate(call, argv) {
 // decision, put through the decision point and, where it asks, sealed in the
 // conversation and drawn (domain/raise.cjs, its screen
 // domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
-// answering once its rows' one-decision checks have; `show` draws a sealed
+// answering once its rows' one-decision checks have; with --fact, a fact
+// only the person holds, always sealed and drawn; `show` draws a sealed
 // raise again; `answer` records the person's answer to it, a keep of the
 // decision among them.
 // ---------------------------------------------------------------------------

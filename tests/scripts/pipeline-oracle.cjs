@@ -240,9 +240,9 @@ function auditState(dir, label) {
               assert.strictEqual(row.kind, 'deep-dive',
                 ctx(`agent ${ph.name}/${tp.name}/${key}: research carries the deep dive alone — a "${row.kind}" row has no reader there`));
             }
-            if (ph.name === 'discussion' && row.kind === 'review') {
-              assert.ok(row.map_snapshot && typeof row.map_snapshot === 'object',
-                ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review row must carry its dispatch-time map_snapshot — a stampless dispatch degrades to permanent permissive arming`));
+            if (ph.name === 'discussion' && ['review', 'closing-pass'].includes(row.kind)) {
+              assert.ok(Object.hasOwn(row, 'ledger_mark'),
+                ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review or closing pass row must carry the ledger's mark at its dispatch — arming and the gap review measure from it`));
             }
           }
         }

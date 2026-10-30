@@ -30,15 +30,61 @@
 //   report-a,      the report its flag's path points to, verbatim, a file
 //   report-b       in the unit's `build/` folder (4.11.5)
 //
+// A discussion topic's records, each read from the ledger as its read verb
+// answers it (ledger-read.cjs) or from the topic's agent store
+// (agent-state.cjs) — never a word of the conversation (26.1.5):
+//
+//   topic-record   the topic's record as `ledger record` answers it, its
+//                  current entries each with what it replaced (9.2.5),
+//                  fenced as JSON
+//   topic-log      the path of the topic's log, `topics/{topic}/log.md`
+//                  (9.2.10), for the agent to read
+//   other-records  the record of each other live topic of the unit that
+//                  shows anything, under a heading naming the topic — never
+//                  its log, and none of a topic set aside (5.8.17, 9.3.4)
+//   product-record the product record as `ledger product` answers it
+//   question       the question `--question` names, by any wording, in its
+//                  current wording: its short id and its text. It is an
+//                  open question standing on the topic, and the dispatch
+//                  `--agent` names is bound to it (agent-state.cjs)
+//   pair-question  the question the perspectives of that synthesis
+//                  dispatch's set were each briefed on, in its current
+//                  wording — one question, so a synthesis reconciles what
+//                  its pair argued
+//   dive-kind      the kind of dive `--kind` names (survey, read,
+//                  feasibility, landscape, verify), and for a read the path
+//                  of the file `--path` names, which only a read takes
+//   gap-review     whether a gap review has run since the topic's last
+//                  decision, naming it where one has (9.9.6, agent-state.cjs)
+//   report-to      where the agent writes its report: the file of the
+//                  dispatch `--agent` names, of the kind its role is briefed
+//                  for and still in flight
+//   lens           the lens that perspective dispatch was labelled with
+//   perspectives   the report of each perspective in that synthesis
+//                  dispatch's set, verbatim, in the order they were
+//                  dispatched
+//
+// The plain-search helper's one record is the conversation's (22.6.10):
+//
+//   knowledge-query the conversation's last `knowledge query`, as it kept
+//                  it (knowledge/last-query.cjs): its terms, its filters,
+//                  and what it returned, or that it failed and why, or that
+//                  it never finished
+//
 // A record taking a flag names it, and its role takes every flag its records
-// name and no other; a flag carries a name or a path, never text that
-// reaches the brief (6.5.6). A record the project holds none of yet is drawn
-// as none recorded. One that cannot be read refuses the brief: a task with
-// no spec reference, a section the spec lacks, linters of another shape, a
-// task's branch no repository holds work on, a base no repository holding it
-// has as a local branch, a report missing, empty or outside the unit's
-// `build/`. Nothing else of the project reaches a brief — its CLAUDE.md and
-// its skills reach the agent without it (6.5.5).
+// name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
+// text that reaches the brief (6.5.6). A record the project holds none of
+// yet is drawn as none recorded. One that cannot be read refuses the brief:
+// a task with no spec reference, a section the spec lacks, linters of
+// another shape, a task's branch no repository holds work on, a base no
+// repository holding it has as a local branch, a report missing, empty or
+// outside the unit's `build/`; a question that is none, no longer current,
+// stands elsewhere or is not open, or one its dispatch was not first briefed
+// on; a dispatch the topic's store lacks, of another kind, no longer in
+// flight; a perspective of the set with no report, or briefed on no question
+// or another than its pair; a dive of no kind, a read naming no file, another
+// kind naming one; a conversation that has run no knowledge query. Nothing else of the project reaches a brief — its
+// CLAUDE.md and its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -48,8 +94,14 @@ const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { linters } = require('./environment.cjs');
-const { readShown } = require('./ledger-read.cjs');
-const { recordOf, standingOf } = require('./ledger-fold.cjs');
+const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
+const { recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands } = require('./ledger-fold.cjs');
+const { resolveId } = require('./ledger-ids.cjs');
+const { manifestOf, liveTopics } = require('./ledger-units.cjs');
+const { topicLog } = require('./topic-log.cjs');
+const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
+const { lastQuery } = require('./knowledge/last-query.cjs');
+const { ROLES } = require('./brief-names.cjs');
 const { readCitedSections, headingLevels } = require('./spec-sections.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
 const { taskName } = require('./task-id.cjs');
@@ -61,18 +113,30 @@ const { remoteName, nestedRemoteName } = require('./remote.cjs');
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
+/** A discussion topic of a unit. @typedef {{unit: string, topic: string}} TopicPlace */
+
 /**
- * What a brief is filled for: the project, the task where its role takes
- * one, as the tracker holds it, and each flag given, by its name.
- * @typedef {{cwd: string, ref: TaskRef|null, task: TaskDetail|null, given: Readonly<Record<string, string>>}} Filling
+ * What a brief is filled for: the project; its role; the task where its
+ * role takes one, as the tracker holds it, or the topic where it takes
+ * one; each flag given, by its name; and the conversation it is issued in.
+ * @typedef {{
+ *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, place: TopicPlace|null, given: Readonly<Record<string, string>>, session: string,
+ * }} Filling
  */
 
-/** A flag a record takes: its name, and its value as a usage line shows it. @typedef {{name: string, value: string}} BriefFlag */
+/**
+ * A flag a record takes: its name, its value as a usage line shows it, and
+ * whether a brief may go without it.
+ * @typedef {{name: string, value: string, optional?: boolean}} BriefFlag
+ */
 
 /**
- * A record: whether it is a task's, the flag it takes, if any, and its
- * drawn form; what a read said on the way pushed to `warnings`.
- * @typedef {{ofTask: boolean, flag?: BriefFlag, draw: (filling: Filling, warnings: string[]) => string}} BriefRecord
+ * A record: whether it is a task's, a topic's or neither's, the flags it
+ * takes, its drawn form, and what it binds once every record of the brief
+ * is drawn; what a read said on the way pushed to `warnings`.
+ * @typedef {{
+ *   of: 'task'|'topic'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ * }} BriefRecord
  */
 
 const NONE = 'None recorded.';
@@ -206,18 +270,233 @@ function drawReport(filling, flag) {
 
 /** A record drawing the report its flag points to. @param {string} flag @returns {BriefRecord} */
 function reportRecord(flag) {
-  return { ofTask: true, flag: { name: flag, value: 'path' }, draw: (filling) => drawReport(filling, flag) };
+  return { of: 'task', flags: [{ name: flag, value: 'path' }], draw: (filling) => drawReport(filling, flag) };
+}
+
+/** The topic a topic's record is drawn for. @param {Filling} filling @returns {TopicPlace} */
+function placeOf({ place }) {
+  if (place === null) throw new Error('brief-records: a topic\'s record is drawn for a topic');
+  return place;
+}
+
+/** Text fenced, the fence longer than any run of backticks the text holds. @param {string} lang @param {string} text */
+function fenced(lang, text) {
+  const fence = '`'.repeat(Math.max(3, ...[...text.matchAll(/`+/g)].map(([run]) => run.length + 1)));
+  return `${fence}${lang}\n${text}\n${fence}`;
+}
+
+/**
+ * A ledger read's answer, what the read warned of pushed to `warnings`.
+ * @param {string} cwd @param {string} verb @param {string[]} args @param {string[]} warnings
+ * @returns {Record<string, any>}
+ */
+function ledgerRead(cwd, verb, args, warnings) {
+  const { warnings: read = [], ...answer } = readLedgerVerb(cwd, verb, args);
+  warnings.push(.../** @type {string[]} */ (read));
+  return answer;
+}
+
+/** What a record or the product record shows, by the lists it shows them in. */
+const SHOWN = ['questions', 'findings', 'decisions', 'moved', 'merged', 'other_topics'];
+
+/** A read record fenced as JSON, or none recorded where it shows nothing. @param {Record<string, any>} record */
+function recordJson(record) {
+  return SHOWN.some((list) => Array.isArray(record[list]) && record[list].length > 0) ? fenced('json', JSON.stringify(record, null, 2)) : NONE;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawTopicRecord(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  return recordJson(ledgerRead(filling.cwd, 'record', [unit, topic], warnings));
+}
+
+/** @param {Filling} filling */
+function drawTopicLog(filling) {
+  const { unit, topic } = placeOf(filling);
+  const file = statePath(filling.cwd, topicLog(unit, topic));
+  return fs.existsSync(file) ? `\`${file}\`` : NONE;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawOtherRecords(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  const others = liveTopics(unit, /** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), unit))).filter((other) => other !== topic);
+  const drawn = others.map((other) => ({ other, json: recordJson(ledgerRead(filling.cwd, 'record', [unit, other], warnings)) })).filter(({ json }) => json !== NONE);
+  return drawn.length === 0 ? NONE : drawn.map(({ other, json }) => `## ${other}\n\n${json}`).join('\n\n');
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawProductRecord(filling, warnings) {
+  return recordJson(ledgerRead(filling.cwd, 'product', [], warnings));
+}
+
+/** A question as a brief draws it: its short id and its text. @param {(id: string) => Record<string, unknown>} show @param {string} wording */
+function questionLine(show, wording) {
+  const { id: short, text } = show(wording);
+  return `${short}: ${indented(String(text))}`;
+}
+
+/**
+ * The question each fill asked for: its first wording, and its line.
+ * @type {WeakMap<Filling, {root: string, line: string}>}
+ */
+const ASKED = new WeakMap();
+
+/**
+ * The open question `--question` names on the topic, read once a fill:
+ * its first wording, and its current wording's line.
+ * @param {Filling} filling @param {string[]} warnings
+ */
+function askedQuestion(filling, warnings) {
+  const known = ASKED.get(filling);
+  if (known !== undefined) return known;
+  const { unit, topic } = placeOf(filling);
+  const given = filling.given.question;
+  const asked = readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => {
+    const id = resolveId(given, folded.facts.keys());
+    if (factsOf(folded, id).kind !== 'question') throw new Error(`brief: ${given} names no question — --question takes a question on ${unit}/${topic}'s map`);
+    const wording = wordingOf(folded, id);
+    if (wording === null) throw new Error(`brief: question ${given} is no longer current`);
+    const standing = standingOf(folded, wording);
+    if (!inPlace(standing, unit, topic)) throw new Error(`brief: question ${given} stands on ${standing.unit}/${standing.topic ?? '(the unit\'s level)'}, not ${unit}/${topic}`);
+    const stands = questionStands(folded, wording);
+    if (stands !== 'open') throw new Error(`brief: question ${given} is ${stands} — a deep dive or a perspective is briefed on an open question`);
+    return { root: factsOf(folded, wording).root, line: questionLine(show, wording) };
+  });
+  ASKED.set(filling, asked);
+  return asked;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawQuestion(filling, warnings) {
+  return askedQuestion(filling, warnings).line;
+}
+
+/** The dispatch `--agent` names bound to the question its brief draws. @param {Filling} filling @param {string[]} warnings */
+function bindAsked(filling, warnings) {
+  const { unit, topic } = placeOf(filling);
+  bindQuestion(filling.cwd, unit, topic, filling.given.agent, askedQuestion(filling, warnings).root);
+}
+
+/** @param {Filling} filling */
+function drawGapReview(filling) {
+  const { unit, topic } = placeOf(filling);
+  const run = gapReviewSince(filling.cwd, unit, topic);
+  return run === null ? 'No gap review has run since this topic\'s last decision.' : `A gap review has run since this topic's last decision: ${run}.`;
+}
+
+/**
+ * The dispatch `--agent` names in the topic's agent store, refused where the
+ * store lacks it, it is of another kind than its role is briefed for, or it
+ * is no longer in flight; and every row of the store.
+ * @param {Filling} filling
+ */
+function dispatchOf(filling) {
+  const { unit, topic } = placeOf(filling);
+  const { kind } = ROLES[filling.role];
+  const id = filling.given.agent;
+  const rows = dispatchedRows(filling.cwd, unit, topic);
+  const row = rows.find((dispatched) => dispatched.id === id);
+  if (row === undefined) throw new Error(`brief: ${unit}/${topic} has no agent ${id} — \`engine agent dispatch\` records one, and --agent names the id it answers`);
+  if (row.kind !== kind) throw new Error(`brief: ${id} is a ${row.kind} dispatch, and the ${filling.role}'s brief is for a ${kind}`);
+  if (row.status !== 'in-flight') throw new Error(`brief: ${id} is ${row.status} — a brief is issued for a dispatch still in flight`);
+  return { row, rows };
+}
+
+/** @param {Filling} filling */
+function drawReportTo(filling) {
+  return `\`${dispatchOf(filling).row.file}\``;
+}
+
+/** @param {Filling} filling */
+function drawLens(filling) {
+  return `\`${dispatchOf(filling).row.label}\``;
+}
+
+/** The perspectives of the set a synthesis dispatch joins. @param {Filling} filling */
+function setOf(filling) {
+  const { row, rows } = dispatchOf(filling);
+  return rows.filter((dispatched) => dispatched.kind === 'perspective' && dispatched.set === row.set);
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawPairQuestion(filling, warnings) {
+  const set = setOf(filling);
+  const unbriefed = set.find((perspective) => perspective.question === undefined);
+  if (unbriefed !== undefined) throw new Error(`brief: ${unbriefed.id} was briefed on no question — each perspective of a set is briefed before its synthesis`);
+  const questions = [...new Set(set.map((perspective) => perspective.question))];
+  if (questions.length > 1) throw new Error(`brief: the perspectives of set ${set[0].set} were briefed on different questions — a synthesis reconciles a pair argued on one`);
+  return readShown(stateRoot(filling.cwd), warnings, ({ folded, show }) => {
+    const wording = wordingOf(folded, String(questions[0]));
+    if (wording === null) throw new Error(`brief: the question set ${set[0].set} argued is no longer current`);
+    return questionLine(show, wording);
+  });
+}
+
+/** @param {Filling} filling */
+function drawPerspectives(filling) {
+  return setOf(filling).map(({ id, file }) => {
+    const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    if (text.trim() === '') throw new Error(`brief: ${id}'s report, ${file}, is not written — a synthesis reads every perspective of its set`);
+    return text.replace(/\n+$/, '');
+  }).join('\n\n');
+}
+
+/** The flag naming a ledger question. @type {BriefFlag} */
+const QUESTION = Object.freeze({ name: 'question', value: 'id' });
+
+/** The flag naming a dispatch in the topic's agent store. @type {BriefFlag} */
+const AGENT = Object.freeze({ name: 'agent', value: 'id' });
+
+/** The kinds of deep dive (9.1.5), each named as the agent's definition names it. */
+const DIVE_KINDS = Object.freeze(['survey', 'read', 'feasibility', 'landscape', 'verify']);
+
+/** The kind of dive, and the file a read reads. @param {Filling} filling */
+function drawDiveKind({ cwd, given }) {
+  const kind = given.kind;
+  if (!DIVE_KINDS.includes(kind)) throw new Error(`brief: ${JSON.stringify(kind)} is no kind of dive — --kind takes ${DIVE_KINDS.join(', ')}`);
+  if (kind !== 'read') {
+    if (given.path !== undefined) throw new Error(`brief: --path names the file a read dive reads, and a ${kind} dive reads none`);
+    return kind;
+  }
+  if (given.path === undefined) throw new Error('brief: a read dive names the file it reads — --path <file>');
+  const file = path.resolve(cwd, given.path);
+  if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()) throw new Error(`brief: --path names no file — ${file}`);
+  return `read — \`${file}\``;
+}
+
+/** The conversation's last knowledge query, drawn for the search that follows it. @param {Filling} filling */
+function drawKnowledgeQuery({ session }) {
+  const query = lastQuery(session);
+  if (query === null) throw new Error('brief: this conversation has run no knowledge query — a plain search follows the `engine knowledge query` it carries on from');
+  const filters = query.filters.length === 0 ? 'none' : query.filters.map((filter) => `\`${filter}\``).join(', ');
+  const head = `Terms: ${query.terms.map((term) => `\`${term}\``).join(' ')}\nFilters: ${filters}`;
+  if (query.outcome === null) return `${head}\n\nIt never finished.`;
+  if ('failed' in query.outcome) return `${head}\n\nIt failed: ${query.outcome.failed}`;
+  return `${head}\n\nIt returned:\n\n${fenced('', query.outcome.returned.replace(/\n+$/, ''))}`;
 }
 
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
-  task: { ofTask: true, draw: drawTask },
-  'spec-sections': { ofTask: true, draw: drawSpecSections },
-  'decided-calls': { ofTask: true, draw: drawDecidedCalls },
-  linters: { ofTask: false, draw: drawLinters },
-  'diff-range': { ofTask: true, flag: { name: 'base', value: 'branch' }, draw: drawDiffRange },
+  task: { of: 'task', draw: drawTask },
+  'spec-sections': { of: 'task', draw: drawSpecSections },
+  'decided-calls': { of: 'task', draw: drawDecidedCalls },
+  linters: { of: null, draw: drawLinters },
+  'diff-range': { of: 'task', flags: [{ name: 'base', value: 'branch' }], draw: drawDiffRange },
   'report-a': reportRecord('report-a'),
   'report-b': reportRecord('report-b'),
+  'topic-record': { of: 'topic', draw: drawTopicRecord },
+  'topic-log': { of: 'topic', draw: drawTopicLog },
+  'other-records': { of: 'topic', draw: drawOtherRecords },
+  'product-record': { of: null, draw: drawProductRecord },
+  question: { of: 'topic', flags: [QUESTION, AGENT], draw: drawQuestion, bind: bindAsked },
+  'pair-question': { of: 'topic', flags: [AGENT], draw: drawPairQuestion },
+  'dive-kind': { of: null, flags: [{ name: 'kind', value: DIVE_KINDS.join('|') }, { name: 'path', value: 'file', optional: true }], draw: drawDiveKind },
+  'gap-review': { of: 'topic', draw: drawGapReview },
+  'report-to': { of: 'topic', flags: [AGENT], draw: drawReportTo },
+  lens: { of: 'topic', flags: [AGENT], draw: drawLens },
+  perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
+  'knowledge-query': { of: null, draw: drawKnowledgeQuery },
 });
 
-module.exports = { RECORDS };
+module.exports = { RECORDS, DIVE_KINDS };

@@ -292,10 +292,10 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
   });
 
-  it('beside the brief, a record of whose it is: its role, its agent, its unit and its task', () => {
+  it('beside the brief, a record of whose it is: its role, its agent, its unit, its task, and no topic', () => {
     const { res } = issued(['builder', UNIT, '1.1']);
 
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1' });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a project with no linters and a unit with no decision of its own draw each as none recorded', () => {
@@ -366,7 +366,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     const ranges = takeACardRanges('main', 'main');
     assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1' });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
@@ -422,7 +422,7 @@ describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'fix', agent: 'leeway-builder', pointer: `brief:${res.id}` });
     const [a, b] = ['report-a', 'report-b'].map((flag) => REPORTS[flag].text);
     assert.strictEqual(brief,`Brief ${res.id} — the fix round's, for pay task 1.1\n\n${LABELS['report-a']}${a}${LABELS['report-b']}${b}`);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'leeway-builder', unit: UNIT, task: '1.1' });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a report whose name starts with two dots is in the build folder', () => {
@@ -444,7 +444,7 @@ describe('the product researcher\'s brief', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'product-researcher', agent: 'leeway-product-researcher', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the product researcher's\n\n${filledTemplate('product-researcher', {})}`);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null, topic: null });
   });
 });
 
@@ -458,7 +458,10 @@ describe('the refusals, nothing written and no brief stored', () => {
   it('a role it does not know, and arguments of another shape for each role: a flag it takes missing, given twice or given no value', () => {
     const usage = new RegExp(`^Usage: ${[
       'builder <unit> <task>', 'reviewer <unit> <task> --base <branch>', 'fix <unit> <task> --report-a <path> --report-b <path>', 'product-researcher',
-    ].map((line) => `engine brief ${line}`).join(' \\| ')}$`);
+      'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
+      'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
+      'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
+    ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     const [, , , ...reports] = fixArgs();
     for (const args of [
       [], ['scribe', UNIT, '1.1'], ['builder'], ['builder', UNIT], ['builder', UNIT, '1.1', 'more'], ['product-researcher', UNIT],
@@ -472,7 +475,20 @@ describe('the refusals, nothing written and no brief stored', () => {
 
   it('every role refuses a flag it does not take — another role\'s among them — so no free text reaches a brief (6.5.6)', () => {
     /** @type {Record<string, string[]>} */
-    const taking = { builder: [UNIT, '1.1'], reviewer: [UNIT, '1.1', '--base', 'main'], fix: fixArgs().slice(1), 'product-researcher': [] };
+    const asked = [UNIT, UNIT, '--question', 'Q1234567'];
+    const dispatched = [UNIT, UNIT, '--agent', 'review-001'];
+    const taking = {
+      builder: [UNIT, '1.1'],
+      reviewer: [UNIT, '1.1', '--base', 'main'],
+      fix: fixArgs().slice(1),
+      'product-researcher': [],
+      'deep-dive': [...asked, ...dispatched.slice(2), '--kind', 'survey'],
+      perspective: [...asked, ...dispatched.slice(2)],
+      synthesis: dispatched,
+      'discussion-reviewer': dispatched,
+      'closing-pass-reader': dispatched,
+      'plain-search': [],
+    };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {
         refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag} `));
@@ -554,7 +570,7 @@ describe('the templates and the store', () => {
   });
 
   it('a brief and its record are never stored over another\'s', () => {
-    const first = { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1' };
+    const first = { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null };
     storeBrief(SESSION_ID, 'held', 'Brief held — the first\n', first);
 
     assert.throws(() => storeBrief(SESSION_ID, 'held', 'Brief held — the second\n', { ...first, task: '1.2' }), /^Error: brief: .*held\.json is stored already$/);
