@@ -1200,7 +1200,7 @@ function checkFrameworkLoadsOnce(files) {
 // ---------------------------------------------------------------------------
 
 const DESIGN_TOOLS = ['Figma', 'FigJam', 'Penpot', 'Framer', 'Adobe XD', 'Zeplin', 'InVision', 'Canva', 'Balsamiq', 'Whimsical', 'Miro', 'Excalidraw', 'tldraw', 'Lucidchart', 'Uizard', 'Google Stitch', 'v0.dev'];
-const DESIGN_TOOL = new RegExp(`(?<![\\w.])(${DESIGN_TOOLS.map((name) => name.replace(/\./g, '\\.')).join('|')})(?![\\w])`);
+const DESIGN_TOOL = new RegExp(`(?<![\\w.])(${DESIGN_TOOLS.map((name) => name.replace(/\./g, '\\.')).join('|')})(?![\\w])`, 'i');
 
 function checkNoDesignTools(files) {
   const out = [];
@@ -2416,12 +2416,14 @@ test('2.S17 — the framework load holds voice and altitude, once each', () => {
   }
 });
 
-test('check 30 (no design tool) — 9.S53: catches each listed tool named in a skill, a reference or an agent, fenced or not; permits the plain words beside them and a name inside another word', () => {
+test('check 30 (no design tool) — 9.S53: catches each listed tool named in a skill, a reference or an agent, fenced or not, in any case; permits the plain words beside them and a name inside another word', () => {
   withTemp((dir) => {
     const named = DESIGN_TOOLS.map((name, i) => write(dir, `skills/x/references/r${i}.md`, `# R\n\nThe board is in ${name}, exported.\n`));
     assert.deepStrictEqual(checkNoDesignTools(named).map((v) => v.message.split('"')[1]), DESIGN_TOOLS);
     const fenced = write(dir, 'agents/leeway-x.md', '```text\nopen it in Figma\n```\n');
     assert.strictEqual(checkNoDesignTools([fenced]).length, 1, 'a fenced name is still named');
+    const lower = write(dir, 'skills/x/references/lower.md', '# L\n\nthe figma file, the miro board\n');
+    assert.deepStrictEqual(checkNoDesignTools([lower]).map((v) => v.message.split('"')[1]), ['figma'], 'a name in lower case is still named, the first on the line');
     const plain = write(dir, 'skills/x/SKILL.md', 'Sketch the outline, frame the question, canvas the options, stitch the parts; a Framework load; v0.3 of the format.\n');
     assert.strictEqual(checkNoDesignTools([plain]).length, 0, 'plain words and longer words are no tool');
   });

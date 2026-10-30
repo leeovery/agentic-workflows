@@ -38,9 +38,10 @@
 // Judgment decides, code records. All errors throw loud and specific before
 // anything is written; every load→mutate→save runs under the work unit's
 // manifest lock. The spawn commits the record it installed with the
-// manifest that names it, on the laboratory's slot — nothing of the spawning
-// discussion's is taken. Every other write is left to the calling session's
-// commit cadence (`commit --topic experiment/{topic}`).
+// manifest that names it, and with them, as every state commit does, the
+// logs changed beside them — the spawning topic's among them. Every other
+// write is left to the calling session's commit cadence
+// (`commit --topic experiment/{topic}`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -307,8 +308,8 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
 
 /**
  * The spawn's commit: the record's problem statement and the manifest that
- * names it, on the experiment topic's slot. A commit git refuses leaves the
- * spawn saved, with the retry in its note.
+ * names it, any log changed beside them riding along. A commit git refuses
+ * leaves the spawn saved, with the retry in its note.
  * @param {string} cwd @param {string} workUnit @param {ExperimentOpResult} created @param {string[]} warnings
  * @returns {ExperimentOpResult}
  */

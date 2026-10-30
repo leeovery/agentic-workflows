@@ -174,6 +174,12 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.sources, ['.roadmap/sessions/session-001.md']);
   });
 
+  it('takes a folder on disk as a source — a discussion parks a question with its topic\'s folder (9.5.4)', () => {
+    writeSource(dir, 'mvp/topics/ordering/log.md');
+    runOk(dir, ['add', 'seat-transfer', '--horizon', 'v1', '--summary', 's', '--origin', 'park:mvp', '--source', 'mvp/topics/ordering']);
+    assert.deepStrictEqual(readProject(dir).roadmap.items['seat-transfer'].sources, ['mvp/topics/ordering']);
+  });
+
   it('accepts park:, inbox: and postpone: origins with non-empty tails', () => {
     runOk(dir, ['add', 'a', '--horizon', 'v1', '--summary', 's', '--origin', 'park:mvp']);
     runOk(dir, ['add', 'b', '--horizon', 'v1', '--summary', 's', '--origin', 'inbox:2026-08-01--gift-cards']);

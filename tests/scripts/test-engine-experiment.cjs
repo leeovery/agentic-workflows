@@ -191,19 +191,17 @@ describe('the spawn commits its record and hands the conversation on', () => {
     return engine(dir, ['gate', 'experiment spawn gate', '--pick', key], { env: SESSION }).next;
   }
 
-  it('commits the problem statement and the manifest that names it on the laboratory\'s slot, nothing of the discussion\'s taken', () => {
-    const doc = statePath(dir, layout.doc('lab', 'discussion', 'timing'));
-    fs.mkdirSync(path.dirname(doc), { recursive: true });
-    fs.writeFileSync(doc, '# Timing\n');
+  it('commits the problem statement and the manifest that names it, the spawning topic\'s log riding along', () => {
+    const log = layout.topic('lab', 'timing', 'log.md');
+    fs.mkdirSync(path.dirname(statePath(dir, log)), { recursive: true });
+    fs.writeFileSync(statePath(dir, log), '# Timing\n\nA number would settle it.\n');
     const res = spawn(dir, 'discussion', 'window-placement');
-    const changed = stateGit(dir, ['show', '--name-status', '--no-renames', '--format=', 'HEAD']).trim().split('\n');
+    const changed = stateGit(dir, ['show', '--name-status', '--no-renames', '--format=', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual([res.committed, lastMessage(dir), changed], [
       stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
       'experiment(lab/timing): spawn E1 window-placement',
-      [`M\t${layout.manifest('lab')}`, `A\t${layout.experiment('lab', 'timing', 'E1-window-placement', 'problem.md')}`],
+      [`A\t${layout.experiment('lab', 'timing', 'E1-window-placement', 'problem.md')}`, `A\t${log}`, `M\t${layout.manifest('lab')}`].sort(),
     ]);
-    assert.match(stateGit(dir, ['status', '--porcelain', '--untracked-files=all']), new RegExp(`\\?\\? ${layout.doc('lab', 'discussion', 'timing')}`),
-      'the discussion\'s own file is left as it was');
   });
 
   it('a split commits nothing — its manifest change is the experiment session\'s', () => {
@@ -214,9 +212,9 @@ describe('the spawn commits its record and hands the conversation on', () => {
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before);
   });
 
-  it('yes pauses an epic\'s discussion back to its menu, later carries the conversation on', () => {
+  it('yes takes an epic\'s discussion into the laboratory for its topic, later carries the conversation on', () => {
     spawn(dir, 'discussion', 'window-placement');
-    assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-continue-epic', args: ['lab', 'discussion', 'paused'] });
+    assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] });
     assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
   });
 

@@ -12,8 +12,7 @@
 // verb's `next`: the conversation sitting in the topic that left goes back
 // to its epic's menu, naming the phase and how it left; from anywhere else
 // the flow carries on. The verbs close the topic's agents still running, and
-// their commit takes the topic's log. A question put off for later lands on
-// the roadmap, its source the topic's folder, and closes on the map (9.5.4).
+// their commit takes the topic's log.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its discussions
 // of `licence` and `onboarding` under way, a specification of `licence` under
@@ -129,20 +128,6 @@ describe('the verbs say what follows', () => {
 
   it('a conversation sitting nowhere in the epic carries on', () => {
     assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'licence']).next, CONTINUE);
-  });
-});
-
-describe('a question put off for later', () => {
-  it('waits on the roadmap, its source the topic\'s folder, and closes on the map as later', () => {
-    writeState(dir, LOG, '# Licence\n');
-    const PLACE = `${EPIC}.discussion.licence`;
-    const asked = ok(dir, ['ledger', 'ask', PLACE], { env: ENV(), stdin: JSON.stringify({ text: 'Do seats transfer?', by: 'person', who_moved_whom: 'none' }) }).id;
-    run(['roadmap', 'add', 'seat-transfer', '--horizon', 'later', '--summary', 'Seats move between people', '--origin', `park:${EPIC}`, '--source', `${EPIC}/topics/licence`]);
-    ok(dir, ['ledger', 'move', PLACE, '--question', asked, '--to', 'roadmap:seat-transfer'], { env: ENV(), stdin: JSON.stringify({ by: 'person', who_moved_whom: 'none' }) });
-    const item = JSON.parse(readState(dir, layout.projectManifest)).roadmap.items['seat-transfer'];
-    assert.deepStrictEqual([item.horizon, item.origin, item.sources], ['later', `park:${EPIC}`, [`${EPIC}/topics/licence`]]);
-    const question = run(['ledger', 'map', EPIC, 'licence']).questions.find((/** @type {{id: string}} */ q) => q.id === asked);
-    assert.deepStrictEqual([question.stands, question.moved_to], ['later', 'roadmap:seat-transfer']);
   });
 });
 

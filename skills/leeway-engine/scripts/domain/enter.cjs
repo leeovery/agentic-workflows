@@ -47,7 +47,7 @@ const { arriveAt } = require('./session-label.cjs');
 const { beatQuietly, peerHold } = require('./presence.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
 const { runningTranscript } = require('./conversation.cjs');
-const { topicLog, recordCall, productCall, owedHeader } = require('./topic-log.cjs');
+const { topicLog, ledgerView, recordCall, productCall, owedHeader } = require('./topic-log.cjs');
 const { entrySections, heldGate } = require('./projections/enter.cjs');
 const { waitingMessages } = require('./mail.cjs');
 const { waitingMail } = require('./projections/mail.cjs');
@@ -105,7 +105,9 @@ function mailRaised({ cwd, unit, topic = '' }) {
  * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
  * product record with the findings it holds from the code; and the unit's
- * spikes. Resuming adds the topic's own record (9.3.11) and the reports of
+ * spikes. Resuming adds the topic's own record (9.3.11), its map, and the
+ * entries a replacement changed under it, each confirmed or replaced in the
+ * conversation (9.3.6), and the reports of
  * the agents the topic was left with, landed since, with those lost with a
  * process that no longer runs (9.7.8). The log comes with every entry's.
  * @param {Entering} at @returns {Line[]}
@@ -125,7 +127,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
     as('product')(`\`${productCall()}\``),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
-    ...(started ? [] : [as('record')(`\`${recordCall(unit, topic)}\``)]),
+    ...(started ? [] : /** @type {const} */ (['record', 'map', 'affected']).map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``))),
     ...agents.landed.map(({ file }) => as('landed')(file)),
     ...agents.lost.map(as('lost')),
   ];

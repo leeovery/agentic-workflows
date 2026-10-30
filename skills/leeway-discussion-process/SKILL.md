@@ -30,9 +30,9 @@ Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb
 node .claude/skills/leeway-engine/scripts/engine.cjs enter discussion {work_unit} {topic}
 ```
 
-A refusal names the way on: say it in a line. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
+A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record; each spike; and on resume this topic's record and its log, and its map (`ledger map`). Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each entry `ledger affected {work_unit} {topic}` lists is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record; each spike; and on resume this topic's record, its map, its `affected` entries and its log. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read.
 
@@ -98,9 +98,9 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 
 - A question → `ledger ask {place} [--part-of {id}]`, `{"text", "by": "person|claude|review", "who_moved_whom": "none"}`.
 - A finding → `ledger find {place} [--relies-on {id} …]`, adding `"how"`, `"known"`, and `"command"` and `"result"` where measured or exploratory.
-- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}`.
-- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`.
-- A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`.
+- A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}` — `given` `your-call` or `dont-care` with `"by": "claude"`.
+- A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
+- A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
 - The topic as it stands → `ledger record|map|since|affected {work_unit} {topic}`, `ledger product`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`.
@@ -127,24 +127,24 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
    node .claude/skills/leeway-engine/scripts/engine.cjs render decided {work_unit}.{topic} --file .leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json
    ```
 
-The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again.
+The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. Something new on the topic after the close — a message, a question opened — is worked, the checklist closed again and the payload staged again. A refused yes names what to fix: fix it, then draw the screen again. The yes answers a `next`: follow it.
 
 ## Backlogging
 
-The person puts a question off for later — "roadmap it", "backlog that", "push it back": it waits on the roadmap and closes here. A point not on the map is asked first. The horizon is the person's: take it from their words, or ask in the conversation. Bring the log up to date, then add the item — a kebab-case `{name}` and a one-line `{summary}` saying the question in the product's terms — and move the question to it:
+The person puts a question off for later — "roadmap it", "backlog that", "push it back": it waits on the roadmap and closes here. So does work no topic owns in a single-topic unit. A point not on the map is asked first. The horizon is the person's: take it from their words, or ask in the conversation. Bring the log up to date, then add the item — a kebab-case `{name}` and a one-line `{summary}` saying the question in the product's terms — and move the question to it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
 ```
 
-A refused add records nothing; a name already on the roadmap takes another. Work that would be a new topic of this unit is a candidate for the decided screen, and a point another topic owns is a message (**A Message to Another Topic**).
+The move takes `{"by": "person", "who_moved_whom": "none"}` on stdin. A refused add records nothing; a name already on the roadmap takes another. In an epic, work that would be a new topic of the unit is a candidate for the decided screen instead, and a point another topic owns is a message (**A Message to Another Topic**).
 
 ## Postponing the Topic
 
 The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another of the epic by name, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel. Say so in a line.
 
-Where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
+Postponing this topic leaves it. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
 
 The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch the receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; then follow the postpone's `next`:
 
@@ -154,9 +154,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_
 
 ## Cancelling the Topic
 
-The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Fetch the confirm — an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}` — emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the topic: say it in a line.
+The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then fetch the confirm — an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}` — emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the topic: say it in a line.
 
-An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; say in a line what went with it where the response names any — a proposed grouping `discarded`, an experiment `abandoned`. Then follow the cancel's `next`:
+An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; say in a line what went with it where the response names any — a proposed grouping `discarded`, an experiment `abandoned` — and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow the cancel's `next`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb cancel [--warn]

@@ -150,7 +150,7 @@ describe('pipeline simulation: feature', () => {
 
     const again = enterEntry(sim, wu, 'discussion', wu);
     assert.deepStrictEqual([again.started, again.committed], [false, undefined], 'a later entry resumes, starting nothing');
-    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'record', 'log', 'log header'], 'a new conversation owes its own header');
+    assert.deepStrictEqual(keys(), ['discovery log', 'product', 'record', 'map', 'affected', 'log', 'log header'], 'a new conversation owes its own header');
     assert.match(carryOn(sim).text, /has not written to the log yet/);
   });
 

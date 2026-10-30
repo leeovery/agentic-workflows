@@ -35,16 +35,16 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief synthesis {work_unit} {topic} --agent {id}
 ```
 
-The perspectives feed the synthesis; the person hears its tensions.
+The perspectives feed the synthesis, never the conversation: once it is dispatched, close each of the set's perspectives, `agent incorporate {work_unit} discussion {topic} {id}`. The person hears the synthesis's tensions.
 
 ## When a Report Lands
 
-`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. Read the report, then record its findings by the ids its headings carry — `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none. Take the findings at natural pauses, recording each as you take it, `agent surface {work_unit} discussion {topic} {id} {finding}`; `agent incorporate` closes the rest where the person declines them.
+`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis. Read any other report, then record its findings by the ids its headings carry — `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none. Take the findings at natural pauses, recording each as you take it, `agent surface {work_unit} discussion {topic} {id} {finding}`; the report closes with its last.
 
 Each finding is a question the review asked: `ledger ask` with `"by": "review"`. The reviewer's lane is where you start, never where a finding must end. Re-derive each from the record before you act on it:
 - **apply** — the record or a fact settles it. Check it: a question a current decision answers merges into that decision; one a fact settles is answered as your decision, relying on the finding that records the fact. An `apply` the record contradicts is a call.
 - **call** — a call the topic leaves open is worked through in the conversation while the topic's shape is still open, and goes through `raise` once it is agreed: the decision point, never you, decides whether it reaches the person. A fix you cannot stand behind is raised as a call with several defensible answers.
-- **route** — another topic's: load **[sending-a-message.md](sending-a-message.md)** and follow its instructions as written, the question moving with the message. Work no topic owns is a scope call — not this topic's, a candidate for the decided screen — answered as any call is.
+- **route** — another topic's: load **[sending-a-message.md](sending-a-message.md)** and follow its instructions as written, the question moving with the message. Work no topic owns is a scope call, not this topic's, answered as any call is: in an epic a candidate for the decided screen, in a single-topic unit a question for later on the roadmap (the skill's **Backlogging**).
 - A synthesis's tensions are told to the person; one they take up is a question on the map.
 
-A finding a later decision has made moot merges into that decision, and you say so in one line. A finding bound for the person is checked first against the answers given earlier and the record. Only the decision point moves a finding away from the person: one that turns out to hide a real choice goes to `raise`, never settled alone. The person declining a finding settles their interest in it, never who owns it — another topic's still goes there. No finding is cut for count.
+A finding a later decision has made moot merges into that decision, and you say so in one line. A finding bound for the person is checked first against the answers given earlier and the record. Only the decision point moves a finding away from the person: one that turns out to hide a real choice goes to `raise`, never settled alone. A finding the person waves off is answered, as "don't care" or as their own decision, never left open; another topic's still goes there. No finding is cut for count.

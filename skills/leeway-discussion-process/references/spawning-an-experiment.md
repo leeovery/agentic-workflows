@@ -24,10 +24,10 @@ The create installs the problem statement, holds the question open, waiting on t
 
 ## Now or Later
 
-Fetch the gate and emit its MENU section verbatim per its marker:
+Yes leaves the topic. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}
 ```
 
-The answer goes to `gate`; follow its `next`. Yes pauses the conversation where the experiment is worked; later carries it on, and the topic's close waits for the result.
+The answer goes to `gate`; follow its `next`. Yes pauses the conversation and opens the laboratory; later carries it on, the question waiting for the result unless the person answers it first.

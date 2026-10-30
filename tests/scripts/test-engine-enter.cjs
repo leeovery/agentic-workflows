@@ -281,10 +281,10 @@ describe('a place another live session holds (18.4.21)', () => {
     assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] });
   });
 
-  it('a single-topic unit has no menu to go back to: leaving it leads nowhere', () => {
+  it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
     runAs(dir, ['presence', 'beat', FEATURE, 'discussion', FEATURE], 'peer', PEER);
     assert.strictEqual(enter(['discussion', FEATURE]).res.entered, false);
-    assert.strictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, null);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'continue' });
   });
 
   it('a hold of this conversation\'s own, or of a process gone, asks nothing', () => {
@@ -382,7 +382,7 @@ describe('the answer', () => {
     ]));
   });
 
-  it('a resume adds the topic\'s own record, and the agents a process now gone left: the report landed since, the agent lost with it — one of its own still running neither (9.S13, 24.S11, 9.7.8)', () => {
+  it('a resume adds the topic\'s own record, its map and the entries a replacement changed under it, and the agents a process now gone left: the report landed since, the agent lost with it — one of its own still running neither (9.S13, 24.S11, 9.3.6, 9.7.8)', () => {
     ok(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'mine'], { env: env() });
     const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'licence']));
     assert.strictEqual(sections, data([
@@ -391,6 +391,8 @@ describe('the answer', () => {
       `product: \`${ENGINE} ledger product\``,
       `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
       `record: \`${ENGINE} ledger record ${EPIC} licence\``,
+      `map: \`${ENGINE} ledger map ${EPIC} licence\``,
+      `affected: \`${ENGINE} ledger affected ${EPIC} licence\``,
       `landed: ${at(layout.cache(EPIC, 'discussion', 'licence', 'deep-dive-001-landed.md'))}`,
       'lost: deep-dive-002-lost',
       `log: ${at(layout.topic(EPIC, 'licence', 'log.md'))}`,

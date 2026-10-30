@@ -605,9 +605,8 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     const n = out.indexOf('**`y/yes`**');
     const l = out.indexOf('**`l/later`**');
     assert.ok(n > -1 && l > n, 'yes leads, later follows');
-    assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1 queued/);
-    assert.ok(!out.includes('the session ends'), 'the pause returns through the bridge — the row never describes a session ending');
-    assert.match(unwrap(out), /Keep the conversation going — this discussion cannot conclude until E1's evidence lands/);
+    assert.match(unwrap(out), /Pause this discussion here and open the laboratory for E1/);
+    assert.match(unwrap(out), /Keep the conversation going — the question E1 measures waits for its result, unless you answer it first/);
   });
 
   it('refuses a missing id, an unawaited id, and a non-spawn address', () => {
@@ -633,16 +632,6 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
-
-  it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
-    writeManifest(dir, 'feat', {
-      work_type: 'feature',
-      phases: { discussion: { items: { feat: { status: 'in-progress', awaiting_experiments: ['E1'] } } } },
-    });
-    const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.discussion.feat', id: 'E1' });
-    assert.match(unwrap(out), /Pause this discussion here and open the laboratory for E1/);
-    assert.ok(!out.includes('menu'), 'no menu on a linear unit');
-  });
 
   it('a plan waits on its specification — the blocker names why it is unsettled, the guidance the way out', () => {
     writeManifest(dir, 'lab', {
