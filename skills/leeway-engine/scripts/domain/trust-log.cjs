@@ -77,6 +77,10 @@
 //   never run — so evidence whose append failed counts all the same,
 //   wherever it waits (trust-evidence.cjs); an event under another
 //   project's id is that project's.
+// - While the migration runs in the project — its state branch with no
+//   commit yet (state-worktree.cjs) — nothing of the project's reaches the
+//   log: no event is recorded, and none kept ahead of its entry, so none
+//   waits to land (21.1.5).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -93,6 +97,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { callerModel, conversationDir, conversationsRoot } = require('./conversation.cjs');
 const { MODEL, SESSION, readTrustEvent, trustEvent } = require('./trust-events.cjs');
 const { TRUST_LOG, PENDING } = require('./user-files.cjs');
+const { migrationRuns } = require('./state-worktree.cjs');
 
 // The version of a kept line's own shape: what it awaits, beside its event.
 const KEPT_VERSION = 1;
@@ -127,6 +132,12 @@ function projectId(root) {
 function projectOf(cwd) {
   const root = findStateRoot(cwd);
   return root === null ? { project: null, project_name: null } : { project: projectId(root), project_name: path.basename(path.dirname(root)) };
+}
+
+/** Whether the migration runs in the project `cwd` is in. @param {string} cwd */
+function migrationRunsAt(cwd) {
+  const root = findStateRoot(cwd);
+  return root !== null && migrationRuns(root);
 }
 
 /** Cut away a last line a writer that died mid-append left unterminated. @param {string} file */
@@ -436,10 +447,12 @@ function letGoAhead(pending, ledger, entry) {
  * of the entry is let go first: the caller holds the writer lock and the
  * entry is not appended, so the write that kept it died before its append
  * — a rerun's, of a write given its id — and the entry's event is the one
- * kept last. Refuses, keeping nothing, where the file cannot be written.
+ * kept last. Keeps nothing while the migration runs there. Refuses,
+ * keeping nothing, where the file cannot be written.
  * @param {Record<string, unknown>} event @param {string} ledger @param {string} entry
  */
 function keepEvent(event, ledger, entry) {
+  if (migrationRuns(ledger)) return;
   const pending = /** @type {string} */ (pendingFile(handedSession()));
   /** @type {KeptAhead} */
   const kept = { v: KEPT_VERSION, awaits: { ledger, entry }, event };
@@ -475,11 +488,14 @@ function landKept(cwd, warnings) {
  * any the conversation could not append before. An append that fails is a
  * warning in `warnings`, the event kept for the conversation's next record.
  * An `id` given is the event's, so a rerun that records it again is read once.
+ * While the migration runs in the project, the event is built and neither
+ * appended nor kept.
  * @param {string} type @param {Record<string, unknown>} fields @param {{cwd: string, warnings: string[], id?: string}} ctx
  * @returns {Record<string, unknown>} the event recorded
  */
 function record(type, fields, { cwd, warnings, id }) {
   const event = newEvent(type, fields, cwd, id);
+  if (migrationRunsAt(cwd)) return event;
   const line = `${JSON.stringify(event)}\n`;
   const pending = pendingFile(handedSession());
   try {

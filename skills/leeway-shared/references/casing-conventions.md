@@ -1,6 +1,6 @@
 # Casing Conventions
 
-*Shared reference for all workflow skills.*
+*Shared reference. Loaded by `framework.md`.*
 
 ---
 
@@ -25,5 +25,3 @@ When a casing hint is present, apply the transformation below. When no hint is p
 
 - `Discussion` → `discussion`
 - `In-Progress` → `in-progress`
-
-→ Return to caller.

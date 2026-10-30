@@ -63,6 +63,12 @@ Migrations must never half-run silently. Surface the reported error to the user.
 
 **STOP.** Do not proceed — terminal condition.
 
+#### If `state` is `directive`
+
+Load **[migration-directive.md](references/migration-directive.md)** and follow its instructions as written, with directive = `{id}` and file = `{file}`.
+
+→ On return, run **Step 0.1** again.
+
 #### If `migrations.changed` is `true` or `migrations.verify` or `migrations.notices` is non-empty
 
 Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
