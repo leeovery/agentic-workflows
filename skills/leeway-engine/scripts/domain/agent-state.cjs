@@ -20,7 +20,7 @@
 // rows and answers with a decision-ready snapshot. Each row names the
 // Claude process and conversation that dispatched it, as a presence record
 // names its owner, so the entry can tell the agents a topic was left with
-// (`earlierAgents`): a report that landed since, or an agent lost with a
+// (`agentsLeft`): a report that landed since, or an agent lost with a
 // process that no longer runs — a resumed conversation keeps its session id,
 // never its process — and never re-dispatched by the engine.
 // ---------------------------------------------------------------------------
@@ -542,8 +542,8 @@ function publicRow(row) {
 const NEVER_SURFACED = ['perspective'];
 
 /**
- * The agents a topic was left with, untaken, in dispatch order — those a
- * peer whose process still runs dispatched left to it: `landed`, each with
+ * The agents a topic was left with, untaken, in dispatch order — never a
+ * peer's whose process still runs, which stay that peer's: `landed`, each with
  * its report's path, where the report is on disk and not yet read in; `lost`
  * where it is not and the process that dispatched it no longer runs — a
  * conversation resumed after a crash keeps its session id, never its
