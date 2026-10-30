@@ -508,6 +508,9 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
       '**`g/go`**   → Go on — their reports wait for the next opening',
       '',
     ].join('\n'));
+    assert.deepStrictEqual(answer('wait for agents', 'w'), { kind: 'engine', argv: ['render', 'wait-agents', `${UNIT}.note-window`] }, 'the wait draws the gate again once the reports land');
+    wait();
+    assert.deepStrictEqual(answer('wait for agents', 'g'), { kind: 'continue' }, 'the go goes on to the close');
     fs.writeFileSync(statePath(dir, '.cache', UNIT, 'discussion', 'note-window', `${dive}.md`), 'Found.\n');
     assert.match(wait(), /Still running on Note Window: 1 review\./);
   });

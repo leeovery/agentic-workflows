@@ -13,7 +13,8 @@
 //   is, the decided gate, an authority gate that always stops (3.2.3): its
 //   yes covers the lines and every candidate not struck;
 // - the pick of the candidate to strike, where more than one stands (P8);
-// - the wait for the topic's agents still running (9.7.8), a process gate.
+// - the wait for the topic's agents still running (9.7.8), a process gate:
+//   its wait draws the gate again once their reports land, its go goes on.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, clipped, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -188,18 +189,19 @@ function agentsOfKind(n, kind) {
 
 /**
  * The wait for the topic's agents still running (9.7.8): which are, by kind,
- * and whether to wait for what they find or go on, a report landing later
- * taken in when the topic next opens.
- * @param {string} topic @param {string[]} kinds the kind of each agent running, in dispatch order
+ * and whether to wait for what they find — the gate drawn again once their
+ * reports land, empty when none still runs — or go on to the close, a report
+ * landing later taken in when the topic next opens.
+ * @param {string} unit @param {string} topic @param {string[]} kinds the kind of each agent running, in dispatch order
  * @returns {string}
  */
-function waitAgents(topic, kinds) {
+function waitAgents(unit, topic, kinds) {
   /** @type {Map<string, number>} */
   const byKind = new Map();
   for (const kind of kinds) byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
   const running = [...byKind].map(([kind, n]) => agentsOfKind(n, kind)).join(', ');
   return section('MENU: wait for agents', MENU_INSTRUCTION, menu(`Still running on ${titlecase(topic)}: ${running}.`, [
-    cmdOption('w', 'wait', 'Wait — take in what they find first', { next: { kind: 'continue' } }),
+    cmdOption('w', 'wait', 'Wait — take in what they find first', runs(['render', 'wait-agents', `${unit}.${topic}`])),
     cmdOption('g', 'go', 'Go on — their reports wait for the next opening', { next: { kind: 'continue' } }),
   ], { question: 'Wait for them?' }));
 }

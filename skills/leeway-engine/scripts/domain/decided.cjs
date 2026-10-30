@@ -407,7 +407,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
   const { unit, topic, manifest } = topicAddress(stateRoot(cwd), dotpath, 'wait-agents');
   if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
   const running = runningAgents(cwd, unit, PHASE, topic);
-  return running.length === 0 ? '' : waitAgents(topic, running.map(({ kind }) => kind));
+  return running.length === 0 ? '' : waitAgents(unit, topic, running.map(({ kind }) => kind));
 }
 
 /**

@@ -222,7 +222,7 @@ const POINTS = Object.freeze({
       { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic' },
       { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run' },
       { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', check: mailboxEmpty },
-      { key: 'product-lines-shown', text: 'the product-record lines and any candidates are on the screen' },
+      { key: 'product-lines-shown', text: 'the product-record lines and any candidates written for the decided screen' },
     ],
     shows: ownSkips,
     seals: ({ cwd, unit, topic, warnings }) => ({ ledger_at: ledgerPast(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic), Infinity, warnings).last }),
