@@ -44,6 +44,19 @@
 //   lands unchecked, for the late check to judge whole at the next start
 //   (ledger-late-check.cjs): the seal's rows judged are the record of what
 //   the draw judged, and no call is made at the answer.
+// - A fact (16.3.8): `raise <unit>.<phase>[.<topic>] --answers <question>
+//   [--relies-on <id> …] --fact`, a fact Claude cannot check and only the
+//   person holds. The call on stdin is the question, its rows, the
+//   mechanism and whether the answer is product-wide: no lean, no why, no
+//   sort. Its rows may be none or any number, each checked as a call's row
+//   is. Nothing of Claude's is in it to judge or to decide, so neither the
+//   one-decision check nor the decision point is reached: it always asks,
+//   its reason its own. Its answer lands as the person's decision, sealing
+//   no lean and moving no one, and logs nothing in the trust log, its "I
+//   don't follow" included: a fact takes no label, adds no evidence and
+//   meets no threshold (16.3.2). It refuses `--replaces`: a fact that
+//   changes is the person's to say, and the decision it changes is replaced
+//   as any other.
 // - The seal (16.1.2): the call as given, sealed before the person answers,
 //   so its lean cannot change — `raise-shown.json` in the conversation's
 //   folder (conversation.cjs), each raise drawn there by its id, with a
@@ -51,12 +64,12 @@
 //   a replacement, and the entries it relies on, by full id; on a
 //   replacement, the decision it replaces by full id, the reason and the
 //   cause, and the row keeping the decision as it stands, so the answer needs
-//   nothing more; the id, minted at the draw, which is the id its line lands
-//   as; the menu it is declared as, `raise — <id>`; the rows whose answer and
-//   what it rules out the check judged one rule; the decision point's reason;
-//   when it was shown; its answer once given — when, and the row's key, null
-//   for the person's own words — null until then; and how many times the
-//   person did not follow it. It is written before the command answers, and
+//   nothing more; whether it is a fact; the id, minted at the draw, which is
+//   the id its line lands as; the menu it is declared as, `raise — <id>`;
+//   the rows whose answer and what it rules out the check judged one rule;
+//   the decision point's reason; when it was shown; its answer once given —
+//   when, and the row's key, null for the person's own words — null until
+//   then; and how many times the person did not follow it. It is written before the command answers, and
 //   one that cannot be written refuses the raise. Every write to the seals
 //   holds a lock of their own beside them, reads them again under it and
 //   changes its own raise alone, so raises drawn, answered and not followed
@@ -175,6 +188,11 @@ const decisionPoint = require('./decision-point.cjs');
  * Claude's call, as the draw takes it on stdin.
  * @typedef {{question: string, rows: Row[], lean: string, why: string, sort: 'one'|'several', mechanism: string, product_wide: boolean}} Call
  */
+/**
+ * A fact only the person holds, as the draw takes it on stdin: no lean, no
+ * why, no sort.
+ * @typedef {{question: string, rows: Row[], mechanism: string, product_wide: boolean}} Fact
+ */
 /** @typedef {import('./ledger-write.cjs').Place} Place */
 /** @typedef {import('./ledger-write.cjs').Linked} Linked */
 /** @typedef {import('./ledger-write.cjs').Lands} Lands */
@@ -192,8 +210,8 @@ const decisionPoint = require('./decision-point.cjs');
  */
 /** The person's answer as the seal keeps it: when, and the row's key, null for their own words. @typedef {{at: string, answer: string|null}} Answered */
 /**
- * A raise as sealed in the conversation's folder.
- * @typedef {object} Seal
+ * What every raise's seal holds.
+ * @typedef {object} Sealed
  * @property {number} v
  * @property {string} id the raise's, and its entry's
  * @property {string} menu the menu it is declared as
@@ -201,13 +219,15 @@ const decisionPoint = require('./decision-point.cjs');
  * @property {string|null} answers the question's id, null on a replacement
  * @property {string[]} relies_on
  * @property {Replacing|null} replaces
- * @property {Call} call
  * @property {string[]} rows_judged the rows whose answer and what it rules out the one-decision check judged one rule
  * @property {string} reason
  * @property {string} at when it was shown
  * @property {Answered|null} answered
  * @property {number} didnt_follow
  */
+/** A raise of Claude's call, as sealed. @typedef {Sealed & {call: Call, fact: false}} CallSeal */
+/** A raise of a fact, as sealed. @typedef {Sealed & {call: Fact, fact: true}} FactSeal */
+/** A raise as sealed in the conversation's folder. @typedef {CallSeal|FactSeal} Seal */
 /**
  * What a draw did: the raise sealed and drawn, or the conversation's open
  * seal of the question, or of the replacement, drawn again; or Claude's
@@ -228,9 +248,10 @@ const decisionPoint = require('./decision-point.cjs');
  * @typedef {{lands: Lands, linked: Linked, content: Record<string, unknown>, checkRead: import('./ledger-write.cjs').ReadCheck}} Landing
  */
 /**
- * The person's answer as it lands: its landing, its line's content, and
- * its event's answer, how it came and whether as free text.
- * @typedef {Landing & {answer: string|null, via: Via, with_text: boolean}} Answering
+ * The person's answer as it lands: its landing, its line's content, the
+ * row's key it answers with — null for the person's own words — and the
+ * trust log's event it logs, or null.
+ * @typedef {Landing & {answer: string|null, logs: import('./ledger-write.cjs').Logs|null}} Answering
  */
 
 const SEAL_VERSION = 1;
@@ -238,9 +259,12 @@ const SAID = 'raise';
 const ANSWER_SAID = 'raise answer';
 const QUESTION_USAGE = `${verbUsage('decide', SAID)}   (the call as JSON on stdin)`;
 const REPLACE_USAGE = `${verbUsage('replace', SAID)}   (the call as JSON on stdin)`;
+const FACT = '--fact';
+const FACT_USAGE = `${verbUsage('decide', SAID)} ${FACT}   (the fact's question as JSON on stdin)`;
 const SHOW_USAGE = 'raise show <id> [--technical]';
 const ANSWER_USAGE = 'raise answer <id> (--pick <key> | --own | --didnt-follow)   (a pick\'s or own words\' answer as JSON on stdin)';
-const RAISE_USAGE = [QUESTION_USAGE, REPLACE_USAGE, SHOW_USAGE, ANSWER_USAGE].join('\n');
+const RAISE_USAGE = [QUESTION_USAGE, REPLACE_USAGE, FACT_USAGE, SHOW_USAGE, ANSWER_USAGE].join('\n');
+const ONLY_YOU_KNOW = 'Only you know this: it\'s a fact I can\'t check.';
 // The key of the row a raise on a replacement draws for keeping the decision.
 const KEEP = 'keep';
 // The screen's own words, which no row's key may be in any case: the
@@ -265,15 +289,20 @@ const CALL_FIELDS = Object.freeze({
   question: LINE, rows: ROWS, lean: KEY, why: LINE, sort: oneOf('one', 'several'), mechanism: TEXT, product_wide: FLAG,
 });
 
+/** What a fact holds, each field's type. @type {Readonly<Record<string, Type>>} */
+const FACT_FIELDS = Object.freeze({ question: LINE, rows: ROWS, mechanism: TEXT, product_wide: FLAG });
+
 /**
- * What the answer on stdin holds, by how the person answered: the fields it
- * needs, and those it may give.
- * @type {Readonly<Record<'pick'|'own'|'keep', {needs: Readonly<Record<string, Type>>, may: Readonly<Record<string, Type>>}>>}
+ * What the answer on stdin holds, by how the person answered — `fact` a
+ * pick on a fact, which moves no one: the fields it needs, and those it may
+ * give.
+ * @type {Readonly<Record<'pick'|'own'|'keep'|'fact', {needs: Readonly<Record<string, Type>>, may: Readonly<Record<string, Type>>}>>}
  */
 const ANSWER_FIELDS = Object.freeze({
   pick: { needs: { why: TEXT }, may: { who_moved_whom: MOVED } },
   own: { needs: { text: TEXT, why: TEXT }, may: { rules_out: listOf(TEXT) } },
   keep: { needs: { why: TEXT }, may: {} },
+  fact: { needs: { why: TEXT }, may: {} },
 });
 
 /**
@@ -298,21 +327,29 @@ function checkFields(value, fields, where, optional = {}) {
 }
 
 /**
- * Refuse rows that offer no choice — fewer than two, or on a replacement no
- * proposal, keeping the decision being the screen's own row — a row of
- * another shape, a key two rows share or the screen keeps, and a lean
- * naming no row of Claude's.
- * @param {Call} call @param {boolean} replacing
+ * Refuse a row of another shape, and a key two rows share or the screen
+ * keeps.
+ * @param {Row[]} rows
  */
-function checkRows({ rows, lean }, replacing) {
-  if (replacing && rows.length === 0) throw new Error('raise: the call proposes no answer — a raise on a replacement proposes one at least, beside keeping the entry as it stands');
-  if (rows.length < 2 && !replacing) throw new Error(`raise: the call has ${rows.length} row${rows.length === 1 ? '' : 's'} — a raise offers the person a choice of two at least`);
+function checkEachRow(rows) {
   rows.forEach((row, i) => {
     if (!isObject(row)) throw new Error(`raise: the call's rows[${i}] is not a row — {${Object.keys(ROW_FIELDS).join(', ')}}`);
     checkFields(row, ROW_FIELDS, `raise: the call's rows[${i}]`);
     if (SCREEN_KEYS.includes(row.key.toLowerCase())) throw new Error(`raise: the call's rows[${i}] takes the key ${row.key}, which the screen keeps for itself — ${SCREEN_KEYS.join(', ')} are its own, in any case`);
     if (rows.findIndex((other) => other.key === row.key) !== i) throw new Error(`raise: the call's rows share the key ${row.key} — each row's key is its own`);
   });
+}
+
+/**
+ * Refuse rows that offer no choice — fewer than two, or on a replacement no
+ * proposal, keeping the decision being the screen's own row — a row
+ * `checkEachRow` refuses, and a lean naming no row of Claude's.
+ * @param {Call} call @param {boolean} replacing
+ */
+function checkRows({ rows, lean }, replacing) {
+  if (replacing && rows.length === 0) throw new Error('raise: the call proposes no answer — a raise on a replacement proposes one at least, beside keeping the entry as it stands');
+  if (rows.length < 2 && !replacing) throw new Error(`raise: the call has ${rows.length} row${rows.length === 1 ? '' : 's'} — a raise offers the person a choice of two at least`);
+  checkEachRow(rows);
   if (replacing && lean === KEEP) throw new Error(`raise: the call leans to ${KEEP}, the entry as it stands — a raise on a replacement leans to one of its proposals`);
   if (!rows.some((row) => row.key === lean)) throw new Error(`raise: the call leans to ${lean}, and no row has that key — its rows: ${rows.map((row) => row.key).join(', ')}`);
 }
@@ -328,6 +365,33 @@ function callOf(stdin, replacing) {
   checkFields(call, CALL_FIELDS, 'raise: the call');
   checkRows(/** @type {Call} */ (call), replacing);
   return /** @type {Call} */ (call);
+}
+
+/**
+ * The fact on stdin, checked whole: its rows, where it gives any, each
+ * checked as a call's row is.
+ * @param {string} stdin
+ * @returns {Fact}
+ */
+function factOf(stdin) {
+  const fact = stdinObject(stdin, SAID, 'the call');
+  checkFields(fact, FACT_FIELDS, 'raise: the call');
+  checkEachRow(/** @type {Row[]} */ (fact.rows));
+  return /** @type {Fact} */ (fact);
+}
+
+/**
+ * The draw's argv without `--fact`, and whether it was given. Refuses it
+ * given twice, and given with `--replaces`.
+ * @param {string[]} args
+ * @returns {{fact: boolean, rest: string[]}}
+ */
+function factFlag(args) {
+  const rest = args.filter((arg) => arg !== FACT);
+  const given = args.length - rest.length;
+  if (given > 1) throw new Error(`raise takes ${FACT} once — Usage: engine ${FACT_USAGE}`);
+  if (given === 1 && rest.includes('--replaces')) throw new Error(`raise ${FACT} takes no --replaces: a fact that changes is the person's to say, and the decision it changes is replaced as any other — Usage: engine ${FACT_USAGE}`);
+  return { fact: given === 1, rest };
 }
 
 /**
@@ -350,7 +414,7 @@ function leanRow({ rows, lean }) {
   return /** @type {Row} */ (rows.find((row) => row.key === lean));
 }
 
-/** The answers of the call's rows but `row`: what that row rules out. @param {Call} call @param {Row} row */
+/** The answers of the call's rows but `row`: what that row rules out. @param {Call|Fact} call @param {Row} row */
 function othersOf(call, row) {
   return call.rows.filter((other) => other !== row).map((other) => other.text);
 }
@@ -581,13 +645,14 @@ function proceeded(cwd, place, target, call, warnings) {
  * the write its answer lands as checks it before the lock — `ledger
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
- * a decision, its answer as it stands kept for the screen's own row.
- * @param {string} cwd @param {string[]} args @param {string[]} warnings
+ * a decision, its answer as it stands kept for the screen's own row. Its
+ * usage is a fact's where `fact`.
+ * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
  * @returns {{place: Place, target: Target, short: (id: string) => string}}
  */
-function placedRaise(cwd, args, warnings) {
+function placedRaise(cwd, args, warnings, fact) {
   const verb = args.includes('--replaces') ? 'replace' : 'decide';
-  const usage = `Usage: engine ${verb === 'replace' ? REPLACE_USAGE : QUESTION_USAGE}`;
+  const usage = `Usage: engine ${fact ? FACT_USAGE : { decide: QUESTION_USAGE, replace: REPLACE_USAGE }[verb]}`;
   const { at, linked, read, replacing } = writePlaced(cwd, verb, args, SAID, usage, warnings);
   const place = { unit: at.unit, phase: at.phase, topic: at.topic };
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
@@ -605,12 +670,33 @@ function placedRaise(cwd, args, warnings) {
 }
 
 /**
+ * A raise asked: sealed and drawn — or the conversation's open seal of its
+ * question or replacement, sealed while the draw waited, drawn again.
+ * @param {string} session @param {Place} place @param {Target} target
+ * @param {{call: Call, fact: false} | {call: Fact, fact: true}} what what is asked, and whether it is a fact
+ * @param {string[]} judged @param {string} reason @param {string[]} warnings
+ * @returns {Drawn}
+ */
+function askedRaise(session, place, target, what, judged, reason, warnings) {
+  const id = newId();
+  /** @type {Seal} */
+  const seal = {
+    v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
+    ...what, rows_judged: judged, reason, at: new Date().toISOString(), answered: null, didnt_follow: 0,
+  };
+  const drawn = sealDrawn(session, place, target, seal);
+  clearGateShown(session);
+  return { decision: 'ask', reason, ...drawn, warnings };
+}
+
+/**
  * `raise <place> (--answers <question> | --replaces <entry> --reason
  * <reason> [--cause <id>]) [--relies-on <id> …]`: the call on stdin put
  * through the decision point and, where it asks, sealed in the
  * conversation and drawn — or the conversation's open seal of the question
  * or the replacement drawn again, said redrawn; where it proceeds, landed as
- * Claude's.
+ * Claude's. With `--fact`, the fact on stdin is asked, the decision point
+ * never reached.
  * @param {string} cwd @param {string[]} args @param {() => string} stdin
  * @returns {Promise<Drawn>}
  */
@@ -619,27 +705,22 @@ async function drawRaise(cwd, args, stdin) {
   if (findStateRoot(cwd) === null) throw new Error('raise: there is no workflows state here — the question a raise answers is in the ledger, which the state holds');
   /** @type {string[]} */
   const warnings = [];
-  const { place, target, short } = placedRaise(cwd, args, warnings);
-  const call = callOf(stdin(), target.replaces !== null);
-  if (target.replaces !== null) checkProposals(call, target.replaces, short(target.replaces.entry));
+  const { fact, rest } = factFlag(args);
+  const { place, target, short } = placedRaise(cwd, rest, warnings, fact);
+  const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
+  if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
   const open = openSeal(readSeals(session), place, target);
   if (open !== null) {
     clearGateShown(session);
     return { decision: 'ask', reason: open.reason, seal: open, redrawn: true, warnings };
   }
+  if (fact) return askedRaise(session, place, target, { call: /** @type {Fact} */ (given), fact: true }, [], ONLY_YOU_KNOW, warnings);
+  const call = /** @type {Call} */ (given);
   const judged = await checkedRows(call);
   const { decision, reason } = decisionPoint.decide(call);
   if (decision === 'proceed') return { decision, reason, landed: proceeded(cwd, place, target, call, warnings) };
   if (decision === 'blind') throw new Error('raise: the decision point answered blind, and asking blind is 29.19\'s, not built yet — nothing drawn');
-  const id = newId();
-  /** @type {Seal} */
-  const seal = {
-    v: SEAL_VERSION, id, menu: raiseMenu(id), place, ...target,
-    call, rows_judged: judged, reason, at: new Date().toISOString(), answered: null, didnt_follow: 0,
-  };
-  const drawn = sealDrawn(session, place, target, seal);
-  clearGateShown(session);
-  return { decision, reason, ...drawn, warnings };
+  return askedRaise(session, place, target, { call, fact: false }, judged, reason, warnings);
 }
 
 /**
@@ -720,7 +801,7 @@ function movedBy(lean, key, given) {
 
 /**
  * The answer on stdin, checked for how the person answered.
- * @param {'pick'|'own'|'keep'} form @param {string} stdin
+ * @param {'pick'|'own'|'keep'|'fact'} form @param {string} stdin
  * @returns {Record<string, any>}
  */
 function answerOn(form, stdin) {
@@ -730,21 +811,42 @@ function answerOn(form, stdin) {
 }
 
 /**
+ * The row `key` among the raise's own. Refuses a key that is no row.
+ * @param {Seal} seal @param {string} key
+ * @returns {Row}
+ */
+function rowOf(seal, key) {
+  const row = seal.call.rows.find((r) => r.key === key);
+  if (row === undefined) throw new Error(`${ANSWER_SAID}: the raise has no row ${key} — its rows: ${drawnRows(seal).map((r) => r.key).join(', ') || 'none'}`);
+  return row;
+}
+
+/**
  * The person's pick of the row `key`, one of Claude's: its answer, the
  * other rows of Claude's what it rules out, the why on stdin, who moved
- * whom as the engine rules, and how it came. Refuses a key that is no row.
- * @param {string} session @param {Seal} seal @param {string} key @param {string} stdin
+ * whom as the engine rules, and how it came.
+ * @param {string} session @param {CallSeal} seal @param {string} key @param {string} stdin
  * @returns {Given}
  */
 function picked(session, seal, key, stdin) {
   const { call } = seal;
-  const row = call.rows.find((r) => r.key === key);
-  if (row === undefined) throw new Error(`${ANSWER_SAID}: the raise has no row ${key} — its rows: ${drawnRows(seal).map((r) => r.key).join(', ')}`);
+  const row = rowOf(seal, key);
   const { why, who_moved_whom: moved } = answerOn('pick', stdin);
   return {
     text: row.text, why, rules_out: othersOf(call, row), who_moved_whom: movedBy(call.lean, key, moved),
     answer: key, with_text: false, via: cameBy(session, seal, key),
   };
+}
+
+/**
+ * The person's pick of the row `key` on a fact: its answer, the other rows
+ * what it rules out, and the why on stdin.
+ * @param {FactSeal} seal @param {string} key @param {string} stdin
+ */
+function factPicked(seal, key, stdin) {
+  const row = rowOf(seal, key);
+  const { why } = answerOn('fact', stdin);
+  return { text: row.text, why, rules_out: othersOf(seal.call, row) };
 }
 
 /**
@@ -762,7 +864,7 @@ function ownWords(stdin) {
  * The raise's event in the trust log: its entry, or null where the person
  * didn't follow; its sort; the lean's key and the answer's; how it came;
  * no kind or label until the labeller's, and no blocked build outside one.
- * @param {Seal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, didnt_follow: boolean}} answer
+ * @param {CallSeal} seal @param {{entry: unknown, answer: string|null, via: Via, with_text: boolean, didnt_follow: boolean}} answer
  */
 function raiseEvent({ call }, { entry, answer, via, with_text: withText, didnt_follow: didntFollow }) {
   return {
@@ -775,7 +877,7 @@ function raiseEvent({ call }, { entry, answer, via, with_text: withText, didnt_f
  * The row the line `held` landed by: a keep's `keep`; an entry's, the row
  * of `call` whose answer it holds, by its text — its key, or null for the
  * person's own words.
- * @param {Call} call @param {Record<string, unknown>} held
+ * @param {Call|Fact} call @param {Record<string, unknown>} held
  * @returns {string|null}
  */
 function heldAnswer({ rows }, held) {
@@ -822,18 +924,51 @@ function answeredAlready(session, seal, held) {
 }
 
 /**
- * The person's row or own words as they land: their decision answering the
- * raise's question, or their replacement of its decision — the lean row's
- * text sealed, whether it is product-wide the call's.
- * @param {Seal} seal @param {Given} given
- * @returns {Answering}
+ * The person's answer as it lands: their decision answering the raise's
+ * question, or their replacement of its decision — `moved` who moved whom,
+ * `sealed` Claude's lean, whether it is product-wide the call's.
+ * @param {Seal} seal @param {{text: string, why: string, rules_out: string[]}} answer @param {string} moved @param {string|null} sealed
+ * @returns {Landing}
  */
-function answeredWith(seal, { text, why, rules_out: rulesOut, who_moved_whom: moved, answer, via, with_text: withText }) {
+function answerLanding(seal, { text, why, rules_out: rulesOut }, moved, sealed) {
   const { lands, linked, content, checkRead } = landsAs(seal, AT_THE_ANSWER);
   return {
-    lands, linked, checkRead, answer, via, with_text: withText,
-    content: { by: 'person', who_moved_whom: moved, ...content, text, why, rules_out: rulesOut, product_wide: seal.call.product_wide, sealed: leanRow(seal.call).text },
+    lands, linked, checkRead,
+    content: { by: 'person', who_moved_whom: moved, ...content, text, why, rules_out: rulesOut, product_wide: seal.call.product_wide, sealed },
   };
+}
+
+/**
+ * The trust log's raise event for the person's answer, naming the line it
+ * lands.
+ * @param {CallSeal} seal @param {{answer: string|null, via: Via, with_text: boolean}} given
+ * @returns {import('./ledger-write.cjs').Logs}
+ */
+function raiseLogged(seal, { answer, via, with_text: withText }) {
+  return ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, didnt_follow: false }) });
+}
+
+/**
+ * The person's row or own words, on Claude's call, as they land — the lean
+ * row's text sealed — and its raise event.
+ * @param {CallSeal} seal @param {Given} given
+ * @returns {Answering}
+ */
+function answeredWith(seal, given) {
+  return { ...answerLanding(seal, given, given.who_moved_whom, leanRow(seal.call).text), answer: given.answer, logs: raiseLogged(seal, given) };
+}
+
+/**
+ * The person's answer to a fact, their own words or a row picked, as it
+ * lands: their decision, sealing no lean and moving no one, logging nothing
+ * in the trust log.
+ * @param {FactSeal} seal @param {'pick'|'own'} form @param {string|null} key @param {string} stdin
+ * @returns {Answering}
+ */
+function factAnswered(seal, form, key, stdin) {
+  const own = form === 'own';
+  const given = own ? ownWords(stdin) : factPicked(seal, /** @type {string} */ (key), stdin);
+  return { ...answerLanding(seal, given, 'none', null), answer: own ? null : key, logs: null };
 }
 
 /**
@@ -841,7 +976,7 @@ function answeredWith(seal, { text, why, rules_out: rulesOut, who_moved_whom: mo
  * replace, as it stands: a keep of it, for the reason and cause sealed,
  * the why on stdin, Claude's proposal — the lean row's text — sealed in it,
  * who moved whom the departure rule's; and how it came.
- * @param {string} session @param {Seal} seal @param {Replacing} replacing @param {string} stdin
+ * @param {string} session @param {CallSeal} seal @param {Replacing} replacing @param {string} stdin
  * @returns {Answering}
  */
 function keeping(session, seal, { entry, reason, cause }, stdin) {
@@ -851,19 +986,19 @@ function keeping(session, seal, { entry, reason, cause }, stdin) {
     linked: { entry, reason, cause },
     content: { by: 'person', who_moved_whom: derivedMove({ event: 'kept', by: 'person' }, null, reason, null), why, sealed: leanRow(seal.call).text },
     checkRead: (read) => checkStillCurrent(entry, read),
-    answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false,
+    answer: KEEP, logs: raiseLogged(seal, { answer: KEEP, via: cameBy(session, seal, KEEP), with_text: false }),
   };
 }
 
 /**
- * The person's answer landed at the raise's id, its raise event with it,
- * then the seal marked answered. Where the ledger held the line already,
+ * The person's answer landed at the raise's id, its raise event with it —
+ * none for a fact — then the seal marked answered. Where the ledger held the line already,
  * the seal is marked with the answer it holds, and the response says the
  * raise was answered already, and with which row.
  * @param {string} cwd @param {string} session @param {Seal} seal @param {Answering} answering
  * @returns {Landed & {raise: string, already?: true, answer?: string|null}}
  */
-function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, answer, via, with_text: withText }) {
+function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, answer, logs }) {
   /** @type {string[]} */
   const warnings = [];
   const { landed, held } = landRaised(cwd, {
@@ -873,7 +1008,7 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
     linked,
     content,
     id: seal.id,
-    logs: ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, didnt_follow: false }) }),
+    logs,
     checkRead,
   }, warnings);
   if (held !== null) return { raise: seal.id, ...landed, ...answeredAlready(session, seal, held) };
@@ -882,8 +1017,8 @@ function recordAnswer(cwd, session, seal, { lands, linked, content, checkRead, a
 }
 
 /**
- * "I don't follow": a raise event in the trust log alone, and the count on
- * the seal; the raise stays open. On a raise the ledger holds the answer
+ * "I don't follow": a raise event in the trust log alone — none for a
+ * fact — and the count on the seal; the raise stays open. On a raise the ledger holds the answer
  * to — an old screen's press — nothing is logged or counted, and the
  * raise is said answered already, with the row the line holds.
  * @param {string} cwd @param {string} session @param {Seal} seal
@@ -895,7 +1030,7 @@ function didntFollow(cwd, session, seal) {
   const said = (/** @type {object} */ answer) => ({ raise: seal.id, ...answer, ...(warnings.length > 0 ? { warnings } : {}) });
   const held = heldLine(cwd, seal.id, warnings);
   if (held !== null) return said(answeredAlready(session, seal, held));
-  record('raise', raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, didnt_follow: true }), { cwd, warnings });
+  if (!seal.fact) record('raise', raiseEvent(seal, { entry: null, answer: null, via: cameBy(session, seal, EXPLAIN), with_text: false, didnt_follow: true }), { cwd, warnings });
   changeSeals(session, (seals, put) => {
     const sealed = seals[seal.id];
     if (isSeal(sealed)) put({ ...sealed, didnt_follow: sealed.didnt_follow + 1 });
@@ -904,12 +1039,13 @@ function didntFollow(cwd, session, seal) {
 }
 
 /**
- * How the person's answer lands: their own words; on a replacement, a keep
- * of the decision; else their pick of a row.
+ * How the person's answer lands: an answer to a fact; their own words; on a
+ * replacement, a keep of the decision; else their pick of a row.
  * @param {string} session @param {Seal} seal @param {'pick'|'own'} form @param {string|null} key @param {() => string} stdin
  * @returns {Answering}
  */
 function answering(session, seal, form, key, stdin) {
+  if (seal.fact) return factAnswered(seal, form, key, stdin());
   if (form === 'own') return answeredWith(seal, ownWords(stdin()));
   if (key === KEEP && seal.replaces !== null) return keeping(session, seal, seal.replaces, stdin());
   return answeredWith(seal, picked(session, seal, /** @type {string} */ (key), stdin()));

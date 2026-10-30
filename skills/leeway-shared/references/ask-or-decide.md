@@ -16,7 +16,7 @@ Where there is more than one way and no obvious choice, find out before you lean
 
 Every call you can't settle by checking goes to `raise`, the obvious ones included, however sure you are: what the person wants the product to be and do, and equally a data model, a contract, the code's insides or the process. Compose it product first where it can be; never settle it alone.
 
-A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` as a fact: it is always asked, never settled on your lean, and counts for nothing in the trust layer, which takes only intent and taste (16.3.2).
+A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` with `--fact`: no lean, and rows only where the answers are few and known. It is always asked, never settled on your lean, and counts for nothing in the trust layer, which takes only intent and taste.
 
 In the raise you say whether the call has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows.
 
