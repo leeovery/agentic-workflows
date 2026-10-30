@@ -22,7 +22,7 @@ const os = require('os');
 const path = require('path');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 
@@ -120,7 +120,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
   });
 
-  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, and the layout hook before Write, Edit and NotebookEdit — committed confined, and a second boot changes nothing', () => {
+  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, the layout hook before Write, Edit and NotebookEdit, and the brief hook before Agent and SendMessage — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
@@ -134,6 +134,19 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(second.session_hooks_installed, false);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.leeway']).trim(), '', 'and no new dirt');
+  });
+
+  it('a project holding the layout group alone gains the brief group beside it — the foreign groups as they were — committed, and a second boot changes nothing', () => {
+    const theirs = { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo theirs' }] };
+    commitSettings(JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, LAYOUT_GROUP] } }, null, 2) + '\n');
+    const first = bootWith();
+    assert.strictEqual(first.session_hooks_installed, true);
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install workflow session hooks');
+    const head = git(fix.project, ['rev-parse', 'HEAD']);
+
+    assert.strictEqual(bootWith().session_hooks_installed, false);
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
   });
 
   it('labels on adds `session cleanup` beside the workflows\' own, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {

@@ -6,7 +6,8 @@
 // project-manifest opt-in and the hooks it syncs in the project's settings
 // (SessionEnd: `session cleanup` while labels are on, `presence cleanup` and
 // `conversation end` regardless; SessionStart: `session resume` while labels
-// are on), the per-checkout stash, the arrival forms (a work unit alone, the
+// are on; PreToolUse: the layout and brief hooks' groups regardless), the
+// per-checkout stash, the arrival forms (a work unit alone, the
 // roadmap and baseline identities), phase-hop recomposition, peer-checkout
 // isolation, user-rename adoption, id drift across a server restart (chain
 // resolution, drifted restore, boot repair, orphan pruning), owner identity,
@@ -29,22 +30,20 @@ const { syncSessionHooks } = require('../../skills/workflow-engine/scripts/domai
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
-const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup` };
-const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
-const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
-const END_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation end` };
-const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: `${HOOK_ENGINE} layout guard` }] };
-// The settings a project reaches with labels on — one group per event, ours
-// alone — and with them off.
+const { engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS } = harness;
+const SESSION_HOOK = engineHook('session cleanup');
+const RESUME_HOOK = engineHook('session resume');
+const [PRESENCE_HOOK, END_HOOK] = WORKFLOW_HOOKS;
+// The settings a project reaches with labels on — one group per matcher,
+// ours alone — and with them off.
 const LABELS_ON = {
   hooks: {
     SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
     SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }],
-    PreToolUse: [LAYOUT_GROUP],
+    PreToolUse: GUARD_GROUPS,
   },
 };
-const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }], PreToolUse: [LAYOUT_GROUP] } };
+const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }], PreToolUse: GUARD_GROUPS } };
 // The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
 const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
@@ -687,7 +686,7 @@ describe('syncSessionHooks', () => {
   const WORKFLOWS = { session: false, workflows: true };
   const NONE = { session: false, workflows: false };
 
-  it('installs the labels-on set into an absent settings file — one group per event, the SessionStart group matched to resume', () => {
+  it('installs the labels-on set into an absent settings file — one group per matcher, the SessionStart group matched to resume, the layout and brief groups under PreToolUse', () => {
     assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
@@ -717,10 +716,37 @@ describe('syncSessionHooks', () => {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
         SessionStart: [{ matcher: 'startup', hooks: [theirs] }, { matcher: 'resume', hooks: [RESUME_HOOK] }],
-        PreToolUse: [{ matcher: 'Write', hooks: [theirs] }, LAYOUT_GROUP],
+        PreToolUse: [{ matcher: 'Write', hooks: [theirs] }, ...GUARD_GROUPS],
       },
       showClearContextOnPlanAccept: true,
     });
+  });
+
+  it('settings holding the layout group alone gain the brief group — ours stripped and landed one group per matcher, every foreign group and its matcher kept', () => {
+    const theirs = { type: 'command', command: 'say goodbye' };
+    writeSettings({
+      hooks: {
+        SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }],
+        PreToolUse: [
+          { matcher: 'Bash', hooks: [theirs] },
+          { matcher: 'Write|Edit', hooks: [theirs, LAYOUT_GROUP.hooks[0]] },
+          { matcher: 'Agent', hooks: [theirs] },
+        ],
+      },
+    });
+    assert.deepStrictEqual(syncSessionHooks(dir, WORKFLOWS), { changed: true });
+    assert.deepStrictEqual(settings(), {
+      hooks: {
+        SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }],
+        PreToolUse: [
+          { matcher: 'Bash', hooks: [theirs] },
+          { matcher: 'Write|Edit', hooks: [theirs] },
+          { matcher: 'Agent', hooks: [theirs] },
+          ...GUARD_GROUPS,
+        ],
+      },
+    });
+    assert.deepStrictEqual(syncSessionHooks(dir, WORKFLOWS), { changed: false });
   });
 
   it('a second sync changes nothing — the hooks are recognised by their command, whatever surrounds them', () => {
@@ -729,9 +755,10 @@ describe('syncSessionHooks', () => {
     assert.strictEqual(settings().hooks.SessionEnd.length, 1);
     assert.strictEqual(settings().hooks.SessionStart.length, 1);
     // Hand-adjusted copies — a different path prefix, a timeout, ours split
-    // across groups, a foreign group added after ours, a widened matcher —
-    // still make up the wanted set, so nothing is rewritten and nothing
-    // moves.
+    // across groups, a foreign group added after ours, a widened matcher,
+    // the PreToolUse groups swapped round a foreign one and one of ours
+    // sharing a foreign group — still make up the wanted set, so nothing is
+    // rewritten, twinned or moved.
     writeSettings({
       hooks: {
         SessionEnd: [
@@ -743,7 +770,9 @@ describe('syncSessionHooks', () => {
           { matcher: 'startup|resume', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session resume' }] },
         ],
         PreToolUse: [
-          { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" layout guard', timeout: 5 }] },
+          { matcher: 'SendMessage|Agent', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" brief guard', timeout: 5 }] },
+          { matcher: 'Bash', hooks: [{ type: 'command', command: 'say goodbye' }] },
+          { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'echo first' }, { type: 'command', command: 'node "/abs/engine.cjs" layout guard', timeout: 5 }] },
         ],
       },
     });
@@ -808,9 +837,9 @@ describe('syncSessionHooks', () => {
 
   it('reconciles the two events independently — a missing SessionStart group lands while a recognised SessionEnd group is left as it was', () => {
     const hand = { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }, PRESENCE_HOOK, END_HOOK] };
-    writeSettings({ hooks: { SessionEnd: [hand], PreToolUse: [LAYOUT_GROUP] } });
+    writeSettings({ hooks: { SessionEnd: [hand], PreToolUse: GUARD_GROUPS } });
     assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], PreToolUse: [LAYOUT_GROUP], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], PreToolUse: GUARD_GROUPS, SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
   });
 
   it('a hook of ours is ours under any event — a resume hook misplaced under SessionEnd moves to SessionStart', () => {

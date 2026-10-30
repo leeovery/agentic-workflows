@@ -778,16 +778,20 @@ const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb
 const WORKFLOW_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
 /** The layout hook's group, before every write, in every project whatever the label choice. */
 const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
+/** The brief hook's group, before every dispatch, in every project whatever the label choice. */
+const BRIEF_GROUP = { matcher: 'Agent|SendMessage', hooks: [engineHook('brief guard')] };
+/** The PreToolUse groups, in the order boot installs them. */
+const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP];
 /** The workflows' own hooks by event, as boot installs them. */
-const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [LAYOUT_GROUP] };
+const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: GUARD_GROUPS };
 
 /**
  * Settings as boot leaves a project the mod cannot run in: `rest`, then
- * `hooks` in boot's one SessionEnd group, and the layout hook.
+ * `hooks` in boot's one SessionEnd group, and the guard groups.
  * @param {object[]} hooks @param {Record<string, unknown>} [rest]
  */
 function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: [LAYOUT_GROUP] } }, null, 2) + '\n';
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: GUARD_GROUPS } }, null, 2) + '\n';
 }
 
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
@@ -813,7 +817,7 @@ function stubEngine() {
 const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, output } = harness();
 
 module.exports = {
-  ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, OWN_HOOKS, hooked,
+  ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
