@@ -8,9 +8,8 @@
 // on, never an install command (22.4.7) — gh not installed or not signed
 // in, the extension missing, GitHub's rate limit, no network, a merge
 // GitHub refuses, a pull request GitHub finds conflicting with its base,
-// GitHub's answer for a pull request as it stood before a push to its head,
-// or before the default branch moved under it, never taken, a stack merged
-// in part by hand on GitHub, a task with
+// GitHub's answer for a pull request's head before a push never taken, a
+// stack merged in part by hand on GitHub, a task with
 // nothing to land or opened into a merged phase, a default branch here
 // holding commits GitHub's lacks at the open, naming them, and a push
 // refused; a task opened already, and a phase merged, answered as done
@@ -207,20 +206,16 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     assert.deepStrictEqual([tipOnGithub(dir, 'main'), pulls(dir).map(({ state }) => state), calls(dir).filter((call) => call.startsWith('pr merge'))], [main, ['OPEN'], []]);
   });
 
-  it('GitHub answering for a pull request as it stood before it moved — before a push to its head, or, at finish, before the phase beside it moved the default branch under it, nothing pushed to it: that answer never taken, each read again until GitHub answers for where it stands, and merged then', () => {
+  it('GitHub answering, after a push, for the head before it: that answer never taken, the pull request read again until GitHub answers for the head pushed, and merged then', () => {
     const dir = project();
     ok(dir, openArgs(card));
-    ok(dir, openArgs(rounding));
     commitFiles(dir, card.branch, card.branch, { 'card.txt': 'card, again\n' });
     git(dir, ['push', '-q', 'origin', card.branch]);
-    const head = tipOnGithub(dir, rounding.branch);
     lagOnGithub(dir, 2, { stale: true });
 
-    assert.deepStrictEqual(own(ok(dir, ['land', 'finish', 'pay'])).phases.map((/** @type {{phase: number}} */ phase) => phase.phase), [1, 2]);
-    assert.deepStrictEqual(calls(dir).filter((call) => /^(pr view|pr merge) /.test(call)).map((call) => call.split(' --')[0]), [
-      'pr view 1', 'pr view 1', 'pr view 1', 'pr merge 1', 'pr view 2', 'pr view 2', 'pr view 2', 'pr merge 2',
-    ]);
-    assert.deepStrictEqual([tipOnGithub(dir, rounding.branch), landedOn(bareOf(dir), 'main').map(({ task, paths }) => [task, paths])], [head, [['pay-1-1', ['card.txt']], ['pay-2-1', ['round.txt']]]]);
+    ok(dir, ['land', 'phase', 'pay', '1']);
+    assert.deepStrictEqual(calls(dir).filter((call) => /^(pr view|pr merge) /.test(call)).map((call) => call.split(' --')[0]), ['pr view 1', 'pr view 1', 'pr view 1', 'pr merge 1']);
+    assert.deepStrictEqual(landedOn(bareOf(dir), 'main').map(({ task, paths }) => [task, paths]), [['pay-1-1', ['card.txt']]]);
   });
 
   it('a pull request closed by hand on GitHub: its phase refused, naming it and how to reopen it — and merged once it is', () => {
@@ -320,8 +315,8 @@ describe('the stand-in gh and the live run (7.3.7, 7.S15)', () => {
     const was = process.env.PATH;
     process.env.PATH = GH_ENV.PATH;
     try {
-      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => [need.tool, need.found()]), [['gh', '2.63.0'], ['gh-stack', '0.1.0']]);
-      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => need.floor), ['2.63.0', '0.1.0']);
+      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => [need.tool, need.found()]), [['gh', '2.30.0'], ['gh-stack', '0.1.0']]);
+      assert.deepStrictEqual(driver.needs.map((/** @type {any} */ need) => need.floor), ['2.30.0', '0.1.0']);
     } finally {
       process.env.PATH = was;
     }

@@ -39,7 +39,7 @@ const project = useLandingWorld('github-landing-', side.prepare);
 /** The query every verb reads the unit's pull requests by. */
 const LIST = 'pr list --state all --limit 1000 --json number,state,headRefName,baseRefName,headRefOid,title,body';
 /** The read of whether a pull request can merge. @param {number} number */
-const view = (number) => `pr view ${number} --json mergeable,headRefOid,baseRefName,baseRefOid`;
+const view = (number) => `pr view ${number} --json mergeable,headRefOid,baseRefName`;
 
 describe('the remotes it serves (22.4.3)', () => {
   it('reads a GitHub repository off every form a remote URL takes, and serves those alone', () => {

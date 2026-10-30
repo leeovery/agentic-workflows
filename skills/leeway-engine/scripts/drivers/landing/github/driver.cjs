@@ -45,14 +45,11 @@
 //   under that same subject and body, its base made the default branch
 //   first where it stood on another phase's task. Either merges only once
 //   GitHub has worked out that each of its pull requests can, at the head
-//   the driver last pushed or read and on the base it expects — the
-//   bottom's the default branch on GitHub as fetched, unpinned where the
-//   fetch failed; each other's the head below it — GitHub working it out
-//   again after anything moves one: a push to its head, its base changed
-//   or moved, a retarget. Each is read again after each pause, half a
-//   minute in all: one conflicting is refused before anything merges,
-//   naming it, and one still not worked out is refused, to land again. A
-//   task's branch here
+//   the driver last pushed or read — GitHub works it out again after
+//   anything moves one: a push to its head, its base changed or moved, a
+//   retarget — read again after each pause, half a minute in all: one
+//   conflicting is refused before anything merges, naming it, and one
+//   still not worked out is refused, to land again. A task's branch here
 //   behind its pull request's head — a push of the driver's that went before
 //   the branch here moved — is brought to it first, refused where it is
 //   checked out and cannot move; one anywhere else stops the phase, with the
@@ -100,6 +97,10 @@
 //   squashes into the top task's landing under its subject; the landings
 //   below the top then name the submodule's commits from before its squash,
 //   which GitHub keeps under each of its pull requests' own refs.
+// - Known edges: GitHub answering for a pull request on its old base in the
+//   moment after the default branch moves under it — its answer names no
+//   base the driver can check — leaves the merge GitHub's to refuse, in
+//   its words, and landing again merges it.
 // ---------------------------------------------------------------------------
 
 const names = require('../../../domain/landing-names.cjs');
@@ -123,7 +124,7 @@ const GITHUB_URL = /^(?:(?:https?|ssh|git):\/\/(?:[^@/]+@)?github\.com(?::\d+)?\
 const PULL_FIELDS = 'number,state,headRefName,baseRefName,headRefOid,title,body';
 // The unit's pull requests are among the repository's latest; past this many, the oldest are not read.
 const PULL_LIMIT = '1000';
-const MERGEABLE_FIELDS = 'mergeable,headRefOid,baseRefName,baseRefOid';
+const MERGEABLE_FIELDS = 'mergeable,headRefOid,baseRefName';
 // The pauses between reads of whether a stack's pull requests can merge: half a minute in all.
 const CHECK_PAUSES_MS = Object.freeze([500, 1000, 2000, 4000, 8000, 15000]);
 
@@ -611,15 +612,14 @@ function pushUp(ctx, host, made, then) {
 
 /**
  * Whether GitHub has worked out that a pull request can merge, as it
- * stands at `at`: its head, and its base's tip where one is expected —
- * false while GitHub is still working it out, or its answer is of another
- * head or base; refused where it conflicts with its base.
- * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Pull} pull @param {{head: string, base: string|null}} at
+ * stands at `head`: false while it is still working it out, or its answer
+ * is of another head; refused where it conflicts with its base.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Pull} pull @param {string} head
  */
-function canMerge(ctx, host, stack, pull, at) {
-  /** @type {{mergeable?: string|null, headRefOid: string, baseRefName: string, baseRefOid: string}} */
+function canMerge(ctx, host, stack, pull, head) {
+  /** @type {{mergeable?: string|null, headRefOid: string, baseRefName: string}} */
   const read = JSON.parse(ghAt(ctx, host, ['pr', 'view', String(pull.number), '--json', MERGEABLE_FIELDS], `read whether pull request #${pull.number} can merge`));
-  if (read.headRefOid !== at.head || (at.base !== null && read.baseRefOid !== at.base)) return false;
+  if (read.headRefOid !== head) return false;
   if (read.mergeable === 'MERGEABLE') return true;
   if (read.mergeable !== 'CONFLICTING') return false;
   const theirs = `${host.remote}/${read.baseRefName}`;
@@ -629,20 +629,15 @@ function canMerge(ctx, host, stack, pull, at) {
 
 /**
  * Wait, before a stack merges, until GitHub has worked out whether each of
- * its pull requests can merge as it stands — at its head in `heads`, else
- * as read, on the base it is expected on: the bottom's the default branch
- * on GitHub at `into`, as fetched (null, where it could not be, pins none),
- * each other's the head below it — read again after each pause
- * (`CHECK_PAUSES_MS`); refused where one conflicts, or GitHub has not
- * worked one out by the last read.
- * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Map<number, string>} heads @param {string|null} into
+ * its pull requests can merge as it stands at its head in `heads`, else as
+ * read, read again after each pause (`CHECK_PAUSES_MS`); refused where one
+ * conflicts, or GitHub has not worked one out by the last read.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack} stack @param {Map<number, string>} heads
  */
-function awaitMergeable(ctx, host, stack, heads, into) {
-  const headOf = (/** @type {Pull} */ pull) => heads.get(pull.number) ?? pull.oid;
-  const expected = new Map(stack.pulls.map((pull, i) => [pull.number, { head: headOf(pull), base: i === 0 ? into : headOf(stack.pulls[i - 1]) }]));
+function awaitMergeable(ctx, host, stack, heads) {
   let unchecked = stack.pulls;
   for (const pause of [...CHECK_PAUSES_MS, null]) {
-    unchecked = unchecked.filter((pull) => !canMerge(ctx, host, stack, pull, /** @type {{head: string, base: string|null}} */ (expected.get(pull.number))));
+    unchecked = unchecked.filter((pull) => !canMerge(ctx, host, stack, pull, heads.get(pull.number) ?? pull.oid));
     if (unchecked.length === 0) return;
     if (pause !== null) sleepSync(checkPauseMs(pause));
   }
@@ -676,7 +671,7 @@ function mergeStack(ctx, host, stacks, stack) {
     ghAt(ctx, host, ['pr', 'edit', String(lone.number), '--base', ctx.into], `base pull request #${lone.number} on ${ctx.into}`);
   }
   const pushed = settlePointers(ctx, host, stacks, stack, fetched);
-  awaitMergeable(ctx, host, stack, new Map(pushed.map(({ pull, commit }) => [pull.number, commit])), 'failed' in fetched ? null : fetched.commit);
+  awaitMergeable(ctx, host, stack, new Map(pushed.map(({ pull, commit }) => [pull.number, commit])));
   if (more.length > 0) ghAt(ctx, host, ['stack', 'merge', String(stack.pulls[stack.pulls.length - 1].number), '--yes', '--squash'], merging);
   else ghAt(ctx, host, ['pr', 'merge', String(lone.number), '--squash', '--subject', `${lone.title} (#${lone.number})`, '--body', lone.body], merging);
   const { stack: tasks, pull_requests } = answered(stack);
@@ -765,8 +760,7 @@ module.exports = {
   name: 'github',
   isDefault: false,
   needs: [
-    // 2.63.0: the first gh whose `pr view` reads `baseRefOid`, which the wait before a merge checks.
-    { tool: 'gh', floor: '2.63.0', update: 'https://cli.github.com', found: ghVersion },
+    { tool: 'gh', floor: '2.30.0', update: 'https://cli.github.com', found: ghVersion },
     { tool: 'gh-stack', floor: '0.1.0', update: 'https://github.com/github/gh-stack', found: stackVersion },
   ],
   serves: (/** @type {string} */ url) => repositoryOf(url) !== null,

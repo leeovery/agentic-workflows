@@ -31,8 +31,8 @@
 // is whether its head merges with its base — but once either's tip moves,
 // by a push, a merge into its base, `edit --base` or a stack's link, it is
 // unknown for as many of `view`'s reads as the state's `lag` (none unless
-// a test sets it) — or, where the lag is `stale`, answered as before it:
-// the head and base it was at, mergeable — and a merge of it refused
+// a test sets it) — or, after a push where the lag is `stale`, answered as
+// before it: the head it was at, mergeable — and a merge of it refused
 // meanwhile in GitHub's words. GH_STUB_FAULT makes calls fail as
 // gh does: `signed-out`, `rate-limit`, `offline`, `refused` or
 // `unmergeable`, every call or, after an `@`, only the one whose words
@@ -46,7 +46,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const VERSION = 'gh version 2.63.0 (2024-11-27)\nhttps://github.com/cli/cli/releases/tag/v2.63.0\n';
+const VERSION = 'gh version 2.30.0 (2023-05-30)\nhttps://github.com/cli/cli/releases/tag/v2.30.0\n';
 const STACK_VERSION = 'gh stack version 0.1.0\n';
 const IDENTITY = { GIT_AUTHOR_NAME: 'GitHub', GIT_AUTHOR_EMAIL: 'noreply@github.com', GIT_COMMITTER_NAME: 'GitHub', GIT_COMMITTER_EMAIL: 'noreply@github.com' };
 const FAULTS = Object.freeze({
@@ -126,25 +126,24 @@ function unknown(bare, state, pull) {
 }
 
 /**
- * A read of whether a pull request can merge, at what head and on what
- * base: while GitHub is working it out, the read counted, UNKNOWN — or,
- * where the state's lag is `stale`, its answer from before it moved: the
- * head and base it stood at then, mergeable; else whether its head merges
- * with its base.
+ * A read of whether a pull request can merge, and at what head: while
+ * GitHub is working it out, the read counted, UNKNOWN — or, where its head
+ * was pushed to and the state's lag is `stale`, its answer from before:
+ * the head it stood at then, mergeable; else whether its head merges with
+ * its base.
  * @param {string} bare @param {Github} state @param {Pull} pull
- * @returns {{head: string|null, base: string|null, mergeable: 'MERGEABLE'|'CONFLICTING'|'UNKNOWN'}}
+ * @returns {{head: string|null, mergeable: 'MERGEABLE'|'CONFLICTING'|'UNKNOWN'}}
  */
 function readOf(bare, state, pull) {
-  const [head, base] = [tipOf(bare, pull.head), tipOf(bare, pull.base)];
-  if (pull.state !== 'OPEN') return { head, base, mergeable: 'UNKNOWN' };
+  const head = tipOf(bare, pull.head);
+  if (pull.state !== 'OPEN') return { head, mergeable: 'UNKNOWN' };
   if (unknown(bare, state, pull)) {
     pull.unknown = (pull.unknown ?? 0) - 1;
-    if (!state.stale || pull.was === undefined) return { head, base, mergeable: 'UNKNOWN' };
-    const [before, under] = pull.was.split(' ');
-    return { head: before, base: under, mergeable: 'MERGEABLE' };
+    const before = pull.was?.split(' ')[0];
+    return state.stale && before !== undefined && before !== head ? { head: before, mergeable: 'MERGEABLE' } : { head, mergeable: 'UNKNOWN' };
   }
   const merged = spawnSync('git', ['merge-tree', '--write-tree', `refs/heads/${pull.base}`, `refs/heads/${pull.head}`], { cwd: bare });
-  return { head, base, mergeable: merged.status === 0 ? 'MERGEABLE' : 'CONFLICTING' };
+  return { head, mergeable: merged.status === 0 ? 'MERGEABLE' : 'CONFLICTING' };
 }
 
 /**
@@ -229,9 +228,9 @@ function prList(at, state, args) {
 function prView(at, state, args) {
   const pull = pullOf(state, args[0]);
   const fields = (take(args, '--json').value ?? 'number').split(',');
-  const { head, base, mergeable } = readOf(bareOf(at, state), state, pull);
+  const { head, mergeable } = readOf(bareOf(at, state), state, pull);
   /** @type {Record<string, unknown>} */
-  const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: head, baseRefOid: base, mergeable };
+  const all = { number: pull.number, state: pull.state, headRefName: pull.head, baseRefName: pull.base, headRefOid: head, mergeable };
   return `${JSON.stringify(Object.fromEntries(fields.map((field) => [field, all[field]])))}\n`;
 }
 
