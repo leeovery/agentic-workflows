@@ -29,6 +29,8 @@ const { useWorld, remoteProject, cloneInWorld, boot, bootRefused, setUp } = requ
 
 const world = useWorld();
 
+const NOTES = layout.assets('unit', 'notes.md');
+
 // --- code history ---------------------------------------------------------------
 
 describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
@@ -102,7 +104,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
 
   it('is told from a state started again elsewhere, a line of its own too, which the catch-up merges as ever', () => {
     const { main, bare } = setUp({ remote: true });
-    commitOnState(statePath(main), { 'notes.md': 'kept here\n' });
+    commitOnState(statePath(main), { [NOTES]: 'kept here\n' });
     const other = initRepo(path.join(world(), 'other'));
     const again = datedAt('2025-01-01T00:00:00Z', () => createState(statePath(other))).commit;
     git(other, ['push', '-q', '-f', bare, `${STATE_BRANCH}:${STATE_BRANCH}`]);
@@ -110,7 +112,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
     assert.strictEqual(boot(main).state, 'ready');
 
     assert.strictEqual(git(main, ['log', '-1', '--format=%P', STATE_BRANCH]).trim(), again, 'merged onto the remote\'s line');
-    assert.strictEqual(readState(main, 'notes.md'), 'kept here\n');
+    assert.strictEqual(readState(main, NOTES), 'kept here\n');
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
   });
 });

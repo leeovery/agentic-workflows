@@ -35,12 +35,12 @@ const world = useWorld();
 
 describe('catching up when one side moved (4.S36)', () => {
   it('fast-forwards the branch and the worktree to the remote\'s tip, with no merge commit, where only the remote moved', () => {
-    const { here, there, bare } = machinesSharing({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
+    const { here, there, bare } = machinesSharing({ [layout.ledger]: ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/assets/old.md': 'old\n' });
     createFile(there.root, 'unit/topics/a/log.md', '# a\n\n## a session elsewhere\n');
-    fs.rmSync(path.join(there.root, 'unit/old.md'));
-    const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
-    git(there.root, ['rm', '-q', 'unit/old.md']);
-    const removed = withStateLock(there.root, () => commitState(there.root, ['unit/old.md'], 'state: drop old')).commit;
+    fs.rmSync(path.join(there.root, 'unit/assets/old.md'));
+    const theirs = commitOnState(there.root, { [layout.ledger]: ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/assets/old.md': '' }).commit;
+    git(there.root, ['rm', '-q', 'unit/assets/old.md']);
+    const removed = withStateLock(there.root, () => commitState(there.root, ['unit/assets/old.md'], 'state: drop old')).commit;
     const before = tip(here.main, STATE_BRANCH);
 
     const out = catchUpState(here.root);
@@ -54,7 +54,7 @@ describe('catching up when one side moved (4.S36)', () => {
     assert.strictEqual(git(here.main, ['rev-list', '--merges', STATE_BRANCH]), '');
     assert.strictEqual(readFile(here.root, layout.ledger), ledger('base', 'b1'));
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## a session elsewhere\n');
-    assert.ok(!fs.existsSync(path.join(here.root, 'unit/old.md')));
+    assert.ok(!fs.existsSync(path.join(here.root, 'unit/assets/old.md')));
     assert.strictEqual(status(here.root), '');
   });
 
@@ -209,16 +209,16 @@ describe('another session writing while the catch-up runs', () => {
   });
 
   it('keeps a file the update removes where the other session wrote it meanwhile', () => {
-    const { here, there } = machinesSharing({ 'unit/gone.md': 'gone\n', 'unit/a.md': 'a\n' });
-    fs.rmSync(path.join(there.root, 'unit/gone.md'));
-    withStateLock(there.root, () => commitState(there.root, ['unit/gone.md'], 'state: drop'));
-    const writer = gitWrapper('write-tree', `echo "written meanwhile" >> "${path.join(here.root, 'unit/gone.md')}"`);
+    const { here, there } = machinesSharing({ 'unit/assets/gone.md': 'gone\n', 'unit/assets/a.md': 'a\n' });
+    fs.rmSync(path.join(there.root, 'unit/assets/gone.md'));
+    withStateLock(there.root, () => commitState(there.root, ['unit/assets/gone.md'], 'state: drop'));
+    const writer = gitWrapper('write-tree', `echo "written meanwhile" >> "${path.join(here.root, 'unit/assets/gone.md')}"`);
 
     const out = withPath(writer, () => catchUpState(here.root));
 
     assert.strictEqual(out.action, 'fast-forwarded');
-    assert.strictEqual(readFile(here.root, 'unit/gone.md'), 'gone\nwritten meanwhile\n');
-    assert.deepStrictEqual(out.warnings, ['unit/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
+    assert.strictEqual(readFile(here.root, 'unit/assets/gone.md'), 'gone\nwritten meanwhile\n');
+    assert.deepStrictEqual(out.warnings, ['unit/assets/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
   });
 
   it('leaves a file that moves again as it stands, and names it', () => {

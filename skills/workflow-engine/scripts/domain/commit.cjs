@@ -16,9 +16,10 @@
 //   owns one of its paths (kernel/repos), deepest first, under that repo's
 //   own lock.
 //
-// Every commit is confined: it commits exactly the paths its action wrote,
-// so a peer session's dirty or staged files are never swept up under someone
-// else's message. The migration commit takes the paths the workflows own as
+// Every commit is confined: it commits exactly the paths its action wrote —
+// a state commit with the layout's logs changed since (6.3.2) — so a peer
+// session's dirty or staged files are never swept up under someone else's
+// message. The migration commit takes the paths the workflows own as
 // the index records them on the code side, a removal a migration staged
 // included (`commitStaged`, built in a scratch index), and one commit on each
 // side that changed.
@@ -68,8 +69,9 @@ function discoveryScope(workUnit) {
 }
 
 /**
- * The state commit: exactly `paths` in the state worktree on
- * `leeway-state`, under the writer lock, then pushed. A push that fails
+ * The state commit: `paths` in the state worktree on `leeway-state`, with
+ * the layout's logs changed since, under the writer lock, then pushed; a
+ * file outside the layout refuses it (`commitHere`). A push that fails
  * comes back as a warning; the commit stands. The sha is short, as the code
  * tree's commits answer it. A file in `contents` is committed as its change
  * makes it of the branch's own (`commitState`).

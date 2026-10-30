@@ -463,7 +463,7 @@ describe('scenarios', () => {
 
 describe('the writer lock and the commit', () => {
   it('commits the ledger alone to the state branch in the same verb, leaving the state\'s other changes uncommitted', () => {
-    fs.writeFileSync(statePath(dir, layout.unit(UNIT, 'notes.md')), 'a session\'s own file\n');
+    fs.writeFileSync(statePath(dir, layout.unit(UNIT, 'spec.md')), 'a session\'s own file\n');
     const before = stateGit(dir, ['status', '--porcelain']);
 
     const res = ask();

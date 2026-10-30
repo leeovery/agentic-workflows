@@ -151,38 +151,38 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   });
 
   it('sets an uncommitted folder beside where the update writes a file at its path', () => {
-    const { here, there } = machinesSharing({ 'unit/x': 'x was a file\n' });
-    fs.rmSync(path.join(here.root, 'unit/x'));
-    createFile(here.root, 'unit/x/new.md', 'uncommitted, where x was\n');
-    const theirs = commitOnState(there.root, { 'unit/x': 'x changed elsewhere\n' }).commit;
+    const { here, there } = machinesSharing({ 'unit/assets/x': 'x was a file\n' });
+    fs.rmSync(path.join(here.root, 'unit/assets/x'));
+    createFile(here.root, 'unit/assets/x/new.md', 'uncommitted, where x was\n');
+    const theirs = commitOnState(there.root, { 'unit/assets/x': 'x changed elsewhere\n' }).commit;
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/x.${treeId(here.root, { 'new.md': 'uncommitted, where x was\n' }).slice(0, 8)}`;
+    const beside = `unit/assets/x.${treeId(here.root, { 'new.md': 'uncommitted, where x was\n' }).slice(0, 8)}`;
     assert.deepStrictEqual([out.action, out.commit], ['fast-forwarded', theirs]);
-    assert.strictEqual(readFile(here.root, 'unit/x'), 'x changed elsewhere\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/x'), 'x changed elsewhere\n');
     assert.strictEqual(readFile(here.root, `${beside}/new.md`), 'uncommitted, where x was\n');
     assert.deepStrictEqual(out.warnings, [
-      'unit/x was deleted on one machine and changed on the other: the changed copy is kept',
-      `unit/x is a file on the remote and a folder on this machine: the remote's file stays at unit/x, and this machine's folder is kept beside it as ${beside}`,
+      'unit/assets/x was deleted on one machine and changed on the other: the changed copy is kept',
+      `unit/assets/x is a file on the remote and a folder on this machine: the remote's file stays at unit/assets/x, and this machine's folder is kept beside it as ${beside}`,
     ]);
-    assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/x', 'unit/x/new.md'] });
+    assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/assets/x', 'unit/assets/x/new.md'] });
     assert.strictEqual(status(here.root), `?? ${beside}/new.md\n`);
   });
 
   it('sets an uncommitted file beside where the update writes a folder at its path', () => {
-    const { here, there } = machinesSharing({ 'unit/a.md': 'a\n' });
-    createFile(here.root, 'unit/y', 'an uncommitted file\n');
-    commitOnState(there.root, { 'unit/y/b.md': 'b, there\n' });
+    const { here, there } = machinesSharing({ 'unit/assets/a.md': 'a\n' });
+    createFile(here.root, 'unit/assets/y', 'an uncommitted file\n');
+    commitOnState(there.root, { 'unit/assets/y/b.md': 'b, there\n' });
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/y.${blobId('an uncommitted file\n').slice(0, 8)}`;
+    const beside = `unit/assets/y.${blobId('an uncommitted file\n').slice(0, 8)}`;
     assert.strictEqual(out.action, 'fast-forwarded');
-    assert.strictEqual(readFile(here.root, 'unit/y/b.md'), 'b, there\n');
+    assert.strictEqual(readFile(here.root, 'unit/assets/y/b.md'), 'b, there\n');
     assert.strictEqual(readFile(here.root, beside), 'an uncommitted file\n');
     assert.deepStrictEqual(out.warnings, [
-      `unit/y is a folder on the remote and a file on this machine: the remote's folder stays at unit/y, and this machine's file is kept beside it as ${beside}`,
+      `unit/assets/y is a folder on the remote and a file on this machine: the remote's folder stays at unit/assets/y, and this machine's file is kept beside it as ${beside}`,
     ]);
     assert.strictEqual(status(here.root), `?? ${beside}\n`);
   });

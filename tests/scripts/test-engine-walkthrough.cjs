@@ -69,8 +69,8 @@ describe('engine walkthrough record', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('walked: writes the answer and commits it confined to the project manifest — a peer session\'s dirt never rides', () => {
-    // A peer mid-write: an untracked scratch note and a modified discussion.
-    writeFile(dir, '.leeway/pay/NOTES.md', 'peer scratch\n');
+    // A peer mid-write: an untracked spec and a modified discussion.
+    writeFile(dir, '.leeway/pay/spec.md', 'peer scratch\n');
     writeFile(dir, '.leeway/pay/discussion/pay.md', '# Discussion\n\npeer session dirt\n');
 
     const res = run(dir, ['walkthrough', 'record', 'walked']);
@@ -84,7 +84,7 @@ describe('engine walkthrough record', () => {
     const landed = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
     assert.deepStrictEqual(landed, ['manifest.json']);
     const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
-    assert.ok(status.some((l) => l.startsWith('?? ') && l.includes('NOTES.md')), `the peer's untracked note is still untracked:\n${status.join('\n')}`);
+    assert.ok(status.some((l) => l.startsWith('?? ') && l.includes('pay/spec.md')), `the peer's untracked spec is still untracked:\n${status.join('\n')}`);
     assert.ok(status.some((l) => l.startsWith(' M ') && l.includes('discussion/pay.md')), `the peer's modified discussion is still dirty:\n${status.join('\n')}`);
   });
 

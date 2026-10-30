@@ -248,6 +248,10 @@ const layout = Object.freeze({
   unit: (unit, ...segments) => [unit, ...segments].join('/'),
   /** @param {string} unit */
   manifest: (unit) => `${unit}/manifest.json`,
+  /** A topic's folder, or a path in it. @param {string} unit @param {string} topic @param {...string} segments */
+  topic: (unit, topic, ...segments) => [unit, 'topics', topic, ...segments].join('/'),
+  /** A unit's assets, a folder whose names are its own, or a path in it. @param {string} unit @param {...string} segments */
+  assets: (unit, ...segments) => [unit, 'assets', ...segments].join('/'),
   /** A topic's research, discussion or investigation. @param {string} unit @param {string} phase @param {string} topic */
   doc: (unit, phase, topic) => `${unit}/${phase}/${topic}.md`,
   /** A topic's waiting messages, or one of them. @param {string} unit @param {string} phase @param {string} topic @param {string} [name] */

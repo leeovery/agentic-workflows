@@ -105,7 +105,7 @@ describe('a catch-up killed between its steps', () => {
     const { here, there } = machinesSharing({
       [layout.projectManifest]: projectManifest('now'), [layout.manifest('pay')]: json({ name: 'pay', work_type: 'feature', status: 'in-progress', description: 'x', phases: {} }),
     });
-    commitUnpushed(here, { 'unit/notes.md': 'here\n' });
+    commitUnpushed(here, { 'unit/assets/notes.md': 'here\n' });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('someday') });
     killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
 
@@ -119,7 +119,7 @@ describe('a catch-up killed between its steps', () => {
   });
 
   it('says, finishing the landing, that a file a session changed since may already hold the merged copy it sets beside', () => {
-    const DATA = 'unit/data.json';
+    const DATA = 'unit/assets/data.json';
     const { here, there } = machinesSharing({ [DATA]: '{"a":1}\n' });
     commitUnpushed(here, { [DATA]: '{"a":2}\n' });
     commitOnState(there.root, { [DATA]: '{"a":3}\n' });
@@ -128,7 +128,7 @@ describe('a catch-up killed between its steps', () => {
 
     const out = catchUpState(here.root);
 
-    const beside = `unit/data.${blobId('{"a":3}\n').slice(0, 8)}.json`;
+    const beside = `unit/assets/data.${blobId('{"a":3}\n').slice(0, 8)}.json`;
     assert.strictEqual(readFile(here.root, DATA), '{"a":3,"b":1}\n');
     assert.strictEqual(readFile(here.root, beside), '{"a":3}\n');
     assert.ok(out.warnings.includes(
