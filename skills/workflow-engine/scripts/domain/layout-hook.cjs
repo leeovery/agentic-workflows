@@ -53,8 +53,7 @@ const { LEDGER } = require('./ledger-events.cjs');
 const { TRUST_LOG, PENDING } = require('./trust-log.cjs');
 const { SHOWN, PRESSED, RAISE_SHOWN } = require('./gate.cjs');
 const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
-const { BRIEFS } = require('./brief-names.cjs');
-const { BRIEF_REFUSALS } = require('./brief-guard.cjs');
+const { BRIEFS, BRIEF_REFUSALS } = require('./brief-names.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];

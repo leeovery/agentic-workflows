@@ -42,13 +42,10 @@ const { messageOf } = require('../kernel/call.cjs');
 const { isoNow } = require('./dates.cjs');
 const { subagentType } = require('./conversation.cjs');
 const { projectOf } = require('./trust-log.cjs');
-const { ROLES, briefPath, issuedPath, pointerOf, pointedId } = require('./brief-names.cjs');
+const { ROLES, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId } = require('./brief-names.cjs');
 
 /** How the workflows' agents are named. */
 const OURS = 'leeway-';
-
-/** The refusals' file, in the system config directory. */
-const BRIEF_REFUSALS = 'brief-refusals.jsonl';
 
 /** @typedef {Record<string, unknown>} HookInput */
 /** @typedef {{reason: string, brief: string|null, detail: string}} Refusal */
@@ -102,6 +99,12 @@ function storedText(file) {
 /** @param {string} reason @param {string|null} brief @param {string} detail @returns {Refusal} */
 const refusal = (reason, brief, detail) => ({ reason, brief, detail });
 
+/** The refusal of a call of `agent` that could not be checked. @param {string} agent @param {string|null} brief @param {unknown} err */
+const unchecked = (agent, brief, err) => refusal('error', brief, `the brief for ${agent} could not be checked: ${messageOf(err)}`);
+
+/** The roles dispatched as `agent`. @param {string} agent */
+const rolesOf = (agent) => Object.keys(ROLES).filter((role) => ROLES[role].agent === agent);
+
 /**
  * The pointer a call of `agent` carries, and the fields carrying it; or why
  * it is refused, where no field names a brief or any holds more than the
@@ -118,7 +121,7 @@ function carriedPointer(input, agent) {
   }
   const loose = carriers.filter((field) => toolInput[field] !== pointerOf(id));
   if (loose.length > 0) {
-    return refusal('altered', id, `the ${loose.join(' and ')} carries more than brief ${id}'s pointer — a call of ${agent} carries the pointer alone, and the hook hands over the brief as issued`);
+    return refusal('altered', id, `the ${loose.join(' and ')} ${loose.length > 1 ? 'carry' : 'carries'} more than brief ${id}'s pointer — a call of ${agent} carries the pointer alone, and the hook hands over the brief as issued`);
   }
   return { id, carriers };
 }
@@ -127,18 +130,19 @@ function carriedPointer(input, agent) {
  * The brief `id` as the conversation `session` stored it for `agent`; or
  * why it is refused, where the conversation holds no such brief or issued
  * it for another agent. Throws where it cannot be read.
- * @param {unknown} session @param {string} id @param {string} agent
+ * @param {string} session @param {string} id @param {string} agent
  * @returns {{brief: string}|Refusal}
  */
 function issuedBrief(session, id, agent) {
-  if (typeof session !== 'string' || session === '') throw new Error('the hook was handed no session id');
   const [issued, brief] = [storedText(issuedPath(session, id)), storedText(briefPath(session, id))];
   if (issued === null || brief === null) {
     return refusal('never-issued', id, `brief ${id} was never issued in this conversation — \`engine brief\` issues one, and the call carries the pointer it answers`);
   }
   const { agent: issuedFor } = JSON.parse(issued);
   if (typeof issuedFor !== 'string') throw new Error(`what brief ${id} was issued as names no agent`);
-  return issuedFor === agent ? { brief } : refusal('other-agent', id, `brief ${id} was issued for ${issuedFor} — not for ${agent}`);
+  if (issuedFor === agent) return { brief };
+  const issuing = rolesOf(agent).map((role) => `\`engine brief ${role}\``).join(' or ');
+  return refusal('other-agent', id, `brief ${id} was issued for ${issuedFor}, not ${agent} — ${issuing} issues one for ${agent}`);
 }
 
 /**
@@ -149,12 +153,20 @@ function issuedBrief(session, id, agent) {
  * @returns {{updatedInput: Record<string, unknown>}|Refusal}
  */
 function checkedBrief(input, agent) {
-  if (!Object.values(ROLES).some((role) => role.agent === agent)) {
-    return refusal('no-template', null, `${agent} is named as one of the workflows' agents, and none of their roles is dispatched as it — there is no template to brief it from`);
+  if (rolesOf(agent).length === 0) {
+    return refusal('no-template', null, `${agent} is named as one of the workflows' agents, and no role is dispatched as ${agent} — there is no template to brief it from`);
   }
+  const session = input.session_id;
+  if (typeof session !== 'string' || session === '') throw new Error('the hook was handed no session id');
   const carried = carriedPointer(input, agent);
   if ('reason' in carried) return carried;
-  const issued = issuedBrief(input.session_id, carried.id, agent);
+  /** @type {{brief: string}|Refusal} */
+  let issued;
+  try {
+    issued = issuedBrief(session, carried.id, agent);
+  } catch (err) {
+    return unchecked(agent, carried.id, err);
+  }
   if ('reason' in issued) return issued;
   return { updatedInput: { .../** @type {object} */ (input.tool_input), ...Object.fromEntries(carried.carriers.map((field) => [field, issued.brief])) } };
 }
@@ -189,7 +201,7 @@ function guardDispatch(cwd, input) {
   try {
     checked = checkedBrief(input, agent);
   } catch (err) {
-    checked = refusal('error', null, `the brief for ${agent} could not be checked: ${messageOf(err)}`);
+    checked = unchecked(agent, null, err);
   }
   if ('updatedInput' in checked) {
     return { answer: { hookSpecificOutput: { hookEventName: 'PreToolUse', updatedInput: checked.updatedInput } } };
@@ -198,4 +210,4 @@ function guardDispatch(cwd, input) {
   return { refused: checked.detail };
 }
 
-module.exports = { BRIEF_HOOK_TOOLS, BRIEF_REFUSALS, guardDispatch };
+module.exports = { BRIEF_HOOK_TOOLS, guardDispatch };

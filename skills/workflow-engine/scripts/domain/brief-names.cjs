@@ -8,7 +8,8 @@
 // in the folder of the conversation that issued it (conversation.cjs):
 // `briefs/{id}.md`, what the agent is handed, and beside it `{id}.json`,
 // whose it is, `{role, agent, unit, task}`. A dispatch carries it
-// by its pointer, `brief:{id}`, alone.
+// by its pointer, `brief:{id}`, alone; the hook's refusals are appended to
+// `brief-refusals.jsonl` in the system config directory.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -16,6 +17,9 @@ const { conversationDir } = require('./conversation.cjs');
 
 /** The folder of a conversation's briefs. */
 const BRIEFS = 'briefs';
+
+/** The brief hook's refusals, in the system config directory (brief-guard.cjs). */
+const BRIEF_REFUSALS = 'brief-refusals.jsonl';
 
 /** What a dispatch carries in place of its brief, before the brief's id. */
 const POINTER = 'brief:';
@@ -55,4 +59,4 @@ function pointedId(text) {
   return POINTED.exec(text)?.[1] ?? null;
 }
 
-module.exports = { ROLES, BRIEFS, briefPath, issuedPath, pointerOf, pointedId };
+module.exports = { ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId };
