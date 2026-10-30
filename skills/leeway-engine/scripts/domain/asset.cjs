@@ -35,10 +35,25 @@
 // - Each link is tagged as its entry is — its unit, topic and phase — so it
 //   stands while the entry's place does, and carries the conversation's
 //   session; with none the link is refused.
+// - Each path is stored as the file system spells what of it exists, so one
+//   file is one path where the file system ignores case; a lift's is read
+//   from the call's folder, so a call from a subfolder of the project reads
+//   it from there.
+// - What a link commits: the ledger and the path it names, a folder with
+//   its files, in one commit — so a file a decision rests on is tracked
+//   with its link (9.10.4), and an edit to it since its last link lands
+//   with the next. A file no entry links stays untracked (9.S38): two clones
+//   can start the same spike number for spikes nothing links yet.
+// - A link belongs to its entry: a replacement carries none forward, so a
+//   file the replaced entry linked is linked from the new one through `add`.
+//   A link to a question is tagged at the topic the question was written
+//   on, so it goes dead where that topic is set aside after the question
+//   moved.
 // - When: the argv, the unit and the paths are refused before the writer
 //   lock; under it the ledger is folded, the entry resolved and checked, the
-//   links appended and the ledger committed (`ledger({unit}): asset {id} …`)
-//   — held while the migration runs, as every state commit is (commit.cjs).
+//   links appended and committed (`ledger({unit}): asset {id} …`) — held
+//   while the migration runs, the files with the line, as every state commit
+//   is (commit.cjs).
 //   Then, the lock released, the knowledge base's copies, which show each
 //   entry's files, are rendered and indexed (ledger-copies.cjs).
 // ---------------------------------------------------------------------------
@@ -46,7 +61,7 @@
 const fs = require('fs');
 const path = require('path');
 const { KEBAB_SLUG, KEBAB_SLUG_PATTERN, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { stateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
@@ -185,11 +200,18 @@ function homeOf(unit, rel) {
 }
 
 /**
- * Refuse a path that is not written plain, from the state root.
- * @param {string} said @param {string} rel
+ * A path from the state root, written plain, as the file system spells what
+ * of it exists — so one file is one path where the file system ignores case.
+ * Refuses one not written plain, or leading out of the state.
+ * @param {string} said @param {string} cwd @param {string} given
+ * @returns {string}
  */
-function checkPlain(said, rel) {
-  if (!isPlainPath(rel)) throw new Error(`${said}: "${rel}" is no path from the state root written plain — no part of it empty, . or ..`);
+function spelledInState(said, cwd, given) {
+  const plain = `${said}: "${given}" is no path from the state root written plain — no part of it empty, . or ..`;
+  if (!isPlainPath(given)) throw new Error(plain);
+  const rel = stateRelative(cwd, path.join(stateRoot(cwd), given));
+  if (rel === null) throw new Error(plain);
+  return rel;
 }
 
 /**
@@ -200,7 +222,6 @@ function checkPlain(said, rel) {
  * @returns {string}
  */
 function firstStatus(said, root, unit, rel, status) {
-  checkPlain(said, rel);
   const home = homeOf(unit, rel);
   if (home === null) {
     throw new Error(`${said}: ${rel} is not where an asset lives — ${unit}/assets/, a spike of ${unit}'s, ${unit}/spikes/NNN-{slug}/, `
@@ -219,14 +240,19 @@ function checkedStatus(said, status) {
 }
 
 /**
- * The project path a lift names, checked: written plain, and there in the
- * project.
+ * The project path a lift names, checked — written plain, and there in the
+ * project, read from the call's folder — as the file system spells it.
  * @param {string} said @param {string} cwd @param {string} into
  */
 function checkedLift(said, cwd, into) {
   if (!isPlainPath(into)) throw new Error(`${said}: --into "${into}" is no path in the project from its root written plain — no part of it empty, . or ..`);
-  if (!fs.existsSync(path.join(codeRoot(cwd), into))) throw new Error(`${said}: --into ${into} names nothing in the project — a lift is recorded once the code is there`);
-  return into;
+  const project = resolvedPath(codeRoot(cwd), '.');
+  const at = resolvedPath(project, into);
+  const rel = path.relative(project, at);
+  if (!fs.existsSync(at) || rel === '' || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+    throw new Error(`${said}: --into ${into} names nothing in the project — a lift is recorded once the code is there`);
+  }
+  return rel.split(path.sep).join('/');
 }
 
 /**
@@ -325,8 +351,9 @@ function noteOf(outcome) {
 /**
  * Under the writer lock: the ledger folded, the links `plan` works out
  * appended, each tagged as its entry is and carrying `session`, and the
- * ledger committed where any was. Answers each link's short id and the
- * entry's, and the commit's outcome, or null where nothing was appended.
+ * ledger committed with the file the links name where any was. Answers each
+ * link's short id and the entry's, and the commit's outcome, or null where
+ * nothing was appended.
  * @param {string} cwd @param {string} root @param {string} unit @param {string} rel @param {string} session @param {Plan} plan @param {string[]} warnings
  * @returns {{links: {id: string, entry: string}[], outcome: Outcome|null}}
  */
@@ -346,7 +373,7 @@ function landLinks(cwd, root, unit, rel, session, plan, warnings) {
     const message = ledgerMessage(unit, 'asset', appended.map((link) => short(link.id)).join(' '), topics.size === 1 ? [...topics][0] : null);
     return {
       links: appended.map((link) => ({ id: short(link.id), entry: short(link.entry) })),
-      outcome: appended.length === 0 ? null : commitStateTail(cwd, LEDGER, message, warnings),
+      outcome: appended.length === 0 ? null : commitStateTail(cwd, [LEDGER, rel], message, warnings),
     };
   });
 }
@@ -380,9 +407,10 @@ function linkFile(cwd, said, root, unit, rel, plan) {
  * `asset add`: the first link of an entry and a file, giving its status.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
  */
-function addAsset(cwd, [unit, rel], flags) {
+function addAsset(cwd, [unit, given], flags) {
   const said = 'asset add';
   const root = unitRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
   const status = firstStatus(said, root, unit, rel, flags.status);
   return linkFile(cwd, said, root, unit, rel, (reading) => {
     const entry = entryNamed(said, reading, unit, flags.entry);
@@ -399,11 +427,11 @@ function addAsset(cwd, [unit, rel], flags) {
  * unit linking it, or the one named.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
  */
-function changeStatus(cwd, [unit, rel, given], flags) {
+function changeStatus(cwd, [unit, given, asked], flags) {
   const said = 'asset status';
-  checkPlain(said, rel);
-  const status = checkedStatus(said, given);
+  const status = checkedStatus(said, asked);
   const root = unitRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
   return linkFile(cwd, said, root, unit, rel, (reading) => {
     const entries = flags.entry === undefined ? entriesLinking(reading, unit, rel) : [linking(said, reading, unit, rel, flags.entry)];
     if (entries.length === 0) throw new Error(`${said}: no current entry of ${unit} links ${rel} — asset add links it first, giving its status`);
@@ -415,11 +443,11 @@ function changeStatus(cwd, [unit, rel, given], flags) {
  * `asset lift`: a linked file recorded lifted into the project.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} flags
  */
-function liftAsset(cwd, [unit, rel], flags) {
+function liftAsset(cwd, [unit, given], flags) {
   const said = 'asset lift';
-  checkPlain(said, rel);
   const into = checkedLift(said, cwd, flags.into);
   const root = unitRoot(cwd, said, unit);
+  const rel = spelledInState(said, cwd, given);
   return linkFile(cwd, said, root, unit, rel, (reading) => {
     const entry = linking(said, reading, unit, rel, flags.entry);
     return standing(reading, entry.id, rel)?.into === into ? [] : [{ entry, gives: { status: null, into } }];

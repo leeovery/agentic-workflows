@@ -16,7 +16,9 @@
 // library, the epic's manifest and a feature's written there, Claude's
 // question and call on the note window and a person's decision written
 // through the ledger's verbs, a file the person shared in the epic's
-// assets/ and a spike begun — built once and copied for each test.
+// assets/ and a spike begun — built once and copied for each test; and for
+// a link while the migration runs, the migration's project, its
+// `leeway-state` with no commit yet (migration-world.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -24,11 +26,17 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { ok, refuses, refusedPristine, head, holdLock, lockAttempts, stateGit, statePath, layout, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
+const { midMigration, stateUnborn, UNIT: MIGRATING } = require('./migration-world.cjs');
 
 const { shortIds } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
+const { ignoresCase } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/state-root.cjs'));
+
+// Whether the filesystem every folder of these tests is on ignores case.
+const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 const { UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, PHASES, NOTE_COPY, ids, ledgerHelpers, ledgerReadHelpers } = require('./ledger-world.cjs');
 
@@ -96,6 +104,11 @@ function shortOf(id) {
   return /** @type {string} */ (shortIds(entries().map((e) => e.id)).get(id));
 }
 
+/** The files the state branch's last commit holds a change to, sorted. */
+function committedFiles() {
+  return stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+}
+
 /** The ledger's asset lines, each as `[entry, path, status, into]`. */
 function links() {
   return entries().filter((e) => e.event === 'asset').map((e) => [e.entry, e.path, e.status, e.into]);
@@ -137,14 +150,14 @@ describe('a spike (9.10.10, 4.11.13)', () => {
 });
 
 describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
-  it('9.S33: links a file the person shared in the unit\'s assets/ from the entry it informs, with the status Claude proposes — the line tagged as the entry is, in the conversation\'s session — and commits the ledger alone; the record and its copy show it', () => {
+  it('9.S33: links a file the person shared in the unit\'s assets/ from the entry it informs, with the status Claude proposes — the line tagged as the entry is, in the conversation\'s session — and commits the file with the ledger; the record and its copy show it', () => {
     const res = asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'canonical']);
 
     const { id, at, v } = entries().at(-1);
     assert.strictEqual(rawLines().at(-1), JSON.stringify({ v, id, event: 'asset', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION_ID, at, entry: full(made.frameless), path: MOCK, status: 'canonical', into: null }));
     assert.deepStrictEqual(res, { ok: true, path: MOCK, links: [{ id: shortOf(id), entry: made.frameless }], committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), `ledger(${UNIT}): asset ${shortOf(id)} in note-window`);
-    assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), layout.ledger);
+    assert.deepStrictEqual(committedFiles(), [layout.ledger, MOCK].sort());
     assert.deepStrictEqual(assetsOf('note-window', made.frameless), [{ path: MOCK, status: 'canonical', into: null }]);
     assert.ok(fs.readFileSync(statePath(dir, NOTE_COPY), 'utf8').includes(`Assets:\n- ${MOCK}, canonical\n`), 'the copy does not show the file');
     assert.strictEqual(fs.existsSync(statePath(dir, UNIT, 'imports')), false);
@@ -191,19 +204,76 @@ describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
   });
 });
 
-describe('a status changed (9.10.7)', () => {
-  it('9.S56: a later link gives every current entry of the unit linking the file the status the person asked for, one already at it passed over, and the status stands', () => {
+describe('what a link commits (9.10.4)', () => {
+  it('commits the file a later link names with its line, an edit since its last link among it, and a folder with its files; a spike\'s file no entry links stays untracked (9.S38)', () => {
     asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
-    asset(['add', UNIT, MOCK, '--entry', made.active, '--status', 'canonical']);
+    fs.writeFileSync(statePath(dir, MOCK), 'the mock, edited\n');
+
+    asset(['status', UNIT, MOCK, 'canonical']);
+    const edited = [committedFiles(), stateGit(dir, ['show', `HEAD:${MOCK}`])];
+    const designs = asset(['spike', UNIT, 'note-design']).path;
+    const round = [saved(`${designs}/round-2/note-b.png`), saved(`${designs}/round-2/note-b.url`)];
+    const unlinked = saved(`${designs}/round-1/note-a.png`);
+    asset(['add', UNIT, `${designs}/round-2`, '--entry', made.frameless, '--status', 'canonical']);
+
+    assert.deepStrictEqual(edited, [[layout.ledger, MOCK].sort(), 'the mock, edited\n']);
+    assert.deepStrictEqual(committedFiles(), [layout.ledger, ...round].sort());
+    assert.deepStrictEqual(stateGit(dir, ['ls-files', '--', designs, FRAME]).trim(), round.join('\n'), `${unlinked} or ${FRAME}, linked from nothing, is tracked`);
+  });
+
+  it('stores a path as the file system spells it, so one file is one path: where it ignores case, a link named in another case links the file as it is named on disk; where it keeps case, nothing is there', () => {
+    const otherCase = `${UNIT}/Assets/Note-Mock.png`;
+
+    if (IGNORES_CASE) {
+      asset(['add', UNIT, otherCase, '--entry', made.frameless, '--status', 'reference']);
+      assert.deepStrictEqual([links(), committedFiles()], [[[full(made.frameless), MOCK, 'reference', null]], [layout.ledger, MOCK].sort()]);
+    } else {
+      assert.strictEqual(refused(['add', UNIT, otherCase, '--entry', made.frameless, '--status', 'reference']), `asset add: ${otherCase} names no file — save it there first, or correct the path`);
+    }
+  });
+});
+
+describe('while the migration runs (21.9.3)', () => {
+  const folder = useTempFolder('asset-migration-');
+
+  it('a link holds its commit, the file with the line: the link in the ledger, the branch with no commit yet', () => {
+    const at = midMigration(folder());
+    const found = ok(at, ['ledger', 'find', `${MIGRATING}.discussion.search`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Ranking reads the title first.', how: 'seen in a spike', known: 'spike' }) }).id;
+    fs.mkdirSync(statePath(at, MIGRATING, 'assets'), { recursive: true });
+    fs.writeFileSync(statePath(at, MIGRATING, 'assets', 'ranking.png'), 'a chart\n');
+
+    const res = ok(at, ['asset', 'add', MIGRATING, `${MIGRATING}/assets/ranking.png`, '--entry', found, '--status', 'reference'], { env: SESSION });
+
+    assert.deepStrictEqual([res.committed, res.note, stateUnborn(at)], [null, 'held for the migration\'s commit', true]);
+  });
+});
+
+describe('a status changed (9.10.7)', () => {
+  it('9.S56: a later link gives every current entry of the unit linking the file the status the person asked for, and the status stands — an entry since replaced keeps its own, and another unit\'s entry linking a product file is never changed', () => {
+    const brand = saved('.product/assets/brand.png');
+    asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
+    asset(['add', UNIT, MOCK, '--entry', made.active, '--status', 'reference']);
+    asset(['add', 'mint', brand, '--entry', made.minted, '--status', 'reference']);
+    asset(['add', UNIT, brand, '--entry', made.active, '--status', 'reference']);
+    const panel = write('replace', NOTE, ['--replaces', made.frameless, '--reason', 'changed-mind'], { ...MADE, drops: ['frameless'], text: 'A panel with a hairline frame.', why: 'Easier to grab.' }).id;
+    asset(['add', UNIT, MOCK, '--entry', panel, '--status', 'reference']);
     const before = entries().length;
 
     const res = asset(['status', UNIT, MOCK, 'canonical']);
+    asset(['status', UNIT, brand, 'canonical']);
 
-    const written = entries().slice(before);
-    const [{ id }] = written;
-    assert.deepStrictEqual(written.map((e) => [e.event, e.topic, e.entry, e.path, e.status, e.into]), [['asset', 'note-window', full(made.frameless), MOCK, 'canonical', null]]);
-    assert.deepStrictEqual(res, { ok: true, path: MOCK, links: [{ id: shortOf(id), entry: made.frameless }], committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
-    assert.deepStrictEqual([assetsOf('note-window', made.frameless), assetsOf('space-homing', made.active)], [[{ path: MOCK, status: 'canonical', into: null }], [{ path: MOCK, status: 'canonical', into: null }]]);
+    const written = entries().slice(before).map((e) => [e.id, e.topic, e.entry, e.path, e.status, e.into]);
+    assert.deepStrictEqual(written.map(([, ...link]) => link), [
+      ['space-homing', full(made.active), MOCK, 'canonical', null],
+      ['note-window', full(panel), MOCK, 'canonical', null],
+      ['space-homing', full(made.active), brand, 'canonical', null],
+    ]);
+    assert.deepStrictEqual(res, { ok: true, path: MOCK, links: [{ id: shortOf(written[0][0]), entry: made.active }, { id: shortOf(written[1][0]), entry: panel }], committed: res.committed });
+    assert.deepStrictEqual([assetsOf('note-window', panel), assetsOf('space-homing', made.active)], [
+      [{ path: MOCK, status: 'canonical', into: null }],
+      [{ path: MOCK, status: 'canonical', into: null }, { path: brand, status: 'canonical', into: null }],
+    ]);
+    assert.deepStrictEqual(read('record', 'mint', 'mint').questions[0].assets, [{ path: brand, status: 'reference', into: null }]);
   });
 
   it('changes the one entry named alone, and a change giving no entry anything new writes and commits nothing', () => {
