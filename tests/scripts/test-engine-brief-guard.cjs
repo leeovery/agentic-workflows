@@ -11,16 +11,17 @@
 // SendMessage recipient's record names — carrying its brief's pointer alone
 // is answered with the tool's input whole, the stored brief in place of the
 // pointer in every field holding it, and no permission decision (6.S16,
-// 6.S33). Every other is refused with exit 2, its reason on stderr, and one
+// 6.S33) — a fix round's brief among them, by SendMessage to the builder
+// (6.S17). Every other is refused with exit 2, its reason on stderr, and one
 // line appended to the brief hook's refusals: no template, no brief, a brief
 // never issued in the conversation stdin names, a pointer with anything
 // beside it, another agent's brief, and any failure checking it (6.5.9).
 //
 // Layer: verb, and process for the shell door. World: a project with one
-// work unit and a task ready for its builder, the builder's brief issued
-// once for the file; a project with no unit, the product researcher's
-// brief issued in it; a conversation's transcript folder holding its
-// subagents' records.
+// work unit and a task ready for its builder, two reviewers' reports on it,
+// the builder's brief and the fix round's issued once for the file; a
+// project with no unit, the product researcher's brief issued in it; a
+// conversation's transcript folder holding its subagents' records.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const {
-  ENGINE, call, ok, layout, writeState, readState, commitAll, fixtureFrom, setupGitFixture, cleanupFixture, withFrozenClock, FROZEN_AT,
+  ENGINE, call, ok, statePath, layout, writeState, readState, commitAll, fixtureFrom, setupGitFixture, cleanupFixture, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -52,10 +53,15 @@ const TASK = [
   '## Outcome', 'A card is taken.', '', '## Acceptance scenarios', '- Given a card, when it is taken, then it is charged.', '', '## Spec reference', '§1',
 ].join('\n');
 
-/** The unit, its spec of one area, and its first task citing it. */
+/** The two reviewers' reports on the first task, in the unit's build folder. */
+const REPORTS = Object.freeze([layout.unit(UNIT, 'build/tasks/1.1/round-1-a.md'), layout.unit(UNIT, 'build/tasks/1.1/round-1-b.md')]);
+
+/** The unit, its spec of one area, its first task citing it, and two reports on that task. */
 const unitWorld = fixtureFrom('brief-guard-', (dir) => {
   createManifest(dir, UNIT, {});
   writeState(dir, layout.unit(UNIT, SPEC_FILE), '# Payments\n\n## 1. Cards\n\nA card is taken once.\n');
+  writeState(dir, REPORTS[0], 'Verdict: fail\n\n- card.js keeps the token in plain text.\n');
+  writeState(dir, REPORTS[1], 'Verdict: fail\n\n- The receipt omits the amount.\n');
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   const file = path.join(dir, '..', 'task.md');
@@ -90,6 +96,7 @@ before(() => {
   bare = fs.realpathSync(setupGitFixture('brief-guard-bare-'));
   projects = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'brief-guard-projects-')));
   briefs.builder = issued(dir, ['builder', UNIT, '1.1'], SESSION_ID);
+  briefs.fix = issued(dir, ['fix', UNIT, '1.1', '--report-a', statePath(dir, REPORTS[0]), '--report-b', statePath(dir, REPORTS[1])], SESSION_ID);
   briefs.researcher = issued(bare, ['product-researcher'], SESSION_ID);
   briefs.elsewhere = issued(dir, ['builder', UNIT, '1.1'], OTHER_SESSION);
   recordSubagent('a1builder', 'leeway-builder');
@@ -281,6 +288,14 @@ describe('6.S16: the builder\'s brief', () => {
     assertRefused(guard('Agent', agentCall('leeway-builder', pointer(torn))), {
       ...line, brief: torn, detail: `the brief for leeway-builder could not be checked: what brief ${torn} was issued as names no agent`,
     });
+  });
+});
+
+describe('6.S17: the fix round\'s brief', () => {
+  it('a message to the builder carrying its pointer goes through, the brief with the two reports in both the message and the content', () => {
+    const input = messageCall('a1builder', pointer(briefs.fix.id));
+
+    assertSwapped(guard('SendMessage', input), input, ['message', 'content'], briefs.fix.text);
   });
 });
 

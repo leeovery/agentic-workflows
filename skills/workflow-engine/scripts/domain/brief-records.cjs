@@ -17,15 +17,32 @@
 //                  every line after its first indented
 //   linters        the project's linters, each its name and its command,
 //                  from the environment on the project manifest (22.5.12)
+//   diff-range     in each repository holding the task's branch, by the
+//                  landing's rule (landing.cjs), under a heading naming the
+//                  repository, the range from the base `--base` names to
+//                  the branch, `{base}...{branch}`, and its `git diff
+//                  --stat` — never the diff's text, which can run to
+//                  thousands of lines and is read in the range
+//   report-a,      the report its flag's path points to, verbatim, a file
+//   report-b       in the unit's `build/` folder (4.11.5)
 //
-// A record the project holds none of yet is drawn as none recorded. One that
-// cannot be read refuses the brief: a task with no spec reference, a
-// section the spec lacks, linters of another shape. Nothing else of the
-// project reaches a brief — its CLAUDE.md and its skills reach the agent
-// without it (6.5.5).
+// A record taking a flag names it, and its role takes every flag its records
+// name and no other; a flag carries a name or a path, never text that
+// reaches the brief (6.5.6). A record the project holds none of yet is drawn
+// as none recorded. One that cannot be read refuses the brief: a task with
+// no spec reference, a section the spec lacks, linters of another shape, a
+// task's branch no repository holds work on, a base that is no branch where
+// the task's branch is, a report missing, empty or outside the unit's
+// `build/`. Nothing else of the project reaches a brief — its CLAUDE.md and
+// its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
-const { stateRoot } = require('../kernel/state-root.cjs');
+const fs = require('fs');
+const path = require('path');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { git } = require('../kernel/git.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { readProjectManifest } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { readShown } = require('./ledger-read.cjs');
@@ -33,20 +50,26 @@ const { recordOf, standingOf } = require('./ledger-fold.cjs');
 const { readCitedSections, headingLevels } = require('./spec-sections.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
 const { taskName } = require('./task-id.cjs');
+const { taskBranch } = require('./landing-names.cjs');
+const { holdingBranch } = require('./landing.cjs');
+const { branches, plain } = require('./landing-git.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
 
 /**
- * What a brief is filled for: the project, and the task where its role
- * takes one, as the tracker holds it.
- * @typedef {{cwd: string, ref: TaskRef|null, task: TaskDetail|null}} Filling
+ * What a brief is filled for: the project, the task where its role takes
+ * one, as the tracker holds it, and each flag given, by its name.
+ * @typedef {{cwd: string, ref: TaskRef|null, task: TaskDetail|null, given: Readonly<Record<string, string>>}} Filling
  */
 
+/** A flag a record takes: its name, and its value as a usage line shows it. @typedef {{name: string, value: string}} BriefFlag */
+
 /**
- * A record: whether it is a task's, and its drawn form; what a read said on
- * the way pushed to `warnings`.
- * @typedef {{ofTask: boolean, draw: (filling: Filling, warnings: string[]) => string}} BriefRecord
+ * A record: whether it is a task's, the flag it takes, if any, and its
+ * drawn form; what a read said on the way pushed to `warnings`.
+ * @typedef {{ofTask: boolean, flag?: BriefFlag, draw: (filling: Filling, warnings: string[]) => string}} BriefRecord
  */
 
 const NONE = 'None recorded.';
@@ -117,12 +140,70 @@ function drawLinters({ cwd }) {
   return listed(linters.map(({ name, command }) => `- ${name}: ${command}`));
 }
 
+/**
+ * The range in one repository, under a heading naming it, and its stat;
+ * refused where the base is no branch there.
+ * @param {Repo} repo @param {string} base @param {string} branch
+ */
+function rangeIn(repo, base, branch) {
+  const where = repo.dir === '' ? 'the project\'s repository' : `\`${plain(repo.dir)}\``;
+  if (!branches(repo.path).has(base)) throw new Error(`the base ${base} is no branch in ${where}`);
+  const stat = git(repo.path, ['diff', '--no-color', '--stat', `refs/heads/${base}...refs/heads/${branch}`, '--']);
+  return `## In ${where}: \`${base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
+}
+
+/** @param {Filling} filling */
+function drawDiffRange(filling) {
+  const { ref, task } = taskOf(filling);
+  if (task.type === null) throw new Error(`${taskName(ref)} has no type in the tracker, and its branch is named from it`);
+  const branch = taskBranch(ref, task.type, task.title);
+  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(filling.cwd)), branch);
+  if (holding.length === 0) throw new Error(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
+  return holding.map((repo) => rangeIn(repo, filling.given.base, branch)).join('\n\n');
+}
+
+/** The folder of a unit's build records. */
+const BUILD = 'build';
+
+/** A report's text, refused where there is no file. @param {string} file @param {string} flag */
+function readReport(file, flag) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    const { code } = /** @type {NodeJS.ErrnoException} */ (err);
+    if (code === 'ENOENT' || code === 'EISDIR') throw new Error(`the --${flag} report, ${file}, is no file`);
+    throw err;
+  }
+}
+
+/** @param {Filling} filling @param {string} flag */
+function drawReport(filling, flag) {
+  const { ref } = taskOf(filling);
+  const build = statePath(filling.cwd, ref.unit, BUILD);
+  const file = path.resolve(filling.cwd, filling.given[flag]);
+  const within = path.relative(build, file);
+  if (within === '' || within.startsWith('..') || path.isAbsolute(within)) {
+    throw new Error(`the --${flag} report, ${file}, is not in ${ref.unit}'s ${BUILD} folder, ${build}`);
+  }
+  const text = readReport(file, flag);
+  if (text.trim() === '') throw new Error(`the --${flag} report, ${file}, is empty`);
+  return text;
+}
+
+/** A record drawing the report its flag points to. @param {string} flag @returns {BriefRecord} */
+function reportRecord(flag) {
+  return { ofTask: true, flag: { name: flag, value: 'path' }, draw: (filling) => drawReport(filling, flag) };
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { ofTask: true, draw: drawTask },
   'spec-sections': { ofTask: true, draw: drawSpecSections },
   'decided-calls': { ofTask: true, draw: drawDecidedCalls },
   linters: { ofTask: false, draw: drawLinters },
+  'diff-range': { ofTask: true, flag: { name: 'base', value: 'branch' }, draw: drawDiffRange },
+  'report-a': reportRecord('report-a'),
+  'report-b': reportRecord('report-b'),
 });
 
 module.exports = { RECORDS };

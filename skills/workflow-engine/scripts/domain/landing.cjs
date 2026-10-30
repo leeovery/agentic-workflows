@@ -208,6 +208,18 @@ function holdsWork(unit, repo, picks) {
 }
 
 /**
+ * The repositories holding a task's branch, in the order given: each naming
+ * it, a nested one only where the branch holds work there (`holdsWork`);
+ * and whether any names it at all.
+ * @param {string} unit @param {Repo[]} repos @param {string} branch
+ * @returns {{named: boolean, holding: Repo[]}}
+ */
+function holdingBranch(unit, repos, branch) {
+  const named = repos.filter((repo) => lg.branches(repo.path).has(branch));
+  return { named: named.length > 0, holding: named.filter((repo) => repo.dir === '' || holdsWork(unit, repo, (held) => held === branch)) };
+}
+
+/**
  * The repositories a verb but `open` walks, children first: the project's
  * own, and each nested one holding work on a branch `picks` names — each
  * refused before any acts where the driver does not serve its remote.
@@ -352,11 +364,10 @@ function landingOf(project, ref, { type, title, status }) {
   const shown = shownTask(ref);
   if (type === null) throw new Error(untyped(ref, status));
   const branch = names.taskBranch(ref, type, title);
-  const named = project.repos.filter((repo) => lg.branches(repo.path).has(branch));
-  if (named.length === 0) {
+  const { named, holding } = holdingBranch(project.unit, project.repos, branch);
+  if (!named) {
     throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
   }
-  const holding = named.filter((repo) => repo.dir === '' || holdsWork(project.unit, repo, (held) => held === branch));
   if (holding.length === 0) throw new Error(`land: task ${shown}'s branch ${branch} changes nothing in the repositories holding it — commit its change there first`);
   const own = /** @type {LandingContext} */ (project.contexts.get(''));
   const state = holding[0].dir === '' ? lg.changedAtTop(own.root, own.into, branch, STATE_DIR_NAME) : [];
@@ -580,4 +591,4 @@ function landFinish(cwd, unit) {
   });
 }
 
-module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish };
+module.exports = { LAND_USAGE, landOpen, landChain, landPhase, landFinish, holdingBranch };
