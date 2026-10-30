@@ -11900,7 +11900,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.14.8 The record of the tasks in flight widens to every task in flight with its builder's id (4.11.14, 24.2.4), the mod's spinner and executor with it, where parallel builders arrive; until then it holds one. [Claude's derivation 2026-10-30, 29.8 slicing: no phase owned the widening]
 
-29.14.9 The tracker's store in a second clone's merge comes with the build, its merge rule settled then (7.4, 4.7, 4.S15). [Claude's derivation 2026-10-28, 29.6: deferred, since a later-change-wins rule had no clock and ids minted on both machines collide]
+29.14.9 The tracker's store in a second clone's merge comes with the build, its merge rule settled then (7.5, 4.7). [Claude's derivation 2026-10-28, 29.6: deferred, since a later-change-wins rule had no clock and ids minted on both machines collide]
 
 ### 29.15 The work types
 
