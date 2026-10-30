@@ -169,7 +169,8 @@ const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { entryKind } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
+const { liveness } = require('./ledger-units.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -1073,4 +1074,23 @@ function raiseWaits([verb]) {
   return verb !== 'show' && verb !== 'answer';
 }
 
-module.exports = { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits };
+/**
+ * Of the points a migration directive raises at its end, each still to
+ * raise: its question in the ledger and open, and no raise of it sealed in
+ * the calling conversation — drawn, answered or left open. Each answers
+ * with its question's short id.
+ * @template {{place: string, answers: string, text: string}} P
+ * @param {string} cwd @param {P[]} points
+ * @returns {P[]}
+ */
+function unraised(cwd, points) {
+  const root = findStateRoot(cwd);
+  if (root === null || points.length === 0) return [];
+  const read = { facts: foldLedger(root, ID_FACTS, []), live: liveness(root) };
+  const session = handedSession();
+  const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
+  return points.filter(({ answers }) => read.facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers))
+    .map((point) => ({ ...point, answers: shortId(point.answers, read.facts.keys()) }));
+}
+
+module.exports = { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits, unraised };

@@ -109,8 +109,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(taken.abandoned, ['E1']);
     assert.deepStrictEqual(taken.discarded, ['grouping']);
     let m = sim.manifest(wu);
-    assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress', reconcile_needed: 'experiment' },
-      'the release flagged the holder before the cancel closed it');
+    assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress' });
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
     assert.strictEqual(m.phases.experiment.items.auth.experiments.E1.reason, 'topic cancelled');
     assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is discarded, never cancelled');
@@ -121,15 +120,13 @@ describe('pipeline simulation: epic-topics', () => {
     assert.match(sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'content' }),
       /⚑ "Auth" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
 
-    // The reactivate restores the conversation with the release flag live,
-    // its message still waiting; answered, the discussion concludes.
+    // The reactivate restores the conversation, its message still waiting;
+    // answered, the discussion concludes.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
     sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'empty' });
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
-    sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
     const lifetime = sim.run(['ledger', 'ask', `${wu}.discussion.auth`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'How long does a token live?' }));
     sim.run(['topic', 'answered', wu, 'auth', '001-token-lifetime', '--entry', lifetime.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'auth']);

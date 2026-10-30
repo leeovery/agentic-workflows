@@ -11,7 +11,8 @@
 // topic, any other neither. A role takes each flag its records name, every
 // one of them but a flag a record holds optional, once, and no other:
 // `--base <branch>`, `--report-a <path>`, `--question <id>`, `--agent
-// <id>`, `--kind <kind>`, a read dive's `--path <file>`; a flag carries a
+// <id>`, `--kind <kind>`, a read dive's `--path <file>`, the migration's
+// `--directive <id>` and `--topic <unit.phase.topic>`; a flag carries a
 // name, an id or a path, so no free text reaches a brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,

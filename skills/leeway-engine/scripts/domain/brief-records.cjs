@@ -71,9 +71,35 @@
 //                  and what it returned, or that it failed and why, or that
 //                  it never finished
 //
+// The migration's records, for the agents of its records directive, each of
+// a topic `--topic` names, `<unit>.<phase>.<topic>`, as the migration moved
+// it — a topic of a unit cancelled among them (21.6.2):
+//
+//   directive      the migration's directive `--directive` names, verbatim,
+//                  each of its headings a level down (21.10.2)
+//   migrated-topic the topic: the unit, its work type and status, the
+//                  phases the records directive carries a topic of that
+//                  the topic is in, the state's place and the project's in
+//                  the main checkout, each file of the topic's folder but
+//                  its mail, and as the records directive's check reads
+//                  them its specs — each where it is read and how it is
+//                  cited — its old map and its research's threads still
+//                  open; the unit's assets with where each came in from,
+//                  the topic's to link, or its file gone and linked by
+//                  none; and where the topic's record is composed, the
+//                  verifier's findings on it written and a carry's refusal
+//                  of it kept (21.10.5)
+//   composed-record that topic's record as composed, fenced as JSON (21.10.7)
+//   verifier-findings the verifier's findings on that record, verbatim
+//   carry-refusal  what `ledger carry` refused that record for, verbatim
+//
+// The brief takes the findings and the refusal: drawn, each file is cleared,
+// so neither reaches a later brief.
+//
 // A record taking a flag names it, and its role takes every flag its records
-// name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
-// text that reaches the brief (6.5.6). A record the project holds none of
+// name, once, and no other — every one but a flag a record holds optional;
+// a flag carries a name, an id or a path, never text that reaches the brief
+// (6.5.6). A record the project holds none of
 // yet is drawn as none recorded. One that cannot be read refuses the brief:
 // a task with no spec reference, a section the spec lacks, linters of
 // another shape, a task's branch no repository holds work on, a base no
@@ -83,7 +109,9 @@
 // on; a dispatch the topic's store lacks, of another kind, no longer in
 // flight; a perspective of the set with no report, or briefed on no question
 // or another than its pair; a dive of no kind, a read naming no file, another
-// kind naming one; a conversation that has run no knowledge query. Nothing else of the project reaches a brief — its
+// kind naming one; a conversation that has run no knowledge query; a
+// directive the migrations lack, a migrated topic its unit lacks, a composed
+// record missing or empty. Nothing else of the project reaches a brief — its
 // CLAUDE.md and its skills reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
@@ -108,6 +136,9 @@ const { taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
+const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { directiveOf } = require('./directives.cjs');
+const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -476,6 +507,99 @@ function drawKnowledgeQuery({ session }) {
   return `${head}\n\nIt returned:\n\n${fenced('', query.outcome.returned.replace(/\n+$/, ''))}`;
 }
 
+/** The flag naming a migrated topic, by its place. @type {BriefFlag} */
+const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
+
+/** @param {Filling} filling */
+function drawDirective({ given }) {
+  return headingsDown(fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd());
+}
+
+/** @param {Filling} filling */
+const migratedTopic = ({ cwd, given }) => topicPlace(cwd, given.topic, 'brief');
+
+/** Every file under `dir`, as posix paths from `from`, sorted. @param {string} from @param {string} dir @returns {string[]} */
+function filesBelow(from, dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = path.join(dir, entry.name);
+    return entry.isDirectory() ? filesBelow(from, at) : [path.relative(from, at).split(path.sep).join('/')];
+  }).sort();
+}
+
+/** @param {Filling} filling */
+function drawMigratedTopic(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const manifest = readWorkUnitManifest(root, unit);
+  const rules = recordsRules();
+  const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
+    const { status } = manifest.phases[phase].items[topic];
+    return typeof status === 'string' ? `${phase}, ${status}` : phase;
+  });
+  const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
+  const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
+  const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
+    const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
+    return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
+  });
+  return [
+    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    `- **Topic:** ${topic}, in ${phases.join('; ')}`,
+    `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
+    `- **The project:** ${sources.project} — each path under \`.workflows/\` is from there`,
+    '',
+    '## Its files',
+    '',
+    listed(files.map((file) => `- ${file}`)),
+    '',
+    '## Its specs',
+    '',
+    listed(sources.specs.map((spec) => (spec.read === spec.cite ? `- ${spec.read}` : `- ${spec.read}, cited as ${spec.cite}`))),
+    '',
+    '## Its old map, as the code branch\'s HEAD holds it',
+    '',
+    listed(sources.map.map(({ item, status }) => `- ${item}: ${status}`)),
+    '',
+    '## Its research\'s threads still open',
+    '',
+    listed(sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`)),
+    '',
+    '## The unit\'s assets',
+    '',
+    listed(assets),
+    '',
+    '## Where the record goes',
+    '',
+    `- The record composed: ${composedPath(unit, topic)}`,
+    `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
+    `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
+  ].join('\n');
+}
+
+/** @param {Filling} filling */
+function drawComposedRecord(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const file = path.join(root, composedPath(unit, topic));
+  const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
+  if (text === null) throw new Error(`${unit}'s ${topic} has no record composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${unit}'s ${topic} has no record composed — ${file} is empty`);
+  return fenced('json', text.trimEnd());
+}
+
+/** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+function besideRecord(filling, rel) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const file = path.join(root, rel(unit, topic));
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  return text === '' ? NONE : text;
+}
+
+/** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+function clearBeside(filling, rel) {
+  const { root, unit, topic } = migratedTopic(filling);
+  fs.rmSync(path.join(root, rel(unit, topic)), { force: true });
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -497,6 +621,11 @@ const RECORDS = Object.freeze({
   lens: { of: 'topic', flags: [AGENT], draw: drawLens },
   perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
+  directive: { of: null, flags: [{ name: 'directive', value: 'id' }], draw: drawDirective },
+  'migrated-topic': { of: null, flags: [MIGRATED], draw: drawMigratedTopic },
+  'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
+  'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
+  'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

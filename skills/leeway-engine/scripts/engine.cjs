@@ -65,6 +65,7 @@ const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-writ
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
 const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
+const { CARRY_VERB, CARRY_USAGE, carryRecord } = require('./domain/ledger-carry.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
@@ -546,7 +547,9 @@ function runManifest(call, argv) {
 // verb (domain/ledger-read.cjs) answers a projection of the ledger as JSON,
 // holding no lock but `shown`, which holds the last-looked mark's, in the
 // cache. The late one-decision check (domain/ledger-late-check.cjs) is
-// boot's detached job, taking the lock for each result it records.
+// boot's detached job, taking the lock for each result it records. `carry`
+// (domain/ledger-carry.cjs) is the migration's, a topic's whole record
+// appended in one write under the lock it takes itself.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -556,7 +559,8 @@ function runLedger(call, argv) {
     if (READ_VERBS.includes(verb)) respond(call, readLedgerVerb(call.cwd, verb, rest));
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
     else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
-    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}`);
+    else if (verb === CARRY_VERB) respond(call, carryRecord(call.cwd, rest));
+    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB, CARRY_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}\n${CARRY_USAGE}`);
   } catch (err) {
     failJson(call, err);
   }
@@ -1504,7 +1508,7 @@ function runChecklist(call, argv) {
 
 // ---------------------------------------------------------------------------
 // decided — the person's yes at a topic's decided gate, and a candidate
-// struck from its screen (domain/decided.cjs).
+// struck from its screen or its strike undone (domain/decided.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

@@ -27,7 +27,9 @@
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
 //   line added and renamed over, so a read meets the ledger before the
-//   append or after it, never half a line (5.4.6). Nothing is ever edited
+//   append or after it, never half a line (5.4.6). Several entries appended
+//   as one — a topic's record the migration carries — are added in the one
+//   copy, so a read meets all of them or none. Nothing is ever edited
 //   (5.3.4).
 // - Every commit of the ledger takes the files its asset links name
 //   (ledger-events.cjs), as additions and edits alone, never a removal: a
@@ -353,15 +355,31 @@ function checkLines(root, notes) {
  * @returns {Record<string, unknown>}
  */
 function appendEntry(root, fields, notes, id = newId()) {
-  const assigned = ASSIGNED.find((name) => Object.hasOwn(fields, name));
-  if (assigned !== undefined) throw new Error(`a ledger entry's ${assigned} is the engine's to give — nothing appended`);
+  return appendEntries(root, [{ fields, id }], notes)[0];
+}
+
+/**
+ * Append several entries as one: each as `appendEntry` gives it its
+ * version and time, every line in the one copy renamed over the ledger, so
+ * a read, or a kill, meets the ledger with all of them or with none.
+ * Refuses as `appendEntry` does, appending nothing.
+ * @param {string} root @param {{fields: Record<string, unknown>, id: string}[]} entries
+ * @param {string[]} notes what a landing the check finished said, pushed to
+ * @returns {Record<string, unknown>[]}
+ */
+function appendEntries(root, entries, notes) {
+  for (const { fields } of entries) {
+    const assigned = ASSIGNED.find((name) => Object.hasOwn(fields, name));
+    if (assigned !== undefined) throw new Error(`a ledger entry's ${assigned} is the engine's to give — nothing appended`);
+  }
   return withStateLock(root, () => {
     checkLedger(root, notes);
     const file = ledgerFile(root);
     if (fs.existsSync(file) && !endsWithNewline(file)) throw new Error(`${file} ends in an unfinished line — nothing appended`);
-    const entry = validEvent({ ...fields, v: LEDGER_VERSION, id, at: isoNow() });
-    appendLine(file, `${JSON.stringify(entry)}\n`);
-    return entry;
+    const at = isoNow();
+    const written = entries.map(({ fields, id }) => validEvent({ ...fields, v: LEDGER_VERSION, id, at }));
+    appendLine(file, written.map((entry) => `${JSON.stringify(entry)}\n`).join(''));
+    return written;
   });
 }
 
@@ -409,4 +427,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, appendEntries, carrying, ledgerStopSurface };

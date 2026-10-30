@@ -150,10 +150,7 @@ describe('engine topic cancel — the discovery unit', () => {
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'cancelled', previous_status: 'completed' });
-    // The release landed while the holder was still live: the flag rides the
-    // cancelled item inertly and comes back live with the reactivate.
-    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'],
-      { status: 'cancelled', previous_status: 'in-progress', reconcile_needed: 'experiment' });
+    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'cancelled', previous_status: 'in-progress' });
     const series = m.phases.experiment.items['auth-flow'];
     assert.strictEqual(series.status, 'completed', 'every record terminal — the series settles, never a cancel');
     assert.strictEqual(series.experiments.E1.reason, 'topic cancelled');
@@ -473,7 +470,7 @@ describe('engine topic reactivate', () => {
       /Reactivated "Data Export"\.\n/);
   });
 
-  it('a started topic restores every item, re-indexes the completed artifacts, and carries the release flag back live', () => {
+  it('a started topic restores every item and re-indexes the completed artifacts', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']);
     assert.deepStrictEqual(res.restored, [
@@ -488,7 +485,7 @@ describe('engine topic reactivate', () => {
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.research.items['auth-flow'], { status: 'completed' });
-    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'in-progress', reconcile_needed: 'experiment' });
+    assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'in-progress' });
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { routing: 'research', source: 'discovery', order: 2 });
     assert.strictEqual(m.phases.experiment.items['auth-flow'].experiments.E1.status, 'abandoned', 'the abandoned records stand on the register');
     assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate auth-flow (discovery)');
@@ -2413,14 +2410,10 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
       /^discussion "refund-policy" awaits research on the topic/);
   });
 
-  it('a released evidence wait refuses the same way', () => {
-    withItem('discussion', 'refund-policy', { reconcile_needed: 'experiment' });
-    assert.strictEqual(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
-      'discussion "refund-policy" carries reconcile_needed: experiment — an experiment wait released beneath this conversation — evidence, or an abandonment; read what landed into the session and clear the flag before concluding');
-  });
-
   it('the session\'s read releases it: clearing the flag lets the conclusion pass', () => {
-    withItem('discussion', 'refund-policy', { reconcile_needed: 'experiment' });
+    const m = withItem('discussion', 'refund-policy', { reconcile_needed: 'research' });
+    m.phases.research.items['refund-policy'] = { status: 'completed' };
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     engine(dir, ['manifest', 'delete', 'payments.discussion.refund-policy', 'reconcile_needed']);
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).status, 'completed');
   });

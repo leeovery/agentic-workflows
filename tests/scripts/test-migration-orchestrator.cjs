@@ -4,8 +4,9 @@
 // Tests for the Node migration orchestrator (migrate.cjs).
 //
 // Two layers:
-//   - Real fleet: run the actual migrate.cjs against a temp project — the
-//     bash-3.2 execution path, idempotency, PROJECT_DIR pinning, and a
+//   - Real fleet: run the actual migrate.cjs against a temp project, as far
+//     as its first directive — the bash-3.2 execution path, idempotency,
+//     PROJECT_DIR pinning, and a
 //     project with no state in its code tree left untouched.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
@@ -135,15 +136,24 @@ const cjsMig = (id, report = 'reportUpdate') =>
   `    fs.appendFileSync(path.join(projectDir, 'order.log'), '${id}\\n');\n` +
   `    ${report}();\n  },\n};\n`;
 
+// The real fleet's migrations by id, and the directives among them, the
+// first of which a project holding `.workflows/` stops at.
+const REAL_NAMES = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations')).filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'));
+const idOf = (/** @type {string} */ name) => name.slice(0, name.indexOf('-'));
+const REAL_IDS = REAL_NAMES.map(idOf).sort();
+const REAL_DIRECTIVES = REAL_NAMES.filter((name) => name.endsWith('.md')).sort();
+const FIRST_DIRECTIVE = REAL_DIRECTIVES[0].replace(/\.md$/, '');
+
 describe('migrate.cjs — real fleet', () => {
-  it('runs the whole fleet under stock /bin/bash 3.2 and writes the migrations record', () => {
+  it('runs the fleet under stock /bin/bash 3.2 as far as its first directive, writing each migration before it to the migrations record', () => {
     const project = freshProject();
     const res = run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.ok(!/mapfile|command not found/i.test(res.stdout + res.stderr), 'no bash-3.2 failure');
-    assert.ok(fs.existsSync(path.join(project, RECORD)), 'record written');
-    assert.ok(runReport(res.stdout).ran > 0, 'the fleet ran against the code tree\'s state');
+    assert.strictEqual(res.stdout.trimEnd().split('\n').at(-1), `---DIRECTIVE: ${FIRST_DIRECTIVE}---`);
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), REAL_IDS.filter((id) => id < idOf(FIRST_DIRECTIVE)));
+    assert.ok(JSON.parse(fs.readFileSync(path.join(project, JOURNALS, 'pending-tally.json'), 'utf8')).ran > 0, 'the fleet ran against the code tree\'s state');
   });
 
   it('leaves a project with no state in its code tree untouched, recording the code-tree fleet unrun', () => {
@@ -153,20 +163,19 @@ describe('migrate.cjs — real fleet', () => {
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the record');
     assert.deepStrictEqual(fs.readdirSync(path.join(project, '.leeway/.state')), ['migrations']);
-    const ids = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations'))
-      .map((name) => (name.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
-    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), ids, 'every migration recorded');
-    // The code-tree fleet is recorded unrun; the migrations past it run and find nothing to do.
-    assert.deepStrictEqual(runReport(res.stdout), { ran: ids.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION).length });
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), REAL_IDS, 'every migration recorded');
+    // The code-tree fleet and the reshape's directives are recorded unrun; the code migrations past it run and find nothing to do.
+    const directives = new Set(REAL_DIRECTIVES.map(idOf));
+    assert.deepStrictEqual(runReport(res.stdout), { ran: REAL_IDS.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length });
   });
 
-  it('is idempotent — a second run reports no changes', () => {
+  it('is idempotent — a second run runs nothing again, stopping at the same directive, the record as the first left it', () => {
     const project = freshProject();
     run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
+    const recorded = trackingLog(project);
     const second = run(REAL_MIGRATE, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
 
-    assert.strictEqual(second.status, 0);
-    assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
+    assert.deepStrictEqual([second.status, second.stdout, trackingLog(project)], [0, `---DIRECTIVE: ${FIRST_DIRECTIVE}---\n`, recorded]);
   });
 
   it('pins PROJECT_DIR to "." — a hostile export cannot redirect the fleet', () => {

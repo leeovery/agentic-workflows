@@ -461,6 +461,7 @@ describe('the refusals, nothing written and no brief stored', () => {
       'deep-dive <unit> <topic> --question <id> --agent <id> --kind <survey|read|feasibility|landscape|verify> [--path <file>]',
       'perspective <unit> <topic> --question <id> --agent <id>', 'synthesis <unit> <topic> --agent <id>', 'discussion-reviewer <unit> <topic> --agent <id>',
       'closing-pass-reader <unit> <topic> --agent <id>', 'plain-search',
+      'migration-topic --topic <unit.phase.topic> --directive <id>', 'migration-verifier --topic <unit.phase.topic> --directive <id>',
     ].map((line) => `engine brief ${line.replace(/[|[\]]/g, '\\$&')}`).join(' \\| ')}$`);
     const [, , , ...reports] = fixArgs();
     for (const args of [
@@ -477,6 +478,7 @@ describe('the refusals, nothing written and no brief stored', () => {
     /** @type {Record<string, string[]>} */
     const asked = [UNIT, UNIT, '--question', 'Q1234567'];
     const dispatched = [UNIT, UNIT, '--agent', 'review-001'];
+    const migrated = ['--topic', `${UNIT}.discussion.cards`, '--directive', '079-records'];
     const taking = {
       builder: [UNIT, '1.1'],
       reviewer: [UNIT, '1.1', '--base', 'main'],
@@ -488,6 +490,8 @@ describe('the refusals, nothing written and no brief stored', () => {
       'discussion-reviewer': dispatched,
       'closing-pass-reader': dispatched,
       'plain-search': [],
+      'migration-topic': migrated,
+      'migration-verifier': migrated,
     };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {

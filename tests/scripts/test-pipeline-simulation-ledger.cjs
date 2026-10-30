@@ -279,7 +279,7 @@ describe('pipeline simulation: ledger', () => {
     assert.ok(!sim.run(['verdict', 'queue']).departures.some((/** @type {{id: string}} */ d) => d.id === retitled), 'the person\'s own decision, changed, waits on a verdict');
   });
 
-  it('the ledger\'s second version: who decided each decision — the person\'s own scope call, their "your call" and "don\'t care" Claude\'s calls, and one carried over no call — how each finding is known, a measurement with the command run and its result, the sections an entry cites, and a question moved to the roadmap as later, each written through the verbs and read back by the record, the map, `since`, the trust log and the copy', () => {
+  it('the ledger\'s second version: who decided each decision — the person\'s own scope call, and their "your call" and "don\'t care" Claude\'s calls — how each finding is known, a measurement with the command run and its result, the sections an entry cites, and a question moved to the roadmap as later, each written through the verbs and read back by the record, the map, `since`, the trust log and the copy', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -295,7 +295,6 @@ describe('pipeline simulation: ledger', () => {
     const scoped = ledger(['decide', note, '--answers', scope], { by: 'person', who_moved_whom: 'none', text: 'The window and its frame.', why: 'Where it opens is space homing\'s.', kind: 'scope', cites });
     const handed = call('Does a note snap to the grid?', 'Notes snap to an 8-point grid.', 'your-call');
     const builders = call('What radius are a note\'s corners?', 'Ten points.', 'dont-care');
-    const carried = call('Does a note dim when idle?', 'Notes dim after a minute.', 'carried');
     const measured = ledger(['find', note], { ...made, text: 'A panel opens in 4 ms.', how: 'timed the open', known: 'measured', command: 'swift run bench open', result: 'median 4.1 ms', cites });
     const exploratory = ledger(['find', note], { ...made, text: 'A sheet opens in 9 ms.', how: 'timed once in the conversation', known: 'exploratory', command: 'swift run bench sheet', result: '9.3 ms' });
     const syncing = ledger(['ask', note], { ...made, text: 'Do notes sync across Macs?' });
@@ -304,7 +303,7 @@ describe('pipeline simulation: ledger', () => {
 
     const record = sim.run(['ledger', 'record', wu, 'note-window']);
     assert.deepStrictEqual(record.decisions.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.by, d.given, d.kind]), [
-      [scoped, 'person', 'own', 'scope'], [handed, 'claude', 'your-call', null], [builders, 'claude', 'dont-care', null], [carried, 'claude', 'carried', null],
+      [scoped, 'person', 'own', 'scope'], [handed, 'claude', 'your-call', null], [builders, 'claude', 'dont-care', null],
     ]);
     assert.deepStrictEqual(record.findings.map((/** @type {Record<string, unknown>} */ f) => [f.id, f.known, f.command, f.result, f.cites]), [
       [measured, 'measured', 'swift run bench open', 'median 4.1 ms', cites], [exploratory, 'exploratory', 'swift run bench sheet', '9.3 ms', []],
@@ -314,7 +313,7 @@ describe('pipeline simulation: ledger', () => {
     assert.deepStrictEqual([later.stands, later.moved_to, later.answers], ['later', 'roadmap:sync', []]);
     assert.deepStrictEqual(sim.run(['ledger', 'since', wu, 'note-window']).calls.map((/** @type {{id: string}} */ c) => c.id), [handed, builders]);
     const copy = fs.readFileSync(statePath(sim.dir, '.knowledge', 'records', wu, 'note-window.md'), 'utf8');
-    for (const line of ['Decided by the person', 'Decided by Claude, the person\'s "your call"', 'Left to the builder, the person\'s "don\'t care"', 'Carried over, who decided it unrecorded',
+    for (const line of ['Decided by the person', 'Decided by Claude, the person\'s "your call"', 'Left to the builder, the person\'s "don\'t care"',
       'How it is known: measured, timed the open', 'Command: swift run bench open', 'Later: moved to the roadmap, roadmap:sync.']) {
       assert.ok(copy.includes(line), `the copy does not say "${line}"`);
     }

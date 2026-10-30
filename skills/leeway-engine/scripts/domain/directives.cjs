@@ -11,7 +11,12 @@
 //
 // - `migrate check <id>` runs the directive's check: each piece of its work
 //   done, or what it still lacks. It reads, and answers whether the
-//   directive passes and how many of its pieces are done.
+//   directive passes and how many of its pieces are done. A directive whose
+//   own steps end in raises (079's points no source settles) exports them
+//   beside its check, `raises()`; once it passes, the answer lists each
+//   still to raise — its question open, no raise of it sealed in the calling
+//   conversation (raise.cjs) — so a session compacted part-way reads them
+//   back (21.6.10).
 // - The directive's checklist (checklist.cjs) holds one item, its check,
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
@@ -34,6 +39,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { directiveStop } = require('./projections/boot.cjs');
 const { projectName } = require('./state-checks.cjs');
+const { unraised } = require('./raise.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'leeway-migrate', 'scripts');
@@ -58,16 +64,21 @@ const MIGRATE_USAGE = 'migrate check <id>';
 
 /** What one of a directive's pieces is called, and many of them. @typedef {{one: string, many: string}} Counts */
 
+/** A point a directive's own steps raise: the place it is raised at, the question it answers, and the question's text. @typedef {{place: string, answers: string, text: string}} Point */
+
 /**
  * A directive's check as its module exports it: what its pieces are called,
- * what a piece done has, and the check.
- * @typedef {{counts: Counts, done: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown}} Check
+ * what a piece done has, the check, and any points its own steps raise.
+ * @typedef {{
+ *   counts: Counts, done: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown, raises?: (dirs: {projectDir: string, stateDir: string}) => unknown,
+ * }} Check
  */
 
 /**
  * A directive's check run: whether it passes, its pieces done of all of
- * them, what its pieces are called, and each piece not done.
- * @typedef {{directive: string, passed: boolean, done: number, of: number, counts: Counts, unfinished: Piece[]}} Checked
+ * them, what its pieces are called, each piece not done, and, once it
+ * passes, each point its steps raise that is still to raise.
+ * @typedef {{directive: string, passed: boolean, done: number, of: number, counts: Counts, unfinished: Piece[], raise?: Point[]}} Checked
  */
 
 /**
@@ -97,6 +108,9 @@ function isPiece(piece) {
 
 /** @param {unknown} words @returns {words is string} */
 const isWords = (words) => typeof words === 'string' && words.trim() !== '';
+
+/** @param {unknown} point @returns {point is Point} */
+const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(point.answers) && typeof point.text === 'string';
 
 /**
  * Whether a check module exports the check's shape: `counts`, `{ one, many }`,
@@ -136,16 +150,36 @@ function loadCheck(id) {
  * @returns {Checked}
  */
 function checkDirective(cwd, id) {
-  const { counts, check } = loadCheck(id);
+  const { counts, check, raises } = loadCheck(id);
+  const dirs = { projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) };
   let pieces;
   try {
-    pieces = check({ projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) });
+    pieces = check(dirs);
   } catch (err) {
     throw new Error(`${id}'s check failed: ${messageOf(err)}`);
   }
   if (!Array.isArray(pieces) || !pieces.every(isPiece)) throw new Error(`${id}'s check answered no list of { name, problems }`);
   const unfinished = pieces.filter((piece) => piece.problems.length > 0);
-  return { directive: id, passed: unfinished.length === 0, done: pieces.length - unfinished.length, of: pieces.length, counts: { one: counts.one, many: counts.many }, unfinished };
+  const passed = unfinished.length === 0;
+  const checked = { directive: id, passed, done: pieces.length - unfinished.length, of: pieces.length, counts: { one: counts.one, many: counts.many }, unfinished };
+  return passed && typeof raises === 'function' ? { ...checked, raise: unraised(cwd, pointsOf(id, raises, dirs)) } : checked;
+}
+
+/**
+ * The points a directive's own steps raise, as its check module answers
+ * them. Refuses an answer that fails, and one that is no list of points.
+ * @param {string} id @param {(dirs: {projectDir: string, stateDir: string}) => unknown} raises @param {{projectDir: string, stateDir: string}} dirs
+ * @returns {Point[]}
+ */
+function pointsOf(id, raises, dirs) {
+  let points;
+  try {
+    points = raises(dirs);
+  } catch (err) {
+    throw new Error(`${id}'s points to raise could not be read: ${messageOf(err)}`);
+  }
+  if (!Array.isArray(points) || !points.every(isPoint)) throw new Error(`${id}'s check answered its points to raise as no list of { place, answers, text }`);
+  return points;
 }
 
 /**

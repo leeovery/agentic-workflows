@@ -372,9 +372,7 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
   const at = pipeline.indexOf(phase);
   // One hop to the next pipeline phase — walking past a derived slot
   // unconditionally: a reconcile flag must land where a phase's start can
-  // clear it, and a derived item has no start of its own (its only flag
-  // edges are the wait release, which flags the holder, and a parent
-  // conclusion, which runs this walk from the slot). So a research reopen
+  // clear it, and a derived item has no start of its own. So a research reopen
   // flags the discussion whatever the series between them holds, and the
   // hop still ends at the first real phase — never past it.
   for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
@@ -397,13 +395,10 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
  * Release the evidence waits `topic`'s spawn-phase items hold on the named
  * experiments — the edge every terminal experiment transition rides
  * (conclude, abandon, the epic cancel), so a wait can never dangle. Removes
- * `ids` (or every id) from each holder's `awaiting_experiments`, deletes the
- * emptied field, and flags a non-terminal holder with `reconcile_needed:
- * "experiment"` (an existing flag never clobbered) so its next entry — or
- * its session's next check — surfaces the evidence, or the abandonment,
- * before the waiting point settles; the holder's completion refuses over
- * the unread flag. Mutates the loaded manifest; the caller saves under its
- * own lock.
+ * `ids` (or every id) from each holder's `awaiting_experiments` and deletes
+ * the emptied field. No flag: the result reaches the discussion as the
+ * map's waiting point settling, or as the report's message. Mutates the
+ * loaded manifest; the caller saves under its own lock.
  * @param {object} manifest @param {string} topic
  * @param {{ids?: string[]}} [opts]  specific ids; omitted releases them all
  * @returns {WaitRelease[]}  the holders that released something; empty when nothing was waiting
@@ -419,9 +414,6 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
     const remaining = awaiting.filter((id) => !releasing.includes(id));
     if (remaining.length === 0) delete item.awaiting_experiments;
     else item.awaiting_experiments = remaining;
-    if (!TERMINAL_STATUSES.includes(item.status) && item.reconcile_needed === undefined) {
-      item.reconcile_needed = 'experiment';
-    }
     releases.push({ phase, released: releasing, remaining });
   }
   return releases;
@@ -468,14 +460,12 @@ function parkMessageItem(items, phase, topic) {
 
 // The reconcile values a conversation must read in session before it
 // concludes — its upstream landed beneath it: the topic's research landed
-// (`research`, set by the hop out of research), or an evidence wait
-// released (`experiment`, set by the release). The brief flag (`true`) and
+// (`research`, set by the hop out of research). The brief flag (`true`) and
 // the roadmap flag stay entry-time advisories, and every other phase's flag
 // is the phase start's alone.
 /** @type {Record<string, string>} */
 const LANDED_UPSTREAM = {
   research: 'the topic\'s research landed beneath this conversation',
-  experiment: 'an experiment wait released beneath this conversation — evidence, or an abandonment',
 };
 
 /**
@@ -506,8 +496,8 @@ function waitClauses(blocking) {
  * must exist; a cancelled item must go through reactivate first; an item
  * holding a live wait — evidence it awaits, a discussion's outstanding
  * research, a plan's unsettled specification — refuses naming every wait;
- * a research or discussion item carrying a landed-upstream flag
- * (`reconcile_needed: research|experiment`) refuses until the session reads
+ * a discussion carrying a landed-upstream flag
+ * (`reconcile_needed: research`) refuses until the session reads
  * what landed and clears it. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
@@ -552,7 +542,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
     // A landed upstream the conversation has not read holds it shut too —
     // the flag is cleared by the session's own read (the reconcile
     // advisory), never by the completion.
-    const landed = EXPERIMENT_SPAWN_PHASES.includes(phase) && typeof item.reconcile_needed === 'string'
+    const landed = phase === 'discussion' && typeof item.reconcile_needed === 'string'
       ? LANDED_UPSTREAM[item.reconcile_needed]
       : undefined;
     if (landed) {
