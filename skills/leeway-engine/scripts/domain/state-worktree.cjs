@@ -808,12 +808,14 @@ function refuseOutsideLayout(root, changes) {
  * and the private index is cleared before and after. A file given a change
  * is committed as the change makes it of HEAD's, whatever the working tree
  * holds. The files the person's tools leave beside the state's are never
- * staged. Null where the tree comes out as HEAD's.
+ * staged. Of `kept`, what is on disk is staged as additions and edits
+ * alone — a folder's new files with them — never a removal. Null where the
+ * tree comes out as HEAD's.
  * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
- * @param {Record<string, Change>} changes
+ * @param {Record<string, Change>} changes @param {string[]} kept
  * @returns {string|null}
  */
-function commitPaths(worktree, specs, message, changes) {
+function commitPaths(worktree, specs, message, changes, kept) {
   const { git, root, index, gitDir } = worktree;
   const [head, headTree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
   const changed = Object.entries(changes).flatMap(([spec, change]) => {
@@ -828,6 +830,10 @@ function commitPaths(worktree, specs, message, changes) {
     const stageable = specs.filter((spec) => spec === '.' || onDisk(path.join(root, spec))
       || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
     if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable), ...SIDECARS_HELD_OUT], { env });
+    const present = kept.filter((spec) => onDisk(path.join(root, spec)));
+    if (present.length > 0) {
+      git.run(['add', '--ignore-removal', '--pathspec-from-file=-', '--pathspec-file-nul'], { env, input: [...literally(present), ...SIDECARS_HELD_OUT].join('\0') });
+    }
     for (const { spec, text } of changed) {
       const blob = git.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
       git.run(['update-index', '--add', '--cacheinfo', `100644,${blob},${spec}`], { env });
@@ -894,15 +900,18 @@ function push(git, timeoutMs) {
  * refuses the commit. While the migration runs — `leeway-state` with no
  * commit yet — the commit is held, once the layout holds every file: the
  * writes stay as they are, for the migration's commit to take (21.9.3).
+ * Of `kept`, what is on disk is taken as additions and edits alone, never a
+ * removal: a ledger commit's files its asset links name (ledger.cjs).
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{contents?: Record<string, Change>}} [opts] `contents` by path as `paths` gives one
+ * @param {{contents?: Record<string, Change>, kept?: string[]}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
  * @returns {{commit: string|null, held?: true, warnings: string[]}}
  */
-function commitHere(root, paths, message, { contents = {} } = {}) {
+function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
+  const keptSpecs = kept.map((given) => fromRoot(root, given));
   const given = Object.fromEntries(Object.entries(contents).map(([file, change]) => [fromRoot(root, file), change]));
   const worktree = openWorktree(root);
   if (!worktree.opened) throw new Error(`git cannot open the state worktree at ${root}: ${worktree.why} — nothing committed`);
@@ -920,8 +929,8 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
   const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
-  const commit = commitPaths(worktree, [...specs, ...logs], message, given);
-  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs])] };
+  const commit = commitPaths(worktree, [...specs, ...logs], message, given, keptSpecs);
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keptSpecs])] };
 }
 
 /**
@@ -930,11 +939,11 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>}} [opts] `contents` as `commitHere` takes it
+ * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[]}} [opts] `contents` and `kept` as `commitHere` takes them
  * @returns {CommitOutcome}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {} } = {}) {
-  const { commit, held, warnings } = commitHere(root, paths, message, { contents });
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [] } = {}) {
+  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept });
   if (commit === null) return { commit: null, pushed: false, ...(held ? { held } : {}), warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };

@@ -191,7 +191,7 @@ function ignoreLocalFiles(root, driver) {
 function commitTracker(cwd, paths, message, setUp) {
   /** @type {string[]} */
   const warnings = [];
-  const { committed: sha } = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, setUp.contents);
+  const { committed: sha } = commitStateTail(cwd, [...new Set([...setUp.files, ...paths])], message, warnings, { contents: setUp.contents });
   return warnings.length > 0 ? { committed: sha, warnings } : { committed: sha };
 }
 

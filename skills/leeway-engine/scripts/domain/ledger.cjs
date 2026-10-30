@@ -29,6 +29,12 @@
 //   line added and renamed over, so a read meets the ledger before the
 //   append or after it, never half a line (5.4.6). Nothing is ever edited
 //   (5.3.4).
+// - Every commit of the ledger takes the files its asset links name
+//   (ledger-events.cjs), as additions and edits alone, never a removal: a
+//   file enters the state when a link names it, its edits and a linked
+//   folder's new files land with every ledger commit after, and a link
+//   whose commit was refused is caught up with the next. Only an asset
+//   link's line is parsed for it, so a ledger holding none pays a scan.
 // - Entries a write appended and a kill, or a commit git refused, left
 //   uncommitted are committed whole by the next commit of the ledger: a
 //   write's, or boot's before its catch-up (4.7.8). Boot counts them past
@@ -50,9 +56,13 @@ const { LEDGER, LEDGER_VERSION, LedgerLineError, LedgerNewer, parseEntry, validE
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { idOf, idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
 const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
+const { commitStateTail } = require('./commit.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { ledgerStop, ledgerNewerStop, idInLine } = require('./projections/ledger.cjs');
+
+/** What an asset link's line holds and no other line can: inside a value, a quote is escaped. */
+const ASSET_LINK = '"event":"asset"';
 
 /** The fields the engine assigns an entry, never its caller. */
 const ASSIGNED = ['v', 'id', 'at'];
@@ -149,6 +159,43 @@ function uncommittedEntries(root, read) {
 }
 
 /**
+ * Every path the ledger's asset links name, once each, in the order first
+ * linked — what every commit of the ledger takes besides it. The caller
+ * holds the writer lock.
+ * @param {string} root
+ * @returns {string[]}
+ */
+function linkedPaths(root) {
+  const file = ledgerFile(root);
+  if (!fs.existsSync(file)) return [];
+  /** @type {Set<string>} */
+  const paths = new Set();
+  const fd = fs.openSync(file, 'r');
+  try {
+    for (const { text } of fdLines(fd)) {
+      if (!text.includes(ASSET_LINK)) continue;
+      const line = JSON.parse(text);
+      if (line.event === 'asset') paths.add(line.path);
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return [...paths];
+}
+
+/**
+ * The ledger committed on the state branch with the files its asset links
+ * name (`linkedPaths`), as a write's tail: a commit git refuses is a
+ * warning, the entry standing for the next. The caller holds the writer
+ * lock.
+ * @param {string} cwd @param {string} message @param {string[]} warnings
+ * @returns {{committed: string|null, failed: boolean, held?: true}}
+ */
+function commitLedger(cwd, message, warnings) {
+  return commitStateTail(cwd, LEDGER, message, warnings, { kept: linkedPaths(stateRoot(cwd)) });
+}
+
+/**
  * Commit the entries past the committed ledger, pushing nothing, each line
  * read by `read` — today's schema unless given: how many, and what the
  * commit and a landing it finished said. Commits nothing where a line is
@@ -161,7 +208,7 @@ function commitUncommitted(root, message, read = parseEntry) {
   const worktree = openWorktree(root);
   const warnings = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
   const entries = uncommittedEntries(root, read);
-  if (entries > 0) warnings.push(...commitHere(root, [LEDGER], message).warnings);
+  if (entries > 0) warnings.push(...commitHere(root, [LEDGER], message, { kept: linkedPaths(root) }).warnings);
   return { entries, warnings };
 }
 
@@ -362,4 +409,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, commitLedger, withLedger, appendEntry, carrying, ledgerStopSurface };

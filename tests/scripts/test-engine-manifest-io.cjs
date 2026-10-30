@@ -664,10 +664,10 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers without trying the lock while a live holder has it — none but boot, the ledger, a raise\'s answer and an entry\'s start take it anywhere', async (t) => {
+  it('every exempt command answers without trying the lock while a live holder has it — none but boot, the ledger, an asset link or spike, a raise\'s answer and an entry\'s start take it anywhere', async (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'raise', 'migrate check'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside, a raise after them, and migrate check where a directive is installed (test-migration-directives.cjs)');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger', 'asset', 'raise', 'migrate check'].sort(), table.sort(), 'a call below for every exempt entry, boot, the ledger and the assets aside (test-engine-asset.cjs), a raise after them, and migrate check where a directive is installed (test-migration-directives.cjs)');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');

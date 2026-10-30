@@ -63,6 +63,7 @@ const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
+const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
@@ -196,6 +197,7 @@ ${RAISE_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
+${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
@@ -549,6 +551,23 @@ function runLedger(call, argv) {
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
     else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
     else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}`);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// asset — a spike's folder, and the links from the ledger's entries to the
+// files that inform them (domain/asset.cjs): a link holds the writer lock
+// around its read of the ledger, the append and the commit, as a ledger
+// write does, and a spike around taking its number.
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runAsset(call, argv) {
+  const [verb = '', ...rest] = argv;
+  try {
+    respond(call, runAssetVerb(call.cwd, verb, rest));
   } catch (err) {
     failJson(call, err);
   }
@@ -2527,6 +2546,7 @@ const COMMANDS = Object.freeze({
   'github-squash': runGithubSquash,
   manifest: runManifest,
   ledger: runLedger,
+  asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
   'discussion-map': runDiscussionMap,
@@ -2567,8 +2587,9 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `raise` and `enter`, and none but they waits on the lock:
-// `knowledge` writes the store the state ignores, under a lock of its own;
+// `boot`, `ledger`, `asset`, `raise` and `enter`, and none but they waits on
+// the lock: `knowledge` writes the store the state ignores, under a lock of
+// its own;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2578,14 +2599,16 @@ const COMMANDS = Object.freeze({
 // conversation's folder alone — its seal, and the gate shown it clears —
 // and its answer, or a draw that proceeds, holds it around its ledger write
 // as a `ledger` write does; `enter` holds it around a start and its commit
-// alone, its question and reads taking none; `presence`, `session label`,
-// `repair`, `cleanup` and `resume`, and the hold `topic mailbox` refreshes
-// write only the session files the state ignores, as `enter` does beside
-// its start; a conversation's folder is outside the project; `gate`
-// writes the trust log, under its own lock, and the conversation's folder;
-// and the rest read: `layout guard` among them, run before every file Claude
-// writes, `brief guard`, before every dispatch of an agent, `shell guard`,
-// before every shell command, `checklist show`, and `migrate check`.
+// alone, its question and reads taking none; an `asset` link holds it as a
+// `ledger` write does, and a spike around taking its number; `presence`,
+// `session label`, `repair`, `cleanup` and `resume`, and the hold
+// `topic mailbox` refreshes write only the session files the state ignores,
+// as `enter` does beside its start; a conversation's folder is outside the
+// project; `gate` writes the trust log, under its own lock, and the
+// conversation's folder; and the rest read: `layout guard` among them, run
+// before every file Claude writes, `brief guard`, before every dispatch of
+// an agent, `shell guard`, before every shell command, `checklist show`,
+// and `migrate check`.
 // `manifest` takes it to write alone, `commit` but for a code commit
 // (`--paths`), and a brief's fill whole, since its read of the task may
 // commit the tracker's set-up.
@@ -2593,6 +2616,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   knowledge: '*',
   boot: '*',
   ledger: '*',
+  asset: '*',
   verdict: ['queue'],
   presence: '*',
   conversation: '*',
