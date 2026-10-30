@@ -208,7 +208,7 @@ async function drawn($: Engine, row: Row): Promise<string> {
 
 describe('register', () => {
   for (const surface of ['terminal', 'desktop'] as const) {
-    test(`a sent answer draws as the question it answered, the answer and its label — ${surface}`, async ($, on) => {
+    test(`a sent answer draws as the question it answered, the answer and its label — ${surface} (6.S29)`, async ($, on) => {
       world(on, recordOf())
 
       expect(await drawn($, rowOf('m1', {}, surface))).toBe(PAIRED)
@@ -405,7 +405,7 @@ describe('register', () => {
     }
   })
 
-  test("a handoff's continuation draws as the line its record carries, kept and spent as an answer's is", async ($, on) => {
+  test("a handoff's continuation draws as the line its record carries, kept and spent as an answer's is (6.S29)", async ($, on) => {
     const { files, rowsIn } = world(on, handoffOf())
 
     expect(await drawn($, rowOf('m1', { text: framed(CONTINUATION) }))).toBe(WHERE)

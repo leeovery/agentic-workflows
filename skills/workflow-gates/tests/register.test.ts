@@ -290,6 +290,14 @@ function announced(stated: Stated = {}, after: readonly string[] = []): string {
   ].join('\n')
 }
 
+/**
+ * The engine's response at the gate, as it reads the session's environment:
+ * the gate stated where the session announced the surface, the menu as text
+ * alone where it did not.
+ */
+const engineGate = (environment: ReadonlyMap<string, string>) =>
+  environment.get('WORKFLOWS_GATE_SURFACE') === '1' ? announced() : TEXT_MENU
+
 /** The call the workflows make at a gate; the mod never reads the command. */
 const ENGINE_CALL = {
   tool: 'Bash' as const,
@@ -1074,8 +1082,13 @@ describe('register', () => {
     where: string
     env?: Readonly<Record<string, string | undefined>>
     version?: string
+    scenario?: string
   }[] = [
-    { where: 'on Claude Code on the web', env: { CLAUDE_CODE_REMOTE: 'true' } },
+    {
+      where: 'on Claude Code on the web',
+      env: { CLAUDE_CODE_REMOTE: 'true' },
+      scenario: ' (6.S30)',
+    },
     {
       where: 'in the VS Code extension',
       env: { CLAUDE_CODE_ENTRYPOINT: 'claude-vscode' },
@@ -1087,6 +1100,7 @@ describe('register', () => {
     {
       where: 'in the Desktop app on the web',
       env: { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop', CLAUDE_CODE_REMOTE: 'true' },
+      scenario: ' (6.S30)',
     },
     {
       where: 'naming no entrypoint',
@@ -1103,11 +1117,11 @@ describe('register', () => {
     { where: 'naming no version', version: '' },
   ]
 
-  for (const { where, env, version } of elsewhere) {
-    test(`a session ${where} is left untouched: nothing announced, no display tool, no harness, no band`, async ($, on) => {
+  for (const { where, env, version, scenario = '' } of elsewhere) {
+    test(`a session ${where} is left untouched: nothing announced, no display tool, no harness, no band — the model reads the engine’s text${scenario}`, async ($, on) => {
       on('tool.describe', ($, e) => ({ description: e.description }))
 
-      const { written, files, reads } = world($, on, '', {
+      const { written, files, reads, environment, engineWrites } = world($, on, '', {
         env,
         version,
         marked: ['s0'],
@@ -1122,8 +1136,14 @@ describe('register', () => {
       expect(await isDrawn($), 'the kept gate is not drawn').toBe(false)
 
       await $.tool.call(BOOT_CALL)
+
+      engineWrites(engineGate(environment))
+
+      expect(stdoutOf(await $.tool.call(ENGINE_CALL))).toBe(TEXT_MENU)
+
       await $.turn.complete(TURN_END)
 
+      expect(await isDrawn($), 'nor the engine’s gate').toBe(false)
       expect(
         await $.tool.describe({
           tool: 'SendUserMessage',
@@ -1238,7 +1258,7 @@ describe('register', () => {
   })
 
   for (const surface of BAND_SURFACES) {
-    test(`with another screen attached beside the ${surface} the menu stays text, so every screen shows it`, async ($, on) => {
+    test(`with another screen attached beside the ${surface} the menu stays text, so every screen shows it (6.S30)`, async ($, on) => {
       const app = APPS[surface]
 
       world($, on, announced(), {
@@ -2995,7 +3015,7 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('a background turn that renders a gate draws its own', async ($, on) => {
+  test('a background turn that renders a gate draws its own, and no other gate beside it (6.S27)', async ($, on) => {
     const { engineWrites } = world($, on, announced())
 
     await presented($)
@@ -3007,9 +3027,13 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
 
     const ui = await $.ui.mount(MOUNT)
+    const lines = await linesOf(ui)
+    const shown = (text: string) => lines.filter(line => line.includes(text)).length
 
-    expect(await lineOf(ui, 'Start "Billing"')).toBeGreaterThan(0)
-    expect(await lineOf(ui, COMMIT)).toBe(-1)
+    expect(
+      ['Approve this task?', 'Start "Billing"', AUTH, COMMIT].map(shown),
+      'the question and each of its rows once, the last gate’s row gone',
+    ).toEqual([1, 1, 1, 0])
 
     await ui.unmount()
   })
@@ -3576,7 +3600,7 @@ describe('register', () => {
     expect(await isDrawn($)).toBe(true)
   })
 
-  test('a session starts with the display tool switched on, the one moment Claude Code reads the switch', async ($, on) => {
+  test('a session starts with the display tool switched on, the one moment Claude Code reads the switch (6.S28)', async ($, on) => {
     const { written } = world($, on)
 
     await $.session.start(SESSION)
@@ -3611,7 +3635,7 @@ describe('register', () => {
     expect(await placing('Bash')).toEqual({ description: 'The Bash tool.' })
   })
 
-  test('the conversation’s own call, once the engine has marked it, sets the workflow harness; a call before the mark sets nothing', async ($, on) => {
+  test('the conversation’s own call, once the engine has marked it, sets the workflow harness; a call before the mark sets nothing (6.S28)', async ($, on) => {
     const { written, marks } = world($, on)
 
     await $.session.start(SESSION)
@@ -3804,7 +3828,7 @@ describe('register', () => {
     expect(harnessHeld(environment)).toEqual(OWN)
   })
 
-  test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none', async ($, on) => {
+  test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none (6.S28)', async ($, on) => {
     const own = { CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1' }
     const { environment } = world($, on, '', { env: own, marked: ['s0'] })
 

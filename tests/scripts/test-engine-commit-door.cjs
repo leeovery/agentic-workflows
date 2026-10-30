@@ -1030,7 +1030,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   const codeHead = () => git(dir, ['rev-parse', '--short', 'HEAD']).trim();
   const stateHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
 
-  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else', () => {
+  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else (6.S25)', () => {
     createFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
     fs.unlinkSync(path.join(dir, '.worktreeinclude'));
     createFile(dir, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
