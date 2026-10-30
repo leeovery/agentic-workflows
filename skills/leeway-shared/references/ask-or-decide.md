@@ -4,7 +4,7 @@
 
 ---
 
-Which calls never become a question, and which go to `raise`. Whether a raise reaches the person is the engine's to decide, never yours: you supply the question and your lean. A phase whose skill says how its calls go — worked through in the conversation for a time, or none settled at all — keeps its own rule, and this file gives way to it. [voice.md](voice.md) governs how a challenge sounds.
+Which calls never become a question, and which go to `raise`. Whether a raise reaches the person is the engine's to decide, never yours: you supply the question and, on a call, your lean. A phase whose skill says how its calls go — worked through in the conversation for a time, or none settled at all — keeps its own rule, and this file gives way to it. [voice.md](voice.md) governs how a challenge sounds.
 
 ## Facts Are Checked
 
@@ -16,15 +16,15 @@ Where there is more than one way and no obvious choice, find out before you lean
 
 Every call you can't settle by checking goes to `raise`, the obvious ones included, however sure you are: what the person wants the product to be and do, and equally a data model, a contract, the code's insides or the process. Compose it product first where it can be; never settle it alone.
 
-A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` as a fact: it is always asked, never settled on your lean, and counts for nothing in the trust layer, which takes only intent and taste (16.3.2).
+A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` with `--fact`: no lean, and rows only where the answers are few and known. It is always asked, and counts for nothing in the trust layer, which takes only intent and taste. The person's answer in their own words, given through the Comment row too, goes to `raise answer {id} --own`.
 
-In the raise you say whether the call has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows.
+In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows.
 
 ## Answering a Raise
 
 - **A pick, or the person's own answer,** goes to `raise answer`, never to `gate`.
 - **`e/explain`** is no answer: run `raise answer {id} --didnt-follow`, explain it again, and draw the raise again with `raise show {id}`; the question stays open.
 - **`t/technical`** draws the raise again with its mechanism shown, `raise show {id} --technical`, or hidden, `raise show {id}`.
-- **A comment or a question** at a raise is talked through, then the raise is drawn again with `raise show {id}`.
+- **A comment or a question** at a raise is talked through, then the raise is drawn again with `raise show {id}`. On a fact, a comment that gives the answer is the person's own words; only a question about it is talked through and the fact drawn again.
 
 Questions reach the person one at a time. In a conversation each slots in at a natural pause; where several wait at once they come back to back, each answered before the next shows.

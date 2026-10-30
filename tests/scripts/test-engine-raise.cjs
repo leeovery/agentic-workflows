@@ -237,7 +237,7 @@ describe('the draw (16.S30, 16.9.2)', () => {
 });
 
 describe('the seal (P1, P6)', () => {
-  it('is kept in the conversation\'s folder by the raise\'s id: the call as given, where it was raised, the question and what it relies on by full id, the menu, the rows the check judged — none, with no login — the reason, when it was shown, no answer, no "I don\'t follow"', async () => {
+  it('is kept in the conversation\'s folder by the raise\'s id: the call as given, where it was raised, the question and what it relies on by full id, the menu, that it is no fact, the rows the check judged — none, with no login — the reason, when it was shown, no answer, no "I don\'t follow"', async () => {
     const { full } = ledgerHelpers(() => dir);
     const { res } = await draw(CALL, { flags: ['--relies-on', asked.size] });
 
@@ -253,6 +253,7 @@ describe('the seal (P1, P6)', () => {
       relies_on: [full(asked.size)],
       replaces: null,
       call: CALL,
+      fact: false,
       rows_judged: [],
       reason: EVERY_CALL_ASKS,
       at: sealed.at,

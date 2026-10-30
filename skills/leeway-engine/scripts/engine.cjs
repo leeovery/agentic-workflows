@@ -1893,7 +1893,8 @@ function runGate(call, argv) {
 // decision, put through the decision point and, where it asks, sealed in the
 // conversation and drawn (domain/raise.cjs, its screen
 // domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
-// answering once its rows' one-decision checks have; `show` draws a sealed
+// answering once its rows' one-decision checks have; with --fact, a fact
+// only the person holds, always sealed and drawn; `show` draws a sealed
 // raise again; `answer` records the person's answer to it, a keep of the
 // decision among them.
 // ---------------------------------------------------------------------------
