@@ -107,23 +107,25 @@ function gitFloorStop(floor, found) {
  * Boot's stop at a directive of the migration not yet done (21.10.11): no
  * session works in the project until the migration is done; what the
  * directive finished is kept, each piece checked, and a piece it was in the
- * middle of is redone; this session carries it on.
- * @param {{step: string, done: number, of: number, counts: string}} stopped the directive's step in words, its pieces done of all of them, and one piece's name
+ * middle of is redone, or, every piece done, the step is ready to close;
+ * this session carries it on. Where the check cannot say, nothing is said
+ * of what is done.
+ * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null}} stopped the project's name, the directive's step in words, and where it stands
  * @returns {string}
  */
-function directiveStop({ step, done, of, counts }) {
-  const kept = done === 0 ? [] : [
-    `> What it finished is kept: ${done} of its ${of} ${counts}${of === 1 ? '' : 's'} ${done === 1 ? 'is' : 'are'} done, each checked. A ${counts} it was in the middle of is redone from the start.`,
-    '>',
-  ];
+function directiveStop({ project, step, progress }) {
+  const held = ['No session works in this project until the migration is done.'];
+  if (progress !== null && progress.done > 0) {
+    const { done, of, counts, says } = progress;
+    held.push(`What it finished is kept: ${done} of ${escapeMarkdown(project)}'s ${of} ${of === 1 ? counts.one : counts.many} ${says}, each checked.`);
+    held.push(done === of ? 'The step is ready to close.' : `Any ${counts.one} it was in the middle of is redone from the start.`);
+  }
   const account = [
-    '> No session works in this project until the migration is done.',
+    `> ${held.join(' ')}`,
     '>',
-    ...kept,
     `> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`,
   ];
   return [
-    section('DISPLAY: migration marker', emitAs('markdown'), '**`▪ Migration`**'),
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
     section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
   ].join('\n');

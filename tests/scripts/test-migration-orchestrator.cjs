@@ -40,11 +40,13 @@ function tmp(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-// Where boot keeps the migrations record: the state's own.
+// Where boot keeps the migrations record, the state's own, and the runner's
+// journals, in the state's cache.
 const RECORD = '.leeway/.state/migrations';
+const JOURNALS = '.leeway/.cache/migrate';
 
 /** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's migrations record. */
-function run(migrate, project, env = {}, args = ['--record', path.join(project, RECORD)]) {
+function run(migrate, project, env = {}, args = ['--record', path.join(project, RECORD), '--journals', path.join(project, JOURNALS)]) {
   const res = spawnSync('node', [migrate, ...args], {
     cwd: project,
     encoding: 'utf8',
@@ -98,6 +100,9 @@ function runReport(stdout) {
 const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
 
+// A directive's check, as its module exports it.
+const CHECK = `'use strict';\nmodule.exports = { counts: { one: 'topic', many: 'topics' }, done: 'have their records', check: () => [] };\n`;
+
 // A directive: its title, its head, and its instructions.
 const directive = (title) =>
   `# ${title}\n\n## Touches\n\n- Nothing.\n\n## Asks\n\n- Nothing.\n\n## Instructions\n\nCarry it out.\n`;
@@ -122,12 +127,13 @@ process.on('exit', () => write(process.env.COUNT_TO, JSON.stringify(calls)));
 `);
 
 // A .cjs migration that appends its id to order.log and reports an update.
-const cjsMig = (id) =>
+// `report` is `reportSkip` for one that changes nothing.
+const cjsMig = (id, report = 'reportUpdate') =>
   `'use strict';\nconst fs = require('fs');\nconst path = require('path');\n` +
   `module.exports = {\n  id: '${id}',\n  description: 'synthetic ${id}',\n` +
-  `  run({ projectDir, reportUpdate }) {\n` +
+  `  run({ projectDir, ${report} }) {\n` +
   `    fs.appendFileSync(path.join(projectDir, 'order.log'), '${id}\\n');\n` +
-  `    reportUpdate();\n  },\n};\n`;
+  `    ${report}();\n  },\n};\n`;
 
 describe('migrate.cjs — real fleet', () => {
   it('runs the whole fleet under stock /bin/bash 3.2 and writes the migrations record', () => {
@@ -246,21 +252,23 @@ describe('migrate.cjs — synthetic fleet', () => {
     const project = freshProject();
     const record = path.join(tmp('mig-orch-record-'), 'deep/record');
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record]);
+    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record, '--journals', path.join(project, JOURNALS)]);
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.strictEqual(fs.readFileSync(record, 'utf8'), '001\n');
     assert.strictEqual(fs.existsSync(path.join(project, RECORD)), false);
   });
 
-  it('refuses to run without a migrations record, running nothing', () => {
+  it('refuses to run without a migrations record or a folder to journal in, running nothing', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
     const project = freshProject();
 
-    const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, []);
+    for (const args of [[], ['--record', path.join(project, RECORD)], ['--journals', path.join(project, JOURNALS)]]) {
+      const res = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH }, args);
 
-    assert.notStrictEqual(res.status, 0);
-    assert.match(res.stderr, /usage: migrate\.cjs --record <path>/);
+      assert.notStrictEqual(res.status, 0);
+      assert.match(res.stderr, /usage: migrate\.cjs --record <path> --journals <dir>/);
+    }
     assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false);
   });
 
@@ -350,7 +358,8 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.notStrictEqual(mi, -1, 'the recovered run emits the journal');
     const addenda = JSON.parse(lines[mi + 1]);
     assert.deepStrictEqual(addenda.map((a) => a.id), ['001'], "001's addendum survived the abort");
-    assert.ok(!fs.existsSync(path.join(project, '.leeway/.state/pending-verify.json')), 'journal cleared after emission');
+    assert.ok(second.stdout.includes('---STOP_GATE: FILES_UPDATED---'), "001's update is still owed its review");
+    assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-verify.json')), 'journal cleared after emission');
 
     const third = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
@@ -389,7 +398,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     }], 'trimmed, and a blank notice is no notice');
     assert.deepStrictEqual(markerPayload(first.stdout, '---VERIFY_ADDENDA---').map((a) => a.verify),
       ['Check the things code cannot see.'], 'the checks travel on their own');
-    assert.ok(!fs.existsSync(path.join(project, '.leeway/.state/pending-notices.json')), 'journal cleared after emission');
+    assert.ok(!fs.existsSync(path.join(project, JOURNALS, 'pending-notices.json')), 'journal cleared after emission');
 
     const second = run(migrate, project, { LEEWAY_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
@@ -507,14 +516,14 @@ describe('migrate.cjs — synthetic fleet', () => {
     );
   });
 
-  it('stops at a directive the record does not hold — what comes before it run and recorded, nothing after, the directive not recorded, no counts, handbacks or run report printed — and carries on past it once recorded', () => {
+  it('stops at a directive the record does not hold — what comes before it run and recorded, nothing after, the directive not recorded, no counts, handbacks or run report printed — and carries on past it once recorded, the run that completes owning what came before: its review and its notice', () => {
     const { migrate } = synthFleet({
       '001-a.cjs':
         `'use strict';\nmodule.exports = { id: '001', description: 'synthetic 001',\n` +
         `  run({ reportUpdate }) { reportUpdate(); return { notice: 'Something moved.' }; } };\n`,
       '002-records.md': directive('Records'),
-      '002-records.check.cjs': `'use strict';\nmodule.exports = { counts: 'topic', check: () => [] };\n`,
-      '003-c.cjs': cjsMig('003'),
+      '002-records.check.cjs': CHECK,
+      '003-c.cjs': cjsMig('003', 'reportSkip'),
     });
     const project = freshProject();
 
@@ -531,7 +540,10 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.strictEqual(carried.status, 0, carried.stderr);
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '003\n');
     assert.deepStrictEqual(markerPayload(carried.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice), ['Something moved.'], 'the journaled notice waits for the run that completes');
-    assert.deepStrictEqual(runReport(carried.stdout), { ran: 1 });
+    assert.ok(carried.stdout.includes('2 migration(s) applied, 1 file(s) updated.\n'), carried.stdout);
+    assert.ok(carried.stdout.includes('---STOP_GATE: FILES_UPDATED---\n'), "001's update is owed its review, though 003 changed nothing");
+    assert.deepStrictEqual(runReport(carried.stdout), { ran: 2 });
+    assert.deepStrictEqual(fs.readdirSync(path.join(project, JOURNALS)), [], 'what was owed is cleared once reported');
   });
 
   it('records a directive of the reshape\'s sequence unrun where the code tree holds no state; one past the sequence stops the run all the same', () => {
@@ -550,7 +562,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       '001-a.sh': shMig('001'),
       '002-b.cjs': cjsMig('002'),
       '003-records.md': directive('Records'),
-      '003-records.check.cjs': `'use strict';\nmodule.exports = { counts: 'topic', check: () => [] };\n`,
+      '003-records.check.cjs': CHECK,
     });
     const project = freshProject();
     fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });

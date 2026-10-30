@@ -20,6 +20,10 @@
 //     re-run. An ID is recorded only AFTER its migration completes; any
 //     failure aborts the whole run without recording (boot treats a non-zero
 //     exit as fatal — migrations must never half-run silently).
+//   - What the runs since the last that completed owe it is journaled in
+//     the folder the caller names (`--journals <dir>`; boot names one in the
+//     state's cache, which no state commit takes): each migration's
+//     handbacks and the run's tally, kept as the migration records.
 //
 // Migration contracts:
 //   - `*.sh`: sourced in a spawned bash with report_update / report_skip helper
@@ -43,13 +47,16 @@
 //     migration. It opens on its title, an H1, then its head: `## Touches`,
 //     a list of the files it may touch, and `## Asks`, a list of what it asks
 //     the person — "Nothing." an item of its own where it asks nothing — each
-//     holding its list alone; its instructions follow, under headings of
-//     their own. Beside it sits its check, `NNN-{slug}.check.cjs`:
-//     `module.exports = { counts, check({ projectDir, stateDir }) }`. `counts`
-//     names one piece of the directive's work, singular ('topic'), as a screen
-//     counts them; `check` answers an array of `{ name, problems }`, one for
-//     each piece, `problems` a sentence for each thing the piece still lacks,
-//     none once it is done. The check reads alone — the project's code tree
+//     holding its list alone, an item wrapped onto lines indented beneath
+//     it; its instructions follow, under headings of their own. Beside it
+//     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { counts,
+//     done, check({ projectDir, stateDir }) }`. `counts` names one piece of
+//     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and
+//     `done` says what a piece done has ('have their records'), as the stop's
+//     screen counts them — "12 of Fumi's 19 topics have their records";
+//     `check` answers an array of `{ name, problems }`, one for each piece,
+//     `problems` a sentence for each thing the piece still lacks, none once
+//     it is done. The check reads alone — the project's code tree
 //     at `projectDir` and git's history of it, the state at `stateDir`, both
 //     absolute — and is mechanical: it calls no model and changes nothing.
 //     The directive's check passes when every piece's does. The engine runs
@@ -58,8 +65,8 @@
 //     The runner stops at a directive the record does not hold: it prints
 //     `---DIRECTIVE: NNN-{slug}---` and ends, the migrations before it
 //     recorded and nothing after it run, printing neither the run's counts,
-//     its handbacks (journaled still, for the run that completes) nor its
-//     run report. The directive is recorded by `engine checklist close
+//     its handbacks nor its run report: each is journaled, for the run that
+//     completes. The directive is recorded by `engine checklist close
 //     directive NNN-{slug}`, which its passing check alone lets through; the
 //     next run carries on past it. One start may meet several.
 //
@@ -81,8 +88,8 @@ const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 // What a migration hands back beside its counts, each kind under its own
 // marker preceding a one-line JSON array — verification addenda for the
 // calling flow's judgment pass, notices for the person. Boot extracts and
-// strips both. Each entry is journaled to its kind's pending file beside the
-// tracking log as its migration records, and emitted (then cleared) only by
+// strips both. Each entry is journaled to its kind's pending file in the
+// journals folder as its migration records, and emitted (then cleared) only by
 // a fully successful run — a later migration aborting the run must never
 // cost an earlier migration's entry, whose ID is already recorded and will
 // never re-run.
@@ -91,14 +98,23 @@ const HANDBACKS = [
   { key: 'notice', marker: '---MIGRATION_NOTICES---', journal: 'pending-notices.json' },
 ];
 
-// Marker preceding the one-line JSON report of what the run recorded:
-// `{"ran": <migrations executed>}`. Distinct from the stop gate, which counts
-// files: a migration that ran and found nothing to do still recorded its ID,
-// so the record is dirty on a run that updated nothing. Boot extracts and
-// strips it.
+// Marker preceding the one-line JSON report of what the runs recorded,
+// `{"ran": <migrations executed since the last run that completed>}`.
+// Distinct from the stop gate, which counts files: a migration that ran and
+// found nothing to do still recorded its ID, so the record is dirty on a run
+// that updated nothing. Boot extracts and strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
+// What the runs since the last that completed have done — the migrations
+// executed and the files they updated — journaled as each
+// migration records, as the handbacks are: a run that stops at a directive,
+// or aborts, never costs its migrations their review and their commit, since
+// the run that completes counts them all, and clears it.
+const TALLY_JOURNAL = 'pending-tally.json';
+
 const RECORD_FLAG = '--record';
+const JOURNALS_FLAG = '--journals';
+const USAGE = `usage: migrate.cjs ${RECORD_FLAG} <path> ${JOURNALS_FLAG} <dir> — the migrations record the run writes into, and the folder it journals in`;
 
 // The fleet released while the state lived in the code tree upgrades the
 // `.workflows/` there, and three of it (049, 053, 060) would create one from
@@ -116,9 +132,15 @@ const LAST_CODE_TREE_DIRECTIVE = 81;
 const DIRECTIVE = '.md';
 const CHECK = '.check.cjs';
 
-/** @param {string} record @param {string} journal */
-function journalPath(record, journal) {
-  return path.join(path.dirname(record), journal);
+/** @param {string} journals @param {string} journal */
+function journalPath(journals, journal) {
+  return path.join(journals, journal);
+}
+
+/** Write a journal, its folder made where missing. @param {string} file @param {unknown} content */
+function writeJournal(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(content) + '\n');
 }
 
 /** @param {string} file @returns {Record<string, string|null>[]} */
@@ -129,6 +151,15 @@ function readJournal(file) {
   } catch {
     return [];
   }
+}
+
+/** @param {string} file @returns {{ran: number, updated: number}} */
+function readTally(file) {
+  try {
+    const { ran, updated } = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (Number.isInteger(ran) && Number.isInteger(updated)) return { ran, updated };
+  } catch { /* none journaled */ }
+  return { ran: 0, updated: 0 };
 }
 
 // Bash used to source `*.sh` migrations. Default `bash` (PATH); the override
@@ -155,14 +186,14 @@ const SH_WRAPPER = [
 ].join('\n');
 
 /**
- * The migrations record the caller names, resolved from the cwd.
- * @param {string} cwd @param {string[]} args
+ * The path the caller names after `flag`, resolved from the cwd.
+ * @param {string} cwd @param {string[]} args @param {string} flag
  * @returns {string}
  */
-function recordOf(cwd, args) {
-  const at = args.indexOf(RECORD_FLAG);
+function pathOf(cwd, args, flag) {
+  const at = args.indexOf(flag);
   const given = at === -1 ? undefined : args[at + 1];
-  if (!given) fail(`usage: migrate.cjs ${RECORD_FLAG} <path> — the migrations record the run writes into`);
+  if (!given) fail(USAGE);
   return path.resolve(cwd, given);
 }
 
@@ -265,7 +296,9 @@ function fail(message, code) {
 
 function main() {
   const cwd = process.cwd();
-  const record = recordOf(cwd, process.argv.slice(2));
+  const args = process.argv.slice(2);
+  const record = pathOf(cwd, args, RECORD_FLAG);
+  const journals = pathOf(cwd, args, JOURNALS_FLAG);
   fs.mkdirSync(path.dirname(record), { recursive: true });
   if (!fs.existsSync(record)) fs.writeFileSync(record, '');
   const codeTreeState = fs.existsSync(path.join(cwd, CODE_TREE_STATE));
@@ -291,8 +324,8 @@ function main() {
     return;
   }
 
-  let filesUpdated = 0;
-  let migrationsRun = 0;
+  const tallyFile = journalPath(journals, TALLY_JOURNAL);
+  const tally = readTally(tallyFile);
   const recorded = recordedIds(record);
   const noteRecorded = (/** @type {string} */ id) => {
     fs.appendFileSync(record, id + '\n');
@@ -323,10 +356,11 @@ function main() {
       : runShMigration(cwd, script, record);
 
     if (result.stdout) process.stdout.write(result.stdout);
-    filesUpdated += result.updated;
 
     noteRecorded(id);
-    migrationsRun += 1;
+    tally.ran += 1;
+    tally.updated += result.updated;
+    writeJournal(tallyFile, tally);
 
     // Journal what it handed back durably the moment its migration is
     // recorded — an abort further down the fleet must not lose it.
@@ -337,15 +371,15 @@ function main() {
       };
       for (const { key, journal } of HANDBACKS) {
         if (!entries[key]) continue;
-        const file = journalPath(record, journal);
-        fs.writeFileSync(file, JSON.stringify([...readJournal(file), entries[key]]) + '\n');
+        const file = journalPath(journals, journal);
+        writeJournal(file, [...readJournal(file), entries[key]]);
       }
     }
   }
 
-  if (filesUpdated > 0) {
+  if (tally.updated > 0) {
     process.stdout.write('\n');
-    process.stdout.write(`${migrationsRun} migration(s) applied, ${filesUpdated} file(s) updated.\n`);
+    process.stdout.write(`${tally.ran} migration(s) applied, ${tally.updated} file(s) updated.\n`);
     process.stdout.write('\n');
     process.stdout.write(STOP_GATE_MARKER + '\n');
     process.stdout.write('You MUST now follow the migration skill instructions to STOP and let the user review.\n');
@@ -357,7 +391,7 @@ function main() {
   // A fully successful run emits everything journaled — this run's entries
   // plus any stranded by an earlier aborted run — and clears each journal.
   for (const { marker, journal } of HANDBACKS) {
-    const file = journalPath(record, journal);
+    const file = journalPath(journals, journal);
     const entries = readJournal(file);
     if (entries.length === 0) continue;
     process.stdout.write(marker + '\n');
@@ -365,8 +399,9 @@ function main() {
     try { fs.unlinkSync(file); } catch { /* already gone */ }
   }
 
+  try { fs.unlinkSync(tallyFile); } catch { /* none journaled */ }
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
-  process.stdout.write(JSON.stringify({ ran: migrationsRun }) + '\n');
+  process.stdout.write(JSON.stringify({ ran: tally.ran }) + '\n');
 }
 
 if (require.main === module) {

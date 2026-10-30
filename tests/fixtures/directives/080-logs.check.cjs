@@ -7,7 +7,8 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = {
-  counts: 'unit',
+  counts: { one: 'unit', many: 'units' },
+  done: 'have their logs',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ stateDir }) {
     return fs.readdirSync(stateDir).filter((name) => fs.existsSync(path.join(stateDir, name, 'manifest.json'))).map((unit) => {

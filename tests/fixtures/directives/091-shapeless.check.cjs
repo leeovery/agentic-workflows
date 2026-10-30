@@ -2,4 +2,4 @@
 
 // A fixture directive's check exporting another shape.
 
-module.exports = { check: 'every topic has its record' };
+module.exports = { counts: 'topic', done: 'have their records', check() { return []; } };

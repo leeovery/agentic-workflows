@@ -6,7 +6,7 @@
 
 The migration stopped at a directive: a step whose work is judgment, which this session carries out before anything else runs in the project.
 
-Fetch the stop's screen and emit its sections verbatim per their markers:
+Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render directive-stop --directive {directive}
@@ -20,7 +20,7 @@ The directive's check tells the pieces done from the rest. A piece done is kept.
 node .claude/skills/leeway-engine/scripts/engine.cjs migrate check {directive}
 ```
 
-Each piece in `unfinished` names what it still lacks. Once `passed` is `true`, close the directive's checklist, which records the directive as done:
+Each piece in `unfinished` names what it still lacks; where the check itself fails, its refusal names what it tripped on. Once `passed` is `true`, close the directive's checklist, which records the directive as done:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs checklist close directive {directive}

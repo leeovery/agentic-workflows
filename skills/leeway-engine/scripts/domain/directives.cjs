@@ -17,7 +17,13 @@
 //   close records the directive in the migrations record — the one way a
 //   directive is recorded — and the next run carries on past it.
 // - Boot's stop answers the directive, its file, and its pieces done of all
-//   of them, which `render directive-stop` draws (21.10.11).
+//   of them, which `render directive-stop` draws (21.10.11). A session that
+//   died part-way may leave what the check trips on (21.10.9): the stop then
+//   answers without the counts, and `migrate check` names what failed.
+// - Known edges: held commits and the trust log's silence key on the state
+//   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
+//   only the reshape's migration leaves; a directive met later, on a branch
+//   with commits, would commit and log as any verb does.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -27,6 +33,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { directiveStop } = require('./projections/boot.cjs');
+const { projectName } = require('./state-checks.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'leeway-migrate', 'scripts');
@@ -37,6 +44,10 @@ const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
 // writes and a directive's close appends to.
 const MIGRATIONS_RECORD = '.state/migrations';
 
+// Where the runner journals what its runs owe the run that completes,
+// state-relative: in the cache, which no state commit takes.
+const MIGRATION_JOURNALS = '.cache/migrate';
+
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const MIGRATE_USAGE = 'migrate check <id>';
@@ -45,10 +56,24 @@ const MIGRATE_USAGE = 'migrate check <id>';
 
 /** One piece of a directive's work, and what it still lacks. @typedef {{name: string, problems: string[]}} Piece */
 
+/** What one of a directive's pieces is called, and many of them. @typedef {{one: string, many: string}} Counts */
+
+/**
+ * A directive's check as its module exports it: what its pieces are called,
+ * what a piece done has, and the check.
+ * @typedef {{counts: Counts, done: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown}} Check
+ */
+
 /**
  * A directive's check run: whether it passes, its pieces done of all of
- * them, what one piece is called, and each piece not done.
- * @typedef {{directive: string, passed: boolean, done: number, of: number, counts: string, unfinished: Piece[]}} Checked
+ * them, what its pieces are called, and each piece not done.
+ * @typedef {{directive: string, passed: boolean, done: number, of: number, counts: Counts, unfinished: Piece[]}} Checked
+ */
+
+/**
+ * Where a directive stands, for its stop: its pieces done of all of them,
+ * what they are called, and what a piece done has.
+ * @typedef {{done: number, of: number, counts: Counts, says: string}} Progress
  */
 
 /**
@@ -70,6 +95,39 @@ function isPiece(piece) {
   return isObject(piece) && typeof piece.name === 'string' && Array.isArray(piece.problems) && piece.problems.every((problem) => typeof problem === 'string');
 }
 
+/** @param {unknown} words @returns {words is string} */
+const isWords = (words) => typeof words === 'string' && words.trim() !== '';
+
+/**
+ * Whether a check module exports the check's shape: `counts`, `{ one, many }`,
+ * `done`, and `check()`.
+ * @param {Record<string, unknown>} checker @returns {checker is Check}
+ */
+function isCheck(checker) {
+  const { counts, done, check } = checker;
+  return typeof check === 'function' && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done);
+}
+
+/**
+ * The check of the directive `id`, loaded. Refuses a check that will not
+ * load, and one that exports another shape.
+ * @param {string} id @returns {Check}
+ */
+function loadCheck(id) {
+  const { check } = directiveOf(id);
+  /** @type {Record<string, unknown>} */
+  let checker;
+  try {
+    checker = require(check);
+  } catch (err) {
+    throw new Error(`${id}'s check could not be loaded from ${check}: ${messageOf(err)}`);
+  }
+  if (!isCheck(checker)) {
+    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }`);
+  }
+  return checker;
+}
+
 /**
  * Run the check of the directive `id` against the project at `cwd`. Refuses
  * a check that will not load, exports another shape, fails, or answers
@@ -78,27 +136,32 @@ function isPiece(piece) {
  * @returns {Checked}
  */
 function checkDirective(cwd, id) {
-  const { check } = directiveOf(id);
-  /** @type {{counts?: unknown, check?: unknown}} */
-  let checker;
-  try {
-    checker = require(check);
-  } catch (err) {
-    throw new Error(`${id}'s check could not be loaded from ${check}: ${messageOf(err)}`);
-  }
-  const { counts } = checker;
-  if (typeof checker.check !== 'function' || typeof counts !== 'string' || counts.trim() === '') {
-    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts, check({ projectDir, stateDir }) }`);
-  }
+  const { counts, check } = loadCheck(id);
   let pieces;
   try {
-    pieces = checker.check({ projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) });
+    pieces = check({ projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) });
   } catch (err) {
     throw new Error(`${id}'s check failed: ${messageOf(err)}`);
   }
   if (!Array.isArray(pieces) || !pieces.every(isPiece)) throw new Error(`${id}'s check answered no list of { name, problems }`);
   const unfinished = pieces.filter((piece) => piece.problems.length > 0);
-  return { directive: id, passed: unfinished.length === 0, done: pieces.length - unfinished.length, of: pieces.length, counts, unfinished };
+  return { directive: id, passed: unfinished.length === 0, done: pieces.length - unfinished.length, of: pieces.length, counts: { one: counts.one, many: counts.many }, unfinished };
+}
+
+/**
+ * Where the directive `id` stands, or null where its check cannot say — a
+ * session that died part-way may leave what the check trips on, and
+ * `migrate check` shows the session why.
+ * @param {string} cwd @param {string} id
+ * @returns {Progress|null}
+ */
+function progressOf(cwd, id) {
+  try {
+    const { done, of, counts } = checkDirective(cwd, id);
+    return { done, of, counts, says: loadCheck(id).done };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -115,13 +178,13 @@ function recordDirective(cwd, { number }) {
 
 /**
  * Boot's stop at the directive `id`: the directive, its file, and its
- * pieces done of all of them.
+ * pieces done of all of them, where its check can say.
  * @param {string} cwd @param {string} id
- * @returns {{id: string, file: string, done: number, of: number}}
+ * @returns {{id: string, file: string, done?: number, of?: number}}
  */
 function directiveStopped(cwd, id) {
-  const { done, of } = checkDirective(cwd, id);
-  return { id, file: directiveOf(id).file, done, of };
+  const progress = progressOf(cwd, id);
+  return { id, file: directiveOf(id).file, ...(progress === null ? {} : { done: progress.done, of: progress.of }) };
 }
 
 /**
@@ -132,8 +195,8 @@ function directiveStopped(cwd, id) {
 function directiveStopSurface(cwd, args) {
   const id = args.directive;
   if (id === undefined) throw new Error('render directive-stop: --directive <id> names the directive boot stopped at');
-  const { done, of, counts } = checkDirective(cwd, id);
-  return directiveStop({ step: id.replace(/^[0-9]+-/, '').replace(/-/g, ' '), done, of, counts });
+  directiveOf(id);
+  return directiveStop({ project: projectName(cwd), step: id.replace(/^[0-9]+-/, '').replace(/-/g, ' '), progress: progressOf(cwd, id) });
 }
 
 /**
@@ -151,4 +214,4 @@ function runMigrateVerb(cwd, argv) {
   }
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATE_USAGE, directiveOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, checkDirective, recordDirective, directiveStopped, directiveStopSurface, runMigrateVerb };

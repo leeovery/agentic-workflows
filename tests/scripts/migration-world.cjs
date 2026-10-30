@@ -136,7 +136,7 @@ function codeHead(dir) {
 function enter(dir, topic, subtopic) {
   return directiveEngine().ok(dir, ['ledger', 'find', `${UNIT}.discussion.${topic}`], {
     env: SESSION,
-    stdin: JSON.stringify({ text: subtopic, how: 'read from the discussion\'s map', by: 'claude', who_moved_whom: 'none' }),
+    stdin: JSON.stringify({ text: subtopic, how: 'read from the discussion\'s map', known: 'read', by: 'claude', who_moved_whom: 'none' }),
   });
 }
 

@@ -33,7 +33,7 @@
 // stranded. A run the runner stops at a directive — a migration the start
 // session carries out (directives.cjs) — stops boot there, past nothing,
 // committing nothing (21.10.10): the stop names the directive, its file,
-// and its pieces done of all of them.
+// and its pieces done of all of them, where its check can say.
 //
 // While the migration is under way — its state worktree checked out on a
 // `leeway-state` with no commit yet — nothing is committed before the
@@ -100,7 +100,7 @@ const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
-const { MIGRATE_CJS, MIGRATIONS_RECORD, directiveStopped } = require('./directives.cjs');
+const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
@@ -169,9 +169,9 @@ const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
 /**
  * Boot stopped at a directive of the migration the record does not hold
  * (21.10.10): the directive's id and file, and its pieces done of all of
- * them — `render directive-stop` draws the stop, and the session carries
- * the directive on.
- * @typedef {{state: 'directive', id: string, file: string, done: number, of: number, warnings: string[]}} DirectiveStop
+ * them where its check can say — `render directive-stop` draws the stop,
+ * and the session carries the directive on.
+ * @typedef {{state: 'directive', id: string, file: string, done?: number, of?: number, warnings: string[]}} DirectiveStop
  */
 
 /**
@@ -346,7 +346,7 @@ function commitLedgerTail(root, warnings) {
  * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}|{directive: string}}
  */
 function runMigrations(cwd, warnings) {
-  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD)], { cwd: codeRoot(cwd), encoding: 'utf8' });
+  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD), '--journals', statePath(cwd, MIGRATION_JOURNALS)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message

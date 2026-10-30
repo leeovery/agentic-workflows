@@ -289,10 +289,14 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
   }
 }
 
+// The note a verb answers while the migration runs, its commit held.
+const HELD_NOTE = 'held for the migration\'s commit';
+
 /**
- * Stamp a transaction result from a tail-commit outcome: a failure notes the
- * pending commit (the state is saved — only the commit is owed), a clean
- * tree notes `nothing to commit`. Mutates the result in place.
+ * Stamp a transaction result from a tail-commit outcome: a held commit
+ * notes it is held for the migration's commit, a failure notes the pending
+ * commit (the state is saved — only the commit is owed), a clean tree notes
+ * `nothing to commit`. Mutates the result in place.
  *
  * A note is contract surface — a session runs the command it prescribes
  * verbatim — so a transaction whose commit was narrower than the work unit
@@ -305,7 +309,7 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
  */
 function noteCommitOutcome(result, outcome, retry) {
   if (outcome.held) {
-    result.note = 'held for the migration\'s commit';
+    result.note = HELD_NOTE;
   } else if (outcome.failed) {
     result.note = retry
       ? `commit pending — state saved; retry with: engine commit ${retry} -m "<message>"`
@@ -325,6 +329,7 @@ module.exports = {
   commitOwnChange,
   noteCommitOutcome,
   noteIfNothingCommitted,
+  HELD_NOTE,
   withCommitLock,
   onStateBranch,
   STATE_BRANCH_HELD,

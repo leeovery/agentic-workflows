@@ -20,7 +20,8 @@ function entriesOf(stateDir) {
 }
 
 module.exports = {
-  counts: 'topic',
+  counts: { one: 'topic', many: 'topics' },
+  done: 'have their records',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {
     const entries = entriesOf(stateDir);

@@ -45,8 +45,9 @@
 //   warning, and the commit stands.
 // - While the migration runs: the migration checks the state worktree out
 //   on a `leeway-state` with no commit yet, and the migration's commit makes
-//   its first (21.9.3). Until then every commit is held — the writes stay
-//   in the worktree, nothing is committed or pushed, for that commit to take.
+//   its first (21.9.3). Until then every commit is held — held to the
+//   layout as ever, the writes stay in the worktree, nothing is committed or
+//   pushed, for that commit to take.
 // - The backstop: every state commit is the engine's, so a commit reads the
 //   state worktree's changes once, untracked files among them, ignored ones
 //   not, and holds each against the layout (layout.cjs), its names spelled
@@ -891,8 +892,8 @@ function push(git, timeoutMs) {
  * the working file's own changes left as they are, uncommitted; a file the
  * branch holds that git cannot read, or that its change cannot be made of,
  * refuses the commit. While the migration runs — `leeway-state` with no
- * commit yet — the commit is held: the writes stay as they are, for the
- * migration's commit to take (21.9.3).
+ * commit yet — the commit is held, once the layout holds every file: the
+ * writes stay as they are, for the migration's commit to take (21.9.3).
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
@@ -911,7 +912,10 @@ function commitHere(root, paths, message, { contents = {} } = {}) {
   }
   const taken = [...specs, ...Object.keys(given)];
   if (taken.length === 0) return { commit: null, warnings: [] };
-  if (!worktree.born) return { commit: null, held: true, warnings: [] };
+  if (!worktree.born) {
+    refuseOutsideLayout(root, placedChanges(worktree));
+    return { commit: null, held: true, warnings: [] };
+  }
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);

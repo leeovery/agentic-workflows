@@ -95,13 +95,16 @@ format and its check's contract.
 - A directive is `migrations/NNN-slug.md` in the same sequence, its head
   first: its title, then `## Touches`, the files it may touch, and
   `## Asks`, what it asks the person (`- Nothing.` where it asks
-  nothing), each a list alone; its instructions follow under headings
-  of their own. It names the roster's agents, never a model or an
-  effort.
+  nothing), each a list alone, an item wrapped onto indented lines;
+  its instructions follow under headings of their own. It names the
+  roster's agents, never a model or an effort.
 - Its check sits beside it, `NNN-slug.check.cjs`, exporting
-  `{ counts, check({ projectDir, stateDir }) }`: what one of its pieces
-  is, and each piece with what it still lacks. `engine migrate check`
-  runs it; the directive is recorded only when
+  `{ counts, done, check({ projectDir, stateDir }) }`: what one of its
+  pieces is called and many (`{ one: 'topic', many: 'topics' }`), what
+  a piece done has (`'have their records'`), and each piece with what
+  it still lacks. The stop's screen says them as "12 of Fumi's 19
+  topics have their records". `engine migrate check` runs it; the
+  directive is recorded only when
   `engine checklist close directive NNN-slug` finds it passing.
 - `tests/scripts/test-migration-directives.cjs` lints every directive's
   head and holds its check beside it; a directive's own suite drives its

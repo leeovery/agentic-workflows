@@ -4,11 +4,13 @@
 // header of skills/leeway-migrate/scripts/migrate.cjs): each directive,
 // `NNN-{slug}.md`, opens on its title, then its head — `## Touches`, the
 // files it may touch, and `## Asks`, what it asks the person, each a list
-// of one item or more and nothing else — and its check sits beside it,
-// `NNN-{slug}.check.cjs`, exporting what it counts and its check.
+// of one item or more and nothing else, an item wrapped onto lines indented
+// beneath it — and its check sits beside it, `NNN-{slug}.check.cjs`,
+// exporting the check's shape as the engine reads it (`isCheck`).
 
 const fs = require('fs');
 const path = require('path');
+const { isCheck } = require('../../skills/leeway-engine/scripts/domain/directives.cjs');
 
 const HEAD = ['Touches', 'Asks'];
 
@@ -31,7 +33,7 @@ function headProblems(text) {
     }
     const body = lines.slice(heading.at + 1, headings[place + 1]?.at ?? lines.length).filter((line) => line.trim() !== '');
     if (body.length === 0) problems.push(`## ${name} lists nothing`);
-    else if (!body.every((line) => /^- \S/.test(line))) problems.push(`## ${name} holds more than its list`);
+    else if (!/^- \S/.test(body[0]) || !body.every((line) => /^(- |\s+)\S/.test(line))) problems.push(`## ${name} holds more than its list`);
   });
   return problems;
 }
@@ -48,10 +50,7 @@ function lintDirectives(folder) {
     /** @type {string[]} */
     const problems = headProblems(fs.readFileSync(path.join(folder, name), 'utf8'));
     if (!fs.existsSync(check)) problems.push('no check sits beside it');
-    else {
-      const { counts, check: run } = require(check);
-      if (typeof run !== 'function' || typeof counts !== 'string' || counts === '') problems.push('its check exports no check() beside what it counts');
-    }
+    else if (!isCheck(require(check))) problems.push('its check exports no check() beside what it counts');
     return problems.map((problem) => `${name}: ${problem}`);
   });
 }
