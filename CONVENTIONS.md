@@ -40,8 +40,8 @@ A phase skill holds five things:
 - **Its goal** — what the phase is for, in a sentence or two.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
-- **The verbs it names** — one line for each door the phase's work goes through.
-- **Its checklist** — the closing point it works towards, by name.
+- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/workflow-engine/references/commands.md`.
+- **Its checklists** — each closing point it works towards, by name. Most phases have one; the build works a phase-start and a phase-close checklist for each phase of its cut, then finish's.
 
 ### Entered and Left Through Gates
 
@@ -49,9 +49,11 @@ Every phase is entered and left through gates. The gates are the engine's: its k
 
 **Entering.** A phase is moved into by a handoff, from a gate or a menu pick (Handoffs and Recovery). Its entry is one engine call, shared by every phase: the engine refuses what cannot be entered, records where the conversation is working, and answers what the phase needs to begin or resume. The skill does what the answer says and branches on no status of its own. A question whose answer may discard a record — whether to carry on or start again — comes before the reading: a gate needs only what the engine holds, and the record and log are read after the answer.
 
-**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows. The skill emits the gate's sections verbatim per their markers and the turn ends. The answer goes to `gate`, which logs it and returns `next` — an engine call to run, a handoff to make, or carry on — and the skill does what `next` says.
+**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows. The skill emits the gate's sections verbatim per their markers, and the marker decides whether the turn ends:
+- **The gate stops.** Its MENU's marker ends the turn. The person's answer goes to `gate`, which logs it and returns `next` — an engine call to run, a handoff to make, or carry on — and the skill does what `next` says.
+- **The gate runs as an automatic step.** Its surface draws the one-line report in place of the menu, under a marker that says not to stop. Nothing goes to `gate`, and the skill carries on along the answer the step ran, which the report names.
 
-**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row sets the gate aside; the framework says how it comes back.
+**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row sets the gate aside; the framework says how it comes back. A Comment that changes what happens next is confirmed with the person before anything acts on it; the framework holds that rule too.
 
 ### Fields and Corridors
 
@@ -61,7 +63,7 @@ A **corridor** is a short, linear stretch whose output has a fixed shape: the ph
 
 ### Requests at Any Point
 
-Some requests can come wherever the phase is: put an idea or a bug aside, postpone or cancel the topic, a gap the person names during the build. Each is a section of its own, named for the request: the words that bring it, and the verb or reference that takes it. Afterwards the work carries on where it was. A gate that was waiting was set aside, and the framework says how it comes back; the section never restates it.
+Some requests can come wherever the phase is: put an idea or a bug aside, postpone or cancel the topic, a gap the person names during the build. Each is a section of its own, named for the request: the words that bring it, and the verb or reference that takes it. Afterwards the work carries on where it was — except a topic cancelled or postponed from its own session, which hands off to a menu: an epic's topic to the epic's menu, any other to the start menu. A gate that was waiting was set aside, and the framework says how it comes back; the section never restates it.
 
 ### The Skeleton
 
@@ -103,7 +105,7 @@ A corridor: its moves, in order.}
 
 ## Closing
 
-{The checklist by name, guidance for any item that needs it by its key, then the gate.}
+{Each checklist by name, where its closing point falls; guidance for any item that needs it, by its key; then the gate.}
 
 ## {A Request at Any Point}
 
@@ -115,23 +117,23 @@ A section the phase has nothing for is left out. `## Instructions` is there only
 ## What the Engine Owns
 
 The prose names the verb and stops. It never:
-- **Draws a menu, a gate or a row.** The engine draws every one and prints it as text; the gate mod shows its rows as buttons where it runs. Lint check 3 refuses a menu in prose.
+- **Draws a menu, a gate or a row.** The engine draws every one and prints it as text; the gate mod shows its rows as buttons where it runs. Lint check 3 refuses a menu drawn in prose.
 - **Writes state.** State changes only through verbs. The prose names verbs, never manifest fields, and reads a manifest value only where no verb's response carries it. The layout hook refuses a write under `.leeway/` to a path the layout has no place for, and any write to a manifest, the ledger or `spec-review.json`. Scratch goes in `.leeway/.cache/`.
 - **Commits.** Every verb commits its own state writes, with any log changed since. A code commit goes through `commit`, naming the task in flight, and the door runs the project's checks first. A raw `git commit` in a code worktree during a build is refused.
 - **Lists a checklist's items.** The engine holds them, works out the ones it can check, and shows the rest with their text. The prose names the checklist.
 - **Writes a brief.** `brief` fills the role's template from the records (Agents and Briefs).
 - **Chooses how something reaches the person.** It reaches them in a gate, a raise or a mod surface. Nothing asks the person to open a file; material they may want but need not read is one keystroke away on a mod surface, or asked for in words where the mod does not run.
 
-What Claude and the agents write themselves is content, in the places the layout keeps for it: a log, the spec, a spike, an asset. Everything else is written through a verb. A decision or a finding is a ledger entry, written through `ledger`; a topic's record and its map are projections of the ledger, never files. Markdown carries content only: never frontmatter, never a status in a heading. A feature that needs state gets a field behind a verb.
+What Claude and the agents write themselves is content, in the places the layout keeps for it: a log, the spec, a spike, an asset. Everything else is written through a verb. A decision or a finding is a ledger entry, written through `ledger`, and the person's answer to a raise through `raise answer`, which also logs who moved whom; a topic's record and its map are projections of the ledger, never files. Markdown carries content only: never frontmatter, never a status in a heading. A feature that needs state gets a field behind a verb.
 
-Where a phase is a conversation, it asks its questions in the conversation and each answer lands through `ledger`; a call Claude has a lean on goes through `raise`, which decides whether it reaches the person, and slots in at a natural pause. Anywhere else, every question for the person goes through `raise`; a question asked in plain prose in the build is a slip. Questions reach the person one at a time.
+Where a phase is a conversation, it asks its questions in the conversation and each answer lands through `ledger`; a call Claude has a lean on goes through `raise`, which decides whether it reaches the person, and slots in at a natural pause; its answer lands through `raise answer`, never `ledger`. Anywhere else, every question for the person goes through `raise`; a question asked in plain prose in the build is a slip. Questions reach the person one at a time.
 
 ## Writing for the Model Pass
 
 When the workflows move to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
-- **Guidance a better model could do without is prose, and only prose.** It never becomes a verb, a check, a checklist item, a hook, an agent's fixed model or effort, or a brief template's words.
-- **What the hard layers hold is there for the person, whatever the model.** Each engine piece names the failure it prevents and how often that failure happened.
-- **A part held for today's model goes into a hard layer only with a line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs.
+- **Guidance a better model could do without is prose.** It stays in the skill, where the pass can cut it.
+- **What the hard layers hold is there for the person, whatever the model.** Each engine piece names the failure it prevents, and how often that failure happened, in its line in the reshape's weight check, the table of today's product against the proposed one.
+- **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, a model or an effort — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs.
 
 ## Prose
 
@@ -166,7 +168,7 @@ Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, d
 
 **A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/workflow-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
-**The dispatch.** `brief {role} …` issues the brief, and the dispatch carries its pointer, `brief:{id}`, alone as the Agent prompt (a fix round's as the SendMessage message). The hook before Agent and SendMessage refuses anything else for one of the workflows' agents. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
+**The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
 **Its mode.** Claude Code runs an agent in the background unless told otherwise, so every dispatch the prose prescribes names `run_in_background: true` or `false`. A background dispatch the flow waits on ends the turn on one sentence, given inline: ``The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.` `` — naming the agent and what it works on, never an internal id (lint check 25).
 
@@ -176,7 +178,7 @@ An agent works from the record, never the conversation. Its calls come back to t
 
 **Handing off** moves the work into a skill that starts it afresh. The engine names the move — `handoff`, or a gate's `next` of kind `handoff` — and composes the continuation. Where the gate mod runs it clears the conversation and carries the continuation into the next one; elsewhere the skill is invoked in place. Nothing crosses but the skill and its arguments: what the next skill needs is on disk first.
 
-Nothing hands off inside a build, a quick-fix or a topic. One orchestrator runs a build across all its phases and straight into the review phase. A move between discovery's levels, or from a topic up to its epic's discovery or the product's conversation, carries the conversation on in the same session.
+Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn leaves the topic: the laboratory opens in a clean conversation, by a handoff. One orchestrator runs a build across all its phases and straight into the review phase. A move between discovery's levels, or from a topic up to its epic's discovery or the product's conversation, carries the conversation on in the same session.
 
 **Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads guidance into the running context, nothing more.
 
@@ -190,9 +192,9 @@ Nothing hands off inside a build, a quick-fix or a topic. One orchestrator runs 
 - **A report or summary Claude composes**, as markdown, in the register of `skills/workflow-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
 - **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
-**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block. A fence that varies is the engine's (lint check 13 refuses one in prose), and a fixed line is Claude's, said inline. Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
+**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
 
-**Content the person approves as the thing itself** — a change, spec prose, the phase cut — is shown verbatim in the form it will take, never framed in drawn borders, with a label or a line saying what it is.
+**Content the person approves as the thing itself** — a change, spec prose — is shown verbatim in the form it will take, never framed in drawn borders, with a label or a line saying what it is.
 
 ### Engine Sections
 
@@ -224,6 +226,7 @@ The capture skills (`workflow-log-*`) write to the inbox and nothing else. They 
 ### Frontmatter
 
 - `user-invocable: false` on every skill the person does not type themselves.
+- No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
 - Every `allowed-tools` Bash grant carries a `*`; a grant for the workflows' own script ends in ` *` (lint check 28).
 - No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).
 

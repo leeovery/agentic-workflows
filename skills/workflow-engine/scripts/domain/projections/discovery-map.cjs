@@ -11,7 +11,7 @@
 // the ragged hand-drawn layout this projection replaces.
 // ---------------------------------------------------------------------------
 
-const { box, renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
@@ -89,7 +89,7 @@ function proposedNodes(proposed) {
 
 /**
  * The Discovery Map display block — the session's anchor render (opener,
- * "show map"): box cap, map header with the tier breakdown, one row per
+ * "show map"): map header with the tier breakdown, one row per
  * topic in the given (tier-sorted) order.
  * @param {string} workUnit
  * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
@@ -106,8 +106,7 @@ function discoveryMapView(workUnit, map) {
 /**
  * The synthesised-map display block — the harvest proposal: the proposed
  * topics (summary and description wrapped beneath, routing on the state
- * line), the existing map unchanged below it, and the framing footer. No
- * box — the session's phase title already rendered at the opener.
+ * line), the existing map unchanged below it, and the framing footer.
  * @param {string} workUnit
  * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
  * @param {ProposedTopic[]} proposed

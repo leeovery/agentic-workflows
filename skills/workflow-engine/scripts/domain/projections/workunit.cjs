@@ -12,7 +12,7 @@
 // renderer — no character arithmetic here.
 // ---------------------------------------------------------------------------
 
-const { box, renderTree } = require('../../kernel/render.cjs');
+const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, actionsTable, section, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
