@@ -394,9 +394,9 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const facts = phase === 'discussion' && REVIEWING_KINDS.includes(kind) ? ledgerFacts(cwd) : null;
     if (kind === 'review' && phase === 'discussion') {
-      const waiting = mailboxDepth(stateRoot(cwd), workUnit, phase, topic);
+      const waiting = mailboxDepth(stateRoot(cwd), workUnit, topic);
       if (waiting > 0) {
-        throw new Error(`review dispatch blocked: ${waiting} message(s) wait in the ${phase}/${topic} mailbox — absorb them (topic absorb) before dispatching a review`);
+        throw new Error(`review dispatch blocked: ${waiting} message(s) wait in ${topic}'s mailbox — raise and answer them (topic answered) before dispatching a review`);
       }
       if (!final) {
         const arming = armingOf(cwd, workUnit, topic, /** @type {import('./ledger-moves.cjs').Facts} */ (facts));

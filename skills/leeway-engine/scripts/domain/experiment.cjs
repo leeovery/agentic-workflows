@@ -26,7 +26,10 @@
 // The question an experiment measures stays open on the map, waiting on it,
 // until the discussion writes the result (9.1.11). A report concluding after
 // that question closed reaches the topic as a message, through `topic send`,
-// which reopens a decided topic and commits its own delivery.
+// which reopens a decided topic and commits its own delivery. Known edge: a
+// report owed to a topic closed as a dead end or promoted, or to a unit
+// given its spec.md while the experiment ran, is refused by the send after
+// the conclusion has committed, and never arrives.
 //
 // The phase item is derived bookkeeping over the records: the spawn opens it
 // (and reopens a completed series), the last record's terminal transition
@@ -49,7 +52,8 @@ const {
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
 const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
-const { flagDownstream, releaseExperimentWaits, assertLegalTopicName, sendMessage } = require('./transitions.cjs');
+const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
+const { sendMessage } = require('./mail.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
@@ -389,11 +393,12 @@ function reportOwed(cwd, workUnit, topic, id, warnings) {
 }
 
 /**
- * Send the report to the discussion of the topic it is owed to as a message
- * is sent (9.1.11, 10.2.7), through `topic send`: copied to a cache scratch,
- * which the send consumes, each relative link rebased to resolve from the
- * mailbox, and delivered there — a decided topic reopened, the delivery
- * committed.
+ * Send the report to the topic it is owed to as a message is sent (9.1.11,
+ * 10.2.7), through `topic send`, from the experiment — `E{n}` where the
+ * topic is its own, `{topic}/E{n}` where the person moved its question to
+ * another: copied to a cache scratch, which the send consumes, each
+ * relative link rebased to resolve from the topic's mailbox, and delivered
+ * there — a decided topic reopened, the delivery committed.
  * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id @param {{record: string, to: string}} owed
  * @returns {NonNullable<ExperimentOpResult['report_sent']>}
  */
@@ -401,13 +406,13 @@ function sendReport(cwd, workUnit, topic, id, { record, to }) {
   const scratch = statePath(cwd, `.cache/${workUnit}/experiment/${topic}/${id}-report.md`);
   fs.mkdirSync(path.dirname(scratch), { recursive: true });
   const report = fs.readFileSync(statePath(cwd, `${record}/report.md`), 'utf8');
-  fs.writeFileSync(scratch, rebaseLinks(report, record, mailboxDir(workUnit, 'discussion', to)));
-  const sent = sendMessage(cwd, workUnit, 'discussion', to, {
+  fs.writeFileSync(scratch, rebaseLinks(report, record, mailboxDir(workUnit, to)));
+  const sent = /** @type {{message_path: string, reopened?: true, committed: string|null}} */ (sendMessage(cwd, workUnit, to, {
+    from: to === topic ? id : `${topic}/${id}`,
     contentFile: scratch,
     slug: `${id.toLowerCase()}-report`,
-    message: `discussion(${workUnit}/${to}): ${topic}'s ${id} report, its question no longer open there when it landed`,
-  });
-  return { topic: to, message_path: sent.message_path, reopened: sent.reopened === true, committed: sent.committed ?? null };
+  }));
+  return { topic: to, message_path: sent.message_path, reopened: sent.reopened === true, committed: sent.committed };
 }
 
 /**

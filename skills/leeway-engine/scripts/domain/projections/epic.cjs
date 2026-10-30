@@ -586,20 +586,15 @@ function startVerbLabel(n, srcFlagged) {
   return { head, tail: n.label, cue: srcFlagged ? 'input moved' : undefined };
 }
 
-// A row's mail tail speaks for its own phase's mailbox — a research row
-// never carries the discussion mailbox's cue, nor a discussion row the
-// research's (the row's mail_queued, counted from disk per phase).
+// A topic has one mailbox, so each of its rows carries the cue while mail waits.
 /** @param {string} workUnit @param {MapRow} row @param {string} action @returns {MenuKey} */
 function discoveryEntry(workUnit, row, action) {
-  const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)];
-  const queued = phase === 'research' ? row.mail_queued.research : row.mail_queued.discussion;
-  const mailWaiting = queued > 0;
   return {
     key: '',
     action,
     topic: row.name,
     route: topicRoute(action, workUnit, row.name),
-    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, mailWaiting),
+    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, row.mail_waiting),
   };
 }
 

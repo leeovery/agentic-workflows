@@ -145,26 +145,26 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('review dispatch refuses while the mailbox holds entries, clears when it drains', () => {
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/001-parked.md', '### Parked\n');
     const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error;
     assert.match(err, /review dispatch blocked: 1 message/);
-    assert.match(err, /topic absorb/, 'the refusal names the recovery path');
+    assert.match(err, /topic answered/, 'the refusal names the recovery path');
     assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
-    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
+    fs.unlinkSync(path.join(dir, '.leeway/pay/topics/alpha/mail/001-parked.md'));
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001', 'a drained mailbox dispatches normally');
   });
 
   it('the mailbox guard holds review dispatches only — other kinds pass a full mailbox', () => {
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/001-parked.md', '### Parked\n');
     const dive = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(dive.id, 'deep-dive-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
-    // count as waiting messages — only what mailboxStatus itself would count.
-    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/.DS_Store', 'dirt');
-    fs.mkdirSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/nested.md'), { recursive: true });
+    // count as waiting messages — only what `topic mailbox` itself would count.
+    fs.unlinkSync(path.join(dir, '.leeway/pay/topics/alpha/mail/001-parked.md'));
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.leeway/pay/topics/alpha/mail/nested.md'), { recursive: true });
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });

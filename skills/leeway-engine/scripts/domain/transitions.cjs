@@ -1,9 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, send, complete, reopen,
-// supersede, cancel, and reactivate, each a single transaction from the
-// caller's perspective.
+// Domain ring: topic transitions — start, complete, reopen, supersede,
+// cancel, and reactivate, each a single transaction from the caller's
+// perspective — and the parking a message's landing applies to the topic it
+// reaches (mail.cjs).
 //
 // start/complete/reopen/supersede are phase-item lifecycle bookkeeping:
 // manifest write plus a knowledge-base sync where the phase is indexed
@@ -24,7 +25,6 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -35,13 +35,12 @@ const {
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  MAILBOX_PHASES, mailboxDir, mailboxFiles,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
-const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
@@ -284,22 +283,6 @@ function startTopic(cwd, workUnit, phase, topic) {
 }
 
 /**
- * @typedef {object} TopicSendResult
- * @property {string} topic
- * @property {string} phase
- * @property {string|null} status  the item's status after the call
- * @property {boolean} created     true when the phase item was created as `unstarted`
- * @property {string|null} status_before  the item's status before the call (null when created)
- * @property {boolean} [reopened]  set when a completed item was reopened to receive the message
- * @property {string} message_path  the installed message file, project-relative
- * @property {boolean} [reconcile_flagged]  the landing flagged downstream item(s) for reconciliation
- * @property {string[]} [sources_staled]  spec items whose source row for this discussion flipped `incorporated` → `stale`
- * @property {string|null} [committed]  short commit sha, or null
- * @property {string} [note]       set when committed is null
- * @property {string[]} [warnings] the tail commit's failure detail
- */
-
-/**
  * A topic name usable in paths: non-empty, no separators, no traversal.
  * Guards every verb that turns a topic into a filesystem location.
  * @param {string} topic
@@ -308,21 +291,6 @@ function assertLegalTopicName(topic) {
   if (!topic || /[\\/]/.test(topic) || topic.includes('..')) {
     throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
-}
-
-/**
- * The next message number in a topic's mailbox: highest `NNN-` prefix
- * plus one, `1` for a missing or empty mailbox.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
- * @returns {number}
- */
-function nextMessageNumber(cwd, workUnit, phase, topic) {
-  let max = 0;
-  for (const f of mailboxFiles(stateRoot(cwd), workUnit, phase, topic)) {
-    const m = f.match(/^(\d{3})-/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return max + 1;
 }
 
 /**
@@ -463,8 +431,10 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
  * `in-progress` item untouched, and set a `completed` item back to
  * `in-progress` (a landed message reopens the conversation; no
  * knowledge-base action — re-completion re-indexes over the same identity).
- * Terminal states refuse with the same messages start uses. Mutates `items`;
- * the caller saves when `dirty`.
+ * A cancelled item refuses as start refuses it; a promoted one never reaches
+ * here, refused with its topic first (topic-standing.cjs), and a phase a
+ * message waits in has no superseding. Mutates `items`; the caller saves
+ * when `dirty`.
  * @param {Record<string, any>} items the phase's items container
  * @param {string} phase
  * @param {string} topic
@@ -480,13 +450,6 @@ function parkMessageItem(items, phase, topic) {
   if (before === 'cancelled') {
     throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
   }
-  if (before === 'superseded') {
-    const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
-    throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
-  }
-  if (before === 'promoted') {
-    throw new Error(promotedRefusal(phase, topic, existing));
-  }
   if (before === 'completed') {
     existing.status = 'in-progress';
     return { status: 'in-progress', created: false, status_before: before, reopened: true, dirty: true };
@@ -498,326 +461,6 @@ function parkMessageItem(items, phase, topic) {
     return { status: 'unstarted', created: false, status_before: null, dirty: true };
   }
   return { status: before, created: false, status_before: before, dirty: false };
-}
-
-/**
- * A message lands on an open topic. On an epic the map row is the unit: a
- * cancelled or dead-ended row takes no message — the backstop for a peer
- * closing the target between the landing's read and its write.
- * @param {object} manifest @param {string} topic
- */
-function assertSendTargetOpen(manifest, topic) {
-  if (manifest.work_type !== 'epic' || !itemOf(manifest, 'discovery', topic)) return;
-  const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle === 'cancelled') {
-    throw new Error(`"${topic}" is cancelled — reactivate it from the epic menu first`);
-  }
-  if (lifecycle === 'handled') {
-    throw new Error(`"${topic}" is closed as a dead end — reopen it in discovery first`);
-  }
-}
-
-/**
- * Send a message to a topic: park the target item (`parkMessageItem`),
- * install the message as the next numbered file in the topic's mailbox,
- * consume the scratch file, and commit action-scoped. Legal only in phases
- * whose schema vocabulary contains `unstarted`.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} phase
- * @param {string} topic
- * @param {{contentFile: string, slug: string, message: string}} opts
- * @returns {TopicSendResult}
- */
-function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }) {
-  assertLegalWrite(phase, 'unstarted');
-  assertLegalTopicName(topic);
-  if (!contentFile) throw new Error('topic send requires --content <file>');
-  if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
-    throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
-  }
-  if (!message) throw new Error('topic send requires -m <message>');
-  // The scratch is consumed after delivery — confine it to the cache so a
-  // mis-passed path can never read (and delete) a live artifact.
-  const scratchAbs = path.resolve(cwd, contentFile);
-  if (!(stateRelative(cwd, scratchAbs) || '').startsWith('.cache/')) {
-    throw new Error(`--content must point inside ${statePath(cwd, '.cache')}/ — got "${contentFile}"`);
-  }
-  /** @type {string} */
-  let content;
-  try {
-    content = fs.readFileSync(scratchAbs, 'utf8');
-  } catch {
-    throw new Error(`message file not found: ${contentFile}`);
-  }
-  if (content.trim() === '') throw new Error(`message file is empty: ${contentFile}`);
-
-  /** @type {TopicSendResult} */
-  const result = withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const phases = ensureContainer(manifest, 'phases', 'phases');
-    const ph = ensureContainer(phases, phase, `phases.${phase}`);
-    const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
-
-    assertSendTargetOpen(manifest, topic);
-    const park = parkMessageItem(items, phase, topic);
-    // A landing reopens the ground the downstream phase stands on — flag it
-    // for reconciliation the next time it is entered. Staleness begins at
-    // landing, not at the topic's later re-conclusion.
-    const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
-
-    // Install the message in the topic's mailbox — a fresh engine-numbered
-    // file per message, so concurrent deliveries can never collide or lose
-    // an entry.
-    const dirRel = mailboxDir(workUnit, phase, topic);
-    fs.mkdirSync(statePath(cwd, dirRel), { recursive: true });
-    const n = String(nextMessageNumber(cwd, workUnit, phase, topic)).padStart(3, '0');
-    const rel = `${dirRel}/${n}-${slug}.md`;
-    fs.writeFileSync(statePath(cwd, rel), content.endsWith('\n') ? content : content + '\n');
-
-    /** @type {TopicSendResult} */
-    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before, message_path: statePath(cwd, rel) };
-    if (park.reopened) base.reopened = true;
-    if (fd.flagged.length > 0) base.reconcile_flagged = true;
-    if (fd.staled.length > 0) base.sources_staled = fd.staled;
-
-    if (park.dirty || fd.flagged.length > 0 || fd.staled.length > 0) saveWorkUnitManifest(cwd, workUnit, manifest);
-    return base;
-  });
-
-  try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitStateTail(
-    cwd,
-    [`${workUnit}/manifest.json`, result.message_path],
-    message,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  if (outcome.failed) {
-    // `--sweep` on the retry for the same reason the delivery itself never
-    // beats: the origin's session is committing into the TARGET topic, and
-    // a heartbeat there would manufacture a hold no session is holding.
-    result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} --sweep -m "<message>"`;
-  }
-  return result;
-}
-
-/**
- * @typedef {object} TopicMailboxResult
- * @property {string} work_unit
- * @property {string} phase
- * @property {string} topic
- * @property {number} count
- * @property {string[]} files  the message files, absolute, sorted
- */
-
-/**
- * Read a topic's mailbox: the engine owns the mailbox layout, so gates
- * and drains ask instead of globbing. Legal only in the mailbox phases;
- * a missing directory is an empty mailbox.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} phase
- * @param {string} topic
- * @returns {TopicMailboxResult}
- */
-function mailboxStatus(cwd, workUnit, phase, topic) {
-  if (!MAILBOX_PHASES.includes(phase)) {
-    throw new Error(`mailboxes exist for ${MAILBOX_PHASES.join('|')} only — got "${phase}"`);
-  }
-  assertLegalTopicName(topic);
-  if (!fs.existsSync(statePath(cwd, workUnit))) {
-    throw new Error(`no work unit directory: ${statePath(cwd, workUnit)}`);
-  }
-  const dir = statePath(cwd, mailboxDir(workUnit, phase, topic));
-  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic).map((name) => path.join(dir, name));
-  return { work_unit: workUnit, phase, topic, count: files.length, files };
-}
-
-/**
- * @typedef {object} TopicAbsorbResult
- * @property {string} phase
- * @property {string} topic
- * @property {string} absorbed  the message-file basename removed
- * @property {number} remaining  message files left after the removal
- * @property {string|null} [committed]
- * @property {string[]} [warnings]
- * @property {string} [note]
- */
-
-/**
- * Absorb one message — the mirror of `send`:
- * delete its message file and commit the fold action-scoped (the phase
- * artifact, this deletion, the work-unit manifest) under the caller's
- * message. The response answers `remaining` so the caller routes
- * loop-or-exit with no follow-up read.
- * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {{file: string, message: string}} opts
- * @returns {TopicAbsorbResult}
- */
-function absorbMessage(cwd, workUnit, phase, topic, { file, message }) {
-  const mailbox = mailboxStatus(cwd, workUnit, phase, topic);
-  if (file !== path.basename(file) || !file.endsWith('.md')) {
-    throw new Error(`topic absorb: --file must be a message-file name, not a path (got "${file}")`);
-  }
-  const rel = `${mailboxDir(workUnit, phase, topic)}/${file}`;
-  if (!mailbox.files.includes(statePath(cwd, rel))) {
-    throw new Error(`topic absorb: "${file}" is not in the ${topic} ${phase} mailbox`);
-  }
-  fs.unlinkSync(statePath(cwd, rel));
-  /** @type {TopicAbsorbResult} */
-  const result = { phase, topic, absorbed: file, remaining: mailbox.count - 1 };
-  const artifactRel = `${workUnit}/${phase}/${topic}.md`;
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitStateTail(
-    cwd,
-    [
-      `${workUnit}/manifest.json`,
-      rel,
-      ...(fs.existsSync(statePath(cwd, artifactRel)) ? [artifactRel] : []),
-    ],
-    message,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  if (outcome.failed) {
-    result.note = `commit pending — the message is absorbed; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
-  }
-  return result;
-}
-
-/**
- * @typedef {object} TopicForwardResult
- * @property {string} topic
- * @property {string} from_phase
- * @property {string} to_phase
- * @property {string} moved  the message-file basename moved out of the source mailbox
- * @property {string} message_path  the installed destination message file, absolute
- * @property {number} remaining  source-mailbox files left after the move
- * @property {string|null} status  the destination item's status after the call
- * @property {boolean} created     true when the destination item was created as `unstarted`
- * @property {string|null} status_before  the destination item's status before the call (null when created)
- * @property {boolean} [reopened]  set when a completed destination item was reopened to receive the message
- * @property {boolean} [source_item_removed]  the source item was a parked stub this move emptied, and was removed
- * @property {boolean} [reconcile_flagged]  the move flagged completed downstream item(s) for reconciliation
- * @property {string[]} [sources_staled]  spec items whose source row for this topic flipped `incorporated` → `stale`
- * @property {string|null} [committed]  short commit sha, or null
- * @property {string} [note]       set when committed is null
- * @property {string[]} [warnings] the tail commit's failure detail
- */
-
-/**
- * Forward one message to the same topic's other phase-side — the repair
- * for a message parked on the wrong side of the research/discussion pair.
- * One transaction: the destination item takes the parking semantics a
- * message landing applies (`parkMessageItem` plus the downstream staleness
- * hop), the message file is renumbered into the destination mailbox, an
- * `unstarted` source item the move leaves with an empty mailbox is removed
- * (it existed only to hold messages), and the move commits action-scoped
- * under the caller's message. The response answers `remaining` for the
- * source mailbox so the
- * caller routes loop-or-exit with no follow-up read.
- * @param {string} cwd @param {string} workUnit @param {string} fromPhase
- * @param {string} toPhase @param {string} topic
- * @param {{file: string, message: string}} opts
- * @returns {TopicForwardResult}
- */
-function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, message }) {
-  const pair = ['research', 'discussion'];
-  if (!pair.includes(fromPhase) || !pair.includes(toPhase) || fromPhase === toPhase) {
-    throw new Error(`topic forward moves a message to the same topic's other phase-side — research↔discussion, got "${fromPhase}" → "${toPhase}"`);
-  }
-  const mailbox = mailboxStatus(cwd, workUnit, fromPhase, topic);
-  if (file !== path.basename(file) || !file.endsWith('.md')) {
-    throw new Error(`topic forward: --file must be a message-file name, not a path (got "${file}")`);
-  }
-  const sourceRel = `${mailboxDir(workUnit, fromPhase, topic)}/${file}`;
-  if (!mailbox.files.includes(statePath(cwd, sourceRel))) {
-    throw new Error(`topic forward: "${file}" is not in the ${topic} ${fromPhase} mailbox`);
-  }
-  const slug = file.replace(/^\d{3}-/, '').replace(/\.md$/, '');
-
-  /** @type {TopicForwardResult} */
-  const result = withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const phases = ensureContainer(manifest, 'phases', 'phases');
-    const ph = ensureContainer(phases, toPhase, `phases.${toPhase}`);
-    const items = ensureContainer(ph, 'items', `phases.${toPhase}.items`);
-
-    const park = parkMessageItem(items, toPhase, topic);
-    let dirty = park.dirty;
-    /** @type {TopicForwardResult} */
-    const base = {
-      topic,
-      from_phase: fromPhase,
-      to_phase: toPhase,
-      moved: file,
-      message_path: '',
-      remaining: mailbox.count - 1,
-      status: park.status,
-      created: park.created,
-      status_before: park.status_before,
-    };
-    if (park.reopened) base.reopened = true;
-
-    // The move is a delivery to the destination — the same staleness hop a
-    // message landing makes there.
-    const fd = flagDownstream(manifest, manifest.work_type, toPhase, topic);
-    if (fd.flagged.length > 0) {
-      base.reconcile_flagged = true;
-      dirty = true;
-    }
-    if (fd.staled.length > 0) {
-      base.sources_staled = fd.staled;
-      dirty = true;
-    }
-
-    if (base.remaining === 0) {
-      const srcPh = phases[fromPhase];
-      const srcItems = srcPh && typeof srcPh === 'object' ? srcPh.items : undefined;
-      const src = srcItems && typeof srcItems === 'object' ? srcItems[topic] : undefined;
-      if (src && typeof src === 'object' && src.status === 'unstarted') {
-        delete srcItems[topic];
-        base.source_item_removed = true;
-        dirty = true;
-      }
-    }
-
-    const destDirRel = mailboxDir(workUnit, toPhase, topic);
-    fs.mkdirSync(statePath(cwd, destDirRel), { recursive: true });
-    const n = String(nextMessageNumber(cwd, workUnit, toPhase, topic)).padStart(3, '0');
-    const destRel = `${destDirRel}/${n}-${slug}.md`;
-    fs.renameSync(statePath(cwd, sourceRel), statePath(cwd, destRel));
-    base.message_path = statePath(cwd, destRel);
-
-    if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
-    return base;
-  });
-
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitStateTail(
-    cwd,
-    [`${workUnit}/manifest.json`, sourceRel, result.message_path],
-    message,
-    warnings,
-  );
-  result.committed = outcome.committed;
-  result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  if (outcome.failed) {
-    // `--sweep` keeps the retry as beat-free as the move: forward is a
-    // repair across a topic's two phase-sides, not a session working one.
-    result.note = `commit pending — the message is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} --sweep -m "<message>"`;
-  }
-  return result;
 }
 
 // The reconcile values a conversation must read in session before it
@@ -1674,4 +1317,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, sendMessage, mailboxStatus, absorbMessage, forwardMessage, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, parkMessageItem, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };

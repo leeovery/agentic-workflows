@@ -102,13 +102,12 @@ describe('pipeline simulation: workunit', () => {
       '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
     assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
-    // A peer sends a message to the discussion — it waits in the
-    // document's mailbox, and the mailbox follows the document.
+    // A peer sends a message to the topic — it waits in the topic's
+    // mailbox, and the mailbox follows the topic.
     const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
-      '### Rollback owner\n*From: billing · discussion · 2026-07-23*\n\nWho owns a rollback once the cutover starts?\n');
-    const landed = sim.run(['topic', 'send', feat, 'discussion', feat, '--content', scratch, '--slug', 'rollback-owner',
-      '-m', `discussion(${feat}): send message to ${feat}`]);
-    assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/discussion/.mailbox/${feat}/001-rollback-owner.md`));
+      'Rollback owner\n\nWho owns a rollback once the cutover starts?\n');
+    const landed = sim.run(['topic', 'send', feat, feat, '--from', feat, '--content', scratch, '--slug', 'rollback-owner']);
+    assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/topics/${feat}/mail/001-rollback-owner.md`));
 
     // The manage flow's absorb gates render from the pre-absorb state.
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
@@ -118,9 +117,9 @@ describe('pipeline simulation: workunit', () => {
 
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
-    assert.deepStrictEqual(absorbed.mail_moved, [{ phase: 'discussion', path: path.join(sim.dir, `.leeway/${epic}/discussion/.mailbox/stray-topic`), count: 1 }]);
-    assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'discussion', 'stray-topic']).files,
-      [path.join(sim.dir, `.leeway/${epic}/discussion/.mailbox/stray-topic/001-rollback-owner.md`)],
+    assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.leeway/${epic}/topics/stray-topic/mail`), count: 1 });
+    assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'stray-topic']).files,
+      [path.join(sim.dir, `.leeway/${epic}/topics/stray-topic/mail/001-rollback-owner.md`)],
       'the waiting message waits on the epic topic — its session raises it');
     assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic)).replace(/\n[ │]+/g, ' '),
       /Stray Topic[^\n]*mail waiting/, 'the epic tree cues the waiting message');

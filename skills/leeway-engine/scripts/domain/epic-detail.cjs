@@ -19,8 +19,7 @@ const {
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
   computeTopicLifecycle,
-  mailQueued,
-  mailWaiting,
+  mailboxDepth,
   UNIT_PHASES,
   unitItems,
   liveUnitItems,
@@ -158,8 +157,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} mail_waiting  messages wait in the topic's research or discussion mailbox, whatever the item's status
- * @property {{research: number, discussion: number}} mail_queued  the topic's mailbox depth per phase, counted from disk
+ * @property {boolean} mail_waiting  messages wait in the topic's mailbox, whatever its items' status
+ * @property {number} mail_queued  how many messages wait in the topic's mailbox, counted from disk
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
  * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -302,7 +301,7 @@ function discoveryUnits(manifest, discoveryMap) {
 function topicState(cwd, manifest, name, row) {
   if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.mail_waiting, row.reconcile_pending, row.waits, row.promoted_to);
   const { lifecycle, research_state, reconcile_pending } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, research_state, mailWaiting(mailQueued(stateRoot(cwd), manifest.name, name)), reconcile_pending);
+  return discoveryLifecycleLabel(lifecycle, null, research_state, mailboxDepth(stateRoot(cwd), manifest.name, name) > 0, reconcile_pending);
 }
 
 /**

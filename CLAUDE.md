@@ -100,7 +100,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files
 - `.workflows/{work_unit}/implementation/{topic}/`
 - `.workflows/{work_unit}/review/{topic}/report.md`
-- `.workflows/{work_unit}/{phase}/.mailbox/{topic}/` — messages waiting for a topic
+- `.workflows/{work_unit}/topics/{topic}/mail/` — messages waiting for a topic
 - `.workflows/{work_unit}/imports/` — files the user shared
 - `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.workflows/{work_unit}/.state/` — per-unit analysis files

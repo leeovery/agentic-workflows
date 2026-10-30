@@ -24,7 +24,23 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const {
   epicMenu, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { Sim, sessionLog, sendArgv, send, mappedEpic, presenceRow, arriveAtEpicMenu } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu } = require('./pipeline-world.cjs');
+
+// A discussion in flight on alpha with its research reopened beneath it by
+// a peer, sitting in it — a discussion cannot be born beneath live
+// research, so the research lands first and the peer's reopen is the hop
+// under it.
+function researchBeneath(sim, wu, peer) {
+  sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
+  sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
+    [{ name: 'alpha', routing: 'research', summary: 'alpha' }])]);
+  sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+  sim.run(['topic', 'start', wu, 'research', 'alpha']);
+  sim.run(['topic', 'complete', wu, 'research', 'alpha']);
+  sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+  peer.run(['topic', 'reopen', wu, 'research', 'alpha']);
+  peer.run(['presence', 'beat', wu, 'research', 'alpha']);
+}
 
 describe('pipeline simulation: epic-topics', () => {
   let sim;
@@ -71,33 +87,24 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(cancelledUnits(), []);
 
     // A started topic: a discussion in flight with a spawned experiment, a
-    // research stub parked beneath it by a send, and a proposed grouping
-    // over its discussion. The cancel takes all of it in one write — the
-    // wait released first, so the flag lands on the holder while it is
-    // still live.
+    // message waiting in its mailbox, and a proposed grouping over its
+    // discussion. The cancel takes all of it in one write — the wait
+    // released first, so the flag lands on the holder while it is still
+    // live.
     sim.run(['topic', 'start', wu, 'discussion', 'auth']);
     sim.write(`.leeway/${wu}/discussion/auth.md`, '# Discussion — Auth\n');
     const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion',
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
-    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Token lifetime\n*From: billing · discussion · d*\n\nHow long?\n');
-    sim.run(['topic', 'send', wu, 'research', 'auth', '--content', '.leeway/.cache/scratch/message-scratch.md',
-      '--slug', 'token-lifetime', '-m', `discussion(${wu}/billing): send message to auth`]);
-    // The landing's hop flagged the discussion; the session's re-entry
-    // cleared it (prose-owned) — so the cancel's own release is the flag
-    // that lands next.
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'research');
-    sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
+    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
+    sim.run(['topic', 'send', wu, 'auth', '--from', 'billing', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/grouping-ops.json`,
       [{ op: 'set', path: `${wu}.specification.grouping`, fields: { status: 'proposed', sources: { auth: { status: 'pending' } } } }])]);
     assert.deepStrictEqual(locked(), [], 'a proposed grouping never locks');
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.auth`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
-      /Cancelling \*\*Auth\*\* marks its research \[unstarted\] and discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
+      /Cancelling \*\*Auth\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
     const taken = sim.run(['topic', 'cancel', wu, 'discovery', 'auth']);
-    assert.deepStrictEqual(taken.cancelled, [
-      { phase: 'research', previous_status: 'unstarted' },
-      { phase: 'discussion', previous_status: 'in-progress' },
-    ]);
+    assert.deepStrictEqual(taken.cancelled, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     assert.deepStrictEqual(taken.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     assert.deepStrictEqual(taken.abandoned, ['E1']);
     assert.deepStrictEqual(taken.discarded, ['grouping']);
@@ -110,28 +117,21 @@ describe('pipeline simulation: epic-topics', () => {
     assert.strictEqual(m.phases.discovery.items.auth.cancelled, true);
     assert.ok(!epicMenu(wu, detail()).keys.some((k) => k.action === 'continue_experiment'), 'no live record, no laboratory row');
     assert.deepStrictEqual(cancelledUnits(), ['discovery/auth']);
-    // Either conversation's start refuses the cancelled topic in the red register, naming the reactivate.
-    for (const phase of ['research', 'discussion']) {
-      assert.match(sim.render(['entry-gate', `${wu}.${phase}.auth`, '--own'], { expect: 'content' }),
-        /⚑ "Auth" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
-    }
+    // The conversation's start refuses the cancelled topic in the red register, naming the reactivate.
+    assert.match(sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'content' }),
+      /⚑ "Auth" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
 
-    // The reactivate restores both conversations with the release flag live,
-    // and the parked research holds the discussion's conclusion as before —
-    // its own row is the way in, and its landing releases the wait.
+    // The reactivate restores the conversation with the release flag live,
+    // its message still waiting; answered, the discussion concludes.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
-    assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'unstarted' }, { phase: 'discussion', status: 'in-progress' }]);
+    assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
-      /Reactivated "Auth"\. Restored research \[unstarted\] · discussion \[in-progress\]\./);
-    for (const phase of ['research', 'discussion']) sim.render(['entry-gate', `${wu}.${phase}.auth`, '--own'], { expect: 'empty' });
+      /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
+    sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'empty' });
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
     sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
-    sim.refuses(['topic', 'complete', wu, 'discussion', 'auth'], /awaits research on the topic — conclude the research to release the wait/);
-    assert.match(sim.render(['wait-gate', `${wu}.discussion.auth`], { expect: 'content' }), /Work the research first — concluding it releases its wait/);
-    sim.run(['topic', 'start', wu, 'research', 'auth']);
-    sim.run(['topic', 'absorb', wu, 'research', 'auth', '--file', '001-token-lifetime.md', '-m', `research(${wu}/auth): absorb 001-token-lifetime (from billing)`]);
-    sim.write(`.leeway/${wu}/research/auth.md`, '# Research — Auth\n');
-    sim.run(['topic', 'complete', wu, 'research', 'auth']);
+    const lifetime = sim.run(['ledger', 'ask', `${wu}.discussion.auth`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'How long does a token live?' }));
+    sim.run(['topic', 'answered', wu, 'auth', '001-token-lifetime', '--entry', lifetime.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'auth']);
 
     // The Definition stage: roles specified and planned; billing specified,
@@ -238,9 +238,10 @@ describe('pipeline simulation: epic-topics', () => {
     // backstop for a peer closing the target under a landing; the cancel
     // marker sits over the dead end and lifts off it.
     sim.run(['discovery-map', 'handle', wu, 'export']);
-    sim.refuses(sendArgv(sim, wu, 'research', 'export'), /^"export" is closed as a dead end — reopen it in discovery first$/);
+    sim.refuses(sendArgv(sim, wu, 'export', 'auth'), /^the topic "export" is closed as a dead end — reopening it goes through the epic menu's discovery row$/);
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
-    sim.refuses(sendArgv(sim, wu, 'discussion', 'export'), /^"export" is cancelled — reactivate it from the epic menu first$/);
+    assert.match(sim.run(sendArgv(sim, wu, 'export', 'auth')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
+      'a cancelled topic\'s message goes to the inbox as an idea');
     sim.refuses(['discovery-map', 'unhandle', wu, 'export'], /it's cancelled; reactivate it from the epic menu first/);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.strictEqual(detail().discovery_map.find((r) => r.name === 'export').lifecycle, 'handled');
@@ -343,11 +344,12 @@ describe('pipeline simulation: epic-topics', () => {
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);
     sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
-    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
-    const mail = sim.run(['topic', 'send', wu, 'discussion', 'decided',
-      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits',
-      '-m', `discussion(${wu}/specd): send message to decided`]);
-    assert.strictEqual(mail.status, 'postponed', 'a message for a topic that waits is mail that waits with it');
+    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Mail that waits\n\nStill?\n');
+    const held = JSON.stringify(sim.manifest(wu));
+    const mail = sim.run(['topic', 'send', wu, 'decided', '--from', 'fresh-one', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits']);
+    assert.strictEqual(mail.message_path, path.join(sim.dir, `.leeway/${wu}/topics/decided/mail/001-mail-that-waits.md`),
+      'a message for a topic that waits is mail that waits with it');
+    assert.strictEqual(JSON.stringify(sim.manifest(wu)), held, 'the send leaves the hold alone');
 
     // `roadmap remove` is the door to "actually never".
     const removed = sim.run(['roadmap', 'remove', 'fresh-one']);
@@ -398,13 +400,8 @@ describe('pipeline simulation: epic-topics', () => {
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
     const wu = 'cutsown';
-    mappedEpic(sim, wu, ['alpha']);
     const peer = sim.session('peer-session', 1);
-    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
-    // A discussion cannot be born beneath live research: start it first, park
-    // the research under it, and let the peer lift the stub.
-    send(sim, wu, 'research', 'alpha');
-    peer.run(['topic', 'start', wu, 'research', 'alpha']);
+    researchBeneath(sim, wu, peer);
 
     const before = sim.run(['presence', 'scan', wu]);
     assert.strictEqual(presenceRow(before, 'discussion', 'alpha').held, true);
@@ -427,11 +424,8 @@ describe('pipeline simulation: epic-topics', () => {
 
   it('a postpone releases its own holds too, and a peer\'s next commit over the hold clears rather than beats', () => {
     const wu = 'putsoff';
-    mappedEpic(sim, wu, ['alpha']);
     const peer = sim.session('peer-session', 1);
-    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
-    send(sim, wu, 'research', 'alpha');
-    peer.run(['topic', 'start', wu, 'research', 'alpha']);
+    researchBeneath(sim, wu, peer);
 
     const taken = sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
     assert.deepStrictEqual(taken.postponed, [

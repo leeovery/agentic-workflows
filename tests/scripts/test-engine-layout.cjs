@@ -77,7 +77,6 @@ const DRAWN = Object.freeze({
 const TODAYS = Object.freeze({
   'pay/research/auth.md': '{unit}/research/{topic}.md',
   'pay/discussion/auth.md': '{unit}/discussion/{topic}.md',
-  'pay/discussion/.mailbox/auth/001-retry-policy.md': '{unit}/{research,discussion,investigation}/.mailbox/{topic}/{NNN}-{slug}.md',
   'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md': '{unit}/experiment/{topic}',
   'pay/discovery/sessions/session-001.md': '{unit}/discovery/sessions/session-{NNN}.md',
   'pay/discovery/briefs/auth.md': '{unit}/discovery/briefs/{topic}.md',
@@ -109,7 +108,7 @@ const OUTSIDE = Object.freeze([
   'Pay/spec.md', 'pay/topics/a.b/log.md', 'pay/discovery/session-1.md', 'pay/build/tasks/1.md', 'pay/build/tasks/0.2.md', 'pay/build/runs/3.s2/run-001.json', 'pay/review/round-0.md',
   '.inbox/ideas/30-10-2026--smart-retry.md', '.inbox/ideas/today--smart-retry.md', '.inbox/ideas/2026-10-30--smart_retry.md', 'pay/build/phases/phase-1/check_out-a.md',
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',
-  'pay/research/auth/notes.md', 'pay/discussion/.mailbox/auth/retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth/notes.md',
+  'pay/research/auth/notes.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth/notes.md',
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
 ]);
 
@@ -181,7 +180,7 @@ describe('today\'s places (E4)', () => {
       topic: layout.topic('pay', 'auth', 'log.md'),
       assets: layout.assets('pay', 'deck', 'cover.png'),
       doc: layout.doc('pay', 'investigation', 'crash'),
-      mailbox: layout.mailbox('pay', 'research', 'auth', '001-retry-policy.md'),
+      mailbox: layout.mailbox('pay', 'auth', '001-retry-policy.md'),
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
       spec: layout.spec('pay', 'auth'),
       plan: layout.plan('pay', 'auth'),

@@ -1,6 +1,6 @@
 # Handing Off
 
-*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, the continue menus, the bridge's continuations, review's route back to implementation, the laboratory's back from its record picker, the code-session gate's back on an epic, and the epic menu's backfill.*
+*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu and its direct open of a topic, the continue menus, the bridge's continuations, review's route back to implementation, the laboratory's back from its record picker, the code-session gate's back on an epic, and the epic menu's backfill.*
 
 ---
 
@@ -10,7 +10,7 @@ The engine checks the move and says how it travels: the gate mod carries it into
 
 The caller provides these via context before loading:
 
-- `route` — the move as the skill's slash command and its arguments, `/{skill} {args}`, exactly as the skill is invoked.
+- `route` — the move: the skill's slash command and its arguments, `/{skill} {args}`, exactly as the skill is invoked; or a topic named by its unit and name, `topic {work_unit} {topic}`, which the engine opens in the phase its topics are talked through.
 
 ## A. Hand Off
 

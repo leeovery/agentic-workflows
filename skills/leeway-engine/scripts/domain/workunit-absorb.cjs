@@ -42,16 +42,13 @@ const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require
 const { IMPORT_PHASES, isPlainName } = require('../kernel/manifest-schema.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { reaimAbsorbed } = require('./roadmap.cjs');
-const { mailboxStatus } = require('./transitions.cjs');
-const { mailboxDir } = require('./derivations.cjs');
+const { mailboxDir, mailboxDepth } = require('./derivations.cjs');
 const { seriesDir } = require('./experiment-paths.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
 // would orphan the downstream artifacts, so the guard refuses.
 const SPEC_OR_BEYOND = ['specification', 'planning', 'implementation', 'review'];
-
-const MAILBOX_MOVE_PHASES = ['discussion', 'research'];
 
 /**
  * @typedef {object} WorkUnitAbsorbResult
@@ -65,7 +62,7 @@ const MAILBOX_MOVE_PHASES = ['discussion', 'research'];
  * @property {{from: string, to: string}[]} renamed_imports  imports the dedupe renamed, links rewritten in the moved documents
  * @property {{path: string, source: string}[]} seeds  moved seed entries (absolute)
  * @property {string} routing   the map item's routing (research when the feature did research, else discussion)
- * @property {{phase: string, path: string, count: number}[]} [mail_moved]  messages that followed their document (absolute mailbox path)
+ * @property {{path: string, count: number}} [mail_moved]  the messages waiting for the feature's topic, moved to the new topic's mailbox (absolute)
  * @property {string[]} [roadmap_reaimed]  roadmap items whose joins now name the epic topic
  * @property {{item: string, from: string, to: string}[]} [roadmap_sources_rewritten]  roadmap sources that followed a moved file
  * @property {{item: string, source: string}[]} [roadmap_sources_dropped]  roadmap sources deleted with the feature
@@ -183,7 +180,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (featureManifest.work_type !== 'feature') {
     throw new Error(`work unit "${feature}" is not a feature (work_type: ${featureManifest.work_type ?? 'none'}) — only features absorb into epics`);
   }
-  const { discussionStatus, researchMoves, importMoves, renamedImports, seedMoves, experimentMove, mailboxMoves, routing, relocations } = withWorkUnitLock(cwd, into, () => {
+  const { discussionStatus, researchMoves, importMoves, renamedImports, seedMoves, experimentMove, mailboxMove, routing, relocations } = withWorkUnitLock(cwd, into, () => {
     const epicManifest = loadWorkUnitManifest(cwd, into);
     if (epicManifest.work_type !== 'epic') {
       throw new Error(`work unit "${into}" is not an epic (work_type: ${epicManifest.work_type ?? 'none'})`);
@@ -270,18 +267,17 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       }
     }
 
-    // A document's mailbox — the messages sent to it, waiting to be
-    // raised — travels with it: the feature directory is deleted afterwards.
-    /** @type {{phase: string, count: number, from: string, dest: string}[]} */
-    const mailboxPlan = [];
-    for (const phase of MAILBOX_MOVE_PHASES) {
-      const { count } = mailboxStatus(cwd, feature, phase, feature);
-      if (count === 0) continue;
-      const dest = mailboxDir(into, phase, topic);
+    // The topic's mailbox — the messages sent to it, waiting to be raised —
+    // travels with it: the feature directory is deleted afterwards.
+    /** @type {{count: number, from: string, dest: string}|null} */
+    let mailboxPlan = null;
+    const waiting = mailboxDepth(stateRoot(cwd), feature, feature);
+    if (waiting > 0) {
+      const dest = mailboxDir(into, topic);
       if (fs.existsSync(statePath(cwd, dest))) {
         throw new Error(`${statePath(cwd, dest)} already exists — pick a different name`);
       }
-      mailboxPlan.push({ phase, count, from: mailboxDir(feature, phase, feature), dest });
+      mailboxPlan = { count: waiting, from: mailboxDir(feature, feature), dest };
     }
 
     // The research move: the file must exist before anything mutates.
@@ -352,20 +348,20 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       fs.mkdirSync(path.dirname(statePath(cwd, seriesTo)), { recursive: true });
       fs.renameSync(statePath(cwd, seriesFrom), statePath(cwd, seriesTo));
     }
-    for (const { from, dest } of mailboxPlan) {
-      fs.mkdirSync(path.dirname(statePath(cwd, dest)), { recursive: true });
-      fs.renameSync(statePath(cwd, from), statePath(cwd, dest));
+    if (mailboxPlan !== null) {
+      fs.mkdirSync(path.dirname(statePath(cwd, mailboxPlan.dest)), { recursive: true });
+      fs.renameSync(statePath(cwd, mailboxPlan.from), statePath(cwd, mailboxPlan.dest));
     }
 
     // Every move above, as state-relative `[from, to]` — the series and the
-    // mailboxes pair directories, the rest files.
+    // mailbox pair directories, the rest files.
     /** @type {[string, string][]} */
     const relocations = [[`${feature}/discussion/${feature}.md`, `${into}/discussion/${topic}.md`]];
     for (const move of researchPlan) relocations.push([`${feature}/research/${move.from}.md`, `${into}/research/${move.target}.md`]);
     for (const move of importPlan) relocations.push([`${feature}/imports/${move.basename}`, `${into}/imports/${move.dest}`]);
     for (const move of seedPlan) relocations.push([`${feature}/seeds/${move.basename}`, `${into}/seeds/${move.dest}`]);
     if (seriesMoved) relocations.push([seriesFrom, seriesTo]);
-    for (const { from, dest } of mailboxPlan) relocations.push([from, dest]);
+    if (mailboxPlan !== null) relocations.push([mailboxPlan.from, mailboxPlan.dest]);
 
     // Epic manifest: phase items mirror the feature's statuses; tracked
     // entries carry their original timestamps (and seed provenance) with new
@@ -414,7 +410,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       experimentMove: experimentItem
         ? { status: experimentItem.status, ids: Object.keys(experimentItem.experiments || {}) }
         : null,
-      mailboxMoves: mailboxPlan,
+      mailboxMove: mailboxPlan,
       routing: researchPlan.length > 0 ? 'research' : 'discussion',
       relocations,
     };
@@ -481,9 +477,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   if (experimentMove) {
     result.experiment = { path: statePath(cwd, seriesDir(into, topic)), status: experimentMove.status, experiments: experimentMove.ids };
   }
-  if (mailboxMoves.length > 0) {
-    result.mail_moved = mailboxMoves.map(({ phase, count, dest }) => ({ phase, path: statePath(cwd, dest), count }));
-  }
+  if (mailboxMove !== null) result.mail_moved = { path: statePath(cwd, mailboxMove.dest), count: mailboxMove.count };
   if (roadmap.reaimed.length > 0) result.roadmap_reaimed = roadmap.reaimed;
   if (roadmap.rewritten.length > 0) result.roadmap_sources_rewritten = roadmap.rewritten;
   if (roadmap.dropped.length > 0) result.roadmap_sources_dropped = roadmap.dropped;

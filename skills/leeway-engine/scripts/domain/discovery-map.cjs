@@ -111,32 +111,39 @@ function validatePrior(prior) {
   return { work_unit: prior.work_unit, topic: prior.topic };
 }
 
+/** What a refusal over a topic with mail waiting says to do instead. */
+const MAIL_WAITING = 'messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead';
+
 /**
- * Gate a destructive op (remove/rename/reroute) on the fresh lifecycle. The
- * derived lifecycle alone is not enough: status combinations outside the
- * lifecycle join (superseded research beside a parked discussion stub)
- * derive `fresh`, yet the per-phase items are on record and the map item is
- * their historical anchor — so ANY per-phase item for the topic refuses too.
- * The error names the blocker and points at the recovery path.
- * @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed" | "re-routed"
+ * Why a topic whose lifecycle derives `fresh` still holds something a
+ * destructive op (remove/rename/reroute) would orphan, or null where it
+ * holds nothing: messages waiting in its mailbox — a postponed topic's
+ * mail makes no phase item, and stays through a pull-forward — or any
+ * per-phase item, on record outside the lifecycle join (superseded
+ * research beside a parked discussion stub), whose historical anchor the
+ * map item is. The one source the transactions and the map-operation gate
+ * read.
+ * @param {string} cwd @param {object} manifest @param {string} name
+ * @returns {string|null}
  */
-function assertFresh(manifest, name, verbPhrase) {
+function freshRefusal(cwd, manifest, name) {
+  if (mailboxDepth(stateRoot(cwd), /** @type {{name: string}} */ (manifest).name, name) > 0) return MAIL_WAITING;
+  const phaseWork = ['research', 'discussion'].some((phase) => phaseItems(manifest, phase).some((it) => it.name === name));
+  return phaseWork ? 'per-phase work exists on record and it stays on the map as historical anchor' : null;
+}
+
+/**
+ * Gate a destructive op (remove/rename/reroute) on a fresh topic holding
+ * nothing (`freshRefusal`). The error names the blocker and points at the
+ * recovery path.
+ * @param {string} cwd @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed" | "re-routed"
+ */
+function assertFresh(cwd, manifest, name, verbPhrase) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
-  const phaseWork = ['research', 'discussion'].flatMap(
-    (phase) => phaseItems(manifest, phase).filter((it) => it.name === name),
-  );
-  if (lifecycle === 'fresh' && phaseWork.length === 0) return;
   if (lifecycle === 'fresh') {
-    // All-unstarted phase work is not history — it is messages waiting in
-    // the topic's mailbox to drain. Name that instead of the historical-anchor message.
-    if (phaseWork.every((it) => it.status === 'unstarted')) {
-      throw new Error(
-        `"${name}" can't be ${verbPhrase} — messages wait in its mailbox; start the topic to drain them, or cancel from the epic menu`,
-      );
-    }
-    throw new Error(
-      `"${name}" can't be ${verbPhrase} — per-phase work exists on record and it stays on the map as historical anchor`,
-    );
+    const held = freshRefusal(cwd, manifest, name);
+    if (held === null) return;
+    throw new Error(`"${name}" can't be ${verbPhrase} — ${held}`);
   }
   const recovery = lifecycle === 'handled'
     ? 'reopen it to make it actionable again'
@@ -430,7 +437,7 @@ function removeItem(cwd, workUnit, name) {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
     mapItem(manifest, name);
-    assertFresh(manifest, name, 'removed');
+    assertFresh(cwd, manifest, name, 'removed');
     assertUnnamed(ledger.named, name, 'removed');
 
     delete items[name];
@@ -493,7 +500,7 @@ function renameItem(cwd, workUnit, oldName, newName) {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
     const item = mapItem(manifest, oldName);
-    assertFresh(manifest, oldName, 'renamed');
+    assertFresh(cwd, manifest, oldName, 'renamed');
     assertUnnamed(ledger.named, oldName, 'renamed');
     if (!newName || newName === oldName) {
       throw new Error(`new name must differ from "${oldName}"`);
@@ -600,7 +607,7 @@ function rerouteItem(cwd, workUnit, name, routing) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = mapItem(manifest, name);
-    assertFresh(manifest, name, 're-routed');
+    assertFresh(cwd, manifest, name, 're-routed');
     item.routing = routing;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -627,9 +634,8 @@ function markerRefusal(cwd, manifest, op, name) {
   if (Object.hasOwn(MARKER_CLOSED_PHRASES, lifecycle)) return MARKER_CLOSED_PHRASES[lifecycle];
   if (op === 'reopen') return lifecycle === 'handled' ? null : "it isn't closed as a dead end, so there's nothing to reopen";
   if (lifecycle === 'handled') return "it's already closed";
-  const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(stateRoot(cwd), manifest.name, phase, name) > 0);
-  return waiting.length > 0
-    ? `messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
+  return mailboxDepth(stateRoot(cwd), manifest.name, name) > 0
+    ? MAIL_WAITING
     : null;
 }
 
@@ -684,4 +690,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS };
+module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS, freshRefusal };

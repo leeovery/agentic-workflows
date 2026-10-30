@@ -23,6 +23,7 @@ const { launcher } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kerne
 const { stateGit } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
+const { auditState, ledgerAuditsOf } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
 describe('pipeline simulation: ledger', () => {
@@ -317,5 +318,24 @@ describe('pipeline simulation: ledger', () => {
       'How it is known: measured, timed the open', 'Command: swift run bench open', 'Later: moved to the roadmap, roadmap:sync.']) {
       assert.ok(copy.includes(line), `the copy does not say "${line}"`);
     }
+  });
+
+  it('the oracle audits the ledger once per state it reads: a step that leaves every read as it was passes as it was, and a step that changes any of them — a copy, not the ledger or a manifest — is audited afresh, a stale copy failing', () => {
+    const wu = 'fumi';
+    mappedEpic(sim, wu, ['note-window']);
+    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    sim.run(['ledger', 'ask', `${wu}.discussion.note-window`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What does the note window cover?' }));
+    const before = ledgerAuditsOf(sim.dir);
+    sim.run(['presence', 'beat', wu, 'discussion', 'note-window']);
+    assert.deepStrictEqual(ledgerAuditsOf(sim.dir), { full: before.full, passed: before.passed + 1 }, 'a beat touches nothing the ledger audit reads');
+
+    const copy = statePath(sim.dir, '.knowledge', 'records', wu, 'note-window.md');
+    const kept = fs.readFileSync(copy, 'utf8');
+    fs.writeFileSync(copy, '# A stale copy\n');
+    assert.throws(() => auditState(sim.dir, 'a stale copy'), /does not name every entry its record shows/);
+    assert.strictEqual(ledgerAuditsOf(sim.dir).full, before.full + 1, 'the changed copy is audited afresh');
+    fs.writeFileSync(copy, kept);
+    auditState(sim.dir, 'the copy restored');
+    assert.deepStrictEqual(ledgerAuditsOf(sim.dir), { full: before.full + 1, passed: before.passed + 2 }, 'the copy restored is the state last audited');
   });
 });

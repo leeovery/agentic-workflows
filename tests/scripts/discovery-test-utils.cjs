@@ -254,8 +254,8 @@ const layout = Object.freeze({
   assets: (unit, ...segments) => [unit, 'assets', ...segments].join('/'),
   /** A topic's research, discussion or investigation. @param {string} unit @param {string} phase @param {string} topic */
   doc: (unit, phase, topic) => `${unit}/${phase}/${topic}.md`,
-  /** A topic's waiting messages, or one of them. @param {string} unit @param {string} phase @param {string} topic @param {string} [name] */
-  mailbox: (unit, phase, topic, name) => [unit, phase, '.mailbox', topic, ...(name === undefined ? [] : [name])].join('/'),
+  /** A topic's mailbox, or a message waiting in it. @param {string} unit @param {string} topic @param {string} [name] */
+  mailbox: (unit, topic, name) => [unit, 'topics', topic, 'mail', ...(name === undefined ? [] : [name])].join('/'),
   /** A topic's experiment record, or a path in it. @param {string} unit @param {string} topic @param {...string} segments */
   experiment: (unit, topic, ...segments) => [unit, 'topics', topic, 'experiments', ...segments].join('/'),
   /** @param {string} unit @param {string} topic */

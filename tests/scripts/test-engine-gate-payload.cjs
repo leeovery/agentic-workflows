@@ -568,7 +568,7 @@ describe('gate payload — every gateway verb', () => {
         planning: { items: { tmpl: { status: 'in-progress', external_dependencies: { billing: { description: 'the ledger', state: 'unresolved' } } } } },
       },
     });
-    createFile(dir, '.leeway/v1/discussion/.mailbox/auth/001.md', '# A message\n');
+    createFile(dir, '.leeway/v1/topics/auth/mail/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
     createManifest(dir, 'v2', {
@@ -599,7 +599,7 @@ describe('gate payload — every gateway verb', () => {
     concluded('typo', 'quick-fix', 'scoping', 'implementation');
     concluded('logging', 'cross-cutting', 'discussion', 'specification');
     createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
-    createFile(dir, '.leeway/payments/discussion/.mailbox/payments/001.md', '# A message\n');
+    createFile(dir, '.leeway/payments/topics/payments/mail/001.md', '# A message\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'old-bug', { work_type: 'bugfix', status: 'cancelled' });
   }

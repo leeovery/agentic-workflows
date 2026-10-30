@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const { fileExists, filesChecksum, listFiles, loadProjectManifest } = require('./reads.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -1149,7 +1149,7 @@ function computeNeedsSequencing(mapItems) {
 // phase item carries a live reconcile flag, so the map row can cue `input
 // moved` — with a map, phase-item rows never render for research/discussion,
 // making this the topic's only surface. Whether mail waits is a fact about
-// the mailbox on disk, never the manifest — `mailQueued` reads it.
+// the mailbox on disk, never the manifest — `mailboxDepth` reads it.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
@@ -1331,35 +1331,44 @@ function computeSourceProvenance(source) {
   return `from ${labels.join(' + ')}`;
 }
 
-// The phases that own a mailbox — those whose item vocabulary admits
-// `unstarted`, in schema order.
-const MAILBOX_PHASES = Object.entries(VALID_PHASE_STATUSES)
-  .filter(([, vocabulary]) => vocabulary.includes('unstarted'))
-  .map(([phase]) => phase);
+// The conversations a topic's mail waits for, in the order a pipeline is
+// searched: discussion, or a bugfix's investigation.
+const MAIL_PHASES = ['discussion', 'investigation'];
 
 /**
- * A topic's mailbox directory, state-relative — the one place the layout is
- * spelled.
- * @param {string} workUnit @param {string} phase @param {string} topic
- * @returns {string}
+ * The phase a unit's topics are talked through, where their mail is raised
+ * (10.1.3): the first of `MAIL_PHASES` its work type's pipeline holds, null
+ * for a quick-fix, which talks through none.
+ * @param {string} workType @returns {string|null}
  */
-function mailboxDir(workUnit, phase, topic) {
-  return `${workUnit}/${phase}/.mailbox/${topic}`;
+function mailPhase(workType) {
+  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] ?? [];
+  return MAIL_PHASES.find((phase) => pipeline.includes(phase)) ?? null;
 }
 
 /**
- * A topic's messages: the mailbox's `.md` file names in the order the drain
- * takes them, `[]` when no mailbox exists. The one reader of a mailbox's
+ * A topic's mailbox, state-relative — the one place the layout is spelled:
+ * one per topic, in the topic's own folder, naming no phase (10.1.3).
+ * @param {string} workUnit @param {string} topic
+ * @returns {string}
+ */
+function mailboxDir(workUnit, topic) {
+  return `${workUnit}/topics/${topic}/mail`;
+}
+
+/**
+ * A topic's messages: the mailbox's `.md` file names in the order they
+ * landed, `[]` when no mailbox exists. The one reader of a mailbox's
  * contents.
  * @param {string} stateDir  the state root
- * @param {string} workUnit @param {string} phase @param {string} topic
+ * @param {string} workUnit @param {string} topic
  * @returns {string[]}
  */
-function mailboxFiles(stateDir, workUnit, phase, topic) {
+function mailboxFiles(stateDir, workUnit, topic) {
   /** @type {fs.Dirent[]} */
   let entries;
   try {
-    entries = fs.readdirSync(path.join(stateDir, mailboxDir(workUnit, phase, topic)), { withFileTypes: true });
+    entries = fs.readdirSync(path.join(stateDir, mailboxDir(workUnit, topic)), { withFileTypes: true });
   } catch {
     return [];
   }
@@ -1368,26 +1377,11 @@ function mailboxFiles(stateDir, workUnit, phase, topic) {
 
 // A topic's mailbox depth. The cue means "messages wait here", and that is a
 // fact about the mailbox directory, not the item's status: a landing on a
-// concluded topic reopens it to `in-progress`, and the drain deletes message
-// files, so an empty directory is the released signal with nothing to clear.
-/** @param {string} stateDir @param {string} workUnit @param {string} phase @param {string} topic @returns {number} */
-function mailboxDepth(stateDir, workUnit, phase, topic) {
-  return mailboxFiles(stateDir, workUnit, phase, topic).length;
-}
-
-// The epic map row's depths — the two conversation phases a map row joins.
-/** @param {string} stateDir @param {string} workUnit @param {string} topic @returns {{research: number, discussion: number}} */
-function mailQueued(stateDir, workUnit, topic) {
-  return {
-    research: mailboxDepth(stateDir, workUnit, 'research', topic),
-    discussion: mailboxDepth(stateDir, workUnit, 'discussion', topic),
-  };
-}
-
-// The `mail waiting` cue: messages wait in either of the topic's mailboxes.
-/** @param {{research: number, discussion: number}} queued @returns {boolean} */
-function mailWaiting(queued) {
-  return queued.research + queued.discussion > 0;
+// decided topic sets it back in progress, and an answered message's file
+// goes, so an empty directory is the released signal with nothing to clear.
+/** @param {string} stateDir @param {string} workUnit @param {string} topic @returns {number} */
+function mailboxDepth(stateDir, workUnit, topic) {
+  return mailboxFiles(stateDir, workUnit, topic).length;
 }
 
 /**
@@ -1404,18 +1398,18 @@ function ownNamedItems(manifest, phase) {
 }
 
 /**
- * The phases whose mailbox holds messages for a single-topic unit — the start
- * rows' and the continue dashboard's cue — any mailbox phase owning one,
- * on the unit's name or, where the phase's items carry names of their own, on
- * any of them.
- * @param {string} stateDir  the state root @param {object} manifest @returns {string[]}
+ * The phase whose topic has mail waiting in a single-topic unit — the start
+ * rows' and the continue dashboard's cue: the unit's mail phase, where mail
+ * waits for the unit's own topic or, where the phase's items carry names of
+ * their own, for any of them; none where none waits.
+ * @param {string} stateDir  the state root @param {{name: string, work_type: string}} manifest @returns {string[]}
  */
 function mailPhases(stateDir, manifest) {
-  return MAILBOX_PHASES.filter((phase) => {
-    const own = ownNamedItems(manifest, phase);
-    const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
-    return topics.some((topic) => mailboxDepth(stateDir, manifest.name, phase, topic) > 0);
-  });
+  const phase = mailPhase(manifest.work_type);
+  if (phase === null) return [];
+  const own = ownNamedItems(manifest, phase);
+  const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
+  return topics.some((topic) => mailboxDepth(stateDir, manifest.name, topic) > 0) ? [phase] : [];
 }
 
 /**
@@ -1435,8 +1429,8 @@ function mailPhases(stateDir, manifest) {
  * @property {string|null} research_state
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to       the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} mail_waiting       messages wait in the topic's research or discussion mailbox, whatever the item's status
- * @property {{research: number, discussion: number}} mail_queued  the topic's mailbox depth per phase, counted from disk
+ * @property {boolean} mail_waiting       messages wait in the topic's mailbox, whatever its items' status
+ * @property {number} mail_queued         how many messages wait in the topic's mailbox, counted from disk
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
  * @property {Wait[]} waits               the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -1462,7 +1456,7 @@ function buildDiscoveryMap(manifest, stateDir) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
     const { lifecycle, tier, current_phase, research_state, discussion_state, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
-    const mail_queued = mailQueued(stateDir, manifest.name, item.name);
+    const mail_queued = mailboxDepth(stateDir, manifest.name, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     const discussion = discussion_state === 'promoted' ? itemOf(manifest, 'discussion', item.name) : undefined;
@@ -1482,7 +1476,7 @@ function buildDiscoveryMap(manifest, stateDir) {
       research_state,
       discussion_state,
       promoted_to: discussion && typeof discussion.promoted_to === 'string' ? discussion.promoted_to : null,
-      mail_waiting: mailWaiting(mail_queued),
+      mail_waiting: mail_queued > 0,
       mail_queued,
       reconcile_pending,
       waits: topicWaits(manifest, item.name),
@@ -1560,12 +1554,10 @@ module.exports = {
   computeNeedsSequencing,
   buildDiscoveryMap,
   ownNamedItems,
-  MAILBOX_PHASES,
+  mailPhase,
   mailboxDir,
   mailboxFiles,
   mailboxDepth,
-  mailQueued,
-  mailWaiting,
   mailPhases,
   TIER_RANK,
 };

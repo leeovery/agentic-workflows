@@ -18,7 +18,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
-  mailboxDir, mailboxFiles, mailboxDepth, mailQueued, mailWaiting, mailPhases,
+  mailboxDir, mailboxFiles, mailboxDepth, mailPhase, mailPhases,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
@@ -1824,25 +1824,22 @@ describe('reads + derivations', () => {
     });
   });
 
-  describe('the mailbox — one reader, one meaning of mail waiting', () => {
+  describe('the mailbox — one per topic, one reader, one meaning of mail waiting', () => {
     const state = () => statePath(dir);
-    const message = (wu, phase, topic, file) => createFile(state(), `${mailboxDir(wu, phase, topic)}/${file}`, '### m\n');
+    const message = (wu, topic, file) => createFile(state(), `${mailboxDir(wu, topic)}/${file}`, 'M\n');
 
-    it('mailboxFiles lists the message files in drain order — .md files alone, [] for no mailbox', () => {
-      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'discussion', 'fees'), []);
-      message('pay', 'discussion', 'fees', '002-second.md');
-      message('pay', 'discussion', 'fees', '001-first.md');
-      message('pay', 'discussion', 'fees', 'notes.txt');
-      fs.mkdirSync(path.join(state(), mailboxDir('pay', 'discussion', 'fees'), '003-dir.md'));
-      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'discussion', 'fees'), ['001-first.md', '002-second.md']);
-      assert.strictEqual(mailboxDepth(state(), 'pay', 'discussion', 'fees'), 2);
-      assert.deepStrictEqual(mailQueued(state(), 'pay', 'fees'), { research: 0, discussion: 2 });
+    it('a topic\'s mailbox sits under the topic, naming no phase', () => {
+      assert.strictEqual(mailboxDir('pay', 'fees'), 'pay/topics/fees/mail');
     });
 
-    it('mail waits wherever either mailbox holds a message, and nowhere else', () => {
-      assert.strictEqual(mailWaiting({ research: 0, discussion: 0 }), false);
-      assert.strictEqual(mailWaiting({ research: 1, discussion: 0 }), true);
-      assert.strictEqual(mailWaiting({ research: 0, discussion: 3 }), true);
+    it('mailboxFiles lists the message files in the order they landed — .md files alone, [] for no mailbox', () => {
+      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'fees'), []);
+      message('pay', 'fees', '002-second.md');
+      message('pay', 'fees', '001-first.md');
+      message('pay', 'fees', 'notes.txt');
+      fs.mkdirSync(path.join(state(), mailboxDir('pay', 'fees'), '003-dir.md'));
+      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'fees'), ['001-first.md', '002-second.md']);
+      assert.strictEqual(mailboxDepth(state(), 'pay', 'fees'), 2);
     });
 
     it('the map row reads mail waiting off the mailbox whatever the item\'s status — a started item with messages cues, a message-less stub does not', () => {
@@ -1853,18 +1850,21 @@ describe('reads + derivations', () => {
           discussion: { items: { fees: { status: 'in-progress' }, refunds: { status: 'unstarted' } } },
         },
       };
-      message('pay', 'discussion', 'fees', '001-escalation.md');
+      message('pay', 'fees', '001-escalation.md');
       const rows = buildDiscoveryMap(m, state()).map;
       const row = (name) => /** @type {any} */ (rows.find((r) => r.name === name));
-      assert.strictEqual(row('fees').mail_waiting, true);
-      assert.deepStrictEqual(row('fees').mail_queued, { research: 0, discussion: 1 });
-      assert.strictEqual(row('refunds').mail_waiting, false);
+      assert.deepStrictEqual([row('fees').mail_waiting, row('fees').mail_queued], [true, 1]);
+      assert.deepStrictEqual([row('refunds').mail_waiting, row('refunds').mail_queued], [false, 0]);
     });
 
-    it('a single-topic unit\'s mail phases read the same mailboxes', () => {
+    it('mail is raised in the phase a work type talks its topics through — a bugfix\'s investigation, a quick-fix\'s none', () => {
+      assert.deepStrictEqual(['epic', 'feature', 'cross-cutting', 'bugfix', 'quick-fix'].map(mailPhase), ['discussion', 'discussion', 'discussion', 'investigation', null]);
+    });
+
+    it('a single-topic unit\'s mail phases read its one mailbox', () => {
       const m = { name: 'pay', work_type: 'feature', phases: { discussion: { items: { pay: { status: 'in-progress' } } } } };
       assert.deepStrictEqual(mailPhases(state(), m), []);
-      message('pay', 'discussion', 'pay', '001-escalation.md');
+      message('pay', 'pay', '001-escalation.md');
       assert.deepStrictEqual(mailPhases(state(), m), ['discussion']);
     });
   });

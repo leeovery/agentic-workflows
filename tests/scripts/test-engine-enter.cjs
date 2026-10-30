@@ -398,6 +398,28 @@ describe('the answer', () => {
     ]));
   });
 
+  it('a topic with mail waiting opens on it: each message headed by the line naming its sender, its title over the rest, raised before anything is read, and named first in what to read (10.S3, 10.4.2, 2.S18)', () => {
+    writeState(dir, layout.mailbox(EPIC, 'licence', '001-lost-key.md'), '# The licence window carries a "Lost your key?" link\nFrom Commercialization · 16 Oct\n\n↳ Their reasoning: a new Mac has no key to hand.\n');
+    writeState(dir, layout.mailbox(EPIC, 'licence', '002-trial.md'), 'A trial runs fourteen days\nFrom Onboarding · 17 Oct\n');
+    const { sections } = enter(['discussion', EPIC, 'licence']);
+    const [mail, reads] = sections.split(/(?==== DATA )/);
+    assert.strictEqual(mail, [
+      '=== DISPLAY: waiting mail (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '2 messages waiting — raised before anything else',
+      '',
+      'From Commercialization · 16 Oct',
+      'The licence window carries a "Lost your key?" link',
+      '  ↳ Their reasoning: a new Mac has no key to hand.',
+      '',
+      'From Onboarding · 17 Oct',
+      'A trial runs fourteen days',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(reads.split('\n').slice(1, 3), [
+      `mail: ${at(layout.mailbox(EPIC, 'licence', '001-lost-key.md'))}`, `mail: ${at(layout.mailbox(EPIC, 'licence', '002-trial.md'))}`,
+    ]);
+  });
+
   it('a conversation resumed under its own session id, the process that dispatched its agent gone: the agent is lost', () => {
     runAs(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'crashed'], 'sess-1', GONE);
     assert.match(enter(['discussion', EPIC, 'licence']).sections, /^lost: deep-dive-003-crashed$/m);

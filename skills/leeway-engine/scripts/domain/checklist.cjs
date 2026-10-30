@@ -28,8 +28,8 @@
 // topics where it has more than one live topic.
 //
 // A mark counts only once made after the record's last close, so a point
-// closed again — a decided topic reopened by mail (10.2.7) — is worked
-// afresh; 29.11 settles reopening. A skip shows on the screen of the next
+// closed again — a decided topic a message set back in progress (10.2.7,
+// mail.cjs) — is worked afresh. A skip shows on the screen of the next
 // authority gate over its work (6.4.5): decided's, ready to build's and
 // finish's each their own, and finish's every phase start's and close's too,
 // as each record keeps them. An engine item is never marked or skipped, so
@@ -41,13 +41,13 @@
 // `close` refuses while any item is open (6.4.4).
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { readSpec, specSections } = require('./spec-sections.cjs');
+const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -113,8 +113,7 @@ function questionsClosed({ cwd, unit, topic, warnings }) {
 
 /** No message waiting in the topic's mail (10.2.7). @param {Named} named */
 function mailboxEmpty({ cwd, unit, topic }) {
-  const mail = statePath(cwd, /** @type {string} */ (unit), 'topics', /** @type {string} */ (topic), 'mail');
-  return !fs.existsSync(mail) || !fs.readdirSync(mail).some((name) => name.endsWith('.md'));
+  return mailboxDepth(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic)) === 0;
 }
 
 /** Each phase of the cut names a scenario and a section; what it relies on may be nothing (11.5.4). @param {Named} named */

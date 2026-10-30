@@ -15,4 +15,12 @@ function isoNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
-module.exports = { todayStamp, isoNow };
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A date stamp as a screen shows it: `2026-10-16` as `16 Oct`. @param {string} stamp `YYYY-MM-DD` */
+function dayMonth(stamp) {
+  const [, month, day] = stamp.split('-').map(Number);
+  return `${day} ${MONTHS[month - 1]}`;
+}
+
+module.exports = { todayStamp, isoNow, dayMonth };

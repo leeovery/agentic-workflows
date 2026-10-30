@@ -518,7 +518,7 @@ describe('pipeline simulation: sessions', () => {
       }
     };
     const specScope = [`.leeway/${wu}/specification/ingest`, `.leeway/${wu}/manifest.json`];
-    const talkScope = [`.leeway/${wu}/discussion/ranking.md`, `.leeway/${wu}/discussion/.mailbox/ranking`, `.leeway/${wu}/manifest.json`];
+    const talkScope = [`.leeway/${wu}/discussion/ranking.md`, `.leeway/${wu}/topics/ranking/mail`, `.leeway/${wu}/manifest.json`];
 
     // --- A1 · B1 · A2 · B2: two document sessions, alternating -------------
     // A: a specification session on ingest. B: a discussion session on
@@ -646,7 +646,7 @@ describe('pipeline simulation: sessions', () => {
 
     talkSession.run(['commit', wu, '--topic', 'research/metrics', '--sweep',
       '-m', `chore(${wu}/metrics): sweep session leavings`]);
-    confined('sweep', [`.leeway/${wu}/research/metrics.md`, `.leeway/${wu}/research/.mailbox/metrics`, `.leeway/${wu}/manifest.json`],
+    confined('sweep', [`.leeway/${wu}/research/metrics.md`, `.leeway/${wu}/topics/metrics/mail`, `.leeway/${wu}/manifest.json`],
       [SPEC_FILE, TALK_FILE, CODE_FILE]);
     assert.ok(!dirty().includes(`.leeway/${wu}/research/metrics.md`), "the dead session's document is committed");
 

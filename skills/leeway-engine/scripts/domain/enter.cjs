@@ -18,10 +18,11 @@
 // question (2.10.3).
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
-// the work unit — why it cannot be entered as it stands, whether and how it
-// starts, the questions it raises first, what it reads, and its log. A
-// topic-level row refuses an epic entered at no topic, a topic once the unit
-// has its spec (4.11.2), and a topic the unit lacks; a unit-level row takes
+// the work unit — why it cannot be entered as it stands (topic-standing.cjs,
+// the rule a handoff into a topic and a message to one share), whether and
+// how it starts, the questions it raises first, what it reads, and its log.
+// A topic-level row refuses an epic entered at no topic, a topic once the
+// unit has its spec (4.11.2), and a topic the unit lacks; a unit-level row takes
 // no topic, and is entered after the spec as before it. Discussion is the
 // first row; each later phase adds its own as its rewrite moves it onto the
 // entry. A unit-level place is the unit itself, as a single-topic unit's
@@ -34,12 +35,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { withWorkUnitLock } = require('../kernel/manifest.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { hasTopic, manifestOf, liveTopics } = require('./ledger-units.cjs');
-const { computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
+const { liveTopics } = require('./ledger-units.cjs');
+const { computeTopicLifecycle, itemOf } = require('./derivations.cjs');
+const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { arriveAt } = require('./session-label.cjs');
@@ -48,15 +49,12 @@ const { agentsLeft } = require('./agent-state.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { topicLog, recordCall, productCall, owedHeader } = require('./topic-log.cjs');
 const { entrySections, heldGate } = require('./projections/enter.cjs');
+const { waitingMessages } = require('./mail.cjs');
+const { waitingMail } = require('./projections/mail.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
 
-/**
- * Where an entry stands as it is checked: the unit's manifest as it stood on
- * arrival, and the topic — none at a unit-level row, nor at an epic entered
- * at none.
- * @typedef {{cwd: string, phase: string, unit: string, topic?: string, manifest: Record<string, any>}} Standing
- */
+/** @typedef {import('./topic-standing.cjs').Standing} Standing */
 
 /**
  * What a row reads from once it is entered: where the entry is, and whether
@@ -79,69 +77,6 @@ const { entrySections, heldGate } = require('./projections/enter.cjs');
  * @property {(unit: string, topic?: string) => string} log
  */
 
-/**
- * Where a decided or set-aside topic of the unit is reopened (8.6.5).
- * @param {Record<string, any>} manifest
- */
-function reopenedThrough(manifest) {
-  return manifest.work_type === 'epic' ? 'the epic menu\'s discovery row' : 'manage on the start menu';
-}
-
-/** Where a unit's topics are named. @param {Record<string, any>} manifest */
-function topicsNamed(manifest) {
-  return manifest.work_type === 'epic'
-    ? 'the epic\'s map holds its topics, and a new one comes through its discovery'
-    : `a ${manifest.work_type}'s topic is the unit itself`;
-}
-
-/**
- * Why a topic-level row's topic cannot be entered, whatever the phase: an
- * epic entered at none, a name that is not one, the unit past its spec
- * (4.11.2), or a topic the unit lacks; null where it can.
- * @param {Standing} at @returns {string|null}
- */
-function topicStanding({ cwd, phase, unit, topic, manifest }) {
-  if (topic === undefined) return `an epic enters ${phase} at one of its topics — name the topic: engine enter ${phase} ${unit} <topic>`;
-  const illegal = illegalNameReason('topic', topic);
-  if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
-  if (fs.existsSync(statePath(cwd, unit, 'spec.md'))) return `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here`;
-  const own = topic === unit && manifest.work_type !== 'epic';
-  return own || hasTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
-}
-
-/** @type {Readonly<Record<string, (topic: string, through: string) => string>>} */
-const SET_ASIDE = Object.freeze({
-  cancelled: (topic, through) => `the topic "${topic}" is cancelled — reactivating it goes through ${through}`,
-  handled: (topic, through) => `the topic "${topic}" is closed as a dead end — reopening it goes through ${through}`,
-});
-
-/**
- * Why a postponed topic cannot be entered: the way back while its roadmap
- * item still waits, and none once another epic has taken it.
- * @param {string} cwd @param {string} unit @param {string} topic @param {string} through
- */
-function postponedRefusal(cwd, unit, topic, through) {
-  return postponedStillWaits(cwd, unit, topic)
-    ? `the topic "${topic}" is postponed to the roadmap — pulling it forward goes through ${through}`
-    : `the topic "${topic}" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back`;
-}
-
-/**
- * Why a discussion's topic cannot be entered: set aside on the map, promoted
- * out of the unit, or decided; null where it can.
- * @param {Standing} at @returns {string|null}
- */
-function discussionStanding({ cwd, unit, topic = '', manifest }) {
-  const through = reopenedThrough(manifest);
-  const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle === 'postponed') return postponedRefusal(cwd, unit, topic, through);
-  if (Object.hasOwn(SET_ASIDE, lifecycle)) return SET_ASIDE[lifecycle](topic, through);
-  const item = itemOf(manifest, 'discussion', topic);
-  if (item?.status === 'promoted') return `the topic "${topic}" was promoted to "${item.promoted_to}" — it carries on there`;
-  if (item?.status === 'completed') return `the topic "${topic}" is decided — it reopens through a message sent to it, or through ${through}`;
-  return null;
-}
-
 /** The files in a state folder, sorted, as absolute paths; none where it is not there. @param {string} dir absolute */
 function filesIn(dir) {
   try {
@@ -155,8 +90,19 @@ function filesIn(dir) {
 const existing = (paths) => paths.filter((p) => fs.existsSync(p));
 
 /**
- * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): the
- * topic's brief — for the unit's one topic, discovery's log and the unit's
+ * The mail waiting for a topic, raised at its opening before anything else
+ * (10.4.1, 10.4.2): none where none waits.
+ * @param {Entering} at @returns {string[]}
+ */
+function mailRaised({ cwd, unit, topic = '' }) {
+  const waiting = waitingMessages(cwd, unit, topic);
+  return waiting.length === 0 ? [] : [waitingMail(waiting)];
+}
+
+/**
+ * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): each
+ * message waiting, its name the one `topic answered` takes; the topic's
+ * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
  * product record with the findings it holds from the code; and the unit's
  * spikes. Resuming adds the topic's own record (9.3.11) and the reports of
@@ -172,6 +118,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
   /** @param {string} key @returns {(value: string) => Line} */
   const as = (key) => (value) => [key, value];
   return [
+    ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
     ...existing([statePath(cwd, unit, 'discovery', 'briefs', `${topic}.md`)]).map(as('brief')),
     ...(own ? filesIn(statePath(cwd, unit, 'discovery', 'sessions')) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
@@ -188,10 +135,10 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
 const ENTRIES = Object.freeze({
   discussion: {
     level: 'topic',
-    standing: (at) => topicStanding(at) ?? discussionStanding(at),
+    standing: phaseStanding('discussion'),
     unstarted: (manifest, topic = '') => ['unstarted', undefined].includes(itemOf(manifest, 'discussion', topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, 'discussion', topic); },
-    questions: () => [],
+    questions: mailRaised,
     reads: discussionReads,
     log: (unit, topic = '') => topicLog(unit, topic),
   },
@@ -205,19 +152,6 @@ function enterUsage(entries) {
 }
 
 const ENTER_USAGE = enterUsage(ENTRIES);
-
-/**
- * The unit's manifest, refused where this project has no such unit or it
- * is not in progress.
- * @param {string} cwd @param {string} unit @returns {Record<string, any>}
- */
-function unitInProgress(cwd, unit) {
-  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
-  if (manifest === null) throw new Error(`there is no work unit "${unit}" — the start menu lists the work in progress`);
-  if (manifest.status === 'cancelled') throw new Error(`${unit} is cancelled — reactivating it comes first`);
-  if (manifest.status !== 'in-progress') throw new Error(`${unit} is ${manifest.status} — new work starts from the start menu`);
-  return manifest;
-}
 
 /**
  * The topic an entry is at — at a topic-level row the one named, else the
@@ -278,8 +212,7 @@ function enterThrough(entries, cwd, argv) {
   if (bad) throw new Error(`Usage: engine ${enterUsage(entries)}`);
   const entry = entries[phase];
   const manifest = unitInProgress(cwd, unit);
-  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
-  if (!pipeline.includes(phase)) throw new Error(`a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`);
+  assertPhaseHeld(manifest, phase);
   /** @type {Standing} */
   const at = { cwd, phase, unit, topic: topicOf(entry, manifest, phase, unit, named), manifest };
   const standing = entry.standing(at);
