@@ -141,7 +141,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nfold\n');
     writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
 
-    const res = ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
+    const res = ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.absorbed, '001-first.md');
     assert.strictEqual(res.remaining, 1, 'answers the post-deletion count');
@@ -152,11 +152,11 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.ok(files.includes(layout.mailbox('payments', 'discussion', 'topic-a', '001-first.md')), 'the deletion rides the commit');
     assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'peer topic not swept');
 
-    const last = ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
+    const last = ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
     assert.strictEqual(last.remaining, 0, 'the emptied mailbox answers zero');
 
     assert.match(
-      refuses(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'x']).error,
+      refuses(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '-m', 'x']).error,
       /is not in the topic-a discussion mailbox/);
     assert.match(
       refuses(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '../002-second.md', '-m', 'x']).error,
@@ -1328,7 +1328,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     writeState(dir, layout.mailbox('payments', 'discussion', 'topic-a', '001-first.md'), '### First\nbody\n');
     commitAll(dir, 'a delivered message');
     ok(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md',
-      '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)'], { env: me });
+      '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)'], { env: me });
     assert.ok(beaten('discussion', 'topic-a'), 'absorb folds a message into the session\'s own document');
 
     // The per-turn mailbox poll on the session's own topic is turn coverage:

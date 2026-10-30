@@ -10,7 +10,7 @@
 // away shown by a live move the map's own unit made alone, led to its
 // current wording and the topic it stands on now; a question moved to the
 // roadmap standing later where it is; and an open question an experiment
-// of its unit measures marked waiting on it while it runs.
+// of its unit measures marked waiting on it until its result is written.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there.
@@ -240,7 +240,7 @@ describe('a question moved to the roadmap (9.5.4)', () => {
 });
 
 describe('a question an experiment measures (9.1.11)', () => {
-  it('marks an open question waiting on the experiment of its unit that names it, in any wording, while the experiment runs: no longer once it is concluded or abandoned, nor once the question is answered', () => {
+  it('marks an open question waiting on the experiment of its unit that names it, in any wording, until the discussion writes the result: running or concluded, told apart, never abandoned, and no longer once the question is answered', () => {
     const timing = ask(NOTE, 'How fast does a panel open?');
     const snapping = ask(NOTE, 'Does a note snap to the grid?');
     /** The unit's manifest with experiment E1 at `status`, measuring the question. @param {string} status */
@@ -252,12 +252,12 @@ describe('a question an experiment measures (9.1.11)', () => {
     measuring('running');
 
     const reworded = reword(NOTE, timing, 'How fast does a panel open, cold?');
-    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, 'E1']]);
-    for (const status of ['concluded', 'abandoned']) {
-      measuring(status);
-      assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]], `a question waits on an experiment ${status}`);
-    }
-    measuring('running');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, { experiment: 'E1', running: true }]]);
+    measuring('concluded');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, { experiment: 'E1', running: false }]], 'the result is the discussion\'s to write');
+    measuring('abandoned');
+    assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]], 'an abandoned experiment leaves its question open');
+    measuring('concluded');
     decide(NOTE, reworded, 'In 4 ms.');
     assert.deepStrictEqual(waits(), [[snapping, null], [reworded, null]]);
   });

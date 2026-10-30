@@ -27,6 +27,8 @@ const { countChunks, removeChunks, planCompaction, compact } = require('./mainte
 const { parseSetupForm, runFromSystem, runKeywordOnly, runProviderForm } = require('./setup-forms.cjs');
 const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
 const { stateRoot, stateRelative } = require('../../kernel/state-root.cjs');
+const { handedSession } = require('../../kernel/process.cjs');
+const { keepQuery, settleQuery } = require('./last-query.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -225,6 +227,42 @@ async function runQuery(call, { root, files, args, options }) {
   const settings = querySettings(store.readMetadata(files.metadata), cfg, provider);
   const outcome = await queryStore(db, settings, { terms: args, options, workUnits: workUnitsOr(root, call.err, 'query'), root });
   call.out(renderQuery(outcome, { root, explain: options.explain }));
+}
+
+/** A query's filters, each as its flag gives it. @param {Options} options @returns {string[]} */
+function filtersOf({ workUnit, workType, phase, topic, limit, boosts }) {
+  /** @type {[string, string|number|null][]} */
+  const flags = [['work-unit', workUnit], ['work-type', workType], ['phase', phase], ['topic', topic], ['limit', limit]];
+  return [
+    ...flags.filter(([, value]) => value !== null).map(([flag, value]) => `--${flag} ${value}`),
+    ...boosts.map(({ field, value }) => `--boost:${field} ${value}`),
+  ];
+}
+
+/**
+ * A query kept as the conversation's last where Claude Code handed a
+ * session (last-query.cjs): before it runs, then what it came to — what it
+ * printed, or what it said as it failed.
+ * @param {Call} call @param {Request} request
+ */
+async function keptQuery(call, request) {
+  const session = handedSession();
+  if (session === null) return runQuery(call, request);
+  keepQuery(session, request.args, filtersOf(request.options));
+  const said = { out: '', err: '' };
+  /** @type {Call} */
+  const watched = {
+    ...call,
+    out: (text) => { said.out += text; call.out(text); },
+    err: (text) => { said.err += text; call.err(text); },
+  };
+  try {
+    await runQuery(watched, request);
+  } catch (err) {
+    settleQuery(session, { failed: err instanceof ExitSignal ? said.err.trim() : messageOf(err) });
+    throw err;
+  }
+  settleQuery(session, { returned: said.out });
 }
 
 // ---------------------------------------------------------------------------
@@ -471,7 +509,7 @@ const never = () => false;
  */
 const VERBS = {
   index: { run: runIndex, waits: (args) => args.length === 0 },
-  query: { run: runQuery, waits: always },
+  query: { run: keptQuery, waits: always },
   check: { run: runCheck, waits: never },
   status: { run: runStatus, waits: never },
   remove: { run: runRemove, waits: never },

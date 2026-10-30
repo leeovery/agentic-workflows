@@ -45,7 +45,11 @@
 //                  where it was raised and the question it answers, and its
 //                  answer once given — what `raise show` draws again
 //                  (raise.cjs)
-//   briefs/        each brief the conversation issued, `{id}.md`, as its
+//   knowledge-query.json
+//                  the conversation's last `knowledge query`: its terms, its
+//                  filters, and what it returned or why it failed — what the
+//                  plain-search helper is briefed from (last-query.cjs)
+//   briefs/       each brief the conversation issued, `{id}.md`, as its
 //                  template was filled, and beside it `{id}.json`, the
 //                  record of whose it is (brief.cjs): what a dispatch of one of
 //                  the workflows' agents carries by its pointer

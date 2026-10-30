@@ -52,6 +52,7 @@ const { incorporations } = require('./domain/specification.cjs');
 const { mailboxDir } = require('./domain/derivations.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
+const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -233,7 +234,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>
   topic mailbox <work-unit> <phase> <topic>
   topic incorporations <work-unit> <topic>
-  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
+  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>
   topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
@@ -256,7 +257,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
-  experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)
+  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
@@ -375,8 +376,8 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
-  render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
-  render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
+  render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
+  render wait-gate        <wu.discussion|planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
@@ -403,7 +404,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render author-task-gate <wu.planning.topic> --m N --total N --title STR --file <payload.json> | --phase N  (--phase: empty while gated)
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <research|discussion|planning|specification>
+  render phase-paused      <wu> --phase <discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render step-opening      <wu.phase.topic> --step session|conclude|consolidation|do-now [--resumed]
   render format-version-check --file <payload.json>
@@ -1230,19 +1231,17 @@ function runTopic(call, argv) {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
       /** @type {string|undefined} */ let message;
-      /** @type {string|undefined} */ let subtopic;
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
         if (a === '--file') file = rest[++i];
-        else if (a === '--subtopic') subtopic = rest[++i];
         else if (a === '-m' || a === '--message') message = rest[++i];
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
-        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
+        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message, subtopic });
+      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message });
       beatQuietly(call.cwd, workUnit, phase, topic);
       respond(call, absorbed);
       return;
@@ -1321,8 +1320,8 @@ function runTopic(call, argv) {
 // walk. Manifest writes with no git commit — the session's commit cadence
 // picks the change up.
 //
-// Beats follow the acting session: `create --from` is the spawning research
-// or discussion session recording the spawn on its own item, so it beats
+// Beats follow the acting session: `create --from` is the spawning
+// discussion session recording the spawn on its own item, so it beats
 // that phase; every other verb (splits included) is the laboratory session
 // working its own topic, so it beats the experiment slot — and a top-level
 // conclude or abandon clears it: the record's close is the session's release.
@@ -1337,9 +1336,9 @@ function runExperiment(call, argv) {
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
-        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from <research|discussion> --problem <file> | --parent <E{n}>)');
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)');
       }
-      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem });
+      const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem, question: opts.question });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
       respond(call, created);
       return;
@@ -1912,7 +1911,8 @@ function runGate(call, argv) {
 // decision, put through the decision point and, where it asks, sealed in the
 // conversation and drawn (domain/raise.cjs, its screen
 // domain/projections/raise.cjs), or, where it proceeds, landed as Claude's —
-// answering once its rows' one-decision checks have; `show` draws a sealed
+// answering once its rows' one-decision checks have; with --fact, a fact
+// only the person holds, always sealed and drawn; `show` draws a sealed
 // raise again; `answer` records the person's answer to it, a keep of the
 // decision among them.
 // ---------------------------------------------------------------------------
@@ -1989,7 +1989,7 @@ function runStateMerge(call, argv) {
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
   research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
-  experiment: (wu, t) => [`${wu}/experiment/${t}`],
+  experiment: (wu, t) => [seriesDir(wu, t)],
   discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
   investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
   specification: (wu, t) => [`${wu}/specification/${t}`],

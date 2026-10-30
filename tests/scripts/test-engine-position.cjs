@@ -596,14 +596,14 @@ describe('conversation position', () => {
       'E1-latency/report.md', 'E1-latency/E1.1-warm/problem.md',
       'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md',
       'E2-throughput/E2.1-batch/problem.md',
-    ]) write(`.leeway/pay/experiment/ledger/${f}`);
+    ]) write(`.leeway/pay/topics/ledger/experiments/${f}`);
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.deepStrictEqual(reads().files, [
-      '.leeway/pay/experiment/ledger/E1-latency/E1.1-warm/problem.md',
-      '.leeway/pay/experiment/ledger/E2-throughput/problem.md',
-      '.leeway/pay/experiment/ledger/E2-throughput/design.md',
-      '.leeway/pay/experiment/ledger/E2-throughput/report.md',
-      '.leeway/pay/experiment/ledger/E2-throughput/E2.1-batch/problem.md',
+      '.leeway/pay/topics/ledger/experiments/E1-latency/E1.1-warm/problem.md',
+      '.leeway/pay/topics/ledger/experiments/E2-throughput/problem.md',
+      '.leeway/pay/topics/ledger/experiments/E2-throughput/design.md',
+      '.leeway/pay/topics/ledger/experiments/E2-throughput/report.md',
+      '.leeway/pay/topics/ledger/experiments/E2-throughput/E2.1-batch/problem.md',
     ].map(abs));
   });
 
@@ -664,7 +664,7 @@ describe('conversation position', () => {
       experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
     harness.commitAll(dir, 'the epic');
-    write('.leeway/pay/experiment/ledger/E1-latency/problem.md');
+    write('.leeway/pay/topics/ledger/experiments/E1-latency/problem.md');
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the running laboratory carries on');
     ok(['topic', 'cancel', 'pay', 'discovery', 'ledger']);

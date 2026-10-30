@@ -91,7 +91,7 @@ describe('leeway-bridge discovery', () => {
     }
   });
 
-  it('a conversation paused on experiment evidence routes the bridge to the experiment — either spawn phase', () => {
+  it('a conversation paused on experiment evidence routes the bridge to the experiment', () => {
     createManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
@@ -101,14 +101,6 @@ describe('leeway-bridge discovery', () => {
       },
     });
     assert.strictEqual(discover(dir, 'pay').next_phase, 'experiment');
-    createManifest(dir, 'probe', {
-      work_type: 'cross-cutting',
-      phases: {
-        research: { items: { probe: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
-        experiment: { items: { probe: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
-      },
-    });
-    assert.strictEqual(discover(dir, 'probe').next_phase, 'experiment');
   });
 
   it('computes next_phase for epic same as other types', () => {
