@@ -21,7 +21,7 @@ Every rule a skill would carry is one of three kinds, and each kind has one home
 | How-to | everything else | deleted | the goal, the done-condition, and guidance |
 
 Ask of each rule, in this order:
-1. If Claude did it another way, would the person see something different, or the record hold something different? It is a contract.
+1. If Claude did it another way, would a fixed thing the person sees change — a screen, a gate, an output, the process — or the record hold something different? It is a contract. Claude's own wording in a conversation is not.
 2. Must each of these happen before the work moves past a point, in whatever order? It is a required procedure.
 3. Could a capable engineer do it another way and the outcome be as good? It is how-to.
 
@@ -30,7 +30,8 @@ How-to survives as guidance only where a capable reader would get it wrong untol
 A rule that fits none of the three is one of these:
 - **It holds in every conversation** — how a turn sounds, what a reply at a gate is. It belongs to the framework (The Framework Load), never to a skill.
 - **It guards a state only a crash or a failed tool produces.** Delete it. The engine makes the state unreachable, and Claude reruns a failed tool or agent unprompted.
-- **It is a contract with no verb, or a procedure with no checklist item.** Bring it to the person. It is never held in prose as a "must" until a verb or an item exists.
+- **It is a contract no door can refuse** — a question for the person asked in plain prose in the build, an extra review round. It stays a line of prose, and the prose walks hold it, since they check outcomes.
+- **It is a contract with no verb yet, or a procedure with no checklist item.** Bring it to the person. It is never held in prose as a "must" until a verb or an item exists.
 
 A contract that keeps slipping gets a verb or a check, never more prose.
 
@@ -41,7 +42,7 @@ A phase skill holds five things:
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
 - **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/workflow-engine/references/commands.md`.
-- **Its checklists** — each closing point it works towards, by name. Most phases have one; the build works a phase-start and a phase-close checklist for each phase of its cut, then finish's.
+- **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none.
 
 ### Entered and Left Through Gates
 
@@ -49,17 +50,17 @@ Every phase is entered and left through gates. The gates are the engine's: its k
 
 **Entering.** A phase is moved into by a handoff, from a gate or a menu pick (Handoffs and Recovery). Its entry is one engine call, shared by every phase: the engine refuses what cannot be entered, records where the conversation is working, and answers what the phase needs to begin or resume. The skill does what the answer says and branches on no status of its own. A question whose answer may discard a record — whether to carry on or start again — comes before the reading: a gate needs only what the engine holds, and the record and log are read after the answer.
 
-**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows. The skill emits the gate's sections verbatim per their markers, and the marker decides whether the turn ends:
+**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows, where one does — a phase's start in the build has none. The skill emits the gate's sections verbatim per their markers, and the marker decides whether the turn ends:
 - **The gate stops.** Its MENU's marker ends the turn. The person's answer goes to `gate`, which logs it and returns `next` — an engine call to run, a handoff to make, or carry on — and the skill does what `next` says.
 - **The gate runs as an automatic step.** Its surface draws the one-line report in place of the menu, under a marker that says not to stop. Nothing goes to `gate`, and the skill carries on along the answer the step ran, which the report names.
 
-**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row sets the gate aside; the framework says how it comes back. A Comment that changes what happens next is confirmed with the person before anything acts on it; the framework holds that rule too.
+**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row still goes to `gate "{name}" --typed`, which logs that the answer was free text, and then the gate is set aside; the framework says how it comes back. A Comment that changes what happens next is confirmed with the person before anything acts on it; the framework holds that rule too.
 
 ### Fields and Corridors
 
-Most of a phase is a **field**: Claude works it as it judges best — the order of the tasks, parallel worktrees, which agents, how tests get written, where a conversation goes next. A field's prose is its goal, its done-condition and its guidance, with no sequence. Nothing Claude does in a field leaves it except through a verb or a gate: what reaches the person, what gets recorded and every question to the person. The layout hook, the commit door and the checklists refuse the rest.
+Most of a phase is a **field**: Claude works it as it judges best — the order of the tasks, parallel worktrees, which agents, how tests get written, where a conversation goes next. A field's prose is its goal, its done-condition and its guidance. It may order the steps around the work — its entry and its close, what is read before a topic's opening — never the work itself. Nothing Claude does in a field leaves it except through a verb or a gate: what reaches the person, what gets recorded and every question to the person. The layout hook, the commit door and the checklists refuse the rest.
 
-A **corridor** is a short, linear stretch whose output has a fixed shape: the phase cut at the end of specification, writing a phase's tasks as it starts, and the final review. A corridor's prose gives the order of its few moves — each a dispatch, a verb or a checklist mark — and says nothing about how the artifact is made. The artifact is a named agent's (Agents and Briefs).
+A **corridor** is a short, linear stretch whose output has a fixed shape: the phase cut at the end of specification, writing a phase's tasks as it starts, and the final review. A corridor's prose gives the order of its few moves — each a dispatch, a verb or a checklist mark — and says nothing about how the artifact is made. The artifact is a named agent's (Agents and Briefs); whether the agent runs the corridor's verb, or the skill runs it on the agent's output, is as that phase's section of the spec says.
 
 ### Requests at Any Point
 
@@ -126,14 +127,14 @@ The prose names the verb and stops. It never:
 
 What Claude and the agents write themselves is content, in the places the layout keeps for it: a log, the spec, a spike, an asset. Everything else is written through a verb. A decision or a finding is a ledger entry, written through `ledger`, and the person's answer to a raise through `raise answer`, which also logs who moved whom; a topic's record and its map are projections of the ledger, never files. Markdown carries content only: never frontmatter, never a status in a heading. A feature that needs state gets a field behind a verb.
 
-Where a phase is a conversation, it asks its questions in the conversation and each answer lands through `ledger`; a call Claude has a lean on goes through `raise`, which decides whether it reaches the person, and slots in at a natural pause; its answer lands through `raise answer`, never `ledger`. Anywhere else, every question for the person goes through `raise`; a question asked in plain prose in the build is a slip. Questions reach the person one at a time.
+In discussion, questions are asked in the conversation and each answer lands through `ledger`; a call Claude has a lean on goes through `raise`, which decides whether it reaches the person, and slots in at a natural pause; its answer lands through `raise answer`, never `ledger`. In discovery nothing is decided: what the person says is input, kept in discovery's log, and only what is observed in the code lands, as findings saying how they are known. In the build, every question for the person goes through `raise`; a question asked in plain prose in the build is a slip. Questions reach the person one at a time.
 
 ## Writing for the Model Pass
 
 When the workflows move to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
 - **Guidance a better model could do without is prose.** It stays in the skill, where the pass can cut it.
-- **What the hard layers hold is there for the person, whatever the model.** Each engine piece names the failure it prevents, and how often that failure happened, in its line in the reshape's weight check, the table of today's product against the proposed one.
-- **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, a model or an effort — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs.
+- **What the hard layers hold is there for the person, whatever the model.** A new engine piece is proposed with the failure it prevents and how often that failure happened; one with no failure behind it is brought to the person as a cut.
+- **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, the model or effort of a call the engine makes itself — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs. An agent's model and effort need none: they sit in its definition, which the pass edits in place.
 
 ## Prose
 
@@ -164,13 +165,16 @@ Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, d
 **An agent's definition** (`agents/{name}.md`) holds what is true of it whatever it is dispatched for:
 - its one job, the artifact, with its rules and references boxed inside it;
 - its tools, the Skill tool among them where it must find the project's skills itself;
+- every skill reference or engine script it names, written as installed, from the project root (`.claude/skills/…`);
 - its model and effort, fixed in its frontmatter: Opus at medium until a measurement says otherwise, and investigation's root-cause validator at extra-high. Never chosen at dispatch, and never raised by a task's size.
 
 **A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/workflow-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
 **The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
-**Its mode.** Claude Code runs an agent in the background unless told otherwise, so every dispatch the prose prescribes names `run_in_background: true` or `false`. A background dispatch the flow waits on ends the turn on one sentence, given inline: ``The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The reviewer agent has been dispatched for task {phase}.{task}.` `` — naming the agent and what it works on, never an internal id (lint check 25).
+**A refusal.** When a door refuses what an agent made, the skill dispatches the agent again, with a fresh brief carrying the refusal; Claude never edits the agent's work itself. Where the role's template has no slot for a refusal, the phase that builds the corridor adds one.
+
+A dispatched agent runs in the background and hands back when it is done. A skill names no dispatch mode: the work carries on when the agent hands back.
 
 An agent works from the record, never the conversation. Its calls come back to the orchestrator and go where any call goes: the ledger, or `raise`. An agent never asks the person.
 
@@ -182,7 +186,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 
 **Invoking** a skill is a Skill tool call: it adds the skill's instructions to the running context and clears nothing. Show the literal command — ``Invoke `/{skill} {args}`.`` — outside any fence; inside one it is printed, not run (lint check 14). **Loading** a reference reads guidance into the running context, nothing more.
 
-**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming. Where its work needs a document re-read, the note names it: that is a change to the engine's note, never prose. Re-reading the skill re-runs its framework load. Nothing the work needs after a compaction lives only in the conversation: it is in the ledger, a log, or a field behind a verb.
+**Recovery.** After a compaction, a crash or a new session, the engine's note names the skill and each document to re-read, and the conversation carries on where it was. A skill carries no section of its own on resuming. Where its work needs a document re-read, the note names it: that is a change to the engine's note, never prose. Re-reading the skill re-runs its framework load. What the verbs record outlasts a compaction. A log may lag the conversation — how often Claude writes it is Claude's — and after a compaction it is caught up from the conversation's transcript, which the note names.
 
 ## Display
 
@@ -192,7 +196,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 - **A report or summary Claude composes**, as markdown, in the register of `skills/workflow-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
 - **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
-**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
+**The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. The one exception is the banner, which stays in the start skill's prose because the release writes the version into it (`.mint.toml`). Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
 
 **Content the person approves as the thing itself** — a change, spec prose — is shown verbatim in the form it will take, never framed in drawn borders, with a label or a line saying what it is.
 
@@ -211,8 +215,8 @@ A sentence that emits a section says `…section verbatim per its marker` (`…s
 
 Every screen the engine draws keeps to the existing design system; a new screen or variant fits it, and the menu frame in `domain/projections/surfaces.cjs` refuses some breaks outright.
 - **Glyphs.** Squares are structure: `■` a title, `□` a step, `▪` a sub-step. Circles and arrows are an item's state: `○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`. `◆` is a decision, `⚑` an alert; `⏺` is the host's own.
-- **Chrome.** A title is `# **`■ Title`**`, one per skill invocation. A marker is `**`□ Name`**` or `**`▪ Name`**`: no numbers, a loop's count in parentheses (`(3 of 12)`, `(cycle 2)`). A marker shows only where something follows it before the next one. A signpost is a markdown blockquote of one to three sentences, one authored line per paragraph.
-- **Forms.** A section's marker names one of four forms: markdown (not a code block), for chrome, menus and anything that needs rendered formatting; a text code block (```text fence), for layout — trees, columns, aligned lists; a properties code block (```properties fence), for a blocker and the banner; a diff code block (```diff fence), for change content. Every `TITLE`, `DISPLAY` and `MENU` marker's instruction opens `emit verbatim as ` and its form, then any behaviour clause (`, then STOP for the user's response`); the render sweep in `tests/scripts/gate-audit.cjs` holds it. The fence decides how demoted content reads: italic in a menu, a `↳` line in a fenced display, a backticked `[tag]` with a `↳` note in a markdown worklist.
+- **Chrome.** A title is `# **`■ Title`**`, one per skill invocation. A marker is `**`□ Name`**` or `**`▪ Name`**`: no numbers, a loop's count in parentheses (`(3 of 12)`, `(cycle 2)`). A marker whose text varies — a count, a position — is the engine's; a fixed one Claude says itself, inline. A marker shows only where something follows it before the next one. A signpost is a markdown blockquote of one to three sentences, one authored line per paragraph.
+- **Forms.** A section's marker names one of four forms: markdown (not a code block), for chrome, menus and anything that needs rendered formatting; a text code block (```text fence), for layout — trees, columns, aligned lists; a properties code block (```properties fence), for a blocker and the banner — the product's name drawn in ASCII art at the head of the start menu; a diff code block (```diff fence), for change content. Every `TITLE`, `DISPLAY` and `MENU` marker's instruction opens `emit verbatim as ` and its form, then any behaviour clause (`, then STOP for the user's response`); the render sweep in `tests/scripts/gate-audit.cjs` holds it. The fence decides how demoted content reads: italic in a menu, a `↳` line in a fenced display, a backticked `[tag]` with a `↳` note in a markdown worklist.
 - **Menus.** A dot rule, `· · · · · · · · · · · ·`, opens the menu, and none closes it. Every menu asks one question, glyphed `**`◆ Question?`**` (sixty characters or fewer, ending in `?`); anything to say first is a plain statement above it. Rows are `**`k/word`** → Label`, arrows aligned as rendered. A label says what choosing it does, naming a hard-to-reverse consequence plainly. Command rows come first and one prompt row last, whose label tells the person what to say (`**Comment** → Tell me what to change`). A yes is `y/yes`, never a synonym; `n/no` is for plain refusal only. A bare yes/no pair carries no labels: the question above it already says what yes means. The same action keeps the same key on every menu: `a` archive, `w` work, `b` back, `h` help. `b/back` draws the surface before it; it never re-invokes a skill and never exits. Every menu has `h` help; gates and raises do not. Anything with a fixed shape is its own row, and typing stays open for a question. Items appear once, in the menu; a row's metadata tail reads italic. With one item to act on, the auto-select line stands in for the menu.
 - **Lists.** `•` bullets for a flat list, and `·` for quiet sub-detail within an item. A tree, `├─` for each child and `└─` for the last, for items with child data, a blank line between top-level items. A status sits in a right-aligned `[term]` column, or on a `↳` line beneath a row with a body.
 - **Worklists.** A transient list worked through and thrown away, drawn as markdown: a glyph per row (`○` pending, `✓` approved, `⊘` skipped), done rows struck through, one short term per tag, detail on the `↳` note. Strikethrough means done here.
@@ -232,9 +236,9 @@ The capture skills (`workflow-log-*`) write to the inbox and nothing else. They 
 
 ### Headings
 
-One H1 per file, its title — except a skill that hands the work on (the way in, the menus), which opens on its frontmatter alone (lint check 8). H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
+One H1 per file, its title — except the skills that only hand the work on, the start skill, the continue menus and the bridge, which open on their frontmatter alone (lint check 8). Discovery is a phase that talks: it takes an H1, and lint check 8's sets change with its rewrite. H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
 
-A skill that hands the work on carries this blockquote, byte for byte (lint check 9):
+A skill that only hands the work on carries this blockquote, byte for byte (lint check 9); a phase that talks, discovery among them, carries none:
 
 ```
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.

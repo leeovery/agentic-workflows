@@ -140,8 +140,7 @@ silently non-compliant skills more than once.
 
 When the workflows move to a new model, the prose is walked on it and one
 pass cuts what that model no longer needs. Beyond the prose, the pass
-re-weighs each part below, held in a hard layer for today's model, and
-cuts or retunes any that the new model no longer needs:
+re-weighs each part below, held in a hard layer for today's model:
 
 - the brief templates in the engine's content folder
   (`skills/workflow-engine/content/briefs/`);

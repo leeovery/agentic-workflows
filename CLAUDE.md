@@ -74,7 +74,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Start** (`workflow-start`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
 - **Discovery** (`workflow-discovery`) — new work, and re-shaping an epic's map.
 - **Navigation** (`workflow-continue-epic`, `workflow-continue-linear`) — a work unit's continue menu.
-- **Phase skills** (`workflow-{phase}-process`) — one per phase after discovery; their contract and Step 0 order are in CONVENTIONS.md.
+- **Phase skills** (`workflow-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
 - **Bridge** (`workflow-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
 - **Capture** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) — write to the inbox; no steps, no gates.
 - **Project-level** — `workflow-roadmap` (the product roadmap), `workflow-baseline` (the brownfield assessment), `workflow-help` (the walkthrough and reference cards).
@@ -114,7 +114,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/workflow-engine/references/commands.md`.
+Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/workflow-engine/references/commands.md`.
 
 ## Adding New Output Formats
 
