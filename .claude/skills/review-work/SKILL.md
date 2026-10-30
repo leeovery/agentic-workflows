@@ -106,7 +106,7 @@ Scale the fleet to the blast radius. A one-file prose fix warrants two
 dimensions; a change touching the engine, the prose, and the tests
 warrants the full set and a second pass afterwards from a fresh angle.
 
-Never invoke a `leeway-*` skill and never use the Workflow tool — this
+Never invoke `/leeway` or a `leeway-*` skill and never use the Workflow tool — this
 project authors the workflow system, it does not run it.
 
 → Proceed to **Step 4**.

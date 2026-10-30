@@ -53,7 +53,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs session label roadmap
 
 Read the positional argument:
 
-- `$0` — **mode**: `genesis` (from discovery's shaping gate — the conversation is live), `open` (from the leeway menu), or `pull` (from a recognition offer — straight to the pull ceremony).
+- `$0` — **mode**: `genesis` (from discovery's shaping gate — the conversation is live), `open` (from the /leeway menu), or `pull` (from a recognition offer — straight to the pull ceremony).
 
 #### If `$0` is `genesis`
 

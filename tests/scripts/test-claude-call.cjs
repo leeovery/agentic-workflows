@@ -5,7 +5,7 @@
 // one question the engine puts to `claude -p` itself, raw (16.19.3–16.19.5).
 // Its command line flag by flag, never `--bare`; a fresh empty folder, gone
 // after; an environment cleared of the calling session, the project and
-// the workflows' and Leeway's own variables, the login's kept; the question
+// Leeway's own variables, the login's kept; the question
 // on stdin; the answer where it fits the schema, and each way it cannot run
 // — no login, a rate limit, a timeout, an answer that does not fit, a
 // binary that will not start. The form answering later puts the same call,

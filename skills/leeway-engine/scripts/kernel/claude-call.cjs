@@ -15,8 +15,8 @@
 // - Its environment: the engine's own with auto-memory off, cleared of what
 //   would carry the calling session or project in — the session's id, the
 //   project's folder, what Claude Code gives every command its session runs,
-//   the person's plugin folders, the gate mod's harness, and the workflows'
-//   and Leeway's own variables. The login is left as it is: its variables
+//   the person's plugin folders, the gate mod's harness, and Leeway's own
+//   variables. The login is left as it is: its variables
 //   pass through.
 // - The binary: `claude` on PATH, or the one LEEWAY_CLAUDE names — the test
 //   suite pins it to a stub, so no test reaches a real Claude.

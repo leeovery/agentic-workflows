@@ -87,7 +87,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.im
 
 ## C. Discovery
 
-Scan `.claude/skills/` for project-specific skill directories — skills carrying this project's own conventions and patterns (e.g. golang-pro, react-patterns). The workflow system's own skills (`leeway-*`) are never project skills. A missing or empty `.claude/skills/` finds nothing.
+Scan `.claude/skills/` for project-specific skill directories — skills carrying this project's own conventions and patterns (e.g. golang-pro, react-patterns). The workflow system's own skills (`leeway` and `leeway-*`) are never project skills. A missing or empty `.claude/skills/` finds nothing.
 
 #### If the scan finds no project skills
 

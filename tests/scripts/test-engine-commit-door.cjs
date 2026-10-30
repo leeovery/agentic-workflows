@@ -1554,11 +1554,11 @@ describe('commit door: index.lock retry and the commit lock', () => {
     const res = refuses(dir, task, { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
-    assert.ok(!fs.existsSync(path.join(dir, '.git', 'workflows-commit.lock')), 'commit lock released on failure');
+    assert.ok(!fs.existsSync(path.join(dir, '.git', 'leeway-commit.lock')), 'commit lock released on failure');
   });
 
   it('breaks a stale commit lock left by a crashed process', () => {
-    const lock = path.join(dir, '.git', 'workflows-commit.lock');
+    const lock = path.join(dir, '.git', 'leeway-commit.lock');
     fs.writeFileSync(lock, '99999');
     const past = new Date(Date.now() - 360000);
     fs.utimesSync(lock, past, past);

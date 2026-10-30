@@ -233,8 +233,8 @@ describe('creating the state', () => {
     assert.strictEqual(git(root, ['symbolic-ref', 'HEAD']).trim(), `refs/heads/${STATE_BRANCH}`);
     const record = worktreeRecord(main, root);
     assert.ok(record, `no worktree listed at ${root}`);
-    assert.match(record, /^locked workflows state, do not remove$/m);
-    assert.strictEqual(STATE_LOCK_REASON, 'workflows state, do not remove');
+    assert.match(record, /^locked leeway state, do not remove$/m);
+    assert.strictEqual(STATE_LOCK_REASON, 'leeway state, do not remove');
   });
 
   it('puts .leeway/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
@@ -451,7 +451,7 @@ describe('the repairs, each on its own', () => {
 
     lockStateWorktree(root);
 
-    assert.match(worktreeRecord(main, root) || '', /^locked workflows state, do not remove$/m);
+    assert.match(worktreeRecord(main, root) || '', /^locked leeway state, do not remove$/m);
   });
 
   it('relinks the state worktree after the project folder moved, keeping what it holds, and commits again', () => {

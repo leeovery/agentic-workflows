@@ -10,7 +10,7 @@
 // - The code tree: the files the workflows own outside the state
 //   (`OWNED_PATHS`) and declared code paths are committed in the code root's
 //   own tree (kernel/code-root), on the branch checked out, and never on the
-//   state branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
+//   state branch. A process-wide lock (`.git/leeway-commit.lock`, on a long
 //   clock) holds each add+commit sequence alone, so concurrent sessions never
 //   interleave on git's shared index. The code commit lands in each repo that
 //   owns one of its paths (kernel/repos), deepest first, under that repo's
@@ -113,7 +113,7 @@ function commitStateTail(cwd, paths, message, warnings, contents = {}) {
  * @param {string} cwd project root, or a nested repo's
  */
 function commitLockPath(cwd) {
-  return gitPath(cwd, 'workflows-commit.lock');
+  return gitPath(cwd, 'leeway-commit.lock');
 }
 
 /** Why a tree with the state branch checked out takes no code commit, after the tree's name. */

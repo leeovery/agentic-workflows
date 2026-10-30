@@ -454,7 +454,7 @@ function commitIndexEntries(cwd, specs, message) {
   // `--index-info` reads paths from the repository root, whatever the cwd.
   const entries = git(cwd, ['ls-files', '--stage', '-z', '--full-name', '--', ...literally(specs)]);
   if (head === null && entries === '') return null;
-  const env = { GIT_INDEX_FILE: gitPath(cwd, 'workflows-commit.index') };
+  const env = { GIT_INDEX_FILE: gitPath(cwd, 'leeway-commit.index') };
   try {
     git(cwd, head === null ? ['read-tree', '--empty'] : ['read-tree', 'HEAD'], env);
     git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...literally(specs)], env);
@@ -603,7 +603,7 @@ function diffPatch(cwd, args, env) {
  */
 function diffWithUntracked(cwd, base, args, exclude) {
   const index = gitPath(cwd, 'index');
-  const env = { GIT_INDEX_FILE: gitPath(cwd, `workflows-diff-${process.pid}.index`) };
+  const env = { GIT_INDEX_FILE: gitPath(cwd, `leeway-diff-${process.pid}.index`) };
   try {
     // The copy keeps the index's modified time: git reads an entry no older
     // than the index file as possibly changed, and a fresh time would pass a

@@ -113,7 +113,7 @@ describe('engine harness — the git fixture', () => {
   it('holds its state worktree, locked on the state branch, and the code tree ignores it', () => {
     assert.strictEqual(stateGit(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'leeway-state');
     assert.match(git(dir, ['worktree', 'list', '--porcelain']),
-      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/leeway-state\nlocked workflows state, do not remove`));
+      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/leeway-state\nlocked leeway state, do not remove`));
     assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n');
     seed(dir);
     assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n'), ['.gitignore']);

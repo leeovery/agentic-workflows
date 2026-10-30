@@ -22,7 +22,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render baseline-receipt
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The docs are reference, not record — they inform later phases without deciding for them. Open questions stay open until a discussion settles them properly, and the baseline is expandable any time from the leeway manage menu.
+> The docs are reference, not record — they inform later phases without deciding for them. Open questions stay open until a discussion settles them properly, and the baseline is expandable any time from the /leeway manage menu.
 ```
 
 **STOP.** Do not proceed — terminal condition.

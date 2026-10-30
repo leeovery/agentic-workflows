@@ -80,7 +80,7 @@ const { checkLedgerCommit, spendPass, dropStop } = require('./ledger-check.cjs')
 const { LEDGER } = require('./ledger-events.cjs');
 const { newId } = require('./ledger-ids.cjs');
 
-const STATE_LOCK_REASON = 'workflows state, do not remove';
+const STATE_LOCK_REASON = 'leeway state, do not remove';
 // The lock's claim is written beside it and linked into place, and a
 // takeover holds a guard beside it: both are the lock's, ignored with it. A
 // manifest's atomic write, and the ledger's append, is a temp file beside

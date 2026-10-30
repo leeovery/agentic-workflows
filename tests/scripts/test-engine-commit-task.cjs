@@ -202,7 +202,7 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 
   it('holds no lock while the checks run: a check takes the writer lock and the commit lock, and gives them back', () => {
-    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'workflows-commit.lock')];
+    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'leeway-commit.lock')];
     setEnvironment(dir, { run: { tests: `set -C; ${locks.map((lock) => `: > "${lock}" && rm "${lock}" && `).join('')}echo free > "${markerOf(dir)}"` } });
 
     assert.deepStrictEqual(ok(dir, commitArgs(), as(BUILDING)).checks, [{ name: 'tests', exit: 0 }]);

@@ -425,7 +425,7 @@ function checkLinks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8 — H1 category rule (scoped to leeway-* SKILL.md backbones).
+// Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
 // Processing backbones (leeway-*-process, plus the engine and the
 // project-level skills — baseline, roadmap, help) open with a title H1;
 // every other workflow backbone — leeway, the navigation skills,

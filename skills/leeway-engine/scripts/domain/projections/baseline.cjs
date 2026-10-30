@@ -47,7 +47,7 @@ function baselineAreaGate(d, area) {
     `**${titlecase(area)}** is documented. ${d.remaining} area(s) remain.`,
     [
       cmdOption('y', 'yes', 'Interview the next area'),
-      cmdOption('p', 'pause', 'Stop here — resume any time from leeway'),
+      cmdOption('p', 'pause', 'Stop here — resume any time from /leeway'),
     ],
     { question: 'Keep going?' },
   );
@@ -68,7 +68,7 @@ function baselinePaused(d) {
       { width: displayWidth() },
     ),
     '',
-    'Resume from the leeway menu.',
+    'Resume from the /leeway menu.',
   ];
   return section('DISPLAY: baseline paused', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
@@ -228,7 +228,7 @@ function baselineOfferGate() {
     '',
     [
       cmdOption('y', 'yes', 'Start the assessment now'),
-      cmdOption('n', 'no', 'Skip — you can start it later from the leeway menus'),
+      cmdOption('n', 'no', 'Skip — you can start it later from the /leeway menus'),
     ],
     { question: 'Run a baseline assessment?' },
   );

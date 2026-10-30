@@ -27,7 +27,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs baseline record native
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the leeway menus.
+> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the /leeway menus.
 ```
 
 Fetch the offer and emit its `MENU: baseline offer` section verbatim per its marker:

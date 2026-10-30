@@ -4,7 +4,7 @@
 
 ---
 
-Close the session and return to the home. Stopping here is first-class — a harvested roadmap with zero work units is a complete outcome, banked and resumable from the leeway menu.
+Close the session and return to the home. Stopping here is first-class — a harvested roadmap with zero work units is a complete outcome, banked and resumable from the /leeway menu.
 
 ## A. Close the Session
 
