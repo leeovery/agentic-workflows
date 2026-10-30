@@ -312,9 +312,10 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
-  commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --topic <phase>/<topic> [--sweep]]
+  commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
   commit --paths <file> … -m <message> --task <work-unit> <N.M>
   commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
+  commit --state -m <message>
   commit --inbox -m <message>
   commit --roadmap -m <message>
   commit --workflows -m <message>

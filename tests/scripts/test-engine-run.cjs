@@ -211,6 +211,12 @@ describe('engine.run — the invocation is the caller\'s', () => {
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]/);
   });
+
+  it('the usage names every command the engine dispatches, each on a line of its own', () => {
+    const lines = engine.run(['nonsense'], { cwd: dir }).stderr.split('\n');
+    const unnamed = Object.keys(engine.COMMANDS).filter((command) => !lines.some((line) => line.startsWith(`  ${command} `)));
+    assert.deepStrictEqual(unnamed, []);
+  });
 });
 
 describe('no uninstall in the release (27.2.3)', () => {
