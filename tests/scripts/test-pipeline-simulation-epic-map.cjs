@@ -183,12 +183,10 @@ describe('pipeline simulation: epic map', () => {
     epicPick(sim, wu, 'start_discussion', 'beta');
     sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
-    // A signal over a map with nothing on it takes the map gate's empty
-    // branch: neither settled nor holding anything open, so no defer gate.
+    // A map with nothing on it is neither settled nor holding anything open.
     const emptyMap = mapState(sim.manifest(wu), 'beta');
     assert.strictEqual(emptyMap.all_decided, false);
     assert.deepStrictEqual(emptyMap.unresolved, []);
-    sim.refuses(['render', 'defer-gate', `${wu}.discussion.beta`], /nothing on "beta"'s map is undecided/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'retry-policy']);
     // Review arming: the first background review is free and stamps the
     // ledger's mark; after a completed cycle the next refuses until the topic

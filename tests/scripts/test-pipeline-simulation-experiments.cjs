@@ -96,13 +96,10 @@ describe('pipeline simulation: experiments', () => {
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 
     // Both waiting conversations refuse to conclude while their evidence is
-    // out; the wait gate is the refusal's graceful face, and it renders only
-    // over a live wait — empty where nothing blocks.
+    // out.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'timing'], /awaits experiment evidence \(E1\)/);
     sim.refuses(['topic', 'complete', wu, 'discussion', 'layout'], /awaits experiment evidence \(E1\)/);
-    assert.match(sim.render(['wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
-      /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
-    // A yes at either pause runs the in-flight check — a review this session
+    // A pause at either runs the in-flight check — a review this session
     // dispatched is still running, so the gate asks in the pause's words, and
     // a proceed leaves it running — then hands the session to the bridge and
     // on to the epic menu, whose banner names each waiting conversation.

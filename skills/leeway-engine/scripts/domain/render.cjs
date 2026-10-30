@@ -9,9 +9,13 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write — with one exception. `code-gate`'s empty
-// path beats the addressed topic, because claiming the code slot and reading
-// it are the same act: the read that finds the slot free is what takes it.
+// Surfaces read; they never write a state commit takes, and write three
+// things beside. `code-gate`'s empty path beats the addressed topic, because
+// claiming the code slot and reading it are the same act: the read that
+// finds the slot free is what takes it. `map` moves the last-looked mark as
+// it draws, since the map shown in the conversation is the person looking
+// (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
+// what the gate's yes lands (decided.cjs).
 
 const fs = require('fs');
 const path = require('path');
@@ -45,8 +49,6 @@ const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = requ
 const { githubSquashNested } = require('./github-setup.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
-const { mapState } = require('./discussion-map.cjs');
-const { discussionDeferGate } = require('./projections/discussion-map.cjs');
 const { agentRows, latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
@@ -70,6 +72,8 @@ const {
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { sendReportOf } = require('./mail.cjs');
+const { mapSurface } = require('./topic-map.cjs');
+const { decidedSurface, decidedStrikeSurface, waitAgentsSurface } = require('./decided.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2809,22 +2813,15 @@ function sendClosedTarget(cwd, { dotpath }) {
 // register are this catalogue's.
 // ---------------------------------------------------------------------------
 
-// conclude-gate — the closing consent of the four phases whose conclusion is
-// a user's call. One surface, keyed by the address's own phase segment: the
+// conclude-gate — the closing consent of the three phases whose conclusion is
+// a user's call; a discussion topic closes at its decided screen. One surface, keyed by the address's own phase segment: the
 // shape is identical (a question, a yes, one arm beside it — keep going
 // where the phase can take more, ask where it has hit its end and the
 // only way is forward), and only each phase's own wording differs, so it
-// lives in one table rather than four copies of the same frame. Research's
+// lives in one table rather than three copies of the same frame. Research's
 // conclude gate is its own surface — it carries a conditional dead-end row
 // no other phase has.
 const CONCLUDE_GATES = {
-  discussion: {
-    question: 'Conclude this discussion and mark as completed?',
-    options: () => [
-      cmdOption('y', 'yes', 'Conclude discussion'),
-      cmdOption('n', 'no', 'Continue discussing'),
-    ],
-  },
   investigation: {
     question: 'Investigation complete. Ready to conclude?',
     options: () => [
@@ -2863,108 +2860,6 @@ function concludeGate(cwd, { dotpath }) {
     throw new Error(`render conclude-gate: no ${phase} item "${topic}" — nothing to conclude`);
   }
   return section('MENU: conclude gate', MENU_INSTRUCTION, menu('', gate.options(), { question: gate.question }));
-}
-
-// closing-gate — the discussion close's own consents, on the road between
-// the close opening (the user's word, or the map settling) and the conclude
-// gate: the optional re-review offer,
-// the three faces of the mandatory review gate (findings already back,
-// a review still running, no review ever run — each names what yes
-// does, so "another review" is never the reading), and the wrap-up
-// consent that opens the reconciliation. One surface, variant-keyed;
-// distinct from conclude-gate, which is the final completion consent the
-// same close reaches later — the two stops coexist in one conclusion.
-const CLOSING_GATES = {
-  're-review': () => ({
-    name: 'MENU: re-review gate',
-    label: 'The discussion has moved since the last review read it. One more pass can catch what that movement opened — or conclude without one.',
-    question: 'Run one more review?',
-    options: [
-      cmdOption('y', 'yes', 'Run one more review before concluding'),
-      cmdOption('n', 'no', 'Conclude without it — the movement stays unreviewed'),
-      promptOption('Keep going', 'Tell me what else to explore'),
-    ],
-  }),
-  'findings-owed': () => ({
-    name: 'MENU: findings-owed gate',
-    label: 'Background findings have come back and are still to be walked — they must be heard before concluding.',
-    question: 'Walk them now?',
-    options: [
-      cmdOption('y', 'yes', 'Walk what came back'),
-      promptOption('Keep going', 'Tell me what else to explore'),
-    ],
-  }),
-  'review-running': () => ({
-    name: 'MENU: review-running gate',
-    label: 'A review is still running over this discussion — what it finds must be heard before concluding. Nothing new is dispatched.',
-    question: 'Wait for it?',
-    options: [
-      cmdOption('y', 'yes', 'Wait for it and walk what it finds'),
-      promptOption('Keep going', 'Tell me what else to explore'),
-    ],
-  }),
-  'final-review': () => ({
-    name: 'MENU: final-review gate',
-    label: 'Next: a final gap review before concluding — no review has run yet.',
-    question: 'Proceed?',
-    options: [
-      cmdOption('y', 'yes', 'Run the final review'),
-      promptOption('Keep going', 'Tell me what else to explore'),
-    ],
-  }),
-  'wrap-up': () => ({
-    name: 'MENU: wrap-up gate',
-    label: "I'll reconcile the document against our conversation, then confirm before marking complete.",
-    question: 'Do you wish to conclude?',
-    options: [
-      cmdOption('y', 'yes', 'Conclude — begin wrap-up'),
-      cmdOption('n', 'no', 'Continue the conversation'),
-    ],
-  }),
-};
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string, reason?: string}} args
- * @returns {string}
- */
-function closingGate(cwd, { dotpath, variant, reason }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'closing-gate');
-  if (phase !== 'discussion') {
-    throw new Error(`render closing-gate: address must be <wu>.discussion.<topic> — the discussion close is the flow that runs these gates; got phase "${phase}"`);
-  }
-  const gate = variant !== undefined ? CLOSING_GATES[variant] : undefined;
-  if (!gate) {
-    throw new Error(`render closing-gate: --variant must be one of ${Object.keys(CLOSING_GATES).join(', ')}, got "${variant ?? ''}"`);
-  }
-  if (reason !== undefined) {
-    throw new Error('render closing-gate: takes no --reason — every variant carries its own wording');
-  }
-  const g = gate();
-  return section(g.name, MENU_INSTRUCTION, menu(g.label, g.options, { question: g.question }));
-}
-
-// defer-gate — the discussion close's consent to set aside what the map still
-// holds undecided, over the map that shows it. Fetched where the user's own
-// signal meets an unsettled map; a settled map is never asked, so it refuses.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function deferGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'defer-gate');
-  if (phase !== 'discussion') {
-    throw new Error(`render defer-gate: address must be <wu>.discussion.<topic> — the map is the discussion's; got phase "${phase}"`);
-  }
-  if (!itemOf(manifest, 'discussion', topic)) {
-    throw new Error(`render defer-gate: no discussion item "${topic}" — no map to defer from`);
-  }
-  if (mapState(manifest, topic).unresolved.length === 0) {
-    throw new Error(`render defer-gate: nothing on "${topic}"'s map is undecided — there is nothing to defer`);
-  }
-  return discussionDeferGate(topic, manifest);
 }
 
 // ---------------------------------------------------------------------------
@@ -3105,10 +3000,14 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
   return experimentSpawnGate(phase, /** @type {string} */ (id), manifest.work_type === 'epic');
 }
 
+// The phases the wait gate serves: planning alone. A discussion's waits are
+// its map's — a question its experiment measures holds it open (9.1.11) —
+// and its close is the decided screen (decided.cjs).
+const WAIT_GATE_PHASES = WAITING_PHASES.filter((phase) => phase !== 'discussion');
+
 /**
- * The blocked-conclusion gate over every wait the item holds — the research
- * a discussion stands on, the specification a plan stands on, the
- * experiments a conversation spawned. Empty when nothing is owed: the
+ * The blocked-conclusion gate over every wait the item holds — the
+ * specification a plan stands on. Empty when nothing is owed: the
  * calling flow branches on the response, so one fetch stands in for the
  * read-then-render pair.
  * @param {string} cwd
@@ -3116,12 +3015,12 @@ function experimentSpawnGateSurface(cwd, { dotpath, id }) {
  * @returns {string} the gate's sections, or '' when nothing blocks conclusion
  */
 function waitGateSurface(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAITING_PHASES, 'the waiting item itself');
+  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'wait-gate', WAIT_GATE_PHASES, 'the waiting item itself');
   if (!itemOf(manifest, phase, topic)) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
   const blocking = waits(manifest, phase, topic);
-  return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
+  return blocking.length === 0 ? '' : waitGate(topic, blocking, manifest.work_type === 'epic');
 }
 
 // summary-backfill-gate — the epic's provenance recovery. The topics it
@@ -4079,8 +3978,8 @@ function findingAnnounce(cwd, { dotpath, id, file }) {
 // finding-batch — a surfacing lane whose findings need at most a scan from
 // the user: the `apply` batch (corrections determined by decisions already
 // made), the call batch (`settled` at the specification, `decide` at every
-// other door — calls the session made, presented for a scan before they
-// land), and the `route` batch (findings owned by a sibling topic). The lane
+// other door but the discussion — calls the session made, presented for a
+// scan before they land), and the `route` batch (findings owned by a sibling topic). The lane
 // fixes the chrome; the payload carries only judgment content, so the screen
 // is one call and the prose holds no template. A screen holds at most
 // BATCH_MAX items — a larger lane renders over successive screens, each
@@ -4160,6 +4059,10 @@ const SETTLED_BATCH_PHASE = 'specification';
 /** The call lane the address serves — the other name is refused there. @param {string} phase */
 const callLaneOf = (phase) => (phase === SETTLED_BATCH_PHASE ? 'settled' : 'decide');
 
+// The phase whose calls never batch: a discussion's go through raise one at
+// a time, and its close is the decided screen (9.7.5).
+const UNFLUSHED_PHASE = 'discussion';
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string, first?: string}} args
@@ -4173,6 +4076,9 @@ function findingBatch(cwd, { dotpath, file, first }) {
     throw new Error(`render finding-batch: "lane" must be one of ${Object.keys(BATCH_LANES).join(', ')}`);
   }
   const lane = BATCH_LANES[p.lane];
+  if (CALL_LANE_NAMES.includes(p.lane) && phase === UNFLUSHED_PHASE) {
+    throw new Error('render finding-batch: a discussion flushes no calls — each goes through raise, and Claude\'s own show on the map since the person last looked');
+  }
   if (CALL_LANE_NAMES.includes(p.lane) && p.lane !== callLaneOf(phase)) {
     throw new Error(`render finding-batch: lane "${p.lane}" is not served at the ${phase} phase — its call lane is "${callLaneOf(phase)}"`);
   }
@@ -7108,8 +7014,6 @@ const SURFACES = {
   'dismissed-topics': dismissedTopics,
   'send-closed-target': sendClosedTarget,
   'conclude-gate': concludeGate,
-  'closing-gate': closingGate,
-  'defer-gate': deferGate,
   'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-pick': experimentPickSurface,
@@ -7225,6 +7129,10 @@ const SURFACES = {
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,
   'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
+  'map': mapSurface,
+  'decided': decidedSurface,
+  'decided-strike': decidedStrikeSurface,
+  'wait-agents': waitAgentsSurface,
 };
 
 /**

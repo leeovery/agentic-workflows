@@ -81,57 +81,6 @@ describe('render research-conclude-gate', () => {
   });
 });
 
-describe('render defer-gate', () => {
-  let dir;
-  const withSubtopics = (subtopics) => writeManifest(dir, 'pay', {
-    phases: {
-      research: { items: { checkout: { status: 'completed' } } },
-      discussion: { items: { checkout: { status: 'in-progress', subtopics } } },
-    },
-  });
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  it('draws the map, then the consent over what it holds undecided', () => {
-    withSubtopics({
-      'token-refresh': { status: 'exploring', parent: null },
-      'session-storage': { status: 'decided', parent: null },
-    });
-    assert.strictEqual(renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }), [
-      '=== DISPLAY: discussion map (emit verbatim as a text code block (```text fence)) ===',
-      'Discussion Map — Checkout (2 subtopics — 1 decided · 1 exploring)',
-      '  ├─ ✓ Session Storage    [decided]',
-      '  └─ ◐ Token Refresh      [exploring]',
-      "=== MENU: defer gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'There is still 1 subtopic not yet decided — shown on the map above.',
-      '',
-      '**`◆ Defer and conclude?`**',
-      '',
-      '**`y/yes`** → Defer it and move toward concluding',
-      '**`n/no`**  → Continue discussing',
-      '',
-    ].join('\n'));
-  });
-
-  it('counts every subtopic still open', () => {
-    withSubtopics({ a: { status: 'pending', parent: null }, b: { status: 'converging', parent: null } });
-    const out = renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' });
-    assert.match(out, /There are still 2 subtopics not yet decided — shown on the map above\./);
-    assert.match(out, /Defer them and move toward concluding/);
-  });
-
-  it('refuses a settled map, another phase, and a topic with no discussion', () => {
-    withSubtopics({ a: { status: 'decided', parent: null }, b: { status: 'deferred', parent: null } });
-    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.checkout' }),
-      /render defer-gate: nothing on "checkout"'s map is undecided — there is nothing to defer/);
-    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.research.checkout' }),
-      /render defer-gate: address must be <wu>\.discussion\.<topic> — the map is the discussion's; got phase "research"/);
-    assert.throws(() => renderSurface(dir, 'defer-gate', { dotpath: 'pay.discussion.ghost' }),
-      /render defer-gate: no discussion item "ghost" — no map to defer from/);
-  });
-});
-
 describe('render research-threads', () => {
   let dir;
   beforeEach(() => {

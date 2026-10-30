@@ -111,21 +111,14 @@ describe('pipeline simulation: sessions', () => {
     // the first is the session's to know, so it passes the flag.
     assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload, '--first'], { expect: 'content' }),
       /^\*\*`▪ No Decision Needed`\*\*$/m, 'the apply lane opens on its marker');
-    // The decide lane carries the veto menu; a screen past the five-item cap
-    // is refused whole — pagination is the prose's job, screens the engine's.
+    // A discussion flushes no calls: each goes through raise, and Claude's
+    // own show on the map since the person last looked (9.7.5).
     const decidePayload = `.leeway/.cache/${wu}/discussion/beta/batch-decide.json`;
     sim.write(decidePayload, JSON.stringify({
       lane: 'decide',
       items: [{ title: 'd', detail: 'determined by the tier decision' }],
     }));
-    const decided = sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', decidePayload, '--first'], { expect: 'content' });
-    assert.match(decided, /\*\*Discuss\*\*/, 'the decide menu carries the discuss route');
-    assert.match(decided, /^\*\*`▪ Decided From the Record`\*\*$/m, 'the decide lane opens on its marker');
-    sim.write(decidePayload, JSON.stringify({
-      lane: 'decide',
-      items: Array.from({ length: 6 }, (_, i) => ({ title: `d${i}`, detail: 'x' })),
-    }));
-    sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', decidePayload], /at most 5 items/);
+    sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', decidePayload, '--first'], /a discussion flushes no calls/);
     // The route lane requires each item's title alongside its target — a
     // producer still writing the bare {target, detail} pair fails here.
     const routePayload = `.leeway/.cache/${wu}/discussion/beta/batch-route.json`;
@@ -235,19 +228,13 @@ describe('pipeline simulation: sessions', () => {
       'probe: nothing owed — the satisfied classification');
     assert.strictEqual(reviewRows(probe)[0].status, 'incorporated');
 
-    // The map gate over the user's signal: the defer gate is fetched where it
-    // is shown, the map above its consent; the batch its yes runs settles the
-    // stragglers in one uniform write and answers with the map's convergence
-    // state once — after which there is nothing left to defer.
+    // A batch settles the stragglers in one uniform write and answers with
+    // the map's convergence state once.
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-a']);
     sim.run(['discussion-map', 'add', wu, 'alpha', 'edge-b']);
-    const deferGate = sim.render(['defer-gate', `${wu}.discussion.alpha`], { expect: 'content' });
-    assert.ok(deferGate.indexOf('=== DISPLAY: discussion map') < deferGate.indexOf('=== MENU: defer gate'), 'the map, then the consent');
-    assert.match(deferGate, /There are still 2 subtopics not yet decided/);
     const deferredBatch = sim.run(['discussion-map', 'set', wu, 'alpha', 'edge-a=deferred', 'edge-b=deferred']);
     assert.deepStrictEqual(deferredBatch.set, { 'edge-a': 'deferred', 'edge-b': 'deferred' });
     assert.strictEqual(deferredBatch.all_decided, true, 'the batch response carries convergence — no follow-up read');
-    sim.refuses(['render', 'defer-gate', `${wu}.discussion.alpha`], /nothing on "alpha"'s map is undecided/);
 
     sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);

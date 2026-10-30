@@ -486,6 +486,28 @@ function answerGate(sim, name, ...answer) {
   return answered;
 }
 
+/** Claude's items of the decided checklist; the engine works out the rest. */
+const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
+
+/**
+ * A discussion closed as the prose closes it (9.7): the map drawn, no agent
+ * left to wait for, the decided checklist worked and closed, Claude's
+ * payload staged on the decided screen, and the person's yes at its gate
+ * run. Answers what the yes answered.
+ * @param {Sim} sim @param {string} wu @param {string} topic
+ * @param {{lines: object[], candidates: object[]}} [payload]
+ */
+function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
+  assert.match(sim.render(['map', `${wu}.${topic}`], { expect: 'content' }), /^=== DISPLAY: map /m);
+  sim.render(['wait-agents', `${wu}.${topic}`], { expect: 'empty' });
+  for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
+  sim.run(['checklist', 'close', 'decided', wu, topic]);
+  const file = sim.write(`.leeway/.cache/scratch/decided-${topic}.json`, payload);
+  assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
+  const { next } = answerGate(sim, 'decided', '--pick', 'y');
+  return sim.run(next.argv);
+}
+
 /** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
 function linearPick(sim, wu, action) {
   return pickRoute(sim, linearMenu(sim, wu).keys, action);
@@ -978,5 +1000,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

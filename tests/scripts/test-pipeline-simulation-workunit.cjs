@@ -150,8 +150,6 @@ describe('pipeline simulation: workunit', () => {
     sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
     assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
       /E1 cutover-cost/, 'the register renders the moved series at the epic address');
-    assert.match(sim.render(['wait-gate', `${epic}.discussion.stray-topic`], { expect: 'content' }),
-      /awaits experiment evidence \(E1\)/, 'the wait gate renders over the moved holder');
 
     assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
       /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');

@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: discussion projections — the Discussion Map view over one
-// discussion item's subtopics (see ../discussion-map.cjs), and the defer gate
-// the close draws over it.
+// discussion item's subtopics (see ../discussion-map.cjs).
 //
 // Deterministic: same manifest, same string. Rows hang off the header via the
 // kernel tree (├─/└─); rows sort by BREAKDOWN_ORDER rank (settled first, then
@@ -15,7 +14,6 @@
 const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, discussionGlyph } = require('../conventions.cjs');
 const { mapState, subtopicsOf } = require('../discussion-map.cjs');
-const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 /** @typedef {import('../discussion-map.cjs').SubtopicCounts} SubtopicCounts */
@@ -89,27 +87,4 @@ function discussionMap(topic, manifest) {
   return header + '\n' + renderTree(top.sort(byRank).map((t) => t.node), { width: TREE_WIDTH, childIndent: 2 });
 }
 
-/**
- * The defer gate: the map, then the consent to set aside every subtopic still
- * undecided on it — the statement points at the map drawn above it.
- * @param {string} topic
- * @param {object} manifest  a map with at least one undecided subtopic
- * @returns {string} the map DISPLAY section and the MENU section
- */
-function discussionDeferGate(topic, manifest) {
-  const count = mapState(manifest, topic).unresolved.length;
-  const one = count === 1;
-  return section('DISPLAY: discussion map', emitAs('text'), discussionMap(topic, manifest))
-    + section('MENU: defer gate', MENU_INSTRUCTION, menu(
-      one
-        ? 'There is still 1 subtopic not yet decided — shown on the map above.'
-        : `There are still ${count} subtopics not yet decided — shown on the map above.`,
-      [
-        cmdOption('y', 'yes', one ? 'Defer it and move toward concluding' : 'Defer them and move toward concluding'),
-        cmdOption('n', 'no', 'Continue discussing'),
-      ],
-      { question: 'Defer and conclude?' },
-    ));
-}
-
-module.exports = { discussionMap, discussionDeferGate };
+module.exports = { discussionMap };

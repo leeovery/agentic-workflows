@@ -552,6 +552,22 @@ function agentsLeft(cwd, workUnit, phase, topic) {
 }
 
 /**
+ * The agents still running on a topic, in dispatch order: dispatched, their
+ * report not on disk, and the process that dispatched them alive — a peer's
+ * among them, since a report lands in the topic whoever waits for it. Read
+ * as `agentsLeft` reads, promoting and saving nothing.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {{id: string, kind: string}[]}
+ */
+function runningAgents(cwd, workUnit, phase, topic) {
+  const startOf = startTimeReader();
+  return derivationRows(agentDir(cwd, workUnit, phase, topic))
+    .filter((row) => phaseCarries(phase, row.kind) && row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit) && ownerAlive(row, startOf))
+    .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
+    .map(({ id, kind }) => ({ id, kind }));
+}
+
+/**
  * Scan: promote every in-flight row whose content file now exists, then
  * answer with the snapshot the surfacing protocol reads — the rows grouped
  * by state. Which row and which finding to take next is the protocol's
@@ -753,6 +769,7 @@ module.exports = {
   reviewArming,
   agentRows,
   agentsLeft,
+  runningAgents,
   latestReview,
   gapReviewSince,
   dispatchedRows,

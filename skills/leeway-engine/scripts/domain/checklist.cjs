@@ -16,7 +16,8 @@
 //
 // A record is `{items: {key: {state: 'done'|'skipped', reason?, at}},
 // closed?: at}` (6.4.12): Claude's marks alone, each skip with its reason,
-// and the close. What the engine checks is worked out at every call and
+// and the close; decided's also `taken?: at`, when the decided gate's yes
+// took its close (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
 // `topics/{topic}/mail/`; each phase of the cut naming its scenarios and
@@ -29,7 +30,9 @@
 //
 // A mark counts only once made after the record's last close, so a point
 // closed again — a decided topic a message set back in progress (10.2.7,
-// mail.cjs) — is worked afresh. A skip shows on the screen of the next
+// mail.cjs) — is worked afresh. The decided gate stands on a close its yes
+// has not taken (`decidedClose`): a topic reopened after its yes shows its
+// gate again only once closed again, every engine item holding still. A skip shows on the screen of the next
 // authority gate over its work (6.4.5): decided's, ready to build's and
 // finish's each their own, and finish's every phase start's and close's too,
 // as each record keeps them. An engine item is never marked or skipped, so
@@ -53,7 +56,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { messageOf } = require('../kernel/call.cjs');
 
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
-/** @typedef {{items: Record<string, Mark>, closed?: string}} Checklist */
+/** @typedef {{items: Record<string, Mark>, closed?: string, taken?: string}} Checklist */
 
 /**
  * A checklist named: its point; where its record sits under the manifest's
@@ -441,4 +444,42 @@ function runChecklistVerb(cwd, verb, positional, opts) {
   }
 }
 
-module.exports = { CHECKLIST_USAGE, runChecklistVerb, phaseStarted };
+/**
+ * The close the decided gate stands on (9.7.3, 10.2.7): the record's close,
+ * and the skips it shows (6.4.5), each marked before it. Refused while the
+ * checklist is open: closed never; its close taken by the gate's yes
+ * already, the topic set back in progress since, so it is worked afresh and
+ * closed again; or an item the engine checks failing now, as mail landing
+ * since the close fails the mailbox's.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {{closed: string, skips: Skip[], warnings: string[]}}
+ */
+function decidedClose(cwd, unit, topic) {
+  const checklist = named(cwd, 'decided', [unit, topic]);
+  const name = nameOf(checklist);
+  const record = recordAt(checklist.manifest, checklist.path);
+  const closedAt = record?.closed;
+  if (record === undefined || closedAt === undefined) throw new Error(`${name} is open — its items are worked, then it is closed: checklist close decided ${unit} ${topic}`);
+  if (record.taken !== undefined && record.taken >= closedAt) {
+    throw new Error(`${name}'s close was taken by the decided gate's yes, and the topic was set back in progress since — its items are worked afresh and it is closed again`);
+  }
+  const items = itemsOf(checklist);
+  const failing = items.filter((item) => item.check !== undefined && !item.check(checklist)).map((item) => item.key);
+  if (failing.length > 0) throw new Error(`${name} has items open since its close: ${failing.join(', ')} — they are worked, and it is closed again`);
+  const skips = items.flatMap((item) => {
+    const made = record.items[item.key];
+    return made?.state === 'skipped' && made.at <= closedAt ? [skipOf(name, item, made)] : [];
+  });
+  return { closed: closedAt, skips, warnings: checklist.warnings };
+}
+
+/**
+ * Record on the unit's manifest, as it is saved, that the decided gate's
+ * yes took the topic's close.
+ * @param {Record<string, any>} manifest @param {string} topic @param {string} at
+ */
+function takeDecidedClose(manifest, topic, at) {
+  /** @type {Checklist} */ (recordAt(manifest, ['decided', topic])).taken = at;
+}
+
+module.exports = { CHECKLIST_USAGE, runChecklistVerb, phaseStarted, decidedClose, takeDecidedClose };

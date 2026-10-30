@@ -1,12 +1,11 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the wait gate — the blocked-conclusion gate over an item's
-// waits, every kind: the research a discussion stands on, the specification
-// a plan stands on, the experiments a conversation spawned. The engine's
-// completion refusal is the backstop; this is its graceful face — the
-// blocker names what is owed, the guidance names the ways out, and the menu
-// offers the pause the spawn gate's `yes` takes. The pause's banner lives
+// Domain ring: the wait gate — the blocked-conclusion gate over a plan held
+// by its specification. The engine's completion refusal is the backstop;
+// this is its graceful face — the blocker names what is owed, the guidance
+// the way out, and the menu offers the pause. What a held item owes is said
+// once (`owedWaits`), for the pause's banner too. The pause's banner lives
 // here too: the epic menu renders it in place of the completed banner when a
 // phase leaves on a wait rather than concluding.
 // ---------------------------------------------------------------------------
@@ -16,20 +15,6 @@ const { titlecase } = require('../conventions.cjs');
 const { specUnsettledPhrase } = require('../derivations.cjs');
 
 /** @typedef {import('../derivations.cjs').Wait} Wait */
-
-// How the gate speaks about the item it holds: what it calls it, and how the
-// keep row names staying put. Only planning departs from the conversations —
-// a plan is a plan, not "this planning", and it is kept rather than kept
-// going, because nobody is talking.
-/** @type {Record<string, {noun: string, keep: string}>} */
-const HOLDER_COPY = {
-  planning: { noun: 'plan', keep: 'Keep planning here' },
-};
-
-/** @param {string} phase */
-function holderCopy(phase) {
-  return HOLDER_COPY[phase] || { noun: phase, keep: 'Keep the conversation going' };
-}
 
 // Where the awaited research stands, in the gates' voice — the wait gate and
 // the discussion entry gate read as one.
@@ -76,52 +61,27 @@ function owedSources(names, sourcePhase) {
 }
 
 /**
- * @param {string} phase  the holding phase — `research`, `discussion`, or `planning`
+ * The wait gate over a plan held by its specification, the one wait it
+ * serves: a discussion's waits are its map's, and its close the decided
+ * screen.
  * @param {string} topic
- * @param {Wait[]} waits  non-empty — the derivation's order
+ * @param {Wait[]} waits  the plan's specification wait
  * @param {boolean} epic  where the pause lands — the epic menu, or the linear unit's next step
  * @returns {string}
  */
-function waitGate(phase, topic, waits, epic) {
-  const { noun, keep } = holderCopy(phase);
-  const research = waits.find((w) => w.kind === 'research');
-  const spec = waits.find((w) => w.kind === 'specification');
-  const ids = experimentIds(waits);
-  const guidance = [];
-  const queued = [];
-  const lands = [];
-  if (research) {
-    queued.push('the research');
-    lands.push('the research');
-  }
-  if (spec) {
-    queued.push('the specification');
-    lands.push('the specification');
-  }
-  if (ids.length > 0) {
-    queued.push(ids.join(', '));
-    lands.push('the evidence');
-  }
-  // Each kind names its own release; the conclusion clause is composed over
-  // every wait present, never over one kind while another still holds.
-  const alone = lands.length === 1;
-  if (research) guidance.push(`Work the research first — concluding it releases its wait${alone ? `; this ${noun} can conclude once the research lands.` : '.'}`);
-  if (spec) guidance.push(`Settle the specification first — concluding it releases its wait${alone ? `; this ${noun} can conclude once the specification lands.` : '.'}`);
-  if (ids.length > 0) guidance.push('The wait releases when each experiment ends.');
-  if (!alone) guidance.push(`This ${noun} can conclude once ${lands.join(' and ')} have landed.`);
-  guidance.push(epic ? 'The epic menu carries the way in.' : 'The pause continues the work unit at what it waits on.');
+function waitGate(topic, waits, epic) {
+  const guidance = [
+    'Settle the specification first — concluding it releases its wait; this plan can conclude once the specification lands.',
+    epic ? 'The epic menu carries the way in.' : 'The pause continues the work unit at what it waits on.',
+  ];
   return [
-    section(
-      'DISPLAY: wait block',
-      emitAs('properties'),
-      `⚑ Conclusion blocked — this ${noun} awaits ${owedWaits(waits, `"${titlecase(topic)}"`)}`,
-    ),
+    section('DISPLAY: wait block', emitAs('properties'), `⚑ Conclusion blocked — this plan awaits ${owedWaits(waits, `"${titlecase(topic)}"`)}`),
     section('DISPLAY: wait guidance', emitAs('markdown'), `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', epic
-        ? `Pause this ${noun} here and return to the epic menu with ${queued.join(' and ')} queued`
-        : `Pause this ${noun} here and continue the work unit at ${queued.join(' and ')}`),
-      cmdOption('k', 'keep', `${keep} — conclusion stays blocked until ${lands.join(' and ')} ${lands.length > 1 ? 'land' : 'lands'}`),
+        ? 'Pause this plan here and return to the epic menu with the specification queued'
+        : 'Pause this plan here and continue the work unit at the specification'),
+      cmdOption('k', 'keep', 'Keep planning here — conclusion stays blocked until the specification lands'),
     ], { question: epic ? 'Pause to the menu?' : 'Pause here?' })),
   ].join('\n');
 }
