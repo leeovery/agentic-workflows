@@ -9,8 +9,10 @@
 // append; the commit held for the migration's. A cancelled unit's topic
 // carried as any other; a topic carried once, a session killed as the
 // ledger is renamed in leaving none of its entries, so the redo holds each
-// once; and every refusal of the verb's own writing nothing. The rules the
-// records directive holds a record to are test-migration-079.cjs's.
+// once; every refusal of the verb's own writing nothing, and each of what
+// the record's composer must answer writing nothing but the refusal beside
+// the record; a map item and a thread a name or a list of names. The rules
+// the records directive holds a record to are test-migration-079.cjs's.
 //
 // Layer: verb, the kill spawned. World: the records directive's
 // (migration-world.cjs), made once and copied for each test that writes,
@@ -26,10 +28,10 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixture, ledgerEntries, killedAt } = harness;
-const { SESSION, recordsMigration, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
+const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { carriedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { carriedPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';
 const QUESTION = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', map_item: 'trial-length', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] };
@@ -50,6 +52,9 @@ const world = () => recordsMigration(path.join(fs.mkdtempSync(path.join(os.tmpdi
 
 /** A call that must refuse, writing nothing: its error. @param {string[]} args @param {import('./engine-harness.cjs').CallOptions} [opts] */
 const untouched = (args, opts = { env: SESSION }) => refusedUntouched(dir, args, opts, harness);
+
+/** A record licensing's composer must mend, refused, nothing written but the refusal beside it: the refusal. @param {unknown} record */
+const mend = (record) => refusedKeeping(dir, ['ledger', 'carry', LICENSING, '--file', recordFile(record)], refusedPath('fumi', 'licensing')).replace(path.dirname(dir), '{dir}');
 
 /** A record written beside the project, its path. @param {unknown} record */
 function recordFile(record) {
@@ -90,10 +95,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
       },
     ]);
     assert.deepStrictEqual(kept('fumi', 'licensing'), {
-      unit: 'fumi',
-      phase: 'discussion',
-      topic: 'licensing',
-      entries: [{ ref: 'q1', id: q.id, map_item: 'trial-length', thread: null }, { ref: 'd1', id: d.id, map_item: 'trial-length', thread: null }, { ref: 'f1', id: f.id, map_item: null, thread: null }],
+      unit: 'fumi', phase: 'discussion', topic: 'licensing', entries: [{ ref: 'q1', id: q.id }, { ref: 'd1', id: d.id }, { ref: 'f1', id: f.id }], record: { entries: [QUESTION, DECISION, FINDING] },
     });
     assert.ok(stateUnborn(dir));
   });
@@ -104,9 +106,9 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual(lines().map(({ unit, topic, text }) => [unit, topic, text]), [['gone', 'gone', 'What caused it?']]);
   });
 
-  it('a record of no entries, for a topic with no log, is kept, the ledger left as it was', () => {
-    assert.deepStrictEqual(carry('fumi.discovery.billing', []), { ok: true, carried: 0, ids: {}, committed: null });
-    assert.deepStrictEqual([kept('fumi', 'billing').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
+  it('a record of no entries, for a topic with no log and nothing come in from it, is kept, the ledger left as it was', () => {
+    assert.deepStrictEqual(carry('fumi.discovery.support', []), { ok: true, carried: 0, ids: {}, committed: null });
+    assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
   it('outside the migration: once the state branch has its first commit, refused, nothing written', () => {
@@ -158,7 +160,7 @@ describe('the refusals, nothing written', () => {
   before(() => { dir = world(); });
   after(() => cleanupFixture(path.dirname(dir)));
 
-  it('no session, argv of another shape, a place naming no topic, and a file holding no record', () => {
+  it('no session, argv of another shape, and a place naming no topic, writing nothing; a file holding no record, writing its refusal beside the record', () => {
     const file = recordFile({ entries: [QUESTION] });
     const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic> --file <record>   (the topic\'s record as JSON, {"entries": [...]})';
     assert.deepStrictEqual([
@@ -171,9 +173,9 @@ describe('the refusals, nothing written', () => {
       untouched(['ledger', 'carry', 'nope.discussion.licensing', '--file', file]),
       untouched(['ledger', 'carry', 'gone.investigation.gone', '--file', file]),
       untouched(['ledger', 'carry', 'fumi.discussion.billing', '--file', file]),
-      untouched(['ledger', 'carry', LICENSING, '--file', path.join(path.dirname(dir), 'missing.json')]).replace(/: ENOENT[^]*$/, ''),
-      untouched(['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [QUESTION], more: true })]).replace(path.dirname(dir), '{dir}'),
-      untouched(['ledger', 'carry', LICENSING, '--file', recordFile({ entries: ['q1'] })]).replace(path.dirname(dir), '{dir}'),
+      refusedKeeping(dir, ['ledger', 'carry', LICENSING, '--file', path.join(path.dirname(dir), 'missing.json')], refusedPath('fumi', 'licensing')).replace(/: ENOENT[^]*$/, ''),
+      mend({ entries: [QUESTION], more: true }),
+      mend({ entries: ['q1'] }),
     ], [
       'ledger carry: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set',
       usage,
@@ -190,8 +192,8 @@ describe('the refusals, nothing written', () => {
     ]);
   });
 
-  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a question answered twice, a map item of a finding, a thread of a decision, and content its write refuses', () => {
-    const refused = (/** @type {unknown[]} */ entries) => untouched(['ledger', 'carry', LICENSING, '--file', recordFile({ entries })]);
+  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a question answered twice, a map item of a finding, a thread of a decision, either of another shape, and content its write refuses', () => {
+    const refused = (/** @type {unknown[]} */ entries) => mend({ entries });
     const { assets: _, ...decision } = DECISION;
     assert.deepStrictEqual([
       refused([{ ...QUESTION, ref: undefined }]),
@@ -208,6 +210,8 @@ describe('the refusals, nothing written', () => {
       refused([QUESTION, { ...decision, relies_on: ['d1'] }]),
       refused([{ ...FINDING, relies_on: [], map_item: 'pricing' }]),
       refused([QUESTION, { ...decision, thread: 'index-size' }]),
+      refused([{ ...QUESTION, map_item: [] }]),
+      refused([{ ...QUESTION, thread: ['index-size', ''] }]),
       refused([{ ...QUESTION, text: '' }]),
       refused([{ ...QUESTION, why: 'Because.' }]),
       refused([QUESTION, { ...decision, by: 'person' }]),
@@ -225,8 +229,10 @@ describe('the refusals, nothing written', () => {
       'ledger carry: entry d1: answers names f1, and no entry before it is a question of that ref',
       'ledger carry: entry d2: answers q1, which another decision of the record answers — a question\'s current answer is one',
       'ledger carry: entry d1: relies_on names d1, and no entry before it is an entry of that ref',
-      'ledger carry: entry f1: a map item is a question\'s or a decision\'s, named',
-      'ledger carry: entry d1: a thread is a question\'s, named',
+      'ledger carry: entry f1: a map item is a question\'s or a decision\'s: a name, or a list of names',
+      'ledger carry: entry d1: a thread is a question\'s: a name, or a list of names',
+      'ledger carry: entry q1: a map item is a question\'s or a decision\'s: a name, or a list of names',
+      'ledger carry: entry q1: a thread is a question\'s: a name, or a list of names',
       'ledger carry: entry q1: the content\'s text is not non-empty text',
       'ledger carry: entry q1: the content has no field why — it holds by, who_moved_whom, text, cites',
       'ledger carry: entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude',
@@ -235,7 +241,7 @@ describe('the refusals, nothing written', () => {
   });
 
   it('an asset of another shape, or one the state holds no file at', () => {
-    const refused = (/** @type {unknown} */ assets) => untouched(['ledger', 'carry', LICENSING, '--file', recordFile({ entries: [{ ...QUESTION, assets }] })]);
+    const refused = (/** @type {unknown} */ assets) => mend({ entries: [{ ...QUESTION, assets }] });
     writeState(dir, 'fumi/assets/folder/inside.md', '# Inside\n');
     assert.deepStrictEqual([
       refused('fumi/assets/pricing.md'),

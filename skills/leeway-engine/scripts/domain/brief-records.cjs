@@ -79,16 +79,18 @@
 //                  each of its headings a level down (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the
 //                  phases the topic is in, the state's place and the
-//                  project's, each file of the topic's folder but its mail,
-//                  and as the records directive's check reads them its
-//                  specs — each where it is read and how it is cited — its
-//                  old map, its research's threads still open and its
-//                  reviews never folded in; the unit's assets with where
-//                  each came in from; and where the topic's record is
-//                  composed and the verifier's findings on it written
-//                  (21.10.5)
+//                  project's in the main checkout, each file of the
+//                  topic's folder but its mail, and as the records
+//                  directive's check reads them its specs — each where it
+//                  is read and how it is cited — its old map, its
+//                  research's threads still open and its reviews never
+//                  folded in; the unit's assets with where each came in
+//                  from; and where the topic's record is composed, the
+//                  verifier's findings on it written and a carry's refusal
+//                  of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON (21.10.7)
 //   verifier-findings the verifier's findings on that record, verbatim
+//   carry-refusal  what `ledger carry` refused that record for, verbatim
 //
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional; a flag carries a name, an id or a path, never
@@ -130,7 +132,7 @@ const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { readWorkUnitManifest, isObject } = require('../kernel/manifest-io.cjs');
 const { directiveOf } = require('./directives.cjs');
-const { topicPlace, recordsRules, composedPath, findingsPath } = require('./ledger-carry.cjs');
+const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -527,16 +529,15 @@ function drawMigratedTopic(filling) {
     const { status } = manifest.phases[phase].items[topic];
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
   });
-  const projectDir = codeRoot(filling.cwd);
   const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
   const assets = (Array.isArray(manifest.imports) ? manifest.imports : []).filter((entry) => isObject(entry) && typeof entry.path === 'string')
     .map((entry) => `- ${unit}/${entry.path}${typeof entry.origin === 'string' ? `, which came in from ${entry.origin}` : ''}`);
-  const sources = recordsRules().sourcesOf({ projectDir, stateDir: root, unit, topic });
+  const sources = recordsRules().sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')}`,
     `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
-    `- **The project:** ${projectDir} — each path under \`.workflows/\` is from there`,
+    `- **The project:** ${sources.project} — each path under \`.workflows/\` is from there`,
     '',
     '## Its files',
     '',
@@ -566,6 +567,7 @@ function drawMigratedTopic(filling) {
     '',
     `- The record composed: ${composedPath(unit, topic)}`,
     `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
+    `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
   ].join('\n');
 }
 
@@ -579,10 +581,10 @@ function drawComposedRecord(filling) {
   return fenced('json', text.trimEnd());
 }
 
-/** @param {Filling} filling */
-function drawVerifierFindings(filling) {
+/** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+function besideRecord(filling, rel) {
   const { root, unit, topic } = migratedTopic(filling);
-  const file = path.join(root, findingsPath(unit, topic));
+  const file = path.join(root, rel(unit, topic));
   const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
   return text === '' ? NONE : text;
 }
@@ -611,7 +613,8 @@ const RECORDS = Object.freeze({
   directive: { of: null, flags: [{ name: 'directive', value: 'id' }], draw: drawDirective },
   'migrated-topic': { of: null, flags: [MIGRATED], draw: drawMigratedTopic },
   'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
-  'verifier-findings': { of: null, flags: [MIGRATED], draw: drawVerifierFindings },
+  'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath) },
+  'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath) },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

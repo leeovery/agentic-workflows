@@ -22,7 +22,8 @@
 //   a question of the record no other decision answers, and any entry's
 //   `relies_on`; a question's or decision's `map_item`, the item of the
 //   topic's old map it carries, and a question's `thread`, the thread of
-//   its research it carries; and its `assets`, each `{path, status}`, a
+//   its research it carries, each a name or, where one entry settles
+//   several, a list of them; and its `assets`, each `{path, status}`, a
 //   file the state holds, linked as it is canonical or reference. Every
 //   entry moves no one; a decision lands unchecked, for the late
 //   one-decision check after the migration.
@@ -30,24 +31,30 @@
 //   (079-records.check.cjs) — its sections cited, its old map, its threads,
 //   its reviews and its imports — run on the record before a line is
 //   written, so a record carried passes the check and one that would not is
-//   refused, nothing written, to be composed again.
+//   refused, nothing carried, to be composed again.
+// - Once: the whole record is appended in one write, after what it carried
+//   is kept in the state's cache (`.cache/migrate/carried/{unit}/{topic}.json`)
+//   — the record as given, and each entry's ref with the id it was given —
+//   so a session that dies leaves the topic with all of its entries or none
+//   (21.10.9), and the check tells the two apart. A topic the ledger holds
+//   an entry on already is refused: its record was carried.
 // - Frozen with 079: the record this takes and the carried file it keeps
 //   are the directive's, released with it, so a later ledger version keeps
-//   taking them while 079 can run.
-// - Once: the whole record is appended in one write, after what it carried
-//   is kept in the state's cache — each entry's ref, id and map item
-//   (`.cache/migrate/carried/{unit}/{topic}.json`) — so a session that dies
-//   leaves the topic with all of its entries or none (21.10.9), and the
-//   check tells the two apart. A topic the ledger holds an entry on already
-//   is refused: its record was carried.
-// - It refuses, writing nothing: outside the migration; no session; a place
-//   of another shape, a phase no topic is in or the unit lacks, a topic with
-//   no item in it, a topic promoted; no file, or one holding no record; an
+//   taking them while 079 can run. The check rests on those two things
+//   alone: the carried file's record, and each of its ids standing as a
+//   line's `id` in the ledger, never another field of a line.
+// - It refuses, carrying nothing: outside the migration; no session; argv
+//   of another shape; a place of another shape, a phase no topic is in or
+//   the unit lacks, a topic with no item in it, a topic promoted. And what
+//   the record's composer answers — no file, or one holding no record; an
 //   entry of another event, a ref missing or given twice, a link naming no
 //   earlier entry of the kind it needs, a question answered twice, a map
-//   item or a thread on an entry that takes none, content its write
-//   refuses, who moved whom given, and an asset the state lacks; and a
-//   record breaking the directive's rules, naming each thing it breaks.
+//   item or a thread on an entry that takes none, or of another shape,
+//   content its write refuses, who moved whom given, an asset the state
+//   lacks, and a record breaking the directive's rules, naming each thing
+//   it breaks — is written beside the record
+//   (`.cache/migrate/records/{unit}/{topic}.refused.md`), for the next
+//   per-topic agent's brief, and nothing else.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -93,7 +100,7 @@ const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
 /** An entry of the record as written: its line's fields and id, and what is kept of it. @typedef {{fields: Record<string, unknown>, id: string}} Line */
 
-/** What is kept of an entry carried: its ref, id, map item and thread. @typedef {{ref: string, id: string, map_item: string|null, thread: string|null}} Kept */
+/** The id an entry of the record was given, by its ref. @typedef {{ref: string, id: string}} Kept */
 
 /** The records directive, whose check holds the rules a record keeps. */
 const RECORDS_DIRECTIVE = '079-records';
@@ -113,6 +120,9 @@ const composedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.
 
 /** @param {string} unit @param {string} topic */
 const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.md`);
+
+/** @param {string} unit @param {string} topic */
+const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.refused.md`);
 
 /**
  * A topic of a unit, from its dot-path, live or not. Refuses, in the words
@@ -138,16 +148,24 @@ function topicPlace(cwd, dotpath, said) {
 }
 
 /**
- * The record's entries, read from the file `--file` names. Refuses argv of
- * another shape, a file that cannot be read, and one holding no record.
- * @param {string} cwd @param {string[]} args
- * @returns {{dotpath: string, entries: Record<string, unknown>[]}}
+ * The place and the record's file `args` give, refused for argv of another
+ * shape.
+ * @param {string[]} args @returns {{dotpath: string, file: string}}
  */
-function readRequest(cwd, args) {
+function requestOf(args) {
   const at = args.indexOf('--file');
   const file = at === -1 ? undefined : args[at + 1];
   const positional = args.filter((_, i) => i !== at && i !== at + 1);
   if (file === undefined || file.startsWith('--') || positional.length !== 1 || positional[0].startsWith('--')) throw new Error(`Usage: engine ${CARRY_USAGE}`);
+  return { dotpath: positional[0], file };
+}
+
+/**
+ * The record's entries, read from its file. Refuses a file that cannot be
+ * read, and one holding no record.
+ * @param {string} cwd @param {string} file @returns {Record<string, any>[]}
+ */
+function readRecord(cwd, file) {
   let record;
   try {
     record = JSON.parse(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
@@ -157,8 +175,12 @@ function readRequest(cwd, args) {
   if (!isObject(record) || Object.keys(record).length !== 1 || !Array.isArray(record.entries) || !record.entries.every(isObject)) {
     throw new Error(`${SAID}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
   }
-  return { dotpath: positional[0], entries: record.entries };
+  return record.entries;
 }
+
+/** Whether a map item or a thread names what it carries: a name, or a list of them. @param {unknown} named */
+const isNamed = (named) => (typeof named === 'string' && named !== '')
+  || (Array.isArray(named) && named.length > 0 && named.every((name) => typeof name === 'string' && name !== ''));
 
 /**
  * One link's refs, each naming an entry before it of the kind it needs:
@@ -222,8 +244,8 @@ function recordLines(place, entries, session) {
     if (Object.hasOwn(entry, 'who_moved_whom')) throw new Error(`${said}: gives who_moved_whom — an entry the migration carries moves no one`);
     if (partOf !== undefined && event !== 'asked') throw new Error(`${said}: only a question is part of another`);
     if ((answers === undefined) !== (event !== 'decided')) throw new Error(`${said}: ${event === 'decided' ? 'a decision answers a question of the record' : 'only a decision answers'}`);
-    if (mapItem !== null && (event === 'found' || typeof mapItem !== 'string' || mapItem === '')) throw new Error(`${said}: a map item is a question's or a decision's, named`);
-    if (thread !== null && (event !== 'asked' || typeof thread !== 'string' || thread === '')) throw new Error(`${said}: a thread is a question's, named`);
+    if (mapItem !== null && (event === 'found' || !isNamed(mapItem))) throw new Error(`${said}: a map item is a question's or a decision's: a name, or a list of names`);
+    if (thread !== null && (event !== 'asked' || !isNamed(thread))) throw new Error(`${said}: a thread is a question's: a name, or a list of names`);
     const links = {
       ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(said, 'part_of', [partOf], before, 'asked')[0] } : {}),
       ...(event === 'decided' ? { answers: linked(said, 'answers', [answers], before, 'asked')[0] } : {}),
@@ -241,7 +263,7 @@ function recordLines(place, entries, session) {
     before.set(ref, { id, event });
     lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? { unchecked: true } : {}) }, id });
     lines.push(...assetLines(said, place, assets, id, tags));
-    kept.push({ ref, id, map_item: mapItem, thread });
+    kept.push({ ref, id });
   });
   return { lines, kept };
 }
@@ -252,22 +274,7 @@ function recordLines(place, entries, session) {
  * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
  */
 function checkRules(cwd, { root, unit, topic }, entries) {
-  const problems = recordsRules().recordProblems({
-    projectDir: codeRoot(cwd),
-    stateDir: root,
-    unit,
-    topic,
-    entries: entries.map((entry) => ({
-      ref: entry.ref,
-      key: entry.ref,
-      event: entry.event,
-      answers: entry.answers ?? null,
-      cites: Array.isArray(entry.cites) ? entry.cites : [],
-      map_item: entry.map_item ?? null,
-      thread: entry.thread ?? null,
-      assets: Array.isArray(entry.assets) ? entry.assets.map((asset) => asset.path) : [],
-    })),
-  });
+  const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, entries });
   if (problems.length > 0) throw new Error(`${SAID}: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`);
 }
 
@@ -284,17 +291,39 @@ function idsBeside({ root, unit, topic }, warnings) {
   }));
 }
 
-/**
- * What was carried of a topic kept whole in the state's cache: written
- * beside its place, then renamed in.
- * @param {Place} place @param {Kept[]} kept
- */
-function keepCarried({ root, unit, phase, topic }, kept) {
-  const file = path.join(root, carriedPath(unit, topic));
+/** `text` written whole at `file` in the state: written beside it, then renamed in. @param {string} file @param {string} text */
+function writeWhole(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const written = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(written, `${JSON.stringify({ unit, phase, topic, entries: kept }, null, 2)}\n`);
+  fs.writeFileSync(written, text);
   fs.renameSync(written, file);
+}
+
+/**
+ * What was carried of a topic kept whole in the state's cache: the record
+ * as given, and each entry's id by its ref.
+ * @param {Place} place @param {Record<string, any>[]} entries @param {Kept[]} kept
+ */
+function keepCarried({ root, unit, phase, topic }, entries, kept) {
+  writeWhole(path.join(root, carriedPath(unit, topic)), `${JSON.stringify({ unit, phase, topic, entries: kept, record: { entries } }, null, 2)}\n`);
+}
+
+/**
+ * The record read, its lines drawn and held to the directive's rules; where
+ * the composer must answer something, the refusal written beside the
+ * record.
+ * @param {string} cwd @param {Place} place @param {string} file @param {string} session
+ */
+function composedRecord(cwd, place, file, session) {
+  try {
+    const entries = readRecord(cwd, file);
+    const { lines, kept } = recordLines(place, entries, session);
+    checkRules(cwd, place, entries);
+    return { entries, lines, kept };
+  } catch (err) {
+    writeWhole(path.join(place.root, refusedPath(place.unit, place.topic)), `${messageOf(err)}\n`);
+    throw err;
+  }
 }
 
 /**
@@ -311,13 +340,12 @@ function carryRecord(cwd, args) {
     if (!migrationRuns(stateRoot(cwd))) throw new Error(`${SAID}: a topic's record is carried into the ledger only while the migration runs — the state branch has its first commit, so the migration is done`);
     const session = handedSession();
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
-    const { dotpath, entries } = readRequest(cwd, args);
+    const { dotpath, file } = requestOf(args);
     const place = topicPlace(cwd, dotpath, SAID);
-    const { lines, kept } = recordLines(place, entries, session);
-    checkRules(cwd, place, entries);
+    const { entries, lines, kept } = composedRecord(cwd, place, file, session);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
-      keepCarried(place, kept);
+      keepCarried(place, entries, kept);
       if (lines.length > 0) appendEntries(place.root, lines, warnings);
       return {
         outcome: lines.length === 0 ? null : commitLedger(cwd, `ledger(${place.unit}): carry ${place.topic}'s record`, warnings),
@@ -337,4 +365,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, carriedPath, composedPath, findingsPath, topicPlace, recordsRules, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, carriedPath, composedPath, findingsPath, refusedPath, topicPlace, recordsRules, carryRecord };

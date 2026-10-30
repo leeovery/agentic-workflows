@@ -136,13 +136,16 @@ function midMigration(dir) {
 
 // The records directive's world (079): four units on the code branch as
 // today's layout left them, and in the state as the move wrote them — an
-// epic nothing of which is built: a topic never started, two in discussion,
-// one of them with its research's threads, and one promoted to a
-// cross-cutting unit; an import come in from one of them, its spec grouped
-// under another name and kept as an asset, and a review the old agent store
-// holds never folded in beside one folded in; the cross-cutting unit the
-// promoted topic went to, its import copied with it; an epic whose building
-// started, its spec still on the code branch; and a cancelled feature.
+// epic nothing of which is built: two topics never started, one of them
+// with an import come in from it, two in discussion, one of them with its
+// research's threads, and one promoted to a cross-cutting unit, its
+// research's threads and its agent store left behind; an import come in
+// from a discussion, its spec grouped under another name and kept as an
+// asset, and a review the old agent store holds never folded in beside one
+// folded in; the cross-cutting unit the promoted topic went to, its import
+// copied with it, one of its decisions settling two subtopics; an epic
+// whose building started, its spec still on the code branch; and a
+// cancelled feature.
 const RECORDS_OLD = Object.freeze({
   'README.md': '# Fumi\n',
   '.workflows/fumi/manifest.json': jsonText({
@@ -150,11 +153,13 @@ const RECORDS_OLD = Object.freeze({
     imports: [
       { path: 'imports/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
       { path: 'imports/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
+      { path: 'imports/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'discovery/billing' },
     ],
     phases: {
-      discovery: { items: { billing: { status: 'pending' } } },
+      discovery: { items: { billing: { status: 'pending' }, support: { status: 'pending' } } },
       research: {
         items: {
+          auth: { status: 'completed', threads: { 'token-expiry': { question: 'When do tokens expire?', status: 'open', origin: 'seed', parent: null } } },
           search: {
             status: 'completed',
             threads: {
@@ -180,7 +185,7 @@ const RECORDS_OLD = Object.freeze({
   '.workflows/platform/manifest.json': jsonText({
     name: 'platform', work_type: 'cross-cutting', status: 'in-progress',
     imports: [{ path: 'imports/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' }],
-    phases: { discussion: { items: { auth: { status: 'completed', subtopics: { sessions: { status: 'decided', parent: null } } } } } },
+    phases: { discussion: { items: { auth: { status: 'completed', subtopics: { sessions: { status: 'decided', parent: null }, tokens: { status: 'decided', parent: null } } } } } },
   }),
   '.workflows/shop/manifest.json': jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
@@ -204,9 +209,10 @@ const RECORDS_MOVED = Object.freeze({
     imports: [
       { path: 'assets/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
       { path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
+      { path: 'assets/rates.md', imported_at: '2026-01-04T10:00:00Z', origin: 'discovery/billing' },
     ],
     phases: {
-      discovery: { items: { billing: { status: 'pending' } } },
+      discovery: { items: { billing: { status: 'pending' }, support: { status: 'pending' } } },
       discussion: { items: { licensing: { status: 'completed' }, search: { status: 'in-progress' }, auth: { status: 'promoted', promoted_to: 'platform' } } },
       specification: { items: { commerce: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
     },
@@ -222,13 +228,14 @@ const RECORDS_MOVED = Object.freeze({
   [layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')]: '# Report\n\n## Result\n\n12ms at p95, from `npm run bench`.\n',
   [layout.assets('fumi', 'pricing.md')]: '# Pricing\n',
   [layout.assets('fumi', 'sso.md')]: '# SSO\n',
+  [layout.assets('fumi', 'rates.md')]: '# Rates\n\nPer seat.\n',
   [layout.assets('fumi', 'specs', 'commerce.md')]: '# Specification: Commerce\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n',
   [layout.manifest('platform')]: jsonText({
     name: 'platform', work_type: 'cross-cutting', status: 'in-progress',
     imports: [{ path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' }],
     phases: { discussion: { items: { auth: { status: 'completed' } } } },
   }),
-  [layout.topic('platform', 'auth', 'log.md')]: '## Discussion\n\n# Discussion: Auth\n\n## Sessions\n\nThirty days, then sign in again.\n',
+  [layout.topic('platform', 'auth', 'log.md')]: '## Discussion\n\n# Discussion: Auth\n\n## Sessions\n\nThirty days, then sign in again, with tokens renewed on each.\n',
   [layout.assets('platform', 'sso.md')]: '# SSO\n',
   [layout.manifest('shop')]: jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
@@ -251,11 +258,21 @@ const OLD_REVIEWS = Object.freeze({
   reports: { 'review-001': '### F1: Ranking ties\n\nTwo results of one age have no order.\n', 'review-002': '### F1: Stale\n\nFolded in long ago.\n' },
 });
 
+// The old agent store of the auth topic fumi promoted to platform, left
+// behind in fumi's: a review never folded in.
+const PROMOTED_REVIEWS = Object.freeze({
+  dir: '.workflows/.cache/fumi/discussion/auth',
+  store: { agents: { 'review-003': { id: 'review-003', kind: 'review', status: 'acknowledged' } } },
+  reports: { 'review-003': '### F1: Token reuse\n\nA token outlives its session.\n' },
+});
+
 /** @param {string} dir */
 function buildRecords(dir) {
   buildUnborn(dir, RECORDS_OLD, RECORDS_MOVED);
-  createFile(dir, `${OLD_REVIEWS.dir}/state.json`, jsonText(OLD_REVIEWS.store));
-  for (const [id, text] of Object.entries(OLD_REVIEWS.reports)) createFile(dir, `${OLD_REVIEWS.dir}/${id}.md`, text);
+  for (const { dir: store, store: rows, reports } of [OLD_REVIEWS, PROMOTED_REVIEWS]) {
+    createFile(dir, `${store}/state.json`, jsonText(rows));
+    for (const [id, text] of Object.entries(reports)) createFile(dir, `${store}/${id}.md`, text);
+  }
 }
 
 /** @type {string|null} */
@@ -320,6 +337,22 @@ function recorded(dir) {
   return fs.readFileSync(statePath(dir, layout.migrations), 'utf8').split('\n').filter(Boolean);
 }
 
+/**
+ * A call to the engine that must refuse, writing nothing but the refusal it
+ * keeps at `kept`, state-relative, and the state branch with no commit yet:
+ * its error, which the kept file holds.
+ * @param {string} dir @param {string[]} args @param {string} kept @param {import('./engine-harness.cjs').CallOptions} [opts]
+ */
+function refusedKeeping(dir, args, kept, opts = { env: SESSION }) {
+  const { [kept]: _, ...before } = treeSnapshot(dir);
+  const { error } = harness.refuses(dir, args, opts);
+  const { [kept]: refusal, ...after } = treeSnapshot(dir);
+  assert.deepStrictEqual(after, before, `engine ${args.join(' ')} wrote beside its refusal`);
+  assert.strictEqual(refusal, `${error}\n`);
+  assert.ok(stateUnborn(dir), `engine ${args.join(' ')} committed on refusing`);
+  return error;
+}
+
 module.exports = {
-  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, OLD_REVIEWS, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
+  UNIT, SESSION, DECIDED, RECORDED, FIXTURES, OLD_REVIEWS, PROMOTED_REVIEWS, directiveEngine, midMigration, recordsMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
 };

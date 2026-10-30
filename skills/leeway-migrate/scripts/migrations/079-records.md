@@ -6,14 +6,14 @@
   through `raise` for the points raised at the end.
 - Each topic's log, `.leeway/{unit}/topics/{topic}/log.md`, to fold in a
   review never folded in.
-- Each topic's record as composed, and the verifier's findings on it, in
-  `.leeway/.cache/migrate/records/{unit}/`.
+- Each topic's record as composed, the verifier's findings on it, and a
+  carry's refusal of it, in `.leeway/.cache/migrate/records/{unit}/`.
 
 ## Asks
 
 - Nothing for any one entry.
-- At the end, each point no source settles, raised one at a time: answered,
-  or left open.
+- At the end, each point no source settles on a live topic, raised one at
+  a time: answered, or left open.
 
 ## What It Does
 
@@ -24,11 +24,11 @@ Paths below are from `.leeway/` unless they name `.workflows/`. `{phase}` is the
 ## A Topic's Sources
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
-- The unit's manifest as the code branch's HEAD holds it, never the working tree: `git show HEAD:.workflows/{unit}/manifest.json`. It holds the topic's old discussion map, `phases.discussion.items.{topic}.subtopics`, each subtopic with its state; its research's thread register, `phases.research.items.{topic}.threads`; and the unit's specs, `phases.specification.items`, each naming its `sources`.
-- Its specs: each spec whose sources name the topic. Where the unit's building has not started, at `{unit}/assets/specs/{spec}.md`. Where it has, still at `.workflows/{unit}/specification/{spec}/specification.md`.
-- Its reviews never folded in: each row of `.workflows/.cache/{unit}/{research|discussion|investigation}/{topic}/state.json` of kind `review` whose status is not `incorporated` and whose report, `{id}.md` beside it, landed.
+- Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and still in `.workflows/` once it has.
+- Its old discussion map and its research's threads, as the code branch's HEAD holds them in the main checkout, never a working tree; a promoted topic's research as the unit it came from holds it.
+- Its reviews never folded in, in the old agent store under `.workflows/.cache/`.
 
-A per-topic agent's brief lists each of these as the check reads them.
+Its brief lists each of these as the check reads them.
 
 ## A Topic's Record
 
@@ -40,8 +40,8 @@ First append each review never folded in to the end of the topic's log, verbatim
 - **Who decided.** `by` `person` where the source shows the person deciding; `by` `claude`, `given` `own`, where it shows Claude's own call; `given` `your-call` or `dont-care` where the person handed the call over in those words; and where it shows no one, `by` `claude`, `given` `carried`. A question's `by` is whoever the source shows raising it, else `claude`.
 - **How a finding is known.** A measured result is `known` `measured`, with its `command` and `result` as the log or the experiment's record gives them; one whose command neither gives is `read`, its `how` saying it was measured. Every other finding says `documented`, `spike` or `read`.
 - **Open questions.** A question no decision of the record answers is open.
-- **The old map.** Every subtopic the old map shows decided is carried by an entry naming it, `map_item`: by its decision, or by an open question where no source says what was decided. Every one pending, exploring, converging or deferred is carried by an open question naming it.
-- **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`.
+- **The old map.** Every subtopic the old map shows decided is carried by an entry naming it, `map_item`: by its decision, or by an open question where no source says what was decided. Every one pending, exploring, converging or deferred is carried by an open question naming it. An entry that settles several names them all, `map_item` a list.
+- **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`, a list where one question carries several.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 - **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
 - **Assets.** Each of the unit's assets that came in from the topic, or that its log or brief links to, is linked as `reference` from the entry that draws on it.
@@ -60,15 +60,13 @@ The record is one JSON object. Each entry names itself by its `ref`, and links t
 
 ## Working Through the Topics
 
-A topic the check names is composed from the start, never from what an earlier session left of it.
+A topic the check names is composed from the start, never from what an earlier session left of it: first delete the verifier's findings and the carry's refusal an earlier session left beside its record, `{topic}.findings.md` and `{topic}.refused.md` in `.leeway/.cache/migrate/records/{unit}/`.
 
-In a large unit, give each topic to the migration's per-topic agent; the topics run side by side. Its brief names where it writes the record:
+Give each topic to the migration's per-topic agent; the topics run side by side. Its brief names where it writes the record:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-topic --topic {unit}.{phase}.{topic} --directive 079-records
 ```
-
-Otherwise compose the record yourself, at `.leeway/.cache/migrate/records/{unit}/{topic}.json`.
 
 Then the verifier reads each record against its sources and writes its findings beside it:
 
@@ -76,22 +74,22 @@ Then the verifier reads each record against its sources and writes its findings 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-verifier --topic {unit}.{phase}.{topic} --directive 079-records
 ```
 
-Dispatch each brief's agent with its pointer alone. Where the verifier finds something, the record is composed again with its findings — by a fresh per-topic agent where one composed it — and verified again, until the verifier passes it. Then carry it, which appends the whole record in one write:
+Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent composes the record again, its brief carrying the findings, and the verifier reads it again, until it passes the record. Then carry it, which appends the whole record in one write:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic} --file .leeway/.cache/migrate/records/{unit}/{topic}.json
 ```
 
-Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming what it breaks, and nothing is carried: compose it again with the refusal answered, verify it again, and carry it. Its answer gives each entry's id by its ref: keep the ids of the points to raise.
+Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming what it breaks, the refusal written beside the record as `{topic}.refused.md`, and nothing is carried: a fresh per-topic agent composes it again, its brief carrying the refusal, and it is verified and carried again. An agent's record is never edited by hand. The carry's answer gives each entry's id by its ref: keep the ids of the points to raise.
 
 ## The Raises at the End
 
-Once every topic is carried and the check passes, raise each point no source settles, one at a time, as a fact only the person holds, answering its open question on the topic it was carried on:
+Once every topic is carried and the check passes, and before the directive's checklist is closed, raise each point no source settles, one at a time, as a fact only the person holds, answering its open question on the topic it was carried on. A point on a topic or unit that isn't live, cancelled or postponed, is not raised: it stays an open question on its topic, left open until the topic returns.
+
+The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs raise {unit}.{phase}.{topic} --answers {question} --fact
 ```
 
-Its stdin is one JSON object, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`. Emit its sections verbatim per their markers.
-
-Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic. A point on a cancelled unit or topic is not raised.
+Emit its sections verbatim per their markers. Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic.

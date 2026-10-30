@@ -8,10 +8,12 @@
 // topic as the move left it, its files but its mail, and as the records
 // directive's check reads them its specs, grouped under another name or on
 // the code branch where its building started, its old map from HEAD, its
-// research's threads still open and its reviews never folded in; the
-// unit's assets with where each came in from, where its record goes, the
-// verifier's findings where it has any, and the directive, its headings a
-// level down; the verifier's — the topic, its record as composed, verbatim,
+// research's threads still open and its reviews never folded in, a
+// promoted topic's where it was promoted from, all read in the main
+// checkout from a linked worktree too; the unit's assets with where each
+// came in from, where its record goes, the verifier's findings and the
+// carry's refusal where it has any, and the directive, its headings a level
+// down; the verifier's — the topic, its record as composed, verbatim,
 // and the directive; every refusal storing nothing; and the two agents'
 // definitions (21.S35): each fixes its model and effort, and its tools hold
 // no shell, so no engine call and no ledger write is theirs.
@@ -28,13 +30,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, statePath, layout, writeState, cleanupFixture } = harness;
+const { ok, git, statePath, layout, writeState, cleanupFixture } = harness;
 const { recordsMigration, refusedUntouched } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
 const DIRECTIVE = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations/079-records.md');
 const AGENTS = path.join(__dirname, '../../agents');
@@ -99,11 +101,13 @@ const licensingDrawn = () => [
   '',
   '- fumi/assets/pricing.md, which came in from discussion/licensing',
   '- fumi/assets/sso.md, which came in from discussion/auth',
+  '- fumi/assets/rates.md, which came in from discovery/billing',
   '',
   '## Where the record goes',
   '',
   '- The record composed: .cache/migrate/records/fumi/licensing.json',
   '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.md',
+  '- A carry\'s refusal of it: .cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
 
 /** The briefs the conversation holds. */
@@ -123,7 +127,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'migration-topic', agent: 'leeway-migration-topic', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the migration's, for one topic\n\n${filledTemplate('migration-topic', {
-      'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', directive: directiveDrawn(),
+      'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', 'carry-refusal': 'None recorded.', directive: directiveDrawn(),
     })}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'leeway-migration-topic', unit: null, task: null, topic: null });
   });
@@ -141,12 +145,40 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(weights.includes('## Its specs\n\n- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md\n'), weights);
   });
 
+  it('a promoted topic\'s research threads and review never folded in, read where it was promoted from', () => {
+    const { brief } = issued(['migration-topic', '--topic', 'platform.discussion.auth', '--directive', '079-records']);
+
+    assert.ok(brief.includes([
+      '## Its research\'s threads still open', '', '- token-expiry, open: When do tokens expire?', '',
+      '## Its reviews never folded in', '', '- review-003: .workflows/.cache/fumi/discussion/auth/review-003.md', '',
+    ].join('\n')), brief);
+  });
+
+  it('issued from a linked worktree, it names the project in the main checkout and reads its sources there', () => {
+    const side = path.join(path.dirname(dir), 'side');
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);
+
+    const res = ok(side, ['brief', 'migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records'], { env: SESSION });
+    const brief = fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8');
+
+    assert.ok(brief.includes(`- **The project:** ${dir} — each path under \`.workflows/\` is from there`), brief);
+    assert.ok(brief.includes('- review-001: .workflows/.cache/fumi/discussion/search/review-001.md'), brief);
+  });
+
+  it('briefed afresh after a carry refused its record, it carries the refusal verbatim', () => {
+    writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: fumi\'s licensing breaks the records directive\'s rules, so nothing is carried — entry q1 cites nothing\n');
+
+    const { brief } = issued(['migration-topic', ...LICENSING]);
+
+    assert.ok(brief.includes('# The carry\'s refusal\n\nledger carry: fumi\'s licensing breaks the records directive\'s rules, so nothing is carried — entry q1 cites nothing\n\n# The directive'), brief);
+  });
+
   it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim', () => {
     writeState(dir, findingsPath('fumi', 'licensing'), '## Trial Length\n\nThe record drops the trial\'s fourteen days.\n');
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
-    assert.ok(brief.includes('# The verifier\'s findings\n\n## Trial Length\n\nThe record drops the trial\'s fourteen days.\n\n# The directive'));
+    assert.ok(brief.includes('# The verifier\'s findings\n\n## Trial Length\n\nThe record drops the trial\'s fourteen days.\n\n# The carry\'s refusal'));
   });
 });
 
