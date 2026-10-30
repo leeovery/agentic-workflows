@@ -4,10 +4,17 @@
 // Migration 078: The reshape's move — each unit into the layout in `.leeway/`
 //
 // Step 3 of the reshape's sequence (21.2, 21.5): the project's state leaves
-// `.workflows/` in the project's folder — the runner's, nested in its
-// repository or at the top — for the state worktree, `.leeway/`, in the
-// repository's main checkout, on its own branch, `leeway-state`. Written
-// against today's shape: the shape the chain up to 072 leaves.
+// `.workflows/` for the state worktree, `.leeway/`, in the repository's main
+// checkout, on its own branch, `leeway-state`. Written against today's
+// shape: the shape the chain up to 072 leaves.
+//
+// What it reads: `.workflows/` in the project's folder — the runner's,
+// nested in its repository or at the top — as the main checkout holds it,
+// the copy `.workflows/` leaves the default branch from (21.5.11). Run from
+// a linked worktree whose copy differs, the verification addendum says
+// which copy was moved. A rebase, merge, cherry-pick, revert or bisect
+// stopped in the main checkout aborts the run, unrecorded and with nothing
+// written, until it is finished or aborted, as boot waits these out.
 //
 // Where it writes: the state worktree, added here on an unborn
 // `leeway-state` and locked as the engine locks it. Git 2.40 has no
@@ -17,11 +24,13 @@
 // cleared. A plain `.leeway/` already there — the runner's migrations record,
 // written before this step runs — is set aside while the worktree is added,
 // then put back inside it. A `.leeway/` already on `leeway-state` is written
-// again, and locked where it was left unlocked: a move cut short is run
-// again from the start. The project folder's
-// `.gitignore`, where boot keeps the line, gains `.leeway/` at once — an
-// unignored worktree with no commit checked out refuses `git add -A` — staged
-// for the migration's commit (21.9.2). Nothing is committed (21.9.3), and
+// again, and locked where it was left unlocked; a registration a removed
+// `.leeway/` left behind is cleared first: a move cut short is run again
+// from the start, the project manifest written whole or not at all. The
+// project folder's `.gitignore` in the main checkout, where boot keeps the
+// line, gains `.leeway/` at once — an unignored worktree with no commit
+// checked out refuses `git add -A` — staged for the migration's commit
+// (21.9.2). Nothing is committed (21.9.3), and
 // nothing in the state is staged: the migration's commit, made at finish,
 // takes the whole state. `.workflows/` stays where it is, read as it stands,
 // and is never changed; finish drops it from the default branch.
@@ -44,7 +53,9 @@
 //     the unit's own name; research under any other name fed the topics it
 //     was split into or spawned, and goes to a discovery session of its own,
 //     numbered after the unit's last and headed as the migration's, until the
-//     cut and the merges place it (21.5.4);
+//     cut and the merges place it (21.5.4). A topic promoted to a
+//     cross-cutting unit took only its discussion there, so its research
+//     joins that unit's log for it, ahead of the discussion;
 //   - its mail, from every box it had, is one sequence in `topics/{topic}/
 //     mail/`, renumbered where it had more than one box (21.5.5); the mail of
 //     a cancelled topic, or of a name no topic holds, goes to the inbox
@@ -85,8 +96,10 @@
 // subtopics, staging, the spec's build order (a cancelled spec's stashed one
 // too) and its review cycles and baseline, the plan's review tracking and
 // dependencies, and the caches of the discovery gap analysis and the
-// discussion analysis, whose files go with them (21.5.17). Everything else carries as it stood, the fields 21.5.9 names
-// among them, a brief's path following its brief. Each later reshape of a
+// discussion analysis, whose files go with them (21.5.17), and a discussion's
+// own wait on research, a phase gone. Everything else carries as it stood,
+// the fields 21.5.9 names among them, a brief's path following its brief.
+// Each later reshape of a
 // manifest updates this move until it is released (E4): the reshape's own
 // steps written for `.leeway/` before this one — 073's linters — find
 // nothing there when a project comes from `.workflows/`, so this move runs
@@ -108,6 +121,10 @@
 //   - staging `.gitignore` takes the person's own unstaged edits to it too;
 //   - a research item and its topic's discussion both waiting on
 //     experiments keep only the discussion's wait;
+//   - a branch's `.workflows/` work not on the main checkout is not moved;
+//   - two Leeway projects nested in one repository share the one state; while
+//     the branch is unborn, the second move overwrites the first's registry;
+//   - the same message sent to two cancelled topics becomes one inbox idea;
 //   - a bare repository, with no main checkout to hold the state, is skipped;
 //   - a symlinked folder under `.workflows/` aborts the run, unrecorded;
 //   - research left unstarted with mail under a discussion already decided
@@ -135,6 +152,11 @@ const REPOSITORY_ENV = [
   'GIT_PREFIX', 'GIT_QUARANTINE_PATH', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_WORK_TREE',
 ];
 const HOOKS_OFF = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor='];
+// The marker each stopped operation leaves in the git directory, as the engine reads them.
+const OPERATION_MARKERS = [
+  ['MERGE_HEAD', 'a merge'], ['CHERRY_PICK_HEAD', 'a cherry-pick'], ['REVERT_HEAD', 'a revert'],
+  ['rebase-merge', 'a rebase'], ['rebase-apply', 'a rebase'], ['BISECT_START', 'a bisect'],
+];
 
 const SINGLE_TOPIC_TYPES = ['feature', 'bugfix', 'cross-cutting'];
 const LOG_PHASES = ['research', 'discussion', 'investigation'];
@@ -252,6 +274,23 @@ function mainCheckout(projectDir) {
   return path.basename(common) === '.git' ? path.dirname(common) : null;
 }
 
+/** The project's folder as the main checkout holds it. @param {string} projectDir @param {string} main */
+function projectInMain(projectDir, main) {
+  return path.resolve(main, git(projectDir, ['rev-parse', '--show-prefix']).stdout.trim());
+}
+
+/**
+ * The operation git has stopped in the middle of at `cwd`, or null: the
+ * markers boot waits out before it stages a file there.
+ * @param {string} cwd @returns {string|null}
+ */
+function stoppedOperation(cwd) {
+  const res = git(cwd, ['rev-parse', ...OPERATION_MARKERS.flatMap(([marker]) => ['--git-path', marker])]);
+  const paths = res.stdout.trim().split('\n');
+  const open = OPERATION_MARKERS.find((_, i) => res.ok && fs.existsSync(path.resolve(cwd, paths[i])));
+  return open === undefined ? null : `${open[1]} (${open[0]})`;
+}
+
 /** Whether the state branch has a commit: a state the move never writes over. @param {string} main */
 function stateBorn(main) {
   return git(main, ['rev-parse', '--verify', '--quiet', `refs/heads/${STATE_BRANCH}`]).ok;
@@ -264,21 +303,25 @@ function onStateBranch(root) {
   return res.ok && res.stdout.trim() === `refs/heads/${STATE_BRANCH}`;
 }
 
-/** Whether git holds the worktree at `root` locked. @param {string} main @param {string} root */
-function locked(main, root) {
-  const block = git(main, ['worktree', 'list', '--porcelain']).stdout.split('\n\n').find((entry) => entry.startsWith(`worktree ${root}\n`));
-  return block !== undefined && /^locked(?: |$)/m.test(block);
+/** Git's record of the worktree at `root`, or null where it holds none. @param {string} main @param {string} root */
+function registration(main, root) {
+  return git(main, ['worktree', 'list', '--porcelain']).stdout.split('\n\n').find((entry) => entry.startsWith(`worktree ${root}\n`)) ?? null;
 }
+
+/** @param {string} main @param {string} root */
+const locked = (main, root) => /^locked(?: |$)/m.test(registration(main, root) ?? '');
 
 /**
  * The state worktree added at `root` on an unborn `leeway-state`, whatever
- * a plain folder there held put back inside it.
+ * a plain folder there held put back inside it, and a registration a
+ * removed folder left there cleared first.
  * @param {string} main @param {string} root
  */
 function addStateWorktree(main, root) {
   const aside = path.join(main, SET_ASIDE);
   const held = fs.existsSync(root);
   if (held) fs.renameSync(root, aside);
+  if (registration(main, root) !== null) mustGit(main, ['worktree', 'remove', '--force', '--force', STATE_DIR]);
   mustGit(main, ['worktree', 'add', '--quiet', '--detach', '--no-checkout', STATE_DIR, 'HEAD']);
   mustGit(root, ['switch', '--quiet', '--orphan', STATE_BRANCH]);
   if (!held) return;
@@ -310,11 +353,27 @@ function filesUnder(dir, at = '') {
     });
 }
 
-/** @param {string} file @param {string|Buffer} content */
-function writeFile(file, content) {
+/** @param {string} file @param {string|Buffer} content @param {number} [mode] */
+function writeFile(file, content, mode) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content);
+  if (mode !== undefined) fs.chmodSync(file, mode);
 }
+
+/**
+ * A file a move run again reads back, written whole or not at all: through
+ * a scratch file in the state's ignored cache, renamed into place.
+ * @param {string} state @param {string} file @param {string} content
+ */
+function writeWhole(state, file, content) {
+  const scratch = path.join(state, '.cache', `move-${process.pid}-${path.basename(file)}`);
+  writeFile(scratch, content);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.renameSync(scratch, file);
+}
+
+/** @param {string} file */
+const modeOf = (file) => fs.statSync(file).mode & 0o7777;
 
 /** @param {string} file @returns {any} */
 function readManifest(file) {
@@ -363,13 +422,15 @@ const standingOf = (status) => RESEARCH_STANDING[String(status)] ?? 'in-progress
 
 /**
  * A discussion item, of its research's standing, for each topic whose
- * research joined its log and that has no discussion yet; and the
- * research's wait on its experiments carried onto its topic's discussion,
- * where the discussion has none of its own.
+ * research joined its log and that has no discussion yet; a discussion's
+ * own wait on research, a phase gone, dropped; and the research's wait on
+ * its experiments carried onto its topic's discussion, where the discussion
+ * has none of its own.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  */
 function foldResearch(manifest, topics) {
   const discussion = itemsOf(manifest, 'discussion');
+  for (const item of Object.values(discussion)) if (isObject(item) && item.reconcile_needed === 'research') delete item.reconcile_needed;
   for (const [topic, item] of Object.entries(itemsOf(manifest, 'research'))) {
     if (!topics.has(topic) || !isObject(item)) continue;
     if (!Object.hasOwn(discussion, topic)) {
@@ -460,7 +521,16 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   quickFix: boolean,
  *   quickFixDone: boolean,
  *   built: boolean,
+ *   incoming: {topic: string, text: string}[],
+ *   outgoing: Set<string>,
  * }} UnitMove
+ */
+
+/**
+ * A topic promoted to a cross-cutting unit, which took only its discussion:
+ * the unit it came from, whose research for it joins the log the topic has
+ * in the unit it went to.
+ * @typedef {{source: string, target: string, topic: string}} Promoted
  */
 
 /** A file of the unit's, accounted for. @param {UnitMove} move @param {string} rel @returns {Buffer} */
@@ -474,32 +544,39 @@ function takeDocument(move, rel, at) {
   return relinked(take(move, rel).toString('utf8'), at, move.unit, move.imported);
 }
 
-/** @param {UnitMove} move @param {string} at unit-relative @param {string|Buffer} content */
-function put(move, at, content) {
-  writeFile(path.join(move.state, move.unit, at), content);
+/** @param {UnitMove} move @param {string} at unit-relative @param {string|Buffer} content @param {number} [mode] */
+function put(move, at, content, mode) {
+  writeFile(path.join(move.state, move.unit, at), content, mode);
 }
+
+/** @param {string} phase @param {string} text */
+const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(text)}`;
 
 /**
  * Each topic's log, its research, discussion and investigation each under
- * its own heading; and research no topic of its name holds, in a discovery
+ * its own heading, a promoted topic's research coming from the unit it was
+ * promoted from; and research no topic of its name holds, in a discovery
  * session of the migration's, numbered after the unit's last. A discussion
  * or an investigation no topic holds is left behind.
  * @param {UnitMove} move
  */
 function moveLogs(move) {
   /** @type {Map<string, string[]>} */
-  const logs = new Map();
+  const logs = new Map(move.incoming.map(({ topic, text }) => [topic, [logPart('research', text)]]));
   /** @type {string[]} */
   const spread = [];
   for (const phase of LOG_PHASES) {
     for (const rel of move.files.filter((f) => path.posix.dirname(f) === phase && f.endsWith('.md'))) {
       const topic = path.posix.basename(rel, '.md');
+      if (phase === 'research' && move.outgoing.has(topic)) {
+        take(move, rel);
+        continue;
+      }
       if (!move.topics.has(topic)) {
         if (phase === 'research') spread.push(`## Research: ${topic}\n\n${endLine(takeDocument(move, rel, `${move.unit}/discovery/session.md`))}`);
         continue;
       }
-      const part = `## ${LOG_HEADINGS[phase]}\n\n${endLine(takeDocument(move, rel, `${move.unit}/topics/${topic}/log.md`))}`;
-      logs.set(topic, [...(logs.get(topic) ?? []), part]);
+      logs.set(topic, [...(logs.get(topic) ?? []), logPart(phase, takeDocument(move, rel, `${move.unit}/topics/${topic}/log.md`))]);
     }
   }
   for (const [topic, parts] of logs) put(move, `topics/${topic}/log.md`, parts.join('\n'));
@@ -526,7 +603,7 @@ function messageToInbox(move, rel, name) {
   const base = path.join(move.state, '.inbox', 'ideas', `${today()}--${slugOf(title) || slugOf(named)}`);
   for (let n = 1; ; n += 1) {
     const file = `${base}${n === 1 ? '' : `-${n}`}.md`;
-    if (!fs.existsSync(file)) return writeFile(file, content);
+    if (!fs.existsSync(file)) return writeWhole(move.state, file, content);
     if (fs.readFileSync(file, 'utf8') === content) return undefined;
   }
 }
@@ -605,39 +682,68 @@ function placeOf(move, rel) {
   return DELIVERY_PHASES.includes(top) ? deliveryPlace(move, top, topic, inside.join('/')) : null;
 }
 
+/** The names of the files a unit's `imports/` holds. @param {string} unitDir @returns {Set<string>} */
+const importedNames = (unitDir) => new Set(filesUnder(path.join(unitDir, 'imports')).filter((f) => !f.includes('/')));
+
+/**
+ * Each topic promoted to a cross-cutting unit that holds it, whose research
+ * stayed behind in the unit it came from.
+ * @param {string} workflows @param {Map<string, Record<string, any>>} manifests @returns {Promoted[]}
+ */
+function promotedResearch(workflows, manifests) {
+  return [...manifests].flatMap(([source, manifest]) => Object.entries(itemsOf(manifest, 'discussion')).flatMap(([topic, item]) => {
+    const target = isObject(item) ? item.promoted_to : undefined;
+    const holder = typeof target === 'string' ? manifests.get(target) : undefined;
+    const held = holder !== undefined && topicNames(holder, target).has(topic) && fs.existsSync(path.join(workflows, source, 'research', `${topic}.md`));
+    return held ? [{ source, target, topic }] : [];
+  }));
+}
+
+/**
+ * A promoted topic's research, its links to the imports of the unit it came
+ * from pointed from the log it joins.
+ * @param {string} workflows @param {Promoted} promoted @returns {{topic: string, text: string}}
+ */
+function promotedText(workflows, { source, target: unit, topic }) {
+  const text = fs.readFileSync(path.join(workflows, source, 'research', `${topic}.md`), 'utf8');
+  return { topic, text: relinked(text, `${unit}/topics/${topic}/log.md`, source, importedNames(path.join(workflows, source))) };
+}
+
 /**
  * Move one unit into the layout — every file placed, dropped, or left
  * behind — then its manifest.
- * @param {string} from @param {string} state @param {string} unit
+ * @param {string} workflows @param {string} state @param {string} unit @param {Record<string, any>} manifest @param {Promoted[]} promoted
  * @returns {string[]} the files left behind, unit-relative
  */
-function moveUnit(from, state, unit) {
-  const manifest = readManifest(path.join(from, 'manifest.json'));
+function moveUnit(workflows, state, unit, manifest, promoted) {
+  const from = path.join(workflows, unit);
   const topics = topicNames(manifest, unit);
   const reshaped = reshapedManifest(manifest, topics);
-  const files = filesUnder(from);
   /** @type {UnitMove} */
   const move = {
     unit,
     from,
     state,
-    files,
-    imported: new Set(files.filter((f) => /^imports\/[^/]+$/.test(f)).map((f) => f.slice('imports/'.length))),
+    files: filesUnder(from),
+    imported: importedNames(from),
     accounted: new Set(['manifest.json']),
     topics,
     cancelled: cancelledTopics(reshaped),
     quickFix: isQuickFix(manifest),
     quickFixDone: quickFixDone(manifest),
     built: buildingStarted(manifest),
+    incoming: promoted.filter(({ target }) => target === unit).map((entry) => promotedText(workflows, entry)),
+    outgoing: new Set(promoted.filter(({ source }) => source === unit).map(({ topic }) => topic)),
   };
   moveLogs(move);
   moveMail(move);
   for (const rel of move.files.filter((f) => !move.accounted.has(f))) {
     const at = placeOf(move, rel);
     if (at === null) continue;
+    const mode = modeOf(path.join(from, rel));
     if (typeof at === 'symbol') move.accounted.add(rel);
-    else if (!rel.endsWith('.md') || Object.hasOwn(CARRIED, rel.split('/')[0])) put(move, at, take(move, rel));
-    else put(move, at, takeDocument(move, rel, `${unit}/${at}`));
+    else if (!rel.endsWith('.md') || Object.hasOwn(CARRIED, rel.split('/')[0])) put(move, at, take(move, rel), mode);
+    else put(move, at, takeDocument(move, rel, `${unit}/${at}`), mode);
   }
   put(move, 'manifest.json', jsonText(reshaped));
   return move.files.filter((f) => !move.accounted.has(f));
@@ -669,9 +775,12 @@ function moveProject(from, state) {
   const project = fs.existsSync(file) ? readManifest(file) : {};
   const moved = path.join(state, 'manifest.json');
   const minted = fs.existsSync(moved) ? readManifest(moved).project_id : undefined;
-  writeFile(moved, jsonText({ project_id: typeof minted === 'string' ? minted : newId(), ...project }));
+  writeWhole(state, moved, jsonText({ project_id: typeof minted === 'string' ? minted : newId(), ...project }));
   const inbox = filesUnder(path.join(from, '.inbox'));
-  for (const rel of inbox.filter((f) => INBOX_ITEM.test(f))) writeFile(path.join(state, '.inbox', rel), fs.readFileSync(path.join(from, '.inbox', rel)));
+  for (const rel of inbox.filter((f) => INBOX_ITEM.test(f))) {
+    const item = path.join(from, '.inbox', rel);
+    writeFile(path.join(state, '.inbox', rel), fs.readFileSync(item), modeOf(item));
+  }
   const setup = path.join(from, '.state', 'environment-setup.md');
   if (fs.existsSync(setup)) writeFile(path.join(state, '.state', 'environment-setup.md'), fs.readFileSync(setup));
   writeFile(path.join(state, '.gitignore'), STATE_GITIGNORE);
@@ -679,37 +788,63 @@ function moveProject(from, state) {
 }
 
 /**
+ * Where the move ran from a linked worktree whose `.workflows/` differs from
+ * the main checkout's, the sentence saying which copy was moved; or null.
+ * @param {string} here @param {string} project
+ * @returns {string|null}
+ */
+function copyNote(here, project) {
+  if (here === project) return null;
+  if (git(project, ['diff', '--no-index', '--quiet', '--', path.join(project, CODE_TREE_STATE), path.join(here, CODE_TREE_STATE)]).ok) return null;
+  const branch = git(here, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  const on = branch.ok ? `on ${branch.stdout.trim()}` : 'on a detached HEAD';
+  return `The move took ${CODE_TREE_STATE}/ from the main checkout, ${project}, the copy it leaves the default branch from; `
+    + `the worktree it ran in, ${here}, ${on}, holds a ${CODE_TREE_STATE}/ that differs, and what differs there was not moved.`;
+}
+
+/**
  * The move of the project at `projectDir` — its own folder, nested in its
- * repository or at the top — into the state worktree at the repository's
- * main checkout.
+ * repository or at the top, as the main checkout holds it — into the state
+ * worktree at the repository's main checkout.
  * @param {string} projectDir @param {() => void} reportUpdate @param {() => void} reportSkip
  * @returns {{verify: string}|undefined}
  */
 function move(projectDir, reportUpdate, reportSkip) {
-  const project = path.resolve(projectDir);
+  const here = path.resolve(projectDir);
+  const main = mainCheckout(here);
+  const project = main === null ? here : projectInMain(here, main);
   const from = path.join(project, CODE_TREE_STATE);
-  const main = mainCheckout(project);
   if (main === null || !fs.existsSync(from) || stateBorn(main)) {
     reportSkip();
     return undefined;
+  }
+  const stopped = stoppedOperation(project);
+  if (stopped !== null) {
+    throw new Error(`${stopped} is stopped in ${project}, where the move stages the ${STATE_IGNORE_LINE} line — finish or abort it, then start again`);
   }
   const state = placeStateWorktree(main);
   ignoreState(project);
   const inboxLeft = moveProject(from, state);
   reportUpdate();
-  const unitsLeft = fs.readdirSync(from, { withFileTypes: true })
+  const folders = fs.readdirSync(from, { withFileTypes: true })
     .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'manifest.json' && !SIDECAR_NAME.test(entry.name))
     .map((entry) => entry.name)
-    .sort()
-    .flatMap((name) => {
-      if (!fs.existsSync(path.join(from, name, 'manifest.json'))) return [name];
-      const unitLeft = moveUnit(path.join(from, name), state, name);
-      reportUpdate();
-      return unitLeft.map((rel) => `${name}/${rel}`);
-    });
+    .sort();
+  const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
+    .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
+  const promoted = promotedResearch(from, manifests);
+  const unitsLeft = folders.flatMap((name) => {
+    const manifest = manifests.get(name);
+    if (manifest === undefined) return [name];
+    const unitLeft = moveUnit(from, state, name, manifest, promoted);
+    reportUpdate();
+    return unitLeft.map((rel) => `${name}/${rel}`);
+  });
   const left = [...inboxLeft, ...unitsLeft];
   const carried = linters.run({ projectDir, reportUpdate: () => {}, reportSkip: () => {} });
+  const copied = copyNote(fs.realpathSync(here), project);
   const notes = [
+    ...(copied === null ? [] : [copied]),
     ...(left.length === 0 ? [] : [`These were not carried into ${STATE_DIR}/, the layout having no place for them: ${left.map((rel) => `${CODE_TREE_STATE}/${rel}`).join(', ')}. Each stays in ${CODE_TREE_STATE}/ until the migration's commit; move any still wanted into its unit's assets/.`]),
     ...(carried && carried.verify ? [carried.verify] : []),
   ];

@@ -6,7 +6,8 @@
 // The reshape's move (21.5) driven in process against a git project whose
 // `.workflows/` is today's shape, committed: an epic mid-discussion, an epic
 // whose building started, a feature, a bugfix, a completed quick-fix, a
-// quick-fix being built and a cancelled unit, with the project's inbox,
+// quick-fix being built, a cross-cutting unit holding a topic the first epic
+// promoted, and a cancelled unit, with the project's inbox,
 // environment setup, cache and old migrations record beside them. The move
 // runs once over that project, and each test reads one rule off what it
 // left: the state worktree on an unborn `leeway-state`, locked, with nothing
@@ -19,8 +20,10 @@
 // place for, named, the tools' sidecars not. A small project of its own
 // covers the runner's record and journals already in `.leeway/`, the
 // `.leeway/` ignore line staged with hooks off and the caller's git
-// environment cleared, the move run again over one cut short, a project
-// nested in its repository, and the projects with nothing to move.
+// environment cleared, the move run again over one cut short and over one
+// whose `.leeway/` the person removed, a project nested in its repository,
+// one run from a linked worktree, a merge stopped in the main checkout, and
+// the projects with nothing to move.
 //
 
 require('./hermetic-env.cjs');
@@ -86,7 +89,7 @@ const message = (title, from) => `### ${title}\n*From: ${from} · discussion · 
 const PROJECT_MANIFEST = {
   work_units: {
     core: { work_type: 'epic' }, shop: { work_type: 'epic' }, tally: { work_type: 'feature' }, stall: { work_type: 'bugfix' },
-    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, gone: { work_type: 'feature' },
+    typo: { work_type: 'quick-fix' }, patch: { work_type: 'quick-fix' }, gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
   defaults: { plan_format: 'sample-format', linters: [{ name: 'eslint', command: 'npx eslint .' }] },
   roadmap: { horizons: ['v1'], items: { loyalty: { horizon: 'v1', summary: 'rewards', kind: 'idea', origin: 'harvest' } } },
@@ -116,10 +119,15 @@ const CORE = {
         delta: { routing: 'discussion', source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
         epsilon: { routing: 'research', source: 'discovery', summary: 'Epsilon' },
         eta: { routing: 'research', source: 'discovery', summary: 'Eta', postponed: true },
+        theta: { routing: 'research', source: 'discovery', summary: 'Theta' },
+        iota: { routing: 'research', source: 'discovery', summary: 'Iota' },
       },
     },
     research: {
       items: {
+        gamma: { status: 'completed' },
+        theta: { status: 'cancelled' },
+        iota: { status: 'unstarted' },
         alpha: { status: 'in-progress', reconcile_needed: 'experiment', threads: { why: { question: 'Why?', status: 'learned', origin: 'seed' } } },
         epsilon: { status: 'in-progress', awaiting_experiments: ['E2'] },
         eta: { status: 'postponed', previous_status: 'completed' },
@@ -130,7 +138,7 @@ const CORE = {
       analysis_cache: { checksum: 'abc', generated: '2026-01-03' },
       items: {
         alpha: { status: 'completed', subtopics: { frames: { status: 'decided' }, monitors: { status: 'deferred' } } },
-        beta: { status: 'unstarted' },
+        beta: { status: 'unstarted', reconcile_needed: 'research' },
         gamma: { status: 'promoted', promoted_to: 'shared' },
         delta: { status: 'cancelled' },
       },
@@ -237,6 +245,11 @@ function todaysProject(dir) {
   w('core/experiment/alpha/E1-frame-budget/problem.md', '# Problem\n\nAgainst [notes](../../../imports/notes.md).\n');
   w('core/experiment/alpha/E1-frame-budget/report.md', '# Report\n');
   w('core/experiment/alpha/E1-frame-budget/data/run.csv', 'ms\n12\n');
+  w('core/experiment/alpha/E1-frame-budget/data/run.sh', '#!/bin/sh\necho 12\n');
+  fs.chmodSync(path.join(dir, '.workflows/core/experiment/alpha/E1-frame-budget/data/run.sh'), 0o755);
+  w('core/research/gamma.md', '# Research: Gamma\n\nSee [notes](../imports/notes.md).\n');
+  w('core/research/theta.md', '# Research: Theta\n');
+  w('core/research/.mailbox/theta/001-theta-note.md', message('Theta note', 'alpha'));
   w('core/experiment/alpha/E1-frame-budget/E1.1-one-monitor/problem.md', '# Sub-problem\n');
   w('core/specification/search/specification.md', '# Specification: Search\n\n[n](../../imports/notes.md)\n');
   w('core/specification/search/review-input-tracking-c1.md', 'tracking\n');
@@ -290,6 +303,13 @@ function todaysProject(dir) {
   w('patch/specification/patch/specification.md', '# Patch\n');
   w('patch/planning/patch/planning.md', '# Plan: Patch\n');
 
+  w('shared/manifest.json', json(unit('shared', 'cross-cutting', 'in-progress', {
+    discussion: { items: { gamma: { status: 'completed' } } },
+    specification: { items: { shared: { status: 'completed', sources: { gamma: { status: 'incorporated' } } } } },
+  })));
+  w('shared/discussion/gamma.md', '# Discussion: Gamma\n');
+  w('shared/specification/shared/specification.md', '# Specification: Shared\n');
+
   w('gone/manifest.json', json(unit('gone', 'feature', 'cancelled', { discussion: { items: { gone: { status: 'in-progress' } } } })));
   w('gone/discussion/gone.md', '# Discussion: Gone\n');
 }
@@ -336,7 +356,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('reports an update for the project and one for each unit, and hands back what it could not carry', () => {
-      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 8, skips: 0 });
+      assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 9, skips: 0 });
       assert.deepStrictEqual(result.returned, {
         verify: 'These were not carried into .leeway/, the layout having no place for them: .workflows/.inbox/ideas/rough-notes.md, '
           + '.workflows/core/discovery/briefs/zeta.md, .workflows/core/discussion/stray.md, '
@@ -372,7 +392,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
 
     it('leaves the old cache and the old migrations record where they were, carrying neither (21.S17)', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/.cache/core/discussion/alpha/session.json'), 'utf8'), '{"live":true}\n');
-      assert.ok(!fs.existsSync(path.join(state, '.cache')));
+      assert.deepStrictEqual(tree(state, '.cache'), [], 'no cache carried, no scratch file left');
       assert.ok(!fs.existsSync(path.join(state, '.state/migrations')));
     });
   });
@@ -381,6 +401,12 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     it('makes a topic\'s log its research then its discussion, each verbatim under its own heading (21.S10)', () => {
       assert.strictEqual(read('tally/topics/tally/log.md'),
         '## Research\n\n# Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n# Discussion: Tally\n\nCounting is hard, the research said.\n');
+    });
+
+    it('joins a promoted topic\'s research to its log in the cross-cutting unit, ahead of its discussion, its links to the imports it came with (21.5.2)', () => {
+      assert.strictEqual(read('shared/topics/gamma/log.md'),
+        '## Research\n\n# Research: Gamma\n\nSee [notes](../../../core/assets/notes.md).\n\n## Discussion\n\n# Discussion: Gamma\n');
+      assert.ok(!fs.existsSync(path.join(state, 'core/topics/gamma/log.md')), 'not in the epic');
     });
 
     it('makes a bugfix\'s investigation its topic\'s log (21.S11)', () => {
@@ -405,7 +431,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('sends a cancelled topic\'s mail to the inbox as an idea, its first line the title (21.S14, P5)', () => {
-      assert.deepStrictEqual(tree(state, '.inbox/ideas').filter((rel) => rel.startsWith(TODAY)), [`${TODAY}--a-dropped-thought.md`, `${TODAY}--cache-sizes.md`]);
+      assert.deepStrictEqual(tree(state, '.inbox/ideas').filter((rel) => rel.startsWith(TODAY)), [`${TODAY}--a-dropped-thought.md`, `${TODAY}--cache-sizes.md`, `${TODAY}--theta-note.md`]);
       assert.strictEqual(read(`.inbox/ideas/${TODAY}--a-dropped-thought.md`),
         '# A dropped thought\n*From: alpha · discussion · 2026-01-01*\n\nDetails of a dropped thought.\n');
     });
@@ -415,12 +441,13 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     });
 
     it('leaves a brief, experiment records and a discussion under a name no topic holds behind, the experiments\' items with them', () => {
-      assert.deepStrictEqual(tree(state, 'core/topics').map((rel) => rel.split('/')[0]).filter((name, i, all) => all.indexOf(name) === i), ['alpha', 'beta', 'epsilon', 'gamma']);
+      assert.deepStrictEqual(tree(state, 'core/topics').map((rel) => rel.split('/')[0]).filter((name, i, all) => all.indexOf(name) === i), ['alpha', 'beta', 'epsilon', 'gamma', 'theta']);
       assert.deepStrictEqual(Object.keys(manifestOf('core').phases.experiment.items), ['alpha']);
     });
 
     it('moves a topic\'s experiment records, sub-experiments and data, into the topic\'s own folder (21.S43)', () => {
       assert.strictEqual(read('core/topics/alpha/experiments/E1-frame-budget/data/run.csv'), 'ms\n12\n');
+      assert.strictEqual(fs.statSync(path.join(state, 'core/topics/alpha/experiments/E1-frame-budget/data/run.sh')).mode & 0o777, 0o755, 'a script kept executable');
       assert.strictEqual(read('core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/problem.md'), '# Sub-problem\n');
     });
   });
@@ -439,6 +466,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'topics/alpha/brief.md',
         'topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/problem.md',
         'topics/alpha/experiments/E1-frame-budget/data/run.csv',
+        'topics/alpha/experiments/E1-frame-budget/data/run.sh',
         'topics/alpha/experiments/E1-frame-budget/problem.md',
         'topics/alpha/experiments/E1-frame-budget/report.md',
         'topics/alpha/log.md',
@@ -447,6 +475,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         'topics/beta/mail/003-third.md',
         'topics/epsilon/log.md',
         'topics/gamma/mail/004-late.md',
+        'topics/theta/log.md',
       ]);
     });
 
@@ -486,6 +515,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
               delta: { source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
               epsilon: { source: 'discovery', summary: 'Epsilon' },
               eta: { source: 'discovery', summary: 'Eta', postponed: true },
+              theta: { source: 'discovery', summary: 'Theta' },
+              iota: { source: 'discovery', summary: 'Iota' },
             },
           },
           discussion: {
@@ -496,6 +527,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
               delta: { status: 'cancelled' },
               epsilon: { status: 'in-progress', awaiting_experiments: ['E2'] },
               eta: { status: 'postponed', previous_status: 'in-progress' },
+              theta: { status: 'cancelled' },
+              iota: { status: 'unstarted' },
             },
           },
           experiment: { items: { alpha: CORE.phases.experiment.items.alpha } },
@@ -658,6 +691,92 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(app, '.gitignore'), 'utf8'), '.leeway/\n');
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'the repository\'s top untouched');
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('run from a linked worktree, moves the main checkout\'s copy and stages the ignore line there, saying so where the worktree\'s copy differs (21.5.11)', () => {
+    dir = tempProject('migration-078-linked-');
+    const linked = `${dir}-wt`;
+    const branchCopy = path.join(linked, 'app/.workflows/tally/discussion/tally.md');
+    try {
+      write(dir, 'README.md', 'the repository\n');
+      feature(path.join(dir, 'app'));
+      git(dir, ['worktree', 'add', '--quiet', '-b', 'feat', linked]);
+      fs.writeFileSync(branchCopy, '# Discussion: Tally, as the branch has it\n');
+      const { returned } = run(path.join(linked, 'app'));
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+      assert.strictEqual(fs.readFileSync(path.join(dir, 'app/.gitignore'), 'utf8'), '.leeway/\n');
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'app/.gitignore');
+      assert.ok(!fs.existsSync(path.join(linked, 'app/.gitignore')), 'the worktree\'s branch untouched');
+      assert.strictEqual(git(linked, ['diff', '--cached', '--name-only']).trim(), '');
+      assert.deepStrictEqual(returned, {
+        verify: `The move took .workflows/ from the main checkout, ${dir}/app, the copy it leaves the default branch from; the worktree it ran in, ${linked}/app, on feat, `
+          + 'holds a .workflows/ that differs, and what differs there was not moved.',
+      });
+      fs.writeFileSync(branchCopy, '# Discussion: Tally\n');
+      assert.strictEqual(run(path.join(linked, 'app')).returned, undefined, 'nothing to say where the copies match');
+    } finally {
+      cleanupFixture(linked);
+      cleanupFixture(dir);
+    }
+  });
+
+  it('run again after the person removed a cut-short .leeway/, clears the registration it left and adds the worktree again', () => {
+    dir = tempProject('migration-078-removed-');
+    try {
+      feature();
+      run(dir);
+      fs.rmSync(path.join(dir, '.leeway'), { recursive: true, force: true });
+      write(dir, '.leeway/.state/migrations', '001\n073\n');
+      run(dir);
+      const state = path.join(dir, '.leeway');
+      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
+      assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
+      assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n');
+      assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n# Discussion: Tally\n');
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('writes the project manifest whole or not at all, so a run killed mid-write is run again', () => {
+    dir = tempProject('migration-078-torn-');
+    const realWrite = fs.writeFileSync;
+    try {
+      feature();
+      fs.writeFileSync = (/** @type {any} */ file, /** @type {any} */ content, /** @type {any[]} */ ...rest) => {
+        if (!String(content).includes('"project_id"')) return realWrite(file, content, ...rest);
+        realWrite(file, String(content).slice(0, 12));
+        throw new Error('killed mid-write');
+      };
+      assert.throws(() => run(dir), /killed mid-write/);
+      fs.writeFileSync = realWrite;
+      run(dir);
+      assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'))), ['project_id', 'work_units']);
+    } finally {
+      fs.writeFileSync = realWrite;
+      cleanupFixture(dir);
+    }
+  });
+
+  it('aborts, writing nothing, while a merge is stopped in the main checkout, as boot waits these out', () => {
+    dir = tempProject('migration-078-stopped-');
+    try {
+      write(dir, 'README.md', 'one\n');
+      feature();
+      const base = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+      git(dir, ['switch', '--quiet', '-c', 'other']);
+      write(dir, 'README.md', 'two\n');
+      commitAll(dir);
+      git(dir, ['switch', '--quiet', base]);
+      write(dir, 'README.md', 'three\n');
+      commitAll(dir);
+      assert.throws(() => git(dir, ['merge', '--quiet', 'other']), 'the merge stops on its conflict');
+      assert.throws(() => run(dir), /^Error: a merge \(MERGE_HEAD\) is stopped in .* — finish or abort it, then start again$/);
+      assert.ok(!fs.existsSync(path.join(dir, '.leeway')));
+      assert.ok(!fs.existsSync(path.join(dir, '.gitignore')));
     } finally {
       cleanupFixture(dir);
     }
