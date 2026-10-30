@@ -78,11 +78,15 @@
 //   directive      the migration's directive `--directive` names, verbatim,
 //                  each of its headings a level down (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the
-//                  phases the topic is in, the state's place, each file of
-//                  the topic's folder but its mail and the spec kept for it,
-//                  the unit's assets with where each came in from, and where
-//                  the topic's record is composed and the verifier's
-//                  findings on it written (21.10.5)
+//                  phases the topic is in, the state's place and the
+//                  project's, each file of the topic's folder but its mail,
+//                  and as the records directive's check reads them its
+//                  specs — each where it is read and how it is cited — its
+//                  old map, its research's threads still open and its
+//                  reviews never folded in; the unit's assets with where
+//                  each came in from; and where the topic's record is
+//                  composed and the verifier's findings on it written
+//                  (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON (21.10.7)
 //   verifier-findings the verifier's findings on that record, verbatim
 //
@@ -126,7 +130,7 @@ const { branches, holdingBranch, defaultBranch, plain } = require('./landing-git
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { readWorkUnitManifest, isObject } = require('../kernel/manifest-io.cjs');
 const { directiveOf } = require('./directives.cjs');
-const { topicPlace, composedPath, findingsPath } = require('./ledger-carry.cjs');
+const { topicPlace, recordsRules, composedPath, findingsPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -523,22 +527,36 @@ function drawMigratedTopic(filling) {
     const { status } = manifest.phases[phase].items[topic];
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
   });
-  const folder = path.join(root, unit, 'topics', topic);
-  const spec = path.posix.join(unit, 'assets', 'specs', `${topic}.md`);
-  const files = [
-    ...filesBelow(root, folder).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`)),
-    ...(fs.existsSync(path.join(root, spec)) ? [spec] : []),
-  ];
+  const projectDir = codeRoot(filling.cwd);
+  const files = filesBelow(root, path.join(root, unit, 'topics', topic)).filter((file) => !file.startsWith(`${unit}/topics/${topic}/mail/`));
   const assets = (Array.isArray(manifest.imports) ? manifest.imports : []).filter((entry) => isObject(entry) && typeof entry.path === 'string')
     .map((entry) => `- ${unit}/${entry.path}${typeof entry.origin === 'string' ? `, which came in from ${entry.origin}` : ''}`);
+  const sources = recordsRules().sourcesOf({ projectDir, stateDir: root, unit, topic });
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')}`,
-    `- **The state:** ${root} — each path below is from there, as an entry cites it`,
+    `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
+    `- **The project:** ${projectDir} — each path under \`.workflows/\` is from there`,
     '',
     '## Its files',
     '',
     listed(files.map((file) => `- ${file}`)),
+    '',
+    '## Its specs',
+    '',
+    listed(sources.specs.map((spec) => (spec.read === spec.cite ? `- ${spec.read}` : `- ${spec.read}, cited as ${spec.cite}`))),
+    '',
+    '## Its old map, as the code branch\'s HEAD holds it',
+    '',
+    listed(sources.map.map(({ item, status }) => `- ${item}: ${status}`)),
+    '',
+    '## Its research\'s threads still open',
+    '',
+    listed(sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`)),
+    '',
+    '## Its reviews never folded in',
+    '',
+    listed(sources.reviews.map(({ id, report }) => `- ${id}: ${report}`)),
     '',
     '## The unit\'s assets',
     '',

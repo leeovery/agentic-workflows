@@ -5,14 +5,16 @@
 // records domain/brief-records.cjs, the templates content/briefs/; 21.10.5,
 // 21.10.7): `engine brief migration-topic|migration-verifier --topic
 // <unit.phase.topic> --directive <id>`. The per-topic agent's brief — the
-// topic as the move left it, its files but its mail, its spec kept as an
-// asset, the unit's assets with where each came in from, where its record
-// goes, the verifier's findings where it has any, and the directive, its
-// headings a level down; the verifier's — the topic, its record as
-// composed, verbatim, and the directive; every refusal storing nothing; and
-// the two agents' definitions (21.S35): each fixes its model and effort,
-// and its tools hold no shell, so no engine call and no ledger write is
-// theirs.
+// topic as the move left it, its files but its mail, and as the records
+// directive's check reads them its specs, grouped under another name or on
+// the code branch where its building started, its old map from HEAD, its
+// research's threads still open and its reviews never folded in; the
+// unit's assets with where each came in from, where its record goes, the
+// verifier's findings where it has any, and the directive, its headings a
+// level down; the verifier's — the topic, its record as composed, verbatim,
+// and the directive; every refusal storing nothing; and the two agents'
+// definitions (21.S35): each fixes its model and effort, and its tools hold
+// no shell, so no engine call and no ledger write is theirs.
 //
 // Layer: verb. World: the records directive's (migration-world.cjs), made
 // once and copied for each test.
@@ -25,7 +27,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, statePath, layout, writeState, cleanupFixture } = require('./engine-harness.cjs');
+const harness = require('./engine-harness.cjs');
+const { ok, statePath, layout, writeState, cleanupFixture } = harness;
 const { recordsMigration, refusedUntouched } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -67,17 +70,35 @@ const directiveDrawn = () => fs.readFileSync(DIRECTIVE, 'utf8').trimEnd().split(
 const licensingDrawn = () => [
   '- **Unit:** fumi, epic, in-progress',
   '- **Topic:** licensing, in discussion, completed',
-  `- **The state:** ${statePath(dir)} — each path below is from there, as an entry cites it`,
+  `- **The state:** ${statePath(dir)} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
+  `- **The project:** ${dir} — each path under \`.workflows/\` is from there`,
   '',
   '## Its files',
   '',
   '- fumi/topics/licensing/brief.md',
+  '- fumi/topics/licensing/experiments/E2-trial/report.md',
   '- fumi/topics/licensing/log.md',
-  '- fumi/assets/specs/licensing.md',
+  '',
+  '## Its specs',
+  '',
+  '- fumi/assets/specs/commerce.md',
+  '',
+  '## Its old map, as the code branch\'s HEAD holds it',
+  '',
+  '- trial-length: decided',
+  '',
+  '## Its research\'s threads still open',
+  '',
+  'None recorded.',
+  '',
+  '## Its reviews never folded in',
+  '',
+  'None recorded.',
   '',
   '## The unit\'s assets',
   '',
   '- fumi/assets/pricing.md, which came in from discussion/licensing',
+  '- fumi/assets/sso.md, which came in from discussion/auth',
   '',
   '## Where the record goes',
   '',
@@ -90,12 +111,12 @@ const stored = () => (fs.existsSync(path.join(conversationDir(SESSION_ID), 'brie
 
 /** @param {string[]} args @param {RegExp} pattern */
 function refusedUnissued(args, pattern) {
-  assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }), pattern);
+  assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
   assert.deepStrictEqual(stored(), []);
 }
 
 describe('the per-topic agent\'s brief (21.10.5)', () => {
-  it('the topic as the move left it — its files but its mail, its spec kept as an asset, the unit\'s assets and where each came in from, where its record goes — no findings yet, and the directive', () => {
+  it('the topic as the move left it — its files but its mail, its spec grouped under another name and kept as an asset, its old map, the unit\'s assets and where each came in from, where its record goes — no findings yet, and the directive', () => {
     writeState(dir, layout.topic('fumi', 'licensing', 'mail', '001-seats.md'), '### Seats\n');
 
     const { res, brief } = issued(['migration-topic', ...LICENSING]);
@@ -105,6 +126,19 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', directive: directiveDrawn(),
     })}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'leeway-migration-topic', unit: null, task: null, topic: null });
+  });
+
+  it('a topic\'s research threads still open, its map\'s undecided subtopics, its review never folded in; a building unit\'s spec read on the code branch and cited as its spec.md', () => {
+    const search = issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief;
+    const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
+
+    assert.ok(search.includes([
+      '## Its specs', '', 'None recorded.', '',
+      '## Its old map, as the code branch\'s HEAD holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
+      '## Its research\'s threads still open', '', '- index-size, digging: How big does the index grow?', '',
+      '## Its reviews never folded in', '', '- review-001: .workflows/.cache/fumi/discussion/search/review-001.md', '',
+    ].join('\n')), search);
+    assert.ok(weights.includes('## Its specs\n\n- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md\n'), weights);
   });
 
   it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim', () => {
@@ -130,11 +164,12 @@ describe('the verifier\'s brief (21.10.7)', () => {
 });
 
 describe('the refusals, nothing stored', () => {
-  it('a directive the migrations lack, a place naming no topic, a topic the unit lacks, and the verifier\'s brief with no record composed, or an empty one', () => {
+  it('a directive the migrations lack, a place naming no topic, a topic the unit lacks, a topic promoted, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '../079'], /^"\.\.\/079" is no directive's id/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.licensing', '--directive', '079-records'], /^brief: "fumi\.licensing" names no topic — <work-unit>\.<phase>\.<topic>$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.billing', '--directive', '079-records'], /^brief: fumi has no topic "billing" in discussion$/);
+    refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.auth', '--directive', '079-records'], /^brief: fumi's auth was promoted to platform, which carries its record$/);
     refusedUnissued(['migration-verifier', ...LICENSING], /^fumi's licensing has no record composed — .*licensing\.json is no file$/);
     writeState(dir, composedPath('fumi', 'licensing'), '\n');
     refusedUnissued(['migration-verifier', ...LICENSING], /^fumi's licensing has no record composed — .*licensing\.json is empty$/);

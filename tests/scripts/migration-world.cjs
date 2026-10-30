@@ -11,7 +11,7 @@
 // writes: the state's `.gitignore`, the project's manifest and id, the
 // unit's manifest with its three topics, and the migrations record, which
 // holds the fixture directives the boot suites never reach. And the records
-// directive's world (`recordsMigration`), made once and copied: three units
+// directive's world (`recordsMigration`), made once and copied: four units
 // as today's layout left them and as the move wrote them, with the old agent
 // store the move leaves.
 
@@ -134,18 +134,36 @@ function midMigration(dir) {
   return copyWorld(template, dir);
 }
 
-// The records directive's world (079): three units on the code branch as
+// The records directive's world (079): four units on the code branch as
 // today's layout left them, and in the state as the move wrote them — an
-// epic nothing of which is built, two topics in discussion, an import come
-// in from one of them, its spec kept as an asset, and a review the old agent
-// store holds never folded in beside one folded in; an epic whose building
+// epic nothing of which is built: a topic never started, two in discussion,
+// one of them with its research's threads, and one promoted to a
+// cross-cutting unit; an import come in from one of them, its spec grouped
+// under another name and kept as an asset, and a review the old agent store
+// holds never folded in beside one folded in; the cross-cutting unit the
+// promoted topic went to, its import copied with it; an epic whose building
 // started, its spec still on the code branch; and a cancelled feature.
 const RECORDS_OLD = Object.freeze({
   'README.md': '# Fumi\n',
   '.workflows/fumi/manifest.json': jsonText({
     name: 'fumi', work_type: 'epic', status: 'in-progress',
-    imports: [{ path: 'imports/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' }],
+    imports: [
+      { path: 'imports/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
+      { path: 'imports/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
+    ],
     phases: {
+      discovery: { items: { billing: { status: 'pending' } } },
+      research: {
+        items: {
+          search: {
+            status: 'completed',
+            threads: {
+              'index-size': { question: 'How big does the index grow?', status: 'digging', origin: 'seed', parent: null },
+              stemming: { question: 'Does stemming help?', status: 'learned', origin: 'seed', parent: null },
+            },
+          },
+        },
+      },
       discussion: {
         items: {
           licensing: { status: 'completed', subtopics: { 'trial-length': { status: 'decided', parent: null } } },
@@ -153,10 +171,16 @@ const RECORDS_OLD = Object.freeze({
             status: 'in-progress',
             subtopics: { ranking: { status: 'decided', parent: null }, 'typo-tolerance': { status: 'exploring', parent: null }, synonyms: { status: 'deferred', parent: null } },
           },
+          auth: { status: 'promoted', promoted_to: 'platform', subtopics: { sessions: { status: 'decided', parent: null } } },
         },
       },
-      specification: { items: { licensing: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
+      specification: { items: { commerce: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
     },
+  }),
+  '.workflows/platform/manifest.json': jsonText({
+    name: 'platform', work_type: 'cross-cutting', status: 'in-progress',
+    imports: [{ path: 'imports/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' }],
+    phases: { discussion: { items: { auth: { status: 'completed', subtopics: { sessions: { status: 'decided', parent: null } } } } } },
   }),
   '.workflows/shop/manifest.json': jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
@@ -166,7 +190,8 @@ const RECORDS_OLD = Object.freeze({
       implementation: { items: { weights: { status: 'in-progress' } } },
     },
   }),
-  '.workflows/shop/specification/weights/specification.md': '# Specification: Weights\n\n## Ranking\n\nNewest first.\n\n## Corrigenda\n\nTies break by price, not by name.\n',
+  '.workflows/shop/specification/weights/specification.md':
+    '# Specification: Weights\n\n## Ranking\n\nNewest first.\n\n### Detail\n\nBy day.\n\n## Corrigenda\n\nTies break by price, not by name.\n\n### Detail\n\nPrice before name.\n',
   '.workflows/gone/manifest.json': jsonText({
     name: 'gone', work_type: 'feature', status: 'cancelled',
     phases: { discussion: { items: { gone: { status: 'in-progress', subtopics: { cause: { status: 'decided', parent: null } } } } } },
@@ -176,18 +201,35 @@ const RECORDS_OLD = Object.freeze({
 const RECORDS_MOVED = Object.freeze({
   [layout.manifest('fumi')]: jsonText({
     name: 'fumi', work_type: 'epic', status: 'in-progress',
-    imports: [{ path: 'assets/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' }],
+    imports: [
+      { path: 'assets/pricing.md', imported_at: '2026-01-02T10:00:00Z', origin: 'discussion/licensing' },
+      { path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' },
+    ],
     phases: {
-      discussion: { items: { licensing: { status: 'completed' }, search: { status: 'in-progress' } } },
-      specification: { items: { licensing: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
+      discovery: { items: { billing: { status: 'pending' } } },
+      discussion: { items: { licensing: { status: 'completed' }, search: { status: 'in-progress' }, auth: { status: 'promoted', promoted_to: 'platform' } } },
+      specification: { items: { commerce: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
     },
   }),
   [layout.topic('fumi', 'licensing', 'log.md')]: '## Discussion\n\n# Discussion: Licensing\n\n## Trial Length\n\n### Decision\n\nFourteen days, the person said.\n',
   [layout.topic('fumi', 'licensing', 'brief.md')]: '# Licensing\n\nHow the trial works.\n',
-  [layout.topic('fumi', 'search', 'log.md')]: '## Discussion\n\n# Discussion: Search\n\n## Ranking\n\nBy recency.\n\n## Typo Tolerance\n\nStill open.\n',
+  [layout.topic('fumi', 'licensing', 'experiments', 'E2-trial', 'report.md')]: '# Report\n\n## Result\n\nA week converts as well, from `npm run trial`.\n',
+  [layout.topic('fumi', 'search', 'log.md')]: [
+    '## Research\n\n# Research: Search\n\n## Index Size\n\nStill digging.\n',
+    '## Discussion\n\n# Discussion: Search\n\n## Ranking\n\n### Context\n\nOld results flood the page.\n\nBy recency.\n',
+    '## Typo Tolerance\n\n### Context\n\nPeople misspell names.\n\nStill open.\n\n## Synonyms\n\nSet aside for now.\n',
+  ].join('\n'),
   [layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')]: '# Report\n\n## Result\n\n12ms at p95, from `npm run bench`.\n',
   [layout.assets('fumi', 'pricing.md')]: '# Pricing\n',
-  [layout.assets('fumi', 'specs', 'licensing.md')]: '# Specification: Licensing\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n',
+  [layout.assets('fumi', 'sso.md')]: '# SSO\n',
+  [layout.assets('fumi', 'specs', 'commerce.md')]: '# Specification: Commerce\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n',
+  [layout.manifest('platform')]: jsonText({
+    name: 'platform', work_type: 'cross-cutting', status: 'in-progress',
+    imports: [{ path: 'assets/sso.md', imported_at: '2026-01-03T10:00:00Z', origin: 'discussion/auth' }],
+    phases: { discussion: { items: { auth: { status: 'completed' } } } },
+  }),
+  [layout.topic('platform', 'auth', 'log.md')]: '## Discussion\n\n# Discussion: Auth\n\n## Sessions\n\nThirty days, then sign in again.\n',
+  [layout.assets('platform', 'sso.md')]: '# SSO\n',
   [layout.manifest('shop')]: jsonText({
     name: 'shop', work_type: 'epic', status: 'in-progress',
     phases: {
@@ -260,13 +302,14 @@ function enterTopic(dir, topic) {
 }
 
 /**
- * A call to the directive engine that must refuse, leaving every file of
- * the state as it was and the state branch with no commit yet: its error.
- * @param {string} dir @param {string[]} args @param {import('./engine-harness.cjs').CallOptions} [opts]
+ * A call that must refuse, leaving every file of the state as it was and
+ * the state branch with no commit yet: its error. The directive engine
+ * makes it, but where another is named.
+ * @param {string} dir @param {string[]} args @param {import('./engine-harness.cjs').CallOptions} [opts] @param {{refuses: typeof harness.refuses}} [engine]
  */
-function refusedUntouched(dir, args, opts = { env: SESSION }) {
+function refusedUntouched(dir, args, opts = { env: SESSION }, engine = directiveEngine()) {
   const before = treeSnapshot(dir);
-  const { error } = directiveEngine().refuses(dir, args, opts);
+  const { error } = engine.refuses(dir, args, opts);
   assert.deepStrictEqual(treeSnapshot(dir), before, `engine ${args.join(' ')} wrote on refusing`);
   assert.ok(stateUnborn(dir), `engine ${args.join(' ')} committed on refusing`);
   return error;

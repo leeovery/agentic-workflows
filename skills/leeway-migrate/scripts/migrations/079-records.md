@@ -17,29 +17,35 @@
 
 ## What It Does
 
-Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. Paths below are from `.leeway/` unless they name `.workflows/`.
+Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic.
+
+Paths below are from `.leeway/` unless they name `.workflows/`. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
 
 ## A Topic's Sources
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
-- Its spec. Where the unit's building has not started, `{unit}/assets/specs/{topic}.md`. Where it has, the spec is still at `.workflows/{unit}/specification/{spec}/specification.md`, the one whose sources name the topic.
-- Its old discussion map: `phases.discussion.items.{topic}.subtopics` in `.workflows/{unit}/manifest.json`, each subtopic with its state.
+- The unit's manifest as the code branch's HEAD holds it, never the working tree: `git show HEAD:.workflows/{unit}/manifest.json`. It holds the topic's old discussion map, `phases.discussion.items.{topic}.subtopics`, each subtopic with its state; its research's thread register, `phases.research.items.{topic}.threads`; and the unit's specs, `phases.specification.items`, each naming its `sources`.
+- Its specs: each spec whose sources name the topic. Where the unit's building has not started, at `{unit}/assets/specs/{spec}.md`. Where it has, still at `.workflows/{unit}/specification/{spec}/specification.md`.
 - Its reviews never folded in: each row of `.workflows/.cache/{unit}/{research|discussion|investigation}/{topic}/state.json` of kind `review` whose status is not `incorporated` and whose report, `{id}.md` beside it, landed.
+
+A per-topic agent's brief lists each of these as the check reads them.
 
 ## A Topic's Record
 
-First append each review never folded in to the end of the topic's log, verbatim, under `## Review {id}, never folded in`. Then compose the record from the sources:
+First append each review never folded in to the end of the topic's log, verbatim, under `## Review {id}, never folded in`; one its log holds already stays as it is. Then compose the record from the sources:
 
 - **Current answers only.** Each question's answer as it now stands; an answer replaced later is left in the log.
 - **One thing per entry.** A decision holds one rule.
-- **Cited.** Every entry cites where it came from, `cites`: each `{"path", "section"}`, the file's path and the nearest heading above the text. A decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section: at `{unit}/assets/specs/{topic}.md`, or at `{unit}/spec.md` where the unit's building has started, since the next step joins its specs into that file verbatim.
+- **Cited.** Every entry cites where it came from, `cites`: each `{"path", "section"}`, the file's path and the nearest heading above the text whose wording its file holds once. A heading the file repeats, such as each subtopic's `Decision`, names no one section, so the cite takes the heading above it. A decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section: at `{unit}/assets/specs/{spec}.md`, or at `{unit}/spec.md` where the unit's building has started, since the next step joins its specs into that file verbatim, so a heading two of them share names no one section there.
 - **Who decided.** `by` `person` where the source shows the person deciding; `by` `claude`, `given` `own`, where it shows Claude's own call; `given` `your-call` or `dont-care` where the person handed the call over in those words; and where it shows no one, `by` `claude`, `given` `carried`. A question's `by` is whoever the source shows raising it, else `claude`.
 - **How a finding is known.** A measured result is `known` `measured`, with its `command` and `result` as the log or the experiment's record gives them; one whose command neither gives is `read`, its `how` saying it was measured. Every other finding says `documented`, `spike` or `read`.
-- **Open questions.** An item still exploring or pending is an open question.
-- **The old map.** Every subtopic the old map shows decided, pending, exploring or converging is carried by an entry naming it, `map_item`: a decided one by its decision, or by an open question where no source says what was decided; any other by its open question.
+- **Open questions.** A question no decision of the record answers is open.
+- **The old map.** Every subtopic the old map shows decided is carried by an entry naming it, `map_item`: by its decision, or by an open question where no source says what was decided. Every one pending, exploring, converging or deferred is carried by an open question naming it.
+- **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 - **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
 - **Assets.** Each of the unit's assets that came in from the topic, or that its log or brief links to, is linked as `reference` from the entry that draws on it.
+- **A record at least.** A topic whose log holds anything has an entry at least.
 - **Points no source settles** — what was decided where the log is unclear, a log at odds with its spec — are open questions, kept for the raises at the end.
 
 The record is one JSON object. Each entry names itself by its `ref`, and links to an entry before it by that ref: a decision's `answers`, a question's `part_of`, any entry's `relies_on`. The rest is the content its event takes, as `ledger ask`, `find` and `decide` take it:
@@ -48,7 +54,7 @@ The record is one JSON object. Each entry names itself by its `ref`, and links t
 {"entries": [
   {"ref": "q1", "event": "asked", "text": "{question}", "by": "person", "map_item": "{subtopic}", "cites": [{"path": "{unit}/topics/{topic}/log.md", "section": "{heading}"}]},
   {"ref": "d1", "event": "decided", "answers": "q1", "text": "{answer}", "why": "{why}", "by": "claude", "given": "carried", "map_item": "{subtopic}", "cites": [{"path": "{unit}/topics/{topic}/log.md", "section": "{heading}"}], "assets": [{"path": "{unit}/assets/{file}", "status": "reference"}]},
-  {"ref": "f1", "event": "found", "text": "{fact}", "how": "{how}", "known": "measured", "command": "{command}", "result": "{result}", "by": "claude", "cites": [{"path": "{unit}/topics/{topic}/experiments/{experiment}/report.md", "section": "{heading}"}]}
+  {"ref": "f1", "event": "found", "text": "{fact}", "how": "{how}", "known": "measured", "command": "{command}", "result": "{result}", "by": "claude", "cites": [{"path": "{unit}/topics/{topic}/experiments/{experiment}/report.md", "section": "{report heading}"}]}
 ]}
 ```
 
@@ -62,7 +68,7 @@ In a large unit, give each topic to the migration's per-topic agent; the topics 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-topic --topic {unit}.{phase}.{topic} --directive 079-records
 ```
 
-Otherwise compose the record yourself, at `.leeway/.cache/migrate/records/{unit}/{topic}.json`. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
+Otherwise compose the record yourself, at `.leeway/.cache/migrate/records/{unit}/{topic}.json`.
 
 Then the verifier reads each record against its sources and writes its findings beside it:
 
@@ -76,7 +82,7 @@ Dispatch each brief's agent with its pointer alone. Where the verifier finds som
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic} --file .leeway/.cache/migrate/records/{unit}/{topic}.json
 ```
 
-Its answer gives each entry's id by its ref: keep the ids of the points to raise.
+Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming what it breaks, and nothing is carried: compose it again with the refusal answered, verify it again, and carry it. Its answer gives each entry's id by its ref: keep the ids of the points to raise.
 
 ## The Raises at the End
 
@@ -86,4 +92,6 @@ Once every topic is carried and the check passes, raise each point no source set
 node .claude/skills/leeway-engine/scripts/engine.cjs raise {unit}.{phase}.{topic} --answers {question} --fact
 ```
 
-Record the person's answer with `raise answer`. A point they leave open stays an open question on its topic. A point on a cancelled unit or topic is not raised.
+Its stdin is one JSON object, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`. Emit its sections verbatim per their markers.
+
+Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic. A point on a cancelled unit or topic is not raised.

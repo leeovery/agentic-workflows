@@ -11,7 +11,8 @@
 // - Where: a topic of a unit, holding an item in the phase named, as a
 //   ledger write's place is read, but for its liveness: a cancelled unit's
 //   topics and a cancelled topic get their records too (21.6.2), their
-//   entries landing not current, by the rule every read decides by.
+//   entries landing not current, by the rule every read decides by. A topic
+//   an epic promoted to a cross-cutting unit is that unit's to carry.
 // - What: the record as one JSON object in the file named, `{"entries":
 //   […]}`, each entry an `asked`, `found` or `decided` in the content its
 //   write takes (ledger-write.cjs) — who made it, and for a decision how it
@@ -20,10 +21,19 @@
 //   to an entry before it: a question's `part_of`, a decision's `answers`,
 //   a question of the record no other decision answers, and any entry's
 //   `relies_on`; a question's or decision's `map_item`, the item of the
-//   topic's old map it carries, which the migration's check reads; and its
-//   `assets`, each `{path, status}`, a file the state holds, linked as it
-//   is canonical or reference. Every entry moves no one; a decision lands
-//   unchecked, for the late one-decision check after the migration.
+//   topic's old map it carries, and a question's `thread`, the thread of
+//   its research it carries; and its `assets`, each `{path, status}`, a
+//   file the state holds, linked as it is canonical or reference. Every
+//   entry moves no one; a decision lands unchecked, for the late
+//   one-decision check after the migration.
+// - Kept: the rules the records directive's check holds a topic's record to
+//   (079-records.check.cjs) — its sections cited, its old map, its threads,
+//   its reviews and its imports — run on the record before a line is
+//   written, so a record carried passes the check and one that would not is
+//   refused, nothing written, to be composed again.
+// - Frozen with 079: the record this takes and the carried file it keeps
+//   are the directive's, released with it, so a later ledger version keeps
+//   taking them while 079 can run.
 // - Once: the whole record is appended in one write, after what it carried
 //   is kept in the state's cache — each entry's ref, id and map item
 //   (`.cache/migrate/carried/{unit}/{topic}.json`) — so a session that dies
@@ -32,10 +42,12 @@
 //   is refused: its record was carried.
 // - It refuses, writing nothing: outside the migration; no session; a place
 //   of another shape, a phase no topic is in or the unit lacks, a topic with
-//   no item in it; no file, or one holding no record; an entry of another
-//   event, a ref missing or given twice, a link naming no earlier entry of
-//   the kind it needs, a question answered twice, content its write
-//   refuses, who moved whom given, and an asset the state lacks.
+//   no item in it, a topic promoted; no file, or one holding no record; an
+//   entry of another event, a ref missing or given twice, a link naming no
+//   earlier entry of the kind it needs, a question answered twice, a map
+//   item or a thread on an entry that takes none, content its write
+//   refuses, who moved whom given, and an asset the state lacks; and a
+//   record breaking the directive's rules, naming each thing it breaks.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -45,14 +57,15 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { appendEntries, withLedger, carrying } = require('./ledger.cjs');
-const { LEDGER } = require('./ledger-events.cjs');
+const { appendEntries, withLedger, carrying, commitLedger } = require('./ledger.cjs');
 const { newId, shortIds } = require('./ledger-ids.cjs');
 const { TOPIC_PHASES, hasItem, manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
-const { commitStateTail, HELD_NOTE } = require('./commit.cjs');
+const { HELD_NOTE } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { WRITES, phasesOf, contentFields, checkSaid, checkUnsealed } = require('./ledger-write.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { directiveOf } = require('./directives.cjs');
 
 const CARRY_VERB = 'carry';
 const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic> --file <record>   (the topic\'s record as JSON, {"entries": [...]})';
@@ -72,7 +85,7 @@ const COMPOSED = '.cache/migrate/records';
 const EVENT_WRITES = Object.freeze({ asked: 'ask', found: 'find', decided: 'decide' });
 
 /** What an entry of a record carries beside its content: its name, its event, its links by name, and what the migration reads. */
-const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'assets']);
+const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'assets']);
 
 const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
@@ -80,7 +93,17 @@ const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
 /** An entry of the record as written: its line's fields and id, and what is kept of it. @typedef {{fields: Record<string, unknown>, id: string}} Line */
 
-/** What is kept of an entry carried: its ref, id and map item. @typedef {{ref: string, id: string, map_item: string|null}} Kept */
+/** What is kept of an entry carried: its ref, id, map item and thread. @typedef {{ref: string, id: string, map_item: string|null, thread: string|null}} Kept */
+
+/** The records directive, whose check holds the rules a record keeps. */
+const RECORDS_DIRECTIVE = '079-records';
+
+/**
+ * The records directive's check: its rules and what it reads of a topic,
+ * loaded where they are asked for.
+ * @returns {{topicsOf: (manifest: Record<string, any>) => string[], recordProblems: (at: Record<string, unknown>) => string[], sourcesOf: (at: Record<string, unknown>) => Record<string, any>}}
+ */
+const recordsRules = () => require(directiveOf(RECORDS_DIRECTIVE).check);
 
 /** @param {string} unit @param {string} topic */
 const carriedPath = (unit, topic) => path.posix.join(CARRIED, unit, `${topic}.json`);
@@ -108,6 +131,9 @@ function topicPlace(cwd, dotpath, said) {
   if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   if (!phasesOf(manifest).includes(phase)) throw new Error(`${said}: ${unit} has no ${phase} phase`);
   if (!hasItem(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
+  if (!recordsRules().topicsOf(manifest).includes(topic)) {
+    throw new Error(`${said}: ${unit}'s ${topic} was promoted to ${manifest.phases.discussion.items[topic].promoted_to}, which carries its record`);
+  }
   return { root, unit, phase, topic };
 }
 
@@ -188,7 +214,7 @@ function recordLines(place, entries, session) {
   const kept = [];
   const tags = { unit: place.unit, topic: place.topic, phase: place.phase, session };
   entries.forEach((entry, at) => {
-    const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], map_item: mapItem = null, assets } = entry;
+    const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], map_item: mapItem = null, thread = null, assets } = entry;
     const said = `${SAID}: entry ${typeof ref === 'string' ? ref : at + 1}`;
     if (typeof ref !== 'string' || ref === '') throw new Error(`${said}: gives no ref, the name the record links it by`);
     if (before.has(ref)) throw new Error(`${said}: its ref is given twice`);
@@ -197,6 +223,7 @@ function recordLines(place, entries, session) {
     if (partOf !== undefined && event !== 'asked') throw new Error(`${said}: only a question is part of another`);
     if ((answers === undefined) !== (event !== 'decided')) throw new Error(`${said}: ${event === 'decided' ? 'a decision answers a question of the record' : 'only a decision answers'}`);
     if (mapItem !== null && (event === 'found' || typeof mapItem !== 'string' || mapItem === '')) throw new Error(`${said}: a map item is a question's or a decision's, named`);
+    if (thread !== null && (event !== 'asked' || typeof thread !== 'string' || thread === '')) throw new Error(`${said}: a thread is a question's, named`);
     const links = {
       ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(said, 'part_of', [partOf], before, 'asked')[0] } : {}),
       ...(event === 'decided' ? { answers: linked(said, 'answers', [answers], before, 'asked')[0] } : {}),
@@ -214,9 +241,34 @@ function recordLines(place, entries, session) {
     before.set(ref, { id, event });
     lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? { unchecked: true } : {}) }, id });
     lines.push(...assetLines(said, place, assets, id, tags));
-    kept.push({ ref, id, map_item: mapItem });
+    kept.push({ ref, id, map_item: mapItem, thread });
   });
   return { lines, kept };
+}
+
+/**
+ * The record refused where it breaks the records directive's rules, each
+ * thing it breaks named.
+ * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
+ */
+function checkRules(cwd, { root, unit, topic }, entries) {
+  const problems = recordsRules().recordProblems({
+    projectDir: codeRoot(cwd),
+    stateDir: root,
+    unit,
+    topic,
+    entries: entries.map((entry) => ({
+      ref: entry.ref,
+      key: entry.ref,
+      event: entry.event,
+      answers: entry.answers ?? null,
+      cites: Array.isArray(entry.cites) ? entry.cites : [],
+      map_item: entry.map_item ?? null,
+      thread: entry.thread ?? null,
+      assets: Array.isArray(entry.assets) ? entry.assets.map((asset) => asset.path) : [],
+    })),
+  });
+  if (problems.length > 0) throw new Error(`${SAID}: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`);
 }
 
 /**
@@ -262,12 +314,13 @@ function carryRecord(cwd, args) {
     const { dotpath, entries } = readRequest(cwd, args);
     const place = topicPlace(cwd, dotpath, SAID);
     const { lines, kept } = recordLines(place, entries, session);
+    checkRules(cwd, place, entries);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       keepCarried(place, kept);
       if (lines.length > 0) appendEntries(place.root, lines, warnings);
       return {
-        outcome: lines.length === 0 ? null : commitStateTail(cwd, LEDGER, `ledger(${place.unit}): carry ${place.topic}'s record`, warnings),
+        outcome: lines.length === 0 ? null : commitLedger(cwd, `ledger(${place.unit}): carry ${place.topic}'s record`, warnings),
         short: shortIds([...beside, ...lines.map(({ id }) => id)]),
       };
     });
@@ -284,4 +337,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, carriedPath, composedPath, findingsPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, carriedPath, composedPath, findingsPath, topicPlace, recordsRules, carryRecord };
