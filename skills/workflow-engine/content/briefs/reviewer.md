@@ -36,6 +36,8 @@ Review the task as a professional would, never one small thing.
 
 Judge the code against this brief and the design, never against its comments.
 
+A wrong comment is not a finding and starts no review: point it out as a nit.
+
 # The workflows' own references
 
 The workflows' own references never go into the product's code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit. Beyond that, quality is held by the project's own rules and checks.

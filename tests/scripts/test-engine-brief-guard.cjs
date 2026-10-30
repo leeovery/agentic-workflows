@@ -261,7 +261,7 @@ describe('6.S16: the builder\'s brief', () => {
 
     assertRefused(guard('Agent', agentCall('leeway-builder', pointer(researcher))), {
       tool: 'Agent', agent: 'leeway-builder', brief: researcher, reason: 'other-agent',
-      detail: `brief ${researcher} was issued for leeway-product-researcher, not leeway-builder — \`engine brief builder\` issues one for leeway-builder`,
+      detail: `brief ${researcher} was issued for leeway-product-researcher, not leeway-builder — \`engine brief builder\` or \`engine brief fix\` issues one for leeway-builder`,
     });
     assertRefused(guard('Agent', agentCall('leeway-product-researcher', pointer(builder))), {
       tool: 'Agent', agent: 'leeway-product-researcher', brief: builder, reason: 'other-agent',

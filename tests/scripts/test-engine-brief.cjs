@@ -13,8 +13,10 @@
 // linters from the environment — and nothing of the project's CLAUDE.md or
 // its skills (6.S15); beside it the record of whose it is; the reviewer's
 // brief, the builder's records and, in each repository holding the task's
-// branch, the diff's range and its stat, never its text, its template
-// saying a workflows reference in the work is returned as a nit (13.S20);
+// branch, the diff's three-dot range and its stat, never its text, from
+// the base given or, where a repository lacks it, its default, its template
+// saying a wrong comment or a workflows reference in the work is returned
+// as a nit (13.S20);
 // the fix round's brief, the two reports verbatim under their labels and
 // nothing else (6.S17); the product researcher's brief in a project with no
 // unit; the fill under the writer lock; every refusal writing nothing, no
@@ -28,8 +30,9 @@
 // lacks — its spec, decisions at its level, one over several lines, and on
 // its topic, two reviewers' reports on its first task in its build folder,
 // and that task's branch in the project's repository and in one nested in
-// it; the other with its spec, a task and that task's branch in the
-// project's repository alone, and no decision; the project's linters, and
+// it, the project's default branch moved on past it; the other with its
+// spec, a task whose branch holds work in the project's repository alone
+// and is named in the nested one, and no decision; the project's linters, and
 // a CLAUDE.md and a project skill in the code tree. And a project with no
 // unit, from the fixture library.
 // ---------------------------------------------------------------------------
@@ -91,9 +94,17 @@ const REPORTS = Object.freeze({
   },
   'report-b': {
     at: layout.unit(UNIT, 'build/tasks/1.1/round-1-b.md'),
-    text: 'Verdict: fail\n\n- The receipt omits the amount.\n- Nit: a comment in card.js names task 1.1.\n',
+    text: 'Verdict: fail\r\n\n- The receipt omits the amount.\n- Nit: a comment in card.js names task 1.1.\n',
   },
 });
+
+/** One file added in the repository at `repo`, committed alone on the branch checked out. @param {string} repo @param {string} file */
+function commitFile(repo, file) {
+  fs.mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
+  fs.writeFileSync(path.join(repo, file), `${CHANGED}\n`);
+  git(repo, ['add', file]);
+  git(repo, ['commit', '-q', '-m', `add ${file}`]);
+}
 
 /**
  * A task's branch cut from `main` in the repository at `repo`, adding one
@@ -102,10 +113,7 @@ const REPORTS = Object.freeze({
  */
 function branchWith(repo, branch, file) {
   git(repo, ['checkout', '-q', '-b', branch]);
-  fs.mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
-  fs.writeFileSync(path.join(repo, file), `${CHANGED}\n`);
-  git(repo, ['add', file]);
-  git(repo, ['commit', '-q', '-m', `add ${file}`]);
+  commitFile(repo, file);
   git(repo, ['checkout', '-q', 'main']);
 }
 
@@ -146,9 +154,11 @@ const TAKE_A_CARD = 'Refunds, §2;\nthe form, §1.1';
  * 1.2 done, 1.3 closed, 1.4 citing a section the spec lacks; Claude's
  * decision over several lines and the person's at its own level, one
  * replaced, and one on its topic; two reports on 1.1 in its build folder,
- * and 1.1's branch in the project's repository and in `lib`, nested in it.
- * Beside it a second unit, `refund`, with its spec and a task, its branch in
- * the project's repository alone, and no decision.
+ * and 1.1's branch in the project's repository and in `lib`, nested in it,
+ * the project's `main` moved on past both task branches. Beside it a second
+ * unit, `refund`, with its spec and a task, whose branch holds work in the
+ * project's repository alone — `lib` names it at its `main`, as a task's
+ * worktree makes it in every child — and no decision.
  */
 const unitWorld = fixtureFrom('brief-', (dir) => {
   createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
@@ -179,10 +189,12 @@ const unitWorld = fixtureFrom('brief-', (dir) => {
   commitAll(dir, 'the first phase written');
   branchWith(dir, PAY_BRANCH, 'src/card.js');
   branchWith(dir, REFUND_BRANCH, 'src/refund.js');
+  commitFile(dir, 'src/main.js');
   const nested = initRepo(path.join(dir, NESTED));
   fs.writeFileSync(path.join(nested, 'README.md'), 'The card library.\n');
   commitCode(nested, 'init');
   branchWith(nested, PAY_BRANCH, 'card/token.js');
+  git(nested, ['branch', REFUND_BRANCH]);
   calls.claude = decided(dir, AT_UNIT, { by: 'claude', text: 'A card is tokenised.\nIts number is never kept.', why: 'No card number is kept.\nThe audit stays small.' });
   const old = decided(dir, AT_UNIT, { by: 'person', text: 'Refunds by hand.', why: 'They are rare.' });
   calls.person = write(dir, ['ledger', 'replace', AT_UNIT, '--replaces', old, '--reason', 'changed-mind'], {
@@ -239,8 +251,16 @@ function drawnForTakeACard() {
   return { task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit' };
 }
 
-/** The range drawn for a repository holding a task's branch, its one file added. @param {string} where @param {string} branch @param {string} file */
-const rangeDrawn = (where, branch, file) => `## In ${where}: \`main...${branch}\`\n\n\`\`\`\n ${file} | 1 +\n 1 file changed, 1 insertion(+)\n\`\`\``;
+/**
+ * The range drawn for a repository holding a task's branch, its one file added.
+ * @param {string} where @param {string} branch @param {string} file @param {string} [base]
+ */
+const rangeDrawn = (where, branch, file, base = 'main') => `## In ${where}: \`${base}...${branch}\`\n\n\`\`\`\n ${file} | 1 +\n 1 file changed, 1 insertion(+)\n\`\`\``;
+
+/** The project's and `lib`'s ranges for task 1.1, from the bases given. @param {string} own @param {string} nested */
+const takeACardRanges = (own, nested) => [
+  rangeDrawn('the project\'s repository', PAY_BRANCH, 'src/card.js', own), rangeDrawn(`\`${NESTED}\``, PAY_BRANCH, 'card/token.js', nested),
+].join('\n\n');
 
 /** The fix round's brief's labels: everything it holds beside the reports, under its first line. */
 const LABELS = Object.freeze({ 'report-a': '# Reviewer A\'s report\n\n', 'report-b': '\n\n# Reviewer B\'s report\n\n' });
@@ -341,19 +361,35 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
     const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main']);
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
-    const ranges = [rangeDrawn('the project\'s repository', PAY_BRANCH, 'src/card.js'), rangeDrawn(`\`${NESTED}\``, PAY_BRANCH, 'card/token.js')].join('\n\n');
+    const ranges = takeACardRanges('main', 'main');
     assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1' });
   });
 
-  it('a task whose branch is in the project\'s repository alone: its range there, and no other', () => {
+  it('a task whose branch holds work in the project\'s repository alone: its range there, and none in a repository naming the branch with nothing on it', () => {
     const { brief } = issued(['reviewer', 'refund', '1.1', '--base', 'main']);
 
     assert.ok(brief.includes(`# The diff's range\n\n${rangeDrawn('the project\'s repository', REFUND_BRANCH, 'src/refund.js')}\n\n# The linters\n`), brief);
   });
 
-  it('13.S20: the template carries the stance on a failed review (13.5.7), judges against the brief and the design, never the comments (13.9.1), and returns a workflows reference in the work as a nit (13.11.14, 13.9.3)', () => {
+  it('a base a repository lacks is its own default branch there: a stack\'s base in the project\'s repository alone, and a nested repository whose default is master', () => {
+    git(dir, ['branch', 'pay-stack', 'main']);
+    const stacked = issued(['reviewer', UNIT, '1.1', '--base', 'pay-stack']).brief;
+    git(path.join(dir, NESTED), ['branch', '-m', 'main', 'master']);
+    const master = issued(['reviewer', UNIT, '1.1', '--base', 'main']).brief;
+
+    assert.ok(stacked.includes(`# The diff's range\n\n${takeACardRanges('pay-stack', 'main')}\n\n`), stacked);
+    assert.ok(master.includes(`# The diff's range\n\n${takeACardRanges('main', 'master')}\n\n`), master);
+  });
+
+  it('a range with nothing in it says so', () => {
+    const { brief } = issued(['reviewer', 'refund', '1.1', '--base', REFUND_BRANCH]);
+
+    assert.ok(brief.includes(`# The diff's range\n\n## In the project's repository: \`${REFUND_BRANCH}...${REFUND_BRANCH}\`\n\nNothing changed in the range.\n\n# The linters\n`), brief);
+  });
+
+  it('13.S20: the template carries the stance on a failed review (13.5.7), judges against the brief and the design, never the comments (13.9.1), returns a wrong comment as a nit (13.9.3), and a workflows reference in the work too (13.11.14)', () => {
     const template = fs.readFileSync(path.join(TEMPLATES, 'reviewer.md'), 'utf8');
 
     for (const line of [
@@ -364,6 +400,7 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
       'A gap the builder finds beyond the task goes to the notes for later or through the ask rule',
       'Review the task as a professional would, never one small thing.',
       'Judge the code against this brief and the design, never against its comments.',
+      'A wrong comment is not a finding and starts no review: point it out as a nit.',
       'The workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.',
     ]) assert.ok(template.includes(line), line);
   });
@@ -376,9 +413,19 @@ describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
     const { res, brief } = issued(fixArgs());
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'fix', agent: 'leeway-builder', pointer: `brief:${res.id}` });
-    const [a, b] = ['report-a', 'report-b'].map((flag) => fs.readFileSync(statePath(dir, REPORTS[flag].at), 'utf8'));
-    assert.strictEqual(brief, `Brief ${res.id} — the fix round's, for pay task 1.1\n\n${LABELS['report-a']}${a}${LABELS['report-b']}${b}`);
+    const [a, b] = ['report-a', 'report-b'].map((flag) => REPORTS[flag].text);
+    assert.strictEqual(brief,`Brief ${res.id} — the fix round's, for pay task 1.1\n\n${LABELS['report-a']}${a}${LABELS['report-b']}${b}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'leeway-builder', unit: UNIT, task: '1.1' });
+  });
+
+  it('a report whose name starts with two dots is in the build folder', () => {
+    const draft = statePath(dir, layout.unit(UNIT, 'build/..draft.md'));
+    fs.writeFileSync(draft, 'Verdict: pass\n');
+    const [, , , ...reports] = fixArgs();
+
+    const { brief } = issued(['fix', UNIT, '1.1', '--report-a', draft, ...reports.slice(2)]);
+
+    assert.ok(brief.includes(`${LABELS['report-a']}Verdict: pass\n${LABELS['report-b']}`), brief);
   });
 });
 
@@ -421,15 +468,16 @@ describe('the refusals, nothing written and no brief stored', () => {
     const taking = { builder: [UNIT, '1.1'], reviewer: [UNIT, '1.1', '--base', 'main'], fix: fixArgs().slice(1), 'product-researcher': [] };
     for (const role of Object.keys(ROLES)) {
       for (const [flag, value] of [['--note', 'be quick'], ...(role === 'reviewer' ? [] : [['--base', 'main']]), ...(role === 'fix' ? [] : [['--report-a', 'a.md']])]) {
-        refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag}`));
+        refusedUnissued([role, ...taking[role], flag, value], new RegExp(`^brief: the ${role}'s brief takes no ${flag} `));
       }
     }
+    refusedUnissued(['builder', UNIT, '1.1', '--note=be quick'], /^brief: the builder's brief takes no --note /);
+    refusedUnissued(['reviewer', UNIT, '1.1', '--base=main'], /^brief: --base takes its value after a space, `--base <branch>`$/);
   });
 
-  it('a reviewer\'s base that is no branch where the task\'s branch is, and a task whose branch no repository holds', () => {
-    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk'], /^the base trunk is no branch in the project's repository$/);
-    git(path.join(dir, NESTED), ['branch', '-m', 'main', 'trunk']);
-    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'main'], new RegExp(`^the base main is no branch in \`${NESTED}\`$`));
+  it('a reviewer\'s base no repository holding the task\'s branch has as a local branch, and a task whose branch no repository holds', () => {
+    const holding = `task 1\\.1 of pay's branch, ${PAY_BRANCH}`;
+    refusedUnissued(['reviewer', UNIT, '1.1', '--base', 'trunk'], new RegExp(`^the base trunk is no local branch in any repository holding ${holding}$`));
     git(dir, ['branch', '-D', REFUND_BRANCH]);
     refusedUnissued(['reviewer', 'refund', '1.1', '--base', 'main'], new RegExp(`^no repository of the project holds work on task 1\\.1 of refund's branch, ${REFUND_BRANCH}$`));
   });

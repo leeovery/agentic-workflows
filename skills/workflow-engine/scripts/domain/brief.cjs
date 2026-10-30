@@ -83,6 +83,19 @@ function usage() {
 }
 
 /**
+ * The name of the flag `arg` gives, refused where its role does not take it
+ * or its value is joined to it by `=`.
+ * @param {string} role @param {string} arg `--{name}`
+ */
+function flagNamed(role, arg) {
+  const [name, joined] = arg.slice(2).split(/=(.*)/s);
+  const flag = flagsOf(role).find((taken) => taken.name === name);
+  if (flag === undefined) throw new Error(`brief: the ${role}'s brief takes no --${name} — a brief draws on its records alone`);
+  if (joined !== undefined) throw new Error(`brief: --${name} takes its value after a space, \`--${name} <${flag.value}>\``);
+  return name;
+}
+
+/**
  * A role's arguments: its unit and task, where it takes them, and each flag
  * it takes, given once with its value. A flag it does not take is refused
  * as such, any other shape by the usage.
@@ -100,8 +113,7 @@ function argumentsOf(role, args) {
       positional.push(args[at]);
       continue;
     }
-    const name = args[at].slice(2);
-    if (!taken.includes(name)) throw new Error(`brief: the ${role}'s brief takes no ${args[at]} — a brief draws on its records alone`);
+    const name = flagNamed(role, args[at]);
     const value = args[at + 1];
     if (value === undefined || value.startsWith('--') || Object.hasOwn(given, name)) usage();
     given[name] = value;
