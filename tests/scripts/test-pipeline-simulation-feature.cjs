@@ -21,9 +21,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
-const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
+const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
+const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
   Sim, sessionLog, send, handoffEntry, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
@@ -53,7 +53,7 @@ describe('pipeline simulation: feature', () => {
     // empty and the continuation goes straight to the handoff.
     sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
     // Discovery's conclusion hands the work to the first phase it settled.
-    handoff(sim, `/workflow-discussion-process feature ${wu}`);
+    handoff(sim, `/leeway-discussion-process feature ${wu}`);
 
     // First phase: discussion (topic = work unit for single-topic types).
     // The discussion fetches the research gate before any status read.
@@ -115,7 +115,7 @@ describe('pipeline simulation: feature', () => {
     ];
     assert.ok(startKeys(sim).some((k) => k.action === 'view_inbox'), 'the start menu offers the inbox');
     // Ideas carry no work type, so discovery decides it.
-    const route = `/workflow-discovery none none "${ideas.map((rel) => path.join(sim.dir, rel)).join(',')}"`;
+    const route = `/leeway-discovery none none "${ideas.map((rel) => path.join(sim.dir, rel)).join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
     // Discovery opens on the seeds before any work unit exists, naming them
     // from the inbox paths the route carries.
@@ -282,7 +282,7 @@ describe('pipeline simulation: feature', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'updated', '2026-07-23']);
     sim.run(['commit', wu, '-m', `review(${wu}): re-open implementation tracking`, '--topic', `review/${wu}`]);
     assert.strictEqual(sim.read(['manifest', 'get', wu, 'work_type']), 'feature');
-    const carried = handoff(sim, `/workflow-implementation-process feature ${wu} ${wu}`);
+    const carried = handoff(sim, `/leeway-implementation-process feature ${wu} ${wu}`);
     assert.strictEqual(carried.line, `→ Implementation · ${wu}`);
     assert.strictEqual(sim.manifest(wu).phases.review.items[wu].status, 'in-progress', 'the review stays open for the next cycle');
   });

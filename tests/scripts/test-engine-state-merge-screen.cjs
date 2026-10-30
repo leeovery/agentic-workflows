@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The stop's screen and the pick
-// (workflow-engine/scripts/domain/projections/state-merge.cjs, the merge's
+// (leeway-engine/scripts/domain/projections/state-merge.cjs, the merge's
 // pick): the shown choice, its account and its gate; and the pick and the
 // screen through the engine's argv, the screen answering while a peer holds
 // the writer lock, the pick waiting for it and reading the waiting merge
@@ -21,9 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const { holdLock, lockAttempts, ok, output, refuses, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { openGate } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { catchUpState, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
 const { choiceId, conflictLabel } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));

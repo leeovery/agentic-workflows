@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The merge where both sides moved (workflow-engine/scripts/domain/state-merge.cjs):
+// The merge where both sides moved (leeway-engine/scripts/domain/state-merge.cjs):
 // committed state merged onto the remote's tip in one commit and pushed with
 // a lease, the ledgers unioned past any read budget, histories with no
 // common ancestor, a file only one side changed taken whole; and the remote
@@ -21,7 +21,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pickStateMerge } = require(MERGE);

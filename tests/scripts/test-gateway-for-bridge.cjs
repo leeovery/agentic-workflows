@@ -7,14 +7,14 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-bridge/scripts/gateway.cjs');
+const { discover, format } = require('../../skills/leeway-bridge/scripts/gateway.cjs');
 
-const GATEWAY = path.resolve(__dirname, '../../skills/workflow-bridge/scripts/gateway.cjs');
+const GATEWAY = path.resolve(__dirname, '../../skills/leeway-bridge/scripts/gateway.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
-const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
+const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts/domain/render.cjs').renderSurface);
 
-describe('workflow-bridge discovery', () => {
+describe('leeway-bridge discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -259,7 +259,7 @@ describe('workflow-bridge discovery', () => {
   });
 });
 
-describe('workflow-bridge format', () => {
+describe('leeway-bridge format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -278,7 +278,7 @@ describe('workflow-bridge format', () => {
       'completed_phases: (none)',
       'reconcile_pending: (none)',
       'revisitable_phases: (none)',
-      'next_route: /workflow-discussion-process feature auth',
+      'next_route: /leeway-discussion-process feature auth',
       'revisit_routes: (none)',
       '',
     ].join('\n'));
@@ -301,8 +301,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: research, discussion, specification',
       'reconcile_pending: (none)',
       'revisitable_phases: research, discussion, specification',
-      'next_route: /workflow-planning-process feature auth',
-      'revisit_routes: /workflow-research-process feature auth, /workflow-discussion-process feature auth, /workflow-specification-process feature auth',
+      'next_route: /leeway-planning-process feature auth',
+      'revisit_routes: /leeway-research-process feature auth, /leeway-discussion-process feature auth, /leeway-specification-process feature auth',
       '',
     ].join('\n'));
   });
@@ -346,8 +346,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: scoping, specification, planning, implementation',
       'reconcile_pending: (none)',
       'revisitable_phases: scoping, implementation',
-      'next_route: /workflow-review-process quick-fix rename-api',
-      'revisit_routes: /workflow-scoping-process quick-fix rename-api, /workflow-implementation-process quick-fix rename-api',
+      'next_route: /leeway-review-process quick-fix rename-api',
+      'revisit_routes: /leeway-scoping-process quick-fix rename-api, /leeway-implementation-process quick-fix rename-api',
       '',
     ].join('\n'));
     // The menu itself is the revisit-phases render surface, filtered the same way.
@@ -415,8 +415,8 @@ describe('workflow-bridge format', () => {
       },
     });
     const out = format(discover(dir, 'stall'));
-    assert.match(out, /^next_route: \/workflow-planning-process bugfix stall$/m);
-    assert.match(out, /^revisit_routes: \/workflow-investigation-process bugfix stall, \/workflow-specification-process bugfix stall$/m);
+    assert.match(out, /^next_route: \/leeway-planning-process bugfix stall$/m);
+    assert.match(out, /^revisit_routes: \/leeway-investigation-process bugfix stall, \/leeway-specification-process bugfix stall$/m);
   });
 
   it('a promoted unit routes to its moved discussions by name — the discussion in flight, then the specification\'s reconcile', () => {
@@ -440,7 +440,7 @@ describe('workflow-bridge format', () => {
       'completed_phases: specification',
       'reconcile_pending: specification/fees (discussion)',
       'revisitable_phases: (none)',
-      'next_route: /workflow-discussion-process cross-cutting fees fee-rules',
+      'next_route: /leeway-discussion-process cross-cutting fees fee-rules',
       'revisit_routes: (none)',
       '',
     ].join('\n'));
@@ -452,8 +452,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: discussion, specification',
       'reconcile_pending: specification/fees (discussion)',
       'revisitable_phases: discussion/fee-rules, discussion/fee-display',
-      'next_route: /workflow-specification-process cross-cutting fees',
-      'revisit_routes: /workflow-discussion-process cross-cutting fees fee-rules, /workflow-discussion-process cross-cutting fees fee-display',
+      'next_route: /leeway-specification-process cross-cutting fees',
+      'revisit_routes: /leeway-discussion-process cross-cutting fees fee-rules, /leeway-discussion-process cross-cutting fees fee-display',
       '',
     ].join('\n'));
     // The menu its numbers count, row for row.
@@ -474,7 +474,7 @@ describe('workflow-bridge format', () => {
   });
 });
 
-describe('workflow-bridge gateway script', () => {
+describe('leeway-bridge gateway script', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

@@ -4,7 +4,7 @@
 // required method of its kind, each answering its own name, but those it is
 // to lack, with any it is given in their place.
 
-const { METHODS } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { METHODS } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 
 /**
  * @param {{kind: 'task'|'landing', name: string, isDefault?: unknown, needs?: unknown}} declared

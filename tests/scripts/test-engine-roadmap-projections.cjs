@@ -15,7 +15,7 @@ const {
   roadmapMapView,
   roadmapProposalView,
   roadmapPullSetView,
-} = require('../../skills/workflow-engine/scripts/domain/projections/roadmap.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
 
 /** A derived-state fixture — the shape roadmapState returns. */
 function state(items, horizons = ['mvp', 'v1']) {

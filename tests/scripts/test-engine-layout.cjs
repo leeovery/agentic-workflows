@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The layout on disk (workflow-engine/scripts/domain/layout.cjs, 4.11): the
+// The layout on disk (leeway-engine/scripts/domain/layout.cjs, 4.11): the
 // table of places and its reader, `layoutPlace`. Unit layer, no world.
 // Every place 4.11.17's tree draws holds a sample path, with its kind — the
 // logs 4.11's four — and a sample outside each folder is in none; names are
@@ -17,10 +17,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace } = require('../../skills/workflow-engine/scripts/domain/layout.cjs');
-const { listDrivers } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
-const { WRITE_VERBS } = require('../../skills/workflow-engine/scripts/domain/ledger-write.cjs');
-const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/ledger-events.cjs');
+const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
+const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { WRITE_VERBS } = require('../../skills/leeway-engine/scripts/domain/ledger-write.cjs');
+const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
 const { layout } = require('./discovery-test-utils.cjs');
 
 /** A path in each place 4.11.17 draws, and the place's kind and path. */
@@ -113,7 +113,7 @@ const OUTSIDE = Object.freeze([
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
 ]);
 
-/** @param {import('../../skills/workflow-engine/scripts/domain/layout.cjs').Place|null} at */
+/** @param {import('../../skills/leeway-engine/scripts/domain/layout.cjs').Place|null} at */
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The phase cut (workflow-engine/scripts/domain/cut.cjs): `engine cut <unit>
+// The phase cut (leeway-engine/scripts/domain/cut.cjs): `engine cut <unit>
 // --file <cut.json>`. The cut written onto the unit's manifest as the file
 // gives it, `{phases: [{name, goal, scenarios, sections, relies_on}]}`, each
 // phase's fields in that order, and committed alone on the state branch, under the writer lock; each refusal of
@@ -32,7 +32,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const { SPEC_FILE } = require(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/spec-sections.cjs'));
+const { SPEC_FILE } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
 
 const UNIT = 'payments';
 

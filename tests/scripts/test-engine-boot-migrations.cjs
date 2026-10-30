@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot's migrations (workflow-engine/scripts/domain/boot.cjs): the run's
+// Boot's migrations (leeway-engine/scripts/domain/boot.cjs): the run's
 // report and notices, the stop gate's lines stripped; what boot commits of a
 // run and what it leaves to the reviewed commit, the migrations record
 // included; a peer session's staged work surviving every commit; and a
@@ -241,7 +241,7 @@ describe('engine boot', () => {
   });
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
-    // Boot runs at `workflow-start`, which is a session opening beside every
+    // Boot runs at `leeway`, which is a session opening beside every
     // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.

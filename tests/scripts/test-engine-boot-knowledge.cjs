@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot's knowledge base (workflow-engine/scripts/domain/boot.cjs with
+// Boot's knowledge base (leeway-engine/scripts/domain/boot.cjs with
 // kernel/knowledge/): a ready store brought in line and compacted, never
 // committed; a set-up checkout with no store built by the keyword side; a
 // store not ready left to the person's choice; a mistake in the knowledge
@@ -233,7 +233,7 @@ describe('engine boot: a set-up checkout with no store', () => {
 
   const bootWith = (systemConfig, extra = {}) => {
     if (systemConfig !== null) createFile(sysDir, 'config.json', JSON.stringify(systemConfig));
-    return runEngine(stubbed, fix.project, ['boot'], { WORKFLOWS_CONFIG_DIR: sysDir, ...extra });
+    return runEngine(stubbed, fix.project, ['boot'], { LEEWAY_CONFIG_DIR: sysDir, ...extra });
   };
   const CONFIG = STORE_FILES[2];
   const storePath = () => statePath(fix.project, STORE_FILES[0]);

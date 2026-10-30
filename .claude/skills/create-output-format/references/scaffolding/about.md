@@ -2,7 +2,7 @@
 
 <!-- Replace {Format Name} with the display name of this format -->
 
-*Output format adapter for **[workflow-planning-process](../../../SKILL.md)***
+*Output format adapter for **[leeway-planning-process](../../../SKILL.md)***
 
 ---
 

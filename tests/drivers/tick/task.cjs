@@ -13,9 +13,9 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { taskId } = require('../../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
-/** @typedef {import('../../../skills/workflow-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
+/** @typedef {import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef} TaskRef */
 
 /**
  * Refs a person might give a task in Tick: a link, and some in the shape of

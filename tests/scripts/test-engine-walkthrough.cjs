@@ -10,7 +10,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { stateGit, commitAll, setupGitFixture, cleanupFixture } = harness;
-const { walkthroughState } = require('../../skills/workflow-engine/scripts/domain/walkthrough.cjs');
+const { walkthroughState } = require('../../skills/leeway-engine/scripts/domain/walkthrough.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);

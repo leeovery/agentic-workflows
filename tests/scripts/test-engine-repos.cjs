@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, commitCode, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, layout } = require('./engine-harness.cjs');
-const { projectRepos, repoOf, commitGroups, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/workflow-engine/scripts/kernel/repos.cjs');
+const { projectRepos, repoOf, commitGroups, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
 
 /** A repo of its own at `rel` inside `dir`, one commit holding `file`. */
 function nestedRepo(dir, rel, file = 'index.js') {

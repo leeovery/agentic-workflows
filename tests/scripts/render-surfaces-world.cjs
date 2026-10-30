@@ -16,7 +16,7 @@ const path = require('path');
 const { auditingRender } = require('./gate-audit.cjs');
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
-const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
+const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts/domain/render.cjs').renderSurface);
 
 // Worklist leading indents are non-breaking spaces (a 4-space lead is a code
 // block to a markdown renderer) — goldens spell them explicitly.

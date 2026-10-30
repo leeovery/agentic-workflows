@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A leeway-state holding code history
-// (workflow-engine/scripts/domain/state-checks.cjs): refused here and on the
+// (leeway-engine/scripts/domain/state-checks.cjs): refused here and on the
 // remote, never pushed, refused by the catch-up, and told from a state
 // started again elsewhere.
 //

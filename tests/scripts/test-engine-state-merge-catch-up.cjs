@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The state's catch-up where one side moved
-// (workflow-engine/scripts/domain/state-merge.cjs, `catchUpState`):
+// (leeway-engine/scripts/domain/state-merge.cjs, `catchUpState`):
 // fast-forward where only the remote moved, push what a failed push left
 // behind where only this clone did, nothing where neither did or there is no
 // remote to ask, and a warning where the remote is out of reach; and another
@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, bareRepo, tip, remoteTip, layout, commitOnState, traced, codeProject } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
   STATE_BRANCH, withStateLock, commitState, askStateRemote,

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What stops GitHub's landing driver (workflow-engine/scripts/drivers/
+// What stops GitHub's landing driver (leeway-engine/scripts/drivers/
 // landing/github/), and where it leaves the default branch here, past what
 // every driver does (the landing conformance suite's): the refusals a
 // person meets, each saying what is missing or what happened and the way
@@ -34,7 +34,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld } = require('../../scripts/landing-world.cjs');
-const { loadDriver } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
+const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, ghEnv, github, bareOf, closeByHand, mergeByHand, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 

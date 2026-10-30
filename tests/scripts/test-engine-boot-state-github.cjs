@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What boot offers to set on GitHub (workflow-engine/scripts/domain/
+// What boot offers to set on GitHub (leeway-engine/scripts/domain/
 // github-setup.cjs): the GitHub rule, on a GitHub remote whatever the
 // landing setting, and the squash default where the project lands through
 // GitHub, naming each repository nested in it on GitHub; each drawn as its

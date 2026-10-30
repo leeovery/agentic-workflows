@@ -186,7 +186,7 @@ the harness lifts into the walk as a `SHOWN` entry, in order. A `SHOWN`
 entry is the block delivered, and its Write row in the recorded actions
 marks where it went out among the calls: correct behaviour, not a file
 the walk produced, not a deviation, and not a marker. Static branding —
-the `workflow-start` banner art — is shown as `[banner]`, its stand-in,
+the `leeway` banner art — is shown as `[banner]`, its stand-in,
 never a missing block. The delivery
 itself is never exercised, so a claim that rests on how a block reached
 the person is unprovable here.

@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/054-triage-sections-to-queue.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/054-triage-sections-to-queue.cjs');
 
 function setup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-054-'));

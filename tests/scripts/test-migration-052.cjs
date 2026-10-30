@@ -19,7 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/052-phantom-triage-stubs.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/052-phantom-triage-stubs.cjs');
 
 const TRIAGE_ENTRY = [
   '## Triage',

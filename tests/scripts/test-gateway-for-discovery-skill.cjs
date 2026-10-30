@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format, listSessionLogs } = require('../../skills/workflow-discovery/scripts/gateway.cjs');
+const { discover, format, listSessionLogs } = require('../../skills/leeway-discovery/scripts/gateway.cjs');
 
 function writeSessionLog(dir, workUnit, number, conclusionBody, opts = {}) {
   const padded = String(number).padStart(3, '0');
@@ -37,7 +37,7 @@ ${conclusionBody}${trailing}`;
   createFile(dir, `.leeway/${workUnit}/discovery/sessions/${filename}`, content);
 }
 
-describe('workflow-discovery discovery', () => {
+describe('leeway-discovery discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -513,7 +513,7 @@ describe('workflow-discovery discovery', () => {
   });
 });
 
-describe('workflow-discovery listSessionLogs', () => {
+describe('leeway-discovery listSessionLogs', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -560,7 +560,7 @@ describe('workflow-discovery listSessionLogs', () => {
   });
 });
 
-describe('workflow-discovery format', () => {
+describe('leeway-discovery format', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });

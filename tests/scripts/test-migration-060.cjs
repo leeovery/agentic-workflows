@@ -18,7 +18,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/060-ignore-knowledge-store.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/060-ignore-knowledge-store.cjs');
 
 const RULE = '.knowledge/';
 

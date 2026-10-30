@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A raise on a replacement (workflow-engine/scripts/domain/raise.cjs, landed
+// A raise on a replacement (leeway-engine/scripts/domain/raise.cjs, landed
 // through domain/ledger-write.cjs; the keep's line domain/ledger-events.cjs,
 // read by domain/ledger-fold.cjs, ledger-read.cjs, ledger-affected.cjs,
 // ledger-verdicts.cjs, ledger-copies.cjs, ledger-late-check.cjs and the
@@ -47,7 +47,7 @@ const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copies
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
@@ -158,7 +158,7 @@ function keepOf(id) {
 }
 
 /** A second machine: a config folder of its own, the trust log in it. */
-const secondMachine = () => ({ WORKFLOWS_CONFIG_DIR: path.join(config(), 'second-machine') });
+const secondMachine = () => ({ LEEWAY_CONFIG_DIR: path.join(config(), 'second-machine') });
 
 /**
  * The verdict queue read through the trust log of the machine `env` names —
@@ -180,7 +180,7 @@ const affected = () => ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @
 
 describe('the draw (16.5.7, 29.5.2)', () => {
   it('draws Claude\'s proposals, the lean recommended, then keep — the decision\'s answer as it stands — and seals the replacement\'s target, reason and cause beside the call, so the answer needs nothing more', async () => {
-    const { res, sections } = await drawn(replacing('new-fact', ['--cause', made.screens, '--relies-on', made.screens]), { env: { WORKFLOWS_GATE_SURFACE: '1' } });
+    const { res, sections } = await drawn(replacing('new-fact', ['--cause', made.screens, '--relies-on', made.screens]), { env: { LEEWAY_GATE_SURFACE: '1' } });
 
     const sealed = /** @type {Record<string, any>} */ (seals())[res.raise];
     assert.deepStrictEqual(sealed, {
@@ -324,7 +324,7 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     const id = await draw();
     fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate: `raise — ${id}`, answer: 'keep', at: new Date(Date.now() + 1000).toISOString() }));
 
-    const res = answer(id, ['--pick', 'keep'], { why: WHY }, { WORKFLOWS_GATE_SURFACE: '1' });
+    const res = answer(id, ['--pick', 'keep'], { why: WHY }, { LEEWAY_GATE_SURFACE: '1' });
 
     assert.strictEqual(full(res.id), id);
     assert.deepStrictEqual(lastEntry(), keepOf(id));
@@ -364,7 +364,7 @@ describe('a keep changes nothing current (5.6.10)', () => {
     assert.deepStrictEqual([decision?.kept.map((/** @type {{id: string}} */ k) => full(k.id)), queue(elsewhere)], [[kept], []]);
     const refused = refusedPristine(dir, ['verdict', 'give', kept, 'skip', '--at', 'queue'], { env: elsewhere });
     assert.match(refused.error, /^verdict give: \w+ is no departure this machine logged — a departure's verdict is given on the machine where it was made/);
-    assert.ok(!fs.existsSync(path.join(/** @type {string} */ (elsewhere.WORKFLOWS_CONFIG_DIR), TRUST_LOG)), 'the second machine logged a verdict it refused');
+    assert.ok(!fs.existsSync(path.join(/** @type {string} */ (elsewhere.LEEWAY_CONFIG_DIR), TRUST_LOG)), 'the second machine logged a verdict it refused');
     const given = ok(dir, ['verdict', 'give', kept, 'nothing', '--at', 'queue'], { env: conversation() });
     assert.deepStrictEqual([full(given.entry), given.verdict, queue()], [kept, 'nothing', []]);
     assert.deepStrictEqual(affected(), []);

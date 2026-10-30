@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The `land` verbs' argv contract (workflow-engine/scripts/domain/landing.cjs,
+// The `land` verbs' argv contract (leeway-engine/scripts/domain/landing.cjs,
 // with landing-git.cjs and landing-names.cjs): the usage and the shapes they
 // refuse, writing nothing; the landing driver settled and committed by the
 // first verb where no setting names one, and kept once it does (7.S21); the
@@ -33,7 +33,7 @@ const { ok, refuses, git, stateGit, tip, head, lastMessage, initRepo, statePath,
 const {
   TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, landedOn, setLandingDriver, useLandingWorld, followRemedy, short, way, moveStep, strayRefusal: stray,
 } = require('./landing-world.cjs');
-const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { STATE_BRANCH } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
 const { card } = TASKS;
 const project = useLandingWorld('engine-land-verbs-');

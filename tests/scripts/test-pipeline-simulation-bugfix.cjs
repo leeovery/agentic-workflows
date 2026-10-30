@@ -17,11 +17,11 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
-const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
-const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
+const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start.cjs'));
+const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, sessionLog, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases,
 } = require('./pipeline-world.cjs');
@@ -37,7 +37,7 @@ describe('pipeline simulation: bugfix', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
 
-    handoff(sim, `/workflow-investigation-process bugfix ${wu}`);
+    handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
     handoffEntry(sim, wu, 'investigation', wu);
     sim.run(['topic', 'start', wu, 'investigation', wu]);
     sim.write(`.leeway/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
@@ -65,7 +65,7 @@ describe('pipeline simulation: bugfix', () => {
     // the bugfix is still the row it was picked from.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
     assert.ok(backToStart(sim, linearMenu(sim, wu).keys)
-      .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-linear ${wu}`));
+      .some((k) => k.action === 'continue_work_unit' && k.route === `/leeway-continue-linear ${wu}`));
 
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });

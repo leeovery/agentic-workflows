@@ -9,7 +9,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { buildProgressClock } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+const { buildProgressClock } = require('../../skills/leeway-engine/scripts/domain/knowledge/decay.cjs');
 
 describe('buildProgressClock', () => {
   it('returns an empty map for empty / non-array input', () => {
@@ -165,7 +165,7 @@ describe('buildProgressClock — significance weighting', () => {
 });
 
 describe('progressElapsed', () => {
-  const { progressElapsed } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+  const { progressElapsed } = require('../../skills/leeway-engine/scripts/domain/knowledge/decay.cjs');
   const units = [
     { name: 'buried', status: 'completed', completed_at: '2024-01-01', work_type: 'feature' },
     { name: 'frontier', status: 'completed', completed_at: '2024-12-01', work_type: 'feature' },
@@ -182,7 +182,7 @@ describe('progressElapsed', () => {
 
 // The one prune rule compact removes by and the bulk index skips by.
 describe('pruneTest', () => {
-  const { pruneTest } = require('../../skills/workflow-engine/scripts/domain/knowledge/decay.cjs');
+  const { pruneTest } = require('../../skills/leeway-engine/scripts/domain/knowledge/decay.cjs');
   // S0 3 and a 0.95 floor: a unit two completions behind has R(2,3) ≈ 0.931 —
   // below the floor; one behind has R(1,3) ≈ 0.965 — above it.
   const cfg = { decay_prune_below: 0.95, decay_base_stability: 3 };

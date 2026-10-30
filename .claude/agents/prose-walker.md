@@ -123,7 +123,7 @@ any harness substitutions. Follow it exactly.
   expected result, and seeing it invalidates the run.
 - **Crossing a skill boundary is done by reading.** Where the prose
   invokes another skill — "Invoke the X skill", a stored route like
-  `/workflow-y …` — there is no Skill tool here: when the task
+  `/leeway-y …` — there is no Skill tool here: when the task
   sanctions continuing, read the named skill's file under
   `.claude/skills/` and follow it with the stated arguments, exactly
   as a live invocation would have loaded it. Expected, not a
@@ -248,7 +248,7 @@ Narrate these, each as its own entry, the moment it happens:
 2. Every block the prose directs you to show, through its show write, in
    the form it went out: a markdown section as markdown, never inside a
    fence, and a fenced one inside its own tagged fence. The one exception
-   is static branding — the `workflow-start` banner art — written as
+   is static branding — the `leeway` banner art — written as
    `[banner]`: no assertion can rest on it, and the art is heavy to
    reproduce.
 3. Every menu or question encountered, shown through its write, and the

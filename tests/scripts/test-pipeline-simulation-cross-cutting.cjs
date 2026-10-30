@@ -19,11 +19,11 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
-const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
-const { epicDashboard } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-linear/scripts/gateway.cjs'));
+const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
+const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
   Sim, sessionLog, arrive, handoffEntry, handoff, bridgeTo, linearPick, startNew,
 } = require('./pipeline-world.cjs');
@@ -45,7 +45,7 @@ describe('pipeline simulation: cross-cutting', () => {
       { read: 'Discussion is the usual spine here — research is optional.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
-    handoff(sim, `/workflow-discussion-process cross-cutting ${wu}`);
+    handoff(sim, `/leeway-discussion-process cross-cutting ${wu}`);
     handoffEntry(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -202,11 +202,11 @@ describe('pipeline simulation: cross-cutting', () => {
     sim.run(['workunit', 'reactivate', cc]);
     arrive(sim, cc);
     const linear = LINEAR_GATEWAY.view(sim.dir, cc);
-    assert.match(linear, /^ {2}1 {2}— {2}revisit_phase {2}logging {2}→ \/workflow-discussion-process cross-cutting logging-cc logging$/m, linear);
-    assert.match(linear, /^ {2}2 {2}— {2}revisit_phase {2}tracing {2}→ \/workflow-discussion-process cross-cutting logging-cc tracing$/m, linear);
-    assert.match(linear, /^ {2}3 {2}— {2}revisit_phase {2}logging-cc {2}→ \/workflow-specification-process cross-cutting logging-cc$/m, linear);
+    assert.match(linear, /^ {2}1 {2}— {2}revisit_phase {2}logging {2}→ \/leeway-discussion-process cross-cutting logging-cc logging$/m, linear);
+    assert.match(linear, /^ {2}2 {2}— {2}revisit_phase {2}tracing {2}→ \/leeway-discussion-process cross-cutting logging-cc tracing$/m, linear);
+    assert.match(linear, /^ {2}3 {2}— {2}revisit_phase {2}logging-cc {2}→ \/leeway-specification-process cross-cutting logging-cc$/m, linear);
     assert.match(sim.render(['revisit-phases', cc], { expect: 'content' }), /\*\*`2`\*\* +→ Discussion "Tracing" — \*completed\*/);
-    handoff(sim, `/workflow-discussion-process cross-cutting ${cc} tracing`);
+    handoff(sim, `/leeway-discussion-process cross-cutting ${cc} tracing`);
 
     // The reopen flags the unit's specification through the reverse join;
     // in flight, the discussion is the next route, by name.
@@ -215,13 +215,13 @@ describe('pipeline simulation: cross-cutting', () => {
     assert.deepStrictEqual(reopened.reconcile_flagged, [{ phase: 'specification', topic: cc }]);
     assert.deepStrictEqual(reopened.sources_staled, [cc]);
     assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, cc)),
-      new RegExp(`^next_route: /workflow-discussion-process cross-cutting ${cc} tracing$`, 'm'));
+      new RegExp(`^next_route: /leeway-discussion-process cross-cutting ${cc} tracing$`, 'm'));
 
     // Concluded again, the next route is the specification's reconcile — by
     // the unit alone, its specification carrying the unit's name.
     sim.run(['topic', 'complete', cc, 'discussion', 'tracing']);
     const dump = BRIDGE.format(BRIDGE.discover(sim.dir, cc));
-    assert.match(dump, new RegExp(`^next_route: /workflow-specification-process cross-cutting ${cc}$`, 'm'), dump);
+    assert.match(dump, new RegExp(`^next_route: /leeway-specification-process cross-cutting ${cc}$`, 'm'), dump);
     assert.match(dump, /^revisitable_phases: discussion\/logging, discussion\/tracing$/m, dump);
     assert.strictEqual(LIB.detail.activeWorkUnit(sim.dir, cc)?.unit.phase_label, 'specification (input moved — reconcile)');
     bridgeTo(sim, cc, 'specification');

@@ -26,9 +26,9 @@ sentence that can be read two ways — each is a live defect, not a typo.
 
 Read **CLAUDE.md** before the diff — the standing rules and a map of the
 system — then whichever your dimension needs: **CONVENTIONS.md** for skill
-prose; `skills/workflow-engine/SKILL.md` and its
+prose; `skills/leeway-engine/SKILL.md` and its
 `references/library-and-gateway.md` for code; for state, engine and gate
-contracts, `skills/workflow-engine/references/commands.md` and the header
+contracts, `skills/leeway-engine/references/commands.md` and the header
 comment of each module the diff touches. In full. They are dense
 and exact, and inferring the rules from sibling files is how non-compliant
 work gets certified as compliant.

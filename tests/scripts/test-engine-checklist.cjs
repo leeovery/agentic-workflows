@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The checklists (workflow-engine/scripts/domain/checklist.cjs): `engine
+// The checklists (leeway-engine/scripts/domain/checklist.cjs): `engine
 // checklist show|done|skip|close` over the six closing points (6.4.6–6.4.11).
 // Each point's exact list (6.S14), the sweep left off for a unit of one
 // topic; Claude's items marked in its own order, one skipped with its

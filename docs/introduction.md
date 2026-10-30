@@ -2,7 +2,7 @@
 
 Claude Code is a strong engineer with no memory and no process. This system adds both. It wraps your work in a phased pipeline that thinks before it builds — a conversation that pushes back, a specification you approve, a plan broken into tasks, then implementation running task by task while you step away — and it remembers what it learns, so the next piece of work starts warmer than the last.
 
-You reach all of it through one command. You type `/workflow-start`, describe what you want, and answer the questions that follow. From there the system shows you where you are, asks for decisions at the moments that matter, and produces documents you read and approve. You never run the machinery underneath — there are no state commands to remember, no files to hand-edit, no bookkeeping to keep straight. Your job is to decide; the system's job is to keep the record straight and do the work.
+You reach all of it through one command. You type `/leeway`, describe what you want, and answer the questions that follow. From there the system shows you where you are, asks for decisions at the moments that matter, and produces documents you read and approve. You never run the machinery underneath — there are no state commands to remember, no files to hand-edit, no bookkeeping to keep straight. Your job is to decide; the system's job is to keep the record straight and do the work.
 
 ## Why it is built this way
 
@@ -29,7 +29,7 @@ npx agntc add leeovery/agentic-workflows
 Then, in Claude Code:
 
 ```
-/workflow-start
+/leeway
 ```
 
 That is the whole interface. Your first working session opens by offering a short walkthrough of how the workflows work: eight screens, declined in one keystroke, and always there afterwards under `h/help` on the start menu. You can also just ask: any session will answer a question about how the system works and then put you back where you were. That first working session configures itself in conversation too — there is no setup procedure to follow. If you want search-by-meaning over your past work, you will be offered a one-time setup for it; everything works without it too. And on a codebase that predates the workflows, it also offers a one-time [baseline assessment](configuration.md) — research plus an interview that backfills the context the code alone can't show. From here, [the five work types](work-types.md) explains the pipeline shapes and how the right one gets chosen, and it is the natural next page.

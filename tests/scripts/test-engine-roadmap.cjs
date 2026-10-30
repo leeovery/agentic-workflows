@@ -1,7 +1,7 @@
 'use strict';
 
 // The roadmap domain — project-level horizons + items, lifecycle by join
-// (skills/workflow-engine/scripts/domain/roadmap.cjs) — driven through the
+// (skills/leeway-engine/scripts/domain/roadmap.cjs) — driven through the
 // engine CLI: JIT birth, self-commits scoped to the project manifest, the
 // joined-item guards, horizon restructuring, and the derived state read.
 // One landing guard is driven directly instead: a peer taking a name
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { postponeToRoadmap } = require('../../skills/workflow-engine/scripts/domain/roadmap.cjs');
+const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
 const harness = require('./engine-harness.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;

@@ -1,6 +1,6 @@
 # Documentation
 
-This is the book of the system for the person about to live inside it: what will happen, in what order, what your role is at each moment, what the system produces, and why it is built to behave the way it does. You reach everything through one command — `/workflow-start` — and these pages explain what unfolds after you type it. The repository's top-level README is the short pitch and the install; this is the full account.
+This is the book of the system for the person about to live inside it: what will happen, in what order, what your role is at each moment, what the system produces, and why it is built to behave the way it does. You reach everything through one command — `/leeway` — and these pages explain what unfolds after you type it. The repository's top-level README is the short pitch and the install; this is the full account.
 
 ## Start here
 

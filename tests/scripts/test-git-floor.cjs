@@ -12,7 +12,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { GIT_FLOOR, gitShortfall, gitFloorStopSurface } = require('../../skills/workflow-engine/scripts/domain/git-floor.cjs');
+const { GIT_FLOOR, gitShortfall, gitFloorStopSurface } = require('../../skills/leeway-engine/scripts/domain/git-floor.cjs');
 const { withEnv } = require('./discovery-test-utils.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');

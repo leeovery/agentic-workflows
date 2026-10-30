@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state's locks (workflow-engine/scripts/domain/state-worktree.cjs): the
+// The state's locks (leeway-engine/scripts/domain/state-worktree.cjs): the
 // writer lock, `.leeway/.lock`, that keeps concurrent verbs one after the
 // other — held while a verb runs and released after, taken again at once by
 // its own holder, taken over at once from a holder that is gone, never
@@ -24,9 +24,9 @@ const { spawn, spawnSync } = require('child_process');
 const { git, layout, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, ignored, childStderr } = require('./state-worktree-world.cjs');
 
-const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const STATE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const { STATE_BRANCH, createState, withStateLock, withBootLock } = require(STATE);
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
+const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
 
 const world = useWorld();
 

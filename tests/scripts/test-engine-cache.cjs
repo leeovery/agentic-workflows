@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { ok: engine, refuses: engineFails, output, keywordOnlyKnowledge, indexedFiles } = require('./engine-harness.cjs');
-const { stampAnalysisCache } = require('../../skills/workflow-engine/scripts/domain/cache.cjs');
-const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
+const { stampAnalysisCache } = require('../../skills/leeway-engine/scripts/domain/cache.cjs');
+const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
 // The drift-proof contract: a stamp is computed with the same collection and
 // checksum logic the read side uses, so computeAnalysisCacheStatus must judge

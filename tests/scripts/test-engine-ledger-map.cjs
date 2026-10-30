@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A topic's map and the questions moved across it
-// (workflow-engine/scripts/domain/ledger-read.cjs, `engine ledger map`, with
+// (leeway-engine/scripts/domain/ledger-read.cjs, `engine ledger map`, with
 // domain/ledger-fold.cjs): a topic's questions, where each stands now and
 // its answers, which its record shows too, and an answer whose question is
 // set aside on a row of its own; a reworded question keeps its answers and

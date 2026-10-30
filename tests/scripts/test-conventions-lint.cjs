@@ -17,8 +17,8 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { RENDER_FORMS: FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { OPENING_SKILLS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
+const { RENDER_FORMS: FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -104,7 +104,7 @@ function parseFences(lines) {
   return { blocks, inFence };
 }
 
-// A fence is the workflow-start banner iff it contains an ASCII-art line
+// A fence is the leeway banner iff it contains an ASCII-art line
 // (pure slashes / underscores / pipes / spaces, 10+ chars). The corpus
 // contains exactly one such fence; no other display uses these glyphs alone.
 function isBannerFence(block) {
@@ -126,7 +126,7 @@ function firstContentIndex(lines) {
 // ---------------------------------------------------------------------------
 // Check 1 — Drawn phase-title borders are retired (banner excepted); the
 // markdown H1 chrome pins the ■ glyph
-// (● + 47 ─ + ●). The workflow-start banner block is the one documented
+// (● + 47 ─ + ●). The leeway banner block is the one documented
 // exception and is skipped.
 // ---------------------------------------------------------------------------
 
@@ -142,7 +142,7 @@ function checkBorders(files) {
     lines.forEach((line, i) => {
       const t = line.trim();
       // Drawn borders are retired from prose — the phase title is markdown
-      // chrome (`# **`■ Title`**`). Only the workflow-start banner keeps its
+      // chrome (`# **`■ Title`**`). Only the leeway banner keeps its
       // bordered art (documented exception).
       if (/^●─+●$/.test(t) && !bannerLines.has(i)) {
         out.push({
@@ -425,12 +425,17 @@ function checkLinks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8 — H1 category rule (scoped to workflow-* SKILL.md backbones).
-// Processing backbones (workflow-*-process, plus the engine and the
+// Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
+// Processing backbones (leeway-*-process, plus the engine and the
 // project-level skills — baseline, roadmap, help) open with a title H1;
-// every other workflow backbone — workflow-start, the navigation skills,
+// every other workflow backbone — leeway, the navigation skills,
 // discovery, the bridge — carries none.
 // ---------------------------------------------------------------------------
+
+/** Whether a skill is one of the workflows' own — `leeway` or `leeway-*`. @param {string} name */
+function isOurs(name) {
+  return name === 'leeway' || name.startsWith('leeway-');
+}
 
 function skillNameOf(file) {
   // .../skills/<name>/SKILL.md
@@ -442,11 +447,11 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['workflow-engine', 'workflow-baseline', 'workflow-roadmap', 'workflow-help']);
+  const H1_KNOWN = new Set(['leeway-engine', 'leeway-baseline', 'leeway-roadmap', 'leeway-help']);
   for (const file of files) {
     const name = skillNameOf(file);
-    if (!name || !name.startsWith('workflow-')) continue; // only workflow backbones
-    const mustHaveH1 = /^workflow-.+-process$/.test(name) || H1_KNOWN.has(name);
+    if (!name || !isOurs(name)) continue; // only workflow backbones
+    const mustHaveH1 = /^leeway-.+-process$/.test(name) || H1_KNOWN.has(name);
     const lines = readLines(file);
     const first = lines[firstContentIndex(lines)] || '';
     const isH1 = /^# /.test(first);
@@ -658,7 +663,7 @@ function checkInertLoadChrome(files) {
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
 // conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`workflow-log-*`) are exempt: they are not workflow skills, and
+// skills (`leeway-log-*`) are exempt: they are not workflow skills, and
 // deliberately structureless.
 // ---------------------------------------------------------------------------
 
@@ -666,7 +671,7 @@ function checkInertLoadChrome(files) {
 // `skills/`.
 function isCaptureSkill(file, root) {
   const [top, skill = ''] = path.relative(root, file).split(path.sep);
-  return top === 'skills' && skill.startsWith('workflow-log-');
+  return top === 'skills' && skill.startsWith('leeway-log-');
 }
 
 /** @param {string[]} content */
@@ -707,7 +712,7 @@ function checkNoTemplatedRenders(files, root = REPO) {
 // ---------------------------------------------------------------------------
 // Check 14 — No buried invocation imperatives. A skill invocation is an
 // imperative outside any fence (Loading, Invoking, and Handing Off); a line
-// inside a fence starting "Invoke `/workflow-" is payload text the model
+// inside a fence invoking `/leeway` or `/leeway-*` is payload text the model
 // prints instead of executing — the Portal stall class.
 // ---------------------------------------------------------------------------
 
@@ -718,7 +723,7 @@ function checkBuriedInvoke(files) {
     const { blocks } = parseFences(lines);
     for (const b of blocks) {
       for (const { n, text } of b.lines) {
-        if (/^\s*Invoke `\/workflow-/.test(text)) {
+        if (/^\s*Invoke `\/leeway(?![a-z])/.test(text)) {
           out.push({ file, line: n + 1, message: 'invocation imperative inside a fence — payload is never instruction; put the imperative outside the fence' });
         }
       }
@@ -851,7 +856,7 @@ const QUESTION_ROUTE = /^\s*[-*] \*\*Ask\*\* —/;
 const BRANCH_END = /^(?:#{1,4}\s|\*\*(?:If |Otherwise)|---\s*$)/;
 const ROUTE_END = /^\s*(?:[-*] |$)/;
 const SETS_ASIDE = /sets the gate aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
-const DELEGATES_ANSWER = /\((?:\.\.\/)+workflow-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
+const DELEGATES_ANSWER = /\((?:\.\.\/)+leeway-shared\/references\/answering-how-it-works\.md\)|\(answering-how-it-works\.md\)/;
 const INTERRUPTED_RETURN = /^→ On return, resume the interrupted flow\b/;
 const RETURN_ASKS = /\bset aside\b[\s\S]*?\b[Aa]sk\b[^.:;]*\bready to move on\b/;
 
@@ -934,7 +939,7 @@ function checkRenderForms(files) {
 // Check 25 — a dispatch names its mode, and a waited-on background dispatch
 // names its turn's closing sentence (CONVENTIONS' Dispatch Lines). Claude
 // Code runs an agent in the background unless told otherwise, so every
-// dispatch — of a workflow-* agent, or of ad-hoc sub-agents through the
+// dispatch — of a leeway-* agent, or of ad-hoc sub-agents through the
 // Agent tool — states `run_in_background: true` or `false`. A foreground
 // dispatch carries no sentence, and nor does a
 // background dispatch the conversation carries on past (the agents below);
@@ -949,14 +954,14 @@ function checkRenderForms(files) {
 // ---------------------------------------------------------------------------
 
 const CARRIED_PAST_AGENTS = new Set([
-  'workflow-discussion-review',
-  'workflow-discussion-perspective',
-  'workflow-discussion-synthesis',
-  'workflow-research-deep-dive',
+  'leeway-discussion-review',
+  'leeway-discussion-perspective',
+  'leeway-discussion-synthesis',
+  'leeway-research-deep-dive',
 ]);
 const DISPATCH_NAMES = [
-  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(workflow-[a-z-]+)\.md`/,
-  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(workflow-[a-z-]+)`/,
+  /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(leeway-[a-z-]+)\.md`/,
+  /\b(?:Invoke|Dispatch) (?:a \*\*fresh\*\* |the )?`(leeway-[a-z-]+)`/,
   /\b((?:ad-hoc )?sub-agents?) \(Agent tool\)/,
 ];
 const CLOSING_SENTENCE = /\bends? the turn on exactly `([^`]+)`/g;
@@ -1069,14 +1074,14 @@ function checkInstalledDispatchPaths(files) {
 // ---------------------------------------------------------------------------
 // Check 27 — the framework loads once per conversation, at the head of the
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
-// the engine's OPENING_SKILLS — workflow-start, the user's way in, and every
+// the engine's OPENING_SKILLS — leeway, the user's way in, and every
 // skill a handoff lands on — opens its `## Instructions` section on the
 // framework load. Every other workflow backbone carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
 // already holds the framework, and the capture skills are exempt.
 // ---------------------------------------------------------------------------
 
-const FRAMEWORK_LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written';
+const FRAMEWORK_LOAD = 'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written';
 const INSTRUCTIONS = /^##\s+Instructions\s*$/;
 const HEAD_LOAD = /^(?:→\s+)?Load \*\*\[framework\.md\]\(/;
 
@@ -1094,7 +1099,7 @@ function checkFrameworkLoad(files) {
   const out = [];
   for (const file of files) {
     const name = skillNameOf(file);
-    if (!name || !name.startsWith('workflow-')) continue;
+    if (!name || !isOurs(name)) continue;
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
     if (OPENING_SKILLS.includes(name)) {
@@ -1307,7 +1312,7 @@ test('check 1 (borders) — bans drawn borders, skips the banner, pins the H1 gl
     // banner: ascii art + a 67-wide ● border → must be skipped
     const banner = write(
       dir,
-      'skills/workflow-start/SKILL.md',
+      'skills/leeway/SKILL.md',
       '```\n●' + '─'.repeat(65) + '●\n    ___   ____________\n   /   | / ____/ ___/\n●' + '─'.repeat(65) + '●\n```\n'
     );
     assert.strictEqual(checkBorders([banner]).length, 0, 'banner border must be exempt');
@@ -1489,18 +1494,18 @@ test('check 7 (links) — catches broken links, skips fenced/external/placeholde
 
 test('check 8 (H1 category) — enforces the processing/backbone split', () => {
   withTemp((dir) => {
-    const procNoH1 = write(dir, 'skills/workflow-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const procNoH1 = write(dir, 'skills/leeway-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const startWithH1 = write(dir, 'skills/workflow-start/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    const startWithH1 = write(dir, 'skills/leeway/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
-    const navWithH1 = write(dir, 'skills/workflow-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
+    const navWithH1 = write(dir, 'skills/leeway-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
 
-    const procGood = write(dir, 'skills/workflow-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
-    const bridgeGood = write(dir, 'skills/workflow-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
-    const engineGood = write(dir, 'skills/workflow-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
+    const procGood = write(dir, 'skills/leeway-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
+    const bridgeGood = write(dir, 'skills/leeway-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const engineGood = write(dir, 'skills/leeway-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
   });
 });
@@ -1527,7 +1532,7 @@ test('check 10 (attribution) — catches missing/wrong attribution, skips output
     const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
     assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
 
-    const of = write(dir, 'skills/workflow-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
+    const of = write(dir, 'skills/leeway-planning-process/references/output-formats/tick/reading.md', '# Reading\n\n## Listing Tasks\n');
     assert.strictEqual(checkAttribution([of]).length, 0, 'output-format adapters must be exempt');
   });
 });
@@ -1558,7 +1563,7 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     const instr = write(
       dir,
       'skills/w/SKILL.md',
-      '## Instructions\n\nLoad **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
+      '## Instructions\n\nLoad **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
     );
     assert.strictEqual(checkFooterlessLoads([instr]).length, 1, 'the Instructions load and an H4-branched load pass; the Otherwise branch that ends in a load before the next step is caught');
 
@@ -1675,10 +1680,10 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
     const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
     assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
 
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
-    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/workflow-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
+    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
+    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/leeway-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/leeway-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
@@ -1707,32 +1712,34 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
 
 test('check 14 (buried invoke) — catches an in-fence imperative, permits one outside a fence', () => {
   withTemp((dir) => {
-    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/workflow-bridge pay specification`.\n```\n');
+    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/leeway-bridge pay specification`.\n```\n');
     const v = checkBuriedInvoke([bad]);
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
-    const good = write(dir, 'skills/x/b.md', 'Invoke `/workflow-bridge pay specification`.\n');
+    const start = write(dir, 'skills/x/c.md', '```\nInvoke `/leeway`.\n```\n');
+    assert.strictEqual(checkBuriedInvoke([start]).length, 1, 'the way in, `/leeway`, is caught as a skill invocation too');
+    const good = write(dir, 'skills/x/b.md', 'Invoke `/leeway-bridge pay specification`.\n');
     assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'the imperative outside a fence is the invocation form');
   });
 });
 
 test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declaration, permits other events', () => {
   withTemp((dir) => {
-    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
+    const cleanup = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs" session cleanup';
     const hookBlock = (event) => `hooks:\n  ${event}:\n    - hooks:\n        - type: command\n          command: '${cleanup}'\n`;
 
-    const plain = write(dir, 'skills/workflow-a-process/SKILL.md',
-      '---\nname: workflow-a-process\nuser-invocable: false\n---\n\nBody.\n');
+    const plain = write(dir, 'skills/leeway-a-process/SKILL.md',
+      '---\nname: leeway-a-process\nuser-invocable: false\n---\n\nBody.\n');
     // Other events do fire from skill frontmatter and stay allowed.
-    const preToolUse = write(dir, 'skills/workflow-b-process/SKILL.md',
-      `---\nname: workflow-b-process\n${hookBlock('PreToolUse')}---\n`);
+    const preToolUse = write(dir, 'skills/leeway-b-process/SKILL.md',
+      `---\nname: leeway-b-process\n${hookBlock('PreToolUse')}---\n`);
     // The event name in the body is prose, not a declaration.
-    const bodyMention = write(dir, 'skills/workflow-c-process/SKILL.md',
-      '---\nname: workflow-c-process\n---\n\n```\nSessionEnd:\n```\n');
+    const bodyMention = write(dir, 'skills/leeway-c-process/SKILL.md',
+      '---\nname: leeway-c-process\n---\n\n```\nSessionEnd:\n```\n');
     assert.strictEqual(checkNoFrontmatterSessionEndHooks([plain, preToolUse, bodyMention]).length, 0, 'no SessionEnd declared — clean');
 
     // A SessionEnd hook declared in frontmatter never fires.
-    const sessionEnd = write(dir, 'skills/workflow-d-process/SKILL.md',
-      `---\nname: workflow-d-process\n${hookBlock('SessionEnd')}---\n`);
+    const sessionEnd = write(dir, 'skills/leeway-d-process/SKILL.md',
+      `---\nname: leeway-d-process\n${hookBlock('SessionEnd')}---\n`);
     const v = checkNoFrontmatterSessionEndHooks([plain, preToolUse, sessionEnd]);
     assert.strictEqual(v.length, 1, `expected the SessionEnd declaration to be caught, got ${report(v)}`);
     assert.strictEqual(v[0].file, sessionEnd);
@@ -1892,13 +1899,13 @@ test('check 23 (a question at a gate sets it aside) — catches a question branc
       '',
       '#### If the user asks a question',
       '',
-      'Answer it per **[answering-how-it-works.md](../../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
+      'Answer it per **[answering-how-it-works.md](../../leeway-shared/references/answering-how-it-works.md)** — the menu it puts back is the home\'s.',
       '',
       '→ Return to **B. Handle Selection**.',
       '',
       '**If ask:**',
       '',
-      'Answer it per **[answering-how-it-works.md](../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
+      'Answer it per **[answering-how-it-works.md](../leeway-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer\'s alone.',
       '',
       '**STOP.** Wait for user response.',
       '',
@@ -1983,7 +1990,7 @@ test('check 23 (a return into the interrupted flow asks) — catches a return th
     const asking = write(dir, 'skills/x/asking.md', [
       '## Backlogging',
       '',
-      'Load **[backlogging.md](../workflow-shared/references/backlogging.md)** from any point in the phase.',
+      'Load **[backlogging.md](../leeway-shared/references/backlogging.md)** from any point in the phase.',
       '',
       '→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.',
       '',
@@ -2105,7 +2112,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-worker.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
@@ -2113,28 +2120,28 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '### Agent 1',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-left.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-left.md`',
       '',
       '### Agent 2',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-right.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-right.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The left and right agents have been dispatched for review cycle {N}.`',
       '',
       '## C. Check in the Foreground',
       '',
-      '**Agent path**: `.claude/agents/workflow-x-checker.md`',
+      '**Agent path**: `.claude/agents/leeway-x-checker.md`',
       '',
       'Dispatch **one agent** via the Task tool (**synchronous** — pass `run_in_background: false`).',
       '',
       '## D. Dive',
       '',
-      '**Agent path**: `.claude/agents/workflow-research-deep-dive.md`',
+      '**Agent path**: `.claude/agents/leeway-research-deep-dive.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
       '',
       '```',
-      'Invoke `workflow-x-fenced` — fenced content is never a dispatch.',
+      'Invoke `leeway-x-fenced` — fenced content is never a dispatch.',
       '```',
       '',
       '## E. Measure',
@@ -2145,13 +2152,13 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
     const single = write(dir, 'skills/x/single.md', [
       '# Single',
       '',
-      'Invoke `workflow-x-designer` with these file paths:',
+      'Invoke `leeway-x-designer` with these file paths:',
       '',
       '## Wait for Completion',
       '',
       'This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The designer agent has been dispatched for the plan\'s phases.`',
       '',
-      'Re-invoke `workflow-x-designer` with the feedback.',
+      'Re-invoke `leeway-x-designer` with the feedback.',
       '',
     ].join('\n'));
     assert.strictEqual(checkDispatchLines([clean, single]).length, 0, `each mode in its own shape is clean, got ${report(checkDispatchLines([clean, single]))}`);
@@ -2161,46 +2168,46 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## A. No Mode',
       '',
-      'Dispatch the `workflow-x-a` agent via the Task tool.',
+      'Dispatch the `leeway-x-a` agent via the Task tool.',
       '',
       '## B. No Sentence',
       '',
-      'Dispatch the `workflow-x-b` agent via the Task tool with `run_in_background: true`.',
+      'Dispatch the `leeway-x-b` agent via the Task tool with `run_in_background: true`.',
       '',
       '## C. Two Sentences',
       '',
-      'Invoke `workflow-x-c` with:',
+      'Invoke `leeway-x-c` with:',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The c agent has been dispatched for phase {N}.`',
       'The dispatch ends the turn on exactly `The c agent has been dispatched for phase {N} again.`',
       '',
       '## D. Off Shape',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-d.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-d.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `Dispatched the d agent.`',
       '',
       '## E. Names the Topic',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-e.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-e.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The e agent has been dispatched for {topic}.`',
       '',
       '## F. Names the Internal Id',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-f.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-f.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The f agents have been dispatched for {internal_id}.`',
       '',
       '## G. Foreground With a Sentence',
       '',
-      '**Agent path**: `.claude/agents/workflow-x-g.md`',
+      '**Agent path**: `.claude/agents/leeway-x-g.md`',
       '',
       'Dispatch **one agent** (pass `run_in_background: false`) — the dispatch ends the turn on exactly `The g agent has been dispatched for the record.`',
       '',
       '## H. Carried Past With a Sentence',
       '',
-      '**Agent path**: `.claude/agents/workflow-discussion-review.md`',
+      '**Agent path**: `.claude/agents/leeway-discussion-review.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
       '',
@@ -2229,15 +2236,15 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
     const clean = write(dir, 'skills/x/references/clean.md', [
       '# Clean',
       '',
-      'This step invokes the `workflow-x-worker` agent (`.claude/agents/workflow-x-worker.md`).',
+      'This step invokes the `leeway-x-worker` agent (`.claude/agents/leeway-x-worker.md`).',
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `.claude/agents/workflow-x-worker.md`',
+      '- **Agent path**: `.claude/agents/leeway-x-worker.md`',
       '',
-      '1. **Review criteria path**: `.claude/skills/workflow-x/references/criteria.md`',
-      '2. **read-specification.md**: `.claude/skills/workflow-x/references/read-specification.md`',
-      '3. **Format reading.md path**: `.claude/skills/workflow-x/references/output-formats/{format}/reading.md` — `format` is in session context',
+      '1. **Review criteria path**: `.claude/skills/leeway-x/references/criteria.md`',
+      '2. **read-specification.md**: `.claude/skills/leeway-x/references/read-specification.md`',
+      '3. **Format reading.md path**: `.claude/skills/leeway-x/references/output-formats/{format}/reading.md` — `format` is in session context',
       '4. **Output path** — `.workflows/{work_unit}/x/{topic}/out.md`',
       '5. **Output file path** — the `file` from the dispatch response',
       '6. **Resolved path**: `{resolved_path}`',
@@ -2246,13 +2253,13 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
       'Load **[criteria.md](criteria.md)** and follow its instructions as written.',
       '',
       '```',
-      '- **Agent path**: `../../../agents/workflow-x-fenced.md`',
+      '- **Agent path**: `../../../agents/leeway-x-fenced.md`',
       '```',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
     ].join('\n'));
-    const agentDefinition = write(dir, 'agents/workflow-x-worker.md', [
+    const agentDefinition = write(dir, 'agents/leeway-x-worker.md', [
       '# Worker',
       '',
       '## Your Input',
@@ -2266,100 +2273,100 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
     const broken = write(dir, 'skills/x/references/broken.md', [
       '# Broken',
       '',
-      'This step invokes the `workflow-x-worker` agent (`../../../agents/workflow-x-worker.md`).',
+      'This step invokes the `leeway-x-worker` agent (`../../../agents/leeway-x-worker.md`).',
       '',
       '## A. Dispatch the Worker',
       '',
-      '- **Agent path**: `../../../agents/workflow-x-worker.md`',
-      '- **Agent file**: `agents/workflow-x-worker.md`',
+      '- **Agent path**: `../../../agents/leeway-x-worker.md`',
+      '- **Agent file**: `agents/leeway-x-worker.md`',
       '',
       '1. **Review tracking format path**: `review-tracking-format.md` (in this references directory)',
       '2. **task-design.md**: `task-design.md`',
       '3. **Format reading.md path**: **[output-formats/{format}/reading.md](output-formats/{format}/reading.md)** — `format` is in session context',
-      '4. **Plan format reading adapter path** — `../../workflow-y/references/output-formats/{format}/reading.md`',
+      '4. **Plan format reading adapter path** — `../../leeway-y/references/output-formats/{format}/reading.md`',
       '5. **Findings path** — `findings.txt`',
-      '6. **Criteria path**: `skills/workflow-x/references/criteria.md`',
+      '6. **Criteria path**: `skills/leeway-x/references/criteria.md`',
       '',
       'The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The worker agent has been dispatched for phase {N}.`',
       '',
     ].join('\n'));
     const v = checkInstalledDispatchPaths([broken]);
     assert.deepStrictEqual(v.map((x) => x.line), [3, 7, 8, 10, 11, 12, 13, 14, 15], `each relative path is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
-    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/workflow-x-worker\.md` — write it as installed, from the project root/);
-    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/workflow-x-worker\.md`/);
+    assert.match(v[0].message, /^agent file `\.\.\/\.\.\/\.\.\/agents\/leeway-x-worker\.md` — write it as installed, `\.claude\/agents\/…`$/);
+    assert.match(v[1].message, /^\*\*Agent path\*\* names `\.\.\/\.\.\/\.\.\/agents\/leeway-x-worker\.md` — write it as installed, from the project root/);
+    assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/leeway-x-worker\.md`/);
     assert.match(v[5].message, /names `output-formats\/\{format\}\/reading\.md`/);
-    assert.match(v[8].message, /names `skills\/workflow-x\/references\/criteria\.md`/);
+    assert.match(v[8].message, /names `skills\/leeway-x\/references\/criteria\.md`/);
   });
 });
 
 test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside the workflows', () => {
   withTemp((dir) => {
-    const LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.';
-    const start = write(dir, 'skills/workflow-start/SKILL.md', [
-      '---', 'name: workflow-start', '---', '', 'Entry.', '', '## Instructions', '',
-      'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written — after the banner.',
+    const LOAD = 'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.';
+    const start = write(dir, 'skills/leeway/SKILL.md', [
+      '---', 'name: leeway', '---', '', 'Entry.', '', '## Instructions', '',
+      'Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written — after the banner.',
       '', '---', '', '## Step 0: Boot', '', 'Boot.', '',
     ].join('\n'));
-    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).**';
-    const phase = write(dir, 'skills/workflow-review-process/SKILL.md', [
+    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).**';
+    const phase = write(dir, 'skills/leeway-review-process/SKILL.md', [
       '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
     ].join('\n'));
-    const bridge = write(dir, 'skills/workflow-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
-    const capture = write(dir, 'skills/workflow-log-idea/SKILL.md', 'Capture an idea.\n');
-    const fenced = write(dir, 'skills/workflow-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
+    const bridge = write(dir, 'skills/leeway-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
+    const capture = write(dir, 'skills/leeway-log-idea/SKILL.md', 'Capture an idea.\n');
+    const fenced = write(dir, 'skills/leeway-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
     const tooling = write(dir, '.claude/skills/create-output-format/SKILL.md', `## Instructions\n\n${LOAD}\n`);
     const ok = checkFrameworkLoad([start, phase, bridge, capture, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
-    const missing = write(dir, 'skills/workflow-discovery/SKILL.md', ['---', 'name: workflow-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
-    const late = write(dir, 'skills/workflow-roadmap/SKILL.md', ['# Roadmap', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
-    const inPlace = write(dir, 'skills/workflow-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
+    const missing = write(dir, 'skills/leeway-discovery/SKILL.md', ['---', 'name: leeway-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
+    const late = write(dir, 'skills/leeway-roadmap/SKILL.md', ['# Roadmap', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
+    const inPlace = write(dir, 'skills/leeway-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
     const v = checkFrameworkLoad([missing, late, inPlace]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['workflow-discovery', 5],
-      ['workflow-roadmap', 3],
-      ['workflow-continue-linear', 3],
-      ['workflow-continue-linear', 5],
-      ['workflow-continue-linear', 11],
+      ['leeway-discovery', 5],
+      ['leeway-roadmap', 3],
+      ['leeway-continue-linear', 3],
+      ['leeway-continue-linear', 5],
+      ['leeway-continue-linear', 11],
     ], `each miss is caught once, at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^workflow-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
-    assert.match(v[2].message, /^workflow-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+    assert.match(v[0].message, /^leeway-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
+    assert.match(v[2].message, /^leeway-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
   });
 });
 
 test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed and a script grant whose `*` is not a trailing ` *`, permits a script grant ending in ` *`, a wildcard mid-path on another command, other tools, and a grant outside the frontmatter', () => {
   withTemp((dir) => {
-    const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
-    const starred = write(dir, 'skills/workflow-a-process/SKILL.md', [
-      '---', 'name: workflow-a-process',
+    const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+    const starred = write(dir, 'skills/leeway-a-process/SKILL.md', [
+      '---', 'name: leeway-a-process',
       `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .workflows/*/.state), Read`,
       '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
     ].join('\n'));
-    const agent = write(dir, 'agents/workflow-b.md', '---\nname: workflow-b\ntools: Read, Bash\n---\n\nBody.\n');
+    const agent = write(dir, 'agents/leeway-b.md', '---\nname: leeway-b\ntools: Read, Bash\n---\n\nBody.\n');
     const ok = checkBashGrantsCarryWildcard([starred, agent]);
     assert.strictEqual(ok.length, 0, `wildcarded grants, other tools and body text are clean, got ${report(ok)}`);
 
-    const inline = write(dir, 'skills/workflow-c-process/SKILL.md', [
-      '---', 'name: workflow-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
+    const inline = write(dir, 'skills/leeway-c-process/SKILL.md', [
+      '---', 'name: leeway-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
     ].join('\n'));
-    const listed = write(dir, 'skills/workflow-d-process/SKILL.md', [
-      '---', 'name: workflow-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
+    const listed = write(dir, 'skills/leeway-d-process/SKILL.md', [
+      '---', 'name: leeway-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
     ].join('\n'));
-    const misplaced = write(dir, 'skills/workflow-e-process/SKILL.md', [
-      '---', 'name: workflow-e-process',
+    const misplaced = write(dir, 'skills/leeway-e-process/SKILL.md', [
+      '---', 'name: leeway-e-process',
       `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*), Bash(node --no-warnings tools/run.mjs*)`, '---', '',
     ].join('\n'));
     const v = checkBashGrantsCarryWildcard([inline, listed, misplaced]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
-      ['workflow-c-process', 3],
-      ['workflow-c-process', 3],
-      ['workflow-d-process', 4],
-      ['workflow-e-process', 3],
-      ['workflow-e-process', 3],
-      ['workflow-e-process', 3],
+      ['leeway-c-process', 3],
+      ['leeway-c-process', 3],
+      ['leeway-d-process', 4],
+      ['leeway-e-process', 3],
+      ['leeway-e-process', 3],
+      ['leeway-e-process', 3],
     ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\` or \`:*\`, is caught at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
+    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
     assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
     assert.match(v[4].message, /engine\.cjs\*\) is a script grant/);

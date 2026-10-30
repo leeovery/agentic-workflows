@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
+const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
 const { setupGitFixture, statePath, cleanupFixture } = require('./engine-harness.cjs');
 
@@ -65,7 +65,7 @@ function cleanup(dir) {
 function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
-    const env = configDir === undefined ? {} : { WORKFLOWS_CONFIG_DIR: configDir };
+    const env = configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir };
     const res = engine.run(['knowledge', 'index', statePath(project, 'auth', 'discussion', 'auth.md')], { cwd: project, env });
     const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
@@ -76,14 +76,22 @@ function indexUnderConfigDir(configDir) {
 
 describe('hermetic environment — the pins', () => {
   it('the system config directory is set, exists, and holds nothing to read', () => {
-    const dir = process.env.WORKFLOWS_CONFIG_DIR;
-    assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
+    const dir = process.env.LEEWAY_CONFIG_DIR;
+    assert.ok(dir, 'LEEWAY_CONFIG_DIR is set');
     assert.ok(fs.existsSync(dir), `${dir} exists`);
     assert.deepStrictEqual(
       ['config.json', 'credentials.json'].filter((name) => fs.existsSync(path.join(dir, name))),
       [],
       'the config directory holds neither file'
     );
+  });
+
+  it('the released migrations\' name for the user-level folder is set to a directory of its own, which exists and holds nothing — a migration never reaches the developer\'s ~/.config/workflows', () => {
+    const dir = process.env.WORKFLOWS_CONFIG_DIR;
+    assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
+    assert.notStrictEqual(dir, process.env.LEEWAY_CONFIG_DIR);
+    assert.ok(fs.existsSync(dir), `${dir} exists`);
+    assert.deepStrictEqual(fs.readdirSync(dir), []);
   });
 
   it('Claude Code\'s config directory is set, exists, and holds nothing — no test reaches the developer\'s own', () => {
@@ -98,11 +106,11 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('the gate surface is unannounced — a session that loads one announces it to every command, and the goldens pin the bytes without it', () => {
-    assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined);
+    assert.strictEqual(process.env.LEEWAY_GATE_SURFACE, undefined);
   });
 
   it('the handoff is unannounced — the gate mod announces it to every command as it does the gate surface', () => {
-    assert.strictEqual(process.env.WORKFLOWS_HANDOFF, undefined);
+    assert.strictEqual(process.env.LEEWAY_HANDOFF, undefined);
   });
 
   it('no Claude Code session reaches a test — every engine call marks the conversation whose id it carries', () => {
@@ -147,7 +155,7 @@ describe('hermetic environment — the pins', () => {
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');
-    assert.strictEqual(process.env.WORKFLOWS_DISPLAY_WIDTH, '65');
+    assert.strictEqual(process.env.LEEWAY_DISPLAY_WIDTH, '65');
   });
 
   it('git runs no ssh command of the developer\'s — it would override a suite\'s stand-in for a remote, with their keys', () => {
@@ -175,22 +183,24 @@ describe('hermetic environment — the pins', () => {
 
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
+      LEEWAY_CONFIG_DIR: process.env.LEEWAY_CONFIG_DIR,
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
       CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
       GH_CONFIG_DIR: process.env.GH_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
-      WORKFLOWS_DISPLAY_WIDTH: '65',
+      LEEWAY_DISPLAY_WIDTH: '65',
       LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, handoff: process.env.WORKFLOWS_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEEWAY_CONFIG_DIR, legacy: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEEWAY_GATE_SURFACE ?? null, handoff: process.env.LEEWAY_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEEWAY_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
-      dir: process.env.WORKFLOWS_CONFIG_DIR,
+      dir: process.env.LEEWAY_CONFIG_DIR,
+      legacy: process.env.WORKFLOWS_CONFIG_DIR,
       claude: process.env.CLAUDE_CONFIG_DIR,
       key: null,
       surface: null,

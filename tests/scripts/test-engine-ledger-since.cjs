@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // "What have you decided without me?" and "since you last looked"
-// (workflow-engine/scripts/domain/ledger-since.cjs): `engine ledger since`,
+// (leeway-engine/scripts/domain/ledger-since.cjs): `engine ledger since`,
 // Claude's current calls showing in a unit or on a topic — where each
 // stands, where it was made, and on the map of each question it answers —
 // that no look on this machine has shown, the build's calls among them;
@@ -33,7 +33,7 @@ const {
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));

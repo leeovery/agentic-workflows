@@ -20,8 +20,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const { epicMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
   Sim, sessionLog, send, mappedEpic, menuEntry, handoffEntry, handoff, bridgeTo, arriveAtEpicMenu, epicPick, epicKey, literal,
 } = require('./pipeline-world.cjs');
@@ -200,7 +200,7 @@ describe('pipeline simulation: epic-specification', () => {
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'status=proposed', 'sources.checkout.status=pending']);
     sim.run(['commit', wu, '--state', '-m', `spec(${wu}): propose ${wu}`]);
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
+    handoff(sim, `/leeway-specification-process epic ${wu} ${wu}`);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'sources.checkout.status', 'incorporated']);
     sim.write(`.leeway/${wu}/specification/${wu}/specification.md`, '# Spec — Solo\n');
@@ -220,7 +220,7 @@ describe('pipeline simulation: epic-specification', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
     assert.match(single('content'), new RegExp(`Continuing specification: Solo\\n\\nExisting: ${soloSpec} \\[completed\\]\\n\\nSources re-decided since extraction \\(reconcile\\):\\n {2}• checkout \\[stale\\]\\n`));
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
+    handoff(sim, `/leeway-specification-process epic ${wu} ${wu}`);
   });
 
   it('an epic named `unified` confirms its single-discussion path once, and its grouping of that name starts plainly from the epic menu', () => {
@@ -237,7 +237,7 @@ describe('pipeline simulation: epic-specification', () => {
     // one confirm stands alone, and the epic menu's own start row for the
     // grouping hands off on its pick.
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
+    handoff(sim, `/leeway-specification-process epic ${wu} ${wu}`);
     epicPick(sim, wu, 'start_specification', wu);
   });
 

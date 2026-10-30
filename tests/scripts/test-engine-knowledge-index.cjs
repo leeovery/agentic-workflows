@@ -16,7 +16,7 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
 const { setupFixture, cleanupFixture, statePath, createFile } = require('./discovery-test-utils.cjs');
 const {
   KEYWORD_ONLY, STUB, OPENAI, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt,
@@ -217,7 +217,7 @@ describe('engine knowledge index <file>', () => {
 
     it('no store, where no configuration chose keyword-only and none names a provider', async (t) => {
       configureKnowledge(root, {});
-      const env = { WORKFLOWS_CONFIG_DIR: systemConfigDir(t) };
+      const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t) };
       for (const args of [['index', '.leeway/auth/discussion/auth.md'], ['index']]) {
         const answer = await engineKnowledge(root, args, env);
         assert.strictEqual(answer.code, 1, args.join(' '));
@@ -229,7 +229,7 @@ describe('engine knowledge index <file>', () => {
 
     it('no store, where the provider\'s key does not resolve — never a keyword-only store in its place', async (t) => {
       configureKnowledge(root, {});
-      const env = { WORKFLOWS_CONFIG_DIR: systemConfigDir(t, { 'config.json': JSON.stringify({ knowledge: OPENAI }) }) };
+      const env = { LEEWAY_CONFIG_DIR: systemConfigDir(t, { 'config.json': JSON.stringify({ knowledge: OPENAI }) }) };
       const single = await engineKnowledge(root, ['index', '.leeway/auth/discussion/auth.md'], env);
       assert.strictEqual(single.code, 1);
       assert.match(single.stderr, /no store is created without it/);

@@ -15,10 +15,10 @@ const assert = require('node:assert');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, refuseLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { resolveProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { QuotaError, AuthError, RateLimitError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { resolveProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
+const { QuotaError, AuthError, RateLimitError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
 const {
   boostProblem,
   QUERY_TIMEOUT_MS,
@@ -27,7 +27,7 @@ const {
   querySettings,
   queryStore,
   renderQuery,
-} = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/knowledge/query.cjs');
 
 const DIMS = 128;
 const KEYWORD_ONLY = { provider: null, model: null, dimensions: null };
@@ -709,7 +709,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the openai API key could not be resolved; export OPENAI_API_KEY, or run node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs knowledge setup --key-only\]\n/);
     assert.match(stdout, RESULT);
   });
 
@@ -717,7 +717,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     configure({ ...endpoint.config, model: 'another' });
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(code, 0);
-    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
+    assert.match(stdout, /^\[keyword-only mode — the store was embedded with openai-compatible \(stand-in, 8 dimensions\) and the config names openai-compatible \(another, 8 dimensions\); run node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs knowledge rebuild\]\n/);
     assert.match(stdout, RESULT);
     assert.deepStrictEqual(endpoint.requests, [], 'nothing embedded for a store it cannot compare');
   });

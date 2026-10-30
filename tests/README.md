@@ -14,7 +14,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | `npm run test:cli` | the shell contract suite of the manifest field surface |
 | `npm run test:migrations` | the frozen `test-migration-*.sh` fleet |
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
-| `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
+| `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/leeway-gates*/` |
 
 `package.json` lists the node suites one by one, slowest first by each one's CPU time run alone, so no long file starts last and runs on alone; a new suite goes where its time places it. `test-suite-list.cjs` holds the script to the folder, so a suite left out fails the run rather than never running: a suite the script leaves out or names twice, or a file it names that is no suite, fails it. A suite is any file under `tests/` that takes a test from `node:test`, whatever its name, extension or folder.
 
@@ -116,7 +116,7 @@ A test of replaced behaviour is deleted with that behaviour, in the same change.
 - **A released migration's suite is frozen with it.** The `.sh` fleet (001–046) is frozen and runs under `test:migrations`.
 - **The reshape's migration** runs as directives, each tested against its check, through a small migration harness written when that migration is.
 
-The rules every migration keeps are CLAUDE.md's (Migrations); the module contract is the header of `skills/workflow-migrate/scripts/migrate.cjs`.
+The rules every migration keeps are CLAUDE.md's (Migrations); the module contract is the header of `skills/leeway-migrate/scripts/migrate.cjs`.
 
 ## 10. Conformance suites
 

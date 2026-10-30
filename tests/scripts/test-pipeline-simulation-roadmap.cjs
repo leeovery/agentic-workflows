@@ -20,8 +20,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
-const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
+const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
+const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, carryOn, arrive, handoffEntry, bridgeTo, pickRoute, startKeys, walkToLiveImplementation, literal,
@@ -115,7 +115,7 @@ describe('pipeline simulation: roadmap', () => {
     const roadmapDraft = sim.write('.leeway/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
     const session = carryOn(sim);
-    assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/workflow-roadmap/SKILL.md'));
+    assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/leeway-roadmap/SKILL.md'));
     assert.deepStrictEqual(session.files, [path.join(sim.dir, '.leeway/.roadmap/sessions/session-001.md')],
       'the roadmap carries on from its open session\'s log');
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');

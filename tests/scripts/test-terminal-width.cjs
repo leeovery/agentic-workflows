@@ -15,13 +15,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MODULE = require.resolve('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
+const MODULE = require.resolve('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
 
 /** Fresh module instance with a scripted environment. */
 function loadWith(env) {
   delete require.cache[MODULE];
   const saved = {};
-  for (const key of ['WORKFLOWS_DISPLAY_WIDTH', 'CLAUDE_PID', 'TMUX', 'TMUX_PANE']) {
+  for (const key of ['LEEWAY_DISPLAY_WIDTH', 'CLAUDE_PID', 'TMUX', 'TMUX_PANE']) {
     saved[key] = process.env[key];
     if (env[key] === undefined) delete process.env[key];
     else process.env[key] = env[key];
@@ -38,29 +38,29 @@ function loadWith(env) {
 
 // No CLAUDE_PID, no tmux, and a ppid chain that cannot reach a tty in a
 // spawned test runner — the "nothing answers" environment.
-const BLIND = { WORKFLOWS_DISPLAY_WIDTH: undefined, CLAUDE_PID: undefined, TMUX: undefined, TMUX_PANE: undefined };
+const BLIND = { LEEWAY_DISPLAY_WIDTH: undefined, CLAUDE_PID: undefined, TMUX: undefined, TMUX_PANE: undefined };
 
 describe('terminal width — override', () => {
   it('takes an explicit override verbatim', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '90' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '90' });
     assert.equal(mod.resolveDisplayWidth(), 90);
     restore();
   });
 
   it('clamps an override above the cap', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '400' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '400' });
     assert.equal(mod.resolveDisplayWidth(), mod.CAP);
     restore();
   });
 
   it('clamps an override below the floor', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '5' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '5' });
     assert.equal(mod.resolveDisplayWidth(), mod.MIN);
     restore();
   });
 
   it('ignores a non-numeric override and falls through', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: 'wide' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: 'wide' });
     const resolved = mod.resolveDisplayWidth();
     assert.ok(resolved >= mod.MIN && resolved <= mod.CAP, `resolved ${resolved} out of range`);
     restore();
@@ -68,7 +68,7 @@ describe('terminal width — override', () => {
 
   it('ignores a zero or negative override', () => {
     for (const bad of ['0', '-20']) {
-      const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: bad });
+      const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: bad });
       const resolved = mod.resolveDisplayWidth();
       assert.ok(resolved >= mod.MIN, `override ${bad} should not win`);
       restore();
@@ -131,17 +131,17 @@ describe('terminal width — device reader', () => {
 
 describe('terminal width — memo', () => {
   it('resolves once and reuses the answer', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '80' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '80' });
     assert.equal(mod.displayWidth(), 80);
-    process.env.WORKFLOWS_DISPLAY_WIDTH = '100';
+    process.env.LEEWAY_DISPLAY_WIDTH = '100';
     assert.equal(mod.displayWidth(), 80, 'memo should not re-read the environment');
     restore();
   });
 
   it('re-resolves after a reset', () => {
-    const { mod, restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '80' });
+    const { mod, restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '80' });
     assert.equal(mod.displayWidth(), 80);
-    process.env.WORKFLOWS_DISPLAY_WIDTH = '100';
+    process.env.LEEWAY_DISPLAY_WIDTH = '100';
     mod.resetDisplayWidth();
     assert.equal(mod.displayWidth(), 100);
     restore();
@@ -150,8 +150,8 @@ describe('terminal width — memo', () => {
 
 describe('terminal width — consumers', () => {
   it('trees wrap to the resolved width', () => {
-    const { restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '100' });
-    const renderPath = require.resolve('../../skills/workflow-engine/scripts/kernel/render.cjs');
+    const { restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '100' });
+    const renderPath = require.resolve('../../skills/leeway-engine/scripts/kernel/render.cjs');
     delete require.cache[renderPath];
     const { renderTree } = require(renderPath);
     const long = 'word '.repeat(60).trim();
@@ -165,8 +165,8 @@ describe('terminal width — consumers', () => {
   });
 
   it('a narrower resolved width produces narrower trees', () => {
-    const { restore } = loadWith({ ...BLIND, WORKFLOWS_DISPLAY_WIDTH: '50' });
-    const renderPath = require.resolve('../../skills/workflow-engine/scripts/kernel/render.cjs');
+    const { restore } = loadWith({ ...BLIND, LEEWAY_DISPLAY_WIDTH: '50' });
+    const renderPath = require.resolve('../../skills/leeway-engine/scripts/kernel/render.cjs');
     delete require.cache[renderPath];
     const { renderTree } = require(renderPath);
     const long = 'word '.repeat(60).trim();

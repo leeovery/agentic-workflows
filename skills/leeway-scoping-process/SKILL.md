@@ -1,0 +1,348 @@
+---
+name: leeway-scoping-process
+user-invocable: false
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
+---
+
+# Scoping Process
+
+Act as **expert technical analyst** performing rapid scoping of a mechanical change. Assess scope, write a lightweight specification, and produce 1-2 task files — all in a single pass.
+
+## Purpose in the Workflow
+
+Scope a mechanical change — gather context, write a specification, and produce a plan with 1-2 task files ready for implementation.
+
+## What This Skill Needs
+
+Positional arguments:
+- `$0` — **work_type**: always `quick-fix`.
+- `$1` — **work_unit**: the work unit name. Its manifest `description` summarises the mechanical change.
+- `$2` — **topic**: the change being scoped. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where it is.
+
+The output format is asked for where none is set.
+
+---
+
+## Instructions
+
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
+
+---
+
+## Resuming After Context Refresh
+
+Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+
+1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
+2. **Check what artifacts exist on disk** — spec file, plan file, task files. Their presence reveals which steps completed.
+3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits.
+4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
+
+Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+
+---
+
+## Hard Rules
+
+1. **Maximum 2 tasks** — if the change needs more, it's not a quick-fix. Promote it.
+2. **No acceptance criteria** — mechanical changes are verified by test baselines and completeness checks, not by acceptance criteria.
+3. **No agents** — scoping writes specs and tasks directly, without invoking planning agents or review cycles.
+
+---
+
+## Backlogging
+
+The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
+
+→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+
+---
+
+## Postponing the Topic
+
+The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
+
+→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+
+---
+
+## Cancelling the Topic
+
+The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `scoping`, from any point in the phase.
+
+→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+
+---
+
+## Step 0: Resume Detection
+
+Record where this session is working — the call also labels the tmux session where the user opted in:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} scoping {topic}
+```
+
+Check if a specification already exists:
+
+```bash
+ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && echo "exists" || echo "none"
+```
+
+#### If specification does not exist
+
+→ Proceed to **Step 1**.
+
+#### If specification exists
+
+Read the scoping and plan statuses — the scoping item is registered as scoping concludes, so its status reads empty until then:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.scoping.{topic} status
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
+```
+
+Where the scoping status is `completed`, reopen it — a revisit resumes a finished scoping:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} scoping {topic}
+```
+
+Render the phase note — `Reopening` for a scoping just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.scoping.{topic} --verb {Reopening|Resuming}
+```
+
+**If plan status is `completed` and the scoping status read `completed` or `in-progress`:**
+
+Render the resume menu and emit its section verbatim per its marker:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render resume-gate {work_unit}.scoping.{topic} --variant scoping
+```
+
+**STOP.** Wait for user response.
+
+**If plan status is `completed` and the scoping status read empty:**
+
+The run stopped between registering the plan and registering the scoping — register and complete it:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
+```
+
+→ Proceed to **Step 8**.
+
+**If plan status is not `completed`** (empty or `in-progress`):
+
+The spec exists but the plan is incomplete — an interrupted prior run. Rebuild the context the interrupted run had:
+
+1. Read `.workflows/{work_unit}/specification/{topic}/specification.md` in full — it is the gathered context Step 7 authors tasks from.
+2. Read the specification item's status:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
+   ```
+   If the output is empty (the run crashed between writing the spec file and registering it), register and index it now:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic start {work_unit} specification {topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
+   ```
+   If the `complete` response carries `warnings`, display them but do not block — the artifact is already saved.
+3. Reconcile tasks the interrupted run may already have created in an external backend:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
+   ```
+   If both are set, load the format's **[reading.md](../leeway-planning-process/references/output-formats/{format}/reading.md)** and list the tasks already created under `external_id`. Carry that list into Step 7 — existing tasks are adjusted or completed, never re-authored as duplicates. If either read is empty, nothing was authored — resume cleanly.
+
+→ Proceed to **Step 6** (resume from format selection).
+
+#### If `continue`
+
+Load the artifacts as session context: read the spec (`.workflows/{work_unit}/specification/{topic}/specification.md`) and the plan (`.workflows/{work_unit}/planning/{topic}/planning.md`) in full, then read the planning item once — `format` and `external_id` ride the subtree — and locate and read the task files via the format's **[reading.md](../leeway-planning-process/references/output-formats/{format}/reading.md)**:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+What should change in the spec or plan?
+```
+
+**STOP.** Wait for user response.
+
+Apply the requested edits — the spec and `planning.md` directly, task file content per the format's **[authoring.md](../leeway-planning-process/references/output-formats/{format}/authoring.md)**. Hard rules still hold: maximum 2 tasks, no acceptance criteria. Then:
+
+1. If the spec changed, re-index it (re-completion re-indexes over the same identity):
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} specification {topic}
+   ```
+2. Re-complete scoping:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic complete {work_unit} scoping {topic}
+   ```
+3. Commit each edit under its own scope — the specification, then the plan with its declared storage:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): adjust quick-fix specification" --topic specification/{topic} --sweep
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): adjust plan" --plan {topic}
+   ```
+
+→ Proceed to **Step 8**.
+
+#### If `restart`
+
+Order matters — the plan's cleanup commits while the planning item still exists, so `--plan` resolves the plan's declared storage, and the manifest entries are deleted last.
+
+1. Read the planning item once — `format` and `external_id` ride the subtree:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
+   ```
+2. Load the format's **[authoring.md](../leeway-planning-process/references/output-formats/{format}/authoring.md)**
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
+4. Delete the spec and plan files: `rm -rf .workflows/{work_unit}/specification/{topic}/ .workflows/{work_unit}/planning/{topic}/`
+5. Remove the spec's knowledge-base entry. A failed removal never blocks: tell the user in one line that the next start removes it, and continue:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs knowledge remove --work-unit {work_unit} --phase specification --topic {topic}
+   ```
+6. Commit the plan's cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping — clear the authored plan" --plan {topic}
+   ```
+7. Delete the specification and planning manifest entries — the scoping item stays `in-progress`; the fresh run re-completes it at Write Tasks:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.specification items.{topic}
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
+   ```
+8. Commit what remains — the deleted specification and the two manifest entries. A quick-fix's topic is its work unit, so the work-unit scope is this action's own:
+   ```bash
+   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "scoping({work_unit}): restart scoping"
+   ```
+
+→ Proceed to **Step 1**.
+
+---
+
+## Step 1: Knowledge Usage
+
+Load **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 2**.
+
+---
+
+## Step 2: Gather Context
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Gather Context`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Understanding what needs changing — reading code, asking clarifying questions, and building a picture of the change.
+```
+
+Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
+
+*Knowledge-base nudge — if the change touches an area with prior discussions, investigations, or specs, query the knowledge base while gathering context. A "mechanical change" often has a history. See **[knowledge-usage.md](../leeway-shared/references/knowledge-usage.md)**.*
+
+→ On return, proceed to **Step 3**.
+
+---
+
+## Step 3: Contextual Query
+
+Load **[contextual-query.md](../leeway-shared/references/contextual-query.md)** with work_unit = `{work_unit}` and follow its instructions as written.
+
+→ On return, proceed to **Step 4**.
+
+---
+
+## Step 4: Complexity Check
+
+Load **[complexity-check.md](references/complexity-check.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 5**.
+
+---
+
+## Step 5: Write Specification
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Write Specification`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Writing a lightweight specification for the change. This captures what's changing and why.
+```
+
+Load **[write-specification.md](references/write-specification.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 6**.
+
+---
+
+## Step 6: Select Output Format
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Select Output Format`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Choosing the output format for task files.
+```
+
+Load **[select-format.md](references/select-format.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 7**.
+
+---
+
+## Step 7: Write Tasks
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Write Tasks`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Writing 1-2 task files for the change. Quick-fixes are limited to two tasks maximum.
+```
+
+Load **[write-tasks.md](references/write-tasks.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 8**.
+
+---
+
+## Step 8: Conclude Scoping
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+**`□ Conclude Scoping`**
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Wrapping up. Spec and plan are ready for implementation.
+```
+
+Load **[conclude-scoping.md](references/conclude-scoping.md)** and follow its instructions as written.

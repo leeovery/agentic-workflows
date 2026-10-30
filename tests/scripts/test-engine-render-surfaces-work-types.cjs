@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('render hypothesis-board', () => {

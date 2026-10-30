@@ -16,10 +16,10 @@ const { execFile, spawnSync } = require('child_process');
 const { output } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { menuBlock } = require('../../skills/workflow-engine/scripts/gateway.cjs');
+const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { menuBlock } = require('../../skills/leeway-engine/scripts/gateway.cjs');
 
-const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' };
+const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
 
 /** The GATE payload in a response, held whole against its MENU; null when it carries no menu. @param {string} out */
 function gateOf(out) {
@@ -115,8 +115,8 @@ describe('gate payload — the announce switch', () => {
 
   it('a gateway view says nothing extra unannounced, and the announced bytes differ only by the GATE block', () => {
     seedHeldEpic(dir);
-    const plain = runGateway(dir, 'workflow-continue-epic', ['view', 'v1']);
-    const announced = runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED);
+    const plain = runGateway(dir, 'leeway-continue-epic', ['view', 'v1']);
+    const announced = runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED);
 
     assert.ok(!plain.includes('=== GATE'), plain);
     assert.strictEqual(withoutGate(announced), plain);
@@ -127,8 +127,8 @@ describe('gate payload — the announce switch', () => {
     const plain = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow']);
     for (const value of ['', '0', 'true', 'yes']) {
       const out = output(dir, ['render', 'task-gate', 'auth.implementation.auth-flow'],
-        { env: { WORKFLOWS_GATE_SURFACE: value } });
-      assert.strictEqual(out, plain, `WORKFLOWS_GATE_SURFACE=${value} announced a gate`);
+        { env: { LEEWAY_GATE_SURFACE: value } });
+      assert.strictEqual(out, plain, `LEEWAY_GATE_SURFACE=${value} announced a gate`);
     }
   });
 });
@@ -327,7 +327,7 @@ describe('gate payload — a gateway menu', () => {
   it('a gateway\'s MENU states the gate the gateway names it, and its range row is typed rather than pressable', () => {
     createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
     createFile(dir, '.leeway/.inbox/bugs/2026-03-20--bad-thing.md', '# Bad Thing\n\nContent.');
-    const out = runGateway(dir, 'workflow-start', ['inbox'], ANNOUNCED);
+    const out = runGateway(dir, 'leeway', ['inbox'], ANNOUNCED);
 
     assert.deepStrictEqual(gateOf(out), {
       gate: 'inbox menu',
@@ -344,7 +344,7 @@ describe('gate payload — a gateway menu', () => {
 
   it("the start menu's numbered rows carry its question and their keys", () => {
     createManifest(dir, 'auth', { work_type: 'feature' });
-    const gate = gateOf(runGateway(dir, 'workflow-start', ['view'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway', ['view'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'What would you like to do?');
     assert.deepStrictEqual(gate.options[0],
@@ -354,7 +354,7 @@ describe('gate payload — a gateway menu', () => {
 
   it('a held row states its holder apart from its tail, a recommended row its flag, and neither marker survives into the text', () => {
     seedHeldEpic(dir);
-    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED));
 
     assert.strictEqual(gate.gate, 'epic menu');
     assert.deepStrictEqual(gate.options[0],
@@ -367,7 +367,7 @@ describe('gate payload — a gateway menu', () => {
 
   it('the GATE sits directly above the MENU and after every other section', () => {
     seedHeldEpic(dir);
-    const seen = markers(runGateway(dir, 'workflow-continue-epic', ['view', 'v1'], ANNOUNCED));
+    const seen = markers(runGateway(dir, 'leeway-continue-epic', ['view', 'v1'], ANNOUNCED));
 
     assert.deepStrictEqual(seen.slice(-2), [GATE_MARKER, '=== MENU: epic menu (emit verbatim as markdown (not a code block)) ===']);
     assert.ok(seen.slice(0, -2).every((m) => !m.startsWith('=== GATE') && !m.startsWith('=== MENU')), seen.join('\n'));
@@ -375,7 +375,7 @@ describe('gate payload — a gateway menu', () => {
 
   it('the in-session gate is its own gate — the epic menu it reads its entry from stays out', () => {
     seedHeldEpic(dir);
-    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['in-session-gate', 'v1', '2'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['in-session-gate', 'v1', '2'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed anyway?');
     assert.match(gate.statement, /^"Auth" is open in another session — last active 4m ago\. /);
@@ -388,7 +388,7 @@ describe('gate payload — a gateway menu', () => {
       completed_phases: ['discovery', 'discussion'],
       next_phase: 'specification',
     });
-    const gate = gateOf(runGateway(dir, 'workflow-continue-linear', ['view', 'auth'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-linear', ['view', 'auth'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed?');
     assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for specification.');
@@ -403,7 +403,7 @@ describe('gate payload — a gateway menu', () => {
       },
     });
     createFile(dir, '.leeway/v2/specification/auth-spec/specification.md', '# A');
-    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v2'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['spec-view', 'v2'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'What would you like to do?');
     assert.strictEqual(gate.statement, '');
@@ -431,7 +431,7 @@ describe('gate payload — a gateway menu', () => {
     });
     createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# Done');
     createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
-    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v1'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['spec-view', 'v1'], ANNOUNCED));
     const detailOf = (/** @type {string} */ head) => gate.options.find((/** @type {{head: string}} */ o) => o.head === head).detail;
 
     assert.strictEqual(gate.statement, '');
@@ -445,7 +445,7 @@ describe('gate payload — a gateway menu', () => {
 
 describe('gate payload — every gateway verb', () => {
   const SKILLS = path.resolve(__dirname, '../../skills');
-  const ENGINE_GATEWAY = path.join(SKILLS, 'workflow-engine/scripts/gateway.cjs');
+  const ENGINE_GATEWAY = path.join(SKILLS, 'leeway-engine/scripts/gateway.cjs');
   const SET_ITEM = '.leeway/.inbox/ideas/2026-06-01--user-id.md';
   const BUG_ITEM = '.leeway/.inbox/bugs/2026-06-02--login-timeout.md';
 
@@ -462,7 +462,7 @@ describe('gate payload — every gateway verb', () => {
   // bare call, `fallback` an unmatched one), called over the one world below.
   /** @type {Record<string, Record<string, GatewayCall[]>>} */
   const CALLS = {
-    'workflow-start': {
+    'leeway': {
       index: [ungated()],
       view: [gated('view')],
       inbox: [gated('inbox')],
@@ -474,12 +474,12 @@ describe('gate payload — every gateway verb', () => {
       completed: [gated('completed')],
       fallback: [ungated('checkout')],
     },
-    'workflow-continue-linear': {
+    'leeway-continue-linear': {
       index: [refused()],
       view: [gated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), gated('view', 'logging'), ungated('view', 'nowhere')],
       fallback: [refused('checkout')],
     },
-    'workflow-continue-epic': {
+    'leeway-continue-epic': {
       index: [refused()],
       view: [gated('view', 'v1'), ungated('view', 'nowhere')],
       'completed-menu': [gated('completed-menu', 'v1')],
@@ -494,10 +494,10 @@ describe('gate payload — every gateway verb', () => {
       'in-session-gate': [gated('in-session-gate', 'v1', '2')],
       fallback: [ungated('v1')],
     },
-    'workflow-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
-    'workflow-bridge': { index: [refused()], fallback: [ungated('checkout')] },
-    'workflow-discussion-process': { map: [ungated('map', 'v1', 'auth')] },
-    'workflow-roadmap': {
+    'leeway-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
+    'leeway-bridge': { index: [refused()], fallback: [ungated('checkout')] },
+    'leeway-discussion-process': { map: [ungated('map', 'v1', 'auth')] },
+    'leeway-roadmap': {
       view: [gated('view')],
       'pull-set': [gated('pull-set')],
       proposal: [ungated('proposal', '--file', 'proposed.json')],

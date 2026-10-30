@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A catch-up killed between its steps
-// (workflow-engine/scripts/domain/state-merge-landing.cjs): the landing
+// (leeway-engine/scripts/domain/state-merge-landing.cjs): the landing
 // finished by the next state commit or catch-up, losing nothing — a task
 // verb's setting up among them.
 //
@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { ok, git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));

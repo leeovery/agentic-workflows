@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A question's wordings read as one line (workflow-engine/scripts/domain/
+// A question's wordings read as one line (leeway-engine/scripts/domain/
 // ledger-fold.cjs, through every read and write that names a question): the
 // live wordings of its chain in the ledger's order, a wording set aside
 // dropping out, one whose predecessor is set aside rewording the nearest
@@ -35,7 +35,7 @@ const { ok, refuses, statePath, cleanupFixture } = require('./engine-harness.cjs
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ids, ledgerWorld, ledgerReadHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { shortId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { PRODUCT_FILE } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));

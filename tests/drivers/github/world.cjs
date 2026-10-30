@@ -21,7 +21,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { git, bareRepo, githubOffline, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, mergeBack } = require('../../scripts/landing-world.cjs');
-const { STATE_BRANCH } = require('../../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { STATE_BRANCH } = require('../../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
 
 const REPOSITORY = 'acme/portal';

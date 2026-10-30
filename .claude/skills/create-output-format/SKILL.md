@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Create Output Format
 
-Scaffold a new output format adapter for the workflow-planning-process workflow. Each format adapter is a directory of 5 files, one per concern.
+Scaffold a new output format adapter for the leeway-planning-process workflow. Each format adapter is a directory of 5 files, one per concern.
 
 ---
 
@@ -70,7 +70,7 @@ Read **[references/contract.md](references/contract.md)** — this defines the 5
 Create the directory at:
 
 ```
-skills/workflow-planning-process/references/output-formats/{format-key}/
+skills/leeway-planning-process/references/output-formats/{format-key}/
 ```
 
 → Proceed to **Step 4**.
@@ -102,7 +102,7 @@ For each file:
 
 ## Step 5: Register the Format
 
-`skills/workflow-planning-process/references/output-formats.md` writes the format offer as a JSON payload, which the engine renders as a numbered menu in payload order; the picked row's `name` becomes the chosen format. Register the new format by appending an entry to that payload's `formats` array, folding the format's identity into the label:
+`skills/leeway-planning-process/references/output-formats.md` writes the format offer as a JSON payload, which the engine renders as a numbered menu in payload order; the picked row's `name` becomes the chosen format. Register the new format by appending an entry to that payload's `formats` array, folding the format's identity into the label:
 
 ```json
 {"name": "{format-key}", "label": "{Format Name} — {one-line description}; {requirements, or \"no external tools\"}. Best for {ideal use cases}."}

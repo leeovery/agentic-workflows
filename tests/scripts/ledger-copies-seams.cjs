@@ -12,7 +12,7 @@ require('./hermetic-env.cjs');
 
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const manifestIo = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const projection = require(path.join(SCRIPTS, 'domain/projections/ledger-copy.cjs'));
 /** @type {{claimed: ((release: () => void) => () => void)|null, folded: (() => void)|null}} */

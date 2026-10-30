@@ -6,7 +6,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { startDetail } = require('../../skills/workflow-engine/scripts/domain/start.cjs');
+const { startDetail } = require('../../skills/leeway-engine/scripts/domain/start.cjs');
 const {
   startOverview,
   startMenu,
@@ -22,19 +22,19 @@ const {
   absorbTargetMenu,
   planTopicsPick,
   completedView,
-} = require('../../skills/workflow-engine/scripts/domain/projections/start.cjs');
-const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { combinedInbox, workingSetDetail } = require('../../skills/workflow-engine/scripts/domain/inbox-set.cjs');
-const { manageDetail } = require('../../skills/workflow-engine/scripts/domain/workunit-manage.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/projections/start.cjs');
+const { drawLabel } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { combinedInbox, workingSetDetail } = require('../../skills/leeway-engine/scripts/domain/inbox-set.cjs');
+const { manageDetail } = require('../../skills/leeway-engine/scripts/domain/workunit-manage.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
 
-const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
+const renderSurface = auditingRender(require('../../skills/leeway-engine/scripts/domain/render.cjs').renderSurface);
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
 
-// Golden tests: byte-exact expected strings for the workflow-start overview
+// Golden tests: byte-exact expected strings for the leeway overview
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
 
@@ -250,7 +250,7 @@ describe('start projections: menu', () => {
     assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered));
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
-    assert.strictEqual(entry.route, '/workflow-continue-linear caching');
+    assert.strictEqual(entry.route, '/leeway-continue-linear caching');
   });
 
   it('shows v with cancelled-only work units', () => {
@@ -266,12 +266,12 @@ describe('start projections: menu', () => {
     assert.deepStrictEqual(
       keys.map((k) => [k.key, k.action, k.work_unit || null, k.route, k.pre_seed || null]),
       [
-        ['1', 'continue_work_unit', 'auth-flow', '/workflow-continue-linear auth-flow', null],
-        ['2', 'continue_work_unit', 'dark-mode', '/workflow-continue-linear dark-mode', null],
-        ['3', 'continue_work_unit', 'login-crash', '/workflow-continue-linear login-crash', null],
-        ['4', 'continue_work_unit', 'rename-api', '/workflow-continue-linear rename-api', null],
-        ['5', 'continue_work_unit', 'caching', '/workflow-continue-linear caching', null],
-        ['6', 'continue_work_unit', 'quiz-competition-v1', '/workflow-continue-epic quiz-competition-v1', null],
+        ['1', 'continue_work_unit', 'auth-flow', '/leeway-continue-linear auth-flow', null],
+        ['2', 'continue_work_unit', 'dark-mode', '/leeway-continue-linear dark-mode', null],
+        ['3', 'continue_work_unit', 'login-crash', '/leeway-continue-linear login-crash', null],
+        ['4', 'continue_work_unit', 'rename-api', '/leeway-continue-linear rename-api', null],
+        ['5', 'continue_work_unit', 'caching', '/leeway-continue-linear caching', null],
+        ['6', 'continue_work_unit', 'quiz-competition-v1', '/leeway-continue-epic quiz-competition-v1', null],
         ['s', 'start_new', null, null, 'none'],
         ['f', 'start_new', null, null, 'feature'],
         ['e', 'start_new', null, null, 'epic'],
@@ -281,7 +281,7 @@ describe('start projections: menu', () => {
         ['i', 'view_inbox', null, null, null],
         ['v', 'view_completed', null, null, null],
         ['m', 'manage', null, null, null],
-        ['h', 'open_help', null, '/workflow-help', null],
+        ['h', 'open_help', null, '/leeway-help', null],
       ]
     );
     assert.deepStrictEqual(
@@ -716,7 +716,7 @@ describe('start projections: baseline rows', () => {
     const row = m.keys.find((k) => k.action === 'open_baseline');
     assert.ok(row, 'in-progress renders the resume row');
     assert.strictEqual(row.key, 'a');
-    assert.strictEqual(row.route, '/workflow-baseline');
+    assert.strictEqual(row.route, '/leeway-baseline');
     assert.strictEqual(drawLabel(row.label), 'Resume the baseline interview — *2 areas remaining*');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('a') < keys.indexOf('s'), 'the resume row precedes the start options');
@@ -800,7 +800,7 @@ describe('start projections: roadmap rows', () => {
     const row = m.keys.find((k) => k.action === 'open_roadmap');
     assert.ok(row, 'the layer renders its row');
     assert.strictEqual(row.key, 'r');
-    assert.strictEqual(row.route, '/workflow-roadmap open');
+    assert.strictEqual(row.route, '/leeway-roadmap open');
     assert.strictEqual(drawLabel(row.label), 'Open the product roadmap');
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
@@ -811,7 +811,7 @@ describe('start projections: roadmap rows', () => {
   });
 
   it('both menus carry the h/help row unconditionally — nothing about the project hides the teaching', () => {
-    const HELP = { key: 'h', word: 'help', action: 'open_help', route: '/workflow-help', label: 'How the workflows work' };
+    const HELP = { key: 'h', word: 'help', action: 'open_help', route: '/leeway-help', label: 'How the workflows work' };
     const helpRow = (m) => m.keys.find((k) => k.action === 'open_help');
 
     // A bare project, and one carrying every conditional row there is.
@@ -1131,7 +1131,7 @@ describe('start projections: completed & cancelled', () => {
   });
 
   it('the action menu renders over the selected unit, and refuses one the list never holds', () => {
-    const { renderSurface } = require('../../skills/workflow-engine/scripts/domain/render.cjs');
+    const { renderSurface } = require('../../skills/leeway-engine/scripts/domain/render.cjs');
     closedFixture(dir);
 
     assert.strictEqual(renderSurface(dir, 'completed-actions', { dotpath: 'done-feat' }), [

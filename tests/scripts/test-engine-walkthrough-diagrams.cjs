@@ -21,10 +21,10 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
-const SCRIPTS = path.join(ROOT, 'skills', 'workflow-engine', 'scripts');
+const SCRIPTS = path.join(ROOT, 'skills', 'leeway-engine', 'scripts');
 const DIAGRAMS = path.join(SCRIPTS, 'domain', 'projections', 'walkthrough-diagrams.cjs');
 const WALKTHROUGH = path.join(SCRIPTS, 'domain', 'projections', 'walkthrough.cjs');
-const SCREENS_DIR = path.join(ROOT, 'skills', 'workflow-engine', 'content', 'walkthrough', 'screens');
+const SCREENS_DIR = path.join(ROOT, 'skills', 'leeway-engine', 'content', 'walkthrough', 'screens');
 
 const {
   DIAGRAM_KINDS, SAMPLE_SURFACES, FIXTURES_DIR,
@@ -392,7 +392,7 @@ describe('walkthrough sample surfaces', () => {
         + `for(const s of ${JSON.stringify(SAMPLE_SURFACES)})process.stdout.write(d.sampleDiagram(s)+"\\n");`;
       return execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
-        env: { ...process.env, ...HERMETIC, WORKFLOWS_DISPLAY_WIDTH: String(width) },
+        env: { ...process.env, ...HERMETIC, LEEWAY_DISPLAY_WIDTH: String(width) },
       });
     };
     fits('samples', at(CAP), CAP);
@@ -498,7 +498,7 @@ describe('walkthrough screens', () => {
       "# **`■ How the workflows work · 2 of 8 · Where everything starts`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Everything begins at `/workflow-start`, and everything resumes there. It opens on an overview of every piece of work in flight, grouped by kind, with where each one has got to and what it is waiting on. The reason it is one command rather than several is that the system keeps track of where each piece of work is, not you: there is no phase to remember and no separate command to continue anything. The menu beneath the overview offers a key for each piece of work and says what it recommends.",
+      "Everything begins at `/leeway`, and everything resumes there. It opens on an overview of every piece of work in flight, grouped by kind, with where each one has got to and what it is waiting on. The reason it is one command rather than several is that the system keeps track of where each piece of work is, not you: there is no phase to remember and no separate command to continue anything. The menu beneath the overview offers a key for each piece of work and says what it recommends.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "Features",
@@ -529,7 +529,7 @@ describe('walkthrough screens', () => {
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "Starting something new is one row. If you already know what it is, say so: `f` for a feature, `b` for a bugfix, and so on. If you don't, `s` takes a description in your own words and the discovery phase settles the kind of work from it. Either way, what happens next is a short exchange about what the work actually is, which is the subject of the next screen.",
       "",
-      "Inside a piece of work the rhythm is the same everywhere. The system carries on with the work until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, go back, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, which is why leaving part-way costs nothing: the next `/workflow-start` shows the overview again, with that piece of work exactly where you left it.",
+      "Inside a piece of work the rhythm is the same everywhere. The system carries on with the work until it reaches a decision that is genuinely yours, then it stops at a gate, shows a menu, and waits. The menu beneath this screen is one. You can answer with a key, in plain words, go back, or close the terminal — where the Claude Code mod runs, a click on a row picks it and a second click sends it. Everything a session produces is committed to git as it goes, which is why leaving part-way costs nothing: the next `/leeway` shows the overview again, with that piece of work exactly where you left it.",
       "",
       "=== MENU: walkthrough screen (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       "· · · · · · · · · · · ·",
@@ -738,7 +738,7 @@ describe('walkthrough screens', () => {
       "# **`■ How the workflows work · 8 of 8 · Living with it`**",
       "",
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
-      "Once the product exists, the everyday rhythm is the same command and the same habit: `/workflow-start`, describe the feature or the bug or the small fix, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox to be picked up from the start menu whenever you are ready. Say where a thought belongs on the roadmap and it is parked there instead.",
+      "Once the product exists, the everyday rhythm is the same command and the same habit: `/leeway`, describe the feature or the bug or the small fix, and the work takes the route its kind calls for. Thoughts that arrive at the wrong moment don't have to derail anything. Say \"log that as an idea\", or as a bug, or as a quick-fix, and it lands in the inbox to be picked up from the start menu whenever you are ready. Say where a thought belongs on the roadmap and it is parked there instead.",
       "",
       "Nor is work locked to the shape it began with, because that shape was a reading made early, before the work had shown its size. A feature that outgrows itself becomes an epic in place, a stray feature can be absorbed into one as a topic, topics can be cancelled and brought back, and any finished phase can be reopened. When one is, everything built on it is marked as having its input moved, and nothing downstream is recommended again until that phase has taken the change into account, so nothing stale is trusted by mistake.",
       "",
@@ -802,7 +802,7 @@ describe('walkthrough screens', () => {
     // what emits as a code block has columns to hold.
     const at = (width) => {
       const script = `const w=require(${JSON.stringify(WALKTHROUGH)});`
-        + 'const n=Number(process.env.WORKFLOWS_DISPLAY_WIDTH),o=[];'
+        + 'const n=Number(process.env.LEEWAY_DISPLAY_WIDTH),o=[];'
         + "for(let i=1;i<=w.loadScreen('1').total;i+=1){let d=false;"
         + "for(const l of w.walkthroughScreen(w.loadScreen(String(i)),'first-run',false).split('\\n')){"
         + "if(l.startsWith('=== ')){d=l.startsWith('=== DISPLAY: walkthrough diagram');continue;}"
@@ -810,7 +810,7 @@ describe('walkthrough screens', () => {
         + 'process.stdout.write(JSON.stringify(o));';
       return JSON.parse(execFileSync(process.execPath, ['-e', script], {
         encoding: 'utf8',
-        env: { ...process.env, ...HERMETIC, WORKFLOWS_DISPLAY_WIDTH: String(width) },
+        env: { ...process.env, ...HERMETIC, LEEWAY_DISPLAY_WIDTH: String(width) },
       }));
     };
     assert.deepStrictEqual(at(CAP), []);

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The migrations record and the manifests through a merge where both sides
-// moved (workflow-engine/scripts/domain/state-merge-paths.cjs): a migration
+// moved (leeway-engine/scripts/domain/state-merge-paths.cjs): a migration
 // kept once, a field each side changed kept from each, and a field both
 // changed differently stopping the merge with nothing written until the
 // person picks.
@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, tip, remoteTip, layout, commitOnState, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);

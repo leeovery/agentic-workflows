@@ -37,7 +37,7 @@ describe('pipeline simulation: quick-fix', () => {
 
     // Scoping (write-tasks): the spec commits BEFORE the baseline is captured,
     // so spec_commit always names a commit containing the specification.
-    handoff(sim, `/workflow-scoping-process quick-fix ${wu}`);
+    handoff(sim, `/leeway-scoping-process quick-fix ${wu}`);
     handoffEntry(sim, wu, 'scoping', wu);
     assert.match(sim.render(['scoping-questions', wu, '--open', 'where,exclusions'], { expect: 'content' }),
       /Scoping: Typo\n\nA few questions to scope this change:\n\n- Where in the codebase\?/);
@@ -122,7 +122,7 @@ describe('pipeline simulation: quick-fix', () => {
       { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
-    handoff(sim, `/workflow-discussion-process feature ${wu}`);
+    handoff(sim, `/leeway-discussion-process feature ${wu}`);
 
     // The promoted feature runs its first phase normally.
     sim.run(['topic', 'start', wu, 'discussion', wu]);

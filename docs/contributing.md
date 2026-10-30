@@ -8,7 +8,7 @@ Start by reading `CLAUDE.md` at the repository root — the standing rules
 for working on this repository that are easy to violate by accident, a
 short map of the system, and the documents that own each part. How the
 system behaves lives in the skills themselves, the engine's command
-reference (`skills/workflow-engine/references/commands.md`), the module
+reference (`skills/leeway-engine/references/commands.md`), the module
 header comments, and this book.
 
 ## Getting set up
@@ -35,7 +35,7 @@ is to run them before every commit rather than at the end of a branch.
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
-| `npm run test:mod` | Both gate mods' suites (`workflow-gates` and `workflow-gates-rows`) under `claude plugin test` — owed for any change under `skills/workflow-gates*/` | the mods' own |
+| `npm run test:mod` | Both gate mods' suites (`leeway-gates` and `leeway-gates-rows`) under `claude plugin test` — owed for any change under `skills/leeway-gates*/` | the mods' own |
 
 What each layer holds, and how a test in it is written, is `tests/README.md`.
 
@@ -48,14 +48,14 @@ check `$?` instead. This has produced a falsely-green report before.
 ## After changing the knowledge base
 
 The knowledge base is engine code — its mechanism in
-`skills/workflow-engine/scripts/kernel/knowledge/`, its workflow side in
-`skills/workflow-engine/scripts/domain/knowledge/`. The kernel holds the
+`skills/leeway-engine/scripts/kernel/knowledge/`, its workflow side in
+`skills/leeway-engine/scripts/domain/knowledge/`. The kernel holds the
 store's file format, the tokenizer and stemmer, ranking, chunking,
 excerpts and outlines, the embedding providers and the config; the domain
 side holds artifact identity against the manifests, indexing, the vector
 fill, query and the passages it prints, status, decay, setup, and
 `commands.cjs`, the `engine knowledge` door; the per-phase chunking
-configs sit in `skills/workflow-engine/content/knowledge/chunking/`. Each
+configs sit in `skills/leeway-engine/content/knowledge/chunking/`. Each
 module's header states its contract. The modules take no dependencies:
 Node's built-ins alone, none newer than Node 18.
 
@@ -69,14 +69,14 @@ node tests/scripts/knowledge-eval.cjs --pin
 ## Writing a migration
 
 Migrations bring an existing project's `.workflows/` forward to the
-current design; `engine boot` runs them at `/workflow-start`. The rules
+current design; `engine boot` runs them at `/leeway`. The rules
 every migration keeps are CLAUDE.md's (Migrations). The orchestrator's
-header (`skills/workflow-migrate/scripts/migrate.cjs`) states the module
+header (`skills/leeway-migrate/scripts/migrate.cjs`) states the module
 contract — `id`, `description`, `run`, the report callbacks, the optional
 verification addendum and notice.
 
 - A new migration is
-  `skills/workflow-migrate/scripts/migrations/NNN-description.cjs`, the
+  `skills/leeway-migrate/scripts/migrations/NNN-description.cjs`, the
   next number after the highest. The `*.sh` files are the frozen fleet:
   nothing new is written in bash.
 - Migration 066, which edits the user's own Claude Code settings, is the
@@ -143,7 +143,7 @@ pass cuts what that model no longer needs. Beyond the prose, the pass
 re-weighs each item below, each held as it is for today's model:
 
 - the brief templates in the engine's content folder
-  (`skills/workflow-engine/content/briefs/`);
+  (`skills/leeway-engine/content/briefs/`);
 - the checklist items held for the model: a topic's close's "every
   decision in the conversation has an entry", and the closing pass's
   second reader;

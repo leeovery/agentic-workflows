@@ -52,16 +52,16 @@ const {
   statePath, stateRelative, layout, writeState, readState, readManifest, createFile,
 } = require('./discovery-test-utils.cjs');
 const { FROZEN_MS, FROZEN_AT, withFrozenClock } = require('./frozen-clock.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
-const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { trustLogPath } = require('../../skills/workflow-engine/scripts/domain/trust-log.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { findStateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
-} = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+} = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
-const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
+const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
 
 /**
  * @typedef {object} CallOptions
@@ -77,7 +77,7 @@ const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine
  * @param {string} [enginePath]
  */
 function harness(enginePath = ENGINE) {
-  /** @type {typeof import('../../skills/workflow-engine/scripts/engine.cjs')} */
+  /** @type {typeof import('../../skills/leeway-engine/scripts/engine.cjs')} */
   const engine = require(enginePath);
 
   /**
@@ -220,7 +220,7 @@ function stateGit(dir, args) {
  * @returns {Record<string, unknown>[]}
  */
 function ledgerEntries(root, notes = []) {
-  const { withLedger } = require('../../skills/workflow-engine/scripts/domain/ledger.cjs');
+  const { withLedger } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
   return withLedger(root, notes, (ledger) => [...ledger.entries()].map(({ event }) => event));
 }
 
@@ -815,7 +815,7 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 
 // The workflows' own hooks, as boot installs them in a project's
 // `.claude/settings.json`.
-const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
 /** A hook running an engine verb. @param {string} verb */
 const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
 /** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
@@ -853,9 +853,9 @@ let stub = null;
 function stubEngine() {
   if (stub !== null) return stub;
   const skills = templateFolder('engine-skills-');
-  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'workflow-engine'), { recursive: true });
-  createFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  const at = path.join(skills, 'workflow-engine/scripts/engine.cjs');
+  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'leeway-engine'), { recursive: true });
+  createFile(skills, 'leeway-migrate/scripts/migrate.cjs', STUB_MIGRATE);
+  const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
   stub = { ...harness(at), path: at };
   return stub;
 }

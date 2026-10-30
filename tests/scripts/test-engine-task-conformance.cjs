@@ -34,8 +34,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { STATE_DIR_NAME, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
-const { listDrivers, needsRefusal } = require('../../skills/workflow-engine/scripts/domain/drivers.cjs');
-const { phaseName, unitName, endedInTracker, FOREIGN_TASK } = require('../../skills/workflow-engine/scripts/domain/task-id.cjs');
+const { listDrivers, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { phaseName, unitName, endedInTracker, FOREIGN_TASK } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
 
 const UNIT = 'pay';
 const SIDES = path.join(__dirname, '..', 'drivers');

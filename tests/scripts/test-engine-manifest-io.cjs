@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel manifest IO (workflow-engine/scripts/kernel/manifest-io.cjs) and the
+// Kernel manifest IO (leeway-engine/scripts/kernel/manifest-io.cjs) and the
 // engine's lock discipline over it: one read/parse, one atomic-write
 // serialisation, one lock protocol for every manifest writer.
 //
@@ -27,10 +27,10 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
-const PROCESS_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/process.cjs');
+const io = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
+const PROCESS_PATH = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/process.cjs');
 const { PS_TIMEOUT_MS, processStartTime } = require(PROCESS_PATH);
-const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
+const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/leeway-engine/scripts/engine.cjs');
 
 const {
   ok, childLimits, stateGit, commitAll, cleanupFixture, lockAttempts, contend, withEnv, setupGitFixture, statePath, layout, createFile, writeState, readManifest, STATE_DIR_NAME,
@@ -71,7 +71,7 @@ function whilePsFails(ps, fn) {
   return withEnv({ PATH: ps.path }, fn);
 }
 
-const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+const IO_PATH = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
 
 /** The kernel, loaded in a contender. */
 const IO = `const io = require(${JSON.stringify(IO_PATH)});`;
@@ -378,7 +378,7 @@ describe('the claim — one holder at a time, never waited on', () => {
   });
 
   it('gives `ps` PS_TIMEOUT_MS to answer an owner\'s start time, never longer', (t) => {
-    const limits = childLimits(t, PROCESS_PATH, (/** @type {typeof import('../../skills/workflow-engine/scripts/kernel/process.cjs')} */ fresh) => {
+    const limits = childLimits(t, PROCESS_PATH, (/** @type {typeof import('../../skills/leeway-engine/scripts/kernel/process.cjs')} */ fresh) => {
       fresh.ownerAlive({ pid: process.pid, pid_start: 'a process before this one' });
     });
 
@@ -583,7 +583,7 @@ const EXEMPT_CALLS = [
   ['conversation', 'position', 'sess-1'],
   ['code', 'status'],
   ['render', 'signpost', 'Hello'],
-  ['handoff', 'workflow-continue-epic', 'payments'],
+  ['handoff', 'leeway-continue-epic', 'payments'],
   ['topic', 'mailbox', 'payments', 'research', 'auth-flow'],
   ['topic', 'incorporations', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
@@ -756,7 +756,7 @@ describe('engine project-manifest writes take the writer lock', () => {
 
 describe('field surface and transactions stay one implementation', () => {
   it('the field surface requires the kernel manifest-io module — no local lock or write copies', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/fields.cjs'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/fields.cjs'), 'utf8');
     assert.ok(src.includes("require('../kernel/manifest-io.cjs')"),
       'fields must consume the kernel manifest IO');
     assert.ok(!src.includes('openSync'), 'no local lock implementation in the field surface');
@@ -765,7 +765,7 @@ describe('field surface and transactions stay one implementation', () => {
   });
 
   it('the engine kernel façade requires the sibling manifest-io module — no local IO copy', () => {
-    const src = fs.readFileSync(path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest.cjs'), 'utf8');
+    const src = fs.readFileSync(path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/manifest.cjs'), 'utf8');
     assert.ok(src.includes("require('./manifest-io.cjs')"),
       'engine kernel must consume the sibling manifest IO');
     assert.ok(!src.includes('readFileSync'), 'no local read implementation in the kernel');

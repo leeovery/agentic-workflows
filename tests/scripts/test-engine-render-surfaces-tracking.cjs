@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS, CONTINUE_CLAUSE, bulletRow } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, CONTINUE_CLAUSE, bulletRow } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, unwrap, setup, teardown, writeManifest } = require('./render-surfaces-world.cjs');
 
 describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {

@@ -42,7 +42,7 @@ A phase skill holds five things:
 - **Its goal** — what the phase is for, in a sentence or two.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
-- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/workflow-engine/references/commands.md`.
+- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/leeway-engine/references/commands.md`.
 - **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none. Two types move them:
   - **A feature's** discussion closes into its spec with no gate, once nothing of the person's is open and the closing pass has run; specification then works decided and ready to build together, on one screen.
   - **A quick-fix's** finish is the close of its own session, and finish's checklist runs there; it reaches the review phase only when the person asks.
@@ -81,7 +81,7 @@ A gate that was waiting was set aside, and the framework says how it comes back;
 ---
 name: {skill}
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
 # {Phase}
@@ -94,7 +94,7 @@ allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
 
 ## Instructions
 
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
 ## Done When
 
@@ -177,7 +177,7 @@ Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, d
 - every skill reference or engine script it names, written as installed, from the project root (`.claude/skills/…`); a brief template that names one does the same;
 - its model and effort, fixed in its frontmatter: Opus at medium until a measurement says otherwise, and investigation's root-cause validator at extra-high. Never chosen at dispatch, and never raised by a task's size.
 
-**A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/workflow-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
+**A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/leeway-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
 **The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
@@ -202,7 +202,7 @@ Nothing hands off inside a build, a quick-fix or a topic. An experiment's spawn 
 **Claude's own words:**
 - **The conversation**, in the framework's voice and altitude: product first, code as evidence beneath it.
 - **A line made only of values the conversation holds** — a name it was passed, a count it tallied, a path the layout fixes. It is said inline, never fenced: its wording in a code span where the wording is fixed (``Say `Phase {N} merged.` ``), or `In your own words, …` where it is judgment.
-- **A report or summary Claude composes**, as markdown, in the register of `skills/workflow-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
+- **A report or summary Claude composes**, as markdown, in the register of `skills/leeway-shared/references/product-lens.md`: what the person would see first, `file:line` references as anchors. A `t/technical` row retells it from the code's side (`technical-lens.md`).
 - **A code block Claude writes itself** — a diagram, a sample — which names its language on the fence, `text` for plain.
 
 **The engine's** is everything with a fixed shape or read from state: menus, gates, raises, lists, trees, worklists, a marker naming anything that varies, blockers. A skill authors no display block: anything that varies is the engine's, and a fixed line is Claude's, said inline. The one exception is the banner, which stays in the start skill's prose because the release writes the version into it (`.mint.toml`). Judgment content inside an engine display reaches it as a payload file; a fact only the session holds, as a flag.
@@ -234,7 +234,7 @@ Every screen the engine draws keeps to the existing design system; a new screen 
 
 ## Files
 
-The capture skills (`workflow-log-*`) write to the inbox and nothing else. They are not workflow skills, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
+The capture skills (`leeway-log-*`) write to the inbox and nothing else. They are not workflow skills, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
 
 ### Frontmatter
 
@@ -258,7 +258,7 @@ A skill that only hands the work on carries this blockquote, byte for byte (lint
 The framework holds what is true in every conversation. It loads once per conversation, at the head of the skill the conversation opens on — the person's way in, or a skill a handoff lands on (`OPENING_SKILLS` in `domain/handoff.cjs`). Each of those opens its `## Instructions` section with this line and nothing else:
 
 ```markdown
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
+Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 ```
 
 An opening skill met later in a conversation — without the mod, a handoff invokes the next skill in the same one — carries on from the load already made. A skill only ever opened in place carries neither the section nor the load (lint check 27). `framework.md` only composes the shared references every conversation holds. A rule universal to every conversation joins that list; a rule only some phases use loads from those phases. A skill never restates a framework rule: a second copy is a second source of truth.
@@ -277,6 +277,6 @@ A skill splits a part into a reference when the part is needed only at a moment 
   ---
   ```
 
-  A reference loaded by another reference names that file instead. A shared reference, under `skills/workflow-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
+  A reference loaded by another reference names that file instead. A shared reference, under `skills/leeway-shared/references/`, says `*Shared reference. Loaded by {callers}.*`.
 - **Loaded** by one line, the link bold and resolving (lint check 7): `Load **[name.md](references/name.md)** and follow its instructions as written.` What it needs from the caller is named in the load line — ``… with topic = `{topic}`.`` — and is already in context.
 - **Deferring to the owner.** A reference that needs another skill's mechanic invokes that skill or loads its reference, carrying only what the caller knows. It never restates the owner's paths, naming or format. Where two files say the same thing, delete one rather than keep them aligned.

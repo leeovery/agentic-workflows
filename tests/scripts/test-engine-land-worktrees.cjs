@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Linked worktrees under the `land` verbs (workflow-engine/scripts/domain/
+// Linked worktrees under the `land` verbs (leeway-engine/scripts/domain/
 // landing-git.cjs, through the local driver's merges): a branch a linked
 // worktree has out moves only as the main checkout's would, a rebase stopped
 // there holding the branches it rewrites, and a worktree whose folder is

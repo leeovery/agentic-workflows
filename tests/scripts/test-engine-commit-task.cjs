@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The commit door's task (workflow-engine/scripts/domain/commit-task.cjs,
+// The commit door's task (leeway-engine/scripts/domain/commit-task.cjs,
 // with environment.cjs, and `commit --paths … --task` in engine.cjs): a
 // code commit lands only for the task in flight in the calling conversation,
 // its message Claude's with the trailer naming the task, joining the
@@ -36,7 +36,7 @@ const BUILDING = 'commit-task-building';
 const ELSEWHERE = 'commit-task-elsewhere';
 const CLEARED = 'commit-task-cleared';
 const REFUNDING = 'commit-task-refunding';
-const CONFIG = /** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 const MESSAGE = 'feat(pay): take a card';
 const TASK = [
   '# Take a card', '', '## Type', 'feat', '', '## Problem', 'A card cannot be taken.', '', '## Solution', 'Add the card form.', '',
@@ -202,7 +202,7 @@ describe('commit --task: the project\'s checks (6.S9)', () => {
   });
 
   it('holds no lock while the checks run: a check takes the writer lock and the commit lock, and gives them back', () => {
-    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'workflows-commit.lock')];
+    const locks = [statePath(dir, '.lock'), path.join(dir, '.git', 'leeway-commit.lock')];
     setEnvironment(dir, { run: { tests: `set -C; ${locks.map((lock) => `: > "${lock}" && rm "${lock}" && `).join('')}echo free > "${markerOf(dir)}"` } });
 
     assert.deepStrictEqual(ok(dir, commitArgs(), as(BUILDING)).checks, [{ name: 'tests', exit: 0 }]);

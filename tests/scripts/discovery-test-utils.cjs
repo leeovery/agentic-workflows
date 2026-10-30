@@ -23,11 +23,11 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 const { beforeEach, afterEach } = require('node:test');
 
-const { createState, repairStateWorktree } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
-const stateRoot = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
-const { WRITER_LOCK } = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
-const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/ledger-events.cjs');
-const { KNOWLEDGE_DIR } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { createState, repairStateWorktree } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const stateRoot = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+const { WRITER_LOCK } = require('../../skills/leeway-engine/scripts/kernel/manifest-io.cjs');
+const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
+const { KNOWLEDGE_DIR } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 
 const { STATE_DIR_NAME } = stateRoot;
 

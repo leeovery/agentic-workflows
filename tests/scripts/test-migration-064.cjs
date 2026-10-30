@@ -19,7 +19,7 @@ const os = require('os');
 const path = require('path');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/064-untrack-knowledge-store.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/064-untrack-knowledge-store.cjs');
 
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);

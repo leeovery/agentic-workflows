@@ -53,7 +53,7 @@ afterEach(() => {
 
 describe('prose handoff announcement', () => {
   it('announces the handoff on a walker command run in a world, keeping the rest of the input', () => {
-    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs manifest get pay status`;
+    const command = `cd ${world} && node .claude/skills/leeway-engine/scripts/engine.cjs manifest get pay status`;
     const out = fire(bash(command));
     assert.deepStrictEqual(out, {
       hookSpecificOutput: {
@@ -64,7 +64,7 @@ describe('prose handoff announcement', () => {
   });
 
   it('takes a handoff call as the mod does — its output through the cut', () => {
-    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-review-process feature pay`;
+    const command = `cd ${world} && node .claude/skills/leeway-engine/scripts/engine.cjs handoff leeway-review-process feature pay`;
     const out = fire(bash(command)).hookSpecificOutput.updatedInput.command;
     assert.strictEqual(out, announced(command));
     assert.notStrictEqual(out, `${ANNOUNCEMENT}${command}`, 'a handoff call is more than announced');
@@ -104,7 +104,7 @@ describe('prose handoff announcement', () => {
 
   it('gives the engine the announcement it answers `mod` to, and cuts the HANDOFF section from what comes back', () => {
     fs.mkdirSync(path.join(world, '.workflows'));
-    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff workflow-baseline && echo after`));
+    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff leeway-baseline && echo after`));
     // The walker's commands run in the developer's shell — bash or zsh.
     const shells = ['bash', 'zsh'].filter((shell) => spawnSync(shell, ['-c', 'true']).status === 0);
     for (const shell of shells) {
@@ -120,14 +120,14 @@ describe('prose handoff announcement', () => {
 
   it('keeps a refused handoff\'s exit status and its error through the cut', () => {
     fs.mkdirSync(path.join(world, '.workflows'));
-    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff workflow-nowhere`));
+    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff leeway-nowhere`));
     const run = spawnSync('bash', ['-c', out.hookSpecificOutput.updatedInput.command], { encoding: 'utf8' });
     assert.strictEqual(run.status, 1);
-    assert.match(run.stderr, /workflow-nowhere\\" is not a handoff target/);
+    assert.match(run.stderr, /leeway-nowhere\\" is not a handoff target/);
   });
 
   it('takes the stand-in off for the record, and nothing else', () => {
-    const handoff = 'cd x && node engine.cjs handoff workflow-baseline';
+    const handoff = 'cd x && node engine.cjs handoff leeway-baseline';
     assert.strictEqual(unannounced(`${ANNOUNCEMENT}cd x && ls`), 'cd x && ls');
     assert.strictEqual(unannounced(announced(handoff)), handoff);
     assert.strictEqual(unannounced('cd x && ls'), 'cd x && ls');

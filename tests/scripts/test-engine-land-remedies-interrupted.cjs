@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A remedy of the local landing driver (workflow-engine/scripts/domain/
+// A remedy of the local landing driver (leeway-engine/scripts/domain/
 // landing-git.cjs, `remedy`) taken again after it was cut short, or met with
 // what an earlier one left: the branch's keep reused where it is kept
 // already, and made under a fresh name where its name holds another commit;

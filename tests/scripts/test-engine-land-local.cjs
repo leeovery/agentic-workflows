@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver's stacks (workflow-engine/scripts/drivers/landing/
+// The local landing driver's stacks (leeway-engine/scripts/drivers/landing/
 // local/driver.cjs), beyond what every driver does — the landing conformance
 // suite's: each phase's stack read off its branch, and merged by one rule,
 // its tasks' trailers on the default branch; the work a task is built on —

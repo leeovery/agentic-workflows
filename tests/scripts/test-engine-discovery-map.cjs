@@ -797,7 +797,7 @@ describe('engine CLI: discovery-map operations', () => {
   // `set-prior` has no CLI verb — the roadmap's bind calls it after its own
   // map check, so its guards are only reachable from here.
   describe('set-prior', () => {
-    const { setPrior } = require('../../skills/workflow-engine/scripts/domain/discovery-map.cjs');
+    const { setPrior } = require('../../skills/leeway-engine/scripts/domain/discovery-map.cjs');
 
     it('records the prior record\'s address on the row', () => {
       const res = setPrior(dir, 'payments', 'fresh-topic', { work_unit: 'mvp', topic: 'ordering' });

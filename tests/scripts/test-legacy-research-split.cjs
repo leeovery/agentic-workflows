@@ -1,6 +1,6 @@
 'use strict';
 
-// Direct script tests for workflow-legacy-research-split scripts:
+// Direct script tests for leeway-legacy-research-split scripts:
 //   - detect.cjs   : qualifying-source filter (5 conditions × pass/fail + happy path)
 //   - validate.cjs : cache-shape contract (each rejection path + happy path)
 //   - apply.cjs    : transactional split (end-to-end + mid-flow failure + recovery)
@@ -14,7 +14,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, stateGit, commitAll, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 
-const SKILL_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-legacy-research-split', 'scripts');
+const SKILL_DIR = path.resolve(__dirname, '..', '..', 'skills', 'leeway-legacy-research-split', 'scripts');
 const DETECT_CLI   = path.join(SKILL_DIR, 'detect.cjs');
 const VALIDATE_CLI = path.join(SKILL_DIR, 'validate.cjs');
 const APPLY_CLI    = path.join(SKILL_DIR, 'apply.cjs');

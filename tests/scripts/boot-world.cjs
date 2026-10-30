@@ -144,7 +144,7 @@ function hookHelpers(fix) {
     const env = {
       ...extra,
       TMUX: tmux ? '/fake/sock,123,7' : undefined,
-      WORKFLOWS_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
+      LEEWAY_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
     };
     return runEngine(stubbed, fix().project, ['boot'], env);
   }

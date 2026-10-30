@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The catch-up at boot (workflow-engine/scripts/domain/boot.cjs with
+// The catch-up at boot (leeway-engine/scripts/domain/boot.cjs with
 // domain/state-merge.cjs): run before the migrations, a merge stop ending
 // boot there, what a failed push left behind pushed, the ledger's entries
 // a killed write left uncommitted committed first, so the catch-up carries
@@ -155,8 +155,8 @@ describe('the catch-up at boot (4.7.8)', () => {
     const projectIdOf = (/** @type {string} */ main) => JSON.parse(readState(main, layout.projectManifest)).project_id;
     const firstId = projectIdOf(first);
     assert.notStrictEqual(projectIdOf(second), firstId);
-    const pinned = process.env.WORKFLOWS_CONFIG_DIR;
-    process.env.WORKFLOWS_CONFIG_DIR = path.join(world(), 'config');
+    const pinned = process.env.LEEWAY_CONFIG_DIR;
+    process.env.LEEWAY_CONFIG_DIR = path.join(world(), 'config');
     try {
       const verdictFrom = (/** @type {string} */ cwd) => record('verdict', { entry: newId(), verdict: 'fix', point: 'decided' }, { cwd, warnings: [] }).entry;
       const onFirst = verdictFrom(first);
@@ -167,7 +167,7 @@ describe('the catch-up at boot (4.7.8)', () => {
       assert.strictEqual(projectIdOf(second), firstId);
       assert.deepStrictEqual([...evidenceOf(statePath(second)).judged], [onFirst]);
     } finally {
-      process.env.WORKFLOWS_CONFIG_DIR = pinned;
+      process.env.LEEWAY_CONFIG_DIR = pinned;
     }
   });
 });

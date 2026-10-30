@@ -34,7 +34,7 @@ cp.execFileSync = (/** @type {string} */ file, /** @type {string[]} */ args, /**
   if (execThrows) throw execThrows;
   return /** @type {never} */ (undefined);
 };
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/056-remove-coherence-analysis.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/056-remove-coherence-analysis.cjs');
 cp.execFileSync = realExecFileSync;
 
 let dir, updates, skips;

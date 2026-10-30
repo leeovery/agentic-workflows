@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's sections (workflow-engine/scripts/domain/spec-sections.cjs):
+// The spec's sections (leeway-engine/scripts/domain/spec-sections.cjs):
 // how a reference cites sections — runs opened by `§` or `§§`, their numbers
 // joined by `,`, `and` or `&`, a range by `–`, `-` or `to`, each cite once in
 // the order cited, every number a run holds counted — and where a section
@@ -24,7 +24,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { citedSections, specSections, specScenarios, sectionsCited } = require(path.join(__dirname, '../../skills/workflow-engine/scripts/domain/spec-sections.cjs'));
+const { citedSections, specSections, specScenarios, sectionsCited } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
 
 /** @param {string[]} lines */
 const text = (lines) => lines.join('\n');

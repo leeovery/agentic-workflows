@@ -21,7 +21,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/061-conversation-positions.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/061-conversation-positions.cjs');
 
 let dir, config, pinned, updates, skips;
 

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver bringing a stack up to date across nested
-// repositories (workflow-engine/scripts/drivers/landing/github/), past what
+// repositories (leeway-engine/scripts/drivers/landing/github/), past what
 // every driver gives (the nested conformance suites'): a stack whose squash
 // of a pull request would meet a pointer both sides moved — its bottom's,
 // or one above it of a phase side by side — brought up to date with the

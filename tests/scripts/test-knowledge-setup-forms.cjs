@@ -14,34 +14,34 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const forms = require('../../skills/workflow-engine/scripts/domain/knowledge/setup-forms.cjs');
-const setup = require('../../skills/workflow-engine/scripts/domain/knowledge/setup.cjs');
-const { runWizard, runKeyOnly } = require('../../skills/workflow-engine/scripts/domain/knowledge/setup-wizard.cjs');
-const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
-const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
-const { UserError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/retry.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const forms = require('../../skills/leeway-engine/scripts/domain/knowledge/setup-forms.cjs');
+const setup = require('../../skills/leeway-engine/scripts/domain/knowledge/setup.cjs');
+const { runWizard, runKeyOnly } = require('../../skills/leeway-engine/scripts/domain/knowledge/setup-wizard.cjs');
+const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
+const config = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
+const { UserError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/retry.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 const { ENGINE_COMMAND, heldCall, refuseLaunches } = require('./knowledge-harness.cjs');
 
 refuseLaunches();
 
 /**
  * A throwaway home the system config resolves through. These forms read
- * `~/.config/workflows`, so the suite's hermetic override — which answers
+ * `~/.config/leeway`, so the suite's hermetic override — which answers
  * ahead of `$HOME` — comes off for the duration.
  */
 function fakeConfigHome() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-home-'));
   const savedHome = process.env.HOME;
-  const savedOverride = process.env.WORKFLOWS_CONFIG_DIR;
+  const savedOverride = process.env.LEEWAY_CONFIG_DIR;
   process.env.HOME = home;
-  delete process.env.WORKFLOWS_CONFIG_DIR;
+  delete process.env.LEEWAY_CONFIG_DIR;
   return {
     home,
     restore() {
       process.env.HOME = savedHome;
-      process.env.WORKFLOWS_CONFIG_DIR = savedOverride;
+      process.env.LEEWAY_CONFIG_DIR = savedOverride;
       fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     },
   };
@@ -212,8 +212,8 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('refuses an invalid system config with the parse reason', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
-    fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), '{"knowledge":42}');
+    fs.mkdirSync(path.join(home, '.config', 'leeway'), { recursive: true });
+    fs.writeFileSync(path.join(home, '.config', 'leeway', 'config.json'), '{"knowledge":42}');
     await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
       assert.ok(err instanceof UserError);
       assert.match(err.message, /is not valid/);
@@ -223,9 +223,9 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
 
   it('keyword-only refuses an unreadable system config before it writes anything', async () => {
     const knowledgeDir = path.join(state, '.knowledge');
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.config', 'leeway'), { recursive: true });
     for (const [content, reason] of [['{ not json', /not valid JSON/], ['{"knowledge":42}', /invalid "knowledge" key/]]) {
-      fs.writeFileSync(path.join(home, '.config', 'workflows', 'config.json'), content);
+      fs.writeFileSync(path.join(home, '.config', 'leeway', 'config.json'), content);
       await assert.rejects(() => forms.runKeywordOnly(call(), state), (err) => {
         assert.ok(err instanceof UserError);
         assert.match(err.message, /^system config at .* is not valid/);
@@ -239,9 +239,9 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('treats a knowledge-less shared config (session settings only) as no system config', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.config', 'leeway'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.config', 'workflows', 'config.json'),
+      path.join(home, '.config', 'leeway', 'config.json'),
       JSON.stringify({ editor: { theme: 'dark' } })
     );
     await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {
@@ -252,9 +252,9 @@ describe('runFromSystem and runKeywordOnly refusals', () => {
   });
 
   it('refuses an unresolvable openai key, naming the env var and --key-only', async () => {
-    fs.mkdirSync(path.join(home, '.config', 'workflows'), { recursive: true });
+    fs.mkdirSync(path.join(home, '.config', 'leeway'), { recursive: true });
     fs.writeFileSync(
-      path.join(home, '.config', 'workflows', 'config.json'),
+      path.join(home, '.config', 'leeway', 'config.json'),
       JSON.stringify({ knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 } })
     );
     await assert.rejects(() => forms.runFromSystem(call(), state), (err) => {

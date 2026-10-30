@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('render research-conclude-gate', () => {
@@ -358,7 +358,7 @@ describe('render finding-announce', () => {
   });
   afterEach(() => teardown(dir));
 
-  const agents = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
+  const agents = require('../../skills/leeway-engine/scripts/domain/agent-state.cjs');
   const announce = (id, file) => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', id, file });
   // A dispatched agent's report lands and the scan promotes it; the ack, when
   // given its findings, reads it.

@@ -1,0 +1,19 @@
+# Route Research Session
+
+*Reference for **[leeway-research-process](../SKILL.md)***
+
+---
+
+Read `work_type` from the manifest:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
+```
+
+#### If work_type is `feature` or `cross-cutting`
+
+→ Load **[feature-session.md](feature-session.md)** and follow its instructions as written.
+
+#### If work_type is `epic`
+
+→ Load **[epic-session.md](epic-session.md)** and follow its instructions as written.

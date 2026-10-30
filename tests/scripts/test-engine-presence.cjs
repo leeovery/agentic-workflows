@@ -77,11 +77,11 @@ describe('engine presence', () => {
     ), `deferral marker carries its qualifier and the continuation instruction: ${sections}`);
     assert.ok(sections.includes('\n  ⚑ Analyses deferred — 1 session(s): discussion/alpha (last'), `callout flag line at the 2-space indent: ${sections}`);
     assert.match(unwrapped(sections),
-      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs presence clear pay discussion alpha`\./,
+      /⚑ Analyses deferred — 1 session\(s\): discussion\/alpha \(last active \d+s ago\)\. They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs presence clear pay discussion alpha`\./,
       `the callout names the row with its last-active age and the release: ${sections}`);
     // The body is a callout: wrapped at the display width, continuations at
     // the 4-space hang — never a hand-wrapped fixed column.
-    const { displayWidth } = require('../../skills/workflow-engine/scripts/kernel/terminal.cjs');
+    const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
     for (const line of sections.split('\n')) {
       if (line.startsWith('===')) continue;
       assert.ok(line.length <= displayWidth(), `deferral line overflows: ${line}`);
@@ -163,7 +163,7 @@ describe('engine presence', () => {
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.held_sources, 2);
     assert.ok(unwrapped(sections).includes(
-      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node .claude/skills/workflow-engine/scripts/engine.cjs presence clear pay discussion platform-support`.',
+      '⚑ Analyses deferred — 2 session(s): discussion/platform-support (last active 19m ago), discussion/storage-and-sync (last active 20m ago). They read the settled record, so they wait for those sessions to conclude; a session that is wedged but alive releases its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear pay discussion platform-support`.',
     ), sections);
   });
 
@@ -317,7 +317,7 @@ describe('engine presence', () => {
   });
 
   it('the code-slot read takes held implementation and review rows, never the caller\'s own', () => {
-    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
     fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
     // Every row is held by this (alive) process; ownership is decided by
     // session id alone, with the pid arm switched off below.
@@ -346,7 +346,7 @@ describe('engine presence', () => {
   });
 
   it('the code-slot read is the caller\'s checkout\'s — a code session in another worktree never holds it', () => {
-    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
     const worktree = path.join(dir, '..', `${path.basename(dir)}-code`);
     harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
     try {
@@ -369,7 +369,7 @@ describe('engine presence', () => {
     // A resumed conversation keeps the process and takes a new session id, so
     // pid ownership is the second arm of the same question — without it the
     // session gates against a hold it is standing in.
-    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    const { heldCodeSessions } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'an-earlier-conversation' });
 
     const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
@@ -486,7 +486,7 @@ describe('engine presence', () => {
 });
 
 describe('fmtAge', () => {
-  const { fmtAge } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+  const { fmtAge } = require('../../skills/leeway-engine/scripts/domain/presence.cjs');
 
   it('rounds to the unit a reader weighs a hold in — seconds, minutes, hours, days', () => {
     assert.deepStrictEqual(

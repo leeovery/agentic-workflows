@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver's submodule pointer (workflow-engine/scripts/
+// The local landing driver's submodule pointer (leeway-engine/scripts/
 // drivers/landing/local/driver.cjs), past what every driver gives (the
 // nested conformance suite's): as a phase merges, each task's landing in the
 // repository holding a submodule points it at the submodule's landing of

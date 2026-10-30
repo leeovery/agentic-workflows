@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The conversation folders at boot (workflow-engine/scripts/domain/boot.cjs
+// The conversation folders at boot (leeway-engine/scripts/domain/boot.cjs
 // with domain/conversation.cjs): a folder whose transcript is gone deleted,
 // every conversation's tidied whichever project marked it, the trust log's
 // events one kept waiting appended first (domain/trust-log.cjs), and the
@@ -22,8 +22,8 @@ const path = require('path');
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { setupProject, stubbed, bootProject, runEngine } = require('./boot-world.cjs');
-const { trustEvent } = require('../../skills/workflow-engine/scripts/domain/trust-events.cjs');
-const { newId } = require('../../skills/workflow-engine/scripts/domain/ledger-ids.cjs');
+const { trustEvent } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
+const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
 
 describe('engine boot: the conversation folders', () => {
   let fix;
@@ -42,7 +42,7 @@ describe('engine boot: the conversation folders', () => {
   }
 
   /** Boot in `project`, the system config directory this test's own. */
-  const boot = (/** @type {string} */ project, env = {}) => runEngine(stubbed, project, ['boot'], { WORKFLOWS_CONFIG_DIR: config, ...env });
+  const boot = (/** @type {string} */ project, env = {}) => runEngine(stubbed, project, ['boot'], { LEEWAY_CONFIG_DIR: config, ...env });
 
   /** The path of `id`'s transcript in project folder `key` of this test's own directory of Claude Code projects. */
   const transcriptPath = (/** @type {string} */ key, /** @type {string} */ id) => path.join(fix.root, 'projects', key, `${id}.jsonl`);
@@ -71,7 +71,7 @@ describe('engine boot: the conversation folders', () => {
     // Resumed from another checkout, the conversation ends with a path under
     // that checkout's key, while its transcript stays where it began.
     const file = transcript('app', 'sess-1');
-    const env = { WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+    const env = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
     runEngine(stubbed, fix.project, ['session', 'repair'], env);
     stubbed.ok(fix.project, ['conversation', 'end'], { env, stdin: JSON.stringify({ session_id: 'sess-1', transcript_path: transcriptPath('app-wt', 'sess-1') }) });
     assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['transcript', 'workflow']);

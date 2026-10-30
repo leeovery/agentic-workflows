@@ -26,7 +26,7 @@ const path = require('path');
 const { ok, okSectionsAsync, refusedPristine, stateGit, statePath, layout, setupGitFixture, fixtureFrom, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));

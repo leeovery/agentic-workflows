@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state worktree (workflow-engine/scripts/domain/state-checks.cjs,
+// The state worktree (leeway-engine/scripts/domain/state-checks.cjs,
 // domain/state-worktree.cjs): added again where removed or its folder
 // deleted, locked again where unlocked, refused on a detached HEAD or
 // another branch; and a project folder moved or copied, its state worktree

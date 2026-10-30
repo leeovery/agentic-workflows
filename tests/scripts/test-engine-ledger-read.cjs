@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's read verbs (workflow-engine/scripts/domain/ledger-read.cjs)
+// The ledger's read verbs (leeway-engine/scripts/domain/ledger-read.cjs)
 // and the fold they read through (domain/ledger-fold.cjs): `engine ledger
 // record|product`, each a projection of the ledger answered as JSON — the
 // current entries standing in a unit or a topic, with the live answers each
@@ -26,7 +26,7 @@ const { spawnSync } = require('child_process');
 const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));

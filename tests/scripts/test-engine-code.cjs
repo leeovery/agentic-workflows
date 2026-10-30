@@ -18,7 +18,7 @@ const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 
 const { git, commitAll, initRepo, setupGitFixture, addSubmodule, cleanupFixture, createFile, writeState, statePath, layout } = harness;
-const { diffPatch } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
+const { diffPatch } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 const PREFIX = 'impl(pay): T1-';
@@ -251,7 +251,7 @@ describe('engine code diff and status: the change not yet committed', () => {
     assert.match(harness.output(dir, ['code', 'diff']), /\+\+\+ b\/src\/new\.js/);
 
     assert.deepStrictEqual([dir, api].map((repo) => [git(repo, ['diff', '--cached']), git(repo, ['ls-files', '--stage']), git(repo, ['status', '--porcelain'])]), before);
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.git')).filter((name) => name.startsWith('workflows-')), [], 'the scratch index is removed');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.git')).filter((name) => /^leeway-diff-\d+\.index$/.test(name)), [], 'the scratch index is removed');
   });
 
   it('diff: an edit made in the index\'s own second still reads as a change — the scratch index keeps the real one\'s time', () => {

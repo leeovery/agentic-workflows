@@ -14,8 +14,8 @@ const os = require('os');
 const path = require('path');
 const repl = require('repl');
 
-const store = require('../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
+const store = require('../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const DIMS = 128;
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The main checkout under the `land` verbs (workflow-engine/scripts/domain/
+// The main checkout under the `land` verbs (leeway-engine/scripts/domain/
 // landing-git.cjs, through the local driver's merges): it never moves but by
 // a fast-forward of the default branch it has out, made through the
 // person's own git and hooks, with its tracked files clean where the merge
@@ -31,7 +31,7 @@ const {
   TASKS, openArgs, own, cutTask, commitFiles, useLandingWorld, refusedMoving, followRemedy, short, checkoutOf: checkout, heldRefusal: held, rebasingRefusal: rebasing, stops,
   stoppedRebase,
 } = require('./landing-world.cjs');
-const { checkoutBlock } = require('../../skills/workflow-engine/scripts/domain/landing-git.cjs');
+const { checkoutBlock } = require('../../skills/leeway-engine/scripts/domain/landing-git.cjs');
 
 const { card, rounding } = TASKS;
 

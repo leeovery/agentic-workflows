@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The one liveness rule (workflow-engine/scripts/domain/ledger-units.cjs)
+// The one liveness rule (leeway-engine/scripts/domain/ledger-units.cjs)
 // through the ledger's reads (domain/ledger-read.cjs, domain/ledger-fold.cjs):
 // a cancelled topic or unit, or a postponed topic while it waits, holds
 // nothing current until it comes back — and a replacement, a merge or a

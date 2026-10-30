@@ -6,16 +6,16 @@ Guidance for Claude Code working in this repo.
 
 Agentic Engineering Workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
 
-**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/workflow-start`, `/workflow-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
+**This project authors the workflow system — it does not use it.** Never invoke workflow skills (`/leeway`, `/leeway-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
 This file holds the rules for working on the repo and a map of the system. How the system behaves is stated by the document that owns each part:
 
 - **The skills** — each `SKILL.md` and its `references/` are the source of truth for their own flow.
 - **`CONVENTIONS.md`** — skill authoring rules.
-- **The engine** — `skills/workflow-engine/SKILL.md` (architecture), `skills/workflow-engine/references/commands.md` (every verb's contract, state and response), and each module's header comment.
+- **The engine** — `skills/leeway-engine/SKILL.md` (architecture), `skills/leeway-engine/references/commands.md` (every verb's contract, state and response), and each module's header comment.
 - **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, and the knowledge-base code.
-- **`skills/workflow-help/references/glossary.md`** — the canonical vocabulary.
-- **`skills/workflow-gates/README.md`** and **`skills/workflow-gates-rows/README.md`** — the Claude Code mods.
+- **`skills/leeway-help/references/glossary.md`** — the canonical vocabulary.
+- **`skills/leeway-gates/README.md`** and **`skills/leeway-gates-rows/README.md`** — the Claude Code mods.
 - **`tests/README.md`** — how a test is written: the layers, the fixture library, assertions, measuring.
 - **`tests/prose/README.md`** — the prose-test harness.
 - **`design/`** — each programme's design record.
@@ -46,16 +46,16 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, research, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
 
-1. **Discovery** (`workflow-discovery`) — the first phase of every work type: confirms the type, shapes the work, persists it at the work-type commit, and routes it on; for an epic it builds the discovery map of topics and writes each topic's brief.
-2. **Research** (`workflow-research-process`) — explore feasibility and options, with deep dives and a thread register.
-3. **Experiment** (`workflow-experiment-process`) — the laboratory a research or discussion conversation spawns to measure what a decision rests on; never a topic's first phase.
-4. **Discussion** (`workflow-discussion-process`) — decide, guided by a Discussion Map; topics send each other messages through mailboxes.
-5. **Investigation** (`workflow-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
-6. **Scoping** (`workflow-scoping-process`) — quick-fix: context, spec and plan in one pass.
-7. **Specification** (`workflow-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
-8. **Planning** (`workflow-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
-9. **Implementation** (`workflow-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
-10. **Review** (`workflow-review-process`) — verify the delivered change-set against the plan and the specification.
+1. **Discovery** (`leeway-discovery`) — the first phase of every work type: confirms the type, shapes the work, persists it at the work-type commit, and routes it on; for an epic it builds the discovery map of topics and writes each topic's brief.
+2. **Research** (`leeway-research-process`) — explore feasibility and options, with deep dives and a thread register.
+3. **Experiment** (`leeway-experiment-process`) — the laboratory a research or discussion conversation spawns to measure what a decision rests on; never a topic's first phase.
+4. **Discussion** (`leeway-discussion-process`) — decide, guided by a Discussion Map; topics send each other messages through mailboxes.
+5. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
+6. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
+7. **Specification** (`leeway-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
+8. **Planning** (`leeway-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
+9. **Implementation** (`leeway-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
+10. **Review** (`leeway-review-process`) — verify the delivered change-set against the plan and the specification.
 
 ### Work types and topics
 
@@ -71,17 +71,17 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### Skills and agents
 
-- **Start** (`workflow-start`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
-- **Discovery** (`workflow-discovery`) — new work, and re-shaping an epic's map.
-- **Navigation** (`workflow-continue-epic`, `workflow-continue-linear`) — a work unit's continue menu.
-- **Phase skills** (`workflow-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
-- **Bridge** (`workflow-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
-- **Capture** (`workflow-log-idea`, `workflow-log-bug`, `workflow-log-quickfix`) — write to the inbox; no steps, no gates.
-- **Project-level** — `workflow-roadmap` (the product roadmap), `workflow-baseline` (the brownfield assessment), `workflow-help` (the walkthrough and reference cards).
-- **Shared references** (`skills/workflow-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
-- **Engine** (`workflow-engine`) — state, derivation and rendering; `workflow-migrate` holds the migrations; `workflow-legacy-research-split` converts pre-discovery epics.
-- **Drivers** (`skills/workflow-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
-- **Gate mods** (`workflow-gates`, `workflow-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
+- **Start** (`leeway`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
+- **Discovery** (`leeway-discovery`) — new work, and re-shaping an epic's map.
+- **Navigation** (`leeway-continue-epic`, `leeway-continue-linear`) — a work unit's continue menu.
+- **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
+- **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
+- **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
+- **Project-level** — `leeway-roadmap` (the product roadmap), `leeway-baseline` (the brownfield assessment), `leeway-help` (the walkthrough and reference cards).
+- **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
+- **Engine** (`leeway-engine`) — state, derivation and rendering; `leeway-migrate` holds the migrations; `leeway-legacy-research-split` converts pre-discovery epics.
+- **Drivers** (`skills/leeway-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
+- **Gate mods** (`leeway-gates`, `leeway-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
 - **Development only** — `.claude/agents/` and `.claude/skills/` (`create-output-format`, `prose-test`, `review-work`) serve work on this repo and never ship.
 
@@ -110,48 +110,48 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/.roadmap/` — roadmap sessions, imports, and notes
 - `.workflows/.baseline/{area}.md` — the brownfield assessment
 - `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
-- `~/.config/workflows/` (or `WORKFLOWS_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state
+- `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/workflow-engine/references/commands.md`.
+Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/leeway-engine/references/commands.md`.
 
 ## Adding New Output Formats
 
-Use `/create-output-format` to scaffold a new plan output format: five files under `skills/workflow-planning-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
+Use `/create-output-format` to scaffold a new plan output format: five files under `skills/leeway-planning-process/references/output-formats/{format}/` (`about.md`, `authoring.md`, `reading.md`, `updating.md`, `graph.md`). The contract and templates live in `.claude/skills/create-output-format/references/`.
 
 ## Output Format References (IMPORTANT)
 
 **NEVER list output format names (tick, linear, local-markdown, etc.) anywhere except:**
-- `skills/workflow-planning-process/references/output-formats.md` - the authoritative list
-- `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
+- `skills/leeway-planning-process/references/output-formats.md` - the authoritative list
+- `skills/leeway-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
-- `skills/workflow-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
-- `skills/workflow-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
+- `skills/leeway-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
+- `skills/leeway-engine/scripts/drivers/**` - the drivers, the only engine code that names a tool
 - `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; a new suite generic over drivers names none
 
 Other phases reference a format through the plan's `format` manifest field, and load only the per-concern file they need (e.g. `{format}/reading.md`).
 
 ## Migrations
 
-Migrations keep existing projects' `.workflows/` in step with the current design, run by `engine boot` at `/workflow-start`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/workflow-migrate/scripts/migrate.cjs`.
+Migrations keep existing projects' `.workflows/` in step with the current design, run by `engine boot` at `/leeway`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/leeway-migrate/scripts/migrate.cjs`.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.
 - **A migration may stage in git and never commits** — the migration commit, on the user's yes at the migration gate, records it.
 - **Migrations must not use `engine manifest`** — they read and write `manifest.json` directly; the field surface validates against today's schema, and a migration is a point-in-time snapshot.
-- **The paths the workflows own are `OWNED_PATHS`** (`skills/workflow-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
+- **The paths the workflows own are `OWNED_PATHS`** (`skills/leeway-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
 - **Every migration has a test suite.**
 
 ## Tests
 
-The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/workflow-gates*/`, `npm run test:mod`.
+The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/leeway-gates*/`, `npm run test:mod`.
 
 - **Add or update a test alongside any change** to engine scripts (the knowledge base's among them), adapters, migrations, or the gate mods.
 - **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`.
 - **How a test is written** — its layer, its fixtures, its assertions, its cost — is `tests/README.md`; read it before writing a suite.
-- **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/workflow-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
-- **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/workflow-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
+- **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/leeway-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
+- **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/leeway-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
 - **Any change to the workflows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
 

@@ -26,7 +26,7 @@ npx agntc add leeovery/agentic-workflows
 Then in Claude Code:
 
 ```
-/workflow-start
+/leeway
 ```
 
 That's the whole interface. Describe what you want to build and the right pipeline picks you up: a discussion that pushes back, a specification you approve, a plan broken into tasks, then implementation running hands-off in a gated TDD loop while you do something else. Every decision lands in a versioned document in your repo. Kill the session whenever; the next one resumes from disk.

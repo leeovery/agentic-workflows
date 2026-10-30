@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The project's session hooks at boot (workflow-engine/scripts/domain/boot.cjs
+// The project's session hooks at boot (leeway-engine/scripts/domain/boot.cjs
 // with domain/session-label.cjs): the tmux label choice reported, the
 // calling conversation's position dropped, the workflows' own hooks and the
 // label hooks installed or taken out, the sync under the writer lock, and
@@ -80,7 +80,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     recordChoice(false);
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
     try {
-      const as = (id) => ({ WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
+      const as = (id) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
       const positionOf = (id) => path.join(config, 'conversations', id, 'position.json');
       for (const id of ['sess-1', 'sess-2']) runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as(id));
       assert.ok(fs.existsSync(positionOf('sess-1')) && fs.existsSync(positionOf('sess-2')));
@@ -95,7 +95,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   it('drops the calling conversation\'s own position before its migrations run — a boot that fails leaves none', () => {
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
     try {
-      const as = { WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+      const as = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
       const position = path.join(config, 'conversations', 'sess-1', 'position.json');
       runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as);
       assert.ok(fs.existsSync(position));
@@ -155,7 +155,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('6.S31: boot installs the hooks before Bash and before Agent and SendMessage beside the layout hook, committed on the branch checked out, naming no task while one is in flight (6.S25); a later session with the mod off runs them as installed, and a raw commit during a build and a dispatch of the builder with no brief are each refused', () => {
     const session = 'later-session';
-    const refusals = path.join(/** @type {string} */ (process.env.WORKFLOWS_CONFIG_DIR), 'brief-refusals.jsonl');
+    const refusals = path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'brief-refusals.jsonl');
     /** The installed hook for `matcher`, run as Claude Code runs it on `toolInput`. @param {string} matcher @param {string} tool @param {object} toolInput */
     const asInstalled = (matcher, tool, toolInput) => {
       const { command } = settings().hooks.PreToolUse.find((/** @type {{matcher: string}} */ group) => group.matcher === matcher).hooks[0];
@@ -175,8 +175,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
 
       fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
-      fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'workflow-engine'));
-      assert.strictEqual(process.env.WORKFLOWS_GATE_SURFACE, undefined, 'the mod is off');
+      fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'leeway-engine'));
+      assert.strictEqual(process.env.LEEWAY_GATE_SURFACE, undefined, 'the mod is off');
       const commit = asInstalled('Bash', 'Bash', { command: 'git commit -am "Take the card"' });
       assert.deepStrictEqual([commit.status, commit.stdout], [2, '']);
       assert.match(commit.stderr, /^a raw git commit is refused while task 1\.1 of payments is in flight/);
@@ -258,7 +258,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     });
   });
 
-  it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
+  it('LEEWAY_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
     assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));

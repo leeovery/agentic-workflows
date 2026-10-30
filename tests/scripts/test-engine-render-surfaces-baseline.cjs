@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, unwrap, setup, teardown, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('baseline surfaces', () => {
@@ -68,7 +68,7 @@ describe('baseline surfaces', () => {
     assert.match(out, /\*\*Overview\*\* is documented\. 1 area\(s\) remain\./);
     assert.match(out, /\*\*`◆ Keep going\?`\*\*/);
     assert.match(out, /\*\*`y\/yes`\*\*\s+→ Interview the next area/);
-    assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from workflow-start/);
+    assert.match(out, /\*\*`p\/pause`\*\*\s+→ Stop here — resume any time from \/leeway/);
   });
 
   it('baseline-area-gate: refuses a missing --area, an unknown area, an unlanded area, and a drained map', () => {
@@ -80,11 +80,11 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'baseline-area-gate', { area: 'overview' }), /no areas remain/);
   });
 
-  it('baseline-paused: counts the documented areas and points back at workflow-start', () => {
+  it('baseline-paused: counts the documented areas and points back at leeway', () => {
     writeBaseline({ status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'researched' } });
     const out = renderSurface(dir, 'baseline-paused', {});
     assert.match(out, /Paused — 1 of 3 area\(s\) documented\./);
-    assert.match(out, /Resume from the workflow-start menu\./);
+    assert.match(out, /Resume from the \/leeway menu\./);
     writeBaseline({ status: 'completed', areas: { overview: 'completed' } });
     assert.throws(() => renderSurface(dir, 'baseline-paused', {}), /not in-progress/);
   });
@@ -182,7 +182,7 @@ describe('baseline surfaces', () => {
     const out = renderSurface(dir, 'baseline-offer-gate', {});
     assert.match(out, /\*\*`◆ Run a baseline assessment\?`\*\*/);
     assert.match(out, /\*\*`y\/yes`\*\* → Start the assessment now/);
-    assert.match(unwrap(out), /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the workflow-start menus/);
+    assert.match(unwrap(out), /\*\*`n\/no`\*\*\s+→ Skip — you can start it later from the \/leeway menus/);
     writeBaseline({ status: 'skipped' });
     assert.throws(() => renderSurface(dir, 'baseline-offer-gate', {}), /the offer fires once/);
     // A native verdict is recorded state too — the offer never fires over it,

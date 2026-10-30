@@ -19,10 +19,11 @@
 // entries into it. `test-hermetic-env.cjs` guards both.
 //
 // A suite that fakes `$HOME` to reach a system config takes the pinned
-// WORKFLOWS_CONFIG_DIR back off the environment it passes down, since that
-// answers ahead of `$HOME`. The shell tiers pin their own subset in their npm
-// scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
-// runs the mod suites against its own stand-in environment and files.
+// LEEWAY_CONFIG_DIR, or WORKFLOWS_CONFIG_DIR for a released migration, back
+// off the environment it passes down, since each answers ahead of `$HOME`.
+// The shell tiers pin their own subset in their npm scripts; `test:mod`
+// stands outside the pin altogether — `claude plugin test` runs the mod
+// suites against its own stand-in environment and files.
 
 const fs = require('fs');
 const os = require('os');
@@ -63,7 +64,9 @@ function pinnedDir(name, meetsPin, prefix) {
 const GH_LOGIN = Object.freeze(['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST']);
 
 const HERMETIC_ENV = Object.freeze({
-  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  LEEWAY_CONFIG_DIR: pinnedDir('LEEWAY_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
+  // The released migrations' name for the user-level folder.
+  WORKFLOWS_CONFIG_DIR: pinnedDir('WORKFLOWS_CONFIG_DIR', isEmptyDir, 'wf-legacy-config-'),
   CLAUDE_CONFIG_DIR: pinnedDir('CLAUDE_CONFIG_DIR', isEmptyDir, 'wf-claude-config-'),
   GH_CONFIG_DIR: pinnedDir('GH_CONFIG_DIR', isEmptyDir, 'wf-gh-config-'),
   GIT_CONFIG_GLOBAL: '/dev/null',
@@ -71,7 +74,7 @@ const HERMETIC_ENV = Object.freeze({
   // Width is detected from the reader's terminal, and CLAUDE_PID reaches
   // every test env — without a pin, a suite would render against whatever
   // pane happened to be open.
-  WORKFLOWS_DISPLAY_WIDTH: '65',
+  LEEWAY_DISPLAY_WIDTH: '65',
   // The separate Claude call runs the binary this names: the stub, which
   // has no login unless a test arms it with answers.
   LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
@@ -84,8 +87,8 @@ delete process.env.OPENAI_API_KEY;
 // A session whose gate surface is loaded announces it to every command it
 // runs, the suite included — and every golden pins the unannounced bytes.
 // The gate mod announces the handoff the same way.
-delete process.env.WORKFLOWS_GATE_SURFACE;
-delete process.env.WORKFLOWS_HANDOFF;
+delete process.env.LEEWAY_GATE_SURFACE;
+delete process.env.LEEWAY_HANDOFF;
 // Claude Code hands every command it runs its conversation's id, and every
 // engine call marks that conversation's folder.
 delete process.env.CLAUDE_CODE_SESSION_ID;

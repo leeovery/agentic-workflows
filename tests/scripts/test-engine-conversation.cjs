@@ -2,8 +2,8 @@
 
 //
 // Tests for the conversation folder, `{config}/conversations/{session-id}/`
-// beside the system config — `WORKFLOWS_CONFIG_DIR`, else
-// `~/.config/workflows` — and found by the session id alone from wherever a
+// beside the system config — `LEEWAY_CONFIG_DIR`, else
+// `~/.config/leeway` — and found by the session id alone from wherever a
 // command runs: the mark every engine and gateway call leaves where Claude
 // Code handed it a session id — once, never without an id, never outside a
 // workflows project, never from the commands Claude Code's own hooks run —
@@ -30,7 +30,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { tidyConversations, callerModel } = require('../../skills/workflow-engine/scripts/domain/conversation.cjs');
+const { tidyConversations, callerModel } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 
 const SKILLS = path.resolve(__dirname, '..', '..', 'skills');
 
@@ -41,12 +41,12 @@ let pinned; // the suite's own, put back after
 function setup() {
   dir = harness.setupGitFixture('engine-conversation-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
-  pinned = process.env.WORKFLOWS_CONFIG_DIR;
-  process.env.WORKFLOWS_CONFIG_DIR = config;
+  pinned = process.env.LEEWAY_CONFIG_DIR;
+  process.env.LEEWAY_CONFIG_DIR = config;
 }
 
 function teardown() {
-  process.env.WORKFLOWS_CONFIG_DIR = pinned;
+  process.env.LEEWAY_CONFIG_DIR = pinned;
   for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
@@ -130,11 +130,11 @@ describe('the mark', () => {
     }
   });
 
-  it('with no WORKFLOWS_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/workflows`', () => {
+  it('with no LEEWAY_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/leeway`', () => {
     inScratch((home) => {
-      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-1'), HOME: home, WORKFLOWS_CONFIG_DIR: undefined } });
-      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-2'), HOME: home, WORKFLOWS_CONFIG_DIR: '' } });
-      assert.deepStrictEqual(fs.readdirSync(path.join(home, '.config', 'workflows', 'conversations')).sort(), ['sess-1', 'sess-2']);
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-1'), HOME: home, LEEWAY_CONFIG_DIR: undefined } });
+      harness.ok(dir, ['session', 'repair'], { env: { ...session('sess-2'), HOME: home, LEEWAY_CONFIG_DIR: '' } });
+      assert.deepStrictEqual(fs.readdirSync(path.join(home, '.config', 'leeway', 'conversations')).sort(), ['sess-1', 'sess-2']);
     });
     assert.ok(!fs.existsSync(conversationsRoot()));
   });
@@ -179,7 +179,7 @@ describe('the mark', () => {
 
   it('every gateway script marks the conversation that runs it, whatever its answer', () => {
     const gateways = fs.readdirSync(SKILLS)
-      .filter((d) => d !== 'workflow-engine' && fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
+      .filter((d) => d !== 'leeway-engine' && fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
     assert.ok(gateways.length > 5, `found ${gateways.length} gateways — the skills read is broken`);
     for (const gateway of gateways) {
       spawnSync('node', [path.join(SKILLS, gateway, 'scripts/gateway.cjs')],
@@ -191,7 +191,7 @@ describe('the mark', () => {
   it('marks only inside a workflows project — an engine call or a gateway run where no `.leeway/` exists makes none', () => {
     inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
-      spawnSync('node', [path.join(SKILLS, 'workflow-start', 'scripts/gateway.cjs')],
+      spawnSync('node', [path.join(SKILLS, 'leeway', 'scripts/gateway.cjs')],
         { cwd: bare, encoding: 'utf8', env: { ...process.env, ...session('sess-1') } });
       assert.deepStrictEqual(fs.readdirSync(bare), []);
     });

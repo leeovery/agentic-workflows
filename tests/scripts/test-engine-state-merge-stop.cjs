@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The merge's kept stop (workflow-engine/scripts/domain/state-merge.cjs):
+// The merge's kept stop (leeway-engine/scripts/domain/state-merge.cjs):
 // kept in the state worktree's git dir for the person's picks, answerable
 // from a new session, asked afresh as either side moves, a pick for a choice
 // no longer asked refused, and finished by the next catch-up once every field
@@ -21,7 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);

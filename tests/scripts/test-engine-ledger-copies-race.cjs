@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The ledger copies' render under concurrent engines
-// (workflow-engine/scripts/domain/ledger-copies.cjs): one render at a time,
+// (leeway-engine/scripts/domain/ledger-copies.cjs): one render at a time,
 // a write landing while another holds the claim returning once the holder
 // has rendered and indexed it; a change to what is live that undoes another
 // mid-render, the copies ending as the last change left them; a render that
@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION, MADE, NOTE, NOTE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');

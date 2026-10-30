@@ -1,10 +1,10 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The brief hook (workflow-engine/scripts/domain/brief-guard.cjs): `engine
+// The brief hook (leeway-engine/scripts/domain/brief-guard.cjs): `engine
 // brief guard`, Claude Code's hook before Agent and SendMessage, fed its
 // JSON on stdin as Claude Code sends it. A call reaching none of the
-// workflows' agents — Claude's own subagents, a `workflow-*` agent, a
+// workflows' agents — Claude's own subagents, an agent of another's, a
 // message to one, a recipient with no record, input it cannot read — passes
 // untouched: exit 0, nothing said, nothing recorded (6.5.8). A call of one,
 // named `leeway-*` — by Agent's `subagent_type`, or by the agent type a
@@ -37,7 +37,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { BRIEF_REFUSALS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
@@ -101,7 +101,7 @@ before(() => {
   briefs.elsewhere = issued(dir, ['builder', UNIT, '1.1'], OTHER_SESSION);
   recordSubagent('a1builder', 'leeway-builder');
   recordSubagent('a2explore', 'Explore');
-  recordSubagent('a3workflow', 'workflow-task-executor');
+  recordSubagent('a3other', 'task-executor');
   fs.writeFileSync(path.join(projects, '-tmp-project', SESSION_ID, 'subagents', 'agent-a4torn.meta.json'), '{"agentType": "leeway-bu');
 });
 
@@ -178,13 +178,13 @@ function assertRefused(res, line, at = {}) {
 const pointer = (/** @type {string} */ id) => `brief:${id}`;
 
 describe('a call reaching none of the workflows\' agents, untouched (6.5.8)', () => {
-  it('Claude\'s own subagents — Explore, general-purpose, a workflow-* agent — and a message to one pass: exit 0, nothing said, nothing recorded, whatever the text carries, the calling conversation left unmarked', () => {
+  it('Claude\'s own subagents — Explore, general-purpose, an agent of another\'s — and a message to one pass: exit 0, nothing said, nothing recorded, whatever the text carries, the calling conversation left unmarked', () => {
     const unmarked = { CLAUDE_CODE_SESSION_ID: 'unmarked-session' };
-    for (const type of ['Explore', 'general-purpose', 'workflow-task-executor', 'my-leeway-x', 'leeway']) {
+    for (const type of ['Explore', 'general-purpose', 'task-executor', 'my-leeway-x', 'leeway']) {
       assertUntouched(guard('Agent', agentCall(type, 'Find the card form.'), {}, unmarked), type);
       assertUntouched(guard('Agent', agentCall(type, pointer('Missing0000000000000')), {}, unmarked), `${type} carrying a pointer`);
     }
-    for (const to of ['a2explore', 'a3workflow']) assertUntouched(guard('SendMessage', messageCall(to, 'Carry on.'), {}, unmarked), `a message to ${to}`);
+    for (const to of ['a2explore', 'a3other']) assertUntouched(guard('SendMessage', messageCall(to, 'Carry on.'), {}, unmarked), `a message to ${to}`);
     assert.ok(!fs.existsSync(conversationDir('unmarked-session')), 'a hook target never marks the conversation');
   });
 

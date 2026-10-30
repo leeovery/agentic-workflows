@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The person's answer at a gate (workflow-engine/scripts/domain/gate.cjs):
+// The person's answer at a gate (leeway-engine/scripts/domain/gate.cjs):
 // the record of the gate shown — every MENU's gate stated through
 // `section()` (surfaces.cjs), the command's MENU kept for the calling
 // conversation by the engine's dispatch and a skill's gateway, with the mod
@@ -38,7 +38,7 @@ const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harn
 const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
-const SCRIPTS = path.join(SKILLS, 'workflow-engine/scripts');
+const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
 const {
   openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, rangeOption, MENU_INSTRUCTION,
 } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
@@ -49,7 +49,7 @@ const { announced } = require('./gate-audit.cjs');
 
 // A Claude Code session's id.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
-const ANNOUNCED = { WORKFLOWS_GATE_SURFACE: '1' };
+const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
 const CODE_GATE = ['code-gate', 'pay.implementation.pay'];
 const CODE_QUESTION = 'Proceed anyway?';
 
@@ -70,7 +70,7 @@ before(() => {
 after(() => cleanupFixture(dir));
 
 /** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, WORKFLOWS_CONFIG_DIR: config(), ...env });
+const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: config(), ...env });
 
 /** A file in the conversation's folder. @param {string} name */
 const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);
@@ -259,7 +259,7 @@ describe('the gate shown (3.S6)', () => {
   });
 
   it('a skill\'s gateway records the gate its MENU states, as the engine\'s dispatch does', () => {
-    const script = path.join(SKILLS, 'workflow-start/scripts/gateway.cjs');
+    const script = path.join(SKILLS, 'leeway/scripts/gateway.cjs');
     const res = spawnSync('node', [script, 'view'], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...conversation() } });
     assert.strictEqual(res.status, 0, res.stderr);
 
@@ -465,8 +465,8 @@ describe('gate — refusals, logging nothing', () => {
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 describe('the mod\'s record of a press, as `gate` reads it', () => {
-  const REGISTER = path.join(SKILLS, 'workflow-gates/hooks/register.ts');
-  const LAYOUT = path.join(SKILLS, 'workflow-gates/hooks/layout.ts');
+  const REGISTER = path.join(SKILLS, 'leeway-gates/hooks/register.ts');
+  const LAYOUT = path.join(SKILLS, 'leeway-gates/hooks/layout.ts');
   /** @param {string} file */
   const source = (file) => fs.readFileSync(file, 'utf8');
 

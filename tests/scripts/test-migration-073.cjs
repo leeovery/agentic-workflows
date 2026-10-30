@@ -28,7 +28,7 @@ const os = require('os');
 const path = require('path');
 const { git, testIdentity } = require('./discovery-test-utils.cjs');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/073-environment-linters.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/073-environment-linters.cjs');
 
 /** @type {string} */
 let dir;

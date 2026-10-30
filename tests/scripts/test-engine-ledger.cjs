@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's data layer (workflow-engine/scripts/domain/ledger.cjs): the
+// The ledger's data layer (leeway-engine/scripts/domain/ledger.cjs): the
 // events and their schemas (domain/ledger-events.cjs), their ids
 // (domain/ledger-ids.cjs), the streamed read, the append, the append-only
 // check on every read and at every state commit (domain/ledger-check.cjs),
@@ -39,7 +39,7 @@ const { git, codeProject, tip, traced, withFrozenClock, FROZEN_MS, holdLock, loc
 const { auditMarkers } = require('./gate-audit.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
 const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
 const { checkLedger, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
@@ -683,7 +683,7 @@ describe('the append-only check on a state commit (5.S6)', () => {
   it('judges the ledger the commit holds, not the file, where the two differ', () => {
     const { main, root } = codeProject(world, FUMI);
     const [a, b] = threeCommitted(root);
-    const worktree = /** @type {import('../../skills/workflow-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root));
+    const worktree = /** @type {import('../../skills/leeway-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root));
     /** @param {string} text */
     const treeHolding = (text) => {
       const blob = execFileSync('git', ['hash-object', '-w', '--stdin'], { cwd: main, encoding: 'utf8', input: text }).trim();

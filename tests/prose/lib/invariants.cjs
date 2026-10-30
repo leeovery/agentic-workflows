@@ -88,13 +88,13 @@ const REDIRECT_TARGET = /(?:>>?|\btee\b(?:\s+-\S+)*)\s*(\S*\.workflows\/\S+)/g;
 // at the segment's end; the bound keeps a heredoc body that happens to
 // contain one of the words from reaching a path further along.
 const MOVE_OPERANDS = /\b(?:cp|mv|install)\b((?:\s+[^\s|;&<>]+){1,4})/g;
-const WORKFLOWS_PATH = /\S*\.workflows\/\S+/g;
+const LEEWAY_PATH = /\S*\.workflows\/\S+/g;
 
 function shellWriteTargets(detail) {
   const targets = [];
   for (const m of detail.matchAll(REDIRECT_TARGET)) targets.push(m[1]);
   for (const m of detail.matchAll(MOVE_OPERANDS)) {
-    targets.push(...(m[1].match(WORKFLOWS_PATH) || []));
+    targets.push(...(m[1].match(LEEWAY_PATH) || []));
   }
   return targets;
 }

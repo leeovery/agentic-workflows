@@ -19,7 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/062-clear-unasked-implementation-setup.cjs');
+const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/062-clear-unasked-implementation-setup.cjs');
 
 let dir, updates, skips;
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The kernel's file streams (workflow-engine/scripts/kernel/file-stream.cjs):
+// The kernel's file streams (leeway-engine/scripts/kernel/file-stream.cjs):
 // a file's lines read from its end (`fdLinesBackward`, `fileLinesBackward`)
 // are its lines read from its start, in the other order, each where it sits
 // — whatever the file ends with, and however a line falls across the chunks
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { fdLines, fdLinesBackward, fileLinesBackward } = require('../../skills/workflow-engine/scripts/kernel/file-stream.cjs');
+const { fdLines, fdLinesBackward, fileLinesBackward } = require('../../skills/leeway-engine/scripts/kernel/file-stream.cjs');
 
 /** A line longer than the chunk a file is read in, and one longer than two. */
 const LONG = 'x'.repeat(70 * 1024);

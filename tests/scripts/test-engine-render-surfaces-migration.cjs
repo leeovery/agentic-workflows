@@ -17,7 +17,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('render legacy-split-display', () => {
@@ -155,8 +155,7 @@ describe('render legacy-split-display', () => {
       '=== DISPLAY: legacy split interrupted (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       '  ⚑ Interrupted split(s) detected — a prior apply crashed',
       '    mid-flight.',
-      '    Clear each, then reopen the epic via /workflow-start to',
-      '    retry:',
+      '    Clear each, then reopen the epic via /leeway to retry:',
       '',
       '    • billing',
       '',
@@ -214,14 +213,14 @@ describe('render legacy-split-display', () => {
     const closing = (line) => [MARKER, '**`□ Legacy Split Complete`**', '', `> ${line}`, ''].join('\n');
 
     it('an aborted apply leads, whatever else the split did', () => {
-      assert.strictEqual(complete(2, 1, 1), closing('1 source file(s) aborted mid-apply; 2 decomposed; 1 skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.'));
+      assert.strictEqual(complete(2, 1, 1), closing('1 source file(s) aborted mid-apply; 2 decomposed; 1 skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /leeway.'));
     });
 
     it('nothing done, everything decomposed, a mix, and everything skipped each close on their own line', () => {
       assert.strictEqual(complete(0, 0, 0), closing('No legacy source files needed decomposition.'));
       assert.strictEqual(complete(3, 0, 0), closing('Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.'));
-      assert.strictEqual(complete(2, 1, 0), closing('2 source file(s) decomposed; 1 skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.'));
-      assert.strictEqual(complete(0, 2, 0), closing('No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.'));
+      assert.strictEqual(complete(2, 1, 0), closing('2 source file(s) decomposed; 1 skipped. Skipped files remain on the map and can be revisited next time you open the epic via /leeway.'));
+      assert.strictEqual(complete(0, 2, 0), closing('No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /leeway.'));
     });
 
     it('refuses a tally missing, negative, or not a whole number, by name', () => {

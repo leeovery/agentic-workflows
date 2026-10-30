@@ -18,14 +18,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
+const { mapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/discussion-map.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const {
   epicMenu, epicDashboard,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
   drawLabel, bulletRow,
-} = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+} = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const { git, stateGit, GUARD_GROUPS } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, send, carryOn, arrive, handoff, arriveAtEpicMenu, pauseCheck, epicPick, epicKey, backToStart, startNew,
@@ -48,7 +48,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.run(['session', 'label', wu, 'discovery', wu]).labelled, false);
     const shaping = carryOn(sim);
     assert.deepStrictEqual(shaping.position, { name: wu, phase: 'discovery', topic: wu });
-    assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/workflow-discovery/SKILL.md'));
+    assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/leeway-discovery/SKILL.md'));
     assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/sessions/session-001.md`)]);
     assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
@@ -86,9 +86,9 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(epicPick(sim, wu, 'continue_discovery').line, `→ Discovery · ${wu}`);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
     // The discovery hand-off lands on the epic menu — the bridge's discovery
-    // continuation into workflow-continue-epic, no banner — which labels the
+    // continuation into leeway-continue-epic, no banner — which labels the
     // work unit alone on arrival.
-    handoff(sim, `/workflow-continue-epic ${wu}`);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
@@ -146,7 +146,7 @@ describe('pipeline simulation: epic map', () => {
     assert.match(arriveAtEpicMenu(sim, wu, 'research'), /Research completed for "Overhaul"\./);
     // The menu's way back: the start menu, the epic still its row.
     assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys)
-      .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-epic ${wu}`));
+      .some((k) => k.action === 'continue_work_unit' && k.route === `/leeway-continue-epic ${wu}`));
     const ops = sim.write(`.leeway/.cache/${wu}/discovery/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.research.alpha`, fields: { reconcile_needed: true } }]);
     sim.run(['manifest', 'apply', wu, '--file', ops]);
@@ -491,7 +491,7 @@ describe('pipeline simulation: epic map', () => {
       hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Bash', tool_input: { command },
     }));
     assert.strictEqual(beforeBash('cd .leeway && git commit -am x').code, 2, 'every state commit is the engine\'s');
-    assert.deepStrictEqual(beforeBash(`node .claude/skills/workflow-engine/scripts/engine.cjs commit ${wu} -m x`), { stdout: '', stderr: '', code: 0 });
+    assert.deepStrictEqual(beforeBash(`node .claude/skills/leeway-engine/scripts/engine.cjs commit ${wu} -m x`), { stdout: '', stderr: '', code: 0 });
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.
@@ -635,7 +635,7 @@ describe('pipeline simulation: epic map', () => {
     // (summary-backfill B and D).
     assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
     sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'analyze_discussions'], /unknown --action "analyze_discussions"/);
-    sim.refuses(['handoff', '/workflow-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
+    sim.refuses(['handoff', '/leeway-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
     assert.match(sim.render(['analysis-proceed-gate', wu], { expect: 'content' }),
       /^=== DISPLAY: analysis prompt [^\n]*\n> Your discussions will be analyzed for natural groupings[\s\S]*Proceed with analysis\?/);
@@ -657,7 +657,7 @@ describe('pipeline simulation: epic map', () => {
     // start's confirm answers empty, and the pick hands off with its topic.
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: groupings$/m);
     sim.render(['spec-confirm-gate', `${wu}.specification.alpha`], { expect: 'empty' });
-    handoff(sim, `/workflow-specification-process epic ${wu} alpha`);
+    handoff(sim, `/leeway-specification-process epic ${wu} alpha`);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'alpha']).incorporations, []);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
@@ -685,7 +685,7 @@ describe('pipeline simulation: epic map', () => {
     const superseded = bulletRow(`${path.join(sim.dir, `.leeway/${wu}/specification/alpha/specification.md`)} → will be superseded`).join('\n');
     assert.ok(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--unify'], { expect: 'content' })
       .includes(`Existing specifications to incorporate:\n${superseded}\n`), 'the incorporated specification is named whole');
-    handoff(sim, `/workflow-specification-process epic ${wu} unified`);
+    handoff(sim, `/leeway-specification-process epic ${wu} unified`);
     // The start records what it incorporates, and the session reads it back
     // at its setup — the same answer the confirm drew.
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
@@ -750,12 +750,12 @@ describe('pipeline simulation: epic map', () => {
       '--blocking', 'alpha'], { expect: 'content' }), /⚑ "Unified" is blocked until these dependencies are resolved/);
     sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
     const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu);
-    const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
+    const menuNow = () => require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
     let keys = menuNow().keys;
     assert.ok(!keys.some((k) => k.action === 'start_implementation' && k.topic === 'unified'),
       'a dep-blocked implementation start carries no menu row');
     assert.ok(keys.some((k) => k.action === 'unblock_plan'), 'the unblock option surfaces');
-    const unblockView = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicUnblockMenu(epicDetailNow());
+    const unblockView = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs')).project.epicUnblockMenu(epicDetailNow());
     assert.deepStrictEqual(unblockView.keys.map((k) => [k.key, k.action, k.topic, k.dep ?? null])[0],
       ['1', 'unblock', 'unified', 'alpha']);
     // mark-dependency-satisfied.md, which the unblock and implementation's
@@ -981,7 +981,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual('bank' in remediated, false, 'the boundary emptied the remediation phase\'s bank');
 
     // The review restart closes an abandoned remediation phase without a
-    // sweep (workflow-review-process/SKILL.md, restart step 4): the bank and
+    // sweep (leeway-review-process/SKILL.md, restart step 4): the bank and
     // the half-walked boundary are dropped, the boundary is marked, and the
     // unrun task is skipped on the phase's close — a task of that phase never
     // banks again.

@@ -16,12 +16,12 @@ const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { CHUNKER_VERSION } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { InvalidRequestError, QuotaError } = require('../../skills/workflow-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
-const { indexBulk } = require('../../skills/workflow-engine/scripts/domain/knowledge/bulk.cjs');
-const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowledge/indexing.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { CHUNKER_VERSION } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
+const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { InvalidRequestError, QuotaError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { indexBulk } = require('../../skills/leeway-engine/scripts/domain/knowledge/bulk.cjs');
+const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
 
@@ -768,7 +768,7 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
     writeJson(path.join(system, 'config.json'), { knowledge: endpoint.config });
     fs.rmSync(path.join(root, '.leeway', '.knowledge'), { recursive: true, force: true });
     try {
-      const env = { WORKFLOWS_CONFIG_DIR: system };
+      const env = { LEEWAY_CONFIG_DIR: system };
       assert.strictEqual((await engineKnowledge(root, ['setup', '--keyword-only'], env)).code, 0);
       assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 0);
       assert.strictEqual(metadata().provider, null);

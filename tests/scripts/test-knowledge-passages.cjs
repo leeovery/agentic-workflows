@@ -12,9 +12,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { chunk } = require('../../skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs');
-const { withPassages } = require('../../skills/workflow-engine/scripts/domain/knowledge/passages.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { chunk } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
+const { withPassages } = require('../../skills/leeway-engine/scripts/domain/knowledge/passages.cjs');
 
 const SOURCE = '.workflows/auth/discussion/auth.md';
 

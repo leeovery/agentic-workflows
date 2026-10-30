@@ -22,11 +22,11 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
-const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
-const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
-const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { ENGINE_COMMAND, launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
+const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
+const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { ENGINE_COMMAND, launcher } = require('../../skills/leeway-engine/scripts/kernel/call.cjs');
 const { before, after } = require('node:test');
 const assert = require('node:assert');
 const { createManifest, statePath } = require('./discovery-test-utils.cjs');
@@ -262,7 +262,7 @@ function storedChunks(root, { workUnit, phase, topic } = {}) {
 /**
  * A system config directory of the test's own, holding each file given —
  * `config.json`, `credentials.json` — as written; removed after the test.
- * A call takes it as its `WORKFLOWS_CONFIG_DIR`.
+ * A call takes it as its `LEEWAY_CONFIG_DIR`.
  * @param {import('node:test').TestContext} t @param {Record<string, string>} [files]
  * @returns {string}
  */
