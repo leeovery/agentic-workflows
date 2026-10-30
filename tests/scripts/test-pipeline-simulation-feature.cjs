@@ -4,8 +4,8 @@
 // The pipeline simulation's feature scenarios: the whole pipeline from
 // discovery to a completed review; the start menu's working set of inbox
 // ideas seeding discovery; a discussion entered through `enter`, begun and
-// then resumed by a later conversation; research parked beneath a live
-// discussion, and research landing beneath one in session; review skipped at
+// then resumed by a later conversation; research started beneath a live
+// discussion, and research reopened beneath one in session; review skipped at
 // the next-phase gate, and a failed review reopening implementation; the
 // implementation loop's fix and analysis cycles surviving a resume.
 //
@@ -26,7 +26,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, send, handoffEntry, enterEntry, carryOn, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -153,36 +153,35 @@ describe('pipeline simulation: feature', () => {
     assert.match(carryOn(sim).text, /has not written to the log yet/);
   });
 
-  it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
+  it('feature: research started beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
     const wu = 'ledger';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ledger feature', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // The discussion's own forward parks a message research-side: the stub is
-    // pre-live to the phase walk, yet research feeds discussion — the linear
-    // continue routes to it, and the discussion is held at entry and at its
-    // conclusion alike, the entry gate naming the work unit's next step. The
-    // session already inside resumes: the engine holds births, not resumes.
-    send(sim, wu, 'research', wu, 'balance-question');
+    // Research started beneath the discussion: research feeds discussion —
+    // the linear continue routes to it, and the discussion is held at entry
+    // and at its conclusion alike, the entry gate naming the work unit's
+    // next step. The session already inside resumes: the engine holds
+    // births, not resumes.
+    sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /Entry blocked — this discussion awaits research on "Ledger" \(parked — not yet started\)[\s\S]*Continue the work unit — the research is its next step\./);
+      /Entry blocked — this discussion awaits research on "Ledger" \(in flight\)[\s\S]*Continue the work unit — the research is its next step\./);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /awaits research on "Ledger" \(parked — not yet started\)/);
+      /awaits research on "Ledger" \(in flight\)/);
     // The wait gate's yes runs the in-flight check, then hands the session to
     // the bridge as a pause: its banner names what the unit's one
     // conversation awaits — the linear clause drops the topic name — and the
     // continuation routes to the research.
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
-      /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(parked — not yet started\)\.\n$/);
+      /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(in flight\)\.\n$/);
     // The feature's continue menu proceeds to the research, handing off to it.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, '→ Research · ledger');
-    sim.run(['topic', 'start', wu, 'research', wu]);
     assert.match(sim.render(['step-opening', `${wu}.research.${wu}`, '--step', 'session'], { expect: 'content' }),
       /□ Research Session[\s\S]*> Starting the research session\./);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
@@ -194,7 +193,6 @@ describe('pipeline simulation: feature', () => {
     sim.run(['research-threads', 'add', wu, wu, 'balance-rounding', '--question', 'Where does the ledger round a balance?', '--origin', 'seed']);
     sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
-    sim.run(['topic', 'absorb', wu, 'research', wu, '--file', '001-balance-question.md', '-m', `research(${wu}): absorb 001-balance-question`]);
     assert.match(sim.render(['research-conclude-gate', `${wu}.research.${wu}`], { expect: 'content' }),
       /Research Threads — Ledger \(1 thread\)\n {2}└─ ○ Where does the ledger round a balance\?\s+\[seed\]\n=== MENU: research conclude gate/);
     sim.run(['topic', 'complete', wu, 'research', wu]);
@@ -208,21 +206,16 @@ describe('pipeline simulation: feature', () => {
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
     assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session', '--resumed'], { expect: 'content' }),
       /> Picking the discussion back up where the map leaves it\./, 'the session the research held picks back up');
-    // The send's hop flagged the discussion: the session reads the landed
-    // research and clears the flag (prose-owned — simulated here).
-    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
-    // A concluded discussion is held the same way: a research-side landing
-    // beneath it reopens the research, and the discussion's reopen refuses
-    // until that research lands again.
-    const second = send(sim, wu, 'research', wu, 'second-question');
-    assert.strictEqual(second.reopened, true);
+    // A concluded discussion is held the same way: its research reopened
+    // beneath it, the discussion's reopen refuses until that research lands
+    // again.
+    sim.run(['topic', 'reopen', wu, 'research', wu]);
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu],
       /discussion can't reopen on "ledger" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nThe second question.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the second question`, '--topic', `research/${wu}`]);
-    sim.run(['topic', 'absorb', wu, 'research', wu, '--file', path.basename(second.message_path), '-m', `research(${wu}): absorb second-question`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
     sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
     assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', wu]).status, 'in-progress');
@@ -239,23 +232,17 @@ describe('pipeline simulation: feature', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // A peer's delivery lands research-side beneath the discussion in
-    // session: the completed research reopens and the discussion is flagged.
-    // While the research is outstanding the wait — not the flag — holds the
-    // close, and the session's own check stays silent.
-    const scratch = sim.write('.leeway/.cache/scratch/late-question.md',
-      '### Late question\n*From: tally · discussion · 2026-07-23*\n\nWhat does the tally round to?\n');
-    const landed = sim.run(['topic', 'send', wu, 'research', wu,
-      '--content', scratch, '--slug', 'late-question', '-m', `discussion(${wu}): forward a research question`]);
-    assert.strictEqual(landed.reopened, true);
-    assert.strictEqual(landed.reconcile_flagged, true);
+    // A peer reopens the research beneath the discussion in session: the
+    // discussion is flagged. While the research is outstanding the wait —
+    // not the flag — holds the close, and the session's own check stays
+    // silent.
+    const peer = sim.session('peer-in-research', 1);
+    assert.deepStrictEqual(peer.run(['topic', 'reopen', wu, 'research', wu]).reconcile_flagged, [{ phase: 'discussion', topic: wu }]);
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'in-progress');
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /^discussion "tally" awaits research on the topic/);
-    // The peer drains the mailbox and concludes the research: the wait
-    // releases, and the unread flag is now what holds the close.
-    sim.run(['topic', 'absorb', wu, 'research', wu,
-      '--file', path.basename(landed.message_path), '-m', `research(${wu}): absorb late-question`]);
+    // The peer concludes the research: the wait releases, and the unread
+    // flag is now what holds the close.
     sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);

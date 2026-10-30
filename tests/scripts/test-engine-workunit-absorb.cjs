@@ -659,67 +659,56 @@ describe('engine workunit absorb — imports follow the material', () => {
   });
 });
 
-describe('engine workunit absorb — mailboxes follow their documents', () => {
+describe('engine workunit absorb — the mailbox follows its topic', () => {
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Feature-relative message file → content: two messages waiting on the discussion (numbering gapped by an earlier drain), one on the research. */
+  /** Message file → content: two messages waiting for the feature's topic, numbering gapped by an earlier answer. */
   const MESSAGES = {
-    'discussion/.mailbox/auth-flow/001-token-rotation.md': '### Token rotation\n*From: billing · discussion · 2026-06-03*\n\nRotate on every refresh.\n',
-    'discussion/.mailbox/auth-flow/003-lockout-window.md': '### Lockout window\n*From: billing · discussion · 2026-06-05*\n\nHow long a lockout holds.\n',
-    'research/.mailbox/auth-flow/002-vendor-limits.md': '### Vendor limits\n*From: billing · research · 2026-06-04*\n\nWhat the vendor rate-limits.\n',
+    '001-token-rotation.md': 'Token rotation\n\nRotate on every refresh.\n',
+    '003-lockout-window.md': 'Lockout window\n\nHow long a lockout holds.\n',
   };
 
   function setupWithMessages() {
     fix = setupFixture();
-    for (const [rel, content] of Object.entries(MESSAGES)) writeFile(fix.project, `.leeway/auth-flow/${rel}`, content);
+    for (const [name, content] of Object.entries(MESSAGES)) writeFile(fix.project, `.leeway/auth-flow/topics/auth-flow/mail/${name}`, content);
     commitAll(fix.project, 'waiting messages');
   }
 
-  it('moves each mailbox under the topic, names and contents intact, and the engine reads it there', () => {
+  it('moves the mailbox under the new topic, names and contents intact, and the engine reads it there', () => {
     setupWithMessages();
     const res = engine(fix, ABSORB);
 
-    assert.deepStrictEqual(res.mail_moved, [
-      { phase: 'discussion', path: inEpic(fix, 'discussion/.mailbox/auth'), count: 2 },
-      { phase: 'research', path: inEpic(fix, 'research/.mailbox/auth'), count: 1 },
-    ]);
-    for (const [rel, content] of Object.entries(MESSAGES)) {
-      const landed = rel.replace('/.mailbox/auth-flow/', '/.mailbox/auth/');
-      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments', landed), 'utf8'), content, `moved intact: ${landed}`);
+    assert.deepStrictEqual(res.mail_moved, { path: inEpic(fix, 'topics/auth/mail'), count: 2 });
+    for (const [name, content] of Object.entries(MESSAGES)) {
+      assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/mail', name), 'utf8'), content, `moved intact: ${name}`);
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')), 'the feature directory is gone');
-
-    const discussionMailbox = engine(fix, ['topic', 'mailbox', 'payments', 'discussion', 'auth']);
-    assert.deepStrictEqual(discussionMailbox.files, [
-      inEpic(fix, 'discussion/.mailbox/auth/001-token-rotation.md'),
-      inEpic(fix, 'discussion/.mailbox/auth/003-lockout-window.md'),
-    ]);
-    assert.deepStrictEqual(engine(fix, ['topic', 'mailbox', 'payments', 'research', 'auth']).files,
-      [inEpic(fix, 'research/.mailbox/auth/002-vendor-limits.md')]);
+    assert.deepStrictEqual(engine(fix, ['topic', 'mailbox', 'payments', 'auth']).files,
+      Object.keys(MESSAGES).map((name) => inEpic(fix, `topics/auth/mail/${name}`)));
   });
 
-  it("the moves ride the absorb's one commit — nothing left dirty", () => {
+  it("the move rides the absorb's one commit — nothing left dirty", () => {
     setupWithMessages();
     const commits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim());
     engine(fix, ABSORB);
 
     assert.strictEqual(Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
     const staged = stateGit(fix.project, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n');
-    for (const rel of Object.keys(MESSAGES)) {
-      assert.ok(staged.includes(`auth-flow/${rel}`), `deletion staged: ${rel}`);
-      assert.ok(staged.includes(`payments/${rel.replace('/.mailbox/auth-flow/', '/.mailbox/auth/')}`), `landing staged: ${rel}`);
+    for (const name of Object.keys(MESSAGES)) {
+      assert.ok(staged.includes(`auth-flow/topics/auth-flow/mail/${name}`), `deletion staged: ${name}`);
+      assert.ok(staged.includes(`payments/topics/auth/mail/${name}`), `landing staged: ${name}`);
     }
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '');
   });
 
-  it('a drained mailbox is no move — nothing lands in the epic and no field rides the response', () => {
+  it('an empty mailbox is no move — nothing lands in the epic and no field rides the response', () => {
     fix = setupFixture();
-    fs.mkdirSync(path.join(fix.project, '.leeway/auth-flow/discussion/.mailbox/auth-flow'), { recursive: true });
+    fs.mkdirSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/mail'), { recursive: true });
     const res = engine(fix, ABSORB);
 
     assert.strictEqual(res.mail_moved, undefined);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/.mailbox')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/topics/auth/mail')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
   });
 });
@@ -965,10 +954,10 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
 
   it('refuses a mailbox already at the topic in the epic — the messages never merge into it', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.leeway/auth-flow/discussion/.mailbox/auth-flow/001-token-rotation.md', '### Token rotation\n');
-    writeFile(fix.project, '.leeway/payments/discussion/.mailbox/auth/001-stray.md', '### Stray\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/mail/001-token-rotation.md', 'Token rotation\n');
+    writeFile(fix.project, '.leeway/payments/topics/auth/mail/001-stray.md', 'Stray\n');
     commitAll(fix.project, 'mailbox collision');
-    refusedPristine(ABSORB, /\.leeway\/payments\/discussion\/\.mailbox\/auth already exists — pick a different name/);
+    refusedPristine(ABSORB, /\.leeway\/payments\/topics\/auth\/mail already exists — pick a different name/);
   });
 
   it('the research lands at the topic name — a renamed absorb keeps every experiment join intact', () => {

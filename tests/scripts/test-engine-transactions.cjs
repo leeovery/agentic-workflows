@@ -52,16 +52,11 @@ function epicManifest() {
   };
 }
 
-/** Write a message scratch and return the `topic send` argv delivering it to a payments topic. */
-function sendArgv(dir, phase, topic, slug = 'a-message') {
-  writeFile(dir, '.leeway/.cache/scratch/message.md', `### ${slug}\n*From: x · discussion · d*\n\nBody of ${slug}.\n`);
-  return ['topic', 'send', 'payments', phase, topic,
-    '--content', '.leeway/.cache/scratch/message.md', '--slug', slug, '-m', `send ${slug}`];
-}
-
-/** Send one message to a payments topic. */
-function send(dir, phase, topic, slug) {
-  return engine(dir, sendArgv(dir, phase, topic, slug));
+/** Park a payments topic's item not started, as a message landing on it once did. */
+function parkStub(dir, phase, topic) {
+  const m = readManifest(dir, 'payments');
+  m.phases[phase].items[topic] = { status: 'unstarted' };
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 }
 
 const setupEpicFixture = harness.fixtureFrom('engine-tx-', (dir) => {
@@ -684,11 +679,11 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|absorb\|forward>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|answered>/);
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
-    send(dir, 'research', 'parked-topic');
+    parkStub(dir, 'research', 'parked-topic');
     const res = engine(dir, ['topic', 'start', 'payments', 'research', 'parked-topic']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'parked-topic', phase: 'research', status: 'in-progress', created: false });
@@ -696,391 +691,11 @@ describe('engine topic start', () => {
   });
 });
 
-describe('engine topic send', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('refuses a send carrying no message — nothing parked, nothing written', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    assert.strictEqual(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases']).error,
-      'Usage: engine topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>');
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before, 'no stub parked');
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox')), 'no mailbox conjured');
-  });
-
-  it('installs the message in the mailbox, parks the absent item unstarted, self-commits message + manifest only', () => {
-    writeFile(dir, '.leeway/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
-    const scratch = path.join(dir, '.leeway/.cache/scratch/message-scratch.md');
-    writeFile(dir, '.leeway/.cache/scratch/message-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
-
-    const { res, sections } = okSections(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): send message to edge-cases']);
-
-    assert.strictEqual(sections, '', 'send appends no sections');
-    assert.strictEqual(res.created, true);
-    assert.strictEqual(res.status, 'unstarted');
-    assert.strictEqual(res.status_before, null);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], { status: 'unstarted' });
-    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-rate-limits.md'));
-    assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.deepStrictEqual(res.warnings, []);
-    const installed = fs.readFileSync(res.message_path, 'utf8');
-    assert.match(installed, /### Rate limits/);
-    assert.ok(!fs.existsSync(scratch), 'scratch message file consumed');
-    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
-    assert.deepStrictEqual(show, [
-      'payments/discussion/.mailbox/edge-cases/001-rate-limits.md',
-      'payments/manifest.json',
-    ], 'commit confined to message + manifest');
-    assert.match(stateGit(dir, ['status', '--porcelain']), /discussion\/refund-policy\.md/, 'peer dirt untouched');
-  });
-
-  it('numbers messages sequentially and never collides', () => {
-    for (const slug of ['first', 'second']) {
-      writeFile(dir, '.leeway/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
-      engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-        '--content', '.leeway/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): send message to edge-cases`]);
-    }
-    const files = fs.readdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases')).sort();
-    assert.deepStrictEqual(files, ['001-first.md', '002-second.md']);
-  });
-
-  it('refuses a missing or empty message file, a bad slug, a missing commit message — nothing written', () => {
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.leeway/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file not found/);
-    writeFile(dir, '.leeway/.cache/scratch/empty.md', '  \n');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.leeway/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file is empty/);
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no item conjured');
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox')), 'no mailbox conjured');
-  });
-
-  it('hardening: refuses a message path outside .leeway/.cache — a live artifact is never consumed', () => {
-    writeFile(dir, '.leeway/payments/research/live.md', '# Live artifact\n');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
-      '--content', '.leeway/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \S*\/\.leeway\/\.cache\//);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/live.md')), 'live artifact untouched');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
-      '--content', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \S*\/\.leeway\/\.cache\//);
-  });
-
-  it('hardening: refuses traversal in topic names — send, mailbox, presence', () => {
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', '../../../evil',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
-    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'discussion', '../evil']).error, /invalid topic name/);
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/evil')), 'nothing escaped');
-  });
-
-  it('hardening: a research landing never clobbers a pending brief-reconcile flag', () => {
-    const m = readManifest(dir, 'payments');
-    m.phases.discussion.items['session-model'].reconcile_needed = true;
-    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
-
-    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
-
-    assert.strictEqual(res.reconcile_flagged, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].reconcile_needed, true, 'brief flag preserved');
-  });
-
-  it('a terminal target refuses before the message is consumed', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'refund-policy',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/scratch/c.md')), 'scratch message preserved on refusal');
-  });
-
-  it('research-side delivery beneath a completed discussion flags it for reconciliation', () => {
-    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
-    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): send message to session-model']);
-
-    assert.strictEqual(res.reconcile_flagged, true);
-    const m = readManifest(dir, 'payments');
-    assert.strictEqual(m.phases.discussion.items['session-model'].reconcile_needed, 'research');
-    assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'the discussion itself is not reopened');
-    assert.strictEqual(m.phases.research.items['session-model'].status, 'unstarted', 'the research item parks the message');
-  });
-
-  it('discussion-side delivery beneath a spec-sourced discussion flags the spec and stales the row', () => {
-    const m = epicManifest();
-    m.phases.specification = { items: {
-      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
-    } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-
-    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
-
-    assert.strictEqual(res.reopened, true, 'the landing reopens the discussion');
-    assert.strictEqual(res.reconcile_flagged, true);
-    assert.deepStrictEqual(res.sources_staled, ['unified']);
-    const items = readManifest(dir, 'payments').phases.specification.items;
-    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
-    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
-  });
-
-  it('no reconcile flag for a discussion-side delivery — its downstream is the spec join', () => {
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-    const disc = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
-    assert.strictEqual(disc.reconcile_flagged, undefined);
-  });
-
-  it('research-side delivery beneath a live discussion flags it — research feeds discussion', () => {
-    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
-    const live = engine(dir, ['topic', 'send', 'payments', 'research', 'refund-policy',
-      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
-    assert.strictEqual(live.reconcile_flagged, true);
-    const m = readManifest(dir, 'payments');
-    assert.strictEqual(m.phases.discussion.items['refund-policy'].reconcile_needed, 'research');
-    assert.strictEqual(m.phases.discussion.items['refund-policy'].status, 'in-progress', 'the discussion stays in flight — the flag says why it cannot conclude');
-    assert.strictEqual(m.phases.research.items['refund-policy'].status, 'unstarted', 'the research item parks the message');
-  });
-
-  it('mailbox read: empty for a missing directory, lists delivered messages sorted, refuses illegal phases', () => {
-    const empty = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
-    assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });
-
-    for (const slug of ['first', 'second']) {
-      writeFile(dir, '.leeway/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
-      engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-        '--content', '.leeway/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): send message to edge-cases']);
-    }
-    const two = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
-    assert.strictEqual(two.count, 2);
-    assert.deepStrictEqual(two.files, [
-      path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-first.md'),
-      path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/002-second.md'),
-    ]);
-
-    fs.mkdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/dir.md'), { recursive: true });
-    const withDir = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
-    assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a message');
-
-    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'planning', 'edge-cases']).error, /research\|discussion\|investigation only/);
-    assert.match(engineFails(dir, ['topic', 'mailbox', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
-    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'discussion']).error, /Usage/);
-  });
-
-  it('a second message on an unstarted stub leaves it unstarted', () => {
-    send(dir, 'research', 'edge-cases', 'first');
-    const res = send(dir, 'research', 'edge-cases', 'second');
-
-    assert.strictEqual(res.status, 'unstarted');
-    assert.strictEqual(res.created, false);
-    assert.strictEqual(res.status_before, 'unstarted');
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'], { status: 'unstarted' });
-  });
-
-  it('leaves an in-progress item untouched — never backwards', () => {
-    const res = send(dir, 'research', 'auth-flow');
-
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.created, false);
-    assert.strictEqual(res.status_before, 'in-progress');
-    assert.strictEqual(res.reopened, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
-  });
-
-  it('reopens a completed item to in-progress — never land a message in a concluded artefact', () => {
-    const res = send(dir, 'discussion', 'session-model');
-
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.created, false);
-    assert.strictEqual(res.status_before, 'completed');
-    assert.strictEqual(res.reopened, true);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'in-progress');
-  });
-
-  it('refuses a closed map row before the item is touched; off the map, a cancelled or superseded item refuses with the start messages', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
-    for (const phase of ['research', 'discussion']) {
-      assert.strictEqual(engineFails(dir, sendArgv(dir, phase, 'auth-flow')).error,
-        '"auth-flow" is cancelled — reactivate it from the epic menu first', phase);
-    }
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'], undefined, 'nothing born under a cancelled row');
-
-    const m = readManifest(dir, 'payments');
-    m.phases.discovery.items['dead-lead'] = { routing: 'research', source: 'discovery', handled: true };
-    m.phases.research.items['dead-lead'] = { status: 'completed' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engineFails(dir, sendArgv(dir, 'research', 'dead-lead')).error,
-      '"dead-lead" is closed as a dead end — reopen it in discovery first');
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['dead-lead'].status, 'completed', 'the dead end is not reopened underneath');
-
-    // session-model has no map row — the item's own refusal stands.
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    assert.match(engineFails(dir, sendArgv(dir, 'discussion', 'session-model')).error, /discussion item "session-model" is cancelled — reactivate it instead/);
-
-    engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
-    assert.match(engineFails(dir, sendArgv(dir, 'research', 'fee-model')).error, /is superseded \(by "auth-flow"\) — supersession is terminal/);
-  });
-
-  it('heals a status-less item to unstarted — fields preserved, manifest saved', () => {
-    const m0 = epicManifest();
-    m0.phases.research.items['half-written'] = { reconcile_needed: true };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
-
-    const res = send(dir, 'research', 'half-written');
-
-    assert.strictEqual(res.status, 'unstarted');
-    assert.strictEqual(res.created, false);
-    assert.strictEqual(res.status_before, null);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['half-written'],
-      { reconcile_needed: true, status: 'unstarted' });
-  });
-
-  it('refuses phases whose vocabulary lacks unstarted — schema-driven', () => {
-    const err = engineFails(dir, sendArgv(dir, 'planning', 'auth-flow'));
-    assert.match(err.error, /Invalid status "unstarted" for phase "planning"/);
-    // Nothing created on the refused path.
-    assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined);
-  });
-});
-
-describe('engine topic forward', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('moves the message to the other phase-side: dest item parked, file renumbered, stub removed, action-scoped commit', () => {
-    send(dir, 'research', 'edge-cases', 'a-decision-owed');
-    writeFile(dir, '.leeway/payments/research/auth-flow.md', 'dirty peer\n');
-
-    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'research(payments/edge-cases): forward 001-a-decision-owed to discussion']);
-
-    assert.strictEqual(res.from_phase, 'research');
-    assert.strictEqual(res.to_phase, 'discussion');
-    assert.strictEqual(res.moved, '001-a-decision-owed.md');
-    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md'));
-    assert.strictEqual(res.remaining, 0);
-    assert.strictEqual(res.status, 'unstarted');
-    assert.strictEqual(res.created, true);
-    assert.strictEqual(res.source_item_removed, true);
-    assert.match(res.committed, /^[0-9a-f]+$/);
-
-    const m = readManifest(dir, 'payments');
-    assert.strictEqual(m.phases.research.items['edge-cases'], undefined, 'the emptied parked stub is removed');
-    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'unstarted' });
-    assert.match(fs.readFileSync(res.message_path, 'utf8'), /Body of a-decision-owed/);
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'source file gone');
-    const show = stateGit(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
-    assert.deepStrictEqual(show, [
-      'payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md',
-      'payments/manifest.json',
-      'payments/research/.mailbox/edge-cases/001-a-decision-owed.md',
-    ], 'commit confined to the two mailbox paths + manifest');
-    assert.match(stateGit(dir, ['status', '--porcelain', '-uall']), /research\/auth-flow\.md/, 'peer dirt untouched');
-    assert.strictEqual(lastMessage(dir), 'research(payments/edge-cases): forward 001-a-decision-owed to discussion');
-  });
-
-  it('renumbers into the destination mailbox behind existing entries', () => {
-    send(dir, 'discussion', 'edge-cases', 'already-waiting');
-    send(dir, 'research', 'edge-cases', 'a-decision-owed');
-
-    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'm']);
-
-    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/002-a-decision-owed.md'));
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases')).sort(),
-      ['001-already-waiting.md', '002-a-decision-owed.md']);
-  });
-
-  it('leaves an in-progress source item alone, and a still-populated unstarted source stub in place', () => {
-    send(dir, 'research', 'auth-flow', 'a-decision-owed');
-    const live = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'auth-flow',
-      '--file', '001-a-decision-owed.md', '-m', 'm']);
-    assert.strictEqual(live.source_item_removed, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
-
-    send(dir, 'research', 'edge-cases', 'first');
-    send(dir, 'research', 'edge-cases', 'second');
-    const partial = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '001-first.md', '-m', 'm']);
-    assert.strictEqual(partial.remaining, 1);
-    assert.strictEqual(partial.source_item_removed, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'].status, 'unstarted', 'a stub with entries left keeps parking them');
-  });
-
-  it('a completed destination reopens and hops — the same staleness a send lands', () => {
-    const m = epicManifest();
-    m.phases.specification = { items: {
-      unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
-    } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    send(dir, 'research', 'session-model', 'a-decision-owed');
-
-    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
-      '--file', '001-a-decision-owed.md', '-m', 'm']);
-
-    assert.strictEqual(res.reopened, true);
-    assert.strictEqual(res.status, 'in-progress');
-    assert.strictEqual(res.reconcile_flagged, true);
-    assert.deepStrictEqual(res.sources_staled, ['unified']);
-    const items = readManifest(dir, 'payments').phases.specification.items;
-    assert.strictEqual(items.unified.reconcile_needed, 'discussion');
-    assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
-  });
-
-  it('moves discussion-side messages to research too', () => {
-    send(dir, 'discussion', 'refund-policy', 'an-open-question');
-
-    const res = engine(dir, ['topic', 'forward', 'payments', 'discussion', 'research', 'refund-policy',
-      '--file', '001-an-open-question.md', '-m', 'm']);
-
-    assert.strictEqual(res.to_phase, 'research');
-    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/research/.mailbox/refund-policy/001-an-open-question.md'));
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['refund-policy'].status, 'unstarted');
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress', 'source discussion untouched');
-  });
-
-  it('refuses anything outside the research↔discussion pair, a path for --file, and a file not in the mailbox — nothing written', () => {
-    send(dir, 'research', 'edge-cases', 'a-decision-owed');
-
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'research', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'investigation', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'planning', 'discussion', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', 'sub/001-a-decision-owed.md', '-m', 'm']).error, /message-file name, not a path/);
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '009-ghost.md', '-m', 'm']).error, /not in the edge-cases research mailbox/);
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '001-a-decision-owed.md']).error, /Usage/);
-
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'mailbox untouched on every refusal');
-    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no destination item conjured');
-  });
-
-  it('a terminal destination refuses before the file moves', () => {
-    send(dir, 'research', 'session-model', 'a-decision-owed');
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-
-    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
-      '--file', '001-a-decision-owed.md', '-m', 'm']).error, /is cancelled — reactivate it instead/);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/session-model/001-a-decision-owed.md')), 'message still waiting at the source');
-  });
-});
-
 describe('unstarted guards across the other verbs', () => {
   let dir;
   beforeEach(() => {
     dir = setupEpicFixture();
-    send(dir, 'research', 'parked-topic');
+    parkStub(dir, 'research', 'parked-topic');
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -1443,7 +1058,6 @@ describe('engine topic reopen', () => {
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
-    assert.match(engineFails(dir, sendArgv(dir, 'discussion', 'session-model')).error, refusal);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
@@ -2436,16 +2050,15 @@ describe('the knowledge store never rides an engine commit', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start/send/complete/reopen refuse it; cancel addresses the unit', () => {
+  it('discovery is not a lifecycle phase — start/complete/reopen refuse it; cancel addresses the unit', () => {
     const dir = setupGitFixture();
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
-    for (const verb of ['start', 'send', 'complete', 'reopen']) {
-      const argv = verb === 'send' ? sendArgv(dir, 'discovery', 'auth-flow') : ['topic', verb, 'payments', 'discovery', 'auth-flow'];
+    for (const verb of ['start', 'complete', 'reopen']) {
       assert.match(
-        engineFails(dir, argv).error,
+        engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
         /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
       );
     }
@@ -2471,8 +2084,9 @@ describe('engine usage banner', () => {
     assert.strictEqual(res.code, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
-      'topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>',
-      'topic mailbox <work-unit> <phase> <topic>',
+      'topic send <work-unit> <topic> --content <file> --slug <kebab>',
+      'topic mailbox <work-unit> <topic>',
+      'topic answered <work-unit> <topic> <NNN> --entry <id>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',

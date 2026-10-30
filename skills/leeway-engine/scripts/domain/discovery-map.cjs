@@ -627,9 +627,8 @@ function markerRefusal(cwd, manifest, op, name) {
   if (Object.hasOwn(MARKER_CLOSED_PHRASES, lifecycle)) return MARKER_CLOSED_PHRASES[lifecycle];
   if (op === 'reopen') return lifecycle === 'handled' ? null : "it isn't closed as a dead end, so there's nothing to reopen";
   if (lifecycle === 'handled') return "it's already closed";
-  const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(stateRoot(cwd), manifest.name, phase, name) > 0);
-  return waiting.length > 0
-    ? `messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
+  return mailboxDepth(stateRoot(cwd), manifest.name, name) > 0
+    ? 'messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead'
     : null;
 }
 

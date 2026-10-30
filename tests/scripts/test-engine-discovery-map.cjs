@@ -173,12 +173,12 @@ describe('engine CLI: discovery-map operations', () => {
         },
       },
     });
-    writeMessage(dir, 'research', 'unstarted-topic');
+    writeMessage(dir, 'unstarted-topic');
     return dir;
   }
 
-  function writeMessage(dir, phase, topic) {
-    const mailbox = path.join(dir, '.leeway', 'payments', phase, '.mailbox', topic);
+  function writeMessage(dir, topic) {
+    const mailbox = path.join(dir, '.leeway', 'payments', 'topics', topic, 'mail');
     fs.mkdirSync(mailbox, { recursive: true });
     fs.writeFileSync(path.join(mailbox, '001-message.md'), '### A message\n');
   }
@@ -729,14 +729,14 @@ describe('engine CLI: discovery-map operations', () => {
 
     it('refuses a topic with a parked stub — a dead end never buries messages', () => {
       const err = runFail(dir, ['handle', 'payments', 'unstarted-topic']);
-      assert.match(err.error, /"unstarted-topic" can't be closed as a dead end — messages wait in its research mailbox; start the topic to drain them, or cancel the topic from the epic menu instead/);
+      assert.match(err.error, /"unstarted-topic" can't be closed as a dead end — messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead/);
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['unstarted-topic'], false);
     });
 
     it('refuses a started topic with messages waiting beneath it — the mailbox decides, not the status', () => {
-      writeMessage(dir, 'discussion', 'ready-topic');
+      writeMessage(dir, 'ready-topic');
       const err = runFail(dir, ['handle', 'payments', 'ready-topic']);
-      assert.match(err.error, /"ready-topic" can't be closed as a dead end — messages wait in its discussion mailbox/);
+      assert.match(err.error, /"ready-topic" can't be closed as a dead end — messages wait in its mailbox/);
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['ready-topic'], false);
     });
   });

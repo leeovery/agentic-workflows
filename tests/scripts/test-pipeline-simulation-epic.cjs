@@ -1,8 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's epic scenarios: research first, its parked
-// stub the topic's own row; the d and r doors naming the new topic; an
+// The pipeline simulation's epic scenarios: research first, the topic's
+// own row, with a message raised and answered through the topic's one
+// mailbox; the d and r doors naming the new topic; an
 // arrival that backfills; the last review handing off to the menu; and a
 // completed discussion reopened and completed again, the map deriving
 // throughout. The map's own lifecycle is test-pipeline-simulation-epic-map.cjs.
@@ -24,7 +25,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, send, mappedEpic, arrive, menuEntry, handoffEntry, handoff, arriveAtEpicMenu, epicPick, walkDeliveryPhases,
+  Sim, sessionLog, send, mappedEpic, arrive, menuEntry, handoffEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, walkDeliveryPhases,
 } = require('./pipeline-world.cjs');
 
 
@@ -33,12 +34,12 @@ describe('pipeline simulation: epic', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: research first — a parked stub is the topic\'s own row, no discussion is born over it, no dead end buries it, and a reopen flags the live discussion', () => {
+  it('epic: research first — the research is the topic\'s own row and a reopen flags the live discussion; a message lands in the topic\'s one mailbox, raised at the entry and answered by the question it raised; one to the decided topic sets it back in progress', () => {
     const wu = 'orbit';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Orbit', '--session-log-file', log]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'alpha', routing: 'discussion', summary: 'Alpha summary' },
+      { name: 'alpha', routing: 'research', summary: 'Alpha summary' },
       { name: 'beta', routing: 'research', summary: 'Beta summary' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
@@ -46,26 +47,13 @@ describe('pipeline simulation: epic', () => {
     const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.topic === topic).map((k) => [k.action, drawLabel(k.label)]);
 
-    // A research-side message parks on alpha before any discussion exists —
-    // the research is alpha's own row, and the discussion is held for it at
-    // the birth guard, the d door, and the entry gate alike.
-    send(sim, wu, 'research', 'alpha', 'first-question');
-    assert.deepStrictEqual(rows('alpha'), [['start_research', 'Start research for "Alpha" — *mail waiting*']]);
-    sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'],
-      /discussion can't start on "alpha" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
-    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
-      /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
-    assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
-      /Entry blocked — this discussion awaits research on "Alpha" \(parked — not yet started\)[\s\S]*Return to the epic menu — its research row is the way in\./);
-    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /messages wait in its research mailbox/);
-
-    // The research lands — the discussion row returns, the gate clears, and
-    // the discussion is born; each row the menu offers hands off to its phase.
+    // The research is alpha's own row; it lands — the discussion row
+    // returns, the gate clears, and the discussion is born; each row the
+    // menu offers hands off to its phase.
     epicPick(sim, wu, 'start_research', 'alpha');
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
-    sim.run(['topic', 'absorb', wu, 'research', 'alpha', '--file', '001-first-question.md', '-m', `research(${wu}): absorb 001-first-question`]);
     sim.run(['research-threads', 'add', wu, 'alpha', 'kept', '--question', 'Does the register survive the lifecycle?', '--origin', 'user']);
     const registerBefore = JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
@@ -109,9 +97,15 @@ describe('pipeline simulation: epic', () => {
       epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu), { presence: sim.run(['presence', 'scan', wu]).sessions }).keys
         .filter((k) => k.topic === 'alpha').map((k) => k.action),
       ['continue_research']);
-    // A landing is the engine's own act — never held, whichever side it parks on.
-    const decision = send(sim, wu, 'discussion', 'alpha', 'a-decision');
-    assert.strictEqual(decision.status, 'in-progress');
+    // A landing is the engine's own act — never held: it waits in the
+    // topic's one mailbox, the discussion under way left as it stands, and
+    // the mail rides alpha's row; the report ends with the way into it.
+    const decision = send(sim, wu, 'alpha', 'a-decision');
+    assert.strictEqual(decision.message_path, path.join(sim.dir, `.leeway/${wu}/topics/alpha/mail/001-a-decision.md`));
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
+    assert.deepStrictEqual(rows('alpha'), [['continue_research', 'Continue "Alpha" — *research* · mail waiting']]);
+    assert.match(sim.render(['send-report', `${wu}.alpha`, '--sent', decision.message_path], { expect: 'content' }), /^\/leeway orbit alpha$/m);
+    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /messages wait in its mailbox/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
     sim.render(['epic-soft-gate', wu, '--action', 'start_research', '--topic', 'beta'], { expect: 'empty' });
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
@@ -126,21 +120,33 @@ describe('pipeline simulation: epic', () => {
     // refuses until it has.
     sim.refuses(['topic', 'complete', wu, 'discussion', 'alpha'], /carries reconcile_needed: research/);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
-    sim.run(['topic', 'absorb', wu, 'discussion', 'alpha', '--file', path.basename(decision.message_path),
-      '--subtopic', 'a-decision', '-m', `discussion(${wu}/alpha): absorb a-decision`]);
+    // The entry raises the waiting message before anything is read; the
+    // question it raised is asked, and the message answered by it leaves.
+    enterEntry(sim, wu, 'discussion', 'alpha');
+    assert.match(sim.sections, /^=== DISPLAY: waiting mail [^\n]*\n1 message waiting — raised before anything else\n\na-decision\n/);
+    const raised = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a-decision change alpha?' }));
+    assert.strictEqual(sim.run(['topic', 'answered', wu, 'alpha', '001', '--entry', raised.id]).remaining, 0);
+    assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion*']]);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
-    // A concluded discussion is held the same way: a research-side landing
-    // beneath it reopens the research, and the discussion's reopen refuses
-    // until that research lands again.
-    const second = send(sim, wu, 'research', 'alpha', 'second-question');
-    assert.strictEqual(second.reopened, true);
+    // A message to the decided topic sets it back in progress, its mail
+    // waiting on its row; answered, it is decided again.
+    const late = send(sim, wu, 'alpha', 'late-call');
+    assert.strictEqual(late.reopened, true);
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
+    assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
+    const lateQuestion = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does the late call hold?' }));
+    sim.run(['topic', 'answered', wu, 'alpha', '001', '--entry', lateQuestion.id]);
+    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+
+    // A concluded discussion is held while its research reopens beneath it:
+    // the discussion's reopen refuses until that research lands again.
+    sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
     sim.refuses(['topic', 'reopen', wu, 'discussion', 'alpha'],
       /discussion can't reopen on "alpha" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
     sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed message.\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha lands the message`, '--topic', 'research/alpha']);
-    sim.run(['topic', 'absorb', wu, 'research', 'alpha', '--file', path.basename(second.message_path), '-m', `research(${wu}): absorb second-question`]);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
     assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', 'alpha']).status, 'in-progress');
@@ -207,9 +213,8 @@ describe('pipeline simulation: epic', () => {
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'message:alpha', '--backfill', '--force-dismissed']);
-    const message = sim.write('.leeway/.cache/scratch/message.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
-    sim.run(['topic', 'send', wu, 'discussion', 'beta', '--content', message, '--slug', 'off-topic',
-      '-m', `discussion(${wu}/alpha): send message to beta`]);
+    const message = sim.write('.leeway/.cache/scratch/message.md', 'Off-topic\n\nDetails.\n');
+    sim.run(['topic', 'send', wu, 'beta', '--content', message, '--slug', 'off-topic']);
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 

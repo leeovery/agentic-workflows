@@ -240,7 +240,7 @@ describe('workunit projections: status display', () => {
         specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
       },
     });
-    createFile(dir, '.leeway/auth-flow/discussion/.mailbox/auth-flow/001-retry-semantics.md', '### Retry semantics\n');
+    createFile(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md', '### Retry semantics\n');
     const unit = unitOf(dir, 'feature', 'auth-flow');
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · mail waiting\]/);
@@ -249,7 +249,7 @@ describe('workunit projections: status display', () => {
     assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · mail waiting.'), menu.rendered);
     assert.ok(workUnitData('feature', unit, menu).includes('\nmail_waiting: discussion\n'));
     // The drain retires it.
-    fs.rmSync(path.join(dir, '.leeway/auth-flow/discussion/.mailbox/auth-flow/001-retry-semantics.md'));
+    fs.rmSync(path.join(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md'));
     const drained = unitOf(dir, 'feature', 'auth-flow');
     assert.strictEqual(drained.mail_phases, undefined);
     assert.match(workUnitStatus('feature', drained), /◐ Discussion +\[in-progress\]/);
@@ -568,7 +568,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
 
   it('cues a message waiting on a moved discussion as mail waiting', () => {
     assert.strictEqual(promoted().mail_phases, undefined);
-    createFile(dir, '.leeway/fees/discussion/.mailbox/fee-display/001-rounding.md', '# Rounding\n');
+    createFile(dir, '.leeway/fees/topics/fee-display/mail/001-rounding.md', '# Rounding\n');
     const unit = unitOf(dir, 'cross-cutting', 'fees');
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('cross-cutting', unit), /Discussion +\[completed\]/);

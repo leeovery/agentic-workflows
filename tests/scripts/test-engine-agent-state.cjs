@@ -142,26 +142,26 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('review dispatch refuses while the mailbox holds entries, clears when it drains', () => {
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/001-parked.md', '### Parked\n');
     const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error;
     assert.match(err, /review dispatch blocked: 1 message/);
-    assert.match(err, /topic absorb/, 'the refusal names the recovery path');
+    assert.match(err, /topic answered/, 'the refusal names the recovery path');
     assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
-    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
+    fs.unlinkSync(path.join(dir, '.leeway/pay/topics/alpha/mail/001-parked.md'));
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001', 'a drained mailbox dispatches normally');
   });
 
   it('the mailbox guard holds review dispatches only — other kinds pass a full mailbox', () => {
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/001-parked.md', '### Parked\n');
     const lens = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
     assert.strictEqual(lens.id, 'perspective-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
-    // count as waiting messages — only what mailboxStatus itself would count.
-    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
-    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/.DS_Store', 'dirt');
-    fs.mkdirSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/nested.md'), { recursive: true });
+    // count as waiting messages — only what `topic mailbox` itself would count.
+    fs.unlinkSync(path.join(dir, '.leeway/pay/topics/alpha/mail/001-parked.md'));
+    writeContent(dir, '.leeway/pay/topics/alpha/mail/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.leeway/pay/topics/alpha/mail/nested.md'), { recursive: true });
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });
@@ -601,63 +601,5 @@ describe('engine agent — discussion review arming', () => {
     const { SUBTOPIC_STATES } = require('../../skills/leeway-engine/scripts/domain/discussion-map.cjs');
     assert.deepStrictEqual(Object.keys(SUBTOPIC_RANK).sort(), [...SUBTOPIC_STATES].sort(),
       'a state outside the rank map would silently score 0');
-  });
-
-  /** Deliver one message to discussion/auth. @param {string} name */
-  function deliver(name) {
-    writeContent(dir, `.leeway/pay/discussion/.mailbox/auth/${name}`,
-      '### Ground\n*From: peer · discussion · 2026-09-01*\nbody\n');
-  }
-
-  it('a message fold settles into the anchor — a drain-only sitting arms nothing', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    deliver('001-new-ground.md');
-    writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
-    const res = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
-      '--file', '001-new-ground.md', '--subtopic', 'new-ground',
-      '-m', 'discussion(pay/auth): absorb 001-new-ground (from peer)']);
-    assert.strictEqual(res.arming_settled, true);
-    assert.strictEqual(res.remaining, 0);
-    assert.deepStrictEqual(readStore(dir, 'pay', 'discussion', 'auth').agents['review-001'].map_snapshot,
-      { tokens: 'exploring', 'new-ground': 'decided' }, 'the folded ground joins the anchor at its landed state');
-    assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
-      /0 of 1 map moves/, 'the fold never counts as movement');
-  });
-
-  it('organic movement beside a fold still arms', () => {
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    deliver('001-new-ground.md');
-    writeMap({ tokens: 'exploring', 'new-ground': 'decided', tangent: 'pending' });
-    engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
-      '--file', '001-new-ground.md', '--subtopic', 'new-ground',
-      '-m', 'discussion(pay/auth): absorb 001-new-ground (from peer)']);
-    assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).id,
-      'review-002', 'the parked tangent is the session\'s own ground and measures');
-  });
-
-  it('a discussion absorb requires --subtopic; other phases refuse it', () => {
-    deliver('001-new-ground.md');
-    assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
-      '--file', '001-new-ground.md', '-m', 'x']).error,
-      /a discussion fold names its ground/);
-    writeContent(dir, '.leeway/pay/research/.mailbox/auth/001-x.md', '### X\nbody\n');
-    assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'research', 'auth',
-      '--file', '001-x.md', '--subtopic', 'x', '-m', 'x']).error,
-      /not legal in research/);
-  });
-
-  it('the settle is tolerant — no anchor and unknown ground absorb anyway', () => {
-    deliver('001-new-ground.md');
-    writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
-    const unanchored = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
-      '--file', '001-new-ground.md', '--subtopic', 'new-ground', '-m', 'x']);
-    assert.strictEqual(unanchored.arming_settled, false, 'no completed review, nothing to settle against');
-    assert.match(unanchored.arming_note, /no anchored review/);
-    completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    deliver('002-typo.md');
-    const unknown = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
-      '--file', '002-typo.md', '--subtopic', 'not-a-subtopic', '-m', 'x']);
-    assert.strictEqual(unknown.arming_settled, false);
-    assert.match(unknown.arming_note, /not on the Discussion Map/);
   });
 });

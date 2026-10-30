@@ -41,6 +41,11 @@ const engineFails = (dir, args, env = {}) => harness.refuses(dir, args, { env })
 const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
   harness.ok(cwd, args, { env: { ...OWN, ...env }, stdin: input });
 const EPOCH_START = 'Thu Jan  1 00:00:00 1970';
+/** `topic mailbox` on pay's alpha, the unit an epic. */
+function readMailbox(dir) {
+  fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
+  return engineWith(dir, ['topic', 'mailbox', 'pay', 'alpha']);
+}
 function presenceFile(dir, phase, topic) {
   return path.join(dir, '.leeway/.cache/pay', phase, topic, 'presence');
 }
@@ -431,7 +436,7 @@ describe('engine presence', () => {
   });
 
   it('a mailbox read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
-    const res = engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    const res = readMailbox(dir);
     assert.strictEqual(res.count, 0);
     assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
       'a foreign topic\'s mailbox check leaves no presence behind');
@@ -443,7 +448,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'sess-one');
     assert.strictEqual(record.pid, process.pid, 'the refresh re-stamps the full identity');
@@ -458,7 +463,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'peer-sess', 'the peer\'s identity stands');
     assert.strictEqual(record.pid, null);
@@ -471,7 +476,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
+    readMailbox(dir);
     assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'an unowned record is never claimed');
   });
 

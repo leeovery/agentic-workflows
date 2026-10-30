@@ -681,7 +681,7 @@ describe('leeway-discovery format', () => {
         research: { items: { parked: { status: 'unstarted' } } },
       },
     });
-    createFile(dir, '.leeway/payments/research/.mailbox/parked/001-question.md', '### question\n');
+    createFile(dir, '.leeway/payments/topics/parked/mail/001-question.md', '### question\n');
     const out = format(discover(dir, 'payments'));
     assert.match(out, /- ○ parked \[fresh\] routing=research source=message:origin mail=waiting — target/);
   });

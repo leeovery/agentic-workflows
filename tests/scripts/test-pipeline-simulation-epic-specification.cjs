@@ -38,15 +38,14 @@ describe('pipeline simulation: epic-specification', () => {
     // the source's mailbox, reopening it and staling the spec's row;
     // the pause commits the session's work and hands off as a pause. The
     // gap routes into the first of the specification's sources.
-    const pauseOnGap = (wu, sourcePhase, spec, [source, ...rest]) => {
+    const pauseOnGap = (wu, spec, [source, ...rest]) => {
       menuEntry(sim, wu);
       handoffEntry(sim, wu, 'specification', spec);
       sim.run(['topic', 'start', wu, 'specification', spec]);
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
         ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
-      const message = sim.write('.leeway/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
-      const landed = sim.run(['topic', 'send', wu, sourcePhase, source,
-        '--content', message, '--slug', 'retry-window', '-m', `spec(${wu}): gap routed to ${source}`]);
+      const message = sim.write('.leeway/.cache/scratch/spec-gap.md', 'Gap — retry window\n\nWhat the spec needs decided.\n');
+      const landed = sim.run(['topic', 'send', wu, source, '--content', message, '--slug', 'retry-window']);
       assert.strictEqual(landed.reopened, true);
       assert.deepStrictEqual(landed.sources_staled, [spec]);
       sim.run(['commit', wu, '-m', `spec(${wu}): pause — gap routed to ${source}`, '--topic', `specification/${spec}`]);
@@ -59,7 +58,7 @@ describe('pipeline simulation: epic-specification', () => {
     sim.run(['topic', 'start', feature, 'discussion', feature]);
     sim.write(`.leeway/${feature}/discussion/${feature}.md`, `# Discussion — ${feature}\n`);
     sim.run(['topic', 'complete', feature, 'discussion', feature]);
-    pauseOnGap(feature, 'discussion', feature, [feature]);
+    pauseOnGap(feature, feature, [feature]);
     bridgeTo(sim, feature, 'discussion');
 
     const bugfix = 'stall';
@@ -67,7 +66,7 @@ describe('pipeline simulation: epic-specification', () => {
     sim.run(['topic', 'start', bugfix, 'investigation', bugfix]);
     sim.write(`.leeway/${bugfix}/investigation/${bugfix}.md`, `# Investigation — ${bugfix}\n`);
     sim.run(['topic', 'complete', bugfix, 'investigation', bugfix]);
-    pauseOnGap(bugfix, 'investigation', bugfix, [bugfix]);
+    pauseOnGap(bugfix, bugfix, [bugfix]);
     bridgeTo(sim, bugfix, 'investigation');
 
     // An epic returns to its menu, whose banner names what the specification
@@ -79,7 +78,7 @@ describe('pipeline simulation: epic-specification', () => {
       sim.write(`.leeway/${epic}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
       sim.run(['topic', 'complete', epic, 'discussion', topic]);
     }
-    pauseOnGap(epic, 'discussion', 'windows', ['note-window', 'layout']);
+    pauseOnGap(epic, 'windows', ['note-window', 'layout']);
     assert.match(arriveAtEpicMenu(sim, epic, 'specification', 'paused'),
       /\nSpecification paused for "Panes" — "Windows" awaits the note-window discussion\.\n$/);
     sim.run(['topic', 'complete', epic, 'discussion', 'note-window']);
@@ -320,7 +319,7 @@ describe('pipeline simulation: epic-specification', () => {
     // The specification never transitions — it still reads `completed` —
     // and its source row alone carries the landing, which is why the hold
     // cannot key on the specification's status.
-    const landed = send(sim, wu, 'discussion', 'shared');
+    const landed = send(sim, wu, 'shared');
     assert.deepStrictEqual(landed.sources_staled.sort(), ['alpha-spec', 'beta-spec']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].status, 'completed',
       'the specification never transitioned — only its row moved');

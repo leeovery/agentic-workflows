@@ -29,22 +29,25 @@ const NB = (n) => '\u00a0'.repeat(n);
 // surviving while its gate is closed).
 
 // A send never parks a stub without its message: the fixture lays one in the
-// mailbox of every `unstarted` item, and takes it back when a later manifest
-// in the same test drops the stub.
+// mailbox of every topic with an `unstarted` item, and takes it back when a
+// later manifest in the same test drops the stub.
 const STUB_MESSAGE = '000-parked.md';
+
+/** A topic's mailbox. @param {string} dir @param {string} name @param {string} topic */
+const mailboxOf = (dir, name, topic) => path.join(dir, '.leeway', name, 'topics', topic, 'mail');
 
 /** @param {string} dir @param {string} name @param {any} manifest */
 function layStubMessages(dir, name, manifest) {
+  const topics = path.join(dir, '.leeway', name, 'topics');
+  for (const topic of fs.existsSync(topics) ? fs.readdirSync(topics) : []) {
+    fs.rmSync(path.join(mailboxOf(dir, name, topic), STUB_MESSAGE), { force: true });
+  }
   for (const phase of ['research', 'discussion']) {
-    const root = path.join(dir, '.leeway', name, phase, '.mailbox');
-    for (const topic of fs.existsSync(root) ? fs.readdirSync(root) : []) {
-      fs.rmSync(path.join(root, topic, STUB_MESSAGE), { force: true });
-    }
     const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
     for (const [topic, item] of Object.entries(items)) {
       if (item.status !== 'unstarted') continue;
-      fs.mkdirSync(path.join(root, topic), { recursive: true });
-      fs.writeFileSync(path.join(root, topic, STUB_MESSAGE), '### parked\n');
+      fs.mkdirSync(mailboxOf(dir, name, topic), { recursive: true });
+      fs.writeFileSync(path.join(mailboxOf(dir, name, topic), STUB_MESSAGE), 'Parked\n');
     }
   }
 }
@@ -1438,7 +1441,7 @@ describe('epic projections: selection sub-views', () => {
   });
 
   it('cancel-menu: a topic off the map cues the messages waiting beneath its started item, as a map row does', () => {
-    const mailbox = path.join(dir, '.leeway', 'quiz-competition-v1', 'research', '.mailbox', 'menu-admin');
+    const mailbox = mailboxOf(dir, 'quiz-competition-v1', 'menu-admin');
     fs.mkdirSync(mailbox, { recursive: true });
     fs.writeFileSync(path.join(mailbox, '001-cost-model.md'), '### cost model\n');
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
@@ -2109,9 +2112,9 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.strictEqual(epicMenu('v2', onlyPlan).keys.find((k) => k.action === 'resume_completed'), undefined);
   });
 
-  it('the mail tail speaks for the row\'s own phase — a parked research stub never tags the discussion row', () => {
-    // research-routed topic, a parked DISCUSSION stub: the research row carries no tail
-    assert.strictEqual(drawLabel(epicMenu('v1', billing(undefined, { status: 'unstarted' }, { routing: 'research' })).keys[0].label), 'Start research for "Billing"');
+  it('the mail tail speaks for the topic, its one mailbox — whichever row the topic is offered by carries it', () => {
+    // research-routed topic, a parked DISCUSSION stub: the research row carries the tail
+    assert.strictEqual(drawLabel(epicMenu('v1', billing(undefined, { status: 'unstarted' }, { routing: 'research' })).keys[0].label), 'Start research for "Billing" — *mail waiting*');
     // discussion-routed topic, a parked DISCUSSION stub: its own row carries the tail
     assert.strictEqual(drawLabel(epicMenu('v1', billing(undefined, { status: 'unstarted' })).keys[0].label), 'Start discussion for "Billing" — *mail waiting*');
   });
@@ -2185,8 +2188,8 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   // The cue reads the mailbox, not the status: a landing on a concluded topic
   // reopens it to in-progress and leaves no stub behind, so the message files
   // themselves are the signal — and their drain retires it.
-  const deliver = (phase, ...files) => {
-    const mailbox = path.join(dir, '.leeway', 'v1', phase, '.mailbox', 'billing');
+  const deliver = (...files) => {
+    const mailbox = mailboxOf(dir, 'v1', 'billing');
     fs.mkdirSync(mailbox, { recursive: true });
     for (const f of files) fs.writeFileSync(path.join(mailbox, f), `### ${f}\n`);
     return mailbox;
@@ -2195,16 +2198,16 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   const cueOf = (d, presence) => epicDashboard('v1', d, { presence }).match(/( *)↳ [^\n]*(?:\n\1 +[^\n]*)*/)[0].trim().replace(/\n\s+/g, ' ');
 
   it('a reopened discussion with messages waiting: its continue row and map row carry the cue', () => {
-    deliver('discussion', '001-escalation-path.md');
+    deliver('001-escalation-path.md');
     const d = billing({ status: 'completed' }, { status: 'in-progress' });
     assert.deepStrictEqual(numbered(d), [['1', 'continue_discussion', 'billing']]);
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *discussion* · mail waiting');
     assert.strictEqual(cueOf(d), '↳ Discussing · mail waiting');
-    assert.deepStrictEqual(d.discovery_map[0].mail_queued, { research: 0, discussion: 1 });
+    assert.strictEqual(d.discovery_map[0].mail_queued, 1);
   });
 
   it('a reopened research beneath a decided discussion: the research row carries the cue, per phase', () => {
-    deliver('research', '001-cost-model.md');
+    deliver('001-cost-model.md');
     const d = billing({ status: 'in-progress' }, { status: 'completed', reconcile_needed: 'research' });
     assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *research* · mail waiting');
@@ -2223,13 +2226,13 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   });
 
   it('the drain retires the cue — an empty mailbox directory is no wait', () => {
-    const mailbox = deliver('discussion', '001-escalation-path.md');
+    const mailbox = deliver('001-escalation-path.md');
     fs.rmSync(path.join(mailbox, '001-escalation-path.md'));
     const d = billing({ status: 'completed' }, { status: 'in-progress' });
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *discussion*');
     assert.strictEqual(cueOf(d), '↳ Discussing');
     assert.strictEqual(d.discovery_map[0].mail_waiting, false);
-    assert.deepStrictEqual(d.discovery_map[0].mail_queued, { research: 0, discussion: 0 });
+    assert.strictEqual(d.discovery_map[0].mail_queued, 0);
   });
 
   // A blocked item carries no menu row — unless a live session holds it, when
@@ -2241,7 +2244,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   it('a live session in the held discussion keeps its row — struck, after the research row, never recommended', () => {
     // Research in flight with messages waiting, the discussion flagged by the
     // hop and still open in another window.
-    deliver('research', '001-cost-model.md', '002-roles.md');
+    deliver('001-cost-model.md', '002-roles.md');
     const d = billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' });
     const { keys, rendered } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
     assert.deepStrictEqual(
@@ -2260,8 +2263,8 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '',
       '**`1`**           → Continue "Billing" — *research* · mail waiting',
       `${NB(14)}(recommended)`,
-      '**`2`**           → ~~Continue "Billing" — *discussion*~~ · in session (last',
-      `${NB(14)}active 4m ago)`,
+      '**`2`**           → ~~Continue "Billing" — *discussion* · mail waiting~~ · in',
+      `${NB(14)}session (last active 4m ago)`,
       '**`d/discuss`**   → Start a discussion on a new topic',
       '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',

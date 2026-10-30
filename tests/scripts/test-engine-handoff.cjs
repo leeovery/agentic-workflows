@@ -253,6 +253,26 @@ describe('engine handoff — announced and unannounced', () => {
   });
 });
 
+describe('engine handoff topic — a topic opened by its unit and name, as /leeway {unit} {topic} opens it (10.3.1, 10.S2)', () => {
+  let dir;
+  beforeEach(() => { dir = seed(); });
+  afterEach(() => cleanupFixture(dir));
+
+  it('hands off into the conversation the topic is talked through, as the menus\' route does, the work type read from the unit — an epic\'s topic or a feature\'s own in discussion, a bugfix\'s in investigation', () => {
+    createManifest(dir, 'crash', { work_type: 'bugfix' });
+    assert.strictEqual(carried(dir, ['topic', 'fumi', 'commercialization']), carried(dir, ['/leeway-discussion-process', 'epic', 'fumi', 'commercialization']));
+    assert.strictEqual(inline(dir, ['topic', 'note-window', 'note-window']), inlineAnswer('leeway-discussion-process', 'feature note-window note-window', '→ Discussion · note-window'));
+    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
+  });
+
+  it('refuses a call of another shape, a unit the project lacks, and a work type talked through in no conversation', () => {
+    createManifest(dir, 'typo', { work_type: 'quick-fix' });
+    refused(dir, ['topic', 'fumi'], /^Usage: engine handoff topic <work-unit> <topic>$/);
+    refused(dir, ['topic', 'nowhere', 'any'], /^work unit "nowhere" not found$/);
+    refused(dir, ['topic', 'typo', 'typo'], /^the work type must be one of epic\|feature\|cross-cutting — got "quick-fix"$/);
+  });
+});
+
 describe('engine handoff — refusals', () => {
   let dir;
   beforeEach(() => { dir = seed(); });

@@ -69,6 +69,7 @@ const {
   postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
+const { sendReportOf } = require('./mail.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -4426,11 +4427,11 @@ function findingSettled(p, head, item, { view, batched }) {
  * @returns {string}
  */
 function mailOffer(cwd, { dotpath, file }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
+  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
   if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'mail-offer');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
-  if (!files.length) throw new Error(`render mail-offer: the ${topic} ${phase} mailbox is empty — nothing to offer`);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
+  if (!files.length) throw new Error(`render mail-offer: ${topic}'s mailbox is empty — nothing to offer`);
   if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
   /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
   const byFile = new Map();
@@ -4479,9 +4480,9 @@ function mailOffer(cwd, { dotpath, file }) {
  * @returns {string}
  */
 function mailAnnounce(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
-  if (!files.length) throw new Error(`render mail-announce: the ${topic} ${phase} mailbox is empty — nothing to announce`);
+  const { workUnit, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
+  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
+  if (!files.length) throw new Error(`render mail-announce: ${topic}'s mailbox is empty — nothing to announce`);
   const line = files.length === 1
     ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
     : `${files.length} messages from other topics wait in this topic's mailbox — I'll raise them once the session finds its footing.`;
@@ -4498,8 +4499,8 @@ function mailAnnounce(cwd, { dotpath }) {
  */
 function mailBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
-  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
-  if (!files.length) throw new Error(`render mail-block: the ${topic} ${phase} mailbox is empty — nothing blocks conclusion`);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
+  if (!files.length) throw new Error(`render mail-block: ${topic}'s mailbox is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
   return [
@@ -4514,42 +4515,6 @@ function mailBlock(cwd, { dotpath }) {
       '> Returning to the session to surface them before concluding.',
     ),
   ].join('\n');
-}
-
-// forward-offer — the wrong-side gate over one message: the raise
-// found the entry owed the topic's other phase-side, and the move is the
-// user's call. The reason line is judgment content and arrives in the
-// payload; the destination is the pair's other phase, computed, never asked
-// for.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function forwardOffer(cwd, { dotpath, file }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'forward-offer');
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render forward-offer: a message moves within the research/discussion pair only — got "${phase}"`);
-  }
-  if (!file) throw new Error('render forward-offer: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'forward-offer');
-  for (const field of ['file', 'title', 'reason']) {
-    if (!isFilled(p[field])) throw new Error(`render forward-offer: "${field}" must be a non-empty string`);
-  }
-  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
-  if (!files.includes(p.file)) {
-    throw new Error(`render forward-offer: "${p.file}" is not in the ${topic} ${phase} mailbox`);
-  }
-  const other = phase === 'research' ? 'discussion' : 'research';
-  return section(
-    'MENU: forward offer',
-    MENU_INSTRUCTION,
-    menu(`**${p.title}** — ${p.reason}`, [
-      cmdOption('y', 'yes', `Move it to this topic's ${other} mailbox — raised when ${other} runs`),
-      cmdOption('d', 'discuss', 'Work it here now'),
-    ], { question: `Move it to ${other}?` }),
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -7127,7 +7092,6 @@ const SURFACES = {
   'mail-announce': mailAnnounce,
   'mail-offer': mailOffer,
   'mail-block': mailBlock,
-  'forward-offer': forwardOffer,
   'send-offer': sendOffer,
   'research-threads': researchThreadsSurface,
   'research-conclude-gate': researchConcludeGate,
@@ -7258,6 +7222,7 @@ const SURFACES = {
   'legacy-split-display': legacySplitDisplaySurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
+  'send-report': (cwd, { dotpath, sent }) => sendReportOf(cwd, dotpath, sent),
 };
 
 /**

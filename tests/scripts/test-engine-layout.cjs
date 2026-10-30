@@ -181,7 +181,7 @@ describe('today\'s places (E4)', () => {
       topic: layout.topic('pay', 'auth', 'log.md'),
       assets: layout.assets('pay', 'deck', 'cover.png'),
       doc: layout.doc('pay', 'investigation', 'crash'),
-      mailbox: layout.mailbox('pay', 'research', 'auth', '001-retry-policy.md'),
+      mailbox: layout.mailbox('pay', 'auth', '001-retry-policy.md'),
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
       spec: layout.spec('pay', 'auth'),
       plan: layout.plan('pay', 'auth'),

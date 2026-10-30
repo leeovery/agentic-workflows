@@ -98,12 +98,12 @@ describe('pipeline simulation: bugfix', () => {
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
     sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
 
-    // A spec-routed gap lands in the investigation's own mailbox: the
-    // delivery reopens the item and stales the spec row; the mailbox answers;
-    // absorb drains it and the pipeline re-concludes.
-    sim.write('.leeway/.cache/scratch/gap-message.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
-    const gapLand = sim.run(['topic', 'send', wu, 'investigation', wu,
-      '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
+    // A spec-routed gap lands in the topic's mailbox, waiting for its
+    // investigation: the delivery reopens the item and stales the spec row;
+    // the mailbox answers; the question it raised answers it, and the
+    // pipeline re-concludes.
+    sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    const gapLand = sim.run(['topic', 'send', wu, wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
@@ -115,11 +115,11 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · mail waiting');
     assert.deepStrictEqual(bugfixUnit().mail_phases, ['investigation']);
     assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · mail waiting\]/);
-    const gapMailbox = sim.run(['topic', 'mailbox', wu, 'investigation', wu]);
-    assert.strictEqual(gapMailbox.files.length, 1);
-    sim.run(['topic', 'absorb', wu, 'investigation', wu,
-      '--file', gapMailbox.files[0].split('/').pop(), '-m', `investigation(${wu}/${wu}): absorb retry-semantics (from ${wu})`]);
-    assert.strictEqual(sim.run(['topic', 'mailbox', wu, 'investigation', wu]).files.length, 0);
+    const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
+    assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
+    const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
+    sim.run(['topic', 'answered', wu, wu, '001', '--entry', gapQuestion.id]);
+    assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the drained mailbox retires the cue');
     assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);

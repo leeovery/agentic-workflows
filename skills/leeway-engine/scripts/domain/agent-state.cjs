@@ -262,41 +262,6 @@ function anchorReviewRow(dir) {
 }
 
 /**
- * Fold an absorbed message's ground into the arming anchor: the
- * anchor row's `map_snapshot` entry for the subtopic is set to its current
- * map status, so the walk's map writes on that ground never count as
- * movement. An absorbed message is settled ground, deliberately worked
- * with the user — a sitting that only drained the mailbox stays quiet, and
- * its review duty belongs to the closing gates' final pass. Organic work —
- * new subtopics, forward transitions of the session's own ground — still
- * measures. Tolerant throughout: the absorb transaction must never fail on
- * the cache's account. Discussion only — nothing else is measured.
- * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} subtopic
- * @returns {{settled: boolean, reason?: string}}
- */
-function settleFoldedSubtopic(cwd, workUnit, topic, subtopic) {
-  try {
-    return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
-      const dir = agentDir(cwd, workUnit, 'discussion', topic);
-      const anchor = anchorReviewRow(dir);
-      if (!anchor) return { settled: false, reason: 'no anchored review to settle against' };
-      const current = subtopicStatuses(loadWorkUnitManifest(cwd, workUnit), topic)[subtopic];
-      if (current === undefined) return { settled: false, reason: `"${subtopic}" is not on the Discussion Map` };
-      const state = loadState(cwd, workUnit, 'discussion', topic);
-      const row = state.agents[anchor.id];
-      if (!row || !row.map_snapshot || typeof row.map_snapshot !== 'object') {
-        return { settled: false, reason: `anchor row ${anchor.id} is unreadable` };
-      }
-      row.map_snapshot[subtopic] = current;
-      saveState(cwd, workUnit, 'discussion', topic, state);
-      return { settled: true };
-    });
-  } catch (err) {
-    return { settled: false, reason: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-/**
  * @typedef {object} ReviewArming
  * @property {boolean} armed
  * @property {number} cycles              completed (report-backed) review cycles
@@ -414,9 +379,9 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     /** @type {Record<string, string> | null} */
     let mapSnapshot = null;
     if (kind === 'review' && phase === 'discussion') {
-      const waiting = mailboxDepth(stateRoot(cwd), workUnit, phase, topic);
+      const waiting = mailboxDepth(stateRoot(cwd), workUnit, topic);
       if (waiting > 0) {
-        throw new Error(`review dispatch blocked: ${waiting} message(s) wait in the ${phase}/${topic} mailbox — absorb them (topic absorb) before dispatching a review`);
+        throw new Error(`review dispatch blocked: ${waiting} message(s) wait in ${topic}'s mailbox — raise and answer them (topic answered) before dispatching a review`);
       }
       if (!final) {
         const arming = reviewArming(cwd, workUnit, topic);
@@ -746,5 +711,4 @@ module.exports = {
   agentRows,
   agentsLeft,
   latestReview,
-  settleFoldedSubtopic,
 };

@@ -30,7 +30,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-# **`■ Workflow Start`**
+# **`■ Leeway`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
@@ -143,11 +143,23 @@ Branch on the boot response's `baseline` — the one-time judgment on whether th
 
 Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 1**.
+→ On return, proceed to **Step 0.7**.
 
 #### Otherwise
 
 A recorded status — render nothing.
+
+→ Proceed to **Step 0.7**.
+
+### Step 0.7: Direct Open
+
+This skill receives two optional positional arguments: `$0`, a work unit, held as `{work_unit}`, and `$1`, one of its topics, held as `{topic}`. Given both, the person typed `/leeway {work_unit} {topic}` to open that topic directly, as picking it from the menus would.
+
+#### If `$0` and `$1` are given
+
+Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `topic {work_unit} {topic}`.
+
+#### Otherwise
 
 → Proceed to **Step 1**.
 

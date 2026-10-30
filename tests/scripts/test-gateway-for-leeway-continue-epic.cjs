@@ -1470,7 +1470,7 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
-    createFile(dir, '.leeway/v1/discussion/.mailbox/parked/001-question.md', '### question\n');
+    createFile(dir, '.leeway/v1/topics/parked/mail/001-question.md', '### question\n');
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent mail=waiting\n'), out);
   });
@@ -2262,7 +2262,7 @@ describe('leeway-continue-epic specification discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { parked: { status: 'unstarted' } } } },
     });
-    createFile(dir, '.leeway/overhaul/discussion/.mailbox/parked/001-message.md', '### Message\nBody.\n');
+    createFile(dir, '.leeway/overhaul/topics/parked/mail/001-message.md', '### Message\nBody.\n');
     const r = specificationDiscovery(dir, 'overhaul');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');

@@ -210,11 +210,10 @@ describe('render map-op-gate', () => {
       '"away" can\'t be reopened — it\'s postponed; pull it forward from the roadmap first.');
   });
 
-  it('a close over messages waiting in the topic\'s mailbox is refused, naming each mailbox that holds them', () => {
-    writePayload(dir, '.leeway/pay/research/.mailbox/auth-flow/001.md', 'a point\n');
-    writePayload(dir, '.leeway/pay/discussion/.mailbox/auth-flow/001.md', 'another\n');
+  it('a close over messages waiting in the topic\'s mailbox is refused', () => {
+    writePayload(dir, '.leeway/pay/topics/auth-flow/mail/001-a-point.md', 'A point\n');
     assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'w.json')),
-      '"auth-flow" can\'t be closed as a dead end — messages wait in its research and discussion mailbox; start the topic to drain them, or cancel the topic from the epic menu instead.');
+      '"auth-flow" can\'t be closed as a dead end — messages wait in its mailbox; start the topic to raise them, or cancel the topic from the epic menu instead.');
   });
 
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {

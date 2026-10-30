@@ -47,9 +47,10 @@ const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadRefr
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
-const { startTopic, sendMessage, mailboxStatus, absorbMessage, forwardMessage, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
+const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
-const { mailboxDir } = require('./domain/derivations.cjs');
+const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
+const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
@@ -86,7 +87,7 @@ const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
 const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
-const { resolveHandoff, handoffSections } = require('./domain/handoff.cjs');
+const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -227,11 +228,10 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
-  topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>
-  topic mailbox <work-unit> <phase> <topic>
+  ${SEND_USAGE}
+  ${MAILBOX_USAGE}
   topic incorporations <work-unit> <topic>
-  topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
-  topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
+  ${ANSWERED_USAGE}
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan [work-unit]
@@ -287,6 +287,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   baseline record <native|skipped>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
+  ${TOPIC_HANDOFF_USAGE}
   roadmap state
   roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
@@ -349,7 +350,6 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render mail-announce    <wu.phase.topic>
   render mail-offer       <wu.phase.topic> --file <payload.json>
   render mail-block       <wu.phase.topic>
-  render forward-offer    <wu.phase.topic> --file <payload.json>
   render send-offer       <wu.phase.topic> --file <payload.json>
   render research-threads <wu.research.topic>
   render research-conclude-gate <wu.research.topic> [--dead-end]
@@ -468,6 +468,7 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
   render walkthrough-home
+  render send-report <work-unit>.<topic> --sent <path>
   render walkthrough-topics
   render walkthrough-topic --name <slug> [--menu-only]
   render migrations-applied --file <payload.json>
@@ -970,21 +971,20 @@ function runDiscoverySession(call, argv) {
 // The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
-// topic: `start` (opening it), `absorb` (folding a message into its own
-// document), and `mailbox` (the findings check polls it every turn, so a turn
-// with no writes still registers). `complete` is the release: the topic is
-// closed, so the slot it held opens at that moment rather than at some later
-// commit. `send` never beats — delivery acts on the TARGET topic from the
-// origin's session, and a beat there would stamp the origin process onto a
-// topic it does not hold. Nor do `forward`, `cancel`, `reactivate`,
-// `supersede` or `reopen`: those are analysis and navigation actors reaching
-// across topics.
+// topic: `start` (opening it), `answered` (taking a message out of its own
+// mailbox), and `mailbox` (the loop checks it every turn, so a turn with no
+// writes still registers). `complete` is the release: the topic is closed,
+// so the slot it held opens at that moment rather than at some later commit.
+// `send` never beats — delivery acts on the TARGET topic from the origin's
+// session, and a beat there would stamp the origin process onto a topic it
+// does not hold. Nor do `cancel`, `reactivate`, `supersede` or `reopen`:
+// those are analysis and navigation actors reaching across topics.
 // ---------------------------------------------------------------------------
 
 const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 // The self-referential verbs among those dispatched through TOPIC_COMMANDS;
-// `mailbox` and `absorb` beat at their own branches.
+// `mailbox` and `answered` beat at their own branches.
 const TOPIC_BEATS = ['start'];
 
 // The verbs whose phase argument names a stage's unit, not a phase item.
@@ -1169,6 +1169,15 @@ function runSources(call, argv) {
   }
 }
 
+/**
+ * The phase a unit's topics are talked through, where a topic's presence is
+ * kept beside its mail; null for a unit that talks through none.
+ * @param {string} cwd @param {string} unit
+ */
+function mailPhaseOf(cwd, unit) {
+  return mailPhase(loadWorkUnitManifest(cwd, unit).work_type);
+}
+
 /** @param {Call} call @param {string[]} argv */
 function runTopic(call, argv) {
   const [command, ...rest] = argv;
@@ -1183,16 +1192,15 @@ function runTopic(call, argv) {
       return;
     }
     if (command === 'mailbox') {
-      const [workUnit, phase, topic] = rest;
-      if (!workUnit || !phase || !topic || rest.length !== 3) {
-        throw new Error('Usage: engine topic mailbox <work-unit> <phase> <topic>');
-      }
-      const status = mailboxStatus(call.cwd, workUnit, phase, topic);
+      const [workUnit, topic] = rest;
+      if (!workUnit || !topic || rest.length !== 2) throw new Error(`Usage: engine ${MAILBOX_USAGE}`);
+      const mailbox = mailboxOf(call.cwd, workUnit, topic);
       // A read is reachable for any topic — a foreign mailbox is legitimately
       // checked from another session — so it refreshes an owned hold only,
       // never creates one.
-      refreshQuietly(call.cwd, workUnit, phase, topic);
-      respond(call, status);
+      const phase = mailPhaseOf(call.cwd, workUnit);
+      if (phase !== null) refreshQuietly(call.cwd, workUnit, phase, topic);
+      respond(call, mailbox);
       return;
     }
     if (command === 'incorporations') {
@@ -1204,61 +1212,21 @@ function runTopic(call, argv) {
       respond(call, { work_unit: workUnit, topic, incorporations: incorporations(call.cwd, manifest, workUnit, topic) });
       return;
     }
-    if (command === 'absorb') {
-      /** @type {string[]} */ const pos = [];
-      /** @type {string|undefined} */ let file;
-      /** @type {string|undefined} */ let message;
-      /** @type {string|undefined} */ let subtopic;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '--file') file = rest[++i];
-        else if (a === '--subtopic') subtopic = rest[++i];
-        else if (a === '-m' || a === '--message') message = rest[++i];
-        else pos.push(a);
-      }
-      const [workUnit, phase, topic] = pos;
-      if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
-        throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
-      }
-      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message, subtopic });
-      beatQuietly(call.cwd, workUnit, phase, topic);
-      respond(call, absorbed);
-      return;
-    }
-    if (command === 'forward') {
-      /** @type {string[]} */ const pos = [];
-      /** @type {string|undefined} */ let file;
-      /** @type {string|undefined} */ let message;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '--file') file = rest[++i];
-        else if (a === '-m' || a === '--message') message = rest[++i];
-        else pos.push(a);
-      }
-      const [workUnit, fromPhase, toPhase, topic] = pos;
-      if (!workUnit || !fromPhase || !toPhase || !topic || pos.length !== 4 || !file || !message) {
-        throw new Error('Usage: engine topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>');
-      }
-      respond(call, forwardMessage(call.cwd, workUnit, fromPhase, toPhase, topic, { file, message }));
-      return;
-    }
     if (command === 'send') {
-      /** @type {string[]} */ const pos = [];
-      /** @type {string|undefined} */ let content;
-      /** @type {string|undefined} */ let slug;
-      /** @type {string|undefined} */ let message;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '--content') content = rest[++i];
-        else if (a === '--slug') slug = rest[++i];
-        else if (a === '-m' || a === '--message') message = rest[++i];
-        else pos.push(a);
-      }
-      const [workUnit, phase, topic] = pos;
-      if (!workUnit || !phase || !topic || pos.length !== 3 || !content || !slug || !message) {
-        throw new Error('Usage: engine topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>');
-      }
-      respond(call, sendMessage(call.cwd, workUnit, phase, topic, { contentFile: content, slug, message }));
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, topic] = positional;
+      if (!workUnit || !topic || positional.length !== 2) throw new Error(`Usage: engine ${SEND_USAGE}`);
+      respond(call, sendMessage(call.cwd, workUnit, topic, { contentFile: opts.content, slug: opts.slug }));
+      return;
+    }
+    if (command === 'answered') {
+      const { opts, positional } = parseArgs(rest);
+      const [workUnit, topic, number] = positional;
+      if (!workUnit || !topic || positional.length !== 3) throw new Error(`Usage: engine ${ANSWERED_USAGE}`);
+      const answered = answerMessage(call.cwd, workUnit, topic, number, { entry: opts.entry });
+      const phase = mailPhaseOf(call.cwd, workUnit);
+      if (phase !== null) beatQuietly(call.cwd, workUnit, phase, topic);
+      respond(call, answered);
       return;
     }
     if (command === 'postpone') {
@@ -1271,7 +1239,7 @@ function runTopic(call, argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|absorb|forward> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|answered> <work-unit> …');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1950,13 +1918,13 @@ function runStateMerge(call, argv) {
 
 // Per-phase artifact pathspecs for `commit --topic` — the paths a topic's
 // session writes, joined with the work-unit manifest at the call site. The
-// mailbox phases carry the topic's mailbox so a drain's deletions
-// ride the same commit.
+// phases a topic is talked through carry its mailbox, so a message it
+// answered rides the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
-  research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
+  research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, t)],
   experiment: (wu, t) => [`${wu}/experiment/${t}`],
-  discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
-  investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
+  discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, t)],
+  investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, t)],
   specification: (wu, t) => [`${wu}/specification/${t}`],
   planning: (wu, t) => [`${wu}/planning/${t}`],
   implementation: (wu, t) => [`${wu}/implementation/${t}`],
@@ -2451,7 +2419,7 @@ function runHandoff(call, argv) {
   const [skill, ...args] = argv;
   try {
     if (skill === undefined) throw new Error('Usage: engine handoff <skill|/skill> [args …]');
-    respondSections(call, handoffSections(resolveHandoff(call.cwd, skill, args)));
+    respondSections(call, handoffSections(skill === 'topic' ? topicHandoff(call.cwd, args) : resolveHandoff(call.cwd, skill, args)));
   } catch (err) {
     failJson(call, err);
   }

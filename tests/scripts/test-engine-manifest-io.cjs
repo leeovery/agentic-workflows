@@ -587,7 +587,7 @@ const EXEMPT_CALLS = [
   ['code', 'status'],
   ['render', 'signpost', 'Hello'],
   ['handoff', 'leeway-continue-epic', 'payments'],
-  ['topic', 'mailbox', 'payments', 'research', 'auth-flow'],
+  ['topic', 'mailbox', 'payments', 'auth-flow'],
   ['topic', 'incorporations', 'payments', 'auth-flow'],
   ['roadmap', 'state'],
   ['verdict', 'queue'],

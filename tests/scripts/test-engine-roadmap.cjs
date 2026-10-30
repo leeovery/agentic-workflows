@@ -973,10 +973,11 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     // A message for a topic that waits is mail that waits with it.
     fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), '### Ordering\n\nA question for later.\n');
-    const parked = engineOk(['topic', 'send', 'mvp', 'research', 'ordering',
-      '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question', '-m', 'send a-question']);
-    assert.strictEqual(parked.status, 'postponed', 'the send leaves the hold alone');
+    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), 'Ordering\n\nA question for later.\n');
+    const before = fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8');
+    const parked = engineOk(['topic', 'send', 'mvp', 'ordering', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
+    assert.strictEqual(parked.message_path, path.join(dir, '.leeway/mvp/topics/ordering/mail/001-a-question.md'));
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8'), before, 'the send leaves the hold alone');
   });
 
   it('roadmap remove cancels the epic\'s row in the same transaction, one commit over both manifests', () => {

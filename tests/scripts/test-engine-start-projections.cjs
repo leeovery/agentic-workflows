@@ -177,8 +177,8 @@ describe('start projections: menu', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a single-topic unit with messages waiting carries the mail waiting cue on its row — an epic never does', () => {
-    createFile(dir, '.leeway/dark-mode/discussion/.mailbox/dark-mode/001-escalation-path.md', '### Escalation path\n');
-    createFile(dir, '.leeway/quiz-competition-v1/discussion/.mailbox/menu-admin/001-cost-model.md', '### Cost model\n');
+    createFile(dir, '.leeway/dark-mode/topics/dark-mode/mail/001-escalation-path.md', '### Escalation path\n');
+    createFile(dir, '.leeway/quiz-competition-v1/topics/menu-admin/mail/001-cost-model.md', '### Cost model\n');
     const detail = fullFixture(dir);
     assert.deepStrictEqual(detail.features.work_units.find((u) => u.name === 'dark-mode').mail_phases, ['discussion']);
     assert.strictEqual(detail.features.work_units.find((u) => u.name === 'auth-flow').mail_phases, undefined);

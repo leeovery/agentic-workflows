@@ -1218,7 +1218,7 @@ describe('render mailbox surfaces', () => {
   afterEach(() => teardown(dir));
 
   function writeMailbox(topic, files) {
-    const mailbox = path.join(dir, '.leeway', 'wu', 'discussion', '.mailbox', topic);
+    const mailbox = path.join(dir, '.leeway', 'wu', 'topics', topic, 'mail');
     fs.mkdirSync(mailbox, { recursive: true });
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(mailbox, f), body);
   }
@@ -1292,37 +1292,6 @@ describe('render mailbox surfaces', () => {
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
   });
 
-  it('forward-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
-    writeMailbox('measurement', { '001-a-decision-owed.md': 'x' });
-    const file = writePayload(dir, 'rq.json', {
-      file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
-    });
-    const out = renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file });
-    assert.ok(out.startsWith("=== MENU: forward offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), out);
-    assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
-    assert.ok(out.includes('**`◆ Move it to research?`**'), out);
-    assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research mailbox/.test(out), out);
-    assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
-
-    const rdir = path.join(dir, '.leeway', 'wu', 'research', '.mailbox', 'measurement');
-    fs.mkdirSync(rdir, { recursive: true });
-    fs.writeFileSync(path.join(rdir, '001-a-decision-owed.md'), 'x');
-    const rout = renderSurface(dir, 'forward-offer', { dotpath: 'wu.research.measurement', file });
-    assert.ok(rout.includes('**`◆ Move it to discussion?`**'), rout);
-    assert.ok(rout.includes("Move it to this topic's discussion mailbox"), rout);
-  });
-
-  it('forward-offer refuses a missing payload field, a file the mailbox lacks, and a phase outside the pair', () => {
-    writeMailbox('measurement', { '001-a.md': 'x' });
-    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement' }), /--file <payload\.json> is required/);
-    const missing = writePayload(dir, 'missing.json', { file: '001-a.md', title: 'T' });
-    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /"reason" must be a non-empty string/);
-    const ghost = writePayload(dir, 'ghost.json', { file: '009-ghost.md', title: 'T', reason: 'r' });
-    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file: ghost }), /is not in the measurement discussion mailbox/);
-    const ok = writePayload(dir, 'ok.json', { file: '001-a.md', title: 'T', reason: 'r' });
-    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.investigation.measurement', file: ok }), /research\/discussion pair only/);
-  });
-
   it('mail-block derives the count and the phase word, refusing an empty mailbox', () => {
     assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing blocks conclusion/);
     writeMailbox('measurement', { '001-a.md': 'x' });
@@ -1334,10 +1303,7 @@ describe('render mailbox surfaces', () => {
       '=== DISPLAY: mail block guidance (emit verbatim as markdown (not a code block)) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
-    const rdir = path.join(dir, '.leeway', 'wu', 'research', '.mailbox', 'measurement');
-    fs.mkdirSync(rdir, { recursive: true });
-    fs.writeFileSync(path.join(rdir, '001-a.md'), 'x');
-    fs.writeFileSync(path.join(rdir, '002-b.md'), 'y');
+    writeMailbox('measurement', { '002-b.md': 'y' });
     const rout = renderSurface(dir, 'mail-block', { dotpath: 'wu.research.measurement' });
     assert.ok(rout.includes('2 messages awaiting exploration'), rout);
   });

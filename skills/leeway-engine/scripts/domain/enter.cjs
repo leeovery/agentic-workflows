@@ -48,6 +48,8 @@ const { agentsLeft } = require('./agent-state.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { topicLog, recordCall, productCall, owedHeader } = require('./topic-log.cjs');
 const { entrySections, heldGate } = require('./projections/enter.cjs');
+const { waitingMessages } = require('./mail.cjs');
+const { waitingMail } = require('./projections/mail.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
 
@@ -155,8 +157,19 @@ function filesIn(dir) {
 const existing = (paths) => paths.filter((p) => fs.existsSync(p));
 
 /**
- * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): the
- * topic's brief — for the unit's one topic, discovery's log and the unit's
+ * The mail waiting for a topic, raised at its opening before anything else
+ * (10.4.1, 10.4.2): none where none waits.
+ * @param {Entering} at @returns {string[]}
+ */
+function mailRaised({ cwd, unit, topic = '' }) {
+  const waiting = waitingMessages(cwd, unit, topic);
+  return waiting.length === 0 ? [] : [waitingMail(waiting)];
+}
+
+/**
+ * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): each
+ * message waiting, its number the one `topic answered` takes; the topic's
+ * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
  * product record with the findings it holds from the code; and the unit's
  * spikes. Resuming adds the topic's own record (9.3.11) and the reports of
@@ -172,6 +185,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
   /** @param {string} key @returns {(value: string) => Line} */
   const as = (key) => (value) => [key, value];
   return [
+    ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
     ...existing([statePath(cwd, unit, 'discovery', 'briefs', `${topic}.md`)]).map(as('brief')),
     ...(own ? filesIn(statePath(cwd, unit, 'discovery', 'sessions')) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
@@ -191,7 +205,7 @@ const ENTRIES = Object.freeze({
     standing: (at) => topicStanding(at) ?? discussionStanding(at),
     unstarted: (manifest, topic = '') => ['unstarted', undefined].includes(itemOf(manifest, 'discussion', topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, 'discussion', topic); },
-    questions: () => [],
+    questions: mailRaised,
     reads: discussionReads,
     log: (unit, topic = '') => topicLog(unit, topic),
   },
