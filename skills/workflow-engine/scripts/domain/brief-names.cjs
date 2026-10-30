@@ -27,9 +27,13 @@ const POINTER = 'brief:';
 /** A pointer anywhere in a text, its id captured. */
 const POINTED = new RegExp(`${POINTER}([0-9A-Za-z]+)`);
 
+/** How the workflows' agents are named: the hook acts on every agent so named, and on no other. */
+const OURS = 'leeway-';
+
 /**
- * Each role: the agent it is dispatched as, whose brief its first line says
- * it is, and the records its brief draws on, by their slots.
+ * Each role: the agent it is dispatched as, named `{OURS}…`, whose brief
+ * its first line says it is, and the records its brief draws on, by their
+ * slots.
  * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[]}>>}
  */
 const ROLES = Object.freeze({
@@ -61,4 +65,4 @@ function pointedId(text) {
   return POINTED.exec(text)?.[1] ?? null;
 }
 
-module.exports = { ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId };
+module.exports = { OURS, POINTER, ROLES, BRIEFS, BRIEF_REFUSALS, briefPath, issuedPath, pointerOf, pointedId };

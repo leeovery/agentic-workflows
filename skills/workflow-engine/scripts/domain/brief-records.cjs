@@ -143,13 +143,18 @@ function drawLinters({ cwd }) {
   return listed(linters.map(({ name, command }) => `- ${name}: ${command}`));
 }
 
+// Off a terminal git fits a stat to 80 columns, cutting a long path from its
+// front; a width past any path keeps each whole, and the graph is held to
+// git's own 40 columns, which the width would otherwise stretch.
+const STAT = ['--stat=1000', '--stat-graph-width=40'];
+
 /**
  * The range in one repository, under a heading naming it, and its stat.
  * @param {Repo} repo @param {string} base @param {string} branch
  */
 function rangeIn(repo, base, branch) {
   const where = repo.dir === '' ? 'the project\'s repository' : `\`${plain(repo.dir)}\``;
-  const stat = git(repo.path, ['diff', '--no-color', '--stat', `refs/heads/${base}...refs/heads/${branch}`, '--']);
+  const stat = git(repo.path, ['diff', '--no-color', ...STAT, `refs/heads/${base}...refs/heads/${branch}`, '--']);
   return `## In ${where}: \`${base}...${branch}\`\n\n${stat === '' ? 'Nothing changed in the range.' : `\`\`\`\n${stat}\`\`\``}`;
 }
 
