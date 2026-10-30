@@ -65,9 +65,17 @@ const { answerSince, answerShown } = require('./ledger-since.cjs');
  */
 
 /**
+ * A file linked from an entry as a read shows it: its path, the status its
+ * latest live status link gives it, and where its latest live lift took it
+ * into the project — each null where none gives one.
+ * @typedef {{path: string, status: string|null, into: string|null}} AssetRow
+ */
+
+/**
  * The folded ledger as a read shows it: the fold read against liveness, an
- * entry's line shown, and an id in its short form.
- * @typedef {{folded: Folded, show: (id: string) => Shown, short: (id: string) => string}} Shower
+ * entry's line shown, the files linked from an entry, and an id in its
+ * short form.
+ * @typedef {{folded: Folded, show: (id: string) => Shown, assets: (id: string) => AssetRow[], short: (id: string) => string}} Shower
  */
 
 /**
@@ -114,22 +122,12 @@ function showerOf(folded, entryAt) {
     const shown = shownLine(entryAt(facts.place), short);
     return facts.late_check === null ? shown : { ...shown, late_check: facts.late_check };
   };
-  return { folded, show, short };
-}
-
-/**
- * The files linked from an entry, each by its path, with the status its
- * latest live status link gives it, and where its latest live lift took it
- * into the project — each null where none gives one.
- * @param {Shower} shower @param {string} id
- * @returns {{path: string, status: string|null, into: string|null}[]}
- */
-function assetRows({ folded, show }, id) {
-  return assetsOf(folded, id).map(({ path, status, lift }) => ({
+  const assets = (/** @type {string} */ id) => assetsOf(folded, id).map(({ path, status, lift }) => ({
     path,
     status: status === null ? null : /** @type {string} */ (show(status).status),
     into: lift === null ? null : /** @type {string} */ (show(lift).into),
   }));
+  return { folded, show, assets, short };
 }
 
 /**
@@ -139,8 +137,8 @@ function assetRows({ folded, show }, id) {
  * @param {Shower} shower @param {string} id @returns {Shown}
  */
 function held(shower, id) {
-  const { folded, show } = shower;
-  return { ...show(id), holds: holdsOf(folded, id).map(show), kept: keptOf(folded, id).map(show), assets: assetRows(shower, id) };
+  const { folded, show, assets } = shower;
+  return { ...show(id), holds: holdsOf(folded, id).map(show), kept: keptOf(folded, id).map(show), assets: assets(id) };
 }
 
 /** A current entry with its chain folded beneath it, newest first (5.6.5). @param {Shower} shower @param {string} id @returns {Shown} */
@@ -321,4 +319,4 @@ function readLedgerVerb(cwd, verb, args) {
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, assetRows };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown };

@@ -363,5 +363,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ROADMAP, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ROADMAP, ASSET_STATUSES, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
 };

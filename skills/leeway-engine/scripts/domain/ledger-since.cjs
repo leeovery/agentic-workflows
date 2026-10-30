@@ -13,7 +13,9 @@
 //   answer whose question is set aside on a row of its own; a unit, those
 //   it shows anywhere, its topics' maps and its own level's list alike —
 //   each by where it shows (ledger-fold.cjs), so a later unit's
-//   replacement of an earlier unit's decision is new in both.
+//   replacement of an earlier unit's decision is new in both. Each shows
+//   with the files linked from it, so a call Claude spiked to settle shows
+//   how Claude found out (9.10.17).
 // - The mark is the machine's own: the ids of the calls a screen has shown
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
@@ -135,15 +137,16 @@ function callsSince(folded, { unit, topic }, shown) {
 }
 
 /**
- * The new calls as a read answers them: each line, and where it stands.
+ * The new calls as a read answers them: each line, where it stands, and the
+ * files linked from it — what Claude spiked or read to make it (9.10.17).
  * @param {Shower} shower @param {Place} place @param {string[]} calls
  */
-function answerOf({ folded, show }, { unit, topic }, calls) {
+function answerOf({ folded, show, assets }, { unit, topic }, calls) {
   return {
     unit,
     topic,
     live: folded.live(/** @type {string} */ (unit), topic) === null,
-    calls: calls.map((id) => ({ ...show(id), standing: standingOf(folded, id) })),
+    calls: calls.map((id) => ({ ...show(id), standing: standingOf(folded, id), assets: assets(id) })),
   };
 }
 
