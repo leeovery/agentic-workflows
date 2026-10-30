@@ -56,14 +56,19 @@ function listOf(item) {
   return { ...type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test)), ...(item.names === undefined ? {} : { names: 'many' }) };
 }
 
-/** @param {string} name @param {Type} fieldType @returns {Field} */
-function field(name, fieldType) {
-  return { name, type: fieldType };
+/**
+ * A field; one a release after the stream's first added names that version
+ * and the default a line written before it takes.
+ * @param {string} name @param {Type} fieldType @param {{version: number, default: unknown}} [added]
+ * @returns {Field}
+ */
+function field(name, fieldType, added) {
+  return added === undefined ? { name, type: fieldType } : { name, type: fieldType, added };
 }
 
-/** An event of the first version. @param {Field[]} fields @returns {EventSchema} */
-function event(fields) {
-  return { since: 1, fields };
+/** An event, of the first version unless `since` names a later. @param {Field[]} fields @param {number} [since] @returns {EventSchema} */
+function event(fields, since = 1) {
+  return { since, fields };
 }
 
 // 16.11.3's composed kinds.

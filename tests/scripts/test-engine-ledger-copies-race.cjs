@@ -116,7 +116,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       // The barrier: the holder has rendered its write and waits on the store inside its index pass.
       await until(() => commits() === before + 1 && /A framed panel\./.test(copy(NOTE_COPY) ?? ''), 'the replace did not commit and render');
       const marked = fs.readFileSync(files.copiesOutdated, 'utf8');
-      later = spawnEngine(['ledger', 'find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' }, () => ({ copy: copy(NOTE_COPY), indexed: indexedText() }));
+      later = spawnEngine(['ledger', 'find', NOTE], { text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }, () => ({ copy: copy(NOTE_COPY), indexed: indexedText() }));
       await until(() => commits() === before + 2 && fs.readFileSync(files.copiesOutdated, 'utf8') !== marked, 'the finding did not commit and mark the copies');
 
       assert.strictEqual(JSON.parse(fs.readFileSync(files.copies, 'utf8')).pid, holder.pid, 'the holder let the claim go before its index pass');
@@ -169,7 +169,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     seams.folded = () => {
       seams.folded = null;
       const marked = fs.readFileSync(files.copiesOutdated, 'utf8');
-      waiting = spawnEngine(['ledger', 'find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' }, () => copy(NOTE_COPY));
+      waiting = spawnEngine(['ledger', 'find', NOTE], { text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }, () => copy(NOTE_COPY));
       holdUntil(() => fs.readFileSync(files.copiesOutdated, 'utf8') !== marked);
       throw new Error('the render broke');
     };
@@ -195,7 +195,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       await until(() => commits() === before + 1 && /A framed panel\./.test(copy(NOTE_COPY) ?? '') && holder.pid() !== null, 'the replace did not commit and render');
       // The holder is killed while the write below waits on it — a second into a wait bounded at ten.
       const killer = spawn('sh', ['-c', 'sleep 1; kill -9 "$0"; rm -f "$1"', String(holder.pid()), files.lock], { stdio: 'ignore' });
-      const found = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike' });
+      const found = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' });
       await new Promise((resolve) => killer.on('close', resolve));
 
       assert.deepStrictEqual(found.warnings ?? [], []);

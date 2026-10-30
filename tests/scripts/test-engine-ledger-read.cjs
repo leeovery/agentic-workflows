@@ -27,7 +27,7 @@ const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture, layout } = req
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { LEDGER_VERSION, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
@@ -210,8 +210,8 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
     try {
       while (size <= READ_BUDGET_BYTES) {
         const bulk = `${JSON.stringify(validEvent({
-          v: 1, id: newId(), event: 'found', unit: UNIT, topic: 'space-homing', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
-          ...MADE, text: 'x'.repeat(2000), how: 'measured', relies_on: [], product_wide: false,
+          v: LEDGER_VERSION, id: newId(), event: 'found', unit: UNIT, topic: 'space-homing', phase: 'discussion', session: SESSION_ID, at: '2026-10-27T09:00:00Z',
+          ...MADE, text: 'x'.repeat(2000), how: 'by hand', relies_on: [], product_wide: false, known: 'read', command: null, result: null, cites: [],
         }))}\n`;
         fs.writeSync(fd, bulk);
         size += Buffer.byteLength(bulk);

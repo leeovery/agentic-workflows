@@ -9,15 +9,17 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; who made it, and who moved whom; whether Claude leaned on its
-// chain — it, or an entry down its chain, Claude's own or carrying Claude's
-// sealed answer (ledger-verdicts.cjs); the unit and topic it was written
-// on; the first entry of its chain; its links; every entry linking back to
-// it — the replacements naming it, the merges that took it as a duplicate,
-// the confirmations that it still holds, the person's keeps of it against
-// Claude's proposed replacement, which change nothing current, and on the
-// first entry of a question's chain, the answers to, the parts of (5.3.11),
-// the merges of and the moves of any wording; and where its line sits, so a
+// entry; who made it, how a decision was given, and who moved whom; whether
+// Claude leaned on its chain — it, or an entry down its chain, Claude's own
+// call or carrying Claude's sealed answer (ledger-verdicts.cjs); the unit
+// and topic it was written on; the first entry of its chain; its links, an
+// asset link's path among them; every entry linking back to it — the
+// replacements naming it, the merges that took it as a duplicate, the
+// confirmations that it still holds, the person's keeps of it against
+// Claude's proposed replacement, which change nothing current, the asset
+// links giving a file a status beside it, and on the first entry of a
+// question's chain, the answers to, the parts of (5.3.11), the merges of
+// and the moves of any wording; and where its line sits, so a
 // read shows an entry by reading that one line again. It keeps one thing a
 // read shows that the entry's line never holds: what the late one-decision
 // check last found of a decision that landed unchecked (16.19.8).
@@ -28,8 +30,10 @@
 //   while its unit is: it hands the question to the topic it moved to, and
 //   setting aside the topic it came from never takes that back. A
 //   question's wording is made on the topic the last live move its unit
-//   made of the question took it to (5.3.3), or where none is, the topic it
-//   was written on.
+//   made of the question to a topic took it to (5.3.3), or where none is,
+//   the topic it was written on. A move to the roadmap hands it to no
+//   topic: it stays where it stands, closed there as later (9.5.4) while
+//   the last live move its unit made of it is that one.
 // - A question's line (5.8.20): the live wordings of its chain, in the
 //   ledger's order, read as one line. A wording set aside drops out of it;
 //   one whose own predecessor is set aside reads as rewording the nearest
@@ -89,14 +93,17 @@
 //   question's, the earlier wordings of its line.
 // - A topic's map (5.8.5): its questions, where each stands, and the
 //   answers to each, its current answer and what its merges resolve to —
-//   which the topic's record shows too. A map shows where a question stands
-//   now: one moved in, the topic it came from while that is live; one moved
-//   away, in its current wording, the topic it stands on now — each only by
-//   a live move the map's unit made, while the question is current and
-//   stands in that unit. Any other question standing elsewhere that was
-//   made on the topic, or that an answer placed on the topic answers, shows
-//   as standing elsewhere. A row of a question standing off the topic shows
-//   the answers placed on the topic that no question standing on it shows.
+//   which the topic's record shows too. A question standing on it is
+//   merged, answered, later — moved to the roadmap — or open, in that
+//   order, so an answer closes it whatever moved it before. A map shows
+//   where a question stands now: one moved in, the topic it came from
+//   while that is live; one moved away, in its current wording, the topic
+//   it stands on now — each only by a live move to a topic the map's unit
+//   made, while the question is current and stands in that unit. Any other
+//   question standing elsewhere that was made on the topic, or that an
+//   answer placed on the topic answers, shows as standing elsewhere. A row
+//   of a question standing off the topic shows the answers placed on the
+//   topic that no question standing on it shows.
 //   A current answer placed on the topic that no current question answers
 //   — every wording of its question set aside, and no merge that holds
 //   leading another question to it — is a row of its own, headed by itself,
@@ -115,13 +122,16 @@
 //   unit on no topic. Every place's record is built in one pass, each id's
 //   places worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
+// - An entry's assets (9.10.5–9.10.7): for each file linked from it, the
+//   latest live link standing, a link made where it is set aside counting
+//   for nothing, as a replacement made there does (5.8.17).
 // - Whether the ledger names a topic: an event written on it, or a move to
 //   it, live or not. The ledger keeps every line (5.3.4), so a topic it
 //   names keeps its name for good.
 // ---------------------------------------------------------------------------
 
 const { withLedger } = require('./ledger.cjs');
-const { entryKind } = require('./ledger-events.cjs');
+const { entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
@@ -138,6 +148,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   event: string,
  *   kind: EntryKind|null,
  *   by: string|null,
+ *   given: string|null,
  *   who_moved_whom: string|null,
  *   leaned: boolean,
  *   unit: string,
@@ -156,6 +167,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   entry: string|null,
  *   after: string|null,
  *   cause: string|null,
+ *   path: string|null,
  *   replaced_by: readonly string[],
  *   merged_by: readonly string[],
  *   answered_by: readonly string[],
@@ -164,11 +176,12 @@ const { entryKind } = require('./ledger-events.cjs');
  *   parts: readonly string[],
  *   holds: readonly string[],
  *   kept: readonly string[],
+ *   assets: readonly string[],
  *   late_check: 'one'|'several'|null,
  * }} IdFacts
  */
 
-/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'|'kept'} BackLinks */
+/** A list of the ids linking back to an id. @typedef {'replaced_by'|'merged_by'|'answered_by'|'merges'|'moves'|'parts'|'holds'|'kept'|'assets'} BackLinks */
 
 /** Why an entry of a unit and topic is not live, null where it is (ledger-units.cjs). @typedef {(unit: string, topic: string|null) => string|null} Liveness */
 
@@ -228,8 +241,9 @@ const ID_FACTS = {
       event: /** @type {string} */ (event.event),
       kind,
       by: typeof event.by === 'string' ? event.by : null,
+      given: typeof event.given === 'string' ? event.given : null,
       who_moved_whom: typeof event.who_moved_whom === 'string' ? event.who_moved_whom : null,
-      leaned: event.by === 'claude' || typeof event.sealed === 'string' || (event.event === 'replaced' && named(facts, event.replaces).leaned),
+      leaned: claudesCall({ by: event.by, given: event.given }) || typeof event.sealed === 'string' || (event.event === 'replaced' && named(facts, event.replaces).leaned),
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,
@@ -241,11 +255,12 @@ const ID_FACTS = {
       product_wide: typeof event.product_wide === 'boolean' ? event.product_wide : null,
       question: idOrNull(event.question),
       to: idOrNull(event.to),
-      into: idOrNull(event.into),
+      into: event.event === 'merged' ? idOrNull(event.into) : null,
       duplicate: idOrNull(event.duplicate),
       entry: idOrNull(event.entry),
       after: idOrNull(event.after),
       cause: idOrNull(event.cause),
+      path: event.event === 'asset' ? idOrNull(event.path) : null,
       replaced_by: NONE,
       merged_by: NONE,
       answered_by: NONE,
@@ -254,6 +269,7 @@ const ID_FACTS = {
       parts: NONE,
       holds: NONE,
       kept: NONE,
+      assets: NONE,
       late_check: null,
     });
     if (kind === 'decision') linkBack(facts, chainRoot(facts, event.answers), 'answered_by', id);
@@ -261,6 +277,7 @@ const ID_FACTS = {
     if (event.event === 'replaced') linkBack(facts, event.replaces, 'replaced_by', id);
     if (event.event === 'still-holds') linkBack(facts, event.entry, 'holds', id);
     if (event.event === 'kept') linkBack(facts, event.entry, 'kept', id);
+    if (event.event === 'asset') linkBack(facts, event.entry, 'assets', id);
     if (event.event === 'moved') linkBack(facts, chainRoot(facts, event.question), 'moves', id);
     if (event.event === 'merged') {
       linkBack(facts, chainRoot(facts, event.question), 'merges', id);
@@ -327,17 +344,23 @@ function liveMovesBy(folded, root, unit) {
   return factsOf(folded, root).moves.filter((move) => factsOf(folded, move).unit === unit && isLive(folded, move));
 }
 
+/** The topic a move took a question to, or null for a move to the roadmap. @param {Folded} folded @param {string} move */
+function movedTo(folded, move) {
+  const to = /** @type {string} */ (factsOf(folded, move).to);
+  return roadmapItemOf(to) === null ? to : null;
+}
+
 /**
  * The unit and topic `id` was made on: the ones it was written on, but a
  * question's wording, made on the topic the last live move its unit made of
- * the question took it to, where there is one (5.3.3).
+ * the question to a topic took it to, where there is one (5.3.3).
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
 function madeOn(folded, id) {
   const { unit, topic, root } = factsOf(folded, id);
-  const move = liveMovesBy(folded, root, unit).at(-1);
-  return { unit, topic: move === undefined ? topic : factsOf(folded, move).to };
+  const to = liveMovesBy(folded, root, unit).map((move) => movedTo(folded, move)).filter((moved) => moved !== null).at(-1);
+  return { unit, topic: to ?? topic };
 }
 
 /**
@@ -639,6 +662,19 @@ function keptOf(folded, id) {
 }
 
 /**
+ * The asset links standing beside `id`: for each file linked from it, the
+ * latest live link, in the order each file was first linked.
+ * @param {Folded} folded @param {string} id
+ * @returns {string[]}
+ */
+function assetsOf(folded, id) {
+  /** @type {Map<string|null, string>} */
+  const latest = new Map();
+  for (const link of factsOf(folded, id).assets) if (isLive(folded, link)) latest.set(factsOf(folded, link).path, link);
+  return [...latest.values()];
+}
+
+/**
  * The chain folded beneath a current entry (5.6.5): the entries it
  * replaced, newest first, down to the first that is not live, as though
  * that one were not there — what it replaced stands again on its own. A
@@ -707,14 +743,27 @@ function answersOf(folded, question) {
 const SHOWN_IN = new WeakMap();
 
 /**
- * Where a current question stands on its own topic's map: merged, answered,
- * or open.
+ * The roadmap a current question is closed on as later (9.5.4) —
+ * `roadmap:{item}`, where the last live move its unit made of it took it —
+ * or null.
  * @param {Folded} folded @param {string} question
- * @returns {'open'|'answered'|'merged'}
+ * @returns {string|null}
+ */
+function laterOf(folded, question) {
+  const last = liveMovesBy(folded, factsOf(folded, question).root, standingOf(folded, question).unit).at(-1);
+  return last === undefined || movedTo(folded, last) !== null ? null : factsOf(folded, last).to;
+}
+
+/**
+ * Where a current question stands on its own topic's map: merged, answered,
+ * later, or open.
+ * @param {Folded} folded @param {string} question
+ * @returns {'open'|'answered'|'merged'|'later'}
  */
 function questionStands(folded, question) {
   if (mergedAnswer(folded, question).length > 0) return 'merged';
-  return answersOf(folded, question).length > 0 ? 'answered' : 'open';
+  if (answersOf(folded, question).length > 0) return 'answered';
+  return laterOf(folded, question) === null ? 'open' : 'later';
 }
 
 /**
@@ -747,20 +796,21 @@ function showsIn(folded, id) {
 
 /**
  * Where a question stands on its map: open, answered, merged — answered by
- * the entry another topic holds, which a merge took it into (5.5.5) — moved
- * away to another topic, or standing elsewhere, shown for what was placed on
- * the topic (5.8.19); or, on the row of an answer no current question
- * answers, its question set aside.
- * @typedef {'open'|'answered'|'merged'|'moved-away'|'elsewhere'|'question-set-aside'} Stands
+ * the entry another topic holds, which a merge took it into (5.5.5) — later,
+ * moved to the roadmap (9.5.4), moved away to another topic, or standing
+ * elsewhere, shown for what was placed on the topic (5.8.19); or, on the row
+ * of an answer no current question answers, its question set aside.
+ * @typedef {'open'|'answered'|'merged'|'later'|'moved-away'|'elsewhere'|'question-set-aside'} Stands
  */
 
 /**
  * A row of a topic's map: the question; where it stands; for one moved
- * away, the topic it moved to, for one moved in, the topic it came from, and
- * for one standing elsewhere, where; its current answers, its own and those
- * a merge resolves to — on the row of a question standing off the topic,
- * those placed on the topic; and the question it is part of, in its current
- * wording, and the current questions part of any wording of it (5.3.11).
+ * away, the topic it moved to, for one later, the roadmap it moved to, for
+ * one moved in, the topic it came from, and for one standing elsewhere,
+ * where; its current answers, its own and those a merge resolves to — on
+ * the row of a question standing off the topic, those placed on the topic;
+ * and the question it is part of, in its current wording, and the current
+ * questions part of any wording of it (5.3.11).
  * @typedef {{
  *   id: string, stands: Stands, moved_from: string|null, moved_to: string|null, stands_in: Standing|null,
  *   answers: string[], part_of: string|null, parts: string[],
@@ -786,14 +836,15 @@ function wholeOf(folded, whole) {
  */
 function standingRow(folded, id, unit) {
   const answers = answersOf(folded, id);
-  const lastMove = liveMovesBy(folded, factsOf(folded, id).root, unit).at(-1);
+  const lastMove = liveMovesBy(folded, factsOf(folded, id).root, unit).filter((move) => movedTo(folded, move) !== null).at(-1);
   const from = lastMove === undefined ? null : movedFrom(folded, lastMove);
   const parts = factsOf(folded, factsOf(folded, id).root).parts.filter((part) => isCurrent(folded, part));
+  const stands = questionStands(folded, id);
   return {
     id,
-    stands: questionStands(folded, id),
+    stands,
     moved_from: from === null || folded.live(unit, from) !== null ? null : from,
-    moved_to: null,
+    moved_to: stands === 'later' ? laterOf(folded, id) : null,
     stands_in: null,
     answers,
     part_of: wholeOf(folded, factsOf(folded, id).part_of),
@@ -815,7 +866,7 @@ function awayRow(folded, id, map, answers) {
   const standing = standingOf(folded, id);
   const row = { id, moved_from: null, answers, part_of: wholeOf(folded, factsOf(folded, id).part_of), parts: [] };
   const topic = /** @type {string} */ (map.topic);
-  if (standing.unit === map.unit && liveMovesBy(folded, factsOf(folded, id).root, map.unit).some((m) => movedFrom(folded, m) === topic)) {
+  if (standing.unit === map.unit && liveMovesBy(folded, factsOf(folded, id).root, map.unit).some((m) => movedTo(folded, m) !== null && movedFrom(folded, m) === topic)) {
     return { ...row, stands: 'moved-away', moved_to: standing.topic, stands_in: null };
   }
   const shows = answers.length > 0 || placesOf(folded, id).some((place) => samePlace(place, map));
@@ -989,5 +1040,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, foldedBeneath, wordingOf, answersOf, questionStands, showsIn, mapOf, recordOf, placeRecords, productOf,
+  keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

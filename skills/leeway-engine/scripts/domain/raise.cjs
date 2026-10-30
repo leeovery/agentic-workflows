@@ -25,10 +25,11 @@
 // - It refuses, drawing nothing: no session; no state; a place or a link
 //   `ledger decide` refuses — `ledger replace`, on a replacement — read and
 //   checked by that code before any lock (ledger-write.cjs), since the answer
-//   lands as that write; a question answered already, or merged into
-//   another's answer — after a `/clear` or a compaction Claude can raise one
-//   again — whether or not the conversation holds its seal; an entry replaced
-//   that is no decision, whose answer the rows give; a call of another shape;
+//   lands as that write; a question answered already, merged into another's
+//   answer, or moved to the roadmap as later — after a `/clear` or a
+//   compaction Claude can raise one again — whether or not the conversation
+//   holds its seal; an entry replaced that is no decision, whose answer the
+//   rows give; a call of another shape;
 //   fewer than two rows — on a replacement, no proposal; a key the trust log
 //   cannot key, one two rows share, or one that is the screen's own word in
 //   any case (`t`, `e`, `technical`, `explain`, `comment`, and `keep` on
@@ -154,7 +155,7 @@ const { findStateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { entryKind } = require('./ledger-events.cjs');
-const { ID_FACTS, readFolded, questionStands, answersOf, notCurrent } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -465,9 +466,9 @@ function sealDrawn(session, place, target, seal) {
 }
 
 /**
- * Where the question `answers` is no longer open — answered, or merged into
- * another's answer — the question and what answers it, said; null while it
- * is open.
+ * Where the question `answers` is no longer open — answered, merged into
+ * another's answer, or moved to the roadmap as later — the question and
+ * what closed it, said; null while it is open.
  * @param {string} answers @param {Folded} read
  * @returns {string|null}
  */
@@ -475,6 +476,7 @@ function notOpen(answers, read) {
   const stands = questionStands(read, answers);
   if (stands === 'open') return null;
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+  if (stands === 'later') return `${short(answers)}, which is moved to the roadmap as later, ${laterOf(read, answers)}`;
   const by = answersOf(read, answers).map(short).join(', ');
   return `${short(answers)}, which is ${stands === 'merged' ? `merged into the answer ${by}` : `answered by ${by}`}`;
 }

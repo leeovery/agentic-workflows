@@ -40,7 +40,9 @@
 //   — by the rule every read places it by (ledger-fold.cjs); before the
 //   spec, an entry of the unit is written on only from the topic it stands
 //   on: another topic's change goes to it by message (5.6.9, 10.2.2).
-// - How each relates: a question moves to another topic of its unit (5.3.3);
+// - How each relates: a question moves to another topic of its unit (5.3.3),
+//   or to an item of the project's roadmap as later, `roadmap:{item}`
+//   (9.5.4);
 //   a merge's duplicate is a current decision answering the question merged,
 //   by any of its wordings, standing or set aside (ledger-fold.cjs), other
 //   than the one it goes into (5.5.4, 5.5.5); a hold names the latest live
@@ -60,6 +62,12 @@
 //   proposed to replace it, is a raise's answer alone, no verb writing it:
 //   held to the links of the replacement it stood over — the decision
 //   current, the write's to replace, and the cause what the reason needs.
+// - What the content says of itself: the person's decision is their own,
+//   never given as "your call", "don't care" or carried over, each of which
+//   is Claude's line (9.2.14, 9.2.16, 21.6.5); a finding says how it is
+//   known (9.2.12), a measured one with the command run and its result
+//   (9.9.7), and a command never comes without its result, nor a result
+//   without its command.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -78,11 +86,12 @@
 //   for the labeller and the decision point to fill; the person's
 //   replacement the departure rule holds standing over a lean the entry it
 //   replaces held logs a reversal, naming the entry it reverses (16.12.1,
-//   ledger-verdicts.cjs). Any other write logs nothing. What a raise lands
-//   logs the event the raise gives it: a raise answered, or a call carrying
-//   the decision point's sort. The event is built in the command that
-//   writes its line, under the writer lock, and kept
-//   waiting in the conversation ahead of its line before the ledger's
+//   ledger-verdicts.cjs). A decision carried over is no call of Claude's,
+//   and logs nothing (21.1.5, 21.6.5). Any other write logs nothing. What a
+//   raise lands logs the event the raise gives it: a raise answered, or a
+//   call carrying the decision point's sort. The event is built in the
+//   command that writes its line, under the writer lock, and kept waiting
+//   in the conversation ahead of its line before the ledger's
 //   append, so what refuses it writes nothing, a project manifest holding
 //   no project_id among it; it lands after the ledger's append and before
 //   its commit, the trust log's own lock taken inside the writer's, where
@@ -123,10 +132,10 @@ const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { appendEntry, carrying, withLedger } = require('./ledger.cjs');
-const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
+const { LEDGER, HEADER, REASONS, ROADMAP, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
-const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
+const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
@@ -323,7 +332,7 @@ const WRITES = Object.freeze({
     link('entry', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     link('after', A_REPLACEMENT, { required: true }),
   ], { checkLinked: checkHeld }),
-  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', '<topic>')], {
+  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', `<topic|${ROADMAP}<item>>`)], {
     fromTopic: true, checkGiven: checkDestination, checkLive: checkDestinationLive,
   }),
   merge: writeOf('merged', [
@@ -356,7 +365,9 @@ const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP].flatMap((w) => w.fl
 const ENGINE_FIELDS = new Set([...HEADER.map((f) => f.name), 'of', 'unchecked']);
 
 /** The content a write may leave out, and what it takes instead. @type {Readonly<Record<string, unknown>>} */
-const DEFAULTS = Object.freeze({ rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null });
+const DEFAULTS = Object.freeze({
+  rules_out: [], product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, given: 'own', command: null, result: null, cites: [],
+});
 
 /** @param {Flag} flag */
 function flagName(flag) {
@@ -486,11 +497,17 @@ function checkCauseGiven(said, _at, given) {
 
 /**
  * Refuse a move to the topic it is made from, to a topic the unit does not
- * have (5.3.3), or to a topic that is not live (5.8.17).
+ * have (5.3.3), or to a topic that is not live (5.8.17); and one to the
+ * roadmap naming an item it does not hold (9.5.4).
  * @param {string} said @param {Address} at @param {Map<string, string[]>} given
  */
 function checkDestination(said, at, given) {
   const [to] = /** @type {string[]} */ (given.get('to'));
+  const item = roadmapItemOf(to);
+  if (item !== null) {
+    if (!hasRoadmapItem(at.root, item)) throw new Error(`${said}: --to names ${to}, and the roadmap has no item "${item}" — put it on the roadmap first`);
+    return;
+  }
   if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);
   if (!hasTopic(at.manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
   checkDestinationLive(said, at, given, liveness(at.root));
@@ -502,6 +519,7 @@ function checkDestination(said, at, given) {
  */
 function checkDestinationLive(said, at, given, live) {
   const [to] = /** @type {string[]} */ (given.get('to'));
+  if (roadmapItemOf(to) !== null) return;
   const dead = live(at.unit, to);
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
 }
@@ -784,8 +802,24 @@ const REVERSAL_LOGGED = ({ id, replaces }) => ({ type: 'reversal', fields: { ent
  */
 function trustEventOf(kind, content, reason, replaced) {
   if (kind !== 'decision') return null;
-  if (content.by === 'claude') return callLogged(null);
+  if (content.by === 'claude') return claudesCall(content) ? callLogged(null) : null;
   return reverses(content, kind, reason, replaced) ? REVERSAL_LOGGED : null;
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, content that says
+ * of itself what cannot be: the person's decision given as anything but
+ * their own, a measured finding with no command run or no result, and a
+ * command or a result without the other.
+ * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ */
+function checkSaid(said, kind, { by, given, known, command, result }) {
+  if (kind === 'decision' && by === 'person' && given !== 'own') {
+    throw new Error(`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`);
+  }
+  if (kind !== 'finding') return;
+  if (known === 'measured' && command === null) throw new Error(`${said}: a measured finding records the command run and its result — the content needs command and result`);
+  if ((command === null) !== (result === null)) throw new Error(`${said}: a finding's command comes with its result — the content gives ${command === null ? 'a result and no command' : 'a command and no result'}`);
 }
 
 /**
@@ -860,6 +894,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const kind = replaced === null ? entryKind({ event: write.event }) : replaced.kind;
   const derived = derivedMove(content, kind, reason, replaced);
   const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  checkSaid(said, kind, fields);
   const unmoved = movedRefusal(fields, kind, reason, replaced);
   if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   return {

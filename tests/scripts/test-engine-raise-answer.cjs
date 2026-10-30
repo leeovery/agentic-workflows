@@ -114,9 +114,9 @@ function refusedAnswer(args, given = { why: WHY }, env = {}) {
  */
 function entryOf(id, question, own = {}) {
   return {
-    v: 1, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
+    v: 2, id, event: 'decided', unit: UNIT, topic: 'note-window', phase: 'discussion', session: SESSION,
     by: 'person', who_moved_whom: 'none', answers: full(question), text: CURSOR.text, why: WHY, rules_out: [MAIN.text, LAST.text],
-    relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, unchecked: true, ...own,
+    relies_on: [], product_wide: false, sealed: CURSOR.text, alternatives: [], evidence: [], kind: null, unchecked: true, given: 'own', cites: [], ...own,
   };
 }
 

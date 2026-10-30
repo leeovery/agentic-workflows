@@ -167,10 +167,10 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
 
   it('judges a replacement of a decision as it is written; a replacement of a question or a finding, and every write that makes no decision, makes no call', () => {
     const question = ask();
-    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike' }).id;
+    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }).id;
     const decision = decide(question, PANEL, { '': rules(PANEL) });
     write('replace', NOTE, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note?' });
-    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: ['every Space'], text: 'Panels float above the active Space.', how: 'a second spike' });
+    write('replace', NOTE, ['--replaces', finding, '--reason', 'was-wrong'], { ...MADE, drops: ['every Space'], text: 'Panels float above the active Space.', how: 'a second spike', known: 'spike' });
     assert.strictEqual(calls().length, 1, 'a write that makes no decision made a call');
 
     const replacement = write('replace', NOTE, ['--replaces', decision, '--reason', 'changed-mind'], { ...MADE, drops: ['near-frameless'], text: 'A frameless panel.', why: 'Lighter.' }, { 'A frameless panel.': rules('A frameless panel.') }).id;
@@ -207,7 +207,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
 
   it('spends no call on a decision its links refuse: an answer to no question, to a prefix naming nothing, a replacement caused by what it replaces — each refused as under the lock, no call made, nothing appended', () => {
     const question = ask();
-    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike' }).id;
+    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike', known: 'spike' }).id;
     const decision = decide(question, PANEL, { '': rules(PANEL) });
     const before = { ledger: ledgerText(), calls: calls().length };
     const content = JSON.stringify({ ...MADE, text: SYNC, why: 'Because.' });

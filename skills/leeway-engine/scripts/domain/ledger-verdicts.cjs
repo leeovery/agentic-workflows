@@ -14,28 +14,30 @@
 // - A departure is an answer that amends or overrules Claude's lean
 //   (16.10.1): a decision the person made whose answer stood over the lean,
 //   so where there was no lean there is no departure. Claude leaned on an
-//   entry's chain where it, or an entry down its chain, is Claude's own or
-//   carries Claude's sealed answer (ledger-fold.cjs). An entry Claude made
-//   never stands over its own lean. The person's answer to Claude's lean is
-//   a raise's, which says who moved whom against the lean it sealed
-//   (raise.cjs); the write verbs take no sealed answer on the person's
-//   entry (5.3.10). The person's decision on a chain Claude never leaned on
-//   — written, or replaced for any reason — holds no lean to move, so moves
-//   no one: the person deciding unprompted, then changing their mind, is no
-//   departure. The person's replacement of a decision, for a changed mind
-//   or a mistake, stands over the lean where the entry it replaces held it
-//   — its chain leaned and it did not stand over the lean: Claude's own
-//   call, or the person's answer that was the lean or came round to it: a
-//   later reversal, or a call overruled when shown — and the engine says so
-//   where the writer leaves it out. Where that entry stood over the lean,
-//   it comes back round to the lean or gives a third answer still against
-//   it: only its writer can tell, so the writer says which, and never that
-//   it was the lean from the start. For a new fact or another topic's
-//   decision it is new information, never a departure. The person keeping a
-//   decision as it stands, where Claude proposed to replace it, stands over
-//   the proposal: a departure, though it is no entry (ledger-events.cjs).
-//   The write verbs, and a raise's keep, hold every line to this as it is
-//   written (ledger-write.cjs, raise.cjs), so the ledger's line says it.
+//   entry's chain where it, or an entry down its chain, is Claude's own
+//   call — the person's "your call" and "don't care" among them, never one
+//   carried over — or carries Claude's sealed answer (ledger-fold.cjs). An
+//   entry Claude made never stands over its own lean. The person's answer
+//   to Claude's lean is a raise's, which says who moved whom against the
+//   lean it sealed (raise.cjs); the write verbs take no sealed answer on
+//   the person's entry (5.3.10). The person's decision on a chain Claude
+//   never leaned on — written, or replaced for any reason — holds no lean
+//   to move, so moves no one: the person deciding unprompted, then changing
+//   their mind, is no departure. The person's replacement of a decision,
+//   for a changed mind or a mistake, stands over the lean where the entry
+//   it replaces held it — its chain leaned and it did not stand over the
+//   lean: Claude's own call, or the person's answer that was the lean or
+//   came round to it: a later reversal, or a call overruled when shown —
+//   and the engine says so where the writer leaves it out. Where that entry
+//   stood over the lean, it comes back round to the lean or gives a third
+//   answer still against it: only its writer can tell, so the writer says
+//   which, and never that it was the lean from the start. For a new fact or
+//   another topic's decision it is new information, never a departure. The
+//   person keeping a decision as it stands, where Claude proposed to
+//   replace it, stands over the proposal: a departure, though it is no
+//   entry (ledger-events.cjs). The write verbs, and a raise's keep, hold
+//   every line to this as it is written (ledger-write.cjs, raise.cjs), so
+//   the ledger's line says it.
 // - A reversal (16.12.1) is the person's replacement this rule holds
 //   standing over a lean the entry it replaces held, wherever that entry
 //   stands: the write logs it in the trust log, naming the entry it
