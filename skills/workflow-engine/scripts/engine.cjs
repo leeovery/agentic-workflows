@@ -61,6 +61,7 @@ const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
+const { guardDispatch } = require('./domain/brief-guard.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -264,6 +265,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   task analysis-cycle <work-unit> <topic>
 ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
+  brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
@@ -1454,11 +1456,36 @@ function runLand(call, argv) {
 
 /** @param {Call} call @param {string[]} argv */
 function runBrief(call, argv) {
+  if (argv[0] === 'guard') {
+    runBriefGuard(call, argv.slice(1));
+    return;
+  }
   try {
     respond(call, issueBrief(call.cwd, argv));
   } catch (err) {
     failJson(call, err);
   }
+}
+
+/**
+ * The brief hook's target, before Agent and SendMessage: silent where the
+ * call reaches none of the workflows' agents; where it carries the
+ * agent's brief, the hook's answer on stdout, which Claude Code reads as
+ * its decision, and nothing else; a refusal says why on stderr and exits 2,
+ * the code Claude Code blocks the tool call on.
+ * @param {Call} call @param {string[]} argv
+ */
+function runBriefGuard(call, argv) {
+  if (argv.length !== 0) die(call, 'Usage: engine brief guard');
+  const input = hookInput(call);
+  const guarded = guardDispatch(typeof input.cwd === 'string' ? input.cwd : hookProjectDir(call.cwd), input);
+  if (guarded === null) return;
+  if ('answer' in guarded) {
+    call.out(`${JSON.stringify(guarded.answer)}\n`);
+    return;
+  }
+  call.err(`${guarded.refused}\n`);
+  throw new ExitSignal(2);
 }
 
 // ---------------------------------------------------------------------------
@@ -2517,9 +2544,9 @@ function runCli(call, argv) {
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project
-// ends or resumes, or before it writes a file, whether it ran the workflows
-// or not.
-const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', 'layout guard'];
+// ends or resumes, or before it writes a file or dispatches an agent,
+// whether it ran the workflows or not.
+const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', 'layout guard', 'brief guard'];
 
 /**
  * The exit code a stop answers with. A stop that is no ExitSignal is a

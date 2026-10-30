@@ -90,6 +90,9 @@
 // transcript holds an assistant message, the model its record names, if
 // any. Anywhere else it is the conversation's: every subagent that records
 // runs in a worktree of its own (29.14).
+//
+// The same record names the agent type a subagent was dispatched as, which
+// tells whose agent a message sent to it reaches (brief-guard.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -263,6 +266,38 @@ function lastModel(transcript) {
 
 /** @typedef {{transcript: string, worktree: string, model: string|null}} Subagent */
 
+/** The folder of a conversation's subagents, beside its transcript. @param {string} transcript the conversation's */
+function subagentsDir(transcript) {
+  return path.join(transcript.slice(0, -path.extname(transcript).length), 'subagents');
+}
+
+/**
+ * A subagent's record, beside its transcript; null where it cannot be read
+ * or holds no object.
+ * @param {string} transcript the subagent's @returns {Record<string, unknown>|null}
+ */
+function subagentRecord(transcript) {
+  try {
+    const record = JSON.parse(fs.readFileSync(transcript.replace(/\.jsonl$/, '.meta.json'), 'utf8'));
+    return record !== null && typeof record === 'object' ? record : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The agent type the subagent `agentId` of the conversation `sessionId` was
+ * dispatched as, from its record beside the conversation's transcript in
+ * the project folder `transcriptPath` is in; null where it has none, or the
+ * record names none.
+ * @param {string} transcriptPath @param {string} sessionId @param {string} agentId @returns {string|null}
+ */
+function subagentType(transcriptPath, sessionId, agentId) {
+  const transcript = path.join(path.dirname(transcriptPath), `${safeId(sessionId)}.jsonl`);
+  const { agentType } = subagentRecord(path.join(subagentsDir(transcript), `agent-${safeId(agentId)}.jsonl`)) ?? {};
+  return typeof agentType === 'string' && agentType !== '' ? agentType : null;
+}
+
 /**
  * A subagent still at work in a worktree of its own, from its record: the
  * worktree, absolute and resolved, and the model it names — a model's own
@@ -271,13 +306,8 @@ function lastModel(transcript) {
  * @param {string} transcript the subagent's @returns {Subagent|null}
  */
 function workingSubagent(transcript) {
-  let record;
-  try {
-    record = JSON.parse(fs.readFileSync(transcript.replace(/\.jsonl$/, '.meta.json'), 'utf8'));
-  } catch {
-    return null;
-  }
-  if (record === null || typeof record !== 'object' || record.finished === true) return null;
+  const record = subagentRecord(transcript);
+  if (record === null || record.finished === true) return null;
   const { worktreePath, model } = record;
   if (typeof worktreePath !== 'string' || !path.isAbsolute(worktreePath)) return null;
   return { transcript, worktree: realpathOrSelf(worktreePath), model: typeof model === 'string' && model !== '' && model !== 'inherit' ? model : null };
@@ -290,7 +320,7 @@ function workingSubagent(transcript) {
  * @param {string} transcript @param {string} cwd @returns {Subagent|null}
  */
 function subagentAt(transcript, cwd) {
-  const dir = path.join(transcript.slice(0, -path.extname(transcript).length), 'subagents');
+  const dir = subagentsDir(transcript);
   let names;
   try {
     names = fs.readdirSync(dir).filter((name) => name.endsWith('.jsonl'));
@@ -351,4 +381,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, subagentType, tidyConversations };

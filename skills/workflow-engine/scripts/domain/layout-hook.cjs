@@ -18,11 +18,13 @@
 // each conversation's two files a gate event is built from, the gate shown
 // and the gate mod's last press, which the mod writes by no tool of
 // Claude's (gate.cjs); each conversation's sealed raises, which hold
-// Claude's lean before the person answers (raise.cjs); the settings file and
-// the record of the person; and
-// in each project folder of Claude Code's projects directory, the files of
-// its own the trust log reads the model from (conversation.cjs): a conversation's transcript,
-// and a subagent's transcript and its record. Those it judges by the names
+// Claude's lean before the person answers (raise.cjs); every file in each
+// conversation's briefs, which the hook before Agent and SendMessage hands
+// over as issued (brief-guard.cjs), and that hook's refusals; the settings
+// file and the record of the person; and in each project folder of Claude
+// Code's projects directory, the files of its own the trust log reads the
+// model from (conversation.cjs): a conversation's transcript, and a
+// subagent's transcript and its record. Those it judges by the names
 // the target is written with, below the nearest folder above it that is the
 // guarded directory, read with its `..` from the text as the engine joins
 // names to it: the same folder on disk, however it is named — through a
@@ -51,6 +53,7 @@ const { LEDGER } = require('./ledger-events.cjs');
 const { TRUST_LOG, PENDING } = require('./trust-log.cjs');
 const { SHOWN, PRESSED, RAISE_SHOWN } = require('./gate.cjs');
 const { claudeProjectsDir, conversationsRoot } = require('./conversation.cjs');
+const { BRIEFS, BRIEF_REFUSALS } = require('./brief-names.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
@@ -83,6 +86,7 @@ function userFiles() {
     conversationFile(SHOWN, 'the record of the gate a conversation was shown'),
     conversationFile(PRESSED, 'the gate mod\'s record of a conversation\'s last press'),
     conversationFile(RAISE_SHOWN, 'a conversation\'s sealed raises'),
+    configFile(BRIEF_REFUSALS, 'the brief hook\'s refusals'),
     configFile(path.basename(systemConfigPath()), 'the settings file'),
     configFile('person.md', 'the record of the person'),
   ];
@@ -181,6 +185,17 @@ function userRefusal(file, fold) {
 }
 
 /**
+ * Why the hook refuses a write to `file` in a conversation's briefs, at
+ * any depth there, or null where it is none of them.
+ * @param {string} file as written @param {(name: string) => string} fold
+ * @returns {string|null}
+ */
+function briefRefusal(file, fold) {
+  const names = namesBelow(file, conversationsRoot(), fold);
+  return names.length > 2 && names[1] === fold(BRIEFS) ? `a brief a conversation issued (${path.basename(file)}) changes only through the engine's commands` : null;
+}
+
+/**
  * Why the hook refuses a write to `file` among Claude Code's own files the
  * trust log reads the model from — in a project folder of its projects
  * directory, a conversation's transcript, or in a conversation's
@@ -229,7 +244,7 @@ function layoutRefusal(cwd, input) {
   if (target === null) return null;
   const [written, landed] = [path.resolve(cwd, target), resolvedPath(cwd, target)];
   const fold = folding(nearestFolder(landed));
-  return userRefusal(written, fold) ?? claudeRefusal(written, fold) ?? stateRefusal(landed);
+  return userRefusal(written, fold) ?? briefRefusal(written, fold) ?? claudeRefusal(written, fold) ?? stateRefusal(landed);
 }
 
 module.exports = { LAYOUT_HOOK_TOOLS, layoutRefusal };

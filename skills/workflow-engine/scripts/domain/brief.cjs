@@ -4,10 +4,10 @@
 // Domain ring: a brief filled and issued (6.5) — `brief <role> [<unit>
 // <task>]`, the only way the workflows hand one of their own agents its
 // brief (6.5.1). Each role names its template, the agent it is dispatched
-// as, and the records its brief draws on (6.5.4, 6.5.11); a role whose
-// records include a task's takes the unit and the task, any other takes
-// neither, and no role takes a flag, so no free text reaches a brief
-// (6.5.6).
+// as, and the records its brief draws on (6.5.4, 6.5.11, brief-names.cjs);
+// a role whose records include a task's takes the unit and the task, any
+// other takes neither, and no role takes a flag, so no free text reaches a
+// brief (6.5.6).
 //
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its
@@ -26,7 +26,8 @@
 // (conversation.cjs). The brief's first line names it, `Brief {id} — the
 // builder's, for {unit} task {N.M}`.
 // The dispatch carries the brief's pointer, `brief:{id}`, alone, and the
-// hook before Agent and SendMessage hands the agent the stored brief.
+// hook before Agent and SendMessage hands the agent the stored brief
+// (brief-guard.cjs).
 //
 // It refuses no session id, a role it does not know, arguments of another
 // shape, a unit or a task the project lacks, a task done or closed, and a
@@ -37,38 +38,23 @@
 const fs = require('fs');
 const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
-const { conversationDir } = require('./conversation.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { trackedTask, ENDED } = require('./task-verbs.cjs');
 const { parseShownTask, shownTask, taskName } = require('./task-id.cjs');
 const { RECORDS } = require('./brief-records.cjs');
+const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./brief-records.cjs').Filling} Filling */
+/** @typedef {import('./brief-names.cjs').Issued} Issued */
 
 // The install moves the skills under `.claude/skills/`, so the content is
 // resolved from this module rather than from the project root.
 const TEMPLATES_DIR = path.join(__dirname, '..', '..', 'content', 'briefs');
 
-/** The folder of a conversation's briefs. */
-const BRIEFS = 'briefs';
-
-/** What a dispatch carries in place of its brief, before the brief's id. */
-const POINTER = 'brief:';
-
 /** A slot, `{{record}}`. */
 const SLOT = /\{\{([^{}]*)\}\}/g;
-
-/**
- * Each role: the agent it is dispatched as, whose brief its first line says
- * it is, and the records its brief draws on, by their slots.
- * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[]}>>}
- */
-const ROLES = Object.freeze({
-  builder: { agent: 'leeway-builder', whose: 'the builder\'s', records: ['task', 'spec-sections', 'decided-calls', 'linters'] },
-  'product-researcher': { agent: 'leeway-product-researcher', whose: 'the product researcher\'s', records: [] },
-});
 
 /** Whether a role's brief is filled for a task. @param {string} role */
 function takesTask(role) {
@@ -118,23 +104,6 @@ function filled(template, drawn) {
     const slot = /^\{\{([^{}]*)\}\}$/.exec(line);
     return slot === null ? line : drawn[slot[1]];
   }).join('\n');
-}
-
-/** Where a conversation keeps a brief. @param {string} session @param {string} id */
-function briefPath(session, id) {
-  return path.join(conversationDir(session), BRIEFS, `${id}.md`);
-}
-
-/** Where a conversation keeps the record of whose a brief is. @param {string} session @param {string} id */
-function issuedPath(session, id) {
-  return path.join(conversationDir(session), BRIEFS, `${id}.json`);
-}
-
-/** @typedef {{role: string, agent: string, unit: string|null, task: string|null}} Issued */
-
-/** The pointer a dispatch carries for a brief. @param {string} id */
-function pointerOf(id) {
-  return `${POINTER}${id}`;
 }
 
 /**
@@ -214,4 +183,4 @@ function issueBrief(cwd, [role, ...rest]) {
   }
 }
 
-module.exports = { ROLES, BRIEFS, BRIEF_USAGE, issueBrief, templateOf, storeBrief, briefPath, issuedPath, pointerOf };
+module.exports = { BRIEF_USAGE, issueBrief, templateOf, storeBrief };
