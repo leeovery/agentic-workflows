@@ -307,9 +307,15 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'topic', ...args]).error), cases.map(([, error]) => error));
   });
 
-  it('refuses a bugfix\'s topic once its investigation is concluded, the way its menu goes, and hands off into it again once a message reopens it', () => {
+  it('refuses a bugfix\'s topic once its investigation is concluded, the way its menu goes — or saying its work is done — and hands off into it again once a message reopens it', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'completed' } } } } });
     refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it$/);
+    const done = { status: 'completed' };
+    createManifest(dir, 'crash', {
+      work_type: 'bugfix',
+      phases: Object.fromEntries(['investigation', 'specification', 'planning', 'implementation', 'review'].map((phase) => [phase, { items: { crash: done } }])),
+    });
+    refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work is done, and a message sent to it reopens it$/);
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });
@@ -327,7 +333,7 @@ describe('engine handoff — refusals', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('a call naming no skill refuses with the usage', () => {
-    refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\]$/);
+    refused(dir, [], /^Usage: engine handoff <skill\|\/skill> \[args …\], or engine handoff topic <work-unit> <topic>$/);
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {

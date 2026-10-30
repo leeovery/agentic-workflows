@@ -2469,7 +2469,7 @@ function sendCandidates(cwd, { dotpath, file }) {
 // whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
 
-const { markerRefusal, MARKER_VERBS } = require('./discovery-map.cjs');
+const { markerRefusal, MARKER_VERBS, freshRefusal } = require('./discovery-map.cjs');
 
 // A bare yes/no pair — no labels, because the question above them already
 // says what yes means (CONVENTIONS.md: The Design System, Menus). Composed
@@ -2623,8 +2623,8 @@ const STOP_WORK_RECOVERY = 'To stop work on it, use `a`/`cancel` from the epic m
  * Why a single-item op cannot land from where its topic stands, as the
  * refusal the gate shows in place of its confirm — or null where it can.
  * The lifecycle join is the one every map consumer uses, and the marker ops
- * read the very refusal their transactions throw, so the gate and the write
- * path cannot drift apart.
+ * and a fresh topic's destructive ops read the very refusal their
+ * transactions throw, so the gate and the write path cannot drift apart.
  * @param {string} cwd @param {object} manifest @param {string} op @param {string} name
  * @returns {string|null}
  */
@@ -2634,9 +2634,12 @@ function mapOpRefusal(cwd, manifest, op, name) {
     return phrase && `"${name}" can't be ${MARKER_VERBS[op]} — ${phrase}.`;
   }
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
-  if (lifecycle === 'fresh') return null;
-  const recovery = Object.hasOwn(DESTRUCTIVE_RECOVERY, lifecycle) ? DESTRUCTIVE_RECOVERY[lifecycle](name) : STOP_WORK_RECOVERY;
   const verb = DESTRUCTIVE_VERBS[/** @type {keyof typeof DESTRUCTIVE_VERBS} */ (op)];
+  if (lifecycle === 'fresh') {
+    const held = freshRefusal(cwd, manifest, name);
+    return held && `"${name}" can't be ${verb} from the map — ${held}.`;
+  }
+  const recovery = Object.hasOwn(DESTRUCTIVE_RECOVERY, lifecycle) ? DESTRUCTIVE_RECOVERY[lifecycle](name) : STOP_WORK_RECOVERY;
   return `"${name}" can't be ${verb} from the map — ${lifecyclePhrase(lifecycle, research_state)}. ${recovery}`;
 }
 

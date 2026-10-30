@@ -165,6 +165,12 @@ This skill receives two optional positional arguments — one not given is unset
 
 Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `topic {work_unit} {topic}`.
 
+#### If only `$0` is given
+
+Say `To open one of {work_unit}'s topics directly, name it too: /leeway {work_unit} <topic>.`
+
+→ Proceed to **Step 1**.
+
 #### Otherwise
 
 → Proceed to **Step 1**.

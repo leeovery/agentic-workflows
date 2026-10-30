@@ -15,8 +15,8 @@
 // committed, and any other target the entry refuses refused by its rule — a
 // unit completed, or past its spec (10.2.2); `topic mailbox`, what waits,
 // taking no lock (10.S4); `topic answered`, a message named whole removed
-// once the topic holds the question it raised there (5.3.8) or the question
-// a move brought it (9.S17); a pending
+// once the topic holds the question it raised there (5.3.8) or one any
+// move of the unit's took there, wherever it stands since (9.S17); a pending
 // commit's retry, in a scope that commits what was left; and `render
 // send-report`, the send report ending with the command that opens the
 // target (10.3.4, 27.S4). The waiting mail raised at a topic's opening is
@@ -242,16 +242,42 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title, the commit naming what is cancelled (10.1.8, P5)', () => {
+  it('keeps a postponed topic\'s mail through its pull-forward: the topic, fresh again, refuses its removal, rename and reroute while the mail waits (10.1.8)', () => {
+    ok(dir, ['topic', 'postpone', EPIC, 'licence', '--horizon', 'v2']);
+    send(EPIC, 'licence', 'lost-key');
+    ok(dir, ['roadmap', 'pull-forward', 'licence', '--into', EPIC, '--routing', 'discussion']);
+    const map = () => readManifest(dir, EPIC).phases.discovery.items;
+    const before = map();
+    const verbs = [['remove', EPIC, 'licence', 'removed'], ['rename', EPIC, 'licence', 'licensing', 'renamed'], ['reroute', EPIC, 'licence', 'research', 're-routed']];
+    assert.deepStrictEqual(
+      verbs.map((args) => refused(['discovery-map', ...args.slice(0, -1)])),
+      verbs.map((args) => `"licence" can't be ${args.at(-1)} — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead`),
+    );
+    assert.deepStrictEqual([map(), fs.existsSync(at(layout.mailbox(EPIC, 'licence', '001-lost-key.md')))], [before, true]);
+  });
+
+  it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title, the line naming its sender kept under it, the commit naming what is cancelled (10.1.8, P5)', () => {
     const idea = (/** @type {string} */ slug) => layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--${slug}.md`);
     const res = withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
     assert.deepStrictEqual(res, { ok: true, unit: EPIC, topic: 'removal', inbox_path: at(idea('lost-key')), committed: shortHead() });
-    assert.strictEqual(readState(dir, idea('lost-key')), '# The licence window carries a "Lost your key?" link\n\nTheir reasoning: a buyer on a new Mac has no key to hand.\n');
+    assert.strictEqual(readState(dir, idea('lost-key')), `# ${landed('First Run')}`);
     assert.deepStrictEqual([lastMessage(dir), fs.existsSync(at(layout.topic(EPIC, 'removal')))], [`mail(${EPIC}): lost-key to the inbox — removal is cancelled`, false]);
     assert.strictEqual(withFrozenClock(() => send('retired', 'retired', 'stray', '# A stray thought\n')).inbox_path, at(idea('stray')));
-    assert.strictEqual(readState(dir, idea('stray')), '# A stray thought\n');
+    assert.strictEqual(readState(dir, idea('stray')), '# A stray thought\nFrom Retired · 1 Jan\n');
     withFrozenClock(() => send('shelved', 'pricing', 'price-floor'));
     assert.strictEqual(lastMessage(dir), 'mail(shelved): price-floor to the inbox — shelved is cancelled');
+    assert.strictEqual(readState(dir, idea('price-floor')), `# ${landed('Pricing')}`);
+  });
+
+  it('never overwrites an idea: the same slug sent to a cancelled topic twice in a day is refused, the scratch kept and the first idea as it was (10.1.6)', () => {
+    const idea = layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--lost-key.md`);
+    withFrozenClock(() => send(EPIC, 'removal', 'lost-key'));
+    const message = scratch('# Another thought\n');
+    assert.strictEqual(
+      withFrozenClock(() => refused(['topic', 'send', EPIC, 'removal', '--from', 'first-run', '--content', message, '--slug', 'lost-key'])),
+      `the inbox already holds ${at(idea)} — send it under another slug`,
+    );
+    assert.deepStrictEqual([fs.existsSync(message), readState(dir, idea)], [true, `# ${landed('First Run')}`]);
   });
 
   it('waits a feature\'s message for its discussion and a bugfix\'s for its investigation', () => {
@@ -373,6 +399,28 @@ describe('topic answered (P4, 5.3.8)', () => {
     assert.strictEqual(ok(dir, ['topic', 'answered', EPIC, 'licence', '001-moved-question', '--entry', asked.commercialization]).remaining, 0);
   });
 
+  it('takes the question any move of the unit\'s took to the topic wherever it stands since — moved on to another topic, or back where it was raised — and refuses one no move took there (9.S17)', () => {
+    const made = { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none' }) };
+    const move = (/** @type {string} */ from, /** @type {string} */ question, /** @type {string} */ to) => ok(dir, ['ledger', 'move', `${EPIC}.discussion.${from}`, '--question', question, '--to', to], made);
+    const onward = asked.commercialization;
+    const back = ok(dir, ['ledger', 'ask', `${EPIC}.discussion.commercialization`], { ...made, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Is a refund window owed?' }) }).id;
+    move('commercialization', onward, 'licence');
+    move('commercialization', back, 'licence');
+    send(EPIC, 'licence', 'moved-on');
+    send(EPIC, 'licence', 'moved-back');
+    send(EPIC, 'first-run', 'never-here');
+    move('licence', onward, 'first-run');
+    move('licence', back, 'commercialization');
+    assert.deepStrictEqual([
+      ok(dir, ['topic', 'answered', EPIC, 'licence', '001-moved-on', '--entry', onward]).remaining,
+      ok(dir, ['topic', 'answered', EPIC, 'licence', '002-moved-back', '--entry', back]).remaining,
+    ], [1, 0]);
+    assert.strictEqual(
+      refused(['topic', 'answered', EPIC, 'first-run', '001-never-here', '--entry', back]),
+      `topic answered --entry names ${back}, a question raised on commercialization of ${EPIC} that no move of ${EPIC}'s took to first-run — it must name the question the message raised: one first raised on first-run, or one a move of ${EPIC}'s took there`,
+    );
+  });
+
   it('refuses a unit no longer in progress, writing nothing, its message left waiting', () => {
     send(EPIC, 'commercialization', 'lost-key');
     const manifest = readManifest(dir, EPIC);
@@ -394,7 +442,7 @@ describe('topic answered (P4, 5.3.8)', () => {
       'no message 002-lost-key waits in commercialization\'s mailbox — it holds 001-lost-key.md',
       'topic answered --entry: no ledger entry\'s id begins "ffffffff"',
       `topic answered --entry names ${finding}, a finding — it must name the question the message raised`,
-      `topic answered --entry names ${asked['first-run']}, a question raised on first-run of ${EPIC} — the question the message raised was raised on commercialization, or moved to it`,
+      `topic answered --entry names ${asked['first-run']}, a question raised on first-run of ${EPIC} that no move of ${EPIC}'s took to commercialization — it must name the question the message raised: one first raised on commercialization, or one a move of ${EPIC}'s took there`,
     ]);
   });
 });

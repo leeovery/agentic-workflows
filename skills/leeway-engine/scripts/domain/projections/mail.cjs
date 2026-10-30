@@ -10,6 +10,8 @@
 // - the waiting mail (10.4.2), raised at a topic's opening before anything
 //   else: each message headed by who sent it and when, its title over what
 //   follows it.
+// Known edge: the send report's `/leeway {unit} {topic}` carries the names
+// unquoted, as the person's arguments are passed.
 // ---------------------------------------------------------------------------
 
 const { section, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
