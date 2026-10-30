@@ -975,6 +975,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 5.3.14 The person keeping a decision as it stands, where Claude proposed to replace it, is written as an event of its own (kept): the decision kept; the reason and the cause the replacement was proposed for; why, Claude's account of the person's reason, as every answer of the person's carries; and Claude's proposal as its sealed answer. It is the person's, standing over the proposal: a departure owed a verdict, shown in the verdict queue with the proposal as Claude's lean (16.10.1). It is no entry and changes nothing current: no replacement lands, so nothing relying on the decision is affected, and where the decision is affected by the replacement named as its cause, the keep confirms it still holds against it (5.6.10). [ruled by the person 2026-10-29: a new ledger event; why, Claude's derivation 2026-10-29, the 29.5 phase review: every answer of the person's carries Claude's account of their reason; confirming, Claude's derivation 2026-10-29, 29.5/4: a keep answers its cause as a "still holds" does]
 
+5.3.15 A file linked from an entry is written as an event of its own (asset): the entry; the file's path in the state; the status the link gives it, canonical or reference, or none; and the lift, the path in the project the file was lifted into, or none. A link gives a status, a lift or both, never neither. It is no entry and is never replaced: for an entry and a path, the latest live link giving a status stands, and apart from it the latest live lift, which no status after it undoes. Every path is written plain: relative, no part of it empty, `.` or `..`, so one file is one path. Its use is §9's (9.10.5, 9.10.7, 9.10.16). [Claude's derivation, 29.11 slice 11.2 review: a status and a lift are two facts, so a later status never takes a lift back]
+
 ### 5.4 Append-only, and its check
 
 5.4.1 The stream can never be edited, mechanically: no verb edits an event, and only the engine writes the file, by appending. [R23; ruled by the person 2026-10-18; plan 4.1]
@@ -1261,7 +1263,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.1.20 `cut` (new): writes the unit's phase cut onto its manifest, refusing what 11.5.9 names (11.5). [ruled by the person 2026-10-22; its name, Claude's proposal]
 
-6.1.21 `enter` (new): the one verb every phase is entered by, `enter <phase> <unit> [<topic>]`. It refuses what cannot be entered, each refusal with its way on; records where the conversation is working; starts a topic not yet started, writing no file ahead; and answers any question owed first — waiting mail, raised before anything else (10.4.1) — then what to read (2.10.3). [Claude's derivation 2026-10-30, 29.10's review and 29.11 planning: every phase enters the same way, so one verb serves them all]
+6.1.21 `enter` (new): the one verb every phase is entered by, `enter <phase> <unit> [<topic>] [--take]`. It refuses what cannot be entered, each refusal with its way on. Where another live session holds the place, its answer is the held-topic question alone, and it writes nothing (18.4.21); `--take` enters all the same. Otherwise it records where the conversation is working; starts a topic not yet started, writing no file ahead; and answers any question owed first — waiting mail, raised before anything else (10.4.1) — then what to read (2.10.3). [Claude's derivation 2026-10-30, 29.10's review and 29.11 planning: every phase enters the same way, so one verb serves them all; Claude's derivation, 29.11 slice 11.4: the held-topic question is the entry's, asked before anything is written]
 
 ### 6.2 The layout hook
 
@@ -3283,14 +3285,7 @@ first ones. [R12]
 draft code, the generator that drew a design, pulled data — lands in the work
 unit as a tracked asset linked from the record, whoever made it. [R12]
 
-9.10.5 A work unit's `assets/` is the home for the files that inform a
-decision — what the person shares, exports with their live links, pulled data
-— replacing `imports/`, whoever made the file; a spike's files sit in
-`spikes/` (9.10.10). Each is linked from the ledger entry it informs:
-canonical from a decision, reference from a finding or the log. Canonical or
-reference is a status the linking entry gives a file, wherever it sits. [R12,
-Layout on disk, plan 3.4; ruled by the person 2026-10-13; spikes in their own
-folder, agreed by the person 2026-10-26]
+9.10.5 A work unit's `assets/` is the home for the files that inform a decision — what the person shares, exports with their live links, pulled data — replacing `imports/`, whoever made the file; a spike's files sit in `spikes/` (9.10.10). Each is linked from the ledger entry it informs: canonical from a decision, reference from a finding or the log. Canonical or reference is a status the linking entry gives a file, wherever it sits; an entry's link is the ledger's asset event (5.3.15). [R12, Layout on disk, plan 3.4; ruled by the person 2026-10-13; spikes in their own folder, agreed by the person 2026-10-26; Claude's derivation, 29.11 slice 11.2 review]
 
 9.10.6 Each asset is one of two:
 - **canonical** — the spec carries it, the builder builds to it, and it is
@@ -3299,10 +3294,7 @@ folder, agreed by the person 2026-10-26]
   covers; draft code is reference by default; it belongs to the log.
 [R12, plan 3.4]
 
-9.10.7 Claude proposes an asset's status when it lands; the person can change
-it at any time by saying so in their own words, and Claude records the change
-through the asset verb (§6); no row is added for it.
-[R12, plan 6.1; Claude's derivation, O6]
+9.10.7 Claude proposes an asset's status when it lands: the first link of an entry and a file gives its status, which the asset verb holds. The person can change it at any time by saying so in their own words, and Claude records the change through the asset verb (§6) as a later link, whose status then stands (5.3.15); no row is added for it. [R12, plan 6.1; Claude's derivation, O6; Claude's derivation, 29.11 slice 11.2 review]
 
 9.10.8 The record states what a spike settled and points at the asset; it
 never re-describes it. [R12]
@@ -3344,8 +3336,7 @@ reason. [R12]
 9.10.15 A spike is evidence only for what the person reviewed in it:
 scaffolding nobody discussed is never cited as decided. [R12]
 
-9.10.16 Lifting a piece of spike code into the product is an explicit,
-recorded act, never drift. [R12]
+9.10.16 Lifting a piece of spike code into the product is an explicit, recorded act, never drift: an asset link naming the path in the project it was lifted into (5.3.15). A lift is not a status, so a later change of the file's status leaves it standing. [R12; Claude's derivation, 29.11 slice 11.2 review]
 
 9.10.17 Claude's own spikes back its calls: the reference assets attach to
 Claude's ledger entry as its evidence, so "what have you decided without me"
@@ -3359,8 +3350,7 @@ how it looks, the design wins. [R23]
 
 9.10.20 The spec links canonical assets (§11). [R14]
 
-9.10.21 Left to the builder: the verb or entry that records lifting spike code
-into the product (9.10.16). [Claude's sort, B24]
+9.10.21 Left to the builder: how the asset verb takes a lift (9.10.16). [Claude's sort, B24; Claude's derivation, 29.11 slice 11.2 review: the lift is recorded on the asset event (5.3.15), so only the verb's words are left]
 
 9.10.22 A shared path that names no file is asked about again, to be corrected
 or skipped, before anything lands. An image pasted with no file behind it is
@@ -3562,8 +3552,7 @@ and points at the asset without re-describing it; a design living in an outside
 tool is kept as its live link and an exported image, both recorded. (9.2.8,
 9.10.8, 9.10.9)
 
-9.S51 Given spike code lifted into the product, then the lift is recorded.
-(9.10.16)
+9.S51 Given spike code lifted into the product, then the lift is recorded as an asset link naming the path in the project it went to; given a later link changing the file's status, then the lift still stands. (9.10.16, 5.3.15)
 
 9.S52 Given an entry's text and the design it points at disagree, then on what
 exists and how it behaves the record wins, and on how it looks the design wins.
@@ -5983,6 +5972,8 @@ captured screen · 41 lines                              ▸ open
 
 16.3.7 Telling a call with one defensible answer from one with several is Claude's judgement, by the existing ask-or-decide reference (16.1.5), and a call with one defensible answer proceeds as Claude's (16.16.3) while the count of such calls allows (16.4.10). Every call on a question of intent or taste, those with one defensible answer included, reaches the decision point (16.2.1): the separate call labels it (16.19), it lands in the ledger and the trust log, where it can be overruled, it can be drawn as a blind question (16.17), and an overrule of it counts in the evidence (16.12). The always-ask rules outrank the sort: a call with one defensible answer still asks where it is a danger question (16.5.1), falls under a care entry (16.5.2), or would replace an entry the person decided (16.5.7). [R24, R25; ruled by the person 2026-10-13 and 2026-10-21; Claude's derivation, O65; 16.5.1, 16.5.2, 16.5.7]
 
+16.3.8 A fact Claude cannot check and only the person holds — a deadline, an outside constraint, an account Claude cannot reach — goes to the person through `raise` as a fact (2.2.9). It is always asked, never settled on Claude's lean, and counts for nothing in the trust layer: it takes no label, adds no evidence and meets no threshold (16.3.2). Its rows are optional, and the person answers in their own words. [Claude's proposal: 16.3.1 checks what Claude can find out and 16.3.2 admits only intent and taste, so a fact only the person holds had no way to them]
+
 ### 16.4 The ask rule
 
 16.4.1 The engine asks when the pessimistic rate of real loss for the question's kind exceeds the person's threshold. [R24, plan 4.4]
@@ -6754,6 +6745,8 @@ Comment → Tell me how to word it
 
 16.S74 Given a trust log append that fails, when the command returns, then it has warned and the event waits in the conversation's folder; when a boot runs while the append still fails, then the event still waits and the tidy-up keeps its folder, though Claude Code has deleted the transcript; once the append can succeed, when the conversation next writes to the trust log, or the next boot runs, then the event lands, and landing it again counts it once. (16.13.3)
 
+16.S75 Given a fact Claude cannot check and only the person holds, when Claude raises it as a fact, then it is asked whatever Claude's lean and the counts, with rows or none, and the person answers in their own words; no label is taken, and no count, evidence or threshold changes. (16.3.8, 16.3.2, 2.2.9)
+
 ## 17. Measures
 
 ### 17.1 The six measures
@@ -7130,7 +7123,7 @@ b/back → Back to the start menu
 
 18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made there as the discovery row makes it (18.4.9): Claude commits the sitting, settles the topic's running agents (9.7.8) and makes the change, cancelling confirmed and postponing reported in one line, and the session moves to the epic's menu (24.1.2). A feature's, bugfix's or quick-fix's cancel, asked for inside its session, is made there the same way as manage's (18.3.4), confirmed, and the session moves to the start menu. A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19; made in the session for every type as today, Claude's derivation 2026-10-25]
 
-18.4.21 A topic held by another session is never the recommended row. Entering it asks first, naming when that session was last active, as today. [today's product; Claude's sort, T34]
+18.4.21 A topic held by another session is never the recommended row. Entering it asks first, naming when that session was last active, as today. The question is `enter`'s (6.1.21): it is the entry's whole answer, and nothing is written. Yes enters through `enter … --take`; no leaves the topic to that session, handing back to the epic menu, and for a single-topic unit, which has no menu to go back to, leading nowhere. [today's product; Claude's sort, T34; Claude's derivation, 29.11 slice 11.4: the entry asks, so the question meets every way into the topic, the menu's row among them]
 
 18.4.22 Cancelling a topic ends each of its open experiments as abandoned, with the cancel recorded as the reason. Reactivating the topic leaves them abandoned. [today's product; Claude's sort, T45]
 
@@ -7568,7 +7561,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents, postpones the topic as the discovery row does and reports it in one line, and the session moves to the epic's menu; given a feature in session, when the person asks inside it to cancel the feature, then Claude confirms, cancels it as manage does, and the session moves to the start menu; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4, 18.4.9, 18.3.4)
 
-18.S57 Given a topic held by another session, when the epic menu shows, then it is never the recommended row; when the person enters it, they are asked first, naming when that session was last active. (18.4.21)
+18.S57 Given a topic held by another live session, when the epic menu shows, then it is never the recommended row; when the person enters it, then `enter` answers with the question alone, naming when that session was last active, and writes nothing; yes enters through `enter … --take`, and no hands back to the epic menu, or, for a single-topic unit, leads nowhere. (18.4.21, 6.1.21)
 
 18.S58 Given a topic with an open experiment, when the topic is cancelled, then the experiment ends abandoned with the cancel as its reason; when the topic is reactivated, the experiment stays abandoned. (18.4.22)
 
@@ -11838,7 +11831,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.3 The mailboxes between topics come with it (§10). [plan 3.4]
 
-29.11.5 Draws on: §9, §10, §2.2, §2.4, §2.5, §2.10, §2.12, §3.1, §3.2, §5.6, §5.9, §6.1, §6.4, §6.6, §8.9, §16.2, §16.3, §16.9, §16.10, §16.11, §17.1, §17.2, §21.5, §21.6, §21.7, §21.10, §21.12, §22.6, §24.1, §24.2, §26.1, §26.5, §27.2, §16.12, §16.4, §16.7, §5.8, §16.13, §12.4, §7.1, §7.5, §4.10, §4.11, §8.14, §5.5. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.S40, proven here, reads 5.8.17; Claude's derivation 2026-10-28: the move mints the project's id; Claude's derivation 2026-10-28: the move moves the tracker's store and types its open tasks (21.5.18, 21.5.21); Claude's derivation 2026-10-30, 29.11 planning: the move drops what 4.10 drops and retires today's experiment folders (4.11.15), 9.S67 reads the log's header (8.14), and the one-decision check's log is built here (5.5.9)]
+29.11.5 Draws on: §9, §10, §2.2, §2.4, §2.5, §2.10, §2.12, §3.1, §3.2, §5.6, §5.9, §6.1, §6.4, §6.6, §8.9, §16.2, §16.3, §16.9, §16.10, §16.11, §17.1, §17.2, §21.5, §21.6, §21.7, §21.10, §21.12, §22.6, §24.1, §24.2, §26.1, §26.5, §27.2, §16.12, §16.4, §16.7, §5.8, §16.13, §12.4, §7.1, §7.5, §4.10, §4.11, §8.14, §5.5, §5.3. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.S40, proven here, reads 5.8.17; Claude's derivation 2026-10-28: the move mints the project's id; Claude's derivation 2026-10-28: the move moves the tracker's store and types its open tasks (21.5.18, 21.5.21); Claude's derivation 2026-10-30, 29.11 planning: the move drops what 4.10 drops and retires today's experiment folders (4.11.15), 9.S67 reads the log's header (8.14), and the one-decision check's log is built here (5.5.9); Claude's derivation, 29.11 slice 11.2 review: 9.S51, proven here, reads the asset event (5.3.15)]
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
@@ -11853,6 +11846,8 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 29.11.11 It records a measured finding's command and result on the ledger's found event (9.9.7), so the closing pass's re-run is the engine's to check from here; until then Claude marks it (6.4.3). [Claude's derivation 2026-10-30, 29.8 slicing: the found event held neither]
 
 29.11.12 `/leeway {unit} {topic}` (10.3.1) comes with it: today's start skill takes the two words and hands off into the topic's discussion, boot first, until 29.16 rebuilds the start around it. [Claude's derivation 2026-10-30, 29.11 planning: 10.S2 is this phase's, and the start is 29.16's rewrite]
+
+29.11.13 The held-topic question (18.4.21) is `enter`'s and comes with it: where another live session holds the place, `enter` answers with the question alone and writes nothing, and `--take` enters. Until 29.16 rebuilds the start, the start skill skips the menus and hands into the topic (29.11.12), so the question is met at the entry; the epic menu's own gate stays, in the same words, for each phase not yet entered through `enter`. This phase proves 18.S57's question, its code half; the scenario stays listed under 29.16, which builds the menu's half, the later of the two (29.1.10). [Claude's derivation, 29.11 slice 11.4]
 
 ### 29.12 Discovery
 
@@ -11926,7 +11921,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (106). [R14; Claude's derivation]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (106). [R14; Claude's derivation; Claude's derivation, 29.11 slice 11.4: 18.S57's question is `enter`'s, its code half proven by 29.11 (29.11.13)]
 
 29.16.6 `inbox` close and file come with it (6.1.15). [Claude's derivation 2026-10-30, 29.8 slicing: 18.S24 and 18.S25 observe them here]
 
@@ -11972,9 +11967,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.19.5 Relies on: 29.3 to 29.5, 29.8, 29.11 to 29.18. [R14; Claude's derivation]
 
-29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69 (84). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25)]
+29.19.6 Proven by: 1.S2, 1.S3, 3.S4, 3.S7, 3.S8, 3.S9, 3.S11, 3.S13, 3.S14, 3.S15, 4.S27, 5.S27, 6.S19, 8.S22, 9.S21, 9.S24, 9.S45, 9.S47, 11.S10, 15.S19, 16.S1, 16.S2, 16.S3, 16.S5, 16.S11, 16.S12, 16.S13, 16.S14, 16.S15, 16.S16, 16.S17, 16.S18, 16.S19, 16.S20, 16.S21, 16.S22, 16.S23, 16.S24, 16.S25, 16.S26, 16.S27, 16.S28, 16.S29, 16.S37, 16.S38, 16.S39, 16.S40, 16.S42, 16.S43, 16.S45, 16.S46, 16.S47, 16.S48, 16.S49, 16.S50, 16.S51, 16.S52, 16.S53, 16.S54, 16.S55, 16.S56, 16.S57, 16.S58, 16.S59, 16.S60, 16.S62, 16.S63, 16.S64, 16.S65, 16.S66, 16.S67, 16.S68, 16.S70, 16.S71, 16.S72, 17.S1, 17.S8, 18.S17, 18.S41, 19.S17, 26.S9, 27.S2, 6.S24, 16.S69, 16.S75 (85). [R14; Claude's derivation; Claude's derivation 2026-10-30: 9.S21 is here for its count of Claude's calls by kind, which needs the labeller; its verdict block and product lines are 29.11's (16.S33, 16.S34, 8.S25); Claude's proposal: 16.S75's engine half, a fact raise never proceeding or counting, is built here with `proceed` (29.19.8)]
 
 29.19.7 An automatic step's response carrying the `next` of the row it ran comes with it (6.6.14). [Claude's derivation 2026-10-30, 29.10's review]
+
+29.19.8 The engine's half of a fact raise (16.3.8) comes with it, with `proceed`: a fact raise never proceeds and never counts, and its rows are optional. [Claude's proposal]
 
 ### 29.20 Rehearsal and the release
 
@@ -11998,7 +11995,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 867 listed are the 867 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 868 listed are the 868 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
