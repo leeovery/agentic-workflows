@@ -131,7 +131,7 @@ function flagValue(argv, flag) {
  * The separate call answered in process, in turn, by `answers` — each a
  * call's answer, or an error it throws — for the length of the test; how
  * many times it was called.
- * @param {import('node:test').TestContext} t @param {unknown[]} answers
+ * @param {import('node:test').TestContext} t @param {(import('../../skills/leeway-engine/scripts/kernel/claude-call.cjs').Answer|Error)[]} answers
  * @returns {{count: number}}
  */
 function callAnswering(t, answers) {
@@ -266,7 +266,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     const question = ask();
     const made = callAnswering(t, [new Error('spawnSync claude EAGAIN'), new Error('spawnSync claude EAGAIN')]);
 
-    assert.deepStrictEqual(judgeDecision({ text: PANEL, why: 'Because.', rules_out: [] }), { cannot: 'failed', detail: 'spawnSync claude EAGAIN' });
+    assert.deepStrictEqual(judgeDecision({ text: PANEL, why: 'Because.', rules_out: [] }, { cwd: dir, unit: UNIT, verb: 'decide', warnings: [] }), { cannot: 'failed', detail: 'spawnSync claude EAGAIN' });
     const res = write('decide', NOTE, ['--answers', question], { ...MADE, text: PANEL, why: 'Because.' });
 
     assert.strictEqual(made.count, 2);
@@ -389,7 +389,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
       const tip = head(dir);
       t.mock.method(claudeCall, 'askClaude', () => {
         fs.appendFileSync(statePath(dir, layout.ledger), written(decided));
-        return { answer: rules(PANEL), cost: 0 };
+        return { answer: rules(PANEL), cost: 0, model: 'claude-opus-5-5' };
       });
 
       assert.match(refuses(dir, ['ledger', 'late-check'], { env: armed() }).error, refusal);
@@ -408,7 +408,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.strictEqual(lateCheck({ '': 'rate-limit' }).cannot.reason, 'rate-limit');
     assert.strictEqual(lateCheck({ '': 'failed' }).cannot.reason, 'failed');
     assert.strictEqual(calls().length - written, 3, 'a check went on past a call that would meet every decision after it');
-    const timedOut = callAnswering(t, [{ cannot: 'timeout', detail: 'no answer within 60 s' }, { answer: rules(SYNC), cost: 0 }]);
+    const timedOut = callAnswering(t, [{ cannot: 'timeout', detail: 'no answer within 60 s' }, { answer: rules(SYNC), cost: 0, model: 'claude-opus-5-5' }]);
     assert.deepStrictEqual(lateCheck(), { ok: true, ran: true, checked: 0, several: 0, owed: 2, cannot: { reason: 'timeout', detail: 'no answer within 60 s' } });
     assert.strictEqual(timedOut.count, 1, 'a check went on past a timeout');
     t.mock.restoreAll();

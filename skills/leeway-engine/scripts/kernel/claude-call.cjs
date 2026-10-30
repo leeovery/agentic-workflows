@@ -20,13 +20,15 @@
 //   pass through.
 // - The binary: `claude` on PATH, or the one LEEWAY_CLAUDE names — the test
 //   suite pins it to a stub, so no test reaches a real Claude.
-// - Its answer: the structured output, where it fits the schema, and what
-//   the call cost; or why the call cannot run — no login serves it, a rate
-//   limit, a timeout, an answer that does not fit the schema, or another
-//   failure, no folder to run from among them, said. A call past its time is
-//   killed outright, so nothing it does holds its caller longer. Only a
-//   schema an answer cannot be checked against — the caller's mistake — is
-//   refused, before any call.
+// - Its answer: the structured output, where it fits the schema, what the
+//   call cost, and the model that answered — the full id Claude Code's result
+//   names in `modelUsage`, the one of the asked model's family where it names
+//   several, null where it names none it can tell; or why the call cannot run
+//   — no login serves it, a rate limit, a timeout, an answer that does not
+//   fit the schema, or another failure, no folder to run from among them,
+//   said. A call past its time is killed outright, so nothing it does holds
+//   its caller longer. Only a schema an answer cannot be checked against —
+//   the caller's mistake — is refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
 // - Two forms, one call: `askClaude` waits on it, and `askClaudeAsync`
@@ -77,9 +79,10 @@ const SETTINGS = JSON.stringify({ disableAllHooks: true, autoMemoryEnabled: fals
 /** Why the call cannot run. @typedef {'no-login'|'rate-limit'|'timeout'|'misfit'|'failed'} CannotRun */
 
 /**
- * The call's answer: the structured output and the cost Claude Code
- * reported, null where it reported none; or why it cannot run, said.
- * @typedef {{answer: unknown, cost: number|null}|{cannot: CannotRun, detail: string}} Answer
+ * The call's answer: the structured output, the cost Claude Code reported
+ * and the model that answered, each null where it reported none; or why it
+ * cannot run, said.
+ * @typedef {{answer: unknown, cost: number|null, model: string|null}|{cannot: CannotRun, detail: string}} Answer
  */
 
 /** @type {Readonly<Record<string, (value: unknown) => boolean>>} */
@@ -246,17 +249,31 @@ function resultOf(stdout) {
 }
 
 /**
+ * The model that answered, as the result's `modelUsage` names it by its full
+ * id: the one it names, or among several the one `asked` names — the id
+ * itself, or an alias of its family (`opus` in `claude-opus-5-5`); null
+ * where it names none, or none of those.
+ * @param {Record<string, unknown>} result @param {string} asked
+ * @returns {string|null}
+ */
+function answeringModel(result, asked) {
+  const ids = isObject(result.modelUsage) ? Object.keys(result.modelUsage) : [];
+  if (ids.length === 1) return ids[0];
+  return ids.find((id) => id === asked || id.split('-').includes(asked)) ?? null;
+}
+
+/**
  * The answer a finished run gives: the structured output where the result
  * holds one that fits; else why not.
- * @param {Record<string, unknown>} result @param {Record<string, unknown>} schema
+ * @param {Record<string, unknown>} result @param {Ask} ask
  * @returns {Answer}
  */
-function answerOfResult(result, schema) {
+function answerOfResult(result, { schema, model }) {
   if (result.is_error !== false || result.subtype !== 'success') return cannot(failureOf(result, saidBy(result)), saidBy(result));
   if (!Object.hasOwn(result, 'structured_output')) return cannot('misfit', 'the result holds no structured output');
   const found = misfit(result.structured_output, schema);
   if (found !== null) return cannot('misfit', found);
-  return { answer: result.structured_output, cost: typeof result.total_cost_usd === 'number' ? result.total_cost_usd : null };
+  return { answer: result.structured_output, cost: typeof result.total_cost_usd === 'number' ? result.total_cost_usd : null, model: answeringModel(result, model) };
 }
 
 /**
@@ -277,7 +294,7 @@ function answerOf(run, ask) {
   if (code === 'ETIMEDOUT') return cannot('timeout', `no answer within ${ask.timeoutMs / 1000} s`);
   if (run.error) return cannot('failed', `${binary()} did not run: ${run.error.message}`);
   const result = resultOf(run.stdout);
-  if (result !== null) return answerOfResult(result, ask.schema);
+  if (result !== null) return answerOfResult(result, ask);
   const said = (run.stderr || run.stdout || `exit ${run.status ?? run.signal}`).replace(/\s+/g, ' ').trim();
   return cannot(failureOf({}, said), said);
 }

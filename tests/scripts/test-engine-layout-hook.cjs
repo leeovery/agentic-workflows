@@ -266,6 +266,7 @@ describe('the files at user level the engine alone writes, refused (16.13.2)', (
     'conversations/0001-0002/pressed.json': 'the gate mod\'s record of a conversation\'s last press',
     'conversations/0001-0002/raise-shown.json': 'a conversation\'s sealed raises',
     'brief-refusals.jsonl': 'the brief hook\'s refusals',
+    'decision-checks.jsonl': 'the one-decision check\'s log',
     'config.json': 'the settings file',
     'person.md': 'the record of the person',
   });

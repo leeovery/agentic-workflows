@@ -100,7 +100,7 @@ function checkOwed(cwd, root, warnings) {
   /** @type {Checked} */
   const done = { ran: true, checked: 0, several: 0, owed: owed.length };
   for (const entry of owed) {
-    const judged = judgeDecision(entry);
+    const judged = judgeDecision(entry, { cwd, unit: /** @type {string} */ (entry.unit), verb: LATE_CHECK_VERB, warnings });
     if ('cannot' in judged) {
       done.cannot = { reason: judged.cannot, detail: judged.detail };
       if (judged.cannot !== 'misfit') break;

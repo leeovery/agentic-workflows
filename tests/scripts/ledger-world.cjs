@@ -7,10 +7,10 @@
 // worlds built from them (`ledgerWorld`; `writtenWorld`, its entries
 // written once and copied, and `askedWorld`, its questions; and the copies
 // suites' hook `useCopiesWorld`); one write that must succeed, the ledger's
-// text, lines and entries, and an entry's full id (`ledgerHelpers`); the
-// person's answer to Claude's lean, a raise drawn and answered
-// (`answeredRaise`); and over those, the
-// helpers each aspect's suites share: the reads and the forms an entry takes
+// text, lines and entries, an entry's full id, and the one-decision check's
+// runs logged (`ledgerHelpers`); the person's answer to Claude's lean, a
+// raise drawn and answered (`answeredRaise`); and over those, the helpers
+// each aspect's suites share: the reads and the forms an entry takes
 // in a record and a map (`ledgerReadHelpers`), the written line and a refusal
 // asserted (`ledgerWriteHelpers`), and the rendered copies (`copiesHelpers`).
 // The copies' seams are ledger-copies-seams.cjs, which must load before the
@@ -31,6 +31,8 @@ const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
+const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
+const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 
 const UNIT = 'fumi';
 const SESSION_ID = 'session-1';
@@ -161,7 +163,34 @@ function ledgerHelpers(dir) {
     return ids[0];
   }
 
-  return { write, ledgerText, rawLines, entries, full };
+  /**
+   * The one-decision check's runs logged in the config folder `config`, each
+   * line but its time, which must be one.
+   * @param {string} [config]
+   * @returns {Record<string, unknown>[]}
+   */
+  function checkRuns(config = systemConfigDir()) {
+    const file = path.join(config, DECISION_CHECKS);
+    if (!fs.existsSync(file)) return [];
+    return fs.readFileSync(file, 'utf8').split('\n').slice(0, -1).map((text) => {
+      const { at, ...line } = JSON.parse(text);
+      assert.ok(!Number.isNaN(Date.parse(at)), `a run logged at ${at}`);
+      return line;
+    });
+  }
+
+  /**
+   * A run as the log holds it, but its time: in this project, of the `verb`
+   * in `unit`, its `outcome`, the rules it found, and the model that
+   * answered — the stub's id for Opus, none where unchecked.
+   * @param {string} verb @param {'one'|'several'|'unchecked'} outcome @param {number|null} rules @param {string} [unit]
+   */
+  function checkRun(verb, outcome, rules, unit = UNIT) {
+    const { project_id: id } = JSON.parse(fs.readFileSync(statePath(dir(), layout.projectManifest), 'utf8'));
+    return { v: 1, project_id: id, project: path.basename(dir()), unit, verb, rules, outcome, model: outcome === 'unchecked' ? null : 'claude-opus-stub' };
+  }
+
+  return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun };
 }
 
 // ---------------------------------------------------------------------------

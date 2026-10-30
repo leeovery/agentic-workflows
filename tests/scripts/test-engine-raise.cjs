@@ -5,11 +5,11 @@
 // domain/projections/raise.cjs, the decision point domain/decision-point.cjs):
 // `engine raise <place> --answers <question>`, Claude's call on stdin, put
 // through the decision point, every row judged by the one-decision check at
-// once, sealed in the conversation's folder and drawn as one MENU (16.S30);
-// `raise show`, drawing it again from the seal alone, the mechanism behind
-// its toggle; every refusal drawing and sealing nothing; a second raise of
-// the question keeping the first seal (P6); and a raise that is no gate,
-// clearing the gate shown.
+// once, each run logged, sealed in the conversation's folder and drawn as
+// one MENU (16.S30); `raise show`, drawing it again from the seal alone, the
+// mechanism behind its toggle; every refusal drawing and sealing nothing; a
+// second raise of the question keeping the first seal (P6); and a raise that
+// is no gate, clearing the gate shown.
 //
 // Layer: verb. World: the ledger suites' unit with four questions asked —
 // three on one topic, one on another — and a feature with one, built once
@@ -38,6 +38,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { gateShown } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
+const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 
 const EVERY_CALL_ASKS = 'Every call comes to you for now: the counts that would let me decide aren\'t built yet.';
 const NO_GATE = 'gate: no gate has been shown in this conversation — render the gate, then answer it';
@@ -125,6 +126,7 @@ before(() => {
 after(() => cleanupFixture(dir));
 
 const { conversation, inFolder, seals } = raiseHelpers(() => dir, config, CALL);
+const { checkRuns, checkRun } = ledgerHelpers(() => dir);
 
 /** The gate the conversation was last shown, as the gate mod reads it; null where none was. @returns {any} */
 const gateShownFile = () => (fs.existsSync(inFolder('gate-shown.json')) ? JSON.parse(fs.readFileSync(inFolder('gate-shown.json'), 'utf8')) : null);
@@ -359,6 +361,25 @@ describe('the one-decision check at the draw (5.5.2, E10)', () => {
 
     assert.strictEqual(error, 'raise: row 2 holds several rules, and the entry a row lands as holds one — nothing drawn. Make each row one answer to the question, and raise what else it decides as a question of its own:\n'
       + '  row 2:\n    1. Open on the main screen.\n    2. Size it to half the screen.');
+  });
+
+  it('logs each row\'s run as `raise`, in the unit the raise stands in — one, several, unchecked where the call cannot judge it — and a run the log cannot take is a warning the refusal carries (5.5.9)', async (t) => {
+    const env = { CLAUDE_STUB_ANSWERS: JSON.stringify({ [`The answer: ${MAIN.text}`]: { rules: ['Open on the main screen.', 'Size it to half the screen.'] }, [`The answer: ${CURSOR.text}`]: { rules: ['One rule.'] }, '': 'rate-limit' }) };
+    const call = { ...CALL, rows: [CURSOR, MAIN, LAST] };
+
+    await refusedDraw([NOTE, '--answers', asked.where], JSON.stringify(call), env);
+
+    const order = (/** @type {Record<string, unknown>} */ run) => String(run.outcome);
+    assert.deepStrictEqual(checkRuns(config()).sort((a, b) => order(a).localeCompare(order(b))), [checkRun('raise', 'one', 1), checkRun('raise', 'several', 2), checkRun('raise', 'unchecked', null)]);
+
+    const log = path.join(config(), DECISION_CHECKS);
+    const append = fs.appendFileSync;
+    t.mock.method(fs, 'appendFileSync', (/** @type {any} */ file, /** @type {any} */ data) => {
+      if (file === log) throw new Error('ENOSPC: no space left on device, write');
+      return append(file, data);
+    });
+    const { warnings } = await refusesAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(env), stdin: JSON.stringify(call) });
+    assert.deepStrictEqual(warnings, Array(3).fill(`the one-decision check's run was not logged (${DECISION_CHECKS}): ENOSPC: no space left on device, write`));
   });
 });
 
