@@ -42,9 +42,11 @@
 //
 // The project: its manifest is carried, with the project's id minted on it
 // (21.5.20) — kept where a move cut short already minted one — less the
-// baseline's status fields, a recorded `native` or `skipped` kept as
-// `brownfield_offer`, the brownfield offer's remembered answer (21.11.1,
-// 21.11.2, 8.12.11); each roadmap item's sources follow their files, once
+// baseline's status fields, a recorded `native`, `skipped` or `completed`
+// kept as `brownfield_offer`, the brownfield offer's remembered answer, in
+// today's words — the offer is made once per project, and a completed
+// assessment was offered it — and one still under way kept as nothing, so
+// the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's sources follow their files, once
 // each, and the roadmap's imports' paths follow theirs. The inbox and the
 // environment setup file are carried as they are, but for an inbox file
 // whose name is no item's (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`,
@@ -198,7 +200,7 @@ const BASELINE = '.baseline';
 const ROADMAP_SESSION = /^sessions\/session-[0-9]{3,}\.md$/;
 const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md)$/;
 // The baseline's answers the brownfield offer remembers (21.11.2).
-const BROWNFIELD_ANSWERS = ['native', 'skipped'];
+const BROWNFIELD_ANSWERS = ['native', 'skipped', 'completed'];
 
 const REPOSITORY_ENV = [
   'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_COMMON_DIR', 'GIT_CONFIG', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR',
@@ -997,8 +999,8 @@ function moveProduct(from, state, relocations) {
 
 /**
  * The project manifest less the baseline's status fields, a recorded
- * `native` or `skipped` kept as the brownfield offer's answer (21.11.1,
- * 21.11.2); each roadmap item's sources following their files, once each,
+ * `native`, `skipped` or `completed` kept as the brownfield offer's answer
+ * (21.11.1, 21.11.2); each roadmap item's sources following their files, once each,
  * and the roadmap's imports' paths into its assets (21.5.7).
  * @param {Record<string, any>} project @param {Relocations} relocations
  * @returns {Record<string, any>}
@@ -1169,7 +1171,7 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native or skipped baseline remembered as the brownfield offer\'s answer; the tracker\'s store is carried into the state. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, all staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets, with the documents\' links rewritten; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary; implementation folders, the reviews\' tracking files and the retired manifest state go. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the tracker\'s store is carried into the state. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, all staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return withoutRepositoryEnv(() => move(projectDir, reportUpdate, reportSkip));
   },

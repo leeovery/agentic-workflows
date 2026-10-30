@@ -30,9 +30,10 @@
 // environment cleared, the move run again over one cut short and over one
 // whose `.leeway/` the person removed, a project nested in its repository,
 // one run from a linked worktree, a merge stopped in the main checkout, the
-// projects with nothing to move, a native baseline and one under way, a
-// `.worktreeinclude` of the workflows' lines alone, settings that do not
-// parse, and a user-level folder whose files the engine's already holds.
+// projects with nothing to move, a native baseline, a completed one and
+// one under way, a `.worktreeinclude` of the workflows' lines alone,
+// settings that do not parse, and a user-level folder whose files the
+// engine's already holds.
 // Each test that runs the move points both user-level folders at its own,
 // never the machine's.
 //
@@ -820,8 +821,9 @@ describe('migration 078: a small project', () => {
   /** The project manifest the move wrote, from the project at `dir`. */
   const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
 
-  it('keeps a native baseline as the brownfield offer\'s answer, and none for a baseline under way, the status fields gone either way (21.11.2)', () => {
-    for (const [status, answer] of /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['in-progress', {}]])) {
+  it('keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
+    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
+    for (const [status, answer] of cases) {
       dir = tempProject(`migration-078-baseline-${status}-`);
       try {
         write(dir, '.workflows/manifest.json', json({ work_units: {}, baseline: { status, areas: { auth: 'completed', billing: 'pending' } } }));
