@@ -18,8 +18,8 @@
 //   close it holds voided (checklist.cjs), so the next decided needs a
 //   fresh close and the gate's yes. A postponed topic is
 //   left as it stands, the message waiting in its mailbox for its return
-//   (10.1.8), and while it waits the topic is never fresh enough to remove,
-//   rename or reroute (discovery-map.cjs). A message to a cancelled topic,
+//   (10.1.8), and while it waits the topic is never fresh enough to remove
+//   or rename (discovery-map.cjs). A message to a cancelled topic,
 //   or a cancelled unit's, goes to the inbox as an idea instead, its first
 //   line the title, the line saying who sent it kept under it (10.1.6,
 //   10.1.8). Any other target the entry would refuse is refused, by the

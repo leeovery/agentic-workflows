@@ -20,7 +20,7 @@
           "description": "Plans, invoices and the payment provider."
         },
         "usage-limits": {
-          "routing": "research",
+          "routing": "discussion",
           "source": "discovery",
           "summary": "What a plan allows, and what happens at the edge.",
           "description": "What a plan allows, and what happens at the edge."

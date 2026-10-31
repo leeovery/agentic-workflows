@@ -13,7 +13,6 @@
 //   engine.conventions    domain — workflow glyphs, tags, title composition
 //   engine.reads          domain — generic manifest/file reads (no phase semantics)
 //   engine.derivations    domain — shared derivations (phase joins, lifecycle, cache status)
-//   engine.discussionMap  domain — discussion-map transitions + queries
 //   engine.agents         domain — background-agent derivations (review cycles, arming)
 //   engine.detail         domain — detail builders (the one structured object per work unit)
 //   engine.project        domain — projections (dashboard / key / menu / map views)
@@ -41,11 +40,9 @@ const inboxSet = require('./domain/inbox-set.cjs');
 const workunit = require('./domain/workunit-detail.cjs');
 const workunitManage = require('./domain/workunit-manage.cjs');
 const specification = require('./domain/specification.cjs');
-const discussionMap = require('./domain/discussion-map.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
 const discoveryProjections = require('./domain/projections/discovery-map.cjs');
-const discussionProjections = require('./domain/projections/discussion-map.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const specificationProjections = require('./domain/projections/specification.cjs');
@@ -86,12 +83,6 @@ module.exports = {
     buildDiscoveryMap: derivations.buildDiscoveryMap,
     inputMoved: derivations.inputMoved,
     movedFrom: derivations.movedFrom,
-  },
-  discussionMap: {
-    addSubtopic: discussionMap.addSubtopic,
-    setSubtopicState: discussionMap.setSubtopicState,
-    mapState: discussionMap.mapState,
-    SUBTOPIC_STATES: discussionMap.SUBTOPIC_STATES,
   },
   agents: {
     completedReviewCycles: agentState.completedReviewCycles,
@@ -150,7 +141,6 @@ module.exports = {
     roadmapProposalView: roadmapProjections.roadmapProposalView,
     roadmapPullSetView: roadmapProjections.roadmapPullSetView,
     roadmapHomeMenu: roadmapProjections.roadmapHomeMenu,
-    discussionMap: discussionProjections.discussionMap,
     startOverview: startProjections.startOverview,
     startMenu: startProjections.startMenu,
     emptyOverview: startProjections.emptyOverview,

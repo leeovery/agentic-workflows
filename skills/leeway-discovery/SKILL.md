@@ -14,11 +14,11 @@ Discovery is the universal **first phase** — every work type begins here. It s
 
 | Work type | Pipeline after discovery |
 |---|---|
-| Epic | Multi-topic; each topic: (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
-| Feature | (Research) → (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| Epic | Multi-topic; each topic: (Experiment) → Discussion → Specification → Planning → Implementation → Review |
+| Feature | (Experiment) → Discussion → Specification → Planning → Implementation → Review |
 | Bugfix | Investigation → Specification → Planning → Implementation → Review |
 | Quick-fix | Scoping → Implementation → Review |
-| Cross-cutting | (Research) → (Experiment) → Discussion → Specification (terminal) |
+| Cross-cutting | (Experiment) → Discussion → Specification (terminal) |
 
 It runs in two modes:
 
@@ -259,7 +259,7 @@ Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery's done — routing this work to its first phase. Feature and cross-cutting pick research or discussion; bugfix goes to investigation, quick-fix to scoping.
+> Discovery's done — routing this work to its first phase. Feature and cross-cutting go to discussion; bugfix goes to investigation, quick-fix to scoping.
 ```
 
 Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.

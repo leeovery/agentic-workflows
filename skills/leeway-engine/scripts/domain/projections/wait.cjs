@@ -16,12 +16,6 @@ const { specUnsettledPhrase } = require('../derivations.cjs');
 
 /** @typedef {import('../derivations.cjs').Wait} Wait */
 
-// Where the awaited research stands, in the gates' voice — the wait gate and
-// the discussion entry gate read as one.
-/** @param {string} status  an outstanding research status */
-function researchWaitState(status) {
-  return status === 'unstarted' ? 'parked — not yet started' : 'in flight';
-}
 
 /** @param {Wait[]} waits @returns {string[]} the evidence ids, derivation order */
 function experimentIds(waits) {
@@ -30,17 +24,14 @@ function experimentIds(waits) {
 
 /**
  * What an item's waits owe, as one clause — the upstream first, then the
- * evidence: `research on {subject} (in flight) and experiment evidence (E1, E2)`.
+ * evidence: `its specification (…) and experiment evidence (E1, E2)`.
  * @param {Wait[]} waits  non-empty — the derivation's order
- * @param {string} researchSubject  what the research is on — the quoted topic, or `the topic`
  * @returns {string}
  */
-function owedWaits(waits, researchSubject) {
-  const research = waits.find((w) => w.kind === 'research');
+function owedWaits(waits) {
   const spec = waits.find((w) => w.kind === 'specification');
   const ids = experimentIds(waits);
   const owed = [];
-  if (research) owed.push(`research on ${researchSubject} (${researchWaitState(research.status)})`);
   if (spec) owed.push(`its specification (${specUnsettledPhrase(spec)})`);
   if (ids.length > 0) owed.push(`experiment evidence (${ids.join(', ')})`);
   return owed.join(' and ');
@@ -64,18 +55,17 @@ function owedSources(names, sourcePhase) {
  * The wait gate over a plan held by its specification, the one wait it
  * serves: a discussion's waits are its map's, and its close the decided
  * screen.
- * @param {string} topic
  * @param {Wait[]} waits  the plan's specification wait
  * @param {boolean} epic  where the pause lands — the epic menu, or the linear unit's next step
  * @returns {string}
  */
-function waitGate(topic, waits, epic) {
+function waitGate(waits, epic) {
   const guidance = [
     'Settle the specification first — concluding it releases its wait; this plan can conclude once the specification lands.',
     epic ? 'The epic menu carries the way in.' : 'The pause continues the work unit at what it waits on.',
   ];
   return [
-    section('DISPLAY: wait block', emitAs('properties'), `⚑ Conclusion blocked — this plan awaits ${owedWaits(waits, `"${titlecase(topic)}"`)}`),
+    section('DISPLAY: wait block', emitAs('properties'), `⚑ Conclusion blocked — this plan awaits ${owedWaits(waits)}`),
     section('DISPLAY: wait guidance', emitAs('markdown'), `> ${guidance.join(' ')}`),
     section('MENU: wait gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', epic
@@ -105,4 +95,5 @@ function phasePaused(phase, workUnit, holders) {
   return section('DISPLAY: phase paused', CONTINUE_INSTRUCTION, line);
 }
 
-module.exports = { waitGate, phasePaused, owedWaits, owedSources, researchWaitState };
+module.exports = { waitGate, phasePaused, owedWaits, owedSources };
+

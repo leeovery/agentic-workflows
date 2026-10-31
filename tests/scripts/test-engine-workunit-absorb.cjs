@@ -18,7 +18,7 @@ function writeFile(dir, rel, content) {
   fs.writeFileSync(full, content);
 }
 
-/** The absorbable feature: discussion, research, an import, a seed. */
+/** The absorbable feature: a discussion, an import, a seed. */
 function featureManifest(overrides = {}) {
   return {
     name: 'auth-flow',
@@ -29,14 +29,13 @@ function featureManifest(overrides = {}) {
     imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' }],
     phases: {
-      research: { items: { 'auth-flow': { status: 'completed' } } },
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
     },
     ...overrides,
   };
 }
 
-/** The target epic — carries a research-topic collision and a dismissed name. */
+/** The target epic — carries a colliding import and a dismissed name. */
 function epicManifest(overrides = {}) {
   return {
     name: 'payments',
@@ -48,7 +47,6 @@ function epicManifest(overrides = {}) {
         items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
         dismissed: ['dead-idea'],
       },
-      research: { items: { exploration: { status: 'completed' } } },
     },
     ...overrides,
   };
@@ -63,12 +61,10 @@ function setupFixture({ feature = featureManifest(), epic = epicManifest() } = {
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
   writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(feature, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/discussion/auth-flow.md', '# Discussion\n');
-  writeFile(project, '.leeway/auth-flow/research/auth-flow.md', '# Research\n');
+  writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
   writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/research/exploration.md', '# Epic exploration\n');
   writeFile(project, '.leeway/payments/imports/roadmap.md', '# Roadmap\n');
   // A file-only collision in the epic's imports dir — dedupe must dodge it.
   writeFile(project, '.leeway/payments/imports/notes.md', '# Epic notes\n');
@@ -93,11 +89,9 @@ function indexFiles(fix, files) {
   for (const file of files) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
 }
 
-/** The feature's own artifacts, indexed where it stands before the absorb. */
+/** The feature's own indexed artifacts — its discussion is never indexed (9.2.2). */
 const FEATURE_FILES = [
-  'auth-flow/discussion/auth-flow.md',
   'auth-flow/imports/notes.md',
-  'auth-flow/research/auth-flow.md',
   'auth-flow/seeds/seed.md',
 ];
 
@@ -153,7 +147,6 @@ describe('engine workunit absorb — happy path', () => {
     assert.match(out, /Target: {7}Payments/);
     assert.match(out, /Topic: {8}auth/);
     assert.match(out, /Discussion: {3}\[completed\]/);
-    assert.match(out, /Research: {5}\[completed\]/);
     assert.match(out, /Experiments: {2}2 experiment\(s\)/, 'a series E1, E1.1, E2 is two experiments — subs never count');
     assert.match(out, /Seed: {9}1 file\(s\) \(origin\)/);
     assert.match(out, /Imports: {6}1 file\(s\)/);
@@ -165,7 +158,7 @@ describe('engine workunit absorb — happy path', () => {
 
   it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', (t) => {
     fix = setupFixture();
-    indexFiles(fix, [...FEATURE_FILES, 'payments/research/exploration.md']);
+    indexFiles(fix, [...FEATURE_FILES, 'payments/imports/roadmap.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     const marks = path.join(fix.project, '.leeway/.cache/.marks');
@@ -191,38 +184,31 @@ describe('engine workunit absorb — happy path', () => {
       feature: 'auth-flow',
       epic: 'payments',
       topic: 'auth',
-      discussion: { path: inEpic(fix, 'discussion/auth.md'), status: 'completed' },
-      research: [
-        { from: 'auth-flow', topic: 'auth', status: 'completed' },
-      ],
+      discussion: { path: inEpic(fix, 'topics/auth/log.md'), status: 'completed' },
       imports: [{ path: inEpic(fix, 'imports/notes-2.md') }],
       renamed_imports: [{ from: 'notes.md', to: 'notes-2.md' }],
       seeds: [{ path: inEpic(fix, 'seeds/seed.md'), source: 'inbox:idea' }],
-      routing: 'research',
       committed: shortHead(fix),
       warnings: [],
     });
     assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports']);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds,imports']);
     assert.match(receipt, new RegExp([
       'Absorbed into Epic',
       '',
       'Topic "Auth" added to Payments\\.',
       '',
       '  • Discussion: moved',
-      '  • Research: moved',
       '  • Seed: moved',
       '  • Imports: moved',
       '  • Feature: removed',
     ].join('\\n')));
 
     // Files landed at their epic identities; the feature directory is gone.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/auth.md'), 'utf8'), '# Discussion\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/research/auth.md'), 'utf8'), '# Research\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'), '# Discussion\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/notes-2.md'), 'utf8'), '# Notes\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/seeds/seed.md'), 'utf8'), '# Seed\n');
     // The epic's own colliding files are untouched.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/research/exploration.md'), 'utf8'), '# Epic exploration\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/notes.md'), 'utf8'), '# Epic notes\n');
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
@@ -234,10 +220,6 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(m.phases.experiment, undefined, 'a feature with no series lands no experiment phase');
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '2']).error,
       /no experiment series "auth" on "payments"/);
-    assert.deepStrictEqual(m.phases.research.items, {
-      exploration: { status: 'completed' },
-      auth: { status: 'completed' },
-    });
     assert.deepStrictEqual(m.imports, [
       { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' },
       { path: 'imports/notes-2.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discovery' },
@@ -245,7 +227,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.seeds, [
       { path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' },
     ]);
-    assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'research', source: 'discovery' });
+    assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'discussion', source: 'discovery' });
 
     // Registration removed; the epic's stays.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
@@ -258,23 +240,21 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(auth-flow): absorb into payments');
     const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('auth-flow/manifest.json'), 'feature deletion staged');
-    assert.ok(staged.includes('payments/discussion/auth.md'), 'epic addition staged');
+    assert.ok(staged.includes('payments/topics/auth/log.md'), 'epic addition staged');
     assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
-    // KB: feature chunks removed, moved artifacts indexed at epic identities —
-    // completed phase artifacts only, imports and seeds always — and the
-    // epic's own chunks left standing.
+    // KB: feature chunks removed, the moved imports and seeds indexed at their
+    // epic identities — the discussion never — and the epic's own chunks left
+    // standing.
     assert.deepStrictEqual(indexedFiles(fix.project), [
-      'payments/discussion/auth.md',
       'payments/imports/notes-2.md',
-      'payments/research/auth.md',
-      'payments/research/exploration.md',
+      'payments/imports/roadmap.md',
       'payments/seeds/seed.md',
     ]);
   });
 
-  it('discussion-only feature: routing discussion, in-progress status mirrored, no phase-artifact indexing', () => {
+  it('an in-progress discussion alone: its status mirrored, the map row routed to discussion, nothing indexed', () => {
     const feature = featureManifest({
       imports: undefined,
       seeds: undefined,
@@ -283,99 +263,29 @@ describe('engine workunit absorb — happy path', () => {
     delete feature.imports;
     delete feature.seeds;
     fix = setupFixture({ feature });
-    indexFiles(fix, ['auth-flow/discussion/auth-flow.md']);
+    indexFiles(fix, ['payments/imports/roadmap.md']);
     const res = engine(fix, ABSORB);
 
-    assert.strictEqual(res.routing, 'discussion');
-    assert.deepStrictEqual(res.discussion, { path: inEpic(fix, 'discussion/auth.md'), status: 'in-progress' });
-    assert.deepStrictEqual(res.research, []);
+    assert.deepStrictEqual(res.discussion, { path: inEpic(fix, 'topics/auth/log.md'), status: 'in-progress' });
     assert.deepStrictEqual(res.imports, []);
     assert.deepStrictEqual(res.seeds, []);
 
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'in-progress' } });
     assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'discussion', source: 'discovery' });
-    // In-progress discussion is not indexed — only the feature removal runs.
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
-  });
-
-  it('a live reconcile flag travels with the absorbed discussion — research moves with it, so the flag stays true', () => {
-    const feature = featureManifest();
-    feature.phases.discussion.items['auth-flow'].reconcile_needed = 'research';
-    fix = setupFixture({ feature });
-    engine(fix, ABSORB);
-
-    const m = readManifest(fix, 'payments');
-    assert.strictEqual(m.phases.discussion.items.auth.reconcile_needed, 'research');
-    assert.strictEqual(m.phases.discussion.items.auth.status, feature.phases.discussion.items['auth-flow'].status);
-  });
-
-  it('dismissed grounds travel with the material — discussion and research alike', () => {
-    const feature = featureManifest();
-    feature.phases.discussion.items['auth-flow'].dismissed_grounds = ['token rotation is out of scope'];
-    feature.phases.research.items['auth-flow'].dismissed_grounds = ['vendor pricing was already ruled out'];
-    fix = setupFixture({ feature });
-    engine(fix, ABSORB);
-
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.discussion.items.auth.dismissed_grounds, ['token rotation is out of scope']);
-    // The research landed at the topic name — the grounds follow the
-    // material to its new name.
-    assert.deepStrictEqual(m.phases.research.items.auth.dismissed_grounds,
-      ['vendor pricing was already ruled out']);
-    assert.strictEqual(m.phases.research.items.exploration.dismissed_grounds, undefined,
-      'the epic\'s own topic gains no field');
+    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/imports/roadmap.md']);
   });
 
   it('a phase item travels key-complete — whatever a feature item carries, the epic item carries', () => {
     const feature = featureManifest();
     Object.assign(feature.phases.discussion.items['auth-flow'], {
-      subtopics: { rotation: { status: 'decided', parent: null } },
-      dismissed_grounds: ['x'], reconcile_needed: 'research', awaiting_experiments: [], future_field: { any: 'shape' },
-    });
-    Object.assign(feature.phases.research.items['auth-flow'], {
-      threads: { q: { question: 'Q?', status: 'open', origin: 'seed', parent: null } },
-      dismissed_grounds: ['y'], another_field: 7,
+      awaiting_experiments: [], future_field: { any: 'shape' }, another_field: 7,
     });
     fix = setupFixture({ feature });
     engine(fix, ABSORB);
 
     const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(Object.keys(m.phases.discussion.items.auth).sort(), Object.keys(feature.phases.discussion.items['auth-flow']).sort());
-    assert.deepStrictEqual(Object.keys(m.phases.research.items.auth).sort(), Object.keys(feature.phases.research.items['auth-flow']).sort());
-    assert.deepStrictEqual(m.phases.discussion.items.auth.future_field, { any: 'shape' });
-    assert.strictEqual(m.phases.research.items.auth.another_field, 7);
-  });
-
-  it('the Discussion Map travels whole — every subtopic, its state, its parent, at the new name', () => {
-    const feature = featureManifest();
-    const subtopics = {
-      'token-rotation': { status: 'decided', parent: null },
-      'refresh-window': { status: 'exploring', parent: 'token-rotation' },
-      'session-pinning': { status: 'deferred', parent: null },
-    };
-    feature.phases.discussion.items['auth-flow'].subtopics = JSON.parse(JSON.stringify(subtopics));
-    fix = setupFixture({ feature });
-    engine(fix, ABSORB);
-
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.discussion.items.auth.subtopics, subtopics);
-  });
-
-  it('the thread register travels whole — every thread, its state, its origin, at the new name', () => {
-    const feature = featureManifest();
-    const threads = {
-      'hosted-fields': { question: 'What does moving the checkout take?', status: 'open', origin: 'seed', parent: null },
-      'capture-confirm': { question: 'Does capture confirmation change?', status: 'open', origin: 'user', parent: 'hosted-fields' },
-      'second-provider': { question: 'A second provider?', status: 'parked', origin: 'conversation', parent: null, note: 'not this year' },
-    };
-    feature.phases.research.items['auth-flow'].threads = JSON.parse(JSON.stringify(threads));
-    fix = setupFixture({ feature });
-    engine(fix, ABSORB);
-
-    const m = readManifest(fix, 'payments');
-    assert.deepStrictEqual(m.phases.research.items.auth.threads, threads);
-    assert.strictEqual(m.phases.research.items.exploration.threads, undefined, 'the epic\'s own topic gains no register');
+    assert.deepStrictEqual(m.phases.discussion.items.auth, feature.phases.discussion.items['auth-flow']);
   });
 
   it('the experiment series travels whole — records, statuses, verdicts, directory', () => {
@@ -427,18 +337,16 @@ describe('engine workunit absorb — happy path', () => {
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
-    // The store holds exactly the indexed-phase moves — no experiment file.
+    // The store holds exactly the indexed moves — no experiment file.
     assert.deepStrictEqual(indexedFiles(fix.project), [
-      'payments/discussion/auth.md',
       'payments/imports/notes-2.md',
-      'payments/research/auth.md',
       'payments/seeds/seed.md',
     ]);
 
     // The receipt names the moved series by its top-level count — E1, E1.1,
     // E2 is two experiments, never three; a non-count refuses.
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--experiments', '2']);
-    assert.match(receipt, /• Research: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds,imports', '--experiments', '2']);
+    assert.match(receipt, /• Discussion: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
     assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
       /--experiments must be a positive experiment count/);
 
@@ -456,8 +364,7 @@ describe('engine workunit absorb — happy path', () => {
   it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {
     const feature = featureManifest({
       phases: {
-        research: { items: { 'auth-flow': { status: 'completed' } } },
-        discussion: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1', 'E2'], reconcile_needed: 'experiment' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
         experiment: {
           items: {
             'auth-flow': {
@@ -472,7 +379,6 @@ describe('engine workunit absorb — happy path', () => {
       },
     });
     fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/research/auth-flow.md', '# Research\n');
     writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E1-webhook-dup-rate/problem.md', '# Problem\n');
     writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/experiments/E2-retry-window/problem.md', '# Problem 2\n');
     commitAll(fix.project, 'series');
@@ -482,13 +388,11 @@ describe('engine workunit absorb — happy path', () => {
     engine(fix, ['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'auth-flow']);
 
     assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items['auth-flow'],
-      { status: 'in-progress', awaiting_experiments: ['E1', 'E2'], reconcile_needed: 'experiment' },
-      'the discussion wait and evidence flag travel untouched');
+      { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] },
+      'the discussion wait travels untouched');
 
-    // The lock's semantics survive the move: completion still refuses, and a
-    // conclusion at the epic address releases the moved holder.
-    assert.match(engineFails(fix, ['topic', 'complete', 'payments', 'discussion', 'auth-flow']).error,
-      /awaits experiment evidence \(E1, E2\)/);
+    // The release edge survives the move: a conclusion at the epic address
+    // releases the moved holder.
     const concluded = engine(fix, ['experiment', 'conclude', 'payments', 'auth-flow', 'E1', '--verdict', 'held']);
     assert.deepStrictEqual(concluded.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: ['E2'] }]);
     assert.deepStrictEqual(readManifest(fix, 'payments').phases.discussion.items['auth-flow'].awaiting_experiments, ['E2']);
@@ -499,14 +403,14 @@ describe('engine workunit absorb — happy path', () => {
     unreadableKnowledge(fix.project);
     const res = engine(fix, ABSORB);
 
-    assert.strictEqual(res.warnings.length, 5, res.warnings.join('\n'));
+    assert.strictEqual(res.warnings.length, 3, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
-    assert.match(res.warnings[4], /^knowledge index \(seeds\/seed\.md\) failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[2], /^knowledge index \(seeds\/seed\.md\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/auth-flow')));
 
     // The absorb both removes and indexes, so its advisory names neither.
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'research,seeds,imports', '--warn']);
+    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds,imports', '--warn']);
     assert.match(receipt, /  ⚑ Knowledge warning\n    The feature is absorbed\. The next start brings the knowledge base up to date\./);
   });
 });
@@ -520,7 +424,7 @@ describe('engine workunit absorb — imports follow the material', () => {
     const feature = featureManifest();
     feature.imports = [
       { path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/auth-flow' },
-      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'research/auth-flow' },
+      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'roadmap' },
       { path: 'imports/brief.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discovery' },
     ];
     return feature;
@@ -530,13 +434,11 @@ describe('engine workunit absorb — imports follow the material', () => {
     fix = setupFixture({ feature: importingFeature() });
     writeFile(fix.project, '.leeway/auth-flow/imports/screen.png', 'png bytes\n');
     writeFile(fix.project, '.leeway/auth-flow/imports/brief.md', '# Brief\n');
-    writeFile(fix.project, '.leeway/auth-flow/discussion/auth-flow.md',
-      '# Discussion\n\nSee ![the ask](../imports/notes.md) and ![the screen](../imports/screen.png).\nAlso ../imports/brief.md.\n');
-    writeFile(fix.project, '.leeway/auth-flow/research/auth-flow.md',
-      '# Research\n\n![the ask](../imports/notes.md)\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
+      '# Discussion\n\nSee ![the ask](../../imports/notes.md) and ![the screen](../../imports/screen.png).\nAlso ../../imports/brief.md.\n');
     // The epic's own document links its own same-named file — untouched.
-    writeFile(fix.project, '.leeway/payments/research/exploration.md',
-      '# Epic exploration\n\n![epic notes](../imports/notes.md)\n');
+    writeFile(fix.project, '.leeway/payments/discovery/briefs/fee-model.md',
+      '# Fees\n\n![epic notes](../../imports/notes.md)\n');
     commitAll(fix.project, 'importing feature');
   }
 
@@ -547,7 +449,7 @@ describe('engine workunit absorb — imports follow the material', () => {
     assert.deepStrictEqual(readManifest(fix, 'payments').imports, [
       { path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' },
       { path: 'imports/notes-2.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/auth' },
-      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'research/auth' },
+      { path: 'imports/screen.png', imported_at: '2026-06-03T09:00:00Z', origin: 'roadmap' },
       { path: 'imports/brief.md', imported_at: '2026-06-04T09:00:00Z', origin: 'discovery' },
     ]);
   });
@@ -559,24 +461,23 @@ describe('engine workunit absorb — imports follow the material', () => {
 
     const read = (rel) => fs.readFileSync(path.join(fix.project, rel), 'utf8');
     // The renamed import's link follows it; the unrenamed ones are untouched.
-    assert.match(read('.leeway/payments/discussion/auth.md'), /!\[the ask\]\(\.\.\/imports\/notes-2\.md\)/);
-    assert.match(read('.leeway/payments/discussion/auth.md'), /!\[the screen\]\(\.\.\/imports\/screen\.png\)/);
-    assert.match(read('.leeway/payments/discussion/auth.md'), /Also \.\.\/imports\/brief\.md\./);
-    assert.match(read('.leeway/payments/research/auth.md'), /!\[the ask\]\(\.\.\/imports\/notes-2\.md\)/);
+    assert.match(read('.leeway/payments/topics/auth/log.md'), /!\[the ask\]\(\.\.\/\.\.\/imports\/notes-2\.md\)/);
+    assert.match(read('.leeway/payments/topics/auth/log.md'), /!\[the screen\]\(\.\.\/\.\.\/imports\/screen\.png\)/);
+    assert.match(read('.leeway/payments/topics/auth/log.md'), /Also \.\.\/\.\.\/imports\/brief\.md\./);
     // The epic's own document names the epic's own notes.md — never rewritten.
-    assert.match(read('.leeway/payments/research/exploration.md'), /!\[epic notes\]\(\.\.\/imports\/notes\.md\)/);
+    assert.match(read('.leeway/payments/discovery/briefs/fee-model.md'), /!\[epic notes\]\(\.\.\/\.\.\/imports\/notes\.md\)/);
   });
 
   it('a link already naming the landed file is left as it is — the substitution is exact', () => {
     setupImporting();
-    writeFile(fix.project, '.leeway/auth-flow/discussion/auth-flow.md',
-      '# Discussion\n\n../imports/notes.md and ../imports/notes-2.md and ../imports/notes.md.png\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
+      '# Discussion\n\n../../imports/notes.md and ../../imports/notes-2.md and ../../imports/notes.md.png\n');
     commitAll(fix.project, 'mixed links');
     engine(fix, ABSORB);
 
     assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/auth.md'), 'utf8'),
-      '# Discussion\n\n../imports/notes-2.md and ../imports/notes-2.md and ../imports/notes.md.png\n');
+      fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'),
+      '# Discussion\n\n../../imports/notes-2.md and ../../imports/notes-2.md and ../../imports/notes.md.png\n');
   });
 
   it('indexes the markdown moves alone, and the receipt names the renames', () => {
@@ -584,14 +485,12 @@ describe('engine workunit absorb — imports follow the material', () => {
     engine(fix, ABSORB);
 
     assert.deepStrictEqual(indexedFiles(fix.project), [
-      'payments/discussion/auth.md',
       'payments/imports/brief.md',
       'payments/imports/notes-2.md',
-      'payments/research/auth.md',
       'payments/seeds/seed.md',
     ]);
     const render = (renamed) => output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth',
-        '--moved', 'research,seeds,imports', '--renamed', renamed]);
+        '--moved', 'seeds,imports', '--renamed', renamed]);
     assert.match(render('notes.md:notes-2.md'),
       /• Imports: moved\n {2}• Renamed: notes\.md → notes-2\.md \(links rewritten\)/);
     // A screenshot's own name is longer than the pane: the row wraps under
@@ -612,8 +511,8 @@ describe('engine workunit absorb — imports follow the material', () => {
     ];
     fix = setupFixture({ feature });
     writeFile(fix.project, '.leeway/auth-flow/imports/notes-2.md', '# Second notes\n');
-    writeFile(fix.project, '.leeway/auth-flow/discussion/auth-flow.md',
-      '# Discussion\n\n![first](../imports/notes.md) and ![second](../imports/notes-2.md)\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
+      '# Discussion\n\n![first](../../imports/notes.md) and ![second](../../imports/notes-2.md)\n');
     commitAll(fix.project, 'colliding imports');
 
     const res = engine(fix, ABSORB);
@@ -624,22 +523,22 @@ describe('engine workunit absorb — imports follow the material', () => {
     // One pass over both renames: a sequential rewrite would carry the first
     // link onto the second's new name.
     assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/auth.md'), 'utf8'),
-      '# Discussion\n\n![first](../imports/notes-2.md) and ![second](../imports/notes-2-2.md)\n');
+      fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'),
+      '# Discussion\n\n![first](../../imports/notes-2.md) and ![second](../../imports/notes-2-2.md)\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/notes-2.md'), 'utf8'), '# Notes\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/notes-2-2.md'), 'utf8'), '# Second notes\n');
   });
 
   it("a prose mention of the product's own src/imports path is not a link — never rewritten", () => {
     setupImporting();
-    writeFile(fix.project, '.leeway/auth-flow/discussion/auth-flow.md',
-      '# Discussion\n\n![the ask](../imports/notes.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
+    writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
+      '# Discussion\n\n![the ask](../../imports/notes.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
     commitAll(fix.project, 'prose mention');
     engine(fix, ABSORB);
 
     assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/auth.md'), 'utf8'),
-      '# Discussion\n\n![the ask](../imports/notes-2.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
+      fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md'), 'utf8'),
+      '# Discussion\n\n![the ask](../../imports/notes-2.md)\n\nThe bundle reads src/imports/notes.md at build time.\n');
   });
 
   it('reports no renames when nothing collided', () => {
@@ -736,23 +635,23 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   }
 
   it("a waiting item's discussion source names the moved discussion", () => {
-    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
+    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/topics/auth-flow/log.md'] } });
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
-      { item: 'sso', from: 'auth-flow/discussion/auth-flow.md', to: 'payments/discussion/auth.md' },
+      { item: 'sso', from: 'auth-flow/topics/auth-flow/log.md', to: 'payments/topics/auth/log.md' },
     ]);
     assert.strictEqual(res.roadmap_sources_dropped, undefined);
     assert.strictEqual(res.roadmap_reaimed, undefined, 'a waiting item has no join to re-aim');
     assert.deepStrictEqual(readProject().roadmap.items.sso,
-      { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['payments/discussion/auth.md'] });
+      { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['payments/topics/auth/log.md'] });
     assertSourcesOnDisk();
   });
 
-  it("a joined item's research and discussion sources follow, and its join is re-aimed as before", () => {
+  it("a joined item's sources follow, and its join is re-aimed as before", () => {
     setupRoadmap({ login: {
       horizon: 'v1', summary: 'log in', kind: 'idea', origin: 'harvest',
-      sources: ['auth-flow/research/auth-flow.md', 'auth-flow/discussion/auth-flow.md'],
+      sources: ['auth-flow/seeds/seed.md', 'auth-flow/topics/auth-flow/log.md'],
       pulled_to: { work_unit: 'auth-flow' },
     } });
     const res = engine(fix, ABSORB);
@@ -760,7 +659,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     assert.deepStrictEqual(res.roadmap_reaimed, ['login']);
     const item = readProject().roadmap.items.login;
     assert.deepStrictEqual(item.pulled_to, { work_unit: 'payments', topic: 'auth' });
-    assert.deepStrictEqual(item.sources, ['payments/research/auth.md', 'payments/discussion/auth.md'], 'order kept');
+    assert.deepStrictEqual(item.sources, ['payments/seeds/seed.md', 'payments/topics/auth/log.md'], 'order kept');
     assertSourcesOnDisk();
   });
 
@@ -805,7 +704,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
       mixed: { horizon: 'v1', summary: 'mixed', kind: 'idea', origin: 'harvest', sources: [
         'auth-flow/discovery/sessions/session-001.md',
         '.roadmap/sessions/session-001.md',
-        'auth-flow/discussion/auth-flow.md',
+        'auth-flow/topics/auth-flow/log.md',
       ] },
     });
     const res = engine(fix, ABSORB);
@@ -816,12 +715,12 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     ]);
     const items = readProject().roadmap.items;
     assert.deepStrictEqual(items.lone, { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow' });
-    assert.deepStrictEqual(items.mixed.sources, ['.roadmap/sessions/session-001.md', 'payments/discussion/auth.md']);
+    assert.deepStrictEqual(items.mixed.sources, ['.roadmap/sessions/session-001.md', 'payments/topics/auth/log.md']);
     assertSourcesOnDisk();
   });
 
   it("a source outside the feature is untouched — a sibling unit sharing the name's prefix included", () => {
-    const outside = ['.roadmap/sessions/session-001.md', 'payments/research/exploration.md', 'auth-flow-v2/discussion/auth-flow-v2.md'];
+    const outside = ['.roadmap/sessions/session-001.md', 'payments/imports/roadmap.md', 'auth-flow-v2/discussion/auth-flow-v2.md'];
     setupRoadmap({ other: { horizon: 'v1', summary: 'other', kind: 'idea', origin: 'harvest', sources: outside } });
     const before = readProject().roadmap;
     const res = engine(fix, ABSORB);
@@ -843,7 +742,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   });
 
   it("the rewrite rides the absorb's one commit — the project manifest committed, nothing left dirty", () => {
-    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
+    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/topics/auth-flow/log.md'] } });
     const commits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim());
     engine(fix, ABSORB);
 
@@ -851,7 +750,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('manifest.json'));
     const committed = JSON.parse(stateGit(fix.project, ['show', 'HEAD:manifest.json']));
-    assert.deepStrictEqual(committed.roadmap.items.sso.sources, ['payments/discussion/auth.md']);
+    assert.deepStrictEqual(committed.roadmap.items.sso.sources, ['payments/topics/auth/log.md']);
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '');
   });
 });
@@ -884,16 +783,16 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /epic "payments" is not in-progress \(status: completed\)/);
   });
 
-  it('refuses a feature with no discussion — item or file', () => {
-    const feature = featureManifest({ phases: { research: { items: { exploration: { status: 'completed' } } } } });
+  it('refuses a feature with no discussion — item or log', () => {
+    const feature = featureManifest({ phases: { experiment: { items: { 'auth-flow': { status: 'in-progress', experiments: {} } } } } });
     fix = setupFixture({ feature });
     refusedPristine(ABSORB, /has no discussion — absorb moves the discussion in/);
     fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture();
-    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/discussion/auth-flow.md'));
+    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md'));
     commitAll(fix.project, 'drop file');
-    refusedPristine(ABSORB, /discussion file missing on disk/);
+    refusedPristine(ABSORB, /discussion log missing on disk/);
   });
 
   it('refuses specification-or-beyond work on the feature', () => {
@@ -909,11 +808,11 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /has planning work/);
   });
 
-  it('refuses an illegal or colliding topic name — map item, dismissed, discussion item, file on disk', () => {
+  it('refuses an illegal or colliding topic name — map item, dismissed, discussion item, log on disk', () => {
     const epic = epicManifest();
     epic.phases.discussion = { items: { 'session-model': { status: 'completed' } } };
     fix = setupFixture({ epic });
-    writeFile(fix.project, '.leeway/payments/discussion/on-disk.md', '# Orphan\n');
+    writeFile(fix.project, '.leeway/payments/topics/on-disk/log.md', '# Orphan\n');
     commitAll(fix.project, 'orphan');
 
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'bad.name'], /not a legal topic name/);
@@ -923,7 +822,7 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'fee-model'], /already on payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'dead-idea'], /was dismissed from payments's discovery map/);
     refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'session-model'], /discussion topic "session-model" already exists/);
-    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk'], /discussion\/on-disk\.md already exists/);
+    refusedPristine(['workunit', 'absorb', 'auth-flow', '--into', 'payments', '--topic', 'on-disk'], /topics\/on-disk\/log\.md already exists/);
   });
 
   it('refuses an experiment collision in the epic — item or directory on disk', () => {
@@ -977,30 +876,6 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     assert.deepStrictEqual(concluded.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
   });
 
-  it('refuses a research collision on the topic name — item or file on disk', () => {
-    const epic = epicManifest();
-    epic.phases.research.items.auth = { status: 'completed' };
-    fix = setupFixture({ epic });
-    writeFile(fix.project, '.leeway/payments/research/auth.md', '# Epic auth research\n');
-    commitAll(fix.project, 'epic auth research');
-    refusedPristine(ABSORB, /research topic "auth" already exists in payments — pick a different name/);
-    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-
-    fix = setupFixture();
-    writeFile(fix.project, '.leeway/payments/research/auth.md', '# Orphan\n');
-    commitAll(fix.project, 'orphan research file');
-    refusedPristine(ABSORB, /research\/auth\.md already exists — pick a different name/);
-  });
-
-  it('refuses a research item not named after the feature — single and self-named, and deletion follows', () => {
-    const feature = featureManifest();
-    feature.phases.research.items.exploration = { status: 'completed' };
-    fix = setupFixture({ feature });
-    writeFile(fix.project, '.leeway/auth-flow/research/exploration.md', '# Exploration\n');
-    commitAll(fix.project, 'foreign research item');
-    refusedPristine(ABSORB, /research item "exploration" not named after it — a feature's research is single and self-named/);
-  });
-
   it('refuses a foreign-named experiment series — deletion follows, so a silent skip would lose it', () => {
     const feature = featureManifest();
     feature.phases.experiment = { items: { stray: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } };
@@ -1019,18 +894,17 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /discussion item "tangent" not named after it — a feature's discussion is single and self-named/);
   });
 
-  it('closes the crash window: a research file missing on disk leaves both units pristine', () => {
+  it('closes the crash window: a discussion log missing on disk leaves both units pristine', () => {
     fix = setupFixture();
     indexFiles(fix, FEATURE_FILES);
-    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/research/auth-flow.md'));
-    commitAll(fix.project, 'drop research file');
-    const missing = path.join(fix.project, '.leeway/auth-flow/research/auth-flow.md');
-    assert.ok(refusedPristine(ABSORB, /research file missing on disk: /).error.endsWith(missing), 'the refusal names the file absolute');
-    // Validation refused before ANY move — the discussion is still the
+    fs.rmSync(path.join(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md'));
+    commitAll(fix.project, 'drop discussion log');
+    refusedPristine(ABSORB, /discussion log missing on disk/);
+    // Validation refused before ANY move — the imports are still the
     // feature's, the epic gained nothing, and the store holds the feature's
     // chunks as it did: none removed, none indexed at the epic.
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/auth-flow/discussion/auth-flow.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/auth.md')));
+    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/auth-flow/imports/notes.md')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/topics/auth/log.md')));
     assert.deepStrictEqual(indexedFiles(fix.project), FEATURE_FILES);
   });
 

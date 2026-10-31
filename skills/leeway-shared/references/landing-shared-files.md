@@ -1,6 +1,6 @@
 # Landing Shared Files
 
-*Shared reference. Loaded by the session wrappers of `leeway-research-process` and `leeway-discussion-process` (whose session loops enter **A. Land It** when the user offers a path), by `leeway-investigation-process` at its code-analysis step and its symptom interview, and by `leeway-discovery`'s session loop.*
+*Shared reference. Loaded by `leeway-investigation-process` at its code-analysis step and its symptom interview, and by `leeway-discovery`'s session loop.*
 
 ---
 
@@ -11,7 +11,7 @@ A file the user shares is an import, whenever it arrives: one home, `.workflows/
 The caller provides these via context before loading:
 
 - `work_unit` — the work unit the file belongs to. Always present.
-- `origin` — where the file was taken: `discovery`, or `{phase}/{topic}` with the phase `research`, `discussion`, or `investigation`.
+- `origin` — where the file was taken: `discovery`, or `{phase}/{topic}` with the phase `discussion` or `investigation`.
 
 ## A. Land It
 

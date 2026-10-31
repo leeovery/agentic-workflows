@@ -53,7 +53,9 @@ Commit both manifests:
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
 ```
 
-→ Proceed to **C. First Phase**.
+Set `next_phase` = `discussion`.
+
+→ Proceed to **C. Bridge**.
 
 #### If `bugfix`
 
@@ -72,30 +74,9 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "work
 
 Set `next_phase` = `investigation`.
 
-→ Proceed to **D. Bridge**.
+→ Proceed to **C. Bridge**.
 
-## C. First Phase
-
-Propose research-vs-discussion — the concerns that triggered promotion are the strongest cue:
-
-- **research** — open feasibility / "how does X work" / "what's possible" unknowns the work hasn't resolved.
-- **discussion** — the shape is clear and the open questions are trade-offs and decisions, not unknowns.
-
-Write your one-line read and its reason to `.workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json` with the Write tool — e.g. `{"read": "The concern is an open unknown — I'd start with research."}` — then render the choice:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render first-phase-gate {work_unit} --file .workflows/.cache/{work_unit}/scoping/{topic}/first-phase.json
-```
-
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-Set `next_phase` to the choice (`research` or `discussion`).
-
-→ Proceed to **D. Bridge**.
-
-## D. Bridge
+## C. Bridge
 
 The promoted work unit re-enters the pipeline the way discovery hands off single-phase work — the destination is supplied, not derived from state.
 

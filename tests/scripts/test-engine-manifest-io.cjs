@@ -42,8 +42,7 @@ function writeEpicFixture(dir) {
     work_type: 'epic',
     status: 'in-progress',
     phases: {
-      discovery: { items: { 'auth-flow': { routing: 'research', source: 'discovery', summary: 'Auth' } } },
-      research: { items: { 'auth-flow': { status: 'in-progress' } } },
+      discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery', summary: 'Auth' } } },
     },
   }, null, 2) + '\n');
 }
@@ -529,7 +528,7 @@ describe('structurally corrupt manifests refuse writes', () => {
     const untouched = plant(layout.manifest('unit'), JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: 'oops',
     }, null, 2) + '\n');
-    const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
+    const res = engineFail(['topic', 'start', 'unit', 'discussion', 'auth']);
     assert.match(res.error, /"phases" is not an object \(found string\)/);
     untouched();
   });
@@ -538,17 +537,17 @@ describe('structurally corrupt manifests refuse writes', () => {
     const untouched = plant(layout.manifest('unit'), JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: [],
     }, null, 2) + '\n');
-    const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
+    const res = engineFail(['topic', 'start', 'unit', 'discussion', 'auth']);
     assert.match(res.error, /"phases" is not an object \(found array\)/);
     untouched();
   });
 
   it('scalar mid-path container: set refuses instead of coercing to {}', () => {
     const untouched = plant(layout.manifest('unit'), JSON.stringify({
-      name: 'unit', work_type: 'epic', status: 'in-progress', phases: { research: 'active' },
+      name: 'unit', work_type: 'epic', status: 'in-progress', phases: { discussion: 'active' },
     }, null, 2) + '\n');
-    const res = engineFail(['manifest', 'set', 'unit.research.auth', 'status', 'in-progress']);
-    assert.match(res.error, /"phases\.research" is not an object — refusing to overwrite/);
+    const res = engineFail(['manifest', 'set', 'unit.discussion.auth', 'status', 'in-progress']);
+    assert.match(res.error, /"phases\.discussion" is not an object — refusing to overwrite/);
     untouched();
   });
 
@@ -571,8 +570,8 @@ describe('structurally corrupt manifests refuse writes', () => {
 
 /**
  * One call per entry of the writer lock's exempt table, each one that
- * succeeds in the epic fixture with a discussion and a specification beside
- * its research, in a conversation — the gate it answers rendered just before
+ * succeeds in the epic fixture with a discussion and a specification, in a
+ * conversation — the gate it answers rendered just before
  * it. Boot and the ledger's writes are the table's verbs that wait on the
  * lock, each taking it itself around the state writes it makes, so they have
  * none: the ledger's suite holds its writes to waiting. `enter` takes it
@@ -616,9 +615,9 @@ describe('engine writes take the writer lock', () => {
   it('a dead holder\'s claim is taken over at once: the write proceeds, the lock is cleaned up', () => {
     fs.writeFileSync(lock, DEAD);
 
-    const res = ok(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']);
+    const res = ok(dir, ['topic', 'start', 'payments', 'discussion', 'auth-flow']);
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
+    assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'].status, 'in-progress');
     assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
   });
 
@@ -675,7 +674,7 @@ describe('engine writes take the writer lock', () => {
     manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
     const env = { CLAUDE_CODE_SESSION_ID: 'sess-1' };
-    const asked = harness.ok(dir, ['ledger', 'ask', 'payments.research.auth-flow'], { env, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Who signs a user in?' }) }).id;
+    const asked = harness.ok(dir, ['ledger', 'ask', 'payments.discussion.auth-flow'], { env, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Who signs a user in?' }) }).id;
     fs.writeFileSync(lock, live());
     const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
 
@@ -685,7 +684,7 @@ describe('engine writes take the writer lock', () => {
     }
     const row = (/** @type {string} */ key) => ({ key, name: `Row ${key}`, text: `Answer ${key}`, notice: `What ${key} changes` });
     const call = { question: 'Who signs a user in?', rows: [row('1'), row('2')], lean: '1', why: 'One.', sort: 'several', mechanism: 'A provider.', product_wide: false };
-    const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.research.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
+    const { raise } = (await harness.okSectionsAsync(dir, ['raise', 'payments.discussion.auth-flow', '--answers', asked], { env, stdin: JSON.stringify(call) })).res;
     harness.output(dir, ['raise', 'show', raise], { env });
     assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');

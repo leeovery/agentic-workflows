@@ -58,17 +58,17 @@ function epicManifest() {
     status: 'in-progress',
     phases: {
       discovery: { items: { 'topic-a': { routing: 'discussion', source: 'discovery' } } },
-      research: { items: { 'auth-flow': { status: 'in-progress' } } },
       discussion: { items: { 'topic-a': { status: 'in-progress' }, 'topic-b': { status: 'in-progress' } } },
+      investigation: { items: { 'topic-a': { status: 'in-progress' }, 'topic-b': { status: 'in-progress' } } },
     },
   };
 }
 
-/** Two in-progress discussion topics, both committed clean. @param {string} dir */
+/** Two in-progress topics, their investigation documents committed clean. @param {string} dir */
 function twoTopics(dir) {
   writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n');
-  writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\n');
-  writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\n');
+  writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\n');
+  writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\n');
   commitAll(dir, 'init');
 }
 
@@ -95,19 +95,19 @@ describe('engine commit --topic: pathspec isolation', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('commits own topic + manifest, leaves the other topic dirty and uncommitted', () => {
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nprogress\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
-    const res = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
+    const res = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
 
     assert.strictEqual(res.ok, true);
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes(layout.doc('payments', 'discussion', 'topic-a')), 'own topic committed');
+    assert.ok(files.includes(layout.doc('payments', 'investigation', 'topic-a')), 'own topic committed');
     assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
-    assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'peer topic not committed');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'peer dirt untouched');
+    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-b')), 'peer topic not committed');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'peer dirt untouched');
   });
 
   it('commits an experiment record tree whole — documents, data, nested sub-records — and leaves the tree clean', () => {
@@ -116,7 +116,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeState(dir, layout.experiment('payments', 'topic-a', 'E1-x', 'data', 'samples.csv'), 'a,b\n');
     writeState(dir, layout.experiment('payments', 'topic-a', 'E1-x', 'E1.1-y', 'report.md'), '# Sub report\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
 
     const res = ok(dir, ['commit', 'payments', '-m', 'experiment(payments/topic-a): E1 designed', '--topic', 'experiment/topic-a']);
     assert.strictEqual(res.ok, true);
@@ -130,7 +130,7 @@ describe('engine commit --topic: pathspec isolation', () => {
     ]) {
       assert.ok(files.includes(rel), `record tree committed whole: ${rel}`);
     }
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`],
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`],
       'the record tree is clean; only the peer dirt remains');
   });
 
@@ -144,7 +144,7 @@ describe('engine commit --topic: pathspec isolation', () => {
   });
 
   it('reports nothing to commit on clean paths, and on paths that do not exist', () => {
-    const clean = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'discussion/topic-a']);
+    const clean = ok(dir, ['commit', 'payments', '-m', 'noop', '--topic', 'investigation/topic-a']);
     assert.strictEqual(clean.committed, null);
     assert.strictEqual(clean.note, 'nothing to commit');
 
@@ -160,11 +160,11 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeState(dir, layout.mailbox('payments', 'topic-a', '001-q.md'), 'Q\n');
     commitAll(dir, 'a delivered message');
     fs.unlinkSync(statePath(dir, layout.mailbox('payments', 'topic-a', '001-q.md')));
-    const drain = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain mailbox', '--topic', 'discussion/topic-a']);
+    const drain = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): drain mailbox', '--topic', 'investigation/topic-a']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
 
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nprogress after the drain\n');
-    const after = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress after the drain\n');
+    const after = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
     assert.match(after.committed, /^[0-9a-f]+$/, 'the emptied mailbox directory no longer breaks the pathspec');
     assert.ok(fs.existsSync(statePath(dir, layout.mailbox('payments', 'topic-a'))), 'the empty dir is still on disk — excluded, not deleted');
   });
@@ -205,8 +205,8 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'bogus/topic-a']).error, /expected <phase>\/<topic>/);
     assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion']).error, /expected <phase>\/<topic>/);
     assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/..']).error, /invalid topic name/);
-    assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'discussion/topic-a', '--plan', 'topic-a']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--inbox', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'investigation/topic-a', '--plan', 'topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--inbox', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', 'toString/topic-a']).error, /expected <phase>\/<topic>/);
     assert.match(refuses(dir, ['commit', 'payments', '-m', 'x', '--topic', '__proto__/topic-a']).error, /expected <phase>\/<topic>/);
   });
@@ -221,7 +221,7 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
     writeState(dir, layout.session('payments', '001'), '# Session 001\n');
     writeState(dir, layout.brief('payments', 'topic-a'), '# Brief — topic A\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
 
     const res = ok(dir, ['commit', 'payments', '--discovery', '-m', 'discovery(payments): shape the map']);
 
@@ -230,8 +230,8 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
     assert.ok(files.includes(layout.session('payments', '001')), 'session log committed');
     assert.ok(files.includes(layout.brief('payments', 'topic-a')), 'brief committed');
     assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
-    assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-b')), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'peer dirt untouched');
+    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-b')), 'the peer session\'s topic is not swept');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'peer dirt untouched');
   });
 
   it('reports nothing to commit on a work unit with no discovery content', () => {
@@ -241,7 +241,7 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   });
 
   it('refuses --discovery beside another scope flag', () => {
-    assert.match(refuses(dir, ['commit', 'payments', '--discovery', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', 'payments', '--discovery', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--discovery', '-m', 'x']).error, /Usage/);
   });
 });
@@ -254,21 +254,21 @@ describe('engine commit --imports: the landing\'s retry scope', () => {
   it('commits the imports home and the manifest — never a live peer\'s topic', () => {
     writeState(dir, layout.imports('payments', 'dockset-05.jpeg'), 'jpeg bytes\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeState(dir, layout.doc('payments', 'research', 'auth-flow'), '# Auth Flow\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
 
-    const res = ok(dir, ['commit', 'payments', '--imports', '-m', 'workflow(payments): import 1 file(s) for research/auth-flow']);
+    const res = ok(dir, ['commit', 'payments', '--imports', '-m', 'workflow(payments): import 1 file(s) for discussion/topic-a']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
     assert.ok(files.includes(layout.imports('payments', 'dockset-05.jpeg')), 'the landed file committed');
     assert.ok(files.includes(layout.manifest('payments')), 'the manifest its entry lives on committed');
-    assert.ok(!files.includes(layout.doc('payments', 'research', 'auth-flow')), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), [`?? ${layout.unit('payments', 'research')}/`], 'peer dirt untouched');
+    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-b')), 'the peer session\'s topic is not swept');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'peer dirt untouched');
   });
 
   it('refuses --imports beside another scope flag, and with no work unit', () => {
     assert.match(refuses(dir, ['commit', 'payments', '--imports', '-m', 'x', '--discovery']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', 'payments', '--imports', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', 'payments', '--imports', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--imports', '-m', 'x']).error, /Usage/);
   });
 });
@@ -282,7 +282,7 @@ describe('engine commit --state: the analysis scopes', () => {
     writeState(dir, layout.unitState('payments', 'discussion-consolidation-analysis.md'), '# Groupings\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
     // A live peer mid-write, in the same work unit — the theft this scope closes.
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.spec('payments', 'topic-a'), '# Spec\nhalf written\n');
 
     const res = ok(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
@@ -293,14 +293,14 @@ describe('engine commit --state: the analysis scopes', () => {
     assert.ok(files.includes(layout.manifest('payments')), 'so does the manifest it wrote');
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [` M ${layout.doc('payments', 'discussion', 'topic-b')}`, `?? ${layout.unit('payments', 'specification')}/`],
+      [` M ${layout.doc('payments', 'investigation', 'topic-b')}`, `?? ${layout.unit('payments', 'specification')}/`],
       'both live peers keep every byte they had not committed',
     );
   });
 
   it('the global form takes .leeway/.state and nothing else', () => {
     writeState(dir, layout.projectState('environment-setup.md'), '# Environment\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
     const res = ok(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
@@ -309,7 +309,7 @@ describe('engine commit --state: the analysis scopes', () => {
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [` M ${layout.doc('payments', 'discussion', 'topic-b')}`, ` M ${layout.manifest('payments')}`],
+      [` M ${layout.doc('payments', 'investigation', 'topic-b')}`, ` M ${layout.manifest('payments')}`],
       'a work unit is none of the global state dir\'s business',
     );
   });
@@ -320,10 +320,10 @@ describe('engine commit --state: the analysis scopes', () => {
     assert.strictEqual(clean.note, 'nothing to commit');
 
     assert.match(refuses(dir, ['commit', 'payments', '--state', '--discovery', '-m', 'x']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', 'payments', '--state', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', 'payments', '--state', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--state', '-m', 'x', '--plan', 'topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--state', '--inbox', '-m', 'x']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--state', '-m', 'x', '--topic', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--state', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'no-such-unit', '--state', '-m', 'x']).error, /no work unit directory/);
   });
 
@@ -351,7 +351,7 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
     createFile(dir, 'plans/topic-a/tasks.md', '# Tasks\n- one\n');
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     // A peer session mid-write, inside the same work unit.
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
 
     const res = ok(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
@@ -360,7 +360,7 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
     assert.deepStrictEqual(headFiles(dir), [layout.plan('payments', 'topic-a')], 'the planning topic rides the state');
     assert.deepStrictEqual(codeHeadFiles(dir), ['plans/topic-a/tasks.md'],
       'the declared storage rides the code tree — and code outside it never does');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`],
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`],
       'a sibling topic inside the same work unit is not a planning session\'s to commit');
     assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'nor is code outside the plan\'s storage');
   });
@@ -422,7 +422,7 @@ describe('engine commit --paths: the code commit', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     createFile(dir, 'src/new.js', 'const n = 1;\n');
     createFile(dir, 'src/other.js', 'const y = 2;\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\na doc session\'s dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\na doc session\'s dirt\n');
 
     const res = ok(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
@@ -522,12 +522,12 @@ describe('engine commit --paths: the code commit', () => {
   it('refuses escapes, workflow artifacts, and a missing target', () => {
     assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
     assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
-    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/discussion/topic-a.md', '-m', 'x', ...forTopic]).error,
-      'commit --paths: ".leeway/payments/discussion/topic-a.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery/--plan)');
+    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/investigation/topic-a.md', '-m', 'x', ...forTopic]).error,
+      'commit --paths: ".leeway/payments/investigation/topic-a.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery/--plan)');
     assert.match(refuses(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...forTopic]).error, /neither on disk nor tracked/);
     assert.match(refuses(dir, ['commit', '--paths', '-m', 'x', ...forTopic]).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x', '--for', 'payments', 'discussion/topic-a']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x', '--for', 'payments', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--for', 'payments', 'review/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...forTopic]).error, /Usage/);
     assert.strictEqual(codeStatusLines(dir).length, 0, 'a refusal touches nothing');
@@ -537,7 +537,7 @@ describe('engine commit --paths: the code commit', () => {
     const wt = `${dir}-side`;
     git(dir, ['worktree', 'add', '-q', '-b', 'side', wt]);
     try {
-      const inState = statePath(dir, layout.doc('payments', 'discussion', 'topic-a'));
+      const inState = statePath(dir, layout.doc('payments', 'investigation', 'topic-a'));
       assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...forTopic]).error,
         `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
     } finally {
@@ -591,7 +591,7 @@ describe('engine commit --paths: the code commit', () => {
       commitAll(repo, 'init');
       createFile(project, 'src/app.js', 'const x = 2;\n');
       createFile(project, 'src/leftover.js', 'const l = 1;\n');
-      writeState(repo, layout.doc('payments', 'discussion', 'topic-b'), '# a doc session\'s own\n');
+      writeState(repo, layout.doc('payments', 'investigation', 'topic-b'), '# a doc session\'s own\n');
       createFile(repo, 'other/x.js', 'const s = 2;\n');
 
       const res = ok(project, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
@@ -1225,36 +1225,36 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nprogress\n');
-    ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
-    assert.ok(beaten('discussion', 'topic-a'), 'the cadence commit is the heartbeat');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a']);
+    assert.ok(beaten('investigation', 'topic-a'), 'the cadence commit is the heartbeat');
 
     // The conclusion: `topic complete` then its commit. The completed item
     // makes that commit a release, so a concluded topic never reads held.
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nconcluded\n');
-    ok(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-a']);
-    ok(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a', '--topic', 'discussion/topic-a']);
-    assert.ok(!beaten('discussion', 'topic-a'), 'the conclusion commit clears instead of beating');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nconcluded\n');
+    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-a']);
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments): complete topic-a', '--topic', 'investigation/topic-a']);
+    assert.ok(!beaten('investigation', 'topic-a'), 'the conclusion commit clears instead of beating');
 
     // The conclude sweep committing a dead session's leavings must not
     // resurrect the hold it just swept.
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\ndead session leavings\n');
-    ok(dir, ['commit', 'payments', '-m', 'chore(payments/topic-b): sweep session leavings', '--topic', 'discussion/topic-b', '--sweep']);
-    assert.ok(!beaten('discussion', 'topic-b'), '--sweep never stamps the swept topic');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\ndead session leavings\n');
+    ok(dir, ['commit', 'payments', '-m', 'chore(payments/topic-b): sweep session leavings', '--topic', 'investigation/topic-b', '--sweep']);
+    assert.ok(!beaten('investigation', 'topic-b'), '--sweep never stamps the swept topic');
   });
 
   it('--sweep leaves a live peer\'s hold as it found it — neither stamped nor cleared', () => {
     // The spec-side resolution edits and reindexes another phase's document;
     // a peer that is alive but idle still holds it.
-    const peer = beatFile('discussion', 'topic-b');
+    const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\nresolution landed\n');
-    ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
-      '--topic', 'discussion/topic-b', '--sweep']);
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\nresolution landed\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-b): supersede the decision',
+      '--topic', 'investigation/topic-b', '--sweep']);
 
-    assert.ok(beaten('discussion', 'topic-b'), 'the peer\'s hold stands');
+    assert.ok(beaten('investigation', 'topic-b'), 'the peer\'s hold stands');
     assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
       'and this session\'s identity is never stamped over the peer\'s');
   });
@@ -1264,15 +1264,15 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     // sitting in it idle-but-alive (a reopen, a correction round). Terminal
     // status releases a slot this session holds; it must never release one
     // this session is only visiting.
-    ok(dir, ['topic', 'start', 'payments', 'discussion', 'topic-b']);
-    ok(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-b']);
-    const peer = beatFile('discussion', 'topic-b');
+    ok(dir, ['topic', 'start', 'payments', 'investigation', 'topic-b']);
+    ok(dir, ['topic', 'complete', 'payments', 'investigation', 'topic-b']);
+    const peer = beatFile('investigation', 'topic-b');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\nthe resolution landed\n');
-    ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
-      '--topic', 'discussion/topic-b', '--sweep']);
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\nthe resolution landed\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-b): supersede the decision',
+      '--topic', 'investigation/topic-b', '--sweep']);
 
     assert.strictEqual(JSON.parse(fs.readFileSync(peer, 'utf8')).session_id, 'peer',
       'a completed topic another session holds is still that session\'s to release');
@@ -1372,9 +1372,9 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {
-    writeState(dir, layout.doc('payments', 'research', 'never-registered'), '# Notes\n');
-    ok(dir, ['commit', 'payments', '-m', 'research(payments/never-registered): notes', '--topic', 'research/never-registered']);
-    assert.ok(!beaten('research', 'never-registered'), 'no item, nothing to hold');
+    writeState(dir, layout.doc('payments', 'investigation', 'never-registered'), '# Notes\n');
+    ok(dir, ['commit', 'payments', '-m', 'investigation(payments/never-registered): notes', '--topic', 'investigation/never-registered']);
+    assert.ok(!beaten('investigation', 'never-registered'), 'no item, nothing to hold');
   });
 
   it('agent-store writes beat the topic they address', () => {
@@ -1539,9 +1539,9 @@ describe('commit door: index.lock retry and the commit lock', () => {
 
   it('a state commit never takes the code tree\'s index — a peer\'s hold there blocks nothing', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nprogress\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
 
-    const res = ok(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
   });
@@ -1555,34 +1555,34 @@ describe('commit door: transaction tails commit their own scope', () => {
   it('a deletion that empties its scope still commits (inbox delete)', () => {
     writeState(dir, layout.archived('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
     commitAll(dir, 'an archived idea');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer dirt\n');
 
     const res = ok(dir, ['inbox', 'delete', path.join(STATE_DIR_NAME, layout.archived('ideas', '2026-10-30--a-thought.md'))]);
 
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
     assert.ok(headFiles(dir).includes(layout.archived('ideas', '2026-10-30--a-thought.md')), 'the deletion is in the commit');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('the inbox scope commits the inbox alone — dirt outside it that the state does not ignore stays out', () => {
     writeState(dir, layout.inbox('ideas', '2026-10-30--a-thought.md'), '# A thought\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-b'), '# Topic B\npeer dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer dirt\n');
 
     ok(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
     assert.deepStrictEqual(headFiles(dir), [layout.inbox('ideas', '2026-10-30--a-thought.md')]);
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-b')}`], 'the live session\'s dirt is untouched');
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'the live session\'s dirt is untouched');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nlive session dirt\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nlive session dirt\n');
 
     const res = ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir), [layout.manifest('payments')],
       'a cancel from the epic menu takes nothing a session is holding');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'discussion', 'topic-a')}`]);
+    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-a')}`]);
   });
 
   it('the discovery session close commits the discovery scope, not the work unit', () => {
@@ -1594,7 +1594,7 @@ describe('commit door: transaction tails commit their own scope', () => {
 
     writeState(dir, layout.session('payments', '001'), '# Session 001\n\n## Conclusion\n');
     writeState(dir, layout.brief('payments', 'topic-a'), '# Brief\n');
-    writeState(dir, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\na peer session mid-turn\n');
+    writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\na peer session mid-turn\n');
 
     const res = ok(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): synthesise 1 topic']);
 
@@ -1602,7 +1602,7 @@ describe('commit door: transaction tails commit their own scope', () => {
     const files = headFiles(dir);
     assert.ok(files.includes(layout.session('payments', '001')));
     assert.ok(files.includes(layout.brief('payments', 'topic-a')));
-    assert.ok(!files.includes(layout.doc('payments', 'discussion', 'topic-a')), 'the peer\'s half-written document stays uncommitted');
+    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-a')), 'the peer\'s half-written document stays uncommitted');
   });
 });
 
@@ -1612,7 +1612,7 @@ describe('commit door: two live sessions on one checkout', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   // One session's turn loop: write its own topic file, commit it, repeat —
-  // the cadence the discussion and research flows run.
+  // the cadence a document's session runs.
   const SESSION = [
     "const fs = require('fs');",
     "const { execFileSync } = require('child_process');",
@@ -1620,14 +1620,14 @@ describe('commit door: two live sessions on one checkout', () => {
     'for (let i = 1; i <= Number(turns); i++) {',
     '  fs.writeFileSync(file, "# " + topic + "\\n" + Array.from({length: i}, (_, n) => "line " + (n + 1)).join("\\n") + "\\n");',
     '  execFileSync("node", [engine, "commit", "payments", "-m",',
-    '    "discussion(payments/" + topic + "): turn " + i, "--topic", "discussion/" + topic],',
+    '    "investigation(payments/" + topic + "): turn " + i, "--topic", "investigation/" + topic],',
     '    { cwd: dir, encoding: "utf8" });',
     '}',
   ].join('\n');
 
   /** @param {string} topic @param {number} turns */
   function session(dir, topic, turns) {
-    const proc = spawn('node', ['-e', SESSION, ENGINE, dir, topic, String(turns), statePath(dir, layout.doc('payments', 'discussion', topic))], { cwd: dir });
+    const proc = spawn('node', ['-e', SESSION, ENGINE, dir, topic, String(turns), statePath(dir, layout.doc('payments', 'investigation', topic))], { cwd: dir });
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk; });
     return new Promise((resolve) => proc.on('exit', (code) => resolve({ code, stderr })));
@@ -1645,20 +1645,20 @@ describe('commit door: two live sessions on one checkout', () => {
 
     for (const sha of commits) {
       const subject = stateGit(dir, ['log', '--format=%s', '-1', sha]).trim();
-      if (!subject.startsWith('discussion(payments/')) continue;
-      const mine = subject.slice('discussion(payments/'.length).split(')')[0];
+      if (!subject.startsWith('investigation(payments/')) continue;
+      const mine = subject.slice('investigation(payments/'.length).split(')')[0];
       const foreign = mine === 'topic-a' ? 'topic-b' : 'topic-a';
       const files = stateGit(dir, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
-      assert.ok(!files.includes(layout.doc('payments', 'discussion', foreign)),
+      assert.ok(!files.includes(layout.doc('payments', 'investigation', foreign)),
         `${subject} (${sha}) swept a foreign session's file:\n${files.join('\n')}\n${log}`);
-      assert.deepStrictEqual(files, [layout.doc('payments', 'discussion', mine)],
+      assert.deepStrictEqual(files, [layout.doc('payments', 'investigation', mine)],
         `${subject} committed more than its own action`);
     }
 
     // Both sessions' last turn is in HEAD, and the tree is clean.
     for (const topic of ['topic-a', 'topic-b']) {
-      const committed = stateGit(dir, ['show', `HEAD:payments/discussion/${topic}.md`]);
-      assert.strictEqual(committed, fs.readFileSync(statePath(dir, layout.doc('payments', 'discussion', topic)), 'utf8'),
+      const committed = stateGit(dir, ['show', `HEAD:payments/investigation/${topic}.md`]);
+      assert.strictEqual(committed, fs.readFileSync(statePath(dir, layout.doc('payments', 'investigation', topic)), 'utf8'),
         `${topic}'s last turn never reached a commit`);
       assert.ok(committed.trim().endsWith(`line ${turns}`), `${topic} lost a turn`);
     }
@@ -1702,7 +1702,7 @@ describe('commit door: transaction-tail degrade', () => {
   it('a tail-committing verb saves state and degrades to a pending note when git is blocked', () => {
     holdStateRef(dir);
 
-    const res = ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    const res = ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'cancelled');
@@ -1712,7 +1712,7 @@ describe('commit door: transaction-tail degrade', () => {
       'the cancel wrote the manifest alone — narrower than the work unit\'s state scope, so the retry stays generic');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), `warnings carry the git error: ${JSON.stringify(res.warnings)}`);
     const manifest = JSON.parse(fs.readFileSync(statePath(dir, layout.manifest('payments')), 'utf8'));
-    assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
+    assert.strictEqual(manifest.phases.discussion.items['topic-b'].status, 'cancelled', 'state landed despite the failed commit');
   });
 
   it('a foreign-topic tail prescribes a retry in the target\'s scope, as a sweep that beats no more than the verb did, and the retry commits what it left', () => {
@@ -1725,7 +1725,7 @@ describe('commit door: transaction-tail degrade', () => {
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /retry with: engine commit payments --topic discussion\/topic-b --sweep -m /, 'the delivery\'s retry is a sweep of the target, so it never beats it');
     fs.unlinkSync(path.join(dir, '.git/refs/heads/leeway-state.lock'));
-    ok(dir, ['commit', 'payments', '--topic', 'discussion/topic-b', '--sweep', '-m', 'the retry']);
+    ok(dir, ['commit', 'payments', '--topic', 'investigation/topic-b', '--sweep', '-m', 'the retry']);
     assert.deepStrictEqual(headFiles(dir), [layout.mailbox('payments', 'topic-b', '001-q.md')]);
   });
 

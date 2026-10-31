@@ -128,12 +128,12 @@ describe('orderTopics', () => {
 
   it("puts a topic's later record ahead of an earlier, within the places the topic's results hold", () => {
     const placed = order([
-      ranked('research', 'auth', 1),
+      ranked('investigation', 'auth', 1),
       ranked('other', null),
       ranked('discussion', 'auth', 2),
       ranked('spec', 'auth', 3),
     ]);
-    assert.deepStrictEqual(ids(placed), ['spec', 'other', 'discussion', 'research']);
+    assert.deepStrictEqual(ids(placed), ['spec', 'other', 'discussion', 'investigation']);
   });
 
   it('keeps each stage in its own order, and a topic with one stage as it ranked', () => {
@@ -154,7 +154,7 @@ describe('orderTopics', () => {
   });
 
   it('records the place its score gave a result the order moved, and nothing on one it left', () => {
-    const placed = order([ranked('research', 'auth', 1), ranked('other', null), ranked('spec', 'auth', 3)]);
+    const placed = order([ranked('investigation', 'auth', 1), ranked('other', null), ranked('spec', 'auth', 3)]);
     assert.deepStrictEqual(placed.map((r) => r.scoring.moved), [{ from: 3, to: 1 }, undefined, { from: 1, to: 3 }]);
   });
 });

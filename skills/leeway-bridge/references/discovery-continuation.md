@@ -14,6 +14,6 @@ The epic returns to its menu, where the person picks the next move from the map.
 
 #### Otherwise
 
-The work goes to the first phase the discovery endpoint supplied as `next_phase` — `research`, `discussion`, `investigation` or `scoping`.
+The work goes to the first phase the discovery endpoint supplied as `next_phase` — `discussion`, `investigation` or `scoping`.
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-{next_phase}-process {work_type} {work_unit}`.

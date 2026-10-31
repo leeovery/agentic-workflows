@@ -77,7 +77,6 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        research: { items: { auth: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: { auth: { status: 'completed' } } },
         planning: { items: { auth: { status: 'in-progress' } } },
@@ -86,13 +85,12 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
         specification: { items: { caching: { status: 'in-progress' } } },
       },
     });
-    assert.deepStrictEqual(activeWorkUnit(dir, 'auth').unit.completed_phases, ['research', 'discussion', 'specification']);
-    assert.deepStrictEqual(activeWorkUnit(dir, 'caching').unit.completed_phases, ['research', 'discussion']);
+    assert.deepStrictEqual(activeWorkUnit(dir, 'auth').unit.completed_phases, ['discussion', 'specification']);
+    assert.deepStrictEqual(activeWorkUnit(dir, 'caching').unit.completed_phases, ['discussion']);
   });
 
   describe('edge cases', () => {
@@ -110,11 +108,11 @@ describe('leeway-continue-linear discovery', () => {
       }
     });
 
-    it('counts only the type\'s own pipeline — research is no bugfix phase, discussion no quick-fix phase', () => {
+    it('counts only the type\'s own pipeline — discussion is no bugfix phase, nor a quick-fix one', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          research: { items: { crash: { status: 'completed' } } },
+          discussion: { items: { crash: { status: 'completed' } } },
           investigation: { items: { crash: { status: 'in-progress' } } },
         },
       });

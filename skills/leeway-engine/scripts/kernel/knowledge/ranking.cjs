@@ -18,7 +18,6 @@ const TIER_STEP = 0.01;
 const CONFIDENCE_RANK = {
   'high': 4,
   'medium': 3,
-  'low-medium': 2,
   'low': 1,
 };
 

@@ -360,7 +360,7 @@ describe('conversation position', () => {
 
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
-    assert.strictEqual(skills.length, 12);
+    assert.strictEqual(skills.length, 11);
     for (const skill of skills) assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
     const whole = WHOLE.map((phase) => skillAt('pay', phase));
     for (const skill of skills.filter((named) => !whole.includes(named))) {
@@ -543,7 +543,6 @@ describe('conversation position', () => {
   it('each phase names its own documents', () => {
     workUnit('fix', 'quick-fix');
     const cases = [
-      ['research', 'ledger', ['.leeway/pay/research/ledger.md']],
       ['investigation', 'ledger', ['.leeway/pay/investigation/ledger.md']],
       ['specification', 'ledger', ['.leeway/pay/specification/ledger/specification.md']],
       ['planning', 'ledger', ['.leeway/pay/planning/ledger/planning.md', '.leeway/pay/planning/ledger/phase-2-tasks.md', '.leeway/pay/planning/ledger/phase-10-tasks.md']],
@@ -708,9 +707,9 @@ describe('conversation position', () => {
     assert.strictEqual(answer.text, 'This conversation was working in the experiment of "ledger" in the epic "pay", but the topic is postponed, so there is nothing to carry on from.');
   });
 
-  it('research, an experiment and a discussion close with their topic on the map; a specification and a plan do not', () => {
+  it('an experiment and a discussion close with their topic on the map; a specification and a plan do not', () => {
     for (const marker of ['cancelled', 'postponed']) {
-      for (const [phase, closes] of [['research', true], ['experiment', true], ['discussion', true], ['specification', false], ['planning', false]]) {
+      for (const [phase, closes] of [['experiment', true], ['discussion', true], ['specification', false], ['planning', false]]) {
         install(`leeway-${phase}-process`);
         workUnit('pay', 'epic', {
           discovery: { items: { ledger: { [marker]: true } } },
@@ -743,16 +742,16 @@ describe('conversation position', () => {
 
   it('names each file under the root of the project the call runs in, a dashed or dotted root spelled as it is', () => {
     const root = harness.setupFixtureAt(path.join(dir, 'code', 'my-repo.app'));
-    fs.mkdirSync(path.join(root, '.claude', 'skills', 'leeway-research-process'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.claude', 'skills', 'leeway-research-process', 'SKILL.md'), '# research\n');
-    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'research'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.claude', 'skills', 'leeway-investigation-process'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude', 'skills', 'leeway-investigation-process', 'SKILL.md'), '# investigation\n');
+    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'investigation'), { recursive: true });
     fs.writeFileSync(path.join(root, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
-    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'research', 'ledger.md'), '# ledger\n');
-    writePosition({ name: 'pay', phase: 'research', topic: 'ledger' });
+    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'investigation', 'ledger.md'), '# ledger\n');
+    writePosition({ name: 'pay', phase: 'investigation', topic: 'ledger' });
     const out = harness.output(root, ['conversation', 'position'], { env: env() });
     const answer = JSON.parse(out.slice(out.indexOf('=== POSITION')).split('\n')[1]);
-    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/research/ledger.md')]);
-    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/research/ledger.md`), answer.text);
+    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/investigation/ledger.md')]);
+    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/investigation/ledger.md`), answer.text);
   });
 
   it('reads another conversation by its id, from any project the call runs in; the calling one\'s by default', () => {

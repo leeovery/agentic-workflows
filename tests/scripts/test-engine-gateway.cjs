@@ -221,10 +221,9 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
 // the gate the flow resumes at is fetched by the step that shows it. Every
 // command a recovery names — a full `node .claude/skills/…` call, or an
 // `engine render` shorthand — is run over a project repo holding each phase's
-// item at the placeholder address, in the states a gate would be owed over: an
-// undecided subtopic beside a decided one (the defer gate), threads on the
-// research register, several live experiments (the record pick), agents in
-// flight, a baseline mid-assessment, and a roadmap with waiting items.
+// item at the placeholder address, in the states a gate would be owed over:
+// several live experiments (the record pick), an agent in flight, a baseline
+// mid-assessment, and a roadmap with waiting items.
 describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
   const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
@@ -255,26 +254,18 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
     createManifest(dir, 'wu', {
       work_type: 'epic',
       phases: {
-        research: { items: { t: { status: 'in-progress', threads: {
-          'cart-persistence': { question: 'Does the cart survive a session?', status: 'open', origin: 'seed', parent: null },
-        } } } },
         experiment: { items: { t: { status: 'in-progress', experiments: {
           E1: { slug: 'cold-start', status: 'running' },
           E2: { slug: 'warm-cache', status: 'designed' },
         } } } },
-        discussion: { items: { t: { status: 'in-progress', subtopics: {
-          'token-refresh': { status: 'exploring', parent: null },
-          'session-storage': { status: 'decided', parent: null },
-        } } } },
+        discussion: { items: { t: { status: 'in-progress' } } },
         specification: { items: { t: { status: 'in-progress', finding_gate_mode: 'gated' } } },
         planning: { items: { t: { status: 'in-progress' } } },
         implementation: { items: { t: { status: 'in-progress' } } },
       },
     });
-    for (const [phase, kind] of [['discussion', 'review'], ['research', 'deep-dive']]) {
-      const res = spawnSync('node', [ENGINE, 'agent', 'dispatch', 'wu', phase, 't', '--kind', kind], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(res.status, 0, res.stderr);
-    }
+    const res = spawnSync('node', [ENGINE, 'agent', 'dispatch', 'wu', 'discussion', 't', '--kind', 'review'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, res.stderr);
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -283,17 +274,12 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   });
 
   it('the world holds what a gate would be owed over', () => {
-    const map = spawnSync('node', [path.join(SKILLS, 'leeway-discussion-process/scripts/gateway.cjs'), 'map', 'wu', 't'], { cwd: dir, encoding: 'utf8' });
-    assert.match(map.stdout, /^all_decided: false$/m);
-    assert.match(map.stdout, /^unresolved: \["token-refresh"\]$/m);
     const wait = spawnSync('node', [ENGINE, 'render', 'wait-agents', 'wu.t'], { cwd: dir, encoding: 'utf8' });
     assert.match(wait.stdout, /^=== MENU: wait for agents/m, 'a wait is owed over the review in flight — the recovery read must not carry it');
     const pick = spawnSync('node', [ENGINE, 'render', 'experiment-pick', 'wu.experiment.t'], { cwd: dir, encoding: 'utf8' });
     assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery read must not carry it');
-    for (const phase of ['discussion', 'research']) {
-      const scan = spawnSync('node', [ENGINE, 'agent', 'scan', 'wu', phase, 't'], { cwd: dir, encoding: 'utf8' });
-      assert.strictEqual(JSON.parse(scan.stdout).in_flight.length, 1, `${phase}: an agent is in flight`);
-    }
+    const scan = spawnSync('node', [ENGINE, 'agent', 'scan', 'wu', 'discussion', 't'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(JSON.parse(scan.stdout).in_flight.length, 1, 'an agent is in flight');
   });
 
   for (const { skill, command } of recoveries) {
@@ -351,7 +337,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
             gone: { routing: 'discussion', source: 'discovery', cancelled: true },
             exports: { routing: 'discussion', source: 'discovery', postponed: true },
           } },
-          research: { items: { kitchen: { status: 'completed' } } },
           discussion: { items: {
             auth: { status: 'in-progress' },
             billing: { status: 'completed' },
@@ -367,10 +352,10 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
         },
       });
       createFile(dir, '.leeway/live-epic/specification/billing/specification.md', '# Billing\n');
-      linearUnit(dir, 'live-feature', 'feature', 'research', 'discussion');
+      linearUnit(dir, 'live-feature', 'feature', 'discussion', 'specification');
       linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
       linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');
-      linearUnit(dir, 'live-policy', 'cross-cutting', 'research', 'discussion');
+      linearUnit(dir, 'live-policy', 'cross-cutting', 'discussion', 'specification');
     },
     // No active work: the start view's empty state, every conditional row on.
     quiet: projectManifest,

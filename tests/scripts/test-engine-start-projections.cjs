@@ -68,8 +68,7 @@ function fullFixture(dir) {
   createManifest(dir, 'quiz-competition-v1', {
     work_type: 'epic',
     phases: {
-      research: { items: { 'kitchen-hardware': { status: 'completed' } } },
-      discussion: { items: { 'menu-admin': { status: 'in-progress' } } },
+      discussion: { items: { 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' } } },
     },
   });
   createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
@@ -125,7 +124,7 @@ describe('start projections: overview', () => {
   it('numbers continuously across sections, skipping empty ones', () => {
     createManifest(dir, 'dark-mode', {});
     createManifest(dir, 'auth-flow', {});
-    createManifest(dir, 'v1', { work_type: 'epic', phases: { research: { items: { exploration: { status: 'in-progress' } } } } });
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { discussion: { items: { exploration: { status: 'in-progress' } } } } });
     assert.strictEqual(startOverview(startDetail(dir)), [
       'Features',
       '  ├─ 1. Auth Flow',
@@ -312,16 +311,16 @@ describe('start projections: empty state', () => {
       '',
       "**`s/start`**         → Not sure what kind yet — describe it and we'll",
       `${NB(18)}shape it`,
-      '**`f/feature`**       → Single topic: (research →) discussion → spec →',
-      `${NB(18)}plan → implement → review`,
+      '**`f/feature`**       → Single topic: discussion → spec → plan →',
+      `${NB(18)}implement → review`,
       '**`e/epic`**          → Multiple topics, multi-session, same pipeline',
       `${NB(18)}per topic`,
       '**`b/bugfix`**        → Investigation → spec → plan → implement →',
       `${NB(18)}review`,
       '**`q/quick-fix`**     → Scoping → implement → review (no formal',
       `${NB(18)}planning)`,
-      '**`c/cross-cutting`** → (Research →) discussion → spec (patterns or',
-      `${NB(18)}policies that inform other work)`,
+      '**`c/cross-cutting`** → Discussion → spec (patterns or policies that',
+      `${NB(18)}inform other work)`,
       '**`h/help`**          → How the workflows work',
     ].join('\n'));
     assert.deepStrictEqual(

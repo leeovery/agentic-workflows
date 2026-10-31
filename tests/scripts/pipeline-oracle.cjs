@@ -37,8 +37,6 @@ const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'
 const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
 const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const { roadmapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/roadmap.cjs'));
-const { mapState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/discussion-map.cjs'));
-const { registerState } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/research-threads.cjs'));
 const {
   RECORDS_DIR, PRODUCT_FILE, knowledgeFiles,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
@@ -197,15 +195,6 @@ function auditState(dir, label) {
           assert.ok(vocab.includes(item.status),
             ctx(`${wu}.${phase}.${topic}: status "${item.status}" not in ${phase} vocabulary`));
         }
-        // A research item's thread register derives: every row in
-        // vocabulary, every parent top-level, a note on a parked row alone.
-        if (phase === 'research') {
-          assert.doesNotThrow(() => registerState(manifest, topic), ctx(`${wu}.research.${topic}: thread register`));
-        }
-        // A discussion item's map derives the same way: every subtopic in vocabulary.
-        if (phase === 'discussion') {
-          assert.doesNotThrow(() => mapState(manifest, topic), ctx(`${wu}.discussion.${topic}: discussion map`));
-        }
       }
       // Derivation must hold for every phase present.
       derivations.phaseStatus(manifest, phase);
@@ -237,10 +226,6 @@ function auditState(dir, label) {
               ctx(`agent ${ph.name}/${tp.name}/${key}: status "${row.status}" not in vocabulary`));
             assert.ok(row.surfaced.every((f) => row.findings.includes(f)),
               ctx(`agent ${ph.name}/${tp.name}/${key}: surfaced ids must be recorded findings`));
-            if (ph.name === 'research') {
-              assert.strictEqual(row.kind, 'deep-dive',
-                ctx(`agent ${ph.name}/${tp.name}/${key}: research carries the deep dive alone — a "${row.kind}" row has no reader there`));
-            }
             if (ph.name === 'discussion' && ['review', 'closing-pass'].includes(row.kind)) {
               assert.ok(Object.hasOwn(row, 'ledger_mark'),
                 ctx(`agent ${ph.name}/${tp.name}/${key}: a discussion review or closing pass row must carry the ledger's mark at its dispatch — arming and the gap review measure from it`));

@@ -458,36 +458,11 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set topic-level research with topic works${NC}"
-setup_fixture
-create_wu topicful feature "Topic research"
-run_cli set topicful.research.exploration status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout get topicful.research.exploration status)
-
-assert_equals "$output" "in-progress" "Set research with topic routes correctly"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: set topic-level research for epic uses items${NC}"
-setup_fixture
-create_wu topicful2 epic "Topic research epic"
-run_cli set topicful2.research.exploration status in-progress >/dev/null 2>&1
-run_cli set topicful2.research.exploration status completed >/dev/null 2>&1
-output=$(run_cli_stdout get topicful2.research.exploration status)
-
-assert_equals "$output" "completed" "Epic research with topic uses items path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: get phase-level (2-segment) returns whole phase object${NC}"
 setup_fixture
 create_wu topicful3 feature "Topic get"
-run_cli set topicful3.research.exploration status completed >/dev/null 2>&1
-output=$(run_cli_stdout get topicful3.research)
+run_cli set topicful3.discussion.topicful3 status completed >/dev/null 2>&1
+output=$(run_cli_stdout get topicful3.discussion)
 
 assert_contains "$output" '"status": "completed"' "Get phase-level returns phase object"
 
@@ -593,17 +568,17 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: unstarted is legal on research and discussion only${NC}"
+echo -e "${YELLOW}Test: unstarted is legal on discussion and investigation, never implementation${NC}"
 setup_fixture
 create_wu unstarted-check feature "Unstarted"
-run_cli set unstarted-check.research.unstarted-check status unstarted >/dev/null 2>&1
 run_cli set unstarted-check.discussion.unstarted-check status unstarted >/dev/null 2>&1
+run_cli set unstarted-check.investigation.unstarted-check status unstarted >/dev/null 2>&1
 
-research_status=$(run_cli_stdout get unstarted-check.research.unstarted-check status)
 disc_status=$(run_cli_stdout get unstarted-check.discussion.unstarted-check status)
+inv_status=$(run_cli_stdout get unstarted-check.investigation.unstarted-check status)
 
-assert_equals "$research_status" "unstarted" "Research accepts unstarted"
 assert_equals "$disc_status" "unstarted" "Discussion accepts unstarted"
+assert_equals "$inv_status" "unstarted" "Investigation accepts unstarted"
 assert_exit_code 1 "Implementation rejects unstarted" set unstarted-check.implementation.unstarted-check status unstarted
 
 echo ""
@@ -1194,21 +1169,21 @@ echo ""
 echo -e "${YELLOW}Test: delete work-unit-level field${NC}"
 setup_fixture
 create_wu del-wu feature "Delete WU"
-run_cli set del-wu.research analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
-run_cli delete del-wu.research analysis_cache >/dev/null 2>&1
-output=$(run_cli_stdout exists del-wu.research analysis_cache)
+run_cli set del-wu.discussion analysis_cache '{"checksum":"abc","generated":"2026-01-01"}' >/dev/null 2>&1
+run_cli delete del-wu.discussion analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-wu.discussion analysis_cache)
 
 assert_equals "$output" "false" "Deleted field no longer exists"
 
 # Verify sibling fields preserved
-run_cli set del-wu.research status completed >/dev/null 2>&1
+run_cli set del-wu.discussion status completed >/dev/null 2>&1
 
 # Re-create and delete to check siblings
-run_cli set del-wu.research analysis_cache '{"checksum":"xyz"}' >/dev/null 2>&1
-run_cli delete del-wu.research analysis_cache >/dev/null 2>&1
-research_status=$(run_cli_stdout get del-wu.research status)
+run_cli set del-wu.discussion analysis_cache '{"checksum":"xyz"}' >/dev/null 2>&1
+run_cli delete del-wu.discussion analysis_cache >/dev/null 2>&1
+phase_status=$(run_cli_stdout get del-wu.discussion status)
 
-assert_equals "$research_status" "completed" "Sibling fields preserved after delete"
+assert_equals "$phase_status" "completed" "Sibling fields preserved after delete"
 
 echo ""
 
@@ -1253,12 +1228,12 @@ echo ""
 echo -e "${YELLOW}Test: delete nested dot-path field${NC}"
 setup_fixture
 create_wu del-nested feature "Nested"
-run_cli set del-nested.research analysis_cache.checksum "abc123" >/dev/null 2>&1
-run_cli set del-nested.research analysis_cache.generated "2026-01-01" >/dev/null 2>&1
-run_cli delete del-nested.research analysis_cache.checksum >/dev/null 2>&1
+run_cli set del-nested.discussion analysis_cache.checksum "abc123" >/dev/null 2>&1
+run_cli set del-nested.discussion analysis_cache.generated "2026-01-01" >/dev/null 2>&1
+run_cli delete del-nested.discussion analysis_cache.checksum >/dev/null 2>&1
 
-checksum_exists=$(run_cli_stdout exists del-nested.research analysis_cache.checksum)
-generated_exists=$(run_cli_stdout exists del-nested.research analysis_cache.generated)
+checksum_exists=$(run_cli_stdout exists del-nested.discussion analysis_cache.checksum)
+generated_exists=$(run_cli_stdout exists del-nested.discussion analysis_cache.generated)
 
 assert_equals "$checksum_exists" "false" "Nested field deleted"
 assert_equals "$generated_exists" "true" "Sibling nested field preserved"
@@ -1270,14 +1245,14 @@ echo ""
 echo -e "${YELLOW}Test: delete entire subtree${NC}"
 setup_fixture
 create_wu del-tree feature "Tree"
-run_cli set del-tree.research analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
-run_cli delete del-tree.research analysis_cache >/dev/null 2>&1
+run_cli set del-tree.discussion analysis_cache '{"checksum":"abc","generated":"2026-01-01","files":["a.md","b.md"]}' >/dev/null 2>&1
+run_cli delete del-tree.discussion analysis_cache >/dev/null 2>&1
 
-cache_exists=$(run_cli_stdout exists del-tree.research analysis_cache)
-research_exists=$(run_cli_stdout exists del-tree.research)
+cache_exists=$(run_cli_stdout exists del-tree.discussion analysis_cache)
+phase_exists=$(run_cli_stdout exists del-tree.discussion)
 
 assert_equals "$cache_exists" "false" "Entire subtree deleted"
-assert_equals "$research_exists" "true" "Parent key preserved"
+assert_equals "$phase_exists" "true" "Parent key preserved"
 
 echo ""
 
@@ -1303,9 +1278,9 @@ echo ""
 echo -e "${YELLOW}Test: delete phase-level field (2-segment path)${NC}"
 setup_fixture
 create_wu del-phase feature "Phase del"
-run_cli set del-phase.research analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
-run_cli delete del-phase.research analysis_cache >/dev/null 2>&1
-output=$(run_cli_stdout exists del-phase.research analysis_cache)
+run_cli set del-phase.discussion analysis_cache '{"checksum":"abc"}' >/dev/null 2>&1
+run_cli delete del-phase.discussion analysis_cache >/dev/null 2>&1
+output=$(run_cli_stdout exists del-phase.discussion analysis_cache)
 
 assert_equals "$output" "false" "Phase-level delete works"
 
@@ -1325,8 +1300,8 @@ echo ""
 echo -e "${YELLOW}Test: push phase-level (2-segment path)${NC}"
 setup_fixture
 create_wu push-phase feature "Phase push"
-run_cli push push-phase.research analysis_cache.files "a.md" >/dev/null 2>&1
-output=$(run_cli_stdout get push-phase.research analysis_cache.files)
+run_cli push push-phase.discussion analysis_cache.files "a.md" >/dev/null 2>&1
+output=$(run_cli_stdout get push-phase.discussion analysis_cache.files)
 
 assert_contains "$output" '"a.md"' "Phase-level push works"
 
@@ -1579,9 +1554,9 @@ echo ""
 echo -e "${YELLOW}Test: pull at phase level${NC}"
 setup_fixture
 create_wu pull-phase epic "Pull phase"
-run_cli set pull-phase.research surfaced_topics '["topic-a","topic-b","topic-c"]' >/dev/null 2>&1
-run_cli pull pull-phase.research surfaced_topics "topic-b" >/dev/null 2>&1
-output=$(run_cli_stdout get pull-phase.research surfaced_topics)
+run_cli set pull-phase.discussion surfaced_topics '["topic-a","topic-b","topic-c"]' >/dev/null 2>&1
+run_cli pull pull-phase.discussion surfaced_topics "topic-b" >/dev/null 2>&1
+output=$(run_cli_stdout get pull-phase.discussion surfaced_topics)
 
 assert_contains "$output" "topic-a" "Phase-level pull kept topic-a"
 assert_not_contains "$output" "topic-b" "Phase-level pull removed topic-b"
@@ -1634,14 +1609,14 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: superseded accepted as valid status for research${NC}"
+echo -e "${YELLOW}Test: superseded accepted as valid status for specification${NC}"
 setup_fixture
-create_wu supersede-research epic "Supersede research"
-run_cli set supersede-research.research.broad-topic status in-progress >/dev/null 2>&1
-run_cli set supersede-research.research.broad-topic status superseded >/dev/null 2>&1
-output=$(run_cli_stdout get supersede-research.research.broad-topic status)
+create_wu supersede-spec epic "Supersede spec"
+run_cli set supersede-spec.specification.broad-topic status in-progress >/dev/null 2>&1
+run_cli set supersede-spec.specification.broad-topic status superseded >/dev/null 2>&1
+output=$(run_cli_stdout get supersede-spec.specification.broad-topic status)
 
-assert_equals "$output" "superseded" "Research accepts superseded status"
+assert_equals "$output" "superseded" "Specification accepts superseded status"
 
 echo ""
 
@@ -1825,7 +1800,7 @@ echo ""
 echo -e "${YELLOW}Test: discovery refuses every status write (empty vocabulary)${NC}"
 setup_fixture
 create_wu incept-status epic "Discovery status"
-run_cli set incept-status.discovery.foo routing research >/dev/null 2>&1
+run_cli set incept-status.discovery.foo routing discussion >/dev/null 2>&1
 
 for status in in-progress completed cancelled; do
     exit_code=$(run_cli_exit_code set incept-status.discovery.foo status "$status")
@@ -1841,15 +1816,10 @@ echo ""
 echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
 setup_fixture
 create_wu incept-route epic "Discovery routing"
-run_cli set incept-route.discovery.foo routing research >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.discovery.foo routing)
-
-assert_equals "$output" "research" "Routing field stored unchanged"
-
-# Discussion routing also accepted (no validation enforced)
 run_cli set incept-route.discovery.foo routing discussion >/dev/null 2>&1
 output=$(run_cli_stdout get incept-route.discovery.foo routing)
-assert_equals "$output" "discussion" "Routing can be updated to discussion"
+
+assert_equals "$output" "discussion" "Routing field stored unchanged"
 
 echo ""
 
@@ -1871,12 +1841,12 @@ echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
 create_wu incept-get epic "Discovery get"
 run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
-run_cli set incept-get.discovery.foo routing research >/dev/null 2>&1
+run_cli set incept-get.discovery.foo routing discussion >/dev/null 2>&1
 output=$(run_cli_stdout get incept-get.discovery.foo)
 
 assert_not_contains "$output" '"status"' "Item JSON carries no status field"
 assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
-assert_contains "$output" '"routing": "research"' "Item JSON includes routing"
+assert_contains "$output" '"routing": "discussion"' "Item JSON includes routing"
 
 echo ""
 
@@ -1899,13 +1869,13 @@ echo ""
 echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
 create_wu incept-wild epic "Discovery wildcard"
-run_cli set incept-wild.discovery.alpha routing research >/dev/null 2>&1
+run_cli set incept-wild.discovery.alpha routing discussion >/dev/null 2>&1
 run_cli set incept-wild.discovery.beta routing discussion >/dev/null 2>&1
 output=$(run_cli_stdout get 'incept-wild.discovery.*' routing)
 
 assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
 assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"
-assert_contains "$output" '"value": "research"' "Wildcard returns alpha routing"
+assert_contains "$output" '"value": "discussion"' "Wildcard returns each topic's routing"
 
 echo ""
 
@@ -2021,12 +1991,14 @@ echo ""
 # RESOLVE COMMAND TESTS
 # ============================================================================
 
-echo -e "${YELLOW}Test: resolve discussion file path${NC}"
+echo -e "${YELLOW}Test: resolve refuses discussion, which is no longer indexed${NC}"
 setup_fixture
 create_wu auth-flow feature "Auth"
-output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
+exit_code=$(run_cli_exit_code resolve auth-flow.discussion.auth-flow)
+output=$(run_cli resolve auth-flow.discussion.auth-flow 2>&1 || true)
 
-assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Resolves discussion path"
+assert_equals "$exit_code" "1" "Discussion exits 1"
+assert_contains "$output" 'Phase "discussion" is not indexed' "Error names discussion not indexed"
 
 echo ""
 
@@ -2054,51 +2026,9 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: resolve single research file path (3-segment)${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout resolve payments.research.exploration)
-
-assert_contains "$output" "payments/research/exploration.md" "Resolves single research item path"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve all research files (2-segment, from manifest items)${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.exploration status in-progress >/dev/null 2>&1
-run_cli set payments.research.networking status in-progress >/dev/null 2>&1
-output=$(run_cli_stdout resolve payments.research)
-
-assert_contains "$output" "payments/research/exploration.md" "Lists exploration research item"
-assert_contains "$output" "payments/research/networking.md" "Lists networking research item"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: resolve does NOT include unlisted research files${NC}"
-setup_fixture
-create_wu payments epic "Payments"
-run_cli set payments.research.tracked status in-progress >/dev/null 2>&1
-# Create an untracked file on disk that is NOT in the manifest
-mkdir -p "$TEST_DIR/.leeway/payments/research"
-echo "untracked" > "$TEST_DIR/.leeway/payments/research/rogue.md"
-output=$(run_cli_stdout resolve payments.research)
-
-assert_contains "$output" "payments/research/tracked.md" "Includes tracked research item"
-assert_not_contains "$output" "rogue" "Does not include untracked research file"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
 echo -e "${YELLOW}Test: resolve errors for non-existent work unit${NC}"
 setup_fixture
-exit_code=$(run_cli_exit_code resolve nonexistent.discussion.foo)
+exit_code=$(run_cli_exit_code resolve nonexistent.investigation.foo)
 
 assert_equals "$exit_code" "2" "Non-existent work unit exits 2 (expected miss)"
 
@@ -2133,11 +2063,11 @@ echo ""
 
 echo -e "${YELLOW}Test: resolve outputs correct path even when file does not exist on disk${NC}"
 setup_fixture
-create_wu auth-flow feature "Auth"
+create_wu auth-flow bugfix "Auth"
 # Don't create the file on disk — resolve should still output the path
-output=$(run_cli_stdout resolve auth-flow.discussion.auth-flow)
+output=$(run_cli_stdout resolve auth-flow.investigation.auth-flow)
 
-assert_contains "$output" "auth-flow/discussion/auth-flow.md" "Path returned even without file on disk"
+assert_contains "$output" "auth-flow/investigation/auth-flow.md" "Path returned even without file on disk"
 
 echo ""
 
@@ -2221,7 +2151,7 @@ run_cli set codes.planning.codes task_map.codes-1-1 ext-1 >/dev/null 2>&1
 assert_exit_code 2 "key-of value-not-found → exit 2 (expected miss)" \
     key-of codes.planning.codes task_map ext-absent
 assert_exit_code 2 "resolve on a missing work unit → exit 2 (expected miss)" \
-    resolve ghost.discussion.ghost
+    resolve ghost.investigation.ghost
 
 # Reads — a real error is exit 1, never 2.
 assert_exit_code 1 "get on an invalid phase → exit 1 (real error)" \

@@ -15,7 +15,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { Sim, sessionLog, handoffEntry, handoff, answerGate, bridgeTo, linearPick, startNew } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, handoffEntry, handoff, answerGate, discussed, bridgeTo, linearPick, startNew } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: quick-fix', () => {
   let sim;
@@ -116,17 +116,9 @@ describe('pipeline simulation: quick-fix', () => {
     sim.refuses(['render', 'complexity-gate', wu, '--file', concerns],
       /"grows" is a feature — the complexity check is the quick-fix's own/);
 
-    // The promotion opens the first-phase choice (complexity-check C), which
-    // the flipped type is what makes reachable.
-    const read = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/first-phase.json`,
-      { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
-    assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
-      /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
+    // The promoted feature's first phase is its discussion (complexity-check
+    // A), which it runs normally to its yes.
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
-
-    // The promoted feature runs its first phase normally.
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion\n');
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
   });
 });

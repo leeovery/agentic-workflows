@@ -11,7 +11,7 @@ Merge a feature's discussion into an existing epic as a new topic, then remove t
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This will move the feature's discussion, research, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
+> This will move the feature's discussion, experiments, seed, and imports into the selected epic as a new topic and delete the feature work unit. Git history serves as provenance.
 ```
 
 Fetch and emit the `MENU: absorb target` section verbatim per its marker (its numbering follows the DATA `available_epics` order):
@@ -36,12 +36,11 @@ Resolve the number against `available_epics` and store the selected epic as `tar
 
 ## B. Collision Check
 
-Check whether the name is taken in the target epic — as a discussion topic, an experiment series, or a research topic:
+Check whether the name is taken in the target epic — as a discussion topic or an experiment series:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.discussion.{topic}
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.experiment.{topic}
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {target_epic}.research.{topic}
 ```
 
 #### If any is `true`
@@ -84,13 +83,13 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-confirm-gate 
 
 ## D. Absorb
 
-One engine transaction moves the discussion (and any research, experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/leeway-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
+One engine transaction moves the discussion (and any experiment series, imports, and seeds) into the epic, mirrors each item's status, registers the topic on the discovery map (`--backfill` — the next `/leeway-continue-epic` entry routes to `summary-backfill.md` so the user can review derived values), syncs the knowledge base (experiments never enter it), deletes the feature, and commits:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit absorb {selected.name} --into {target_epic} --topic {topic}
 ```
 
-The JSON response reports what moved (`discussion`, `research`, `experiment`, `imports`, `seeds` — the research lands at the topic name), `renamed_imports` (the imports a name collision renamed, empty when none did), `routing`, `committed`, and `warnings`.
+The JSON response reports what moved (`discussion`, `experiment`, `imports`, `seeds`), `renamed_imports` (the imports a name collision renamed, empty when none did), `committed`, and `warnings`.
 
 #### If the command failed
 
@@ -118,7 +117,7 @@ The command succeeded.
 
 ## E. Post-Absorption
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `research`, `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the documents it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` summary, each verbatim per its marker. `--moved` lists whichever of `seeds`, `imports` the absorb response reported non-empty (comma-separated; omit the flag when none moved), `--experiments` carries the count of top-level ids (no dot) in the response's `experiment.experiments` when a series moved (omit otherwise — a split is worked inside its parent, so subs never count), `--renamed` carries `{renamed}`, the response's `renamed_imports` joined as comma-separated `{from}:{to}` pairs — the imports a name collision renamed, whose links the absorb rewrote in the discussion it moved (omit the flag when the list is empty) — and `--warn` rides when the response's `warnings` is non-empty:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render absorb-receipt {target_epic} --topic {topic} [--moved {moved}] [--experiments {N}] [--renamed {renamed}] [--warn]

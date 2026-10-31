@@ -4,7 +4,7 @@
 // Domain ring: the discovery map — the epic's manifest-backed topic map at
 // `phases.discovery.items`. Sequencing records a suggested execution order
 // across its topics as a single transaction: manifest write, scoped git
-// commit. The Tier-2 map operations (add/edit/remove/rename/reroute/handle/
+// commit. The Tier-2 map operations (add/edit/remove/rename/handle/
 // unhandle) are per-item writes with NO git commit — the calling session's
 // commit cadence picks the manifest change up. An added item is
 // `{routing, source, summary[, description]}` — never a `status` field:
@@ -44,7 +44,7 @@ const { namesTopic } = require('./ledger-fold.cjs');
  * @typedef {object} MapOpResult
  * @property {string} work_unit
  * @property {string} name       the item's (current) map name
- * @property {string} op         add|edit|remove|rename|reroute|handle|unhandle
+ * @property {string} op         add|edit|remove|rename|handle|unhandle
  * @property {string} lifecycle  the item's lifecycle after the op (pre-removal for remove)
  * @property {string} [summary]           add/edit: the value written
  * @property {string} [description]       add/edit: the value written
@@ -56,7 +56,7 @@ const { namesTopic } = require('./ledger-fold.cjs');
  * @property {string[]} [preserved_fields] rename: every field carried across
  * @property {boolean} [matches_dismissed] rename: new name matches a dismissed entry (left alone)
  * @property {boolean} [brief_moved]      rename: the brief file moved to the new name
- * @property {string} [routing]           add/reroute: the value written
+ * @property {string} [routing]           add: the value written
  * @property {string} [source]            add: the provenance tag written
  * @property {boolean} [handled]          handle/unhandle: the marker after the op
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
@@ -116,30 +116,29 @@ const MAIL_WAITING = 'messages wait in its mailbox; open the topic to answer the
 
 /**
  * Why a topic whose lifecycle derives `fresh` still holds something a
- * destructive op (remove/rename/reroute) would orphan, or null where it
+ * destructive op (remove/rename) would orphan, or null where it
  * holds nothing: messages waiting in its mailbox — a postponed topic's
- * mail makes no phase item, and stays through a pull-forward — or any
- * per-phase item, on record outside the lifecycle join (superseded
- * research beside a parked discussion stub), whose historical anchor the
- * map item is. The one source the transactions and the map-operation gate
+ * mail makes no phase item, and stays through a pull-forward — or a
+ * discussion item on record outside the lifecycle join, whose historical
+ * anchor the map item is. The one source the transactions and the map-operation gate
  * read.
  * @param {string} cwd @param {object} manifest @param {string} name
  * @returns {string|null}
  */
 function freshRefusal(cwd, manifest, name) {
   if (mailboxDepth(stateRoot(cwd), /** @type {{name: string}} */ (manifest).name, name) > 0) return MAIL_WAITING;
-  const phaseWork = ['research', 'discussion'].some((phase) => phaseItems(manifest, phase).some((it) => it.name === name));
+  const phaseWork = phaseItems(manifest, 'discussion').some((it) => it.name === name);
   return phaseWork ? 'per-phase work exists on record and it stays on the map as historical anchor' : null;
 }
 
 /**
- * Gate a destructive op (remove/rename/reroute) on a fresh topic holding
+ * Gate a destructive op (remove/rename) on a fresh topic holding
  * nothing (`freshRefusal`). The error names the blocker and points at the
  * recovery path.
- * @param {string} cwd @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed" | "re-routed"
+ * @param {string} cwd @param {object} manifest @param {string} name @param {string} verbPhrase  "removed" | "renamed"
  */
 function assertFresh(cwd, manifest, name, verbPhrase) {
-  const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'fresh') {
     const held = freshRefusal(cwd, manifest, name);
     if (held === null) return;
@@ -152,7 +151,7 @@ function assertFresh(cwd, manifest, name, verbPhrase) {
       : lifecycle === 'postponed'
         ? 'pull it forward from the roadmap first'
         : 'cancel from the epic menu instead';
-  throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
+  throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle)}; ${recovery}`);
 }
 
 /**
@@ -204,9 +203,9 @@ function sequenceMap(cwd, workUnit, orders) {
       // A closed row's order is stashed as `previous_order` and returns with
       // it; writing one beside the stash would put the row back in the
       // sequence without bringing the topic back.
-      const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
+      const { lifecycle } = computeTopicLifecycle(manifest, topic);
       if (CLOSED_LIFECYCLES.includes(lifecycle)) {
-        throw new Error(`"${topic}" takes no order — ${lifecyclePhrase(lifecycle, research_state)}`);
+        throw new Error(`"${topic}" takes no order — ${lifecyclePhrase(lifecycle)}`);
       }
     }
     for (const [topic, order] of entries) {
@@ -614,30 +613,6 @@ function setPrior(cwd, workUnit, name, prior) {
   });
 }
 
-/**
- * Set a fresh map item's `routing`. Fresh-only — routing is implicit once a
- * phase item exists. No git commit.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} name
- * @param {string} routing  one of VALID_ROUTINGS
- * @returns {MapOpResult}
- */
-function rerouteItem(cwd, workUnit, name, routing) {
-  if (!VALID_ROUTINGS.includes(routing)) {
-    throw new Error(`unknown routing "${routing}" (${VALID_ROUTINGS.join('|')})`);
-  }
-  return withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const item = mapItem(manifest, name);
-    assertFresh(cwd, manifest, name, 're-routed');
-    item.routing = routing;
-
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, name, op: 'reroute', routing, lifecycle: 'fresh', map_total: Object.keys(discoveryItems(manifest)).length };
-  });
-}
-
 // The way back a closed lifecycle names, shared by both marker ops.
 /** @type {Record<string, string>} */
 const MARKER_CLOSED_PHRASES = {
@@ -713,4 +688,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, addItemsBatch, checkBatchEntries, addBatchTo, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS, freshRefusal };
+module.exports = { sequenceMap, addItem, addItemsBatch, checkBatchEntries, addBatchTo, editItem, removeItem, renameItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS, freshRefusal };

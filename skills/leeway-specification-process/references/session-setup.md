@@ -20,15 +20,9 @@ Read the sources map:
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Each row names a source document — `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise `.workflows/{work_unit}/discussion/{source-name}.md`. Where the work type is `cross-cutting`, its research is reference material once completed:
+Each row names a source — `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise the discussion's record, `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {source-name}`.
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
-```
-
-`completed` → `.workflows/{work_unit}/research/{topic}.md`.
-
-Hold these paths in session: construction extracts from the sources and reads the research beside them.
+Hold these in session: construction extracts from the sources.
 
 ## Hold the Grouping Analysis's Tensions
 

@@ -15,7 +15,6 @@ const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMI
 const { loadProjectManifest } = require('./reads.cjs');
 const {
   phaseItems,
-  outstandingResearch,
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
   computeTopicLifecycle,
@@ -77,8 +76,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  *                                             topic-grain entry reads them for its tail
  * @property {SpecSource[]} [sources]          specification items
  * @property {string[]} [blocked_by]           what holds the item's entry shut — a specification's
- *                                             source discussions still open, `['research']`
- *                                             on a discussion whose research is outstanding, or
+ *                                             source discussions still open, or
  *                                             `['specification']` on a plan whose spec is unsettled
  * @property {string} [format]                 planning items
  * @property {boolean} [deps_satisfied]        planning items
@@ -151,16 +149,14 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
- * @property {string} lifecycle  `fresh` | `researching` | `ready_for_discussion` | `discussing` | `decided` | `handled` | `cancelled` | `postponed`
- * @property {string} tier       `→` | `◐` | `✓` | `○` | `⊙` | `⊘` | `⊖`
+ * @property {string} lifecycle  `fresh` | `discussing` | `decided` | `handled` | `cancelled` | `postponed`
+ * @property {string} tier       `◐` | `✓` | `○` | `⊙` | `⊘` | `⊖`
  * @property {string|null} current_phase
- * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} mail_waiting  messages wait in the topic's mailbox, whatever its items' status
  * @property {number} mail_queued  how many messages wait in the topic's mailbox, counted from disk
- * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
- * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
+ * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress discussion (empty when none)
  * @property {string|null} next_action
  */
 
@@ -169,7 +165,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {number} total
  * @property {number} decided
  * @property {number} in_flight
- * @property {number} ready
  * @property {number} fresh
  * @property {number} handled
  * @property {number} cancelled
@@ -278,8 +273,8 @@ function specificationLockReason(manifest, spec) {
 
 /**
  * The Discovery-stage units, in map order — every map row, then the topics
- * a legacy manifest carries only as research or discussion items (name
- * order), whose unit is the name alone.
+ * a manifest carries only as discussion items (name order), whose unit is
+ * the name alone.
  * @param {object} manifest @param {MapRow[]} discoveryMap
  * @returns {{name: string, row: MapRow|undefined}[]}
  */
@@ -299,9 +294,9 @@ function discoveryUnits(manifest, discoveryMap) {
 
 /** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {string} cwd @param {object} manifest @param {string} name @param {MapRow|undefined} row */
 function topicState(cwd, manifest, name, row) {
-  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.mail_waiting, row.reconcile_pending, row.waits, row.promoted_to);
-  const { lifecycle, research_state, reconcile_pending } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, research_state, mailboxDepth(stateRoot(cwd), manifest.name, name) > 0, reconcile_pending);
+  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.mail_waiting, row.waits, row.promoted_to);
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
+  return discoveryLifecycleLabel(lifecycle, null, mailboxDepth(stateRoot(cwd), manifest.name, name) > 0);
 }
 
 /**
@@ -527,14 +522,6 @@ function epicDetail(cwd, manifest) {
 
   const discussionItems = phaseItems(manifest, 'discussion');
 
-  // Research feeds discussion: a discussion whose research is still
-  // outstanding is held at entry until it lands — the menu carries no row
-  // for it (the research row is the way in) unless a live session holds it,
-  // when its continue row stands struck through; a map row carries the
-  // research it awaits, and without a map the display tree tags it blocked.
-  for (const e of phases.discussion || []) {
-    if (!TERMINAL_STATUSES.includes(e.status) && outstandingResearch(manifest, e.name)) e.blocked_by = ['research'];
-  }
 
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {

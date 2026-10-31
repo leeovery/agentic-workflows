@@ -44,28 +44,27 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 ### Stages and phases
 
-The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, research, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
+The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
 
 1. **Discovery** (`leeway-discovery`) — the first phase of every work type: confirms the type, shapes the work, persists it at the work-type commit, and routes it on; for an epic it builds the discovery map of topics and writes each topic's brief.
-2. **Research** (`leeway-research-process`) — explore feasibility and options, with deep dives and a thread register.
-3. **Experiment** (`leeway-experiment-process`) — the laboratory a research or discussion conversation spawns to measure what a decision rests on; never a topic's first phase.
-4. **Discussion** (`leeway-discussion-process`) — decide, guided by a Discussion Map; topics send each other messages through mailboxes.
-5. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
-6. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
-7. **Specification** (`leeway-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
-8. **Planning** (`leeway-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
-9. **Implementation** (`leeway-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
-10. **Review** (`leeway-review-process`) — verify the delivered change-set against the plan and the specification.
+2. **Experiment** (`leeway-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
+3. **Discussion** (`leeway-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
+4. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
+5. **Scoping** (`leeway-scoping-process`) — quick-fix: context, spec and plan in one pass.
+6. **Specification** (`leeway-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
+7. **Planning** (`leeway-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
+8. **Implementation** (`leeway-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
+9. **Review** (`leeway-review-process`) — verify the delivered change-set against the plan and the specification.
 
 ### Work types and topics
 
 A *work type* is one of five pipeline shapes; a *work unit* is a named instance of one, with its own directory under `.workflows/` and its own `manifest.json`.
 
-- **Epic**: multi-topic, multi-session — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
-- **Feature**: single-topic — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
+- **Epic**: multi-topic, multi-session — Discovery → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
+- **Feature**: single-topic — Discovery → Experiment (opt.) → Discussion → Specification → Planning → Implementation → Review
 - **Bugfix**: Discovery → Investigation → Specification → Planning → Implementation → Review
 - **Quick-fix**: Discovery → Scoping → Implementation → Review
-- **Cross-cutting**: project-level — Discovery → Research (opt.) → Experiment (opt.) → Discussion → Specification (terminal)
+- **Cross-cutting**: project-level — Discovery → Experiment (opt.) → Discussion → Specification (terminal)
 
 A *topic* is the item within a phase; every phase keeps per-topic items in the manifest. For the four single-topic types the topic is the work unit (a cross-cutting unit promoted from an epic specification keeps its moved discussions' epic names). An epic names its topics apart from the work unit. Lifecycle operations — work-unit status, pivot, absorb, topic cancel, postpone and reactivate, the soft gates and hard blocks, staleness — are in `docs/lifecycle-operations.md` and `docs/reliability.md`.
 
@@ -79,7 +78,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
 - **Project-level** — `leeway-roadmap` (the product roadmap), `leeway-baseline` (the brownfield assessment), `leeway-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
-- **Engine** (`leeway-engine`) — state, derivation and rendering; `leeway-migrate` holds the migrations; `leeway-legacy-research-split` converts pre-discovery epics.
+- **Engine** (`leeway-engine`) — state, derivation and rendering; `leeway-migrate` holds the migrations.
 - **Drivers** (`skills/leeway-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
 - **Gate mods** (`leeway-gates`, `leeway-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
@@ -92,15 +91,12 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, baseline
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
 - `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, `discovery/briefs/{topic}.md` — discovery session logs, an epic's topic briefs
-- `.workflows/{work_unit}/research/{topic}.md`
-- `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}/` — one experiment record
-- `.workflows/{work_unit}/discussion/{topic}.md`
+- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
 - `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/specification/{topic}/specification.md`
 - `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files
 - `.workflows/{work_unit}/implementation/{topic}/`
 - `.workflows/{work_unit}/review/{topic}/report.md`
-- `.workflows/{work_unit}/topics/{topic}/mail/` — messages waiting for a topic
 - `.workflows/{work_unit}/imports/` — files the user shared
 - `.workflows/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.workflows/{work_unit}/.state/` — per-unit analysis files

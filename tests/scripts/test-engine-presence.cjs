@@ -100,16 +100,16 @@ describe('engine presence', () => {
     assert.strictEqual(own.res.held_sources, 0, 'but it is this session\'s — an analysis run here is not waiting on it');
     assert.strictEqual(own.sections, '');
 
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
     const mixed = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(mixed.res.held_sources, 1);
-    assert.ok(unwrapped(mixed.sections).includes('1 session(s): research/beta (last active'), mixed.sections);
+    assert.ok(unwrapped(mixed.sections).includes('1 session(s): discussion/beta (last active'), mixed.sections);
     assert.ok(!mixed.sections.includes('discussion/alpha'), `the own row is never named: ${mixed.sections}`);
   });
 
   it('a held session outside the source phases defers no analysis', () => {
-    // The analyses read research and discussion; a laboratory, planning, or
-    // code session holds nothing they look at.
+    // The analyses read discussion; a laboratory, planning, or code session
+    // holds nothing they look at.
     for (const phase of ['planning', 'specification', 'implementation', 'review', 'scoping', 'investigation', 'experiment']) {
       engine(dir, ['presence', 'beat', 'pay', phase, 'alpha'], PEER);
     }
@@ -118,32 +118,32 @@ describe('engine presence', () => {
     assert.strictEqual(res.held_sources, 0, 'none of them is source material');
     assert.strictEqual(sections, '', 'nothing to defer, nothing rendered');
 
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
     const second = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(second.res.held_sources, 1);
-    assert.ok(second.sections.includes('research/beta'), second.sections);
+    assert.ok(second.sections.includes('discussion/beta'), second.sections);
     assert.ok(!second.sections.includes('planning/'), `the callout names source rows alone: ${second.sections}`);
   });
 
   it('held_sources counts held source rows alone — a dead source session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
-    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
+    craftRecord(dir, 'discussion', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma'], PEER);
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     assert.strictEqual(res.sessions.length, 3, 'every row is listed, held or not');
     assert.strictEqual(res.held, 2);
-    assert.strictEqual(res.held_sources, 1, 'the discussion alone: research is dead, planning is not a source');
+    assert.strictEqual(res.held_sources, 1, 'alpha alone: beta is dead, planning is not a source');
     assert.ok(unwrapped(sections).includes('1 session(s): discussion/alpha (last active'), sections);
-    assert.ok(!sections.includes('research/beta'), `a dead source row is never named: ${sections}`);
+    assert.ok(!sections.includes('discussion/beta'), `a dead source row is never named: ${sections}`);
   });
 
   it('an idle heartbeat stays held and still defers — the callout carries its age', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
-    engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
-    const p = path.join(dir, '.leeway/.cache/pay/research/beta/presence');
+    engine(dir, ['presence', 'beat', 'pay', 'discussion', 'beta'], PEER);
+    const p = path.join(dir, '.leeway/.cache/pay/discussion/beta/presence');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
@@ -152,7 +152,7 @@ describe('engine presence', () => {
     assert.ok(res.sessions[0].age_seconds >= 1100);
     assert.strictEqual(res.held, 1);
     assert.strictEqual(res.held_sources, 1, 'idle is not gone — the analysis still waits');
-    assert.ok(unwrapped(sections).includes('⚑ Analyses deferred — 1 session(s): research/beta (last active 20m ago).'),
+    assert.ok(unwrapped(sections).includes('⚑ Analyses deferred — 1 session(s): discussion/beta (last active 20m ago).'),
       `the callout names the row with its idle time: ${sections}`);
   });
 
@@ -194,14 +194,14 @@ describe('engine presence', () => {
   });
 
   it('covers every phase a session sits in — discovery excepted', () => {
-    for (const phase of ['research', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+    for (const phase of ['experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
-    assert.strictEqual(scan.held, 9);
+    assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
+    assert.strictEqual(scan.held, 8);
     // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is research\|experiment\|discussion\|/);
+    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is experiment\|discussion\|/);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {
@@ -285,7 +285,7 @@ describe('engine presence', () => {
   it('a start-time-less record falls back to process aliveness', () => {
     craftRecord(dir, 'discussion', 'alpha', { pid: process.pid, pid_start: null, session_id: 'a' });
     // No OS issues a pid this high; a dead pid the OS reused would read alive here.
-    craftRecord(dir, 'research', 'beta', { pid: 2147483646, pid_start: null, session_id: 'b' });
+    craftRecord(dir, 'discussion', 'beta', { pid: 2147483646, pid_start: null, session_id: 'b' });
     const rows = engineWith(dir, ['presence', 'scan', 'pay']).sessions;
     assert.strictEqual(rows.find((r) => r.topic === 'alpha').held, true);
     assert.strictEqual(rows.find((r) => r.topic === 'beta').held, false);
@@ -293,7 +293,7 @@ describe('engine presence', () => {
 
   it('a hold survives a `ps` that fails — a start time that cannot be read proves nothing — while a gone owner stays unheld', () => {
     engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
-    craftRecord(dir, 'research', 'beta', { pid: 2147483646, pid_start: EPOCH_START, session_id: 'b' });
+    craftRecord(dir, 'discussion', 'beta', { pid: 2147483646, pid_start: EPOCH_START, session_id: 'b' });
     const ps = harness.failingPs(dir);
     const rows = engineWith(dir, ['presence', 'scan', 'pay'], { env: { PATH: ps.path } }).sessions;
     assert.deepStrictEqual(rows.map((r) => [r.topic, r.held]).sort(), [['alpha', true], ['beta', false]]);
@@ -315,7 +315,7 @@ describe('engine presence', () => {
   });
 
   it('a legacy bare-pid heartbeat is never held', () => {
-    const p = presenceFile(dir, 'research', 'beta');
+    const p = presenceFile(dir, 'discussion', 'beta');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, '12345\n');
     assert.strictEqual(engineWith(dir, ['presence', 'scan', 'pay']).sessions[0].held, false);
@@ -396,7 +396,7 @@ describe('engine presence', () => {
   it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
     fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
-    craftRecord(dir, 'research', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
+    craftRecord(dir, 'discussion', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'discussion', 'gamma', { pid: null, pid_start: null, session_id: 'sess-b' });
 
     const swept = engineWith(dir, ['presence', 'cleanup', 'sess-a']);

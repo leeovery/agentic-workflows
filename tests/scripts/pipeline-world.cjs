@@ -150,7 +150,7 @@ class Sim {
     const identity = { CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(pid) };
     return {
       id: sessionId,
-      run: (/** @type {string[]} */ args) => this.run(args, identity),
+      run: (/** @type {string[]} */ args, /** @type {string} */ stdin = '') => this.run(args, identity, stdin),
       refuses: (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => this.refuses(args, pattern, identity),
       read: (/** @type {string[]} */ args) => this.read(args, identity),
       render: (/** @type {string[]} */ args, /** @type {object} */ opts) => this.render(args, { ...opts, identity }),
@@ -433,18 +433,14 @@ function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
   return shown;
 }
 
-// A research or discussion session pauses through the in-flight check: it
-// scans the topic's agents, and where any are still running the gate, worded
-// for the pause, asks whether to wait for them before the handoff. Answers
-// the rows in flight.
-/** @param {Sim} sim @param {string} wu @param {'research'|'discussion'} phase @param {string} topic */
-function pauseCheck(sim, wu, phase, topic) {
-  const running = sim.run(['agent', 'scan', wu, phase, topic]).in_flight;
-  if (running.length) {
-    assert.match(sim.render(['in-flight-agents-gate', `${wu}.${phase}.${topic}`, '--count', String(running.length), '--pause'], { expect: 'content' }),
-      /\*\*`◆ Wait, or pause now\?`\*\*[\s\S]*Wait for results before pausing[\s\S]*Pause now/);
-  }
-  return running;
+// A discussion leaving its topic — a pause, a postpone, a cancel or a
+// spawn — fetches the wait for its agents: empty where none runs, else the
+// gate asking whether to wait for them first. Answers what it drew.
+/** @param {Sim} sim @param {string} wu @param {string} topic @param {boolean} [running] */
+function waitAgents(sim, wu, topic, running = false) {
+  const drawn = sim.render(['wait-agents', `${wu}.${topic}`], { expect: running ? 'content' : 'empty' });
+  if (running) assert.match(drawn, /^=== MENU: wait for agents /m);
+  return drawn;
 }
 
 // A menu's pick into work hands off along the route the menu built for it, as
@@ -499,13 +495,44 @@ const DECIDED_ITEMS = ['closing-pass', 'decisions-entered', 'replacements-checke
  */
 function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
   assert.match(sim.render(['map', `${wu}.${topic}`], { expect: 'content' }), /^=== DISPLAY: map /m);
-  sim.render(['wait-agents', `${wu}.${topic}`], { expect: 'empty' });
+  waitAgents(sim, wu, topic);
   for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
   sim.run(['checklist', 'close', 'decided', wu, topic]);
   const file = sim.write(`.leeway/.cache/scratch/decided-${topic}.json`, payload);
   assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
   const { next } = answerGate(sim, 'decided', '--pick', 'y');
   return sim.run(next.argv);
+}
+
+/**
+ * A discussion worked from its entry to its yes as the prose works it (9.3,
+ * 9.7): the entry; the reads — every other decided topic's record and the
+ * product record; each waiting message raised as a question and answered off
+ * the mailbox; the opening question asked and the person's answer decided,
+ * the log written; then the close. Answers what the yes answered.
+ * @param {Sim} sim @param {string} wu @param {string} topic
+ * @param {{question?: string, answer?: string, payload?: {lines: object[], candidates: object[]}}} [opts]
+ */
+function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, answer = 'This.', payload } = {}) {
+  enterEntry(sim, wu, 'discussion', topic);
+  const items = sim.manifest(wu).phases?.discussion?.items ?? {};
+  for (const [name, item] of Object.entries(items)) {
+    if (name !== topic && item.status === 'completed') sim.read(['ledger', 'record', wu, name]);
+  }
+  sim.read(['ledger', 'product']);
+  const at = `${wu}.discussion.${topic}`;
+  const person = { by: 'person', who_moved_whom: 'none' };
+  for (const file of JSON.parse(sim.read(['topic', 'mailbox', wu, topic])).files) {
+    const message = path.basename(file, '.md');
+    const raised = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: `What does ${message} ask?` })).id;
+    sim.run(['topic', 'answered', wu, topic, message, '--entry', raised]);
+    sim.run(['ledger', 'decide', at, '--answers', raised], null, JSON.stringify({ ...person, text: 'Answered.', why: 'The message said so.' }));
+  }
+  const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: question })).id;
+  sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: answer, why: 'The person said so.' }));
+  const log = `.leeway/${wu}/topics/${topic}/log.md`;
+  if (!fs.existsSync(path.join(sim.dir, log))) sim.write(log, `# ${topic}\n\n${question} ${answer}\n`);
+  return decideTopic(sim, wu, topic, payload);
 }
 
 /**
@@ -1008,5 +1035,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

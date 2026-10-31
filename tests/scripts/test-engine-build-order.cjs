@@ -95,10 +95,10 @@ describe('engine build-order sequence', () => {
   it('commits the manifest alone, leaving a live peer\'s document behind', () => {
     // The sequencing pass runs from the epic entry, beside sessions holding
     // the unit's topics. It wrote the manifest and nothing else.
-    fs.mkdirSync(path.join(dir, '.leeway/portal/discussion'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/portal/discussion/auth.md'), '# Discussion — Auth\n');
+    fs.mkdirSync(path.join(dir, '.leeway/portal/specification/auth'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/portal/specification/auth/specification.md'), '# Specification — Auth\n');
     commitAll(dir, 'a peer topic');
-    fs.writeFileSync(path.join(dir, '.leeway/portal/discussion/auth.md'), '# Discussion — Auth\nhalf a turn\n');
+    fs.writeFileSync(path.join(dir, '.leeway/portal/specification/auth/specification.md'), '# Specification — Auth\nhalf a turn\n');
 
     engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'reports=2', 'billing=3']);
 
@@ -107,7 +107,7 @@ describe('engine build-order sequence', () => {
       ['portal/manifest.json']);
     assert.deepStrictEqual(
       stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
-      [' M portal/discussion/auth.md'], 'the peer keeps its dirt');
+      [' M portal/specification/auth/specification.md'], 'the peer keeps its dirt');
   });
 
   it('completed topics are live — they keep a number', () => {
@@ -269,10 +269,10 @@ describe('build_order_stale — set by spec completion, epic-only', () => {
 
   it('completing another epic phase does not', () => {
     const m = readManifest(dir, 'portal');
-    m.phases.discussion.items.extra = { status: 'in-progress' };
+    m.phases.planning = { items: { reports: { status: 'in-progress' } } };
     writeManifest(dir, 'portal', m);
     commitAll(dir, 'extra');
-    engine(dir, ['topic', 'complete', 'portal', 'discussion', 'extra']);
+    engine(dir, ['topic', 'complete', 'portal', 'planning', 'reports']);
     assert.strictEqual(readManifest(dir, 'portal').phases.specification.build_order_stale, undefined);
   });
 });

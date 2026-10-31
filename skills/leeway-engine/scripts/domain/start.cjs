@@ -26,7 +26,7 @@ const {
 } = require('./derivations.cjs');
 const { WORK_TYPE_PIPELINES, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 
-// The epic pipeline — research → review, the completion / next-phase pipeline
+// The epic pipeline — discussion → review, the completion / next-phase pipeline
 // and the start dashboard's active-phase row.
 const EPIC_PIPELINE_PHASES = WORK_TYPE_PIPELINES.epic;
 

@@ -106,13 +106,7 @@ Dispatch the `leeway-specification-review-claims` agent via the Task tool:
   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
   node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
   ```
-  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Each source resolves to `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise to `.workflows/{work_unit}/discussion/{source-name}.md`.
-
-  Where the work type is `cross-cutting`, add its research when it is completed:
-  ```bash
-  node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
-  ```
-  `completed` → `.workflows/{work_unit}/research/{topic}.md`.
+  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Each source resolves to `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise to the discussion's record as the knowledge base renders it, `.leeway/.knowledge/records/{work_unit}/{source-name}.md`.
 
   Then add each specification this one incorporates — each entry's `path`:
   ```bash

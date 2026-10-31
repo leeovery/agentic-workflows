@@ -85,13 +85,15 @@ function heldByPeer(dir, wu, phase, topic) {
   fs.utimesSync(presence, past, past);
 }
 
-/** An epic whose discussion a peer session holds while its research runs. @param {string} dir */
+/** An epic whose discussion a peer session holds, a fresh topic beside it. @param {string} dir */
 function seedHeldEpic(dir) {
   createManifest(dir, 'v1', {
     work_type: 'epic',
     phases: {
-      discovery: { items: { auth: { routing: 'discussion', source: 'discovery', order: 1 } } },
-      research: { items: { auth: { status: 'in-progress' } } },
+      discovery: { items: {
+        auth: { routing: 'discussion', source: 'discovery', order: 1 },
+        billing: { routing: 'discussion', source: 'discovery', order: 2 },
+      } },
       discussion: { items: { auth: { status: 'in-progress' } } },
     },
   });
@@ -283,15 +285,11 @@ describe('gate payload — the statement', () => {
   });
 
   it('a statement over the question is the statement', () => {
-    createManifest(dir, 'auth', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const gate = gateOf(output(dir, ['render', 'in-flight-agents-gate', 'auth.discussion.auth', '--count', '2'], { env: ANNOUNCED }));
+    createManifest(dir, 'auth', { phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } } });
+    const gate = gateOf(output(dir, ['render', 'cancel-gate', 'auth.discovery.data-export'], { env: ANNOUNCED }));
 
-    assert.strictEqual(gate.question, 'Wait, or conclude now?');
-    assert.strictEqual(gate.statement, 'There are still 2 background agents working.');
-
-    const paused = gateOf(output(dir, ['render', 'in-flight-agents-gate', 'auth.discussion.auth', '--count', '2', '--pause'], { env: ANNOUNCED }));
-    assert.strictEqual(paused.question, 'Wait, or pause now?');
-    assert.strictEqual(paused.statement, 'There are still 2 background agents working.');
+    assert.strictEqual(gate.question, 'Cancel it?');
+    assert.strictEqual(gate.statement, 'Cancelling Data Export takes it off the board — nothing has started, so only the map row is marked; it can be reactivated later.');
   });
 
   it('a question the frame glyphs by hand is the question, and every head line above it is statement', () => {
@@ -358,9 +356,9 @@ describe('gate payload — a gateway menu', () => {
 
     assert.strictEqual(gate.gate, 'epic menu');
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: null, holder: null, detail: null, struck: false, recommended: true });
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: null, holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false });
     assert.deepStrictEqual(gate.options[1],
-      { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: null, holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false });
+      { key: '2', word: null, head: 'Start discussion for "Billing"', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: true });
     const texts = gate.options.map((/** @type {{head: string, tail: string|null, holder: string|null}} */ o) => `${o.head}${o.tail}${o.holder}`);
     assert.ok(texts.every((t) => !t.includes('recommended') && !t.includes('~~')), JSON.stringify(gate.options));
   });
@@ -375,7 +373,7 @@ describe('gate payload — a gateway menu', () => {
 
   it('the in-session gate is its own gate — the epic menu it reads its entry from stays out', () => {
     seedHeldEpic(dir);
-    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['in-session-gate', 'v1', '2'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'leeway-continue-epic', ['in-session-gate', 'v1', '1'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed anyway?');
     assert.match(gate.statement, /^"Auth" is open in another session — last active 4m ago\. /);
@@ -491,12 +489,11 @@ describe('gate payload — every gateway verb', () => {
       'spec-scenario': [ungated('spec-scenario', 'v2'), refused('spec-scenario', 'nowhere')],
       'spec-view': [gated('spec-view', 'v2'), refused('spec-view', 'nowhere')],
       'spec-completed-menu': [gated('spec-completed-menu', 'v2')],
-      'in-session-gate': [gated('in-session-gate', 'v1', '2')],
+      'in-session-gate': [gated('in-session-gate', 'v1', '1')],
       fallback: [ungated('v1')],
     },
     'leeway-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
     'leeway-bridge': { index: [refused()], fallback: [ungated('checkout')] },
-    'leeway-discussion-process': { map: [ungated('map', 'v1', 'auth')] },
     'leeway-roadmap': {
       view: [gated('view')],
       'pull-set': [gated('pull-set')],
@@ -521,7 +518,7 @@ describe('gate payload — every gateway verb', () => {
   /**
    * One project holding every state the gateway menus draw from: an inbox
    * and an archive, a roadmap with items waiting, an epic whose discussion a
-   * peer holds while its research runs and a message waits in its mailbox —
+   * peer holds while a message waits in its mailbox —
    * beside a completed topic whose input moved, a cancelled topic, a topic
    * postponed to the roadmap and a blocked plan — an epic grouped into specifications, a unit of each
    * linear type ready for its next phase, a feature with a message waiting,
@@ -555,12 +552,12 @@ describe('gate payload — every gateway verb', () => {
             billing: { routing: 'discussion', source: 'discovery', order: 2 },
             search: { routing: 'discussion', source: 'discovery', order: 3, cancelled: true },
             offline: { routing: 'discussion', source: 'discovery', order: 4, postponed: true },
+            tax: { routing: 'discussion', source: 'discovery', order: 5 },
           },
         },
-        research: { items: { auth: { status: 'in-progress' } } },
         discussion: {
           items: {
-            auth: { status: 'in-progress', subtopics: { tokens: { status: 'exploring' }, expiry: { status: 'decided' } } },
+            auth: { status: 'in-progress' },
             billing: { status: 'completed', reconcile_needed: true },
             search: { status: 'cancelled', previous_status: 'in-progress' },
           },
@@ -702,43 +699,43 @@ describe('gate payload — a row built from parts', () => {
     let rows = [];
     const gate = collect(() => {
       rows = [
-        cmdOption('1', null, { head: 'Continue "Auth"', tail: 'research', cue: 'mail waiting', recommended: true }),
+        cmdOption('1', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', recommended: true }),
         cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
-        cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'mail waiting' }),
+        cmdOption('3', null, { head: 'Start discussion for "Billing"', tail: 'mail waiting' }),
         cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
       ];
       return menu('Pick one?', rows);
     });
 
     assert.deepStrictEqual(rows, [
-      '**`1`** → Continue "Auth" — *research* · mail waiting (recommended)',
+      '**`1`** → Continue "Auth" — *discussion* · mail waiting (recommended)',
       '**`2`** → ~~Continue "Auth" — *discussion* · input moved~~ · in session (last active 4m ago)',
-      '**`3`** → Start research for "Billing" — *mail waiting*',
+      '**`3`** → Start discussion for "Billing" — *mail waiting*',
       '**`s/spec`** → Analyze / regroup discussions',
     ]);
     assert.deepStrictEqual(gate.options, [
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: 'mail waiting', holder: null, detail: null, struck: false, recommended: true },
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'mail waiting', holder: null, detail: null, struck: false, recommended: true },
       { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false },
-      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'mail waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: '3', word: null, head: 'Start discussion for "Billing"', tail: 'mail waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
       { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
 
   it('a held row with no tail states its holder alone', () => {
-    const gate = collect(() => menu('Pick one?', [cmdOption('1', null, { head: 'Start research for "Billing"', holder: 'in session (last active 1m ago)' })]));
+    const gate = collect(() => menu('Pick one?', [cmdOption('1', null, { head: 'Start discussion for "Billing"', holder: 'in session (last active 1m ago)' })]));
 
     assert.deepStrictEqual(gate.options[0],
-      { key: '1', word: null, head: 'Start research for "Billing"', tail: null, cue: null, holder: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
+      { key: '1', word: null, head: 'Start discussion for "Billing"', tail: null, cue: null, holder: 'in session (last active 1m ago)', detail: null, struck: true, recommended: false });
   });
 
   it('a string label drawing a part inline is refused — the parts are the only way in', () => {
-    assert.throws(() => cmdOption('1', null, 'Continue "Auth" — *research*'), /draws "— \*" inline/);
+    assert.throws(() => cmdOption('1', null, 'Continue "Auth" — *discussion*'), /draws "— \*" inline/);
     assert.throws(() => cmdOption('b', 'back', 'Return to menu (recommended)'), /draws "\(recommended\)" inline/);
     assert.throws(() => cmdOption('1', null, '~~Continue "Auth"~~ · in session'), /draws "~~" inline/);
   });
 
   it('a cue notes a tail, so a row without one is refused', () => {
-    assert.throws(() => cmdOption('1', null, { head: 'Start research for "Billing"', cue: 'mail waiting' }), /a cue notes a tail/);
+    assert.throws(() => cmdOption('1', null, { head: 'Start discussion for "Billing"', cue: 'mail waiting' }), /a cue notes a tail/);
   });
 
   it('text the engine did not author passes as a head, whatever it contains, and states its text', () => {

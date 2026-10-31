@@ -34,11 +34,11 @@ Your context (or 'none'):
 
 ## B. Analyze Discussions
 
-**This step is critical. You MUST read every completed discussion document thoroughly.**
+**This step is critical. You MUST read every completed discussion's record thoroughly.**
 
 For each completed discussion:
-1. Read the ENTIRE document using the Read tool (not just the header)
-2. Understand the decisions, systems, and concepts it defines — where a Decision block holds dated timeline entries, the top entry is the current decision and earlier entries are lineage
+1. Read its whole record — `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {topic}`
+2. Understand the decisions, systems, and concepts it defines
 3. Note dependencies on or references to other discussions
 4. Identify shared data structures, entities, or behaviors
 
@@ -78,7 +78,7 @@ Advisory only — never a gate, never resolved here; the specification session h
 Before finalizing groupings, run one query per grouping to surface sibling changes the read missed:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
+node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase record --limit 5
 ```
 
 Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[knowledge-usage.md](../../leeway-shared/references/knowledge-usage.md)** → **B. How to construct queries**).

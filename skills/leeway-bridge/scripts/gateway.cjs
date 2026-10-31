@@ -9,12 +9,17 @@ const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = eng
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
+/** A discussion's file is a topic's log. @param {string} cwd @param {string} workUnit */
+function topicLogExists(cwd, workUnit) {
+  const topics = path.join(stateRoot(cwd), workUnit, 'topics');
+  return listDirs(topics).some((t) => fileExists(path.join(topics, t, 'log.md')));
+}
+
 function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(stateRoot(cwd), workUnit, phase);
   switch (phase) {
-    case 'research':       return listFiles(dir, '.md').length > 0;
     case 'experiment':     return listDirs(dir).length > 0;
-    case 'discussion':     return listFiles(dir, '.md').length > 0;
+    case 'discussion':     return topicLogExists(cwd, workUnit);
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;
     case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));

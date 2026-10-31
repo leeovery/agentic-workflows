@@ -4,7 +4,7 @@
 
 ---
 
-Loaded by [topic-synthesis.md](topic-synthesis.md) E on the confirmed harvest, while the whole exploration is still in context. A **brief** is a per-topic *view* — one topic's slice of the discovery record (soft decisions, reasoning, rejected paths, open questions), projected out of the source-of-truth logs. It is regenerated at every harvest that touches its topic — overwrite freely; it is never a record. Writes the briefs for the confirmed set, reconciles brief files and pointers against the harvest, and flags in-flight downstream work the fresh briefs post-date.
+Loaded by [topic-synthesis.md](topic-synthesis.md) E on the confirmed harvest, while the whole exploration is still in context. A **brief** is a per-topic *view* — one topic's slice of the discovery record (soft decisions, reasoning, rejected paths, open questions), projected out of the source-of-truth logs. It is regenerated at every harvest that touches its topic — overwrite freely; it is never a record. Writes the briefs for the confirmed set, and reconciles brief files and pointers against the harvest.
 
 ## A. Write the Briefs
 
@@ -65,36 +65,5 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.di
 ```
 
 Skip the `apply` when the ops file would hold no ops at all.
-
-→ Proceed to **C. Propagation**.
-
-## C. Propagation
-
-Flag downstream work, never overwrite it.
-
-#### If **A** wrote no briefs
-
-→ Return to caller.
-
-#### Otherwise
-
-Read both downstream phases once — every topic's items in two calls, however many briefs were written:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion
-```
-
-For each brief written in **A**, check the subtrees for that topic's item — a topic routes to one of the two. A hit is in-flight downstream work the fresh brief post-dates: a regenerated brief changed content the phase may have read; a first-written brief covers work that started brief-less and has never been read at all. Skip items whose status is `unstarted` — a stub holding messages has read nothing; its first start reads the fresh brief anyway. Collect a flag op for every hit, then persist them in one call (skip when none; write the ops file with the Write tool):
-
-```json
-[{"op": "set", "path": "{work_unit}.{research|discussion}.{topic}", "fields": {"reconcile_needed": true}}]
-```
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/discovery/reconcile-ops.json
-```
-
-This is a signal, not a rewrite — it never touches the downstream artifact's content. Soft can prompt re-examination; it can never overwrite hard. The downstream phase surfaces the flag when it next runs.
 
 → Return to caller.

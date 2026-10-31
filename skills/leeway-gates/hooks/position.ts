@@ -14,7 +14,6 @@ export type Position = {
 /** What each phase's work is, as the spinner says it. */
 const PHASE_WORDS: ReadonlyMap<string, string> = new Map([
   ['discovery', 'Shaping'],
-  ['research', 'Researching'],
   ['experiment', 'Experimenting'],
   ['discussion', 'Discussing'],
   ['investigation', 'Investigating'],

@@ -12,7 +12,7 @@ Your role is to synthesize reference material, present it for validation, and bu
 
 ## Purpose in the Workflow
 
-Follows discussion (or investigation for bugfix). Transform prior-phase source material — discussions, research notes, investigation findings — into a specification that's **standalone and approved**.
+Follows discussion (or investigation for bugfix). Transform prior-phase source material — discussions, investigation findings — into a specification that's **standalone and approved**.
 
 **Stay in your lane**: Validate and refine source material into a standalone specification. Don't jump to planning, phases, tasks, or code. The specification is the "line in the sand" — everything after this has hard dependencies on it.
 
@@ -23,7 +23,7 @@ Positional arguments:
 - `$1` — **work_unit**: the work unit name.
 - `$2` — **topic**: the specification's topic. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
 
-The source material is the specification item's `sources` — an epic grouping's discussions, a feature's or cross-cutting unit's discussion, a bugfix's investigation — beside a cross-cutting unit's completed research and the specifications this one incorporates, all read at session setup.
+The source material is the specification item's `sources` — an epic grouping's discussions, a feature's or cross-cutting unit's discussion, a bugfix's investigation — beside the specifications this one incorporates, all read at session setup.
 
 **If source material seems incomplete or unclear:**
 

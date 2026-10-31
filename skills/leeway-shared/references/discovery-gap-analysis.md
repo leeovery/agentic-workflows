@@ -4,7 +4,7 @@
 
 ---
 
-Identifies gap topics across completed research files and completed discussions, and **stages** them as candidates for per-topic approval, with `source: gap-analysis` provenance. The orchestrator ([topic-discovery.md](topic-discovery.md)) handles the cache check and invokes this reference only when the cache is `stale`; it then runs the approval gate ([analysis-approval-gate.md](analysis-approval-gate.md)) and, once the gate completes, re-enters this reference at **E. Update Cache** to stamp.
+Identifies gap topics across the decided discussions, and **stages** them as candidates for per-topic approval, with `source: gap-analysis` provenance. The orchestrator ([topic-discovery.md](topic-discovery.md)) handles the cache check and invokes this reference only when the cache is `stale`; it then runs the approval gate ([analysis-approval-gate.md](analysis-approval-gate.md)) and, once the gate completes, re-enters this reference at **E. Update Cache** to stamp.
 
 This reference does not write to the discovery map directly — it resolves the no-gate cases (already-on-map, dismissed) silently at stage time and stages genuinely-new candidates for the gate to approve.
 
@@ -14,19 +14,16 @@ The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name.
 
-**Precondition.** Collect `completed_research` and `completed_discussion` (items with `status: completed`). If both empty, return — no staging, no cache stamp, no manifest writes.
+**Precondition.** Collect `completed_discussion` (discussion items with `status: completed`). If it is empty, return — no staging, no cache stamp, no manifest writes.
 
 ## A. Read Artifacts
 
-Read `.workflows/{work_unit}/research/{name}.md` for each `completed_research` name and `.workflows/{work_unit}/discussion/{name}.md` for each `completed_discussion` name. Skip files missing on disk. Items with `unstarted`, `in-progress`, `superseded`, `cancelled`, or `postponed` status are not in the input set.
+Read each `completed_discussion` name's record — `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {name}`. Items with `unstarted`, `in-progress`, `superseded`, `cancelled`, or `postponed` status are not in the input set.
 
-For each discussion, note:
-- The subtopic map — final states live in the work unit manifest under `phases.discussion.items.{name}.subtopics` (`decided` / `deferred` for completed discussions; legacy files may instead carry a Discussion Map section inline)
+For each record, note:
 - Key decisions made and their dependencies on other topics
-- Deferred items, open threads, and unresolved questions
+- Questions moved to other topics or left for later, and unresolved questions
 - Integration points with other discussions
-
-For each research file, note key themes, open questions, and any threads identified as needing follow-up.
 
 Cross-reference across all documents — connections, contradictions, shared concerns, and gaps that span multiple artifacts are the primary targets.
 
@@ -34,21 +31,18 @@ Cross-reference across all documents — connections, contradictions, shared con
 
 ## B. Identify Gaps
 
-Analyse the artifacts from A to identify gaps across four categories:
+Analyse the records from A to identify gaps across three categories:
 
 1. **Cross-artifact themes** — concepts, concerns, or architectural patterns that appear in multiple artifacts but are not the primary focus of any. These often emerge as recurring assumptions or shared constraints that deserve dedicated exploration.
 
-2. **Research themes uncovered** — themes from completed research files that are not addressed by any completed discussion. Only identify themes that are genuinely unaddressed — a theme partially touched in a discussion does not count as a gap.
+2. **Emergent topics** — open questions and deferred items that emerged during work and suggest the need for a top-level topic. Look for "parking lot" items, questions deferred, and new concerns raised but not explored.
 
-3. **Emergent topics** — open threads, deferred items, and new subtopics that emerged during work and suggest the need for a top-level topic. Look for "parking lot" items, questions deferred, and new concerns raised but not explored.
-
-4. **Integration gaps** — decisions made in separate artifacts that interact with each other but no existing artifact covers the integration between them. Look for shared data models, overlapping user journeys, competing resource needs, or architectural assumptions that span artifacts.
+3. **Integration gaps** — decisions made in separate artifacts that interact with each other but no existing artifact covers the integration between them. Look for shared data models, overlapping user journeys, competing resource needs, or architectural assumptions that span artifacts.
 
 For each gap, note:
-- The gap type (from the four above)
+- The gap type (from the three above)
 - Which source artifacts contributed to identifying it
 - Why it matters — what would be missed without dedicated work
-- Depth assessment — is the gap well-scoped (ready for discussion) or under-explored (needs research first)?
 
 → Proceed to **C. Define Gap Topics**.
 
@@ -62,15 +56,11 @@ Group the identified gaps into topic-sized chunks.
 - Splitting integration gaps into per-discussion-pair topics when they share the same integration boundary
 - Creating topics so narrow they'd be resolved in a few exchanges
 
-**Anchor to existing discussions:** List existing discussion files under `.workflows/{work_unit}/discussion/`. If a gap topic clearly maps to an existing discussion, use that discussion's filename (without the `.md` extension) as the kebab-case topic name. Only create new names for topics with no matching existing discussion.
+**Anchor to existing discussions:** List the discussion items — `node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discussion items`. If a gap topic clearly maps to an existing discussion, use that discussion's name as the kebab-case topic name. Only create new names for topics with no matching existing discussion.
 
 For each topic, write a one-line summary covering the constituent gaps — used as the discovery item's `summary` field. Word it product-first: the capability or behaviour at stake, not the mechanism.
 
-Assign each candidate a `routing` value.
-
-→ Load **[routing-decision.md](routing-decision.md)**.
-
-A single analysis may emit a mix of routings — apply the criteria per candidate.
+Every candidate routes to `discussion`.
 
 → On return, proceed to **D. Filter and Stage**.
 
@@ -130,13 +120,13 @@ Stage it for the approval gate by appending a block to the staging file:
 summary: {one-line summary}
 description: |
   {paragraphs}
-routing: {routing-from-C}
+routing: discussion
 source: gap-analysis
-source_artifacts: {filename1}.md, {filename2}.md
-gap_type: {cross-artifact|emergent|integration|uncovered}
+source_artifacts: {topic1}, {topic2}
+gap_type: {cross-artifact|emergent|integration}
 ```
 
-`routing` is the value decided per-candidate in **C** (`discussion` or `research`). The bare `gap-analysis` source carries the provenance — the analysis synthesises across artifacts, so no single parent exists to name. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. `source_artifacts` and `gap_type` are this candidate's values from **B** — the artifacts the gap was read out of and its category — carried per-candidate because the gate writes the topic's discovery brief from the block. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
+The bare `gap-analysis` source carries the provenance — the analysis synthesises across artifacts, so no single parent exists to name. `description` is a paragraph or two extracted from the gap analysis for this topic — richer context than the one-line summary, read as opening context at the next phase's initialisation when the user later picks the topic up. `source_artifacts` and `gap_type` are this candidate's values from **B** — the topics whose records the gap was read out of and its category — carried per-candidate because the gate writes the topic's discovery brief from the block. Do not write to the discovery map and do not append to any tracker here — the approval gate writes approved candidates and tracks them.
 
 ---
 
@@ -167,20 +157,20 @@ Overwrite with the topic list:
 
 ### {Topic Name}
 - **Summary**: {one-line summary}
-- **Routing**: {discussion|research}
-- **Source artifacts**: {filename1}.md, {filename2}.md
-- **Gap type**: {cross-artifact|emergent|integration|uncovered}
+- **Routing**: discussion
+- **Source artifacts**: {topic1}, {topic2}
+- **Gap type**: {cross-artifact|emergent|integration}
 
 ### {Another Topic}
 - **Summary**: {one-line summary}
-- **Routing**: {discussion|research}
-- **Source artifacts**: {filename1}.md, {filename2}.md
-- **Gap type**: {cross-artifact|emergent|integration|uncovered}
+- **Routing**: discussion
+- **Source artifacts**: {topic1}, {topic2}
+- **Gap type**: {cross-artifact|emergent|integration}
 ```
 
 List every topic from **C**, even those that filtered out in **D** — the cache file is the analysis output, not the diff. If re-entered on a reuse boot where **C** did not run this session (a prior session's staging file was picked up), source the topic list from the staging file's candidate blocks instead — that file holds only the genuinely-new candidates, so the rebuilt cache is narrower than a fresh pass; the filtered topics' outcomes are already recorded on the map and the dismissed list, and the next content change re-runs the full analysis.
 
-Stamp the manifest's gap_analysis_cache — one command checksums the completed research plus completed discussion files, writes `checksum`, `generated`, and `input_files`, and indexes the cache file into the knowledge base so its content surfaces in future contextual queries:
+Stamp the manifest's gap_analysis_cache — one command checksums the decided discussions' records, writes `checksum`, `generated`, and `input_files`, and indexes the cache file into the knowledge base so its content surfaces in future contextual queries:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs cache stamp {work_unit} gap-analysis

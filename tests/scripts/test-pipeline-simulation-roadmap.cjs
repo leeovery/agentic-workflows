@@ -24,7 +24,7 @@ const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, carryOn, arrive, handoffEntry, bridgeTo, pickRoute, startKeys, walkToLiveImplementation, literal,
+  Sim, sessionLog, carryOn, arrive, handoffEntry, enterEntry, discussed, bridgeTo, pickRoute, startKeys, walkToLiveImplementation, literal,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: roadmap', () => {
@@ -193,18 +193,12 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['roadmap', 'pull-forward', 'menu-management', '--into', 'mvp', '--routing', 'discussion']);
     assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap');
 
-    // A product session that deepens pulled ground flags across the join —
-    // a signal on the live research, never a rewrite, and never on the
-    // discussion, whose conversation reads no flag.
-    sim.run(['topic', 'start', 'mvp', 'discussion', 'guest-ordering']);
-    const flag = sim.run(['roadmap', 'flag', 'guest-ordering']);
-    assert.deepStrictEqual([flag.flagged, flag.committed], [[], null]);
-    assert.strictEqual(sim.manifest('mvp').phases.discussion.items['guest-ordering'].reconcile_needed, undefined);
+    enterEntry(sim, 'mvp', 'discussion', 'guest-ordering');
 
     // The cancel-revert hop: cancelling the joined topic hands the item back
     // to waiting; reactivation does NOT re-join (the revert is one-way — a
     // re-pull re-binds deliberately).
-    sim.run(['topic', 'start', 'mvp', 'discussion', 'menu-management']);
+    enterEntry(sim, 'mvp', 'discussion', 'menu-management');
     const cancelled = sim.run(['topic', 'cancel', 'mvp', 'discovery', 'menu-management']);
     assert.deepStrictEqual(cancelled.roadmap_reverted, ['menu-management']);
     state = sim.run(['roadmap', 'state']);
@@ -320,8 +314,7 @@ describe('pipeline simulation: roadmap', () => {
   it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from a live implementation item', () => {
     const wu = 'orders';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Orders', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    discussed(sim, wu, wu);
     walkToLiveImplementation(sim, wu, wu);
     // The park's source is the record the session is writing, relative to
     // `.leeway/` — backlogging's table — and on disk, as the specification
@@ -399,22 +392,22 @@ describe('pipeline simulation: roadmap', () => {
     const flog = sessionLog(sim, 'loyalty-feat');
     sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty, and the points a refund loses', '--session-log-file', flog]);
     sim.run(['roadmap', 'pull', 'loyalty', 'points-lost', '--into', 'loyalty-feat']);
-    sim.run(['topic', 'start', 'loyalty-feat', 'discussion', 'loyalty-feat']);
-    sim.write('.leeway/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
-    // The feature discussion parks a tangent off its own record — the
-    // off-topic valve's call, its source the discussion file.
+    enterEntry(sim, 'loyalty-feat', 'discussion', 'loyalty-feat');
+    sim.write('.leeway/loyalty-feat/topics/loyalty-feat/log.md', '# Loyalty discussion\n');
+    // The feature discussion parks a tangent for later, its source the
+    // topic's log.
     sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'v2', '--summary', 'shoppers gift store credit',
-      '--origin', 'park:loyalty-feat', '--source', 'loyalty-feat/discussion/loyalty-feat.md']);
+      '--origin', 'park:loyalty-feat', '--source', 'loyalty-feat/topics/loyalty-feat/log.md']);
     const elog = sessionLog(sim, 'platform');
     sim.run(['workunit', 'create', 'platform', 'epic', '--description', 'Platform', '--session-log-file', elog]);
 
     const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty']);
     assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty', 'points-lost']);
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
-      { item: 'gift-cards', from: 'loyalty-feat/discussion/loyalty-feat.md', to: 'platform/discussion/loyalty.md' },
+      { item: 'gift-cards', from: 'loyalty-feat/topics/loyalty-feat/log.md', to: 'platform/topics/loyalty/log.md' },
     ]);
     let state = sim.run(['roadmap', 'state']);
-    assert.deepStrictEqual(state.items.find((i) => i.name === 'gift-cards').sources, ['platform/discussion/loyalty.md']);
+    assert.deepStrictEqual(state.items.find((i) => i.name === 'gift-cards').sources, ['platform/topics/loyalty/log.md']);
     const row = state.items.find((i) => i.name === 'loyalty');
     assert.strictEqual(row.state, 'in-flight');
     assert.strictEqual(row.work_unit, 'platform');
@@ -468,10 +461,6 @@ describe('pipeline simulation: roadmap', () => {
     const row = (/** @type {string} */ name) => state.items.find((i) => i.name === name);
     assert.deepStrictEqual([row('guest-checkout').work_unit, row('guest-checkout').topic], ['launch', 'guest-checkout']);
     assert.deepStrictEqual([row('cart-drops-items').work_unit, row('cart-drops-items').topic], ['launch', undefined]);
-
-    // A roadmap thought about the riding bug reaches nothing — and says so.
-    const flag = sim.run(['roadmap', 'flag', 'cart-drops-items']);
-    assert.deepStrictEqual([flag.flagged, flag.committed, flag.note], [[], null, 'nothing reached "launch" — it has no topic there to flag']);
 
     // The bug stays with the epic: the topic's cancel returns the idea alone,
     // and only the whole epic's cancel returns the bug.

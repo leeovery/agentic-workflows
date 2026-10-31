@@ -57,10 +57,10 @@ const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
 const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A held session in any other phase
 // is no reason to defer an analysis that never looks at its material.
-const SOURCE_PHASES = ['research', 'discussion'];
+const SOURCE_PHASES = ['discussion'];
 // The phases whose document a specification extracts from — what the
 // spec-side held-doc check looks for a holder on.
-const DOCUMENT_PHASES = ['research', 'discussion', 'investigation'];
+const DOCUMENT_PHASES = ['discussion', 'investigation'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
@@ -282,8 +282,8 @@ function peerHold(cwd, workUnit, phase, topic) {
 
 /**
  * The held rows an epic-wide analysis would read over — a peer's, never the
- * caller's own: a session that parked its own research and stepped back to
- * the menu is not mid-conversation on it, and a deferral naming that row
+ * caller's own: a session that parked its own discussion and stepped back
+ * to the menu is not mid-conversation on it, and a deferral naming that row
  * would wait on the session reading it.
  * @param {PresenceRow[]} sessions
  */
@@ -318,7 +318,7 @@ function scanPresence(cwd, workUnit) {
   return {
     work_unit: workUnit,
     held: sessions.filter((r) => r.held).length,
-    // The analyses read research and discussion; `held_sources` is the count
+    // The analyses read discussion; `held_sources` is the count
     // that decides a deferral, so a held planning or spec session never holds
     // one up.
     held_sources: heldSources(sessions).length,

@@ -19,13 +19,11 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} DiscoveryMapRow
  * @property {string} name
- * @property {string} lifecycle   fresh|researching|ready_for_discussion|discussing|decided|handled|cancelled|postponed
+ * @property {string} lifecycle   fresh|discussing|decided|handled|cancelled|postponed
  * @property {string|null} [routing]
- * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
  * @property {string|null} [promoted_to]  the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} [mail_waiting]  messages wait in the topic's mailbox, whatever its items' status
- * @property {boolean} [reconcile_pending]  a phase item beneath the row carries a live reconcile flag
  * @property {import('../derivations.cjs').Wait[]} [waits]  the live waits of the topic's in-progress phase items
  * @property {string|null} [summary]
  */
@@ -35,7 +33,6 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {number} total
  * @property {number} decided
  * @property {number} in_flight
- * @property {number} ready
  * @property {number} fresh
  * @property {number} handled
  * @property {number} cancelled
@@ -45,7 +42,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} ProposedTopic
  * @property {string} name
- * @property {string} routing   research|discussion
+ * @property {string} routing   discussion
  * @property {string} summary   one line, from the exploration
  * @property {string} description  a short paragraph, from the exploration — what the topic covers and why it surfaced
  */
@@ -55,7 +52,6 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 const BREAKDOWN = /** @type {const} */ ([
   ['decided', 'decided'],
   ['in_flight', 'in flight'],
-  ['ready', 'ready'],
   ['fresh', 'fresh'],
   ['handled', 'dead-ended'],
   ['cancelled', 'cancelled'],
@@ -75,7 +71,7 @@ function breakdown(summary) {
 function mapNodes(rows) {
   return rows.map((row) => ({
     title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
-    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.mail_waiting ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null))],
+    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null))],
   }));
 }
 

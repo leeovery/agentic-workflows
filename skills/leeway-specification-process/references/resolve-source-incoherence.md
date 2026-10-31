@@ -140,7 +140,7 @@ Send the gap to the owning document's mailbox — its item reopens and the messa
 
 **If the work type is `epic`:**
 
-→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
+→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, date = `{today}`.
 
 On return, read `result`.
 
@@ -156,10 +156,10 @@ Re-read the spec item's status as at the top of this section; a terminal status 
 
 **If the work type is not `epic`:**
 
-Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
+Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {source phase} {doc} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name}
 ```
 
 → Proceed to **D. Pause the Specification**.
@@ -168,7 +168,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {sou
 
 Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Its name is the one the user gave in the exchange, or a kebab-case name derived from the gap where they gave none.
 
-→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{the name}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap in the new topic's discussion mailbox.
+→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{the name}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, date = `{today}`. It creates the map item and parks the gap in the new topic's discussion mailbox.
 
 On return, read `result`.
 
@@ -224,7 +224,7 @@ Another session owns that document, however long it has idled. Do not edit. Writ
 node .claude/skills/leeway-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
 ```
 
-**STOP.** Wait for user response. Either answer first sends the agreed resolution to the held session's mailbox — epic: load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic send` transaction shown in **B**, message = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the send delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is waiting in a mailbox, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
+**STOP.** Wait for user response. Either answer first sends the agreed resolution to the held session's mailbox — epic: load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, date = `{today}`; other work types: the `topic send` transaction shown in **B**, message = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the send delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is waiting in a mailbox, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
 
 #### Otherwise
 

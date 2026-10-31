@@ -1,12 +1,12 @@
 # Sending a Message
 
-*Shared reference. Loaded by `leeway-discussion-process` (off-topic points), `leeway-research-process` (topic awareness), and `leeway-specification-process`, `leeway-planning-process`, and `leeway-implementation-process` (gaps and resolutions sent to a source discussion) when something must be sent to a different topic.*
+*Shared reference. Loaded by `leeway-specification-process`, `leeway-planning-process`, and `leeway-implementation-process` when a gap or a resolution must be sent to a source discussion.*
 
 ---
 
 Sends a message to a target topic's **mailbox** — one engine-numbered file per message, installed and committed by the engine — so the target raises it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to send to; their callers ignore the point, surface it to the inbox, or pivot to an epic, and never load this reference.
 
-The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a point that belongs to the current topic is normal subtopic or thread work, not a message). A specification, planning, or implementation sender is the exception: its target is a source discussion — a different phase item even when it shares the sender's own topic name. The delivery is a self-committing engine transaction — the message file and manifest land action-scoped under the send's commit message; the caller commits nothing for the delivery itself. (`topic reactivate` in **D** likewise commits itself.)
+The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a point that belongs to the current topic is its own work, not a message) — except that a specification, planning, or implementation sender's target is a source discussion, a different phase item even when it shares the sender's own topic name. The delivery is a self-committing engine transaction — the message file and manifest land action-scoped under the send's commit message; the caller commits nothing for the delivery itself. (`topic reactivate` in **D** likewise commits itself.)
 
 ## Parameters
 
@@ -16,8 +16,7 @@ The caller provides these via context before loading:
 - `target` — the destination topic the message belongs to (an existing map name, or a new kebab-case name the caller derived).
 - `message` — the message as a short title, plus the full context discussed about it.
 - `origin` — the topic the message surfaced in (the current session's topic).
-- `phase` — the current session's phase, `research`, `discussion`, `specification`, `planning`, or `implementation`. Recorded in the entry.
-- `landing_phase` — where the message lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
+- `phase` — the current session's phase, `specification`, `planning`, or `implementation`.
 - `date` — today's date.
 
 After return, the caller reads these from conversation memory:
@@ -25,17 +24,12 @@ After return, the caller reads these from conversation memory:
 - `result` — `landed` (message delivered and committed by the engine) or `cancelled` (the send was dropped or blocked; nothing written).
 - `landed_topic` — the final target name (a new target may have been renamed during validation).
 
-## Judging the Landing Phase
-
-The message's nature decides, never the target: an open question needing exploration → `research`; a decision owed → `discussion`; a correction lands in the phase whose document records the material it corrects — `discussion` when the target has recorded nothing yet. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
-
 ## Message Shape
 
-Each message is one mailbox file. Pin this exact content shape — the fold reads against it:
+Each message is one mailbox file, its first line the title — the engine writes who sent it and when beneath it:
 
 ```
 ### {short title}
-*From: {origin} · {phase} · {date}*
 
 {the full context discussed about this message}
 ```
@@ -74,28 +68,28 @@ The topic waits on the roadmap and the message waits with it — the delivery pa
 
 #### Otherwise
 
-The landing phase is already judged and confirmed — `{landing_phase}` decides, not the target's live state. The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic), and a cancelled or dead-ended target refuses loudly with its recovery path.
+The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic), and a cancelled or dead-ended target refuses loudly with its recovery path.
 
 → Proceed to **C. Send the Message**.
 
 ## B. New Target
 
-Create the target via the shared topic-creation core, routed at the judged landing phase. The core writes the map item alone — the phase item is created as `unstarted` in **C**, never started:
+Create the target via the shared topic-creation core. The core writes the map item alone — the phase item is created as `unstarted` in **C**, never started:
 
-→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `message:{origin}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
+→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `discussion`, source = `message:{origin}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
 
 → On return, proceed to **C. Send the Message**.
 
 ## C. Send the Message
 
-One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox, consumes the scratch file, and commits the delivery action-scoped (message file + manifest).
+One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox under the line naming its sender, consumes the scratch file, and commits the delivery (message file + manifest).
 
 1. Derive `slug` — kebab-case of the message's short title.
 2. Write the full entry (shape above) to `.workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md` with the Write tool.
 3. Deliver:
 
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {landing_phase} {target} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): send message to {target}"
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {origin} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug}
    ```
 
 **If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
@@ -110,7 +104,7 @@ Surface the engine's error verbatim — it names the recovery path. Nothing has 
 
 **Otherwise:**
 
-Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the delivery marked downstream work to reconcile — on a research-side landing, the target's discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
+Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the delivery marked downstream work to reconcile — the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
 
 → Return to caller.
 
@@ -134,7 +128,7 @@ Reopen the topic — for `handled`:
 node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
 ```
 
-For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; every research and discussion item cancelled under its name returns with it:
+For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; the discussion cancelled under its name returns with it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}

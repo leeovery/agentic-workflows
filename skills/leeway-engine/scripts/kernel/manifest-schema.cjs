@@ -13,7 +13,7 @@
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'cross-cutting', 'quick-fix'];
 
 const VALID_PHASES = [
-  'discovery', 'research', 'experiment', 'discussion', 'investigation', 'scoping',
+  'discovery', 'experiment', 'discussion', 'investigation', 'scoping',
   'specification', 'planning', 'implementation',
   'review'
 ];
@@ -24,11 +24,11 @@ const VALID_PHASES = [
 // dashboards, gateways, and the simulation all read these arrays, never a
 // local copy.
 const WORK_TYPE_PIPELINES = {
-  epic:            ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
-  feature:         ['research', 'experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  epic:            ['experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
+  feature:         ['experiment', 'discussion', 'specification', 'planning', 'implementation', 'review'],
   bugfix:          ['investigation', 'specification', 'planning', 'implementation', 'review'],
   'quick-fix':     ['scoping', 'implementation', 'review'],
-  'cross-cutting': ['research', 'experiment', 'discussion', 'specification'],
+  'cross-cutting': ['experiment', 'discussion', 'specification'],
 };
 
 // Derived-bookkeeping phases: the item is computed over its own records — no
@@ -44,17 +44,16 @@ const VALID_PHASE_STATUSES = {
   // would turn validators' `VALID_PHASE_STATUSES[phase]` lookups into
   // undefined — the silent permissive path this table exists to prevent.
   discovery:      /** @type {string[]} */ ([]),
-  // `postponed` is the Discovery unit's second terminal-for-now state: the
-  // topic left the epic for the roadmap whole, its status stashed, and the
-  // pull is the way back. Only the two conversations postpone — a topic past
-  // specification is past "not yet".
-  research:       ['unstarted', 'in-progress', 'completed', 'superseded', 'cancelled', 'postponed'],
   // Derived bookkeeping over the topic's experiment records: the spawn opens
   // the item, the last record's terminal transition closes it — the user
   // never starts or completes it by hand.
   experiment:     ['in-progress', 'completed'],
-  // `promoted`: the discussion left the epic with the specification it
-  // sources, into that specification's cross-cutting unit (`promoted_to`).
+  // `postponed` is the Discovery unit's second terminal-for-now state: the
+  // topic left the epic for the roadmap whole, its status stashed, and the
+  // pull is the way back. Only the conversation postpones — a topic past
+  // specification is past "not yet". `promoted`: the discussion left the
+  // epic with the specification it sources, into that specification's
+  // cross-cutting unit (`promoted_to`).
   discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed', 'promoted'],
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
@@ -67,7 +66,7 @@ const VALID_PHASE_STATUSES = {
 // Where a discovery-map item routes when work starts on it. Also the legal
 // `--phase` choices when a topic spawn seeds its first phase item — the
 // routable phases ARE the routing vocabulary.
-const VALID_ROUTINGS = ['research', 'discussion'];
+const VALID_ROUTINGS = ['discussion'];
 
 // One experiment record in a topic's series
 // (`phases.experiment.items.{topic}.experiments.{id}.status`): the
@@ -107,26 +106,10 @@ function compareExperimentIds(a, b) {
   return (am ?? 0) - (bm ?? 0);
 }
 
-// A kebab-case slug — a work unit's name, the key shape of a thread in a
-// research register — and its pattern unanchored, for a pattern that holds one.
+// A kebab-case slug — a work unit's name, a message's or a spike's — and its
+// pattern unanchored, for a pattern that holds one.
 const KEBAB_SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const KEBAB_SLUG_PATTERN = new RegExp(`^${KEBAB_SLUG}$`);
-
-// One thread in a research topic's register
-// (`phases.research.items.{topic}.threads.{slug}.status`): descriptive
-// states — nothing gates on any of them, and any state may follow any other.
-// Consumed by the thread verbs and the simulation's audit, so the two
-// readers can never drift.
-const VALID_THREAD_STATUSES = ['open', 'digging', 'learned', 'parked'];
-
-// Where a thread entered the register: the fixed sources, a deep dive's
-// store id (`deep-dive-NNN`, with or without its label suffix), or the name
-// of the topic that sent the question in — any name the map accepts
-// (no slashes, no dots), one line with no surrounding whitespace, since the
-// origin renders as a tag. The dive prefix is pinned so a malformed id can
-// never pass as a topic name.
-const THREAD_FIXED_ORIGINS = ['seed', 'brief', 'user', 'conversation'];
-const DEEP_DIVE_ID_PATTERN = /^deep-dive-\d{3,}(-[a-z0-9]+(-[a-z0-9]+)*)?$/;
 
 /**
  * A plain name: any name the discovery map accepts — no slashes, no dots,
@@ -158,14 +141,6 @@ function assertLegalName(kind, name) {
   if (illegal !== null) throw new Error(illegal);
 }
 
-/** @param {string} origin */
-function isThreadOrigin(origin) {
-  if (typeof origin !== 'string') return false;
-  if (THREAD_FIXED_ORIGINS.includes(origin)) return true;
-  if (origin.startsWith('deep-dive-')) return DEEP_DIVE_ID_PATTERN.test(origin);
-  return isPlainName(origin);
-}
-
 // Where an import came from — required on every `imports[]` entry. The fixed
 // origins are the two places that belong to no phase session: `discovery`
 // (the opener or a discovery session) and `roadmap` (the project-level
@@ -173,7 +148,7 @@ function isThreadOrigin(origin) {
 // landed the file — and only the phases whose sessions read shared material
 // carry that door.
 const IMPORT_FIXED_ORIGINS = ['discovery', 'roadmap'];
-const IMPORT_PHASES = ['research', 'discussion', 'investigation'];
+const IMPORT_PHASES = ['discussion', 'investigation'];
 
 /** @param {string} origin */
 function isImportOrigin(origin) {
@@ -284,8 +259,6 @@ module.exports = {
   isPlainName,
   illegalNameReason,
   assertLegalName,
-  VALID_THREAD_STATUSES,
-  isThreadOrigin,
   IMPORT_PHASES,
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,

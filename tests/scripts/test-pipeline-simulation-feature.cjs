@@ -4,9 +4,7 @@
 // The pipeline simulation's feature scenarios: the whole pipeline from
 // discovery to a completed review; the start menu's working set of inbox
 // ideas seeding discovery; a discussion entered through `enter`, begun and
-// then resumed by a later conversation; research started beneath a live
-// discussion, and research reopened beneath one in session; review skipped at
-// the next-phase gate, and a failed review reopening implementation; the
+// then resumed by a later conversation; review skipped at the next-phase gate, and a failed review reopening implementation; the
 // implementation loop's fix and analysis cycles surviving a resume.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -26,7 +24,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, decideTopic, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, decideTopic, discussed, bridgeTo, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -43,28 +41,18 @@ describe('pipeline simulation: feature', () => {
     startNew(sim, 'feature');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
-    // Discovery's single-phase endpoint (first-phase-routing A): which of
-    // research and discussion leans is the session's read, so it rides a
-    // payload; having the choice at all is the work type's.
-    const read = sim.write(`.leeway/.cache/${wu}/discovery/first-phase.json`,
-      { read: "The shape's clear and the open questions are trade-offs — I'd start with discussion." });
-    assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
-      /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
-    // Nothing completed and no review to skip: the bridge's gate renders
+    // Discovery's single-phase endpoint (first-phase-routing A) sends a
+    // feature to its discussion. Nothing completed and no review to skip: the bridge's gate renders
     // empty and the continuation goes straight to the handoff.
     sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
     // Discovery's conclusion hands the work to the first phase it settled.
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
 
-    // First phase: discussion (topic = work unit for single-topic types).
-    // The discussion fetches the research gate before any status read.
-    handoffEntry(sim, wu, 'discussion', wu);
-    sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
-    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
-      /□ Discussion Session[\s\S]*> Discussion starting\./);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
+    // First phase: discussion (topic = work unit for single-topic types),
+    // entered through `enter`, which starts it; the conversation reads the
+    // product record before it opens.
+    enterEntry(sim, wu, 'discussion', wu);
+    sim.run(['ledger', 'product']);
     // The person answers their question, and the topic closes at the decided
     // screen: its yes lands Claude's product-record line, completes the topic
     // and hands it to the specification.
@@ -153,114 +141,10 @@ describe('pipeline simulation: feature', () => {
     assert.match(carryOn(sim).text, /has not written to the log yet/);
   });
 
-  it('feature: research started beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
-    const wu = 'ledger';
-    const log = sessionLog(sim, wu);
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ledger feature', '--session-log-file', log]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // Research started beneath the discussion: research feeds discussion —
-    // the linear continue routes to it, and the discussion is held at entry
-    // and at its conclusion alike, the entry gate naming the work unit's
-    // next step. The session already inside resumes: the engine holds
-    // births, not resumes.
-    sim.run(['topic', 'start', wu, 'research', wu]);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
-    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
-    assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /Entry blocked — this discussion awaits research on "Ledger" \(in flight\)[\s\S]*Continue the work unit — the research is its next step\./);
-    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
-    // The pause runs the in-flight check, then hands the session to the
-    // bridge: its banner names what the unit's one
-    // conversation awaits — the linear clause drops the topic name — and the
-    // continuation routes to the research.
-    assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
-    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
-      /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(in flight\)\.\n$/);
-    // The feature's continue menu proceeds to the research, handing off to it.
-    assert.strictEqual(linearPick(sim, wu, 'continue').line, '→ Research · ledger');
-    assert.match(sim.render(['step-opening', `${wu}.research.${wu}`, '--step', 'session'], { expect: 'content' }),
-      /□ Research Session[\s\S]*> Starting the research session\./);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
-    assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
-    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
-      /awaiting research on the topic \(in flight\)\./);
-    // The single-topic register keys on the work unit's own name; an open
-    // thread is a fine way to conclude — the gate shows it and asks the same.
-    sim.run(['research-threads', 'add', wu, wu, 'balance-rounding', '--question', 'Where does the ledger round a balance?', '--origin', 'seed']);
-    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
-    sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
-    assert.match(sim.render(['research-conclude-gate', `${wu}.research.${wu}`], { expect: 'content' }),
-      /Research Threads — Ledger \(1 thread\)\n {2}└─ ○ Where does the ledger round a balance\?\s+\[seed\]\n=== MENU: research conclude gate/);
-    sim.run(['topic', 'complete', wu, 'research', wu]);
-    // Landed: the gates release and the discussion resumes. A pause banner
-    // rendered over a wait a peer has since landed says only the bare truth.
-    sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
-    assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
-      /\nDiscussion paused for "Ledger"\.\n$/);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
-    assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
-    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session', '--resumed'], { expect: 'content' }),
-      /> Picking the discussion back up where the map leaves it\./, 'the session the research held picks back up');
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
-    // A concluded discussion is held the same way: its research reopened
-    // beneath it, the discussion's reopen refuses until that research lands
-    // again.
-    sim.run(['topic', 'reopen', wu, 'research', wu]);
-    sim.refuses(['topic', 'reopen', wu, 'discussion', wu],
-      /discussion can't reopen on "ledger" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
-    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nThe second question.\n`);
-    sim.run(['commit', wu, '-m', `research(${wu}): the second question`, '--topic', `research/${wu}`]);
-    sim.run(['topic', 'complete', wu, 'research', wu]);
-    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
-    assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', wu]).status, 'in-progress');
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
-  });
-
-  it('feature: research landing beneath a discussion in session is read before the close — the completion refuses over the unread flag', () => {
-    const wu = 'tally';
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Tally feature', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'research', wu]);
-    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
-    sim.run(['commit', wu, '-m', `research(${wu}): capture`, '--topic', `research/${wu}`]);
-    sim.run(['topic', 'complete', wu, 'research', wu]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // A peer reopens the research beneath the discussion in session: the
-    // discussion is flagged. While the research is outstanding the wait —
-    // not the flag — holds the close, and the session's own check stays
-    // silent.
-    const peer = sim.session('peer-in-research', 1);
-    assert.deepStrictEqual(peer.run(['topic', 'reopen', wu, 'research', wu]).reconcile_flagged, [{ phase: 'discussion', topic: wu }]);
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'in-progress');
-    sim.refuses(['topic', 'complete', wu, 'discussion', wu], /^discussion "tally" awaits research on the topic/);
-    // The peer concludes the research: the wait releases, and the unread
-    // flag is now what holds the close.
-    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
-    sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
-    sim.run(['topic', 'complete', wu, 'research', wu]);
-    // The session's next check — the loop's break, or the close: the flag
-    // reads `research`, the research item `completed`, so
-    // the advisory reads the research file and clears the flag (prose-owned —
-    // simulated here); until it does, the completion refuses.
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'completed');
-    sim.refuses(['topic', 'complete', wu, 'discussion', wu],
-      /^discussion "tally" carries reconcile_needed: research — the topic's research landed beneath this conversation; read what landed into the session and clear the flag before concluding$/);
-    sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
-    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
-  });
-
   it('feature: review skipped at the next-phase gate', () => {
     const wu = 'quick-ship';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ship it', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    discussed(sim, wu, wu);
     walkDeliveryPhasesToImplementation(sim, wu, wu);
     assert.match(sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' }),
       /Complete without review/, 'the review hop offers the skip');
@@ -273,8 +157,7 @@ describe('pipeline simulation: feature', () => {
   it('feature: a failed review re-opens implementation and hands off to it', () => {
     const wu = 'patch-up';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Patch it up', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    discussed(sim, wu, wu);
     walkDeliveryPhasesToImplementation(sim, wu, wu);
     bridgeTo(sim, wu, 'review');
     handoffEntry(sim, wu, 'review', wu);
@@ -295,8 +178,7 @@ describe('pipeline simulation: feature', () => {
   it('implementation loop: fix cycles, analysis cycles, and gate-mode bookkeeping survive resume', () => {
     const wu = 'loop';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Task loop', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    discussed(sim, wu, wu);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.run(['topic', 'start', wu, 'planning', wu]);

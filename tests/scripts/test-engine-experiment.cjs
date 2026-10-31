@@ -40,7 +40,7 @@ function readManifest(dir, wu) {
   return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
-/** An epic with timing's research and discussion both open — the discussion spawns. */
+/** An epic with timing's discussion open — the discussion spawns. */
 function epicManifest() {
   return {
     name: 'lab',
@@ -50,11 +50,6 @@ function epicManifest() {
       discovery: {
         items: {
           timing: { routing: 'discussion', summary: 'Timing behaviour', order: 1 },
-        },
-      },
-      research: {
-        items: {
-          timing: { status: 'in-progress' },
         },
       },
       discussion: {
@@ -135,8 +130,6 @@ describe('engine experiment create — the spawn', () => {
     assert.deepStrictEqual(record, { slug: 'window-placement', status: 'conceived' });
     assert.ok(question.startsWith(res.question), 'the record keeps the question it measures');
     assert.deepStrictEqual(m.phases.discussion.items.timing.awaiting_experiments, ['E1']);
-    assert.strictEqual(m.phases.research.items.timing.awaiting_experiments, undefined,
-      'the lock lands on the spawning phase alone');
     assert.strictEqual(fs.readFileSync(path.join(res.dir, 'problem.md'), 'utf8'),
       '# Problem — window-placement\n', 'the create installs the problem statement in the same transaction');
     assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/window-placement-problem.md')),
@@ -332,23 +325,13 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     assert.strictEqual(item.experiments.E1.verdict, 'all six layouts placed correctly; adopted');
   });
 
-  it('the conclusion releases the wait and flags nothing — the conversation concludes once its research lands', () => {
+  it('the conclusion releases the wait and flags nothing', () => {
     walkTo(dir, 'E1', 'running');
     const res = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'rule held']);
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     const item = readManifest(dir, 'lab').phases.discussion.items.timing;
     assert.strictEqual(item.awaiting_experiments, undefined, 'the emptied lock is removed');
     assert.strictEqual(item.reconcile_needed, undefined, 'the result reaches the discussion on its map or as mail, never as a flag');
-    engine(dir, ['topic', 'complete', 'lab', 'research', 'timing']);
-    const done = engine(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']);
-    assert.strictEqual(done.status, 'completed');
-  });
-
-  it('a waiting conversation cannot conclude, naming each wait', () => {
-    spawn(dir, 'discussion', 'second');
-    // The in-flight research first, then the evidence.
-    assert.match(engineFails(dir, ['topic', 'complete', 'lab', 'discussion', 'timing']).error,
-      /^discussion "timing" awaits research on the topic — [^;]*; and awaits experiment evidence \(E1, E2\)/);
   });
 
   it('conclusion never flags a completed same-topic discussion', () => {
@@ -381,14 +364,6 @@ describe('engine experiment conclude / abandon — the release edges', () => {
     const item = readManifest(dir, 'lab').phases.discussion.items.timing;
     assert.deepStrictEqual(item.awaiting_experiments, ['E2'], 'the other wait stands');
     assert.strictEqual(res.item_status, 'in-progress', 'a live record keeps the item open');
-  });
-
-  it('a pending reconcile flag is never clobbered by the release', () => {
-    const m = readManifest(dir, 'lab');
-    m.phases.discussion.items.timing.reconcile_needed = 'research';
-    writeManifest(dir, 'lab', m);
-    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
-    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, 'research');
   });
 });
 
@@ -638,10 +613,10 @@ describe('epic topic cancel takes the series with its topic', () => {
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('no phase-level cancel: the series, the research, and the discussion each refuse with the stage rule, writing nothing', () => {
-    for (const phase of ['experiment', 'research', 'discussion']) {
+  it('no phase-level cancel: the series and the discussion each refuse with the stage rule, writing nothing', () => {
+    for (const phase of ['experiment', 'discussion']) {
       assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'lab', phase, 'timing']).error,
-        'cancel is topic-level per stage — discovery (the map row with its research, discussion, and experiments) or specification (with its planning)', phase);
+        'cancel is topic-level per stage — discovery (the map row with its discussion and experiments) or specification (with its planning)', phase);
     }
     const before = readManifest(dir, 'lab');
     assert.deepStrictEqual(before.phases.discussion.items.timing.awaiting_experiments, ['E1', 'E2'], 'refusal writes nothing');
@@ -653,10 +628,7 @@ describe('epic topic cancel takes the series with its topic', () => {
     assert.strictEqual(res.status, 'cancelled');
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1', 'E2'], remaining: [] }]);
     assert.deepStrictEqual(res.abandoned, ['E1', 'E2'], 'every open record ends abandoned — no zombie survives the cancel');
-    assert.deepStrictEqual(res.cancelled, [
-      { phase: 'research', previous_status: 'in-progress' },
-      { phase: 'discussion', previous_status: 'in-progress' },
-    ]);
+    assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     const after = readManifest(dir, 'lab');
     const series = after.phases.experiment.items.timing;
     assert.strictEqual(series.status, 'completed', 'every record terminal — the series settles, never a cancel');
@@ -669,7 +641,6 @@ describe('epic topic cancel takes the series with its topic', () => {
     assert.strictEqual(discussion.status, 'cancelled');
     assert.strictEqual(discussion.awaiting_experiments, undefined);
     assert.strictEqual(discussion.reconcile_needed, undefined, 'the release flags nothing');
-    assert.strictEqual(after.phases.research.items.timing.status, 'cancelled');
     assert.deepStrictEqual(after.phases.discovery.items.timing, { routing: 'discussion', summary: 'Timing behaviour', cancelled: true, previous_order: 1 });
   });
 
@@ -690,15 +661,12 @@ describe('epic topic cancel takes the series with its topic', () => {
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.reason, 'moot');
   });
 
-  it('the reactivate restores both conversations; the series is never reactivated on its own, and the next spawn revives it', () => {
+  it('the reactivate restores the conversation; the series is never reactivated on its own, and the next spawn revives it', () => {
     engine(dir, ['topic', 'cancel', 'lab', 'discovery', 'timing']);
     assert.match(engineFails(dir, ['topic', 'reactivate', 'lab', 'experiment', 'timing']).error,
       /^reactivate is topic-level per stage — discovery/);
     const res = engine(dir, ['topic', 'reactivate', 'lab', 'discovery', 'timing']);
-    assert.deepStrictEqual(res.restored, [
-      { phase: 'research', status: 'in-progress' },
-      { phase: 'discussion', status: 'in-progress' },
-    ]);
+    assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     const after = readManifest(dir, 'lab');
     assert.strictEqual(after.phases.experiment.items.timing.status, 'completed', 'the series stays where the cancel left it');
     const revived = spawn(dir, 'discussion', 'successor');
@@ -709,63 +677,6 @@ describe('epic topic cancel takes the series with its topic', () => {
   it('the derived item status refuses the hand-write the verbs make unnecessary', () => {
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.experiment.timing', 'status', 'completed']).error,
       /derived bookkeeping the experiment verbs maintain/);
-  });
-});
-
-describe('the staleness hop walks to the nearest downstream consumer', () => {
-  let dir;
-  beforeEach(() => { dir = setupGitFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  /** @param {object} phases */
-  function world(phases) {
-    writeManifest(dir, 'lab', { name: 'lab', work_type: 'epic', status: 'in-progress', phases });
-    commitAll(dir, 'init');
-  }
-
-  it('a research reopen with no experiment item still flags the discussion one hop away', () => {
-    world({
-      research: { items: { timing: { status: 'completed' } } },
-      discussion: { items: { timing: { status: 'completed' } } },
-    });
-    const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
-    assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, 'research');
-  });
-
-  it('a settled series between is walked past — the flag lands where a phase\'s start clears it', () => {
-    world({
-      research: { items: { timing: { status: 'completed' } } },
-      experiment: { items: { timing: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
-      discussion: { items: { timing: { status: 'completed' } } },
-    });
-    const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
-    const m = readManifest(dir, 'lab');
-    assert.strictEqual(m.phases.discussion.items.timing.reconcile_needed, 'research');
-    assert.strictEqual(m.phases.experiment.items.timing.reconcile_needed, undefined,
-      'the series item is derived bookkeeping — it never takes a reconcile flag');
-  });
-
-  it('a live series between is walked past the same way', () => {
-    world({
-      research: { items: { timing: { status: 'completed' } } },
-      experiment: { items: { timing: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
-      discussion: { items: { timing: { status: 'completed' } } },
-    });
-    const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
-    assert.deepStrictEqual(res.reconcile_flagged, [{ phase: 'discussion', topic: 'timing' }]);
-    assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.reconcile_needed, undefined);
-  });
-
-  it('the walk ends at discussion — a specification is never reached over an absent record', () => {
-    world({
-      research: { items: { timing: { status: 'completed' } } },
-      specification: { items: { timing: { status: 'completed', sources: {} } } },
-    });
-    const res = engine(dir, ['topic', 'reopen', 'lab', 'research', 'timing']);
-    assert.strictEqual(res.reconcile_flagged, undefined, 'no consumer before the boundary — nothing is flagged');
-    assert.strictEqual(readManifest(dir, 'lab').phases.specification.items.timing.reconcile_needed, undefined);
   });
 });
 
@@ -823,9 +734,9 @@ describe('the field surface guards the series exactly as the verbs write it', ()
   it('every awaiting id must name a record the spawn allocated — set and push alike', () => {
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.discussion.timing', 'awaiting_experiments', '["E1","E9"]']).error,
       /awaiting_experiments cannot name E9/);
-    assert.match(engineFails(dir, ['manifest', 'push', 'lab.research.timing', 'awaiting_experiments', 'E9']).error,
+    assert.match(engineFails(dir, ['manifest', 'push', 'lab.discussion.timing', 'awaiting_experiments', 'E9']).error,
       /awaiting_experiments cannot name E9/);
-    assert.strictEqual(readManifest(dir, 'lab').phases.research.items.timing.awaiting_experiments, undefined,
+    assert.deepStrictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.awaiting_experiments, ['E1'],
       'the refusal writes nothing');
   });
 

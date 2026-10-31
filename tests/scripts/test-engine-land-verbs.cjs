@@ -66,7 +66,7 @@ describe('land: what it refuses before anything is read, writing nothing', () =>
       [['land', 'open', 'Pay', '1.1'], 'task-id: Work unit name "Pay" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens'],
       [['land', 'open', 'pay', '1-1'], 'task-id: "1-1" is not a task — it is {phase}.{n}'],
       [['land', 'phase', 'pay', '01'], 'task-id: "01" is not a phase — it is a whole number from 1'],
-      [['land', 'finish', 'research'], 'task-id: Work unit name "research" conflicts with a phase name'],
+      [['land', 'finish', 'discussion'], 'task-id: Work unit name "discussion" conflicts with a phase name'],
     ]);
     for (const [args, error] of refusals) assert.strictEqual(refuses(dir, args).error, error, args.join(' '));
     assert.deepStrictEqual(stateAt(dir), before);

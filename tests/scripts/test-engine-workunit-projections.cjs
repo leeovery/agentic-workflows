@@ -76,7 +76,6 @@ describe('workunit projections: status display', () => {
     // phase already alive, so the row reads ◐ [in-progress], never → [ready].
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
         discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
@@ -85,7 +84,6 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(unit.phase_label, 'experiment (awaiting evidence)');
     assert.strictEqual(workUnitStatus('feature', unit), [
       'PIPELINE (feature)',
-      '  ├─ ✓ Research      [completed]',
       '  ├─ ◐ Experiment    [in-progress]',
       '  └─ ◐ Discussion    [in-progress]',
       '',
@@ -95,7 +93,6 @@ describe('workunit projections: status display', () => {
   it('feature: the continue row routes the waiting unit into the laboratory', () => {
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
         discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
@@ -109,15 +106,15 @@ describe('workunit projections: status display', () => {
   it('feature: the experiment phase is never a revisit candidate', () => {
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
-        discussion: { items: { pay: { status: 'in-progress' } } },
+        discussion: { items: { pay: { status: 'completed' } } },
+        specification: { items: { pay: { status: 'in-progress' } } },
       },
     });
     const unit = unitOf(dir, 'feature', 'pay');
     const { keys } = workUnitMenu('feature', unit);
-    assert.ok(keys.some((k) => k.action === 'revisit_phase' && k.phase === 'research'),
-      'the completed research is revisitable');
+    assert.ok(keys.some((k) => k.action === 'revisit_phase' && k.phase === 'discussion'),
+      'the completed discussion is revisitable');
     assert.ok(!keys.some((k) => k.action === 'revisit_phase' && k.phase === 'experiment'),
       'a concluded verdict stands — a new spawn is what reopens the series');
   });
@@ -200,17 +197,15 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('cross-cutting: two completed phases and a ready terminal phase', () => {
+  it('cross-cutting: a completed discussion and a ready terminal phase', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
       },
     });
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
       'PIPELINE (cross-cutting)',
-      '  ├─ ✓ Research         [completed]',
       '  ├─ ✓ Discussion       [completed]',
       '  └─ → Specification    [ready]',
       '',
@@ -235,10 +230,9 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('feature: a reopened discussion with messages waiting cues the pipeline row, the proceed gate, and DATA', () => {
+  it('feature: a reopened discussion with messages waiting cues the pipeline row and DATA', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
-        research: { items: { 'auth-flow': { status: 'completed' } } },
         discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
         specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
       },
@@ -248,9 +242,7 @@ describe('workunit projections: status display', () => {
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · mail waiting\]/);
     assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
-    const menu = workUnitMenu('feature', unit);
-    assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · mail waiting.'), menu.rendered);
-    assert.ok(workUnitData('feature', unit, menu).includes('\nmail_waiting: discussion\n'));
+    assert.ok(workUnitData('feature', unit, workUnitMenu('feature', unit)).includes('\nmail_waiting: discussion\n'));
     // The drain retires it.
     fs.rmSync(path.join(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md'));
     const drained = unitOf(dir, 'feature', 'auth-flow');
@@ -482,7 +474,6 @@ describe('workunit projections: menu', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
       },
     });
@@ -503,8 +494,7 @@ describe('workunit projections: menu', () => {
         ['y', 'continue', null, '/leeway-specification-process cross-cutting caching'],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'research', '/leeway-research-process cross-cutting caching'],
-        ['2', 'revisit_phase', 'discussion', '/leeway-discussion-process cross-cutting caching'],
+        ['1', 'revisit_phase', 'discussion', '/leeway-discussion-process cross-cutting caching'],
       ]
     );
   });
@@ -576,30 +566,6 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('cross-cutting', unit), /Discussion +\[completed\]/);
     assert.match(workUnitMenu('cross-cutting', unit).rendered, /· mail waiting\./);
-  });
-
-  it('continues into a parked stub by name where nothing is in flight in the phase', () => {
-    createManifest(dir, 'fees', {
-      work_type: 'cross-cutting',
-      phases: {
-        research: { items: { 'fee-rules': { status: 'unstarted' } } },
-        discussion: { items: { 'fee-rules': { status: 'in-progress' }, 'fee-display': { status: 'completed' } } },
-        specification: { items: { fees: { status: 'completed', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } } },
-      },
-    });
-    const parked = unitOf(dir, 'cross-cutting', 'fees');
-    assert.strictEqual(parked.phase_label, 'research (parked — feeds the discussion)');
-    assert.strictEqual(parked.next_topic, 'fee-rules');
-    assert.strictEqual(workUnitMenu('cross-cutting', parked).keys[0].route, '/leeway-research-process cross-cutting fees fee-rules');
-  });
-
-  it('continues into the item whose input moved by name where nothing is in flight or parked', () => {
-    const unit = promoted({ discussion: { 'fee-display': { status: 'completed', reconcile_needed: 'research' } } });
-    assert.strictEqual(unit.phase_label, 'discussion (input moved — reconcile)');
-    assert.strictEqual(unit.next_topic, 'fee-display');
-    const [cont] = workUnitMenu('cross-cutting', unit).keys;
-    assert.deepStrictEqual([cont.topic, cont.route], ['fee-display', '/leeway-discussion-process cross-cutting fees fee-display'],
-      'the continue row names the item its route names');
   });
 
   it('continues into the specification\'s reconcile once the discussion concludes again — by the unit alone', () => {

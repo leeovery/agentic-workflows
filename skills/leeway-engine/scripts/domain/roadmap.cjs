@@ -42,14 +42,12 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
   loadWorkUnitManifest,
-  saveWorkUnitManifest,
-  withWorkUnitLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
-const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
 const { STATE_DIR_NAME, statePath } = require('../kernel/state-root.cjs');
@@ -1141,8 +1139,8 @@ function bindItem(cwd, name, { topic } = {}) {
     }
     item.pulled_to = { work_unit: join.work_unit, topic };
     // A topic that waited here after a postpone, landing in a different epic:
-    // the new row carries the prior record's address, which its research or
-    // discussion reads in full and relitigates. A return to the epic that
+    // the new row carries the prior record's address, which its discussion
+    // reads in full and relitigates. A return to the epic that
     // postponed it needs none — the record is already that epic's.
     const from = itemPostponedFrom(item);
     const prior = from && from.work_unit !== join.work_unit ? from : null;
@@ -1458,77 +1456,6 @@ function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
   });
 }
 
-/**
- * Flag the epic side of a join after a product session materially deepened
- * the item's ground (design decision 25b): `reconcile_needed: "roadmap"` on
- * the joined topic's live research — `flagDownstream` semantics across the
- * roadmap boundary: terminal items skipped, an existing flag never
- * clobbered, a signal never a rewrite. A discussion takes no flag: its
- * conversation reads none, and a decided one would route back to itself. What counts as
- * "materially deepened" is the calling flow's judgment; this records it.
- * Where it flags nothing — a join with no topic (a bug or a quick-fix riding
- * with an epic, an idea not yet bound, anything pulled into a unit of another
- * type), or a topic with nothing live left to flag — nothing reached the
- * work, and the response says so plainly (`committed: null`, the note naming
- * why). Self-commits (the epic's manifest).
- * @param {string} cwd @param {string} name
- * @returns {RoadmapOpResult}
- */
-function flagJoined(cwd, name) {
-  const item = roadmapItems(readProjectManifest(cwd))[name];
-  if (!item || typeof item !== 'object') throw new Error(`no roadmap item "${name}"`);
-  const join = itemJoin(item);
-  if (!join) throw new Error(`"${name}" is not joined to a work unit — a waiting item needs no flag; its record is read at the pull`);
-
-  /** @type {{phase: string, topic: string}[]} */
-  const flagged = [];
-  let alreadyFlagged = 0;
-  if (join.topic !== undefined) {
-    const topic = join.topic;
-    withWorkUnitLock(cwd, join.work_unit, () => {
-      const manifest = loadWorkUnitManifest(cwd, join.work_unit);
-      const research = ((manifest.phases && manifest.phases.research && manifest.phases.research.items) || {})[topic];
-      if (research && typeof research === 'object' && !TERMINAL_STATUSES.includes(research.status)) {
-        if (research.reconcile_needed !== undefined) {
-          alreadyFlagged++;
-        } else {
-          research.reconcile_needed = 'roadmap';
-          flagged.push({ phase: 'research', topic });
-        }
-      }
-      if (flagged.length > 0) saveWorkUnitManifest(cwd, join.work_unit, manifest);
-    });
-  }
-
-  /** @type {RoadmapOpResult} */
-  const result = { op: 'flag', name, work_unit: join.work_unit, flagged };
-  if (flagged.length === 0) {
-    result.note = flagMiss(join, alreadyFlagged);
-    result.committed = null;
-    return result;
-  }
-  /** @type {string[]} */
-  const warnings = [];
-  const outcome = commitStateTail(cwd, `${join.work_unit}/manifest.json`, `roadmap: flag ${name} — input moved`, warnings);
-  result.committed = outcome.committed;
-  if (warnings.length > 0) result.warnings = warnings;
-  noteCommitOutcome(result, outcome);
-  return result;
-}
-
-/**
- * The note a flag that flagged nothing carries: that nothing reached the
- * work, and why.
- * @param {{work_unit: string, topic?: string}} join @param {number} alreadyFlagged  live items an earlier flag holds
- * @returns {string}
- */
-function flagMiss(join, alreadyFlagged) {
-  const why = join.topic === undefined ? 'it has no topic there to flag'
-    : alreadyFlagged > 0 ? `the live research of topic "${join.topic}" already carries a flag`
-      : `topic "${join.topic}" has no live research to flag`;
-  return `nothing reached "${join.work_unit}" — ${why}`;
-}
-
 module.exports = {
   ROADMAP_DIR,
   DEFAULT_KIND,
@@ -1558,5 +1485,4 @@ module.exports = {
   revertJoins,
   carrySources,
   reaimAbsorbed,
-  flagJoined,
 };

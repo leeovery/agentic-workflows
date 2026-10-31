@@ -37,7 +37,7 @@ const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
 const BASELINE_PATH = /^\.baseline\/(.+)$/;
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const PHASE_PATH = /^([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/;
+const PHASE_PATH = /^([^/]+)\/(investigation|specification|imports|seeds|discovery)\/(.+)$/;
 
 /** The phase a record's chunks carry. */
 const RECORD_PHASE = 'record';
@@ -52,14 +52,12 @@ const UNIT_RECORD = '.unit';
  * @type {Record<string, (wu: string, topic: string) => string>}
  */
 const INDEXED_ARTIFACTS = {
-  research: (wu, topic) => `${wu}/research/${topic}.md`,
-  discussion: (wu, topic) => `${wu}/discussion/${topic}.md`,
   investigation: (wu, topic) => `${wu}/investigation/${topic}.md`,
   specification: (wu, topic) => `${wu}/specification/${topic}/specification.md`,
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap', RECORD_PHASE];
+const INDEXED_PHASES = ['investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap', RECORD_PHASE];
 
 // The project-level places carry their own name as both work unit and work
 // type: the engine reserves each, so no work unit collides with it.
@@ -68,7 +66,7 @@ const RESERVED_IDENTITIES = new Set(PROJECT_IDENTITIES);
 
 // Phases whose artifact is a flat `{phase}/{basename}.md` file, the topic its
 // basename.
-const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports', 'seeds']);
+const FLAT_PHASES = new Set(['investigation', 'imports', 'seeds']);
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never

@@ -193,7 +193,7 @@ describe('the task id', () => {
   });
 
   it('refuses an id or shown form of another shape', () => {
-    for (const id of ['pay-2', 'pay-0-1', 'pay-2-07', '-2-7', 'pay.v-2-7', 'Pay-2-7', 'research-2-7', 'pay-2-7-']) {
+    for (const id of ['pay-2', 'pay-0-1', 'pay-2-07', '-2-7', 'pay.v-2-7', 'Pay-2-7', 'discussion-2-7', 'pay-2-7-']) {
       assert.throws(() => parseTaskId(id), { message: `task-id: "${id}" is not a task's id — it is {unit}-{phase}-{n}` }, id);
     }
     for (const shown of ['2', '2.0', '02.1', '2.1.1', 'pay-2-1']) {
@@ -205,7 +205,7 @@ describe('the task id', () => {
     for (const unit of ['Pay Flow', 'x:y', 'feat(auth)', 'a\nb', 'pay.v2']) {
       assert.throws(() => taskId({ unit, phase: 1, n: 1 }), { message: `task-id: Work unit name "${unit}" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens` }, unit);
     }
-    assert.throws(() => parseShownTask('research', '1.1'), { message: 'task-id: Work unit name "research" conflicts with a phase name' });
+    assert.throws(() => parseShownTask('discussion', '1.1'), { message: 'task-id: Work unit name "discussion" conflicts with a phase name' });
     assert.throws(() => taskId({ unit: 'none', phase: 1, n: 1 }), { message: 'task-id: Work unit name "none" is reserved' });
   });
 

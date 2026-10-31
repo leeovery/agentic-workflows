@@ -1,6 +1,6 @@
 # Backlogging
 
-*Shared reference. Loaded by the `## Backlogging` section on the research, discussion, investigation, scoping, specification, planning, implementation, and review processing skills.*
+*Shared reference. Loaded by the `## Backlogging` section on the investigation, scoping, specification, planning, implementation, and review processing skills.*
 
 ---
 
@@ -68,7 +68,7 @@ Emit the call's MENU section verbatim per its marker.
 
 | `{phase}` | `{source}` |
 | --- | --- |
-| `research`, `discussion`, `investigation` | `{work_unit}/{phase}/{topic}.md` |
+| `investigation` | `{work_unit}/investigation/{topic}.md` |
 | `planning` | `{work_unit}/planning/{topic}/planning.md` |
 | `scoping`, `specification`, `implementation`, `review` | `{work_unit}/specification/{topic}/specification.md` |
 
@@ -92,7 +92,7 @@ Park it — the verb validates, births the map and any new horizon, and self-com
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
 ```
 
-Tell the user in one line what was parked and where, then note the park where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
+Tell the user in one line what was parked and where, then note the park where the phase keeps a running record — the file an investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
 
 → Return to caller.
 
@@ -116,6 +116,6 @@ It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matc
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
 ```
 
-Tell the user in one line that it is in the inbox, then note it where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing; the other phases keep none.
+Tell the user in one line that it is in the inbox, then note it where the phase keeps a running record — the file an investigation session is writing; the other phases keep none.
 
 → Return to caller.

@@ -39,7 +39,7 @@ const { EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs'
 const { computeTopicLifecycle } = require('./derivations.cjs');
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
-const TOPIC_PHASES = Object.freeze(['discovery', 'research', 'experiment', 'discussion', 'investigation']);
+const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
 
 /** The topic lifecycles that are not live. */
 const SET_ASIDE = Object.freeze(['cancelled', 'postponed']);

@@ -25,7 +25,7 @@ const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { LABELS_ON, stubbed, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
+const { LABELS_ON, stubbed, readyKnowledge, completedInvestigation, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
@@ -245,11 +245,11 @@ describe('engine boot', () => {
     // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
-    writeState(fix.project, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\n');
+    writeState(fix.project, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\n');
     writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'a peer topic');
-    writeState(fix.project, layout.doc('payments', 'discussion', 'topic-a'), '# Topic A\nhalf a turn\n');
-    stateGit(fix.project, ['add', '--', layout.doc('payments', 'discussion', 'topic-a')]);
+    writeState(fix.project, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nhalf a turn\n');
+    stateGit(fix.project, ['add', '--', layout.doc('payments', 'investigation', 'topic-a')]);
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
@@ -267,12 +267,12 @@ describe('engine boot', () => {
     const files = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
     assert.deepStrictEqual(files, [layout.migrations], 'boot swept nothing of a peer session\'s staged state');
     assert.strictEqual(stateGit(fix.project, ['diff', '--cached', '--name-only']).trim(),
-      layout.doc('payments', 'discussion', 'topic-a'), 'and left it staged exactly as it was');
+      layout.doc('payments', 'investigation', 'topic-a'), 'and left it staged exactly as it was');
   });
 
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
     readyKnowledge(fix.project);
-    completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
+    completedInvestigation(fix.project, '# Payments\n\nCards ship first.\n');
     const knowledge = statePath(fix.project, layout.knowledge());
     const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
 

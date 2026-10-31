@@ -30,10 +30,10 @@ engine.manifest.withProjectLock(cwd, fn)          // → fn() under the state's 
 engine.state.stateRoot(cwd)                       // → `.leeway/` in the main checkout of the repository `cwd` is in — absolute, from any folder or worktree of it; loud where there is no repository
 
 // domain: composition conventions
-engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [researching]"
+engine.conventions.title({ glyph, label, tag })   // → "◐ Menu And Admin [discussing]"
 engine.conventions.tag('decided')                 // → "[decided]"
 engine.conventions.derivedFrom('from exploration')// → "↳ From exploration"
-engine.conventions.discoveryGlyph('researching')  // → "◐"
+engine.conventions.discoveryGlyph('discussing')   // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
@@ -51,17 +51,12 @@ engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] fro
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
 engine.derivations.computeAnalysisCacheStatus(manifest, stateDir, kind) // → { status, stamped, generated, files[, reason] }
-engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
+engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, discussion_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
 engine.derivations.buildDiscoveryMap(manifest, stateDir)    // → { map, summary, needs_sequencing } — the one discovery-map row builder; the mailboxes are counted from disk under the state root
-
-// domain: discussion-map transitions + queries
-engine.discussionMap.addSubtopic(manifest, topic, name, { parent }) // mutates; new subtopic starts pending
-engine.discussionMap.setSubtopicState(manifest, topic, name, state) // mutates; enum is the only constraint
-engine.discussionMap.mapState(manifest, topic)    // → { counts, total, all_decided, unresolved }
 
 // domain: background-agent derivations
 engine.agents.completedReviewCycles(cwd, wu, topic)   // → number — report-backed discussion review cycles (legacy files counted by existence; tolerant reads)
@@ -78,7 +73,7 @@ engine.roadmap.becomesTopic(item)                 // → whether the item become
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
 engine.presence.scanProject(cwd)                  // → the same row shape and `held` total but no `held_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row
 engine.presence.heldCodeSessions(cwd)             // → the held implementation/review rows working in the caller's checkout, minus the caller's own — the code gate's read
-engine.presence.heldDocument(cwd, wu, doc)     // → the freshest held research/discussion/investigation row a peer holds on `doc`, or null — the spec-side held-doc gate's read
+engine.presence.heldDocument(cwd, wu, doc)     // → the freshest held discussion/investigation row a peer holds on `doc`, or null — the spec-side held-doc gate's read
 engine.presence.ownsRow(row)                      // → does the calling session own this heartbeat (its session id, or its pid)? Filter with it before marking any row as a peer's
 engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / `12m` / `3h` / `2d`
 

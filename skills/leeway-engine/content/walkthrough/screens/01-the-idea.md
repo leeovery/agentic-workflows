@@ -5,7 +5,7 @@ Claude Code is a capable engineer with two gaps. It forgets everything between s
 ```flow
 a piece of work, described in your own words
 ↓
-DISCOVERY | research · experiment · discussion
+DISCOVERY | discussion · experiment
   → what was explored, what you decided, and why
 ↓
 DEFINITION | specification · planning

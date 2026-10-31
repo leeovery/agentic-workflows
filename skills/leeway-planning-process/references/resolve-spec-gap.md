@@ -16,7 +16,7 @@ What gets built is what the specification decided; where it decided nothing, or 
 
 The moves, by effort — and derivation is exhausted before any stop: context, the specification's own decisions, sibling artifacts, measurement against the tree. What the record yields is settled and lands silently. The one thing never derived is product intent: neither the plan nor the code invents what the product does.
 
-An entry an earlier settle already landed — its corrigendum present in the specification, or its message already waiting in `{doc}`'s mailbox (`node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {source_phase} {doc}` lists it) — is skipped, and the planning lanes move on to the next entry. From `implementation` the two part:
+An entry an earlier settle already landed — its corrigendum present in the specification, or its message already waiting in `{doc}`'s mailbox (`node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {doc}` lists it) — is skipped, and the planning lanes move on to the next entry. From `implementation` the two part:
 
 **If the corrigendum is in the specification:**
 
@@ -214,7 +214,7 @@ The point goes to `{doc}`'s mailbox — its item reopens, the message survives a
 
 #### If the work type is `epic`
 
-→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `discussion`, date = `{today}`.
+→ Load **[../../leeway-shared/references/sending-a-message.md](../../leeway-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped}`, origin = `{topic}`, phase = `{phase}`, date = `{today}`.
 
 On return, read `result` and `landed_topic`.
 
@@ -238,10 +238,10 @@ Nothing was written, and the agreed resolution reached nobody — say so in one 
 
 #### Otherwise
 
-Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · {phase} · {date}*`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
+Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {source_phase} {doc} --content .workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md --slug {kebab-case gap name} -m "{scope}({work_unit}): gap routed to {doc}"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md --slug {kebab-case gap name}
 ```
 
 Set `landed_topic` = `{doc}`.

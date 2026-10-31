@@ -162,7 +162,7 @@ function retried(res, free) {
 describe('topic send (10.1, 10.2.7)', () => {
   it('lands the message as the next file of the target\'s own mailbox, its path naming no phase, writing no entry, the scratch consumed and the message committed alone, a peer\'s dirt left as it was (10.S1, 10.S6, 5.S11)', () => {
     const ledger = readState(dir, layout.ledger);
-    writeState(dir, layout.doc(EPIC, 'discussion', 'licence'), '# Licence, mid-conversation\n');
+    writeState(dir, layout.unit(EPIC, 'specification', 'licence', 'specification.md'), '# Licence, mid-session\n');
     const peer = dirt();
     const message = scratch();
     const first = withFrozenClock(() => ok(dir, ['topic', 'send', EPIC, 'commercialization', '--from', 'first-run', '--content', message, '--slug', 'lost-key']));
@@ -242,13 +242,13 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('keeps a postponed topic\'s mail through its pull-forward: the topic, fresh again, refuses its removal, rename and reroute while the mail waits (10.1.8)', () => {
+  it('keeps a postponed topic\'s mail through its pull-forward: the topic, fresh again, refuses its removal and rename while the mail waits (10.1.8)', () => {
     ok(dir, ['topic', 'postpone', EPIC, 'licence', '--horizon', 'v2']);
     send(EPIC, 'licence', 'lost-key');
     ok(dir, ['roadmap', 'pull-forward', 'licence', '--into', EPIC, '--routing', 'discussion']);
     const map = () => readManifest(dir, EPIC).phases.discovery.items;
     const before = map();
-    const verbs = [['remove', EPIC, 'licence', 'removed'], ['rename', EPIC, 'licence', 'licensing', 'renamed'], ['reroute', EPIC, 'licence', 'research', 're-routed']];
+    const verbs = [['remove', EPIC, 'licence', 'removed'], ['rename', EPIC, 'licence', 'licensing', 'renamed']];
     assert.deepStrictEqual(
       verbs.map((args) => refused(['discovery-map', ...args.slice(0, -1)])),
       verbs.map((args) => `"licence" can't be ${args.at(-1)} — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead`),

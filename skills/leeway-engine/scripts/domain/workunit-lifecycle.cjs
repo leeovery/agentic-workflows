@@ -216,7 +216,6 @@ function reactivateWorkUnit(cwd, workUnit) {
  * @typedef {object} WorkUnitPivotResult
  * @property {string} work_unit
  * @property {string} work_type  always `epic`
- * @property {string} routing    the map item's routing (research when the phase exists, else discussion)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base re-index)
@@ -228,15 +227,14 @@ function reactivateWorkUnit(cwd, workUnit) {
  * (topic name = work unit name) on the discovery map with backfill semantics
  * (summary-backfill drafts summary/description on the next epic entry),
  * re-index the unit so chunk metadata carries the new work_type
- * (warn-don't-block), and commit both manifests. Routing reflects the work
- * already done: `research` when the research phase exists, else `discussion`.
- * Only an in-progress feature pivots.
+ * (warn-don't-block), and commit both manifests. Only an in-progress feature
+ * pivots.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitPivotResult}
  */
 function pivotWorkUnit(cwd, workUnit) {
-  const { routing } = withWorkUnitLock(cwd, workUnit, () => {
+  withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.work_type !== 'feature') {
       throw new Error(`work unit "${workUnit}" is not a feature (work_type: ${loaded.work_type ?? 'none'}) — only features pivot to epics`);
@@ -260,12 +258,11 @@ function pivotWorkUnit(cwd, workUnit) {
 
     loaded.work_type = 'epic';
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { routing: phases.research ? 'research' : 'discussion' };
   });
 
-  // The feature's single topic joins the map (routing, source, no summary/
-  // description — backfill semantics). Its own locked read-modify-write.
-  addItem(cwd, workUnit, workUnit, { routing, backfill: true });
+  // The feature's single topic joins the map (no summary/description —
+  // backfill semantics). Its own locked read-modify-write.
+  addItem(cwd, workUnit, workUnit, { routing: 'discussion', backfill: true });
 
   // The registration must agree with the manifest — a fresh read under the
   // project lock, upserted, so a legacy unit that predates registration is
@@ -284,7 +281,8 @@ function pivotWorkUnit(cwd, workUnit) {
 
   const outcome = commitStateTail(cwd, [workUnit, 'manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
-  const result = { work_unit: workUnit, work_type: 'epic', routing, committed: outcome.committed, warnings };
+  const result = { work_unit: workUnit, work_type: 'epic', committed: outcome.committed, warnings };
+
   noteCommitOutcome(result, outcome);
   return result;
 }

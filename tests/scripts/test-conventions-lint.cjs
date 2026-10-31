@@ -955,10 +955,8 @@ function checkRenderForms(files) {
 // ---------------------------------------------------------------------------
 
 const CARRIED_PAST_AGENTS = new Set([
-  'leeway-discussion-review',
   'leeway-discussion-perspective',
   'leeway-discussion-synthesis',
-  'leeway-research-deep-dive',
 ]);
 const DISPATCH_NAMES = [
   /^\s*[-*]?\s*\*\*Agent (?:path|file)\*\*: `(?:\.claude\/|[./]*)agents\/(leeway-[a-z-]+)\.md`/,
@@ -2209,7 +2207,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## D. Dive',
       '',
-      '**Agent path**: `.claude/agents/leeway-research-deep-dive.md`',
+      '**Agent path**: `.claude/agents/leeway-discussion-synthesis.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true`.',
       '',
@@ -2280,7 +2278,7 @@ test('check 25 (dispatch lines) — catches a dispatch with no mode, an ad-hoc s
       '',
       '## H. Carried Past With a Sentence',
       '',
-      '**Agent path**: `.claude/agents/leeway-discussion-review.md`',
+      '**Agent path**: `.claude/agents/leeway-discussion-perspective.md`',
       '',
       'Dispatch **one agent** via the Task tool with `run_in_background: true` — the dispatch ends the turn on exactly `The review agent has been dispatched for the discussion.`',
       '',
