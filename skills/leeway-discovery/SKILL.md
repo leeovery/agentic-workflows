@@ -1,297 +1,150 @@
 ---
 name: leeway-discovery
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-roadmap/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
+allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(node .claude/skills/leeway-roadmap/scripts/gateway.cjs *)
 ---
 
-The universal first phase. Shape the work the user is bringing — confirm what kind of work it is, sketch its outline — then persist it and route into the pipeline.
+# Discovery
 
-> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
+The person talks the product through, and the work takes shape before anything is committed to. It happens at two levels, each one conversation carried on across sessions: the product's, about everything not yet committed to as work, whose output is the roadmap and the work started from it; and an epic's, about the epic as a whole, its topics and their order. You take part as a senior engineer and product partner, exploring at whatever depth the person goes, sparring, researching and spiking. Nothing here is decided: what the person says is input, carried in the log and the briefs to the discussion that decides it.
 
-## Workflow Context
+## Arguments
 
-Discovery is the universal **first phase** — every work type begins here. It shapes brand-new work and settles its type, then the pipeline branches; for an epic it also re-shapes the map on later visits. What follows differs by work type:
+- `$0` — **work_type**: a hint from the way in, `epic`, `feature`, `bugfix` or `quick-fix`, or `none`; `cross-cutting` reads as `none`.
+- `$1` — **home**: an epic, its own discovery; or `none`, the product's conversation.
+- `$2` — **inbox_seeds**: comma-joined inbox paths the work starts from, or `none`; absent reads `none`.
 
-| Work type | Pipeline after discovery |
-|---|---|
-| Epic | Multi-topic; each topic: (Experiment) → Discussion → Specification → Planning → Implementation → Review |
-| Feature | (Experiment) → Discussion → Specification → Planning → Implementation → Review |
-| Bugfix | Investigation → Specification → Planning → Implementation → Review |
-| Quick-fix | Scoping → Implementation → Review |
-| Cross-cutting | (Experiment) → Discussion → Specification (terminal) |
-
-It runs in two modes:
-
-- **New mode** — from `leeway`. Decide the work type (epic / feature / bugfix / quick-fix / cross-cutting), shape the outline, persist at the work-type commit, route to the first phase. A **product-altitude** read — no single unit of work on the table — routes out to the roadmap instead, before any unit exists.
-- **Existing-epic mode** — from `leeway-continue-epic`, or continuing straight from a roadmap pull that just created the epic. The work type is already known; shape (or re-shape) the epic's discovery map.
-
-**Stay in your lane**: Discovery settles *what the work is* and shapes it — determine the type first (epic / feature / bugfix / quick-fix / cross-cutting, or the product road when no single unit is on the table), then route it into the pipeline. How much substance the conversation engages is set per work type by the guidance loaded on each path, not fixed here: while determining the type you shape rather than resolve; once an epic is settled, its path opens into deep exploration. Name the work, shape it, route it.
-
----
+`{home}` is where the conversation is working: `$1`, or `product` where `$1` is `none`. A move to another level changes it.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Done When
 
-## Resuming After Context Refresh
+The engine holds the session closed: the person's yes at start this work created the unit, their yes at approve the map landed the epic's map, or they ended the session and `discovery-session close` closed it. The product's conversation itself never finishes; each of its sessions does.
 
-Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+## Entering
 
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
-2. **Determine whether the work unit was persisted yet.** Pre-confirmation new-mode shaping lives in the conversation alone — nothing is on disk. If no manifest exists for the work in hand, the conversation had not yet reached the confirm-trigger, and the shaping carries on from the conversation. If a manifest exists, the confirm-trigger fired — read the active session log (highest-numbered `.workflows/{work_unit}/discovery/session-*.md`) and the manifest to recover state.
-3. **Check git state.** Run `git status` and `git log --oneline -10`. Commit messages reveal what has been completed.
-4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
-
-Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
-
----
-
-## Step 1: Dispatch
-
-Read the positional arguments:
-
-- `$0` — **work_type pre-seed**: one of `epic` / `feature` / `bugfix` / `quick-fix` / `cross-cutting`, or `none` (the `s/start` path, no hint). A hint, not a given — still confirmed in new mode.
-- `$1` — **work_unit**: an existing epic's name (existing-epic shaping, from `leeway-continue-epic`), or `none` (new work, from `leeway`).
-- `$2` — **inbox_seeds**: comma-joined path(s) to inbox file(s) consumed as the opening seed material — one or more, or `none`. Absent `$2` is treated as `none`. Split on commas into a list; a single path yields a one-element list. Held downstream as `inbox_seeds`.
-
-The mode is determined by `$1`:
-
-#### If `$1` is `none`
-
-New work — nothing is on disk yet; pre-confirmation shaping is ephemeral.
-
-→ Proceed to **Step 2**.
-
-#### Otherwise
-
-`$1` names an existing epic. Skip macro shaping and shape its map — a re-shape on a return visit, a first shaping when a roadmap pull created the epic moments ago (the map is empty; `pull_continuation` is held).
-
-→ Proceed to **Step 6**.
-
----
-
-## Step 2: Load Detection Core
-
-Load **[detection-core.md](references/detection-core.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Open
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Open Discovery`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reading anything you've already shared, then opening the conversation about what you want to do.
-```
-
-Load **[opener-pattern.md](references/opener-pattern.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Shape and Confirm the Work Type
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Shape and Confirm`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Talking it through to settle what kind of work this is — brief when it's already clear, longer when there's more to tease out.
-```
-
-Load **[shape-and-confirm.md](references/shape-and-confirm.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: Confirm Trigger — Create the Work Unit
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Confirm Trigger`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Now we know what this is — setting it up: giving it a name, creating it, and saving any files or notes you shared.
-```
-
-Load **[confirm-trigger.md](references/confirm-trigger.md)** and follow its instructions as written.
-
-→ On return, proceed as the reference directed.
-
----
-
-## Step 6: Resume Detection
-
-Load **[resume-detection.md](references/resume-detection.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 7**.
-
----
-
-## Step 7: Run Discovery
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. A conversation a move carried here is entered already, and entering again reads it as it stands.
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} discovery {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs enter discovery {home}
 ```
 
-Run discovery for the work unit:
+A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn.
+
+Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; and each inbox seed in `$2`. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+
+Then open the conversation; never stop in silence once you have read.
+
+## The Opening
+
+What you say is your own. A return opens with a short account of where the conversation had got to — the threads it was circling, the person's leans, what was left open — and asks where they want to take it. A first session asks them to describe what is on their mind the way it sits in their head, shaped by the hint where there is one, and invites any notes, screenshots or files that frame it. Seeds open on one sketch across them all and a question that pulls on its shape. A conversation a move carried here is going already: carry it on.
+
+## The Conversation
+
+A conversation that explores, never one that settles. Follow the person into detail as deep as they take it, high level where they keep it: designs and code spiked, a rough proposal, every moving part looked at. Never ask a question to settle a point; settling is discussion's.
+
+### The Stance
+
+Two senior engineers throwing an idea around: opinionated, willing to disagree, ready to counter-frame. Engage the shape rather than mirror it — push on the weak point, offer a sharper framing, name a tension and hold it open rather than smooth it over. One thread at a time, each answer shaping the next move; no barrage of questions, no monologue. Push where it matters: the user's flows, who the user is at each point, surfaces and modes, how the parts connect, the edges between them, the surfaces nobody named, and what breaks if a position the person takes is wrong. Before arguing a side you don't hold, load **[devils-advocate.md](../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.
+
+### Input, Never Decisions
+
+What the person says is their view: a lean, a rejected path with why, an open question. A point they leave open stays open, its lean recorded as theirs, and a suggestion of yours they never took up is not theirs. A principle they state is carried as input and decided in the first topic it bears on. What you read in the code is a finding saying how it is known (`ledger find`). Never ask to fill the product record.
+
+### Research and Spikes
+
+Reach for what tells the person more than talking: searching online, reading, surveying what exists — logged with its sources — and code or design spikes. Suggest a spike unprompted, in a line, wherever seeing or running something would show more than talk: a provider whose behaviour is in doubt, a risk the whole idea rests on, how a flow feels. The person's yes runs it: **A Spike**. Earlier work's records and specs are a `knowledge query` away.
+
+### Never Rushed
+
+Discovery runs as long as the person wants, in one sitting or over weeks. When the talk converges — it circles back, turns bring confirmation rather than new ground, the parts feel separable — say once, in passing, that the work can move on whenever they want, and keep exploring. Name no topics until the person calls for the map.
+
+### The Product's Conversation
+
+Everything not yet committed to as work is the product's: what the product is, who it serves, where it is going, what the market showed. There is one product and one conversation; two subjects are two parts of it. Capabilities come at roadmap grain, each one thing the person could start on its own, and the talk is about whether and when, not how. Listen for staging — "for launch we just need", "once we have revenue" — in the person's own words; the horizons are theirs. Talk about a piece of work the person leaves before starting it stays here, and the next session opens on it.
+
+When the talk settles on a piece of work — something to build, fix or change — load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
+
+### An Epic's Discovery
+
+The epic as a whole: what it covers, how its topics fit, their order, a topic's subject seen from outside that topic's frame, spikes across it. A new topic gets what bears on it as its brief; a started topic, as a message (**A Message to a Topic**). Talk that settles toward one topic may earn the suggestion to start it from the epic's menu; the conversation never moves into a topic.
+
+### A Brief
+
+A topic's brief is written as it lands on the map, and the discussion that decides the topic opens from it. Draft it in the conversation's cache from everything explored about the topic: the person's leans, the paths rejected and why, the open questions, the detail explored, and what a spike showed, each point linking the part of the log it came from. Nothing in it is a decision, and it is not the list of what the person will be asked.
+
+### What Already Waits
+
+As new work takes shape, match it against the waiting roadmap items and the live inbox, `.leeway/.inbox/{ideas,bugs,quickfixes}/`, by name and theme. A match earns one question offering to take the item in as a seed; a miss earns silence.
+
+### The Log
+
+The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Before the session closes — at start this work, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
+
+## Doors
+
+- A finding read in the code → `ledger find {home}.discovery`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}` on stdin.
+- The code read for the product's first conversation → `brief product-researcher`, then the Agent call; its findings in → `brownfield record completed`.
+- A spike, a shared file → `asset spike {home} {slug}`, `asset import {home} '{path}' …`, `render import-reprompt`.
+- The work committed to → `render start-this-work --file`, then `gate`.
+- The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`, `render topic-receipt`.
+- The map approved → `render approve-map {home} --file`, then `gate`; a park's horizon → `render horizon-pick --park {name}`.
+- A message to a topic → `topic send`, `render send-report`.
+- Something put on the roadmap → `roadmap add`; into the inbox → `/leeway-log-idea`, `/leeway-log-bug`, `/leeway-log-quickfix`, then `commit --inbox`.
+- A move to another level → `enter discovery {home} --move`.
+- The session ended → `discovery-session close {home}`; at the product's, the roadmap items first → `gateway.cjs proposal`, `render roadmap-harvest-gate`, `roadmap add-batch`.
+- Earlier work → `knowledge query "{term}" …`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+
+## A Spike
+
+Seeing or running something would tell more than talk, and the person says yes. Load **[spikes-and-shared-files.md](references/spikes-and-shared-files.md)** and follow its instructions as written.
+
+## A Shared File
+
+The person shares a file, a path or an image. Load **[spikes-and-shared-files.md](references/spikes-and-shared-files.md)** and follow its instructions as written.
+
+## Changing the Map
+
+In an epic's discovery the person asks, in their own words, for a change to a topic or the order — a new topic, a rename, an edit, a removal, a postpone, a cancel, pulling one forward, reactivating one, reopening a decided one — or to see the map. Load **[changing-the-map.md](references/changing-the-map.md)** and follow its instructions as written.
+
+## Approving the Map
+
+In an epic's discovery the person calls for the map, or a session in which you changed the topics or their order beyond what the person asked for is ending. Load **[approving-the-map.md](references/approving-the-map.md)** and follow its instructions as written.
+
+## A Message to a Topic
+
+Something found here bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide. Write it to `.leeway/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
 
 ```bash
-node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {home} {topic} --from {home}.discovery --content .leeway/.cache/{home}/discovery/{home}/message-{slug}.md --slug {slug}
 ```
 
-Hold the output in conversation context as **the most recent discovery output**. Downstream steps and references read from it:
+Draw the report from the path the send answered, its `message_path`, or its `inbox_path` where the topic is cancelled, and emit its DISPLAY section verbatim per its marker:
 
-- `discovery_map` — per-topic `tier`, `lifecycle`, `current_phase`, `routing`, `source`, `summary`
-- `map_summary` — counts string used for the opener render
-- `dismissed` — names previously removed from the map
-- `description` — the work-unit one-liner
-- `seeds` / `imports` — the work unit's seed material entries (paths relative to `.workflows/{work_unit}/`), read by Step 8 and the session loop's launchpad branch
-- `session_logs` — every session log's number + path (ascending); read from this rather than re-globbing (used by continuity-load.md)
-- `next_session_number` — used to set `session_number` for fresh entries
-
-The authoritative resume signal (`active_session`) is a manifest field, read via `engine manifest` at Step 6 — not carried in this dump.
-
-If `session_number` was not already set (no resume at Step 6, no `macro_continuation` from Step 5, no `pull_continuation` from a roadmap pull), set it now: `session_number` = `next_session_number`. When `macro_continuation` or `pull_continuation` is set, the creating flow already installed `session-{session_number}.md` — keep that `session_number` and ignore `next_session_number`.
-
-`map-operations.md` re-invokes discovery on entry because it validates against post-mutation state.
-
-→ Proceed to **Step 8**.
-
----
-
-## Step 8: Initialize Discovery
-
-Load **[initialize-discovery.md](references/initialize-discovery.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 9**.
-
----
-
-## Step 9: Load Discovery Guidelines
-
-Load **[discovery-guidelines.md](references/discovery-guidelines.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 10**.
-
----
-
-## Step 10: Session Loop
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Discovery Session`**
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render send-report {home}.{topic} --sent {path}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+## Putting Something Aside
 
-```
-> Mapping out the topics this epic breaks into. A new epic carries on from what we've shaped so far; an existing map can be edited here too. We name the topics once the picture feels complete.
-```
+The person puts something off — "roadmap it", "that's a v2 thing", "not now" — or a tangent surfaces that doesn't fit what is taking shape, and you offer to put it aside rather than fold it in. Placed on the timeline, it goes on the roadmap at once, whatever its kind; left undecided, it goes into the inbox. Where their words don't say which, ask, and never choose. A topic already on the map is postponed instead (**Changing the Map**).
 
-Load **[session-loop.md](references/session-loop.md)** and follow its instructions as written.
+For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. `{log}` is the log's path from the state root, and `--kind` is for a bug or a small mechanical change:
 
-→ On return, proceed to **Step 11**.
-
----
-
-## Step 11: Document Review
-
-Load **[document-review.md](references/document-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 12**.
-
----
-
-## Step 12: Confirm and Persist Topics
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Confirm and Persist`**
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+A name already on the roadmap takes another. For the inbox, invoke the capture skill for its kind — `/leeway-log-idea`, `/leeway-log-bug` or `/leeway-log-quickfix` — then commit what it wrote, `commit --inbox -m "inbox: capture {slug}"`. Either way, say it in a line and carry on.
 
-```
-> Saving the agreed topics to the discovery map and closing out the session log.
-```
+## Moving Levels
 
-Load **[confirm-and-persist.md](references/confirm-and-persist.md)** and follow its instructions as written.
+The product's conversation turns to an epic whose map is still open, or an epic's discovery widens to the product. Load **[moving-levels.md](references/moving-levels.md)** and follow its instructions as written.
 
-→ On return, proceed to **Step 14**.
+## Ending the Session
 
----
-
-## Step 13: Single-Phase Endpoint
-
-Reached only for single-phase work — feature, cross-cutting, bugfix, quick-fix — routed here by the confirm-trigger (Step 5). The epic topic path does not pass through here.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ First-Phase Routing`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Discovery's done — routing this work to its first phase. Feature and cross-cutting go to discussion; bugfix goes to investigation, quick-fix to scoping.
-```
-
-Load **[first-phase-routing.md](references/first-phase-routing.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 14**.
-
----
-
-## Step 14: Compliance Self-Check
-
-Reached before concluding by both paths — the epic topic path from Step 12, the single-phase endpoint from Step 13.
-
-Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 15**.
-
----
-
-## Step 15: Conclude Discovery
-
-The single exit for every work type — both paths arrive from the Step 14 compliance check.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Conclude Discovery`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Wrapping up — committing, then handing the work to its next step.
-```
-
-Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.
+The person calls the session to an end. Load **[ending-the-session.md](references/ending-the-session.md)** and follow its instructions as written.
