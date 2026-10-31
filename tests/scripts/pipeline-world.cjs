@@ -578,6 +578,46 @@ function toDiscovery(sim, workType, seeds) {
   return handoff(sim, `/leeway-discovery ${workType} none "${seeds}"`);
 }
 
+// A handoff into `discovery none` landing: the product's conversation
+// entered, as discovery's skill enters it, and its log written with the
+// section the work's talk shaped. Answers the section, state-relative, as
+// start this work points at it.
+/** @param {Sim} sim @param {string} section */
+function shapedInTheProduct(sim, section) {
+  sim.handOver();
+  sim.run(['enter', 'discovery', 'product']);
+  const log = /** @type {string} */ (sim.sections.match(/^log: (.*)$/m)?.[1]);
+  fs.appendFileSync(log, `\n## ${section} {#${section}}\n\nWhat the talk shaped.\n`);
+  return `${path.relative(statePath(sim.dir), log)}#${section}`;
+}
+
+// Claude's draft of a topic's brief, in the cache.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function briefDraft(sim, wu, topic) {
+  return sim.write(`${STATE_DIR_NAME}/.cache/${wu}/briefs/${topic}.md`, `# ${topic}\n\nWhat discovery heard.\n`);
+}
+
+// One of discovery's authority gates as the prose works it (8.8.1, 8.8.3):
+// Claude's payload staged on its screen, the person's yes at its gate, and
+// what the yes leads to run. Answers the yes's answer.
+/** @param {Sim} sim @param {string} gate @param {string[]} screen @param {object} given */
+function atTheGate(sim, gate, screen, given) {
+  const file = sim.write(`${STATE_DIR_NAME}/.cache/scratch/${screen[0]}.json`, given);
+  sim.render([...screen, '--file', file], { expect: 'content' });
+  const { next } = answerGate(sim, gate, '--pick', 'y');
+  return sim.run(next.argv);
+}
+
+/** Start this work at its gate. @param {Sim} sim @param {object} given */
+function startThisWork(sim, given) {
+  return atTheGate(sim, 'start this work', ['start-this-work'], given);
+}
+
+/** Approve the map at its gate. @param {Sim} sim @param {string} wu @param {object} given */
+function approveTheMap(sim, wu, given) {
+  return atTheGate(sim, 'approve the map', ['approve-map', wu], given);
+}
+
 // The start menu's new-work row builds no route — it goes to discovery with
 // the row's pre-seed and no seeds.
 /** @param {Sim} sim @param {string} preSeed */
@@ -1039,5 +1079,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

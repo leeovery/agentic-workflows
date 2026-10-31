@@ -1,549 +1,225 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// A work unit's creation (leeway-engine/scripts/domain/workunit-create.cjs):
+// what a created unit holds, through the door that creates work — start this
+// work's yes — its canonical manifest and registration, the marker only an
+// epic's first session takes, and its inbox seeds, each moved with its
+// folder's source tag, their removal in the creation's commit and nothing
+// else of the inbox; a seed that is no live inbox item refused, nothing
+// touched. Then what only `workunit create` takes until its imports move to
+// the assets (29.15): its imports, landed under normalised names, a missing
+// one failing fast; its model-authored log; a failed registration putting
+// the unit back; the knowledge base indexing what landed, warn-don't-block;
+// and its argument refusals. The gate itself is
+// test-engine-start-this-work.cjs's.
+//
+// Layer: verb. World: discovery's gate suites' (discovery-gates-world.cjs).
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
 const {
-  ENGINE, git, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
+  ENGINE, ok, refuses, refusedPristine, output, readManifest, readState, statePath, stateGit, lastMessage, touched, head, layout, writeState,
+  indexedFiles, hasStore, unreadableKnowledge, commitOnState,
 } = require('./engine-harness.cjs');
+const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
+const dir = useGatesWorld();
+const { scratch, payload } = gatesHelpers(dir);
+
+const QUICKFIX = layout.inbox('quickfixes', '2026-06-03--typo-fix.md');
+
+/** A start of `type` named `name`, staged and given its yes: the yes's answer. @param {string} type @param {string} name @param {Record<string, unknown>} [more] */
+function started(type, name, more = {}) {
+  const brief = ['feature', 'bugfix'].includes(type) ? { brief: scratch(`# ${name}\n`) } : {};
+  output(dir(), ['render', 'start-this-work', '--file', payload({ type, name, description: 'Payments overhaul', reason: 'One piece of work.', shaped_by: [`${PRODUCT_LOG}#notes`], ...brief, ...more })], { env: SESSION });
+  return ok(dir(), ['start-this-work', 'yes'], { env: SESSION });
 }
 
-/** A project, its state committed, its inbox holding one item of each type. */
-function setupGitFixture(root) {
-  const project = setupFixtureAt(path.join(root, 'project'));
-  keywordOnlyKnowledge(project);
-  writeFile(project, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-  writeFile(project, '.leeway/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
-  writeFile(project, '.leeway/.inbox/quickfixes/2026-06-03--typo-fix.md', '# Typo Fix\n');
-  commitAll(project, 'init');
-  return project;
+/** The stage of a start with `seeds` refused, writing nothing: its error. @param {string[]} seeds */
+function refusedSeeds(seeds) {
+  const given = { type: 'epic', name: 'payments', description: 'Payments overhaul', reason: 'Parts.', shaped_by: [`${PRODUCT_LOG}#notes`], seeds };
+  return refusedPristine(dir(), ['render', 'start-this-work', '--file', payload(given)], { env: SESSION }).error;
 }
 
-function setupFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-create-'));
-  const project = setupGitFixture(root);
-  return { root, project, init: stateGit(project, ['rev-parse', 'HEAD']).trim() };
+/** A file in the code tree, outside the state. @param {string} rel @param {string} content */
+function codeFile(rel, content) {
+  const file = path.join(dir(), rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+  return file;
 }
 
-/** A landed file's absolute path, as the responses name it. @param {string} rel  work-unit-relative */
-function landed(fix, rel, workUnit = 'payments') {
-  return path.join(fix.project, '.leeway', workUnit, rel);
-}
+const LOG_STAGE = layout.cache('payments', 'session-001.md');
+const SESSION_LOG = '# Discovery Session 001\n\n## Exploration\n\nShaping prose.\n';
 
-/** Run the engine expecting success; returns the parsed JSON response. */
-const engine = (fix, args, env = {}) => ok(fix.project, args, { env });
-
-/** Run the engine expecting failure; returns the parsed stderr JSON. */
-const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
-
-const SESSION_LOG = '# Discovery Session 001\n\nDate: 2026-07-15\n\n## Exploration\n\nShaping prose.\n';
-const LOG_STAGE = '.leeway/.cache/payments/discovery/session-001.md';
-
-/** Stage the model-authored session log at the prescribed cache path. */
-function stageLog(fix, content = SESSION_LOG) {
-  writeFile(fix.project, LOG_STAGE, content);
-}
-
-/** The standard create argv with the staged log. */
+/** `workunit create`'s argv, its log staged. @param {string} workUnit @param {string} workType @param {string[]} [extra] */
 function createArgs(workUnit, workType, extra = []) {
-  return [
-    'workunit', 'create', workUnit, workType,
-    '--description', 'Payments overhaul',
-    '--session-log-file', LOG_STAGE,
-    ...extra,
-  ];
+  writeState(dir(), LOG_STAGE, SESSION_LOG);
+  return ['workunit', 'create', workUnit, workType, '--description', 'Payments overhaul', '--session-log-file', statePath(dir(), LOG_STAGE), ...extra];
 }
 
-function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
-}
+/** A landed file's absolute path. @param {string} rel unit-relative */
+const landed = (rel) => statePath(dir(), layout.unit('payments', rel));
 
-function shortHead(fix) {
-  return stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
-}
-
-function lastMessage(fix) {
-  return stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim();
-}
-
-/** The state commits made since the fixture's own. */
-function commitCount(fix) {
-  return stateGit(fix.project, ['rev-list', '--count', `${fix.init}..HEAD`]).trim();
-}
-
-const ISO_SECONDS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
-
-describe('engine workunit create — happy path', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('epic with imports and seeds: one transaction — manifest, files, log, marker, commit', () => {
-    writeFile(fix.project, 'notes/My Design DOC.txt', 'design notes\n');
-    const res = engine(fix, createArgs('payments', 'epic', [
-      '--import', 'notes/My Design DOC.txt',
-      '--seed', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
-    ]));
-
-    assert.deepStrictEqual(res, {
-      ok: true,
-      work_unit: 'payments',
-      work_type: 'epic',
-      imports: [{ path: landed(fix, 'imports/my-design-doc.md') }],
-      seeds: [{ path: landed(fix, 'seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' }],
-      skipped_imports: [],
-      session_log: landed(fix, 'discovery/session-001.md'),
-      committed: shortHead(fix),
-      warnings: [],
-    });
-
-    const m = readManifest(fix, 'payments');
-    assert.strictEqual(m.name, 'payments');
-    assert.strictEqual(m.work_type, 'epic');
-    assert.strictEqual(m.status, 'in-progress');
-    assert.strictEqual(m.created, new Date().toISOString().slice(0, 10));
-    assert.strictEqual(m.description, 'Payments overhaul');
-    // Epic gets the active-session marker.
-    assert.deepStrictEqual(m.phases, { discovery: { active_session: '001' } });
-    assert.strictEqual(m.imports.length, 1);
-    assert.strictEqual(m.imports[0].path, 'imports/my-design-doc.md');
-    assert.match(m.imports[0].imported_at, ISO_SECONDS);
-    assert.deepStrictEqual(Object.keys(m.imports[0]), ['path', 'imported_at', 'origin']);
-    assert.strictEqual(m.imports[0].origin, 'discovery', "the opener is discovery's own door");
-    assert.strictEqual(m.seeds.length, 1);
-    assert.deepStrictEqual(Object.keys(m.seeds[0]), ['path', 'source', 'seeded_at']);
-    assert.strictEqual(m.seeds[0].path, 'seeds/2026-06-01-smart-retry.md');
-    assert.strictEqual(m.seeds[0].source, 'inbox:idea');
-    assert.match(m.seeds[0].seeded_at, ISO_SECONDS);
-
-    // Registered in the project manifest.
-    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
-    assert.deepStrictEqual(project.work_units, { payments: { work_type: 'epic' } });
-
-    // The session log is installed verbatim — engine never edits prose.
-    assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/discovery/session-001.md'), 'utf8'),
-      SESSION_LOG);
-
-    // Import copied (source untouched), seed moved out of the inbox.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/my-design-doc.md'), 'utf8'), 'design notes\n');
-    assert.ok(fs.existsSync(path.join(fix.project, 'notes/My Design DOC.txt')));
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/seeds/2026-06-01-smart-retry.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
-
-    // Both landed files were KB-indexed.
-    assert.deepStrictEqual(indexedFiles(fix.project), [
-      'payments/imports/my-design-doc.md',
-      'payments/seeds/2026-06-01-smart-retry.md',
-    ]);
-
-    // One commit, engine-owned message, staging the work unit AND the seed's
-    // inbox removal.
-    assert.strictEqual(lastMessage(fix), 'discovery(payments): create work unit (epic)');
-    assert.strictEqual(commitCount(fix), '1');
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'the default branch takes no state commit');
-    const show = stateGit(fix.project, ['show', '--no-renames', '--name-status', '--pretty=format:', 'HEAD']);
-    assert.match(show, /^D\t\.inbox\/ideas\/2026-06-01--smart-retry\.md$/m);
-    assert.match(show, /^A\tpayments\/seeds\/2026-06-01-smart-retry\.md$/m);
-    // The cache staging file is outside the commit scope.
-    assert.ok(!show.includes('.cache/'), show);
+describe('a created unit, through start this work', () => {
+  it('writes the canonical manifest and registration, byte for byte', () => {
+    const { project_id: projectId, roadmap } = readManifest(dir(), '.');
+    started('feature', 'payments');
+    assert.strictEqual(readState(dir(), layout.manifest('payments')), `${JSON.stringify({
+      name: 'payments', work_type: 'feature', status: 'in-progress', created: new Date().toISOString().slice(0, 10), description: 'Payments overhaul', phases: {},
+    }, null, 2)}\n`);
+    assert.strictEqual(readState(dir(), layout.projectManifest), `${JSON.stringify({
+      project_id: projectId, work_units: { atlas: { work_type: 'feature' }, payments: { work_type: 'feature' } }, roadmap,
+    }, null, 2)}\n`);
   });
 
-  it('every non-epic work type creates without the active-session marker', () => {
-    for (const workType of ['feature', 'bugfix', 'quick-fix', 'cross-cutting']) {
-      const wu = `unit-${workType.replace('-', '')}`;
-      writeFile(fix.project, `.leeway/.cache/${wu}/discovery/session-001.md`, SESSION_LOG);
-      const res = engine(fix, [
-        'workunit', 'create', wu, workType,
-        '--description', 'One-liner',
-        '--session-log-file', `.leeway/.cache/${wu}/discovery/session-001.md`,
-      ]);
-
-      assert.strictEqual(res.ok, true);
-      assert.strictEqual(res.work_type, workType);
-      const m = readManifest(fix, wu);
-      assert.strictEqual(m.work_type, workType);
-      assert.deepStrictEqual(m.phases, {});
-      assert.ok(fs.existsSync(path.join(fix.project, `.leeway/${wu}/discovery/session-001.md`)));
-      assert.strictEqual(lastMessage(fix), `discovery(${wu}): create work unit (${workType})`);
-    }
+  it('marks only an epic\'s first session open — the sole type whose discovery carries on', () => {
+    for (const type of ['epic', 'feature', 'bugfix', 'quick-fix']) started(type, `unit-${type}`);
+    assert.deepStrictEqual(['epic', 'feature', 'bugfix', 'quick-fix'].map((type) => readManifest(dir(), `unit-${type}`).phases),
+      [{ discovery: { active_session: '001' } }, {}, {}, {}]);
   });
 
-  it('no seeds: the inbox is not staged — unrelated inbox changes stay out of the commit', () => {
-    writeFile(fix.project, '.leeway/.inbox/ideas/2026-06-09--unrelated.md', '# Unrelated\n');
-    const res = engine(fix, createArgs('payments', 'feature'));
-
-    assert.strictEqual(res.ok, true);
-    const show = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']);
-    assert.ok(!show.includes('.inbox'), `inbox leaked into the commit:\n${show}`);
-    // A fresh creation's project-manifest registration lands in the same commit.
-    assert.ok(show.split('\n').includes('manifest.json'),
-      `project-manifest registration missing from the creation commit:\n${show}`);
-    assert.match(stateGit(fix.project, ['status', '--porcelain']), /\?\? \.inbox\/ideas\/2026-06-09--unrelated\.md/);
-  });
-});
-
-describe('engine workunit create — the canonical on-disk documents', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('writes byte-exact manifest and project-manifest documents', () => {
-    const { project_id: projectId } = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
-    engine(fix, createArgs('payments', 'feature'));
-
-    const engineManifest = fs.readFileSync(path.join(fix.project, '.leeway/payments/manifest.json'), 'utf8');
-    assert.strictEqual(engineManifest, JSON.stringify({
-      name: 'payments',
-      work_type: 'feature',
-      status: 'in-progress',
-      created: new Date().toISOString().slice(0, 10),
-      description: 'Payments overhaul',
-      phases: {},
-    }, null, 2) + '\n');
-
-    const engineProject = fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8');
-    assert.strictEqual(engineProject, JSON.stringify({
-      project_id: projectId,
-      work_units: { payments: { work_type: 'feature' } },
-    }, null, 2) + '\n');
-  });
-});
-
-describe('engine workunit create — a name already taken refuses', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  /** Land an existing work unit, committed, and answer the world's fingerprint. */
-  function existingUnit(workType) {
-    writeFile(fix.project, '.leeway/payments/manifest.json', JSON.stringify({
-      name: 'payments',
-      work_type: workType,
-      status: 'in-progress',
-      created: '2026-01-01',
-      description: 'Original description',
-      phases: { discovery: { items: { 'auth-flow': {} } } },
-    }, null, 2) + '\n');
-    commitAll(fix.project, 'existing unit');
-    return {
-      head: shortHead(fix),
-      commits: commitCount(fix),
-      status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
-      manifest: fs.readFileSync(path.join(fix.project, '.leeway/payments/manifest.json'), 'utf8'),
-      project: fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'),
-    };
-  }
-
-  /** The refused call must leave the tree byte-identical to the world before it. */
-  function assertUnchanged(before) {
-    assert.strictEqual(shortHead(fix), before.head, 'a refused create landed a commit');
-    assert.strictEqual(commitCount(fix), before.commits);
-    assert.strictEqual(git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']), before.status,
-      'a refused create dirtied the tree');
-    assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/manifest.json'), 'utf8'),
-      before.manifest, 'the existing manifest was rewritten');
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.inbox/bugs/2026-06-02--login-loop.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/seeds')));
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'), before.project, 'the project manifest was rewritten');
-    assert.strictEqual(hasStore(fix.project), false, 'a refused create built a knowledge store');
-  }
-
-  it('an existing same-type unit refuses with the clash named — nothing touched', () => {
-    const before = existingUnit('epic');
-    const err = engineFails(fix, createArgs('payments', 'epic', [
-      '--seed', '.leeway/.inbox/bugs/2026-06-02--login-loop.md',
-    ]));
-
-    assert.match(err.error, /work unit "payments" already exists — pick a different name/);
-    assertUnchanged(before);
-  });
-
-  it('an existing different-type unit refuses the same way — create never re-types a unit', () => {
-    const before = existingUnit('feature');
-    const err = engineFails(fix, createArgs('payments', 'epic', [
-      '--seed', '.leeway/.inbox/bugs/2026-06-02--login-loop.md',
-    ]));
-
-    assert.match(err.error, /work unit "payments" already exists — pick a different name/);
-    assertUnchanged(before);
-  });
-});
-
-describe('engine workunit create — import filename normalisation', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  /** @param {string[]} sources */
-  function landImports(sources) {
-    const args = createArgs('payments', 'feature', sources.flatMap((s) => ['--import', s]));
-    return engine(fix, args);
-  }
-
-  it('lowercases the stem, collapses punctuation and whitespace runs, and markdown-ish sources land .md', () => {
-    writeFile(fix.project, 'notes/My Design DOC.txt', 'a\n');
-    writeFile(fix.project, 'notes/UPPER.MD', 'b\n');
-    writeFile(fix.project, 'notes/plain', 'c\n');
-    writeFile(fix.project, 'notes/weird  name!!.md', 'd\n');
-    const res = landImports([
-      'notes/My Design DOC.txt',
-      'notes/UPPER.MD',
-      'notes/plain',
-      'notes/weird  name!!.md',
-    ]);
-
-    assert.deepStrictEqual(res.imports, [
-      { path: landed(fix, 'imports/my-design-doc.md') },
-      { path: landed(fix, 'imports/upper.md') },
-      { path: landed(fix, 'imports/plain.md') },
-      { path: landed(fix, 'imports/weird-name.md') },
-    ]);
-    assert.deepStrictEqual(res.skipped_imports, []);
-    for (const { path: file } of res.imports) assert.ok(fs.existsSync(file), `missing ${file}`);
-  });
-
-  it('rejects dotfiles: skipped and reported, not fatal', () => {
-    writeFile(fix.project, 'notes/.env', 'SECRET=1\n');
-    writeFile(fix.project, 'notes/good.md', 'fine\n');
-    const res = landImports(['notes/.env', 'notes/good.md']);
-
-    assert.deepStrictEqual(res.skipped_imports, ['notes/.env']);
-    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'imports/good.md') }]);
-    assert.deepStrictEqual(readManifest(fix, 'payments').imports.map((e) => e.path), ['imports/good.md']);
-    // The skipped file was never indexed.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/imports/good.md']);
-  });
-
-  it('suffixes batch collisions — same source twice and distinct sources normalising alike', () => {
-    writeFile(fix.project, 'notes/a b.md', 'one\n');
-    writeFile(fix.project, 'notes/a  b.md', 'two\n');
-    const res = landImports(['notes/a b.md', 'notes/a b.md', 'notes/a  b.md']);
-
-    assert.deepStrictEqual(res.imports, [
-      { path: landed(fix, 'imports/a-b.md') },
-      { path: landed(fix, 'imports/a-b-2.md') },
-      { path: landed(fix, 'imports/a-b-3.md') },
-    ]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/a-b-3.md'), 'utf8'), 'two\n');
-  });
-
-  it('keeps a non-markdown extension, lowercased — and never indexes it', () => {
-    writeFile(fix.project, 'notes/Screenshot One.JPEG', 'jpeg bytes\n');
-    writeFile(fix.project, 'notes/DIAGRAM.PNG', 'png bytes\n');
-    writeFile(fix.project, 'notes/design.txt', 'plain text\n');
-    const res = landImports(['notes/Screenshot One.JPEG', 'notes/DIAGRAM.PNG', 'notes/design.txt']);
-
-    assert.deepStrictEqual(res.imports, [
-      { path: landed(fix, 'imports/screenshot-one.jpeg') },
-      { path: landed(fix, 'imports/diagram.png') },
-      { path: landed(fix, 'imports/design.md') },
-    ]);
-    // Only the markdown-ish landing is knowledge-base material.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['payments/imports/design.md']);
-    const entries = readManifest(fix, 'payments').imports;
-    assert.deepStrictEqual(entries.map((e) => e.origin), ['discovery', 'discovery', 'discovery']);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/screenshot-one.jpeg'), 'utf8'), 'jpeg bytes\n');
-  });
-
-  it('lands every source 0644, whatever the source carried', () => {
-    writeFile(fix.project, 'notes/locked.png', 'png bytes\n');
-    fs.chmodSync(path.join(fix.project, 'notes/locked.png'), 0o600);
-    landImports(['notes/locked.png']);
-
-    const mode = fs.statSync(path.join(fix.project, '.leeway/payments/imports/locked.png')).mode & 0o777;
-    assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
-  });
-
-  it('suffixes the stem, never the extension', () => {
-    writeFile(fix.project, 'notes/shot.png', 'one\n');
-    writeFile(fix.project, 'notes/SHOT.png', 'two\n');
-    const res = landImports(['notes/shot.png', 'notes/SHOT.png']);
-
-    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'imports/shot.png') }, { path: landed(fix, 'imports/shot-2.png') }]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/imports/shot-2.png'), 'utf8'), 'two\n');
-  });
-
-});
-
-describe('engine workunit create — seeds', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('derives the source tag from each inbox folder', () => {
-    const res = engine(fix, createArgs('payments', 'epic', [
-      '--seed', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
-      '--seed', '.leeway/.inbox/bugs/2026-06-02--login-loop.md',
-      '--seed', '.leeway/.inbox/quickfixes/2026-06-03--typo-fix.md',
-    ]));
-
+  it('moves each seed out of the inbox with its folder\'s source tag, the commit taking the removal and indexing what landed', () => {
+    commitOnState(statePath(dir()), { [QUICKFIX]: '# Typo Fix\n' });
+    const res = started('epic', 'payments', { seeds: [`.leeway/${IDEA}`, `.leeway/${BUG}`, `.leeway/${QUICKFIX}`] });
     assert.deepStrictEqual(res.seeds, [
-      { path: landed(fix, 'seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' },
-      { path: landed(fix, 'seeds/2026-06-02-login-loop.md'), source: 'inbox:bug' },
-      { path: landed(fix, 'seeds/2026-06-03-typo-fix.md'), source: 'inbox:quickfix' },
+      { path: landed('seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' },
+      { path: landed('seeds/2026-06-02-login-loop.md'), source: 'inbox:bug' },
+      { path: landed('seeds/2026-06-03-typo-fix.md'), source: 'inbox:quickfix' },
     ]);
-    // All three moved out of the inbox.
-    for (const folder of ['ideas', 'bugs', 'quickfixes']) {
-      assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.leeway/.inbox', folder)), []);
-    }
-    assert.deepStrictEqual(readManifest(fix, 'payments').seeds.map((e) => e.source), ['inbox:idea', 'inbox:bug', 'inbox:quickfix']);
-  });
-
-  it('rejects a seed outside the inbox — nothing touched', () => {
-    writeFile(fix.project, 'notes/rogue.md', 'not an inbox item\n');
-    const err = engineFails(fix, createArgs('payments', 'epic', ['--seed', 'notes/rogue.md']));
-
-    assert.match(err.error, /not a live inbox path/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-    assert.strictEqual(commitCount(fix), '0');
-  });
-
-  it('rejects a missing inbox file — nothing touched', () => {
-    const err = engineFails(fix, createArgs('payments', 'epic', ['--seed', '.leeway/.inbox/ideas/2026-06-09--ghost.md']));
-
-    assert.match(err.error, /inbox file not found/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-  });
-
-  it('rejects a seed named twice — nothing touched, the item still in the inbox', () => {
-    const seed = '.leeway/.inbox/ideas/2026-06-01--smart-retry.md';
-    const err = engineFails(fix, createArgs('payments', 'epic', ['--seed', seed, '--seed', seed]));
-
-    assert.match(err.error, /duplicate inbox path/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-    assert.ok(fs.existsSync(path.join(fix.project, seed)));
-    assert.strictEqual(commitCount(fix), '0');
-  });
-});
-
-describe('engine workunit create — missing imports fail fast', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('reports every missing path in missing_imports — nothing touched', () => {
-    writeFile(fix.project, 'notes/good.md', 'fine\n');
-    const err = engineFails(fix, createArgs('payments', 'epic', [
-      '--import', 'notes/good.md',
-      '--import', 'notes/ghost.md',
-      '--import', 'notes/phantom.md',
-      '--seed', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
-    ]));
-
-    assert.match(err.error, /import path\(s\) not found/);
-    assert.deepStrictEqual(err.missing_imports, ['notes/ghost.md', 'notes/phantom.md']);
-    // No manifest, no copies, no seed move, no commit, no store built.
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(commitCount(fix), '0');
-    assert.strictEqual(hasStore(fix.project), false);
-  });
-
-  it('a directory among the imports refuses before any copy — no half-landed batch', () => {
-    writeFile(fix.project, 'notes/good.md', 'fine\n');
-    fs.mkdirSync(path.join(fix.project, 'notes/album'), { recursive: true });
-    const err = engineFails(fix, createArgs('payments', 'epic', [
-      '--import', 'notes/good.md',
-      '--import', 'notes/album',
-    ]));
-
-    assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: notes\/album/);
-    assert.deepStrictEqual(err.missing_imports, ['notes/album']);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-    assert.strictEqual(commitCount(fix), '0');
-    assert.strictEqual(hasStore(fix.project), false);
-  });
-});
-
-describe('engine workunit create — knowledge base is warn-don\'t-block', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('per-file indexing failures land in warnings; the transaction still commits', () => {
-    unreadableKnowledge(fix.project);
-    writeFile(fix.project, 'notes/design.md', 'notes\n');
-    const res = engine(fix, createArgs('payments', 'epic', [
-      '--import', 'notes/design.md',
-      '--seed', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
-    ]));
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.warnings.length, 2);
-    assert.match(res.warnings[0], /^knowledge index \(imports\/design\.md\) failed: loadStore: corrupted store file at /);
-    assert.match(res.warnings[1], /^knowledge index \(seeds\/2026-06-01-smart-retry\.md\) failed: loadStore: corrupted store file at /);
-    assert.strictEqual(res.committed, shortHead(fix));
-    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/imports/design.md')));
-    assert.strictEqual(lastMessage(fix), 'discovery(payments): create work unit (epic)');
-  });
-});
-
-describe('engine workunit create — validation', () => {
-  let fix;
-  beforeEach(() => { fix = setupFixture(); stageLog(fix); });
-  afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  it('rejects an illegal work type via the shared schema vocabulary', () => {
-    const err = engineFails(fix, createArgs('payments', 'saga'));
-    assert.match(err.error, /Invalid work_type "saga"\. Must be one of: epic, feature, bugfix, cross-cutting, quick-fix/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
-  });
-
-  it('rejects illegal work-unit names — anything but a kebab-case slug, phase names, reserved', () => {
-    assert.match(engineFails(fix, createArgs('pay.ments', 'epic')).error, /must be a kebab-case slug/);
-    assert.match(engineFails(fix, createArgs('../escape', 'epic')).error, /must be a kebab-case slug/);
-    assert.match(engineFails(fix, createArgs('Pay Flow', 'epic')).error, /must be a kebab-case slug/);
-    assert.match(engineFails(fix, createArgs('feat(auth)', 'epic')).error, /must be a kebab-case slug/);
-    assert.match(engineFails(fix, createArgs('discussion', 'epic')).error, /conflicts with a phase name/);
-    assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
-    assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);
-    assert.match(engineFails(fix, createArgs('none', 'feature')).error, /is reserved/);
-    assert.match(engineFails(fix, createArgs('product', 'epic')).error, /is reserved/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/none')));
-  });
-
-  it('rejects a missing session-log file before any mutation', () => {
-    const err = engineFails(fix, [
-      'workunit', 'create', 'payments', 'epic',
-      '--description', 'Payments overhaul',
-      '--session-log-file', '.leeway/.cache/payments/discovery/ghost.md',
+    const { seeds } = readManifest(dir(), 'payments');
+    assert.deepStrictEqual(seeds.map(({ path: at, source }) => ({ path: at, source })), [
+      { path: 'seeds/2026-06-01-smart-retry.md', source: 'inbox:idea' },
+      { path: 'seeds/2026-06-02-login-loop.md', source: 'inbox:bug' },
+      { path: 'seeds/2026-06-03-typo-fix.md', source: 'inbox:quickfix' },
     ]);
-    assert.match(err.error, /session log file not found/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
+    assert.ok(seeds.every(({ seeded_at: at }) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(at)));
+    assert.deepStrictEqual(['ideas', 'bugs', 'quickfixes'].map((folder) => fs.readdirSync(statePath(dir(), '.inbox', folder))), [[], [], []]);
+    assert.deepStrictEqual(touched(statePath(dir()), 'HEAD').filter((line) => line.includes('.inbox/')), [`D\t${BUG}`, `D\t${IDEA}`, `D\t${QUICKFIX}`],
+      'each seed\'s removal rides with its new home');
+    assert.deepStrictEqual(indexedFiles(dir()), ['payments/seeds/2026-06-01-smart-retry.md', 'payments/seeds/2026-06-02-login-loop.md', 'payments/seeds/2026-06-03-typo-fix.md']);
   });
 
-  it('rejects missing arguments and unknown verbs with usage', () => {
-    const usage = /Usage: engine workunit create/;
-    assert.match(engineFails(fix, ['workunit', 'create']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'create', 'payments']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'create', 'payments', 'epic']).error, usage);
-    assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
+  it('leaves an unrelated inbox change out of a commit with no seeds', () => {
+    writeState(dir(), layout.inbox('ideas', '2026-06-09--unrelated.md'), '# Unrelated\n');
+    started('feature', 'payments');
+    assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.inbox/')));
+    assert.match(stateGit(dir(), ['status', '--porcelain']), /^\?\? \.inbox\/ideas\/2026-06-09--unrelated\.md$/m);
   });
 
-  it('omitting the session log refuses with usage — every creation lands one', () => {
-    const err = engineFails(fix, ['workunit', 'create', 'payments', 'feature', '--description', 'Payments overhaul']);
-    assert.match(err.error, /Usage: engine workunit create .* --session-log-file <path>/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')), 'nothing created on refusal');
+  it('refuses a seed outside the inbox, one missing, and one named twice — nothing touched', () => {
+    codeFile('notes/rogue.md', 'not an inbox item\n');
+    assert.match(refusedSeeds(['notes/rogue.md']), /not a live inbox path/);
+    assert.match(refusedSeeds(['.leeway/.inbox/ideas/2026-06-09--ghost.md']), /inbox file not found/);
+    assert.match(refusedSeeds([`.leeway/${IDEA}`, `.leeway/${IDEA}`]), /duplicate inbox path/);
   });
 });
 
-describe('engine workunit create — schema sharing', () => {
+describe('workunit create, its imports and its log (until 29.15)', () => {
+  /** `workunit create` landing `sources` as imports: its answer. @param {string[]} sources */
+  const landImports = (sources) => ok(dir(), createArgs('payments', 'feature', sources.flatMap((s) => ['--import', s])));
+
+  it('installs the log verbatim, copies each import under its normalised name — markdown-ish ones as .md — and commits once', () => {
+    codeFile('notes/My Design DOC.txt', 'a\n');
+    codeFile('notes/UPPER.MD', 'b\n');
+    codeFile('notes/plain', 'c\n');
+    codeFile('notes/weird  name!!.md', 'd\n');
+    const before = head(dir());
+    const res = landImports(['notes/My Design DOC.txt', 'notes/UPPER.MD', 'notes/plain', 'notes/weird  name!!.md']);
+    assert.deepStrictEqual(res.imports, ['my-design-doc.md', 'upper.md', 'plain.md', 'weird-name.md'].map((name) => ({ path: landed(`imports/${name}`) })));
+    assert.deepStrictEqual([res.skipped_imports, res.session_log, readState(dir(), layout.session('payments', '001'))], [[], landed('discovery/session-001.md'), SESSION_LOG]);
+    const [entry] = readManifest(dir(), 'payments').imports;
+    assert.deepStrictEqual([Object.keys(entry), entry.origin], [['path', 'imported_at', 'origin'], 'discovery'], 'the opener is discovery\'s own door');
+    assert.ok(fs.existsSync(path.join(dir(), 'notes/My Design DOC.txt')), 'an import is copied, its source untouched');
+    assert.deepStrictEqual([lastMessage(dir()), stateGit(dir(), ['rev-list', '--count', `${before}..HEAD`]).trim()], ['discovery(payments): create work unit (feature)', '1']);
+  });
+
+  it('skips a dotfile, reporting it, and indexes only what landed', () => {
+    codeFile('notes/.env', 'SECRET=1\n');
+    codeFile('notes/good.md', 'fine\n');
+    const res = landImports(['notes/.env', 'notes/good.md']);
+    assert.deepStrictEqual([res.skipped_imports, res.imports], [['notes/.env'], [{ path: landed('imports/good.md') }]]);
+    assert.deepStrictEqual(indexedFiles(dir()), ['payments/imports/good.md']);
+  });
+
+  it('suffixes a collision\'s stem, never its extension — the same source twice, and distinct sources normalising alike', () => {
+    codeFile('notes/a b.md', 'one\n');
+    codeFile('notes/a  b.md', 'two\n');
+    codeFile('notes/shot.png', 'one\n');
+    codeFile('notes/SHOT.png', 'two\n');
+    const res = landImports(['notes/a b.md', 'notes/a b.md', 'notes/a  b.md', 'notes/shot.png', 'notes/SHOT.png']);
+    assert.deepStrictEqual(res.imports, ['a-b.md', 'a-b-2.md', 'a-b-3.md', 'shot.png', 'shot-2.png'].map((name) => ({ path: landed(`imports/${name}`) })));
+    assert.deepStrictEqual([fs.readFileSync(landed('imports/a-b-3.md'), 'utf8'), fs.readFileSync(landed('imports/shot-2.png'), 'utf8')], ['two\n', 'two\n']);
+  });
+
+  it('keeps a non-markdown extension, lowercased, never indexing it, and lands every source 0644', () => {
+    codeFile('notes/Screenshot One.JPEG', 'jpeg bytes\n');
+    codeFile('notes/design.txt', 'plain text\n');
+    fs.chmodSync(codeFile('notes/locked.png', 'png bytes\n'), 0o600);
+    const res = landImports(['notes/Screenshot One.JPEG', 'notes/design.txt', 'notes/locked.png']);
+    assert.deepStrictEqual(res.imports, ['screenshot-one.jpeg', 'design.md', 'locked.png'].map((name) => ({ path: landed(`imports/${name}`) })));
+    assert.deepStrictEqual(indexedFiles(dir()), ['payments/imports/design.md']);
+    assert.strictEqual(fs.statSync(landed('imports/locked.png')).mode & 0o777, 0o644);
+  });
+
+  it('fails fast on every missing import, a folder among them — nothing touched, no store built', () => {
+    codeFile('notes/good.md', 'fine\n');
+    fs.mkdirSync(path.join(dir(), 'notes/album'));
+    const err = refusedPristine(dir(), createArgs('payments', 'epic', ['--import', 'notes/good.md', '--import', 'notes/ghost.md', '--import', 'notes/album', '--seed', `.leeway/${IDEA}`]));
+    assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: notes\/ghost\.md, notes\/album/);
+    assert.deepStrictEqual(err.missing_imports, ['notes/ghost.md', 'notes/album']);
+    assert.strictEqual(hasStore(dir()), false);
+  });
+
+  it('puts the unit back where its registration fails — no folder, its seed back in the inbox', () => {
+    codeFile('notes/design.md', 'notes\n');
+    const args = createArgs('payments', 'epic', ['--import', 'notes/design.md', '--seed', `.leeway/${IDEA}`]);
+    const refused = failingWrites(manifestTemp(statePath(dir())), () => refusedPristine(dir(), args));
+    assert.strictEqual(refused.error, 'disk full');
+  });
+
+  it('warns where the knowledge base cannot index what landed, and still commits', () => {
+    unreadableKnowledge(dir());
+    codeFile('notes/design.md', 'notes\n');
+    const res = ok(dir(), createArgs('payments', 'epic', ['--import', 'notes/design.md', '--seed', `.leeway/${IDEA}`]));
+    assert.deepStrictEqual(res.warnings.map((/** @type {string} */ w) => w.replace(/ at .*/s, '')), [
+      'knowledge index (imports/design.md) failed: loadStore: corrupted store file',
+      'knowledge index (seeds/2026-06-01-smart-retry.md) failed: loadStore: corrupted store file',
+    ]);
+    assert.strictEqual(lastMessage(dir()), 'discovery(payments): create work unit (epic)');
+  });
+});
+
+describe('workunit create, refused', () => {
+  it('refuses an illegal type through the shared schema vocabulary, and a name a unit has', () => {
+    assert.match(refusedPristine(dir(), createArgs('payments', 'saga')).error, /Invalid work_type "saga"\. Must be one of: epic, feature, bugfix, cross-cutting, quick-fix/);
+    assert.match(refusedPristine(dir(), createArgs('atlas', 'epic')).error, /work unit "atlas" already exists — pick a different name/);
+  });
+
+  it('refuses an illegal name — anything but a kebab-case slug, a phase\'s name, a reserved name', () => {
+    const refusal = (/** @type {string} */ name) => refuses(dir(), createArgs(name, 'epic')).error;
+    for (const name of ['pay.ments', '../escape', 'Pay Flow', 'feat(auth)']) assert.match(refusal(name), /must be a kebab-case slug/);
+    assert.match(refusal('discussion'), /conflicts with a phase name/);
+    for (const name of ['project', 'roadmap', 'none', 'product']) assert.match(refusal(name), /is reserved/);
+  });
+
+  it('refuses a missing log file, and missing arguments with the usage', () => {
+    assert.match(refusedPristine(dir(), ['workunit', 'create', 'payments', 'epic', '--description', 'd', '--session-log-file', '.leeway/.cache/ghost.md']).error, /session log file not found/);
+    const usage = /Usage: engine workunit create .* --session-log-file <path>/;
+    for (const args of [[], ['payments'], ['payments', 'epic'], ['payments', 'feature', '--description', 'd']]) assert.match(refuses(dir(), ['workunit', 'create', ...args]).error, usage);
+    assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
+  });
+
   it('validates work types through the shared schema module, never a local literal', () => {
     const src = fs.readFileSync(path.join(path.dirname(ENGINE), 'domain/workunit-create.cjs'), 'utf8');
-    assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
-      'workunit-create must require the shared schema');
+    assert.ok(src.includes('require(\'../kernel/manifest-schema.cjs\')'), 'workunit-create must require the shared schema');
     assert.ok(!/VALID_WORK_TYPES\s*=\s*\[/.test(src), 'no local copy of the work-type vocabulary');
   });
 });

@@ -1573,4 +1573,8 @@ module.exports = {
   revertJoins,
   carrySources,
   reaimAbsorbed,
+  ensureHorizon,
+  validateSummary,
+  validateSources,
+  requireSourcesOnDisk,
 };

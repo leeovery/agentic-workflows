@@ -13,6 +13,7 @@
 
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
 /** @typedef {import('../../kernel/render.cjs').TreeNode} TreeNode */
 
@@ -131,5 +132,38 @@ function discoverySynthesisView(workUnit, map, proposed) {
 /** The view's chrome heading. @param {string} workUnit */
 function discoveryTitle(workUnit) { return `Discovery — ${titlecase(workUnit)}`; }
 
+/** A map row as DATA names it: its order, key and lifecycle, the name it goes by where a rename gave it one, and its summary. @param {DiscoveryMapRow & {order?: number|null, goes_by?: string}} row */
+function rowData({ order, name, lifecycle, goes_by: goesBy, summary }) {
+  return `  ${order ?? '-'} ${name} [${lifecycle}]${goesBy !== undefined && goesBy !== name ? ` goes_by=${goesBy}` : ''}${summary ? ` — ${summary}` : ''}`;
+}
+
+/** The names struck from the map, as the person reads them, or nothing where none is. @param {string[]} dismissed */
+function struckBlock(dismissed) {
+  if (dismissed.length === 0) return '';
+  return `\nStruck from the map (${dismissed.length})\n${dismissed.map((name) => `  · ${titlecase(name)}`).join('\n')}\n`;
+}
+
+/**
+ * The epic's map for Claude and for the person (`render discovery-map`):
+ * DATA naming each topic in its order with its lifecycle and summary, and the
+ * names struck from the map; then the map's display with those names beneath.
+ * @param {string} workUnit
+ * @param {{rows: (DiscoveryMapRow & {order?: number|null, goes_by?: string})[], summary: DiscoveryMapSummary}} map
+ * @param {string[]} dismissed
+ * @returns {string}
+ */
+function discoveryMapScreen(workUnit, map, dismissed) {
+  const { summary: s } = map;
+  const data = [
+    `work_unit: ${workUnit}`,
+    `map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.cancelled} cancelled, ${s.postponed} postponed`,
+    `topics (${map.rows.length}):`,
+    ...(map.rows.length === 0 ? ['  (none)'] : map.rows.map(rowData)),
+    `dismissed (${dismissed.length}):`,
+    ...(dismissed.length === 0 ? ['  (none)'] : dismissed.map((name) => `  - ${name}`)),
+  ];
+  return dataSection(data) + section('DISPLAY: discovery map', CONTINUE_INSTRUCTION, discoveryMapView(workUnit, map) + struckBlock(dismissed));
+}
+
 module.exports = {
-  discoveryTitle, discoveryMapView, discoverySynthesisView };
+  discoveryTitle, discoveryMapView, discoverySynthesisView, discoveryMapScreen };

@@ -49,9 +49,9 @@ function productCall(...scope) {
   return [ENGINE_COMMAND, 'ledger', 'product', ...scope].join(' ');
 }
 
-/** The call that reads an epic's map: its topics, in their order. @param {string} unit */
+/** The call that reads an epic's map: its topics, in their order, and the names struck from it. @param {string} unit */
 function mapCall(unit) {
-  return `node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view ${unit}`;
+  return `${ENGINE_COMMAND} render discovery-map ${unit}`;
 }
 
 /**

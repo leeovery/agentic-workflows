@@ -1,16 +1,18 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the work-type commit — discovery's durability boundary as one
-// transaction: create the work unit, land imports, land the inbox seeds,
-// install the model-authored session log, commit. The engine never authors
-// prose — the session log's content arrives finished via a file and is
-// installed verbatim.
+// Domain ring: a work unit's creation — discovery's durability boundary as
+// one transaction, in steps start this work composes with its own writes
+// (start-this-work.cjs) and `workunit create` runs alone: check everything,
+// write the unit (its manifest, imports, inbox seeds and first discovery
+// log), register it, index what landed, commit. The engine never authors
+// prose — `workunit create` installs the model-authored log verbatim.
 //
 // Validation is complete before any mutation: a missing import fails the
 // whole call with `missing_imports` riding on the error so the calling flow
 // can re-prompt and re-run, and a name already taken refuses outright —
-// nothing is on disk until every input is legal.
+// nothing is on disk until every input is legal. A write that fails
+// part-way is undone: each seed back in the inbox, the unit's folder gone.
 // The manifest write is the source of truth; the knowledge base is a derived
 // index (warn-don't-block); the scoped commit comes last.
 //
@@ -28,7 +30,7 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { parseInboxPaths, INBOX, SEED_SOURCES } = require('./inbox.cjs');
 const {
@@ -74,6 +76,14 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
  */
 
+/** A seed as the unit's write moves it: the inbox item, and its file name in `seeds/`. @typedef {{item: import('./inbox.cjs').InboxItem, dest: string}} SeedMove */
+
+/**
+ * What a unit's write landed: its imports as copied, its seeds as moved, and
+ * the imports filename normalisation skipped.
+ * @typedef {{importMoves: {src: string, dest: string}[], seedMoves: SeedMove[], skippedImports: string[]}} Landed
+ */
+
 /**
  * Push onto a top-level manifest array field, creating it when absent — loud
  * when the field exists but is not an array (mirrors `engine manifest push`).
@@ -85,13 +95,147 @@ function pushEntry(manifest, field, value) {
   manifest[field].push(value);
 }
 
+/** Whether a unit of the name exists. @param {string} cwd @param {string} workUnit */
+function workUnitTaken(cwd, workUnit) {
+  return fs.existsSync(path.join(stateRoot(cwd), workUnit, 'manifest.json'));
+}
+
 /**
- * The work-type commit: create the work unit (manifest + project-manifest
- * registration; a name already taken refuses), copy imports into `imports/`,
- * move inbox seeds into `seeds/` (both manifest-tracked and KB-indexed,
- * warn-don't-block), install the session log verbatim as `discovery/session-001.md`
- * (epic also gets the `active_session` marker), and commit scoped to the work
- * unit and the project manifest, plus the inbox when seeds moved out of it.
+ * Refuse, before anything is written, a unit that cannot be created: an
+ * illegal type or name, a name a unit has already, an import that cannot
+ * land, and a seed that is no live inbox item. Answers the seeds as inbox
+ * items.
+ * @param {string} cwd @param {string} workUnit @param {string} workType
+ * @param {{imports?: string[], seeds?: string[]}} [landing]
+ * @returns {import('./inbox.cjs').InboxItem[]}
+ */
+function checkWorkUnit(cwd, workUnit, workType, { imports = [], seeds = [] } = {}) {
+  if (!VALID_WORK_TYPES.includes(workType)) {
+    throw new Error(`Invalid work_type "${workType}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
+  }
+  assertLegalWorkUnitName(workUnit);
+  if (workUnitTaken(cwd, workUnit)) throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
+  assertLandableSources(cwd, imports);
+  // Layout-validated live inbox paths; the folder carries the provenance tag.
+  const seedItems = parseInboxPaths(cwd, seeds, { archived: false });
+  // Read (and refuse corrupt JSON) before anything mutates; the registration
+  // re-reads under the project lock after the work unit lands.
+  readProjectManifest(cwd);
+  return seedItems;
+}
+
+/**
+ * Undo a unit's write: each seed moved back into the inbox, then the unit's
+ * folder gone.
+ * @param {string} cwd @param {string} workUnit @param {SeedMove[]} seedMoves
+ */
+function unwriteWorkUnit(cwd, workUnit, seedMoves) {
+  for (const { item, dest } of seedMoves) fs.renameSync(statePath(cwd, workUnit, 'seeds', dest), statePath(cwd, item.rel));
+  fs.rmSync(path.join(stateRoot(cwd), workUnit), { recursive: true, force: true });
+}
+
+/**
+ * Write a new unit, checked by `checkWorkUnit`, under its lock: its folder
+ * and manifest, its imports copied into `imports/`, its inbox seeds moved
+ * into `seeds/`, each recorded with its source so a cancel can put it back,
+ * and its first discovery log holding `firstLog`, an epic's marked open — the
+ * sole work type with a resumable discovery session. No registration and no
+ * commit. A write that fails part-way is undone.
+ * @param {string} cwd @param {string} workUnit @param {string} workType
+ * @param {{description: string, firstLog: string, imports?: string[], seedItems?: import('./inbox.cjs').InboxItem[]}} unit
+ * @returns {Landed}
+ */
+function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports = [], seedItems = [] }) {
+  const wuDir = path.join(stateRoot(cwd), workUnit);
+  /** @type {SeedMove[]} */
+  const moved = [];
+  fs.mkdirSync(wuDir, { recursive: true });
+  try {
+    return withWorkUnitLock(cwd, workUnit, () => {
+      /** @type {Record<string, any>} */
+      const manifest = {
+        name: workUnit,
+        work_type: workType,
+        status: 'in-progress',
+        created: todayStamp(),
+        description,
+        phases: {},
+      };
+
+      // Destination names, deduped against each directory and within the batch.
+      const importsDir = path.join(wuDir, 'imports');
+      const { planned: importPlan, skipped } = planImports(imports, importsDir);
+      const seedsDir = path.join(wuDir, 'seeds');
+      const takenSeeds = new Set();
+      const seedPlan = seedItems.map((item) => {
+        const dest = dedupe(normaliseBasename(item.file) ?? 'seed.md', seedsDir, takenSeeds);
+        takenSeeds.add(dest);
+        return { item, dest };
+      });
+
+      copyImports(cwd, importsDir, importPlan);
+      // The opener is discovery's own door — every file it lands says so.
+      for (const move of importPlan) pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
+
+      if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
+      for (const move of seedPlan) {
+        fs.renameSync(statePath(cwd, move.item.rel), path.join(seedsDir, move.dest));
+        moved.push(move);
+        pushEntry(manifest, 'seeds', { path: `seeds/${move.dest}`, source: SEED_SOURCES[move.item.folder], seeded_at: isoNow() });
+      }
+
+      fs.mkdirSync(path.join(wuDir, 'discovery'), { recursive: true });
+      fs.writeFileSync(path.join(wuDir, FIRST_LOG), firstLog);
+      if (workType === 'epic') {
+        ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'discovery', 'phases.discovery').active_session = '001';
+      }
+
+      saveWorkUnitManifest(cwd, workUnit, manifest);
+      return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
+    });
+  } catch (err) {
+    unwriteWorkUnit(cwd, workUnit, moved);
+    throw err;
+  }
+}
+
+/** The unit registered on the project manifest given. @param {Record<string, any>} project @param {string} workUnit @param {string} workType */
+function registerWorkUnit(project, workUnit, workType) {
+  ensureContainer(project, 'work_units', 'work_units')[workUnit] = { work_type: workType };
+}
+
+/**
+ * The unit's imports and seeds indexed into the knowledge base,
+ * warn-don't-block.
+ * @param {string} cwd @param {string} workUnit @param {Landed} landed @param {string[]} warnings
+ */
+function indexLanded(cwd, workUnit, { importMoves, seedMoves }, warnings) {
+  syncKnowledge(cwd, [
+    ...importMoves.filter((m) => isIndexableImport(m.dest))
+      .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: `${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+  ], warnings);
+}
+
+/**
+ * What a commit of the new unit takes: the unit and the project manifest,
+ * and the inbox where seeds moved out of it — their removal rides with their
+ * new home.
+ * @param {string} workUnit @param {Landed} landed @returns {string[]}
+ */
+function createdPaths(workUnit, { seedMoves }) {
+  return [workUnit, PROJECT_MANIFEST_SPEC, ...(seedMoves.length > 0 ? [INBOX] : [])];
+}
+
+/** The landed seeds as a response names them. @param {string} cwd @param {string} workUnit @param {Landed} landed */
+function landedSeeds(cwd, workUnit, { seedMoves }) {
+  return seedMoves.map((move) => ({ path: statePath(cwd, workUnit, 'seeds', move.dest), source: SEED_SOURCES[move.item.folder] }));
+}
+
+/**
+ * `workunit create`: the unit created from Claude's arguments — checked,
+ * written, registered, indexed and committed, the session log installed
+ * verbatim from `sessionLogFile`.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} workType
@@ -103,122 +247,39 @@ function pushEntry(manifest, field, value) {
  * @returns {WorkUnitCreateResult}
  */
 function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, imports = [], seeds = [] }) {
-  // -- validate everything before any mutation --------------------------------
-  if (!VALID_WORK_TYPES.includes(workType)) {
-    throw new Error(`Invalid work_type "${workType}". Must be one of: ${VALID_WORK_TYPES.join(', ')}`);
-  }
-  assertLegalWorkUnitName(workUnit);
-
-  const wuDir = path.join(stateRoot(cwd), workUnit);
-  if (fs.existsSync(path.join(wuDir, 'manifest.json'))) {
-    throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
-  }
-
+  const seedItems = checkWorkUnit(cwd, workUnit, workType, { imports, seeds });
   /** @type {string} */
-  let sessionLog;
+  let firstLog;
   try {
-    sessionLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
+    firstLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
   } catch {
     throw new Error(`session log file not found: ${sessionLogFile}`);
   }
 
-  assertLandableSources(cwd, imports);
-
-  // Layout-validated live inbox paths; the folder carries the provenance tag.
-  const seedItems = parseInboxPaths(cwd, seeds, { archived: false });
-
-  // Read (and refuse corrupt JSON) before anything mutates; the registration
-  // itself re-reads under the project lock after the work unit lands.
-  readProjectManifest(cwd);
-
-  // -- mutate: files + one manifest save under the work unit's lock, then the
-  // -- project registration under its own lock, then KB, then the commit -----
-  fs.mkdirSync(wuDir, { recursive: true });
-  const { importMoves, seedMoves, skippedImports } = withWorkUnitLock(cwd, workUnit, () => {
-    /** @type {Record<string, any>} */
-    const manifest = {
-      name: workUnit,
-      work_type: workType,
-      status: 'in-progress',
-      created: todayStamp(),
-      description,
-      phases: {},
-    };
-
-    // Destination names, deduped against each directory and within the batch.
-    const importsDir = path.join(wuDir, 'imports');
-    const { planned: importPlan, skipped } = planImports(imports, importsDir);
-
-    const seedsDir = path.join(wuDir, 'seeds');
-    /** @type {{item: import('./inbox.cjs').InboxItem, dest: string}[]} */
-    const seedPlan = [];
-    const takenSeeds = new Set();
-    for (const item of seedItems) {
-      const name = normaliseBasename(item.file) ?? 'seed.md';
-      const dest = dedupe(name, seedsDir, takenSeeds);
-      takenSeeds.add(dest);
-      seedPlan.push({ item, dest });
-    }
-
-    copyImports(cwd, importsDir, importPlan);
-    // The opener is discovery's own door — every file it lands says so.
-    for (const move of importPlan) {
-      pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
-    }
-
-    if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
-    for (const move of seedPlan) {
-      fs.renameSync(statePath(cwd, move.item.rel), path.join(seedsDir, move.dest));
-      pushEntry(manifest, 'seeds', {
-        path: `seeds/${move.dest}`,
-        source: SEED_SOURCES[move.item.folder],
-        seeded_at: isoNow(),
-      });
-    }
-
-    fs.mkdirSync(path.join(wuDir, 'discovery'), { recursive: true });
-    fs.writeFileSync(path.join(wuDir, FIRST_LOG), sessionLog);
-
-    // Epic is the sole work type with a resumable discovery session loop.
-    if (workType === 'epic') {
-      const phases = ensureContainer(manifest, 'phases', 'phases');
-      ensureContainer(phases, 'discovery', 'phases.discovery').active_session = '001';
-    }
-
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
-  });
-
-  withProjectLock(cwd, () => {
-    const projectManifest = readProjectManifest(cwd);
-    ensureContainer(projectManifest, 'work_units', 'work_units')[workUnit] = { work_type: workType };
-    writeProjectManifestAtomic(cwd, projectManifest);
-  });
+  const landed = writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports, seedItems });
+  try {
+    withProjectLock(cwd, () => {
+      const project = readProjectManifest(cwd);
+      registerWorkUnit(project, workUnit, workType);
+      writeProjectManifestAtomic(cwd, project);
+    });
+  } catch (err) {
+    unwriteWorkUnit(cwd, workUnit, landed.seedMoves);
+    throw err;
+  }
 
   /** @type {string[]} */
   const warnings = [];
-  syncKnowledge(cwd, [
-    ...importMoves.filter((m) => isIndexableImport(m.dest))
-      .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
-    ...seedMoves.map((move) => ({ index: `${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
-  ], warnings);
-
-  // Seed removals ride along in the same commit as their new home, and the
-  // project-manifest registration lands with it too.
-  const pathspecs = [workUnit, 'manifest.json'];
-  if (seedMoves.length > 0) pathspecs.push(INBOX);
-  const outcome = commitStateTail(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
+  indexLanded(cwd, workUnit, landed, warnings);
+  const outcome = commitStateTail(cwd, createdPaths(workUnit, landed), `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
   const result = {
     work_unit: workUnit,
     work_type: workType,
-    imports: importMoves.map((move) => ({ path: statePath(cwd, workUnit, 'imports', move.dest) })),
-    seeds: seedMoves.map((move) => ({
-      path: statePath(cwd, workUnit, 'seeds', move.dest),
-      source: SEED_SOURCES[move.item.folder],
-    })),
-    skipped_imports: skippedImports,
+    imports: landed.importMoves.map((move) => ({ path: statePath(cwd, workUnit, 'imports', move.dest) })),
+    seeds: landedSeeds(cwd, workUnit, landed),
+    skipped_imports: landed.skippedImports,
     session_log: statePath(cwd, workUnit, FIRST_LOG),
     committed: outcome.committed,
     warnings,
@@ -227,4 +288,6 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   return result;
 }
 
-module.exports = { createWorkUnit, assertLegalWorkUnitName };
+module.exports = {
+  FIRST_LOG, createWorkUnit, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, indexLanded, createdPaths, landedSeeds,
+};

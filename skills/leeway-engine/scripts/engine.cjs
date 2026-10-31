@@ -76,6 +76,8 @@ const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
+const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
+const { runApproveMapVerb } = require('./domain/approve-map.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -281,6 +283,8 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   ${CUT_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
 ${DECIDED_USAGE.replace(/^/gm, '  ')}
+  start-this-work yes
+  approve-map yes <work-unit>
   ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -445,6 +449,9 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
   render decided-strike <work-unit>.<topic>
   render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
+  render start-this-work [--file <payload.json>]
+  render approve-map <work-unit> [--file <payload.json>]
+  render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
   render state-lost-gate
@@ -1417,6 +1424,29 @@ function runDecided(call, argv) {
     // The yes releases the topic's slot, as a conclusion does.
     if (argv[0] === 'yes') clearQuietly(call.cwd, argv[1], 'discussion', argv[2]);
     respond(call, answer);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// start-this-work, approve-map — the person's yes at discovery's two
+// authority gates (domain/start-this-work.cjs, domain/approve-map.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runStartThisWork(call, argv) {
+  try {
+    respond(call, runStartThisWorkVerb(call.cwd, argv));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+/** @param {Call} call @param {string[]} argv */
+function runApproveMap(call, argv) {
+  try {
+    respond(call, runApproveMapVerb(call.cwd, argv));
   } catch (err) {
     failJson(call, err);
   }
@@ -2445,6 +2475,8 @@ const COMMANDS = Object.freeze({
   checklist: runChecklist,
   migrate: runMigrate,
   decided: runDecided,
+  'start-this-work': runStartThisWork,
+  'approve-map': runApproveMap,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

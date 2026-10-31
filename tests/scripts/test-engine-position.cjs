@@ -596,7 +596,7 @@ describe('conversation position', () => {
     for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/session-${n}.md`, '## 2026-01-01 · session sess-1\n');
     const file = transcript();
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
-    const map = 'node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view pay';
+    const map = 'node .claude/skills/leeway-engine/scripts/engine.cjs render discovery-map pay';
     let answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-discovery/SKILL.md'), [abs('.leeway/pay/discovery/session-010.md')]]);
     assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.leeway/pay/discovery/session-010.md', file));

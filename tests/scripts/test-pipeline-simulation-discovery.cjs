@@ -145,7 +145,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
     sim.run(['enter', 'discovery', EPIC, '--move']);
     const atEpic = carryOn(sim).text;
-    for (const part of ['leeway-discovery/SKILL.md and its framework', `gateway.cjs map-view ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['leeway-discovery/SKILL.md and its framework', `render discovery-map ${EPIC}\``, `Catch the log, ${logPath(sim, EPIC, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atEpic.includes(part), `the epic's note names ${part}:\n${atEpic}`);
     }
   });

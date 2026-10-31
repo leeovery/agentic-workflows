@@ -188,15 +188,25 @@ function draftIn(cwd, draft, what) {
 }
 
 /**
+ * A topic's brief written, its draft kept. Answers the brief, state-relative.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} content
+ * @returns {string}
+ */
+function writeBrief(cwd, unit, topic, content) {
+  const rel = briefFile(unit, topic);
+  fs.mkdirSync(statePath(cwd, topicDir(unit, topic)), { recursive: true });
+  fs.writeFileSync(statePath(cwd, rel), content);
+  return rel;
+}
+
+/**
  * A topic's brief written from its draft, the draft consumed. Answers the
  * brief, state-relative.
  * @param {string} cwd @param {string} unit @param {string} topic @param {{scratch: string, content: string}} draft
  * @returns {string}
  */
 function installBrief(cwd, unit, topic, { scratch, content }) {
-  const rel = briefFile(unit, topic);
-  fs.mkdirSync(statePath(cwd, topicDir(unit, topic)), { recursive: true });
-  fs.writeFileSync(statePath(cwd, rel), content);
+  const rel = writeBrief(cwd, unit, topic, content);
   fs.rmSync(scratch, { force: true });
   return rel;
 }
@@ -853,4 +863,5 @@ function setPrior(cwd, workUnit, name, prior) {
 module.exports = {
   sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, removeRefusal, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
+  addBatchTo, draftIn, writeBrief, discoveryItems,
 };
