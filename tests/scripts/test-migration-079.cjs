@@ -225,6 +225,18 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     ]);
   });
 
+  it('8.S23: a topic never started, carried in discovery where nothing is decided — a decision, or a finding marked product-wide, refused; what its research concluded is a finding (8.3.4, 8.9.6)', () => {
+    const [found] = GOOD['fumi.discovery.billing'];
+    const rates = [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }];
+    const asked = { ref: 'q1', event: 'asked', text: 'Are rates set per seat?', by: 'claude', cites: rates };
+    const decided = { ref: 'd1', event: 'decided', answers: 'q1', text: 'Per seat.', why: 'The rates import says so.', by: 'claude', given: 'carried', cites: rates };
+
+    assert.strictEqual(refused('fumi.discovery.billing', [{ ...found, product_wide: true }, asked, decided]), breaks('fumi', 'billing', [
+      'entry f1 is product-wide, and nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on',
+      'entry d1 decides, and nothing is decided in discovery — carry it as input',
+    ]));
+  });
+
   it('21.S36: a subtopic its old map shows decided that no entry names, and one still open or deferred, and a thread still digging, that no open question names', () => {
     const answered = [...GOOD['fumi.discussion.search'], { ref: 'd2', event: 'decided', answers: 'q2', text: 'Off by one letter.', why: 'The log says so.', by: 'claude', given: 'carried', map_item: 'typo-tolerance', cites: [logCite('fumi', 'search', 'Typo Tolerance')] }];
 
@@ -301,50 +313,34 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
 });
 
 describe('the points to raise (21.6.10, 21.S25)', () => {
-  it('once the check passes, it lists each open question marked to raise on a live topic, until this conversation raises it; none on a cancelled unit\'s', async () => {
+  it('once the check passes, it lists each open question marked to raise on a live topic, until this conversation raises it; none on a cancelled unit\'s, nor on a topic never started, carried in discovery where nothing is decided, whose first opening reads it with the rest of its record (8.3.4, 9.3.6)', async () => {
     dir = world();
     const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
+    const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', raise: true, cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
     const [cause] = GOOD['gone.discussion.gone'];
     for (const [dotpath, entries] of Object.entries(GOOD)) {
       if (dotpath === 'fumi.discussion.licensing') carry(dotpath, [...entries, point]);
+      else if (dotpath === 'fumi.discovery.billing') carry(dotpath, [...entries, unsettled]);
       else if (dotpath === 'gone.discussion.gone') carry(dotpath, [{ ...cause, raise: true }]);
       else carry(dotpath, entries);
     }
-    const id = JSON.parse(readState(dir, carriedPath('fumi', 'licensing'))).entries.find((/** @type {{ref: string}} */ entry) => entry.ref === 'q3').id;
+    /** The id the carry gave each of a topic's entries, by its ref. @param {string} topic @returns {Record<string, string>} */
+    const carriedIds = (topic) => Object.fromEntries(JSON.parse(readState(dir, carriedPath('fumi', topic))).entries.map((/** @type {{ref: string, id: string}} */ { ref, id }) => [ref, id]));
 
     const [listed] = checked().raise;
-    assert.deepStrictEqual([listed.place, id.startsWith(listed.answers), listed.text, checked().raise.length], ['fumi.discussion.licensing', true, point.text, 1]);
+    assert.deepStrictEqual([listed.place, carriedIds('licensing').q3.startsWith(listed.answers), listed.text, checked().raise.length], ['fumi.discussion.licensing', true, point.text, 1]);
 
     await okSectionsAsync(dir, ['raise', listed.place, '--answers', listed.answers, '--fact'], {
       env: SESSION, stdin: JSON.stringify({ question: point.text, rows: [], mechanism: 'The log says nothing of a card.', product_wide: false }),
     });
 
     assert.deepStrictEqual(checked().raise, []);
-  });
-
-  it('a point on a topic never started, carried in discovery where nothing is decided, is never listed: the started topic\'s raised, the directive closes, and the topic\'s first opening reads its record — the point an open question on it (8.3.4, 9.3.6)', async () => {
-    dir = world();
-    const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
-    const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', raise: true, cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
-    for (const [dotpath, entries] of Object.entries(GOOD)) {
-      if (dotpath === 'fumi.discussion.licensing') carry(dotpath, [...entries, point]);
-      else if (dotpath === 'fumi.discovery.billing') carry(dotpath, [...entries, unsettled]);
-      else carry(dotpath, entries);
-    }
-
-    const listed = checked().raise;
-    assert.deepStrictEqual(listed.map((/** @type {{place: string, text: string}} */ { place, text }) => [place, text]), [['fumi.discussion.licensing', point.text]]);
-    await okSectionsAsync(dir, ['raise', listed[0].place, '--answers', listed[0].answers, '--fact'], {
-      env: SESSION, stdin: JSON.stringify({ question: point.text, rows: [], mechanism: 'The log says nothing of a card.', product_wide: false }),
-    });
-    assert.deepStrictEqual(checked().raise, []);
     ok(dir, ['checklist', 'close', 'directive', RECORDS], { env: SESSION });
-
     const { sections } = okSections(dir, ['enter', 'discussion', 'fumi', 'billing'], { env: SESSION });
     const call = /^product: `node \S+ (ledger product fumi billing)`$/m.exec(sections)?.[1];
     assert.strictEqual(call, 'ledger product fumi billing', sections);
-    const carried = Object.fromEntries(JSON.parse(readState(dir, carriedPath('fumi', 'billing'))).entries.map((/** @type {{ref: string, id: string}} */ { ref, id }) => [ref, id]));
-    const discovery = ok(dir, call.split(' ')).discovery.map((/** @type {{id: string, event: string}} */ { id, event }) => [event, Object.keys(carried).find((ref) => carried[ref].startsWith(id))]);
+    const billing = carriedIds('billing');
+    const discovery = ok(dir, call.split(' ')).discovery.map((/** @type {{id: string, event: string}} */ { id, event }) => [event, Object.keys(billing).find((ref) => billing[ref].startsWith(id))]);
     assert.deepStrictEqual(discovery, [['found', 'f1'], ['asked', 'q1']]);
   });
 });

@@ -35,7 +35,10 @@
 //   - every import that came in from the topic, as the unit's manifest
 //     lists it, whose file the state holds, linked from one of its entries
 //     (21.5.7), a record of none included — in a unit of one topic that is
-//     no epic, an import from its discovery, `discovery`, being the topic's.
+//     no epic, an import from its discovery, `discovery`, being the topic's;
+//   - a record carried in discovery, an epic's topic never started, holds no
+//     decision and nothing product-wide: nothing is decided in discovery
+//     (8.3.4, 8.9.6), so what its research concluded is a finding.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -306,18 +309,31 @@ function citeProblem(project, unit, topic, cite) {
 }
 
 /**
- * What a topic's record breaks of the rules: the record as `ledger carry`
- * takes it, `{"entries": [...]}`, each entry its ref, event, the ref of the
- * question it answers, its cites, its map item and thread, each a name or a
- * list, and its assets.
- * @param {Project} project @param {Unit} unit @param {string} topic @param {Record<string, any>[]} record
+ * What a record carried in discovery holds that nothing there may: a
+ * decision, or an entry marked product-wide.
+ * @param {Record<string, any>[]} record @returns {string[]}
+ */
+function undecidedProblems(record) {
+  return record.flatMap(({ ref, event, product_wide: wide }) => {
+    if (event === 'decided') return [`entry ${ref} decides, and nothing is decided in discovery — carry it as input`];
+    return wide === true ? [`entry ${ref} is product-wide, and nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on`] : [];
+  });
+}
+
+/**
+ * What a topic's record breaks of the rules, carried in `phase`: the record
+ * as `ledger carry` takes it, `{"entries": [...]}`, each entry its ref,
+ * event, the ref of the question it answers, its cites, its map item and
+ * thread, each a name or a list, and its assets.
+ * @param {Project} project @param {Unit} unit @param {string} topic @param {string} phase @param {Record<string, any>[]} record
  * @returns {string[]}
  */
-function problemsOf(project, unit, topic, record) {
+function problemsOf(project, unit, topic, phase, record) {
   const imports = importsOf(project, unit).filter((entry) => entry.owner === topic && entry.held)
     .filter((entry) => !record.some(({ assets }) => Array.isArray(assets) && assets.some((asset) => isObject(asset) && asset.path === entry.path)))
     .map((entry) => `${entry.path} came in from ${entry.origin}, and no entry links it`);
   const empty = record.length === 0 && logOf(project, unit, topic).trim() !== '' ? ['its record is empty, and its log is not'] : [];
+  const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
   const cites = record.flatMap(({ ref, cites: given }) => {
     if (!Array.isArray(given) || given.length === 0) return [`entry ${ref} cites nothing`];
     return given.map((cite) => citeProblem(project, unit, topic, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
@@ -333,7 +349,7 @@ function problemsOf(project, unit, topic, record) {
   const openThreads = new Set(open.flatMap((entry) => namesOf(entry.thread)));
   const threads = threadsOf(project, unit, topic).filter(({ thread }) => !openThreads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no open question carries it`);
-  return [...empty, ...cites, ...mapped, ...threads, ...imports];
+  return [...empty, ...undecided, ...cites, ...mapped, ...threads, ...imports];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -363,7 +379,7 @@ function topicProblems(project, ids, unit, topic) {
   const carried = carriedOf(project, unit, topic);
   if (carried === null) return ['has no record yet'];
   if (!carried.entries.every(({ id }) => ids.has(id))) return ['its record never reached the ledger'];
-  return problemsOf(project, unit, topic, carried.record.entries);
+  return problemsOf(project, unit, topic, carried.phase, carried.record.entries);
 }
 
 module.exports = {
@@ -396,12 +412,13 @@ module.exports = {
   holds,
   topicsOf,
   /**
-   * What a topic's record breaks of the rules, before it is carried.
-   * @param {{projectDir: string, stateDir: string, unit: string, topic: string, entries: Record<string, any>[]}} at
+   * What a topic's record breaks of the rules, before it is carried in
+   * `phase`.
+   * @param {{projectDir: string, stateDir: string, unit: string, topic: string, phase: string, entries: Record<string, any>[]}} at
    */
-  recordProblems({ projectDir, stateDir, unit, topic, entries }) {
+  recordProblems({ projectDir, stateDir, unit, topic, phase, entries }) {
     const project = projectOf(projectDir, stateDir);
-    return problemsOf(project, unitOf(project, unit), topic, entries);
+    return problemsOf(project, unitOf(project, unit), topic, phase, entries);
   },
   /**
    * A topic's sources as the rules read them: the project's folder they are

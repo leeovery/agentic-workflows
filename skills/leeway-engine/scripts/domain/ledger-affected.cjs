@@ -35,11 +35,14 @@
 //   way, on the topic it stands on, or at the unit's level, however closed
 //   that topic is; in a finished unit never there, but in the work that made
 //   each latest replacement — the unit and topic it was made on — which
-//   confirms or replaces it, the finished unit left finished.
+//   confirms or replaces it, the finished unit left finished. The product's
+//   place (8.12.9) is waited at as a finished unit is: no work is ever under
+//   way there.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, madeOn, isCurrent, holdsOf, keptOf, replacementsOf } = require('./ledger-fold.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
+const { PRODUCT } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').Standing} Standing */
@@ -100,13 +103,13 @@ function changesUnder(folded, id) {
 
 /**
  * Where an affected entry waits: where it stands, in a unit still under
- * way; in a finished unit, where the latest replacement of each change was
- * made.
+ * way; in a finished unit or at the product's place, where the latest
+ * replacement of each change was made.
  * @param {Folded} folded @param {(unit: string) => boolean} finished @param {Standing} standing @param {Change[]} changes
  * @returns {Standing[]}
  */
 function waitsAt(folded, finished, standing, changes) {
-  if (!finished(standing.unit)) return [standing];
+  if (standing.unit !== PRODUCT && !finished(standing.unit)) return [standing];
   const made = changes.map((change) => madeOn(folded, /** @type {string} */ (change.replacements.at(-1))));
   return [...new Map(made.map((at) => [`${at.unit}\0${at.topic ?? ''}`, at])).values()];
 }

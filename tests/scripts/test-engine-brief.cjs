@@ -20,8 +20,9 @@
 // the fix round's brief, the two reports verbatim under their labels and
 // nothing else (6.S17); the product researcher's brief in a project with no
 // unit; the fill under the writer lock; every refusal writing nothing, no
-// brief and no record among it; a template's slots held to its role; a
-// brief and its record never stored over another's.
+// brief and no record among it; every role's agent named as the workflows'
+// are, and defined on the roster fixing Opus at medium; a template's slots
+// held to its role; a brief and its record never stored over another's.
 //
 // Layer: verb. World: a project with two work units, built once and copied:
 // one with its first phase written in the tracker, its tasks made through
@@ -58,6 +59,7 @@ const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const AGENTS = path.join(__dirname, '../../agents');
 
 const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
 const UNIT = 'pay';
@@ -447,12 +449,6 @@ describe('the product researcher\'s brief', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null, topic: null });
   });
 
-  it('its agent\'s definition fixes Opus at medium (26.5.3)', () => {
-    const definition = fs.readFileSync(path.join(__dirname, '../../agents/leeway-product-researcher.md'), 'utf8');
-    const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(definition)?.[1] ?? '';
-
-    assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), ['leeway-product-researcher', 'opus', 'medium']);
-  });
 });
 
 describe('the refusals, nothing written and no brief stored', () => {
@@ -569,6 +565,17 @@ describe('the templates and the store', () => {
   it('every role is dispatched as an agent named as the workflows\' are, so the hook stands before each', () => {
     assert.strictEqual(OURS, 'leeway-');
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
+  });
+
+  it('every role\'s agent is a definition on the roster fixing Opus at medium (26.4.1, 26.5.3) — but the build\'s, whose definitions its phase writes', () => {
+    const roles = Object.entries(ROLES);
+    const written = roles.filter(([, { agent }]) => fs.existsSync(path.join(AGENTS, `${agent}.md`)));
+
+    assert.deepStrictEqual(roles.filter((role) => !written.includes(role)).map(([role]) => role), ['builder', 'reviewer', 'fix']);
+    for (const [role, { agent }] of written) {
+      const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
+      assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), [agent, 'opus', 'medium'], role);
+    }
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {

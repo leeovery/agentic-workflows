@@ -9,9 +9,11 @@
 // product-wide, every other write refused in one line, appending nothing
 // (8.3.4, 8.9.6); and what discovery found, which `ledger product` shows
 // apart from the product record — the product's findings, given a unit the
-// unit's own, and given a topic what discovery left on it (9.3.12). A raise
-// at a discovery place is test-engine-raise.cjs's; a record the migration
-// carried at a topic's discovery place, test-migration-079.cjs's.
+// unit's own, and given a topic what discovery left on it (9.3.12); a
+// finding of the product's whose ground a topic replaced waiting on that
+// topic (5.6.12). A raise at a discovery place is test-engine-raise.cjs's;
+// a record the migration carried at a topic's discovery place,
+// test-migration-079.cjs's.
 //
 // Layer: verb. World: the ledger suites' unit (ledger-world.cjs) with its
 // state worktree from the fixture library, a feature beside it.
@@ -116,5 +118,17 @@ describe('what discovery found (9.3.12)', () => {
     const replacement = write('replace', NOTE, ['--replaces', old, '--reason', 'was-wrong'], { ...READ, drops: ['one middleware'], text: 'Sessions are signed JWTs, checked per route.' }).id;
 
     assert.deepStrictEqual(read('product').discovery, [current(replacement, [old])]);
+  });
+
+  it('a finding of the product\'s relying on one a topic replaces waits on that topic, where no work is under way at the product\'s place: listed there, and held there (5.6.12)', () => {
+    const rests = write('find', PRODUCT, [], READ).id;
+    const relying = write('find', PRODUCT, ['--relies-on', rests], { ...READ, text: 'Logout revokes nothing, since sessions are signed JWTs.' }).id;
+    const replacement = write('replace', NOTE, ['--replaces', rests, '--reason', 'was-wrong'], { ...READ, drops: ['signed JWTs'], text: 'Sessions are rows on the server.' }).id;
+
+    const waiting = read('affected', UNIT, 'note-window');
+    assert.deepStrictEqual([waiting.waiting, waiting.affected.map((/** @type {{id: string, waits: (string|null)[]}} */ { id, waits }) => [id, waits])], [['note-window'], [[relying, ['note-window']]]]);
+
+    write('hold', NOTE, ['--entry', relying, '--after', replacement], MADE);
+    assert.deepStrictEqual(read('affected', UNIT, 'note-window').affected, []);
   });
 });

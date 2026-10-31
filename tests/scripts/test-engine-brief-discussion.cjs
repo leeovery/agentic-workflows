@@ -19,9 +19,10 @@
 // verbatim. The plain search, `engine brief plain-search`, is briefed from
 // the conversation's last knowledge query alone (22.6.10). Every refusal
 // stores no brief. The templates carry no tie-break, no cap, and no model
-// or effort; each role's agent is a definition fixing Opus at medium
-// (26.4.1), the perspective's naming the engine's polarity pairs, the deep
-// dive's its kinds, the closing-pass reader's its product lane.
+// or effort, which each role's agent's definition fixes (its roster is
+// test-engine-brief.cjs's); the perspective's definition names the engine's
+// polarity pairs, the deep dive's its kinds, the closing-pass reader's its
+// product lane.
 //
 // Layer: verb. World: an epic with three topics under discussion, written
 // once through the ledger's verbs — on the note window a decision replaced,
@@ -40,7 +41,7 @@ const { ok, callAsync, refusedPristine, statePath, layout, writeState, cleanupFi
 const { UNIT, MADE, NOTE, SPACE, MENU, row, writtenWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { DIVE_KINDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const { POLARITY_PAIRS } = require(path.join(SCRIPTS, 'domain/lenses.cjs'));
@@ -413,15 +414,6 @@ describe('the refusals, no brief stored', () => {
 });
 
 describe('discussion\'s agents and templates (26.1, 26.5)', () => {
-  it('each role is dispatched as a named agent whose definition is on the roster, fixing Opus at medium', () => {
-    for (const role of DISCUSSION_ROLES) {
-      const { agent } = ROLES[role];
-      const definition = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
-      const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(definition)?.[1] ?? '';
-      assert.deepStrictEqual([/^name: (.*)$/m.exec(frontmatter)?.[1], /^model: (.*)$/m.exec(frontmatter)?.[1], /^effort: (.*)$/m.exec(frontmatter)?.[1]], [agent, 'opus', 'medium'], role);
-    }
-  });
-
   it('no template names a model or an effort — the definitions hold them', () => {
     for (const role of DISCUSSION_ROLES) assert.doesNotMatch(template(role), /\bmodel\b|\beffort\b|\bopus\b/i, role);
   });

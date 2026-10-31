@@ -18,7 +18,7 @@
 
 Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic.
 
-Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
+Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started, whose record holds questions and findings alone.
 
 ## A Topic's Sources
 
@@ -43,6 +43,7 @@ Compose the record from the sources:
 - **Threads.** Every thread the register shows `open` or `digging` is carried by an open question naming it, `thread`, a list where one question carries several.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 - **Product-wide.** An entry that holds for the whole product is `product_wide` `true`.
+- **A topic never started.** Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
 - **Assets.** Each of the unit's assets its brief marks the topic's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic whose log holds anything has an entry at least.
 - **Points no source settles** — what was decided where the log is unclear, a log at odds with its spec — are open questions marked `raise` `true`, for the raises at the end.

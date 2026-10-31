@@ -222,13 +222,12 @@ describe('the refusals, nothing stored', () => {
 });
 
 describe('the migration\'s agents (21.S35, 26.5.1)', () => {
-  it('each role\'s agent is defined, fixing Opus at medium, its tools holding no shell: no engine call and no ledger write is the agent\'s, only the session\'s', () => {
+  it('each role\'s agent\'s tools hold no shell: no engine call and no ledger write is the agent\'s, only the session\'s', () => {
     for (const role of ['migration-topic', 'migration-verifier']) {
       const { agent } = ROLES[role];
       const head = /^---\n([^]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'));
       const fields = Object.fromEntries(String(head?.[1]).split('\n').map((line) => line.split(/: (.*)/s).slice(0, 2)));
 
-      assert.deepStrictEqual([fields.name, fields.model, fields.effort], [agent, 'opus', 'medium'], agent);
       assert.ok(!fields.tools.split(', ').includes('Bash'), `${agent}'s tools: ${fields.tools}`);
     }
   });

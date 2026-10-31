@@ -33,9 +33,10 @@
 //   unchecked, for the late one-decision check after the migration.
 // - Kept: the rules the records directive's check holds a topic's record to
 //   (079-records.check.cjs) — its sections cited, its old map, its threads
-//   and its imports — run on the record before a line is
-//   written, so a record carried passes the check and one that would not is
-//   refused, nothing carried, to be composed again.
+//   and its imports, and in discovery no decision and nothing product-wide —
+//   run on the record before a line is written, so a record carried passes
+//   the check and one that would not is refused, nothing carried, to be
+//   composed again.
 // - Once: the whole record is appended in one write, after what it carried
 //   is kept in the state's cache (`.cache/migrate/carried/{unit}/{topic}.json`)
 //   — the record as given, and each entry's ref with the id it was given —
@@ -283,8 +284,8 @@ function recordLines(place, entries, session) {
  * thing it breaks named.
  * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
  */
-function checkRules(cwd, { root, unit, topic }, entries) {
-  const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, entries });
+function checkRules(cwd, { root, unit, phase, topic }, entries) {
+  const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, phase, entries });
   if (problems.length > 0) throw new Error(`${SAID}: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`);
 }
 
