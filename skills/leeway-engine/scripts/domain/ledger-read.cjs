@@ -29,8 +29,10 @@
 //   made there, that it relies on, that its merges that hold went into, or
 //   that answer its questions (5.8.4, 5.8.19). `ledger product` reads the
 //   product record (5.8.6) and, under a heading of its own, what discovery
-//   found (9.3.12): the findings at the product's place (8.12.9) and, given
-//   a unit, those at the unit's own level, which no topic's record shows.
+//   found (9.3.12): the findings at the product's place (8.12.9), given a
+//   unit those at the unit's own level, which no topic's record shows, and
+//   given a topic too, what discovery left on it, which a topic's first
+//   opening reads here, reading no record.
 //   `ledger map` reads a topic's questions as they stand now, each answered
 //   as its record shows it, those standing elsewhere that it shows for what
 //   was made on it, and each current answer placed on it that no current
@@ -253,16 +255,17 @@ function answerMap(shower, { unit, topic }, root) {
 
 /**
  * `ledger product`: the product record, and apart from it what discovery
- * found of the product and, given a unit, of the unit — each entry with its
- * chain, its confirmations and its keeps.
+ * found of the product and, given a unit, of the unit, and given a topic
+ * too, of the topic — each entry with its chain, its confirmations and its
+ * keeps.
  * @param {Shower} shower @param {Place} place
  */
-function answerProduct(shower, { unit }) {
+function answerProduct(shower, { unit, topic }) {
   const ids = productOf(shower.folded);
   return {
     findings: ids.findings.map((id) => chained(shower, id)),
     decisions: ids.decisions.map((id) => chained(shower, id)),
-    discovery: discoveredOf(shower.folded, unit).map((id) => chained(shower, id)),
+    discovery: discoveredOf(shower.folded, unit, topic).map((id) => chained(shower, id)),
   };
 }
 
@@ -270,7 +273,7 @@ function answerProduct(shower, { unit }) {
 const READS = Object.freeze({
   record: { usage: 'ledger record <work-unit> [<topic>]', names: [1, 2], answer: answerRecord },
   map: { usage: 'ledger map <work-unit> <topic>', names: [2], answer: answerMap },
-  product: { usage: 'ledger product [<work-unit>]', names: [0, 1], answer: answerProduct },
+  product: { usage: 'ledger product [<work-unit> [<topic>]]', names: [0, 1, 2], answer: answerProduct },
   affected: { usage: 'ledger affected <work-unit> [<topic>]', names: [1, 2], answer: answerAffected },
   since: { usage: 'ledger since <work-unit> [<topic>]', names: [1, 2], answer: answerSince },
   shown: { usage: 'ledger shown <work-unit> [<topic>]', names: [1, 2], answer: answerShown },

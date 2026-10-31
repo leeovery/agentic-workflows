@@ -8,9 +8,10 @@
 // (8.12.9); discovery, there or at a unit, taking findings alone and none
 // product-wide, every other write refused in one line, appending nothing
 // (8.3.4, 8.9.6); and what discovery found, which `ledger product` shows
-// apart from the product record — the product's findings, and given a unit
-// the unit's own (9.3.12). A raise at a discovery place is
-// test-engine-raise.cjs's.
+// apart from the product record — the product's findings, given a unit the
+// unit's own, and given a topic what discovery left on it (9.3.12). A raise
+// at a discovery place is test-engine-raise.cjs's; a record the migration
+// carried at a topic's discovery place, test-migration-079.cjs's.
 //
 // Layer: verb. World: the ledger suites' unit (ledger-world.cjs) with its
 // state worktree from the fixture library, a feature beside it.
@@ -93,17 +94,20 @@ describe('discovery takes findings alone (8.3.4, 8.9.6)', () => {
 });
 
 describe('what discovery found (9.3.12)', () => {
-  it('ledger product shows the product\'s findings apart from the product record, and given a unit the unit\'s own at its level — never a topic\'s, another unit\'s or a later phase\'s', () => {
+  it('ledger product shows the product\'s findings apart from the product record, given a unit the unit\'s own at its level, and given a topic too what discovery left on it — never another topic\'s, another unit\'s or a later phase\'s', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const product = write('find', PRODUCT, [], READ).id;
     const unitLevel = find(`${UNIT}.discovery`, 'Notes are kept in Core Data.', [], { known: 'read' });
-    find(`${UNIT}.discovery.note-window`, 'A spike floated a panel.');
+    const spiked = find(`${UNIT}.discovery.note-window`, 'A spike floated a panel.');
+    find(`${UNIT}.discovery.space-homing`, 'A spike pinned a note to its Space.');
     find('mint.discovery', 'Mint has no accounts.', [], { known: 'read' });
     find(`${UNIT}.specification`, 'The spec covers macOS 14 and later.', [], { known: 'documented' });
+    find(NOTE, 'A panel opens in 4 ms.');
     const wide = find(NOTE, 'Notes sync through iCloud.', [], { product_wide: true });
 
     assert.deepStrictEqual(read('product'), { ok: true, findings: [current(wide)], decisions: [], discovery: [current(product)] });
     assert.deepStrictEqual(read('product', UNIT), { ok: true, findings: [current(wide)], decisions: [], discovery: [current(product), current(unitLevel)] });
+    assert.deepStrictEqual(read('product', UNIT, 'note-window').discovery, [current(product), current(unitLevel), current(spiked)]);
   });
 
   it('a finding of the product\'s a topic replaces shows replaced where it stands, the topic\'s replacement over it', () => {

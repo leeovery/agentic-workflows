@@ -105,7 +105,8 @@ function mailRaised({ cwd, unit, topic = '' }) {
  * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
  * product record, with what discovery found of the product and of the unit,
- * which no topic's record shows (9.3.12); and the unit's spikes. Resuming
+ * which no topic's record shows, and of the topic, which a first opening
+ * reads no record for (9.3.6, 9.3.12); and the unit's spikes. Resuming
  * adds the topic's own record (9.3.11), its map, and the entries a
  * replacement changed under it, each confirmed or replaced in the
  * conversation (9.3.6), and the reports of the agents the topic was left
@@ -126,7 +127,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
     ...(own ? filesIn(statePath(cwd, unit, 'discovery', 'sessions')) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
-    as('product')(`\`${productCall(unit)}\``),
+    as('product')(`\`${productCall(unit, topic)}\``),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
     ...(started ? [] : /** @type {const} */ (['record', 'map', 'affected']).map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``))),
     ...agents.landed.map(({ file }) => as('landed')(file)),

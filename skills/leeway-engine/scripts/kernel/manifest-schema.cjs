@@ -215,8 +215,9 @@ const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
 const NO_ARGUMENT = 'none';
 
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest, the project identities are places of their own, and the
-// placeholder must never name a unit.
+// project manifest, the project identities are places of their own, the
+// placeholder must never name a unit, and `product` tags the ledger's place
+// for the product as a whole.
 const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT, 'product'];
 
 /**

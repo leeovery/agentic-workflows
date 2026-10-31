@@ -519,7 +519,7 @@ function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, an
   for (const [name, item] of Object.entries(items)) {
     if (name !== topic && item.status === 'completed') sim.read(['ledger', 'record', wu, name]);
   }
-  sim.read(['ledger', 'product']);
+  sim.read(['ledger', 'product', wu, topic]);
   const at = `${wu}.discussion.${topic}`;
   const person = { by: 'person', who_moved_whom: 'none' };
   for (const file of JSON.parse(sim.read(['topic', 'mailbox', wu, topic])).files) {

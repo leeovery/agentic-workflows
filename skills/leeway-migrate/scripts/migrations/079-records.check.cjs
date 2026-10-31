@@ -45,8 +45,10 @@
 //
 // Beside the check, the points to raise (21.6.10): each question of a
 // carried record marked to raise, on a topic still live — its unit and its
-// item neither cancelled nor postponed — which the engine answers, once the
-// check passes, where it has no raise yet.
+// item neither cancelled nor postponed — and started, which the engine
+// answers, once the check passes, where it has no raise yet. A topic never
+// started is carried in discovery, where nothing is decided (8.3.4): its
+// points stay open questions on it, which its first opening reads.
 //
 // `.workflows/` is read where the move read it: the project's folder in the
 // repository's main checkout, whichever checkout the session runs in (4.1.4).
@@ -375,7 +377,8 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * topic still live — its place, the question's id and its text.
+   * topic still live and started — its place, the question's id and its
+   * text.
    * @param {{projectDir: string, stateDir: string}} dirs
    * @returns {{place: string, answers: string, text: string}[]}
    */
@@ -383,7 +386,7 @@ module.exports = {
     const project = projectOf(projectDir, stateDir);
     return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
-      if (carried === null) return [];
+      if (carried === null || carried.phase === 'discovery') return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
       return carried.record.entries.filter((entry) => entry.raise === true)
         .map((entry) => ({ place: `${unit.name}.${carried.phase}.${topic}`, answers: ids.get(entry.ref), text: entry.text }));

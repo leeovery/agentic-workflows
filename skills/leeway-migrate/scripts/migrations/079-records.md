@@ -11,8 +11,8 @@
 ## Asks
 
 - Nothing for any one entry.
-- At the end, each point no source settles on a live topic, raised one at
-  a time: answered, or left open.
+- At the end, each point no source settles on a live topic that has
+  started, raised one at a time: answered, or left open.
 
 ## What It Does
 
@@ -83,7 +83,7 @@ Carrying holds the record to the check's rules before it writes anything. A reco
 
 ## The Raises at the End
 
-Once every topic is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns.
+Once every topic is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with.
 
 The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 

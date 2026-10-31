@@ -42,7 +42,9 @@
 //   other-records  the record of each other live topic of the unit that
 //                  shows anything, under a heading naming the topic — never
 //                  its log, and none of a topic set aside (5.8.17, 9.3.4)
-//   product-record the product record as `ledger product` answers it
+//   product-record the product record, and what discovery found of the
+//                  product, the unit and the topic, as `ledger product`
+//                  answers it for the topic, fenced as JSON
 //   question       the question `--question` names, by any wording, in its
 //                  current wording: its short id and its text. It is an
 //                  open question standing on the topic, and the dispatch
@@ -328,7 +330,7 @@ function ledgerRead(cwd, verb, args, warnings) {
 }
 
 /** What a record or the product record shows, by the lists it shows them in. */
-const SHOWN = ['questions', 'findings', 'decisions', 'moved', 'merged', 'other_topics'];
+const SHOWN = ['questions', 'findings', 'decisions', 'moved', 'merged', 'other_topics', 'discovery'];
 
 /** A read record fenced as JSON, or none recorded where it shows nothing. @param {Record<string, any>} record */
 function recordJson(record) {
@@ -358,7 +360,8 @@ function drawOtherRecords(filling, warnings) {
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawProductRecord(filling, warnings) {
-  return recordJson(ledgerRead(filling.cwd, 'product', [], warnings));
+  const { unit, topic } = placeOf(filling);
+  return recordJson(ledgerRead(filling.cwd, 'product', [unit, topic], warnings));
 }
 
 /** A question as a brief draws it: its short id and its text. @param {(id: string) => Record<string, unknown>} show @param {string} wording */
@@ -612,7 +615,7 @@ const RECORDS = Object.freeze({
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },
-  'product-record': { of: null, draw: drawProductRecord },
+  'product-record': { of: 'topic', draw: drawProductRecord },
   question: { of: 'topic', flags: [QUESTION, AGENT], draw: drawQuestion, bind: bindAsked },
   'pair-question': { of: 'topic', flags: [AGENT], draw: drawPairQuestion },
   'dive-kind': { of: null, flags: [{ name: 'kind', value: DIVE_KINDS.join('|') }, { name: 'path', value: 'file', optional: true }], draw: drawDiveKind },

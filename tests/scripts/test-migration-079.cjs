@@ -22,14 +22,15 @@
 // breaking a rule is refused at the carry, the refusal written beside the
 // record and nothing else, and leaves nothing in the way of the record
 // mended. Once it passes, the check lists each point marked to raise on a
-// live topic until the conversation raises it. `.workflows/` is read in the
-// main checkout, and the record where the state keeps it, from a linked
-// worktree too. The check rests on the record the carry kept and its ids in
-// the ledger, and reads what the real move (078) writes. The directive's
-// own example record carries, and the directive spells no path from the
-// session's folder. The directive's head is linted with every directive's
-// (test-migration-directives.cjs); the carry's mechanics are
-// test-engine-ledger-carry.cjs's.
+// live topic until the conversation raises it — none on a topic never
+// started, carried in discovery, whose first opening reads it with the rest
+// of its record. `.workflows/` is read in the main checkout, and the record
+// where the state keeps it, from a linked worktree too. The check rests on
+// the record the carry kept and its ids in the ledger, and reads what the
+// real move (078) writes. The directive's own example record carries, and
+// the directive spells no path from the session's folder. The directive's
+// head is linted with every directive's (test-migration-directives.cjs);
+// the carry's mechanics are test-engine-ledger-carry.cjs's.
 //
 // Layer: migration. World: the records directive's (migration-world.cjs),
 // made once and copied for each test, and that world with every topic's
@@ -45,7 +46,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, okSectionsAsync, git, statePath, layout, writeState, readState, createFile, initRepo, commitAll, cleanupFixture } = harness;
+const { ok, okSections, okSectionsAsync, git, statePath, layout, writeState, readState, createFile, initRepo, commitAll, cleanupFixture } = harness;
 const { SESSION, recordsMigration, refusedKeeping, refusedUntouched } = require('./migration-world.cjs');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
@@ -319,6 +320,32 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     });
 
     assert.deepStrictEqual(checked().raise, []);
+  });
+
+  it('a point on a topic never started, carried in discovery where nothing is decided, is never listed: the started topic\'s raised, the directive closes, and the topic\'s first opening reads its record — the point an open question on it (8.3.4, 9.3.6)', async () => {
+    dir = world();
+    const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
+    const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', raise: true, cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
+    for (const [dotpath, entries] of Object.entries(GOOD)) {
+      if (dotpath === 'fumi.discussion.licensing') carry(dotpath, [...entries, point]);
+      else if (dotpath === 'fumi.discovery.billing') carry(dotpath, [...entries, unsettled]);
+      else carry(dotpath, entries);
+    }
+
+    const listed = checked().raise;
+    assert.deepStrictEqual(listed.map((/** @type {{place: string, text: string}} */ { place, text }) => [place, text]), [['fumi.discussion.licensing', point.text]]);
+    await okSectionsAsync(dir, ['raise', listed[0].place, '--answers', listed[0].answers, '--fact'], {
+      env: SESSION, stdin: JSON.stringify({ question: point.text, rows: [], mechanism: 'The log says nothing of a card.', product_wide: false }),
+    });
+    assert.deepStrictEqual(checked().raise, []);
+    ok(dir, ['checklist', 'close', 'directive', RECORDS], { env: SESSION });
+
+    const { sections } = okSections(dir, ['enter', 'discussion', 'fumi', 'billing'], { env: SESSION });
+    const call = /^product: `node \S+ (ledger product fumi billing)`$/m.exec(sections)?.[1];
+    assert.strictEqual(call, 'ledger product fumi billing', sections);
+    const carried = Object.fromEntries(JSON.parse(readState(dir, carriedPath('fumi', 'billing'))).entries.map((/** @type {{ref: string, id: string}} */ { ref, id }) => [ref, id]));
+    const discovery = ok(dir, call.split(' ')).discovery.map((/** @type {{id: string, event: string}} */ { id, event }) => [event, Object.keys(carried).find((ref) => carried[ref].startsWith(id))]);
+    assert.deepStrictEqual(discovery, [['found', 'f1'], ['asked', 'q1']]);
   });
 });
 

@@ -124,10 +124,12 @@
 //   unit on no topic. Every place's record is built in one pass, each id's
 //   places worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
-// - What discovery found (9.3.12): the current findings standing at the
-//   product's place (8.12.9) and, for a unit, at the unit's own level, their
-//   chain begun in discovery — none product-wide, which the product record
-//   holds. They belong to no topic, so no topic's record shows them.
+// - What discovery found (9.3.12): the current entries standing at the
+//   product's place (8.12.9), for a unit at the unit's own level, and for a
+//   topic on the topic, their chain begun in discovery — none product-wide,
+//   which the product record holds. Those at the product's place and a
+//   unit's level belong to no topic, so no topic's record shows them; a
+//   topic's reach its first opening here, which reads no record.
 // - An entry's assets (9.10.5–9.10.7, 9.10.16): for each file linked from
 //   it, the latest live link giving a status, and apart from it the latest
 //   live lift, which no status after it undoes; a link made where it is set
@@ -1071,19 +1073,21 @@ function productOf(folded) {
 }
 
 /**
- * What discovery found (9.3.12): every current finding, in the ledger's
- * order, standing at the product's place or, given a unit, at that unit's
- * own level, whose chain began in discovery, and none marked product-wide.
- * @param {Folded} folded @param {string|null} unit
+ * What discovery found (9.3.12): every current entry, in the ledger's
+ * order, standing at the product's place, given a unit at that unit's own
+ * level, and given a topic of it on that topic, whose chain began in
+ * discovery, and none marked product-wide.
+ * @param {Folded} folded @param {string|null} unit @param {string|null} topic
  * @returns {string[]}
  */
-function discoveredOf(folded, unit) {
+function discoveredOf(folded, unit, topic) {
   /** @type {string[]} */
   const found = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'finding' || facts.product_wide === true || factsOf(folded, facts.root).phase !== 'discovery') continue;
+    if (facts.kind === null || facts.product_wide === true || factsOf(folded, facts.root).phase !== 'discovery') continue;
     const standing = standingOf(folded, id);
-    if (standing.topic === null && (standing.unit === PRODUCT || standing.unit === unit) && isCurrent(folded, id)) found.push(id);
+    const here = standing.topic === null ? standing.unit === PRODUCT || standing.unit === unit : standing.unit === unit && standing.topic === topic;
+    if (here && isCurrent(folded, id)) found.push(id);
   }
   return found;
 }

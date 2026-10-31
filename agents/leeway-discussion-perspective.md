@@ -17,7 +17,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The decision** — the open question being decided: its short id and its text.
 - **Your lens** — the slug of your lens, one of the pairs below.
 - **This topic's record** — as the ledger reads it, in JSON: the questions, findings and decisions current on the topic, each by its short id, a decision with who made it and its `why`, a finding with how it is known, each with what it replaced beneath it under `replaced`. `None recorded.` where the topic holds nothing yet.
-- **The product record** — the findings and decisions that hold for the whole product, and apart from them, under `discovery`, what discovery found of the product as a whole, in the same shape.
+- **The product record** — the findings and decisions that hold for the whole product, and apart from them, under `discovery`, what discovery found of the product, of this work and of this topic, in the same shape.
 - **Your report** — the file your report goes to.
 
 ## The Polarity Pairs

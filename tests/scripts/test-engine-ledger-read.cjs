@@ -243,8 +243,9 @@ describe('refusals', () => {
   it('refuses a read naming no unit, a unit there is none of, a topic the unit does not have, or anything but its places', () => {
     assert.match(refuses(dir, ['ledger', 'record']).error, /^Usage: engine ledger record <work-unit> \[<topic>\]$/);
     assert.match(refuses(dir, ['ledger', 'map', UNIT]).error, /^Usage: engine ledger map <work-unit> <topic>$/);
-    assert.match(refuses(dir, ['ledger', 'product', UNIT, 'note-window']).error, /^Usage: engine ledger product \[<work-unit>\]$/);
+    assert.match(refuses(dir, ['ledger', 'product', UNIT, 'note-window', 'menu-bar']).error, /^Usage: engine ledger product \[<work-unit> \[<topic>\]\]$/);
     assert.match(refuses(dir, ['ledger', 'product', 'mint']).error, /^ledger product: there is no work unit "mint"$/);
+    assert.match(refuses(dir, ['ledger', 'product', UNIT, 'menu-bar']).error, /^ledger product: fumi has no topic "menu-bar"$/);
     assert.match(refuses(dir, ['ledger', 'record', UNIT, '--topic', 'note-window']).error, /^Usage: engine ledger record /);
     assert.match(refuses(dir, ['ledger', 'record', 'mint']).error, /^ledger record: there is no work unit "mint"$/);
     assert.match(refuses(dir, ['ledger', 'map', UNIT, 'menu-bar']).error, /^ledger map: fumi has no topic "menu-bar"$/);

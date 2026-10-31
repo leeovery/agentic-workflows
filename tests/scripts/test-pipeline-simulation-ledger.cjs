@@ -88,8 +88,8 @@ describe('pipeline simulation: ledger', () => {
 
     // The product researcher lands what it read of the code at the product's
     // place, which no unit holds, and a topic opening reads it there.
-    ledger(['find', 'product.discovery'], { ...made, text: 'Notes are kept in Core Data.', how: 'read Store/Notes.swift', known: 'read' });
-    sim.run(['ledger', 'product', wu]);
+    const researched = ledger(['find', 'product.discovery'], { ...made, text: 'Notes are kept in Core Data.', how: 'read Store/Notes.swift', known: 'read' });
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'product', wu, 'note-window']).discovery), [researched]);
 
     // Claude's calls since the person last looked: a look moves the mark in
     // the cache, and commits nothing.

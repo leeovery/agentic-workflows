@@ -534,7 +534,9 @@ function checkCauseGiven(said, _at, given) {
 /**
  * Refuse a move to the topic it is made from, to a topic the unit does not
  * have (5.3.3), or to a topic that is not live (5.8.17); and one to the
- * roadmap naming an item it does not hold (9.5.4).
+ * roadmap naming an item it does not hold (9.5.4). A move is never made at
+ * the product's place, which takes findings alone, so a unit's manifest is
+ * there.
  * @param {string} said @param {Address} at @param {Map<string, string[]>} given
  */
 function checkDestination(said, at, given) {
@@ -545,7 +547,7 @@ function checkDestination(said, at, given) {
     return;
   }
   if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);
-  if (at.manifest === null || !hasTopic(at.manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  if (!hasTopic(/** @type {Record<string, any>} */ (at.manifest), to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
   checkDestinationLive(said, at, given, liveness(at.root));
 }
 

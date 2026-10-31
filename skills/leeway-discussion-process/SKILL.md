@@ -32,7 +32,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter discussion {work_unit
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record, with what discovery found of the product and this work; each spike; and on resume this topic's record, its map, its `affected` entries and its log. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names: the brief; for a unit's one topic, discovery's logs and the seeds; the record of each topic decided so far, never its log; the product record, with what discovery found of the product, this work and this topic; each spike; and on resume this topic's record, its map, its `affected` entries and its log. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced. Search earlier work units' entries in the topic's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read.
 
@@ -102,7 +102,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
 - A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
-- The topic as it stands → `ledger record|map|since|affected {work_unit} {topic}`, `ledger product`, `render map {work_unit}.{topic}`.
+- The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`.
 - Mail → `topic mailbox`, `topic answered`; a message out → `topic send`.
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
