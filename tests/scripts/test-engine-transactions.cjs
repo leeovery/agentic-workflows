@@ -1282,9 +1282,8 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(dir, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   writeFile(dir, '.leeway/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
-  // Present but never indexed for a feature — discovery's session leg is
-  // epic-only.
-  writeFile(dir, '.leeway/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
+  // A log, never indexed.
+  writeFile(dir, '.leeway/auth-flow/discovery/session-001.md', '# Session 001\n');
   // A store that cannot be loaded, checkout-local and never committed: a
   // removal or re-index fails deterministically, so warn-don't-block is
   // provable as a warning.
@@ -1504,7 +1503,7 @@ describe('engine workunit reactivate', () => {
     assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
   });
 
-  it('epic reactivate re-indexes in one scoped bulk pass (session logs in scope) — failure is a warning', () => {
+  it('epic reactivate re-indexes in one scoped bulk pass — failure is a warning', () => {
     const epicDir = setupGitFixture();
     writeFile(epicDir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
@@ -1514,9 +1513,6 @@ describe('engine workunit reactivate', () => {
       },
     }, null, 2) + '\n');
     writeFile(epicDir, '.leeway/payments/topics/auth-flow/log.md', '# Discussion\n');
-    writeFile(epicDir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n');
-    writeFile(epicDir, '.leeway/payments/discovery/sessions/session-002.md', '# Session 002\n');
-    writeFile(epicDir, '.leeway/payments/discovery/sessions/notes.txt', 'not a session log\n');
     // Deterministic KB failure: a store that cannot be loaded.
     writeFile(epicDir, '.leeway/.gitignore', '.knowledge/\n');
     harness.unreadableKnowledge(epicDir);
@@ -1526,10 +1522,8 @@ describe('engine workunit reactivate', () => {
     const res = engine(epicDir, ['workunit', 'reactivate', 'payments']);
 
     assert.strictEqual(res.status, 'in-progress');
-    // The epic's re-index (the two session logs; the
-    // non-matching file is excluded by discovery) is one scoped bulk pass.
-    // Session-scoping itself is pinned by the discovery snapshot test; here
-    // the unloadable store makes the single pass fail → one warning.
+    // The epic's re-index is one scoped bulk pass; the unloadable store
+    // makes the single pass fail → one warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
     cleanupFixture(epicDir);

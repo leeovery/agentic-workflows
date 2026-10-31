@@ -91,6 +91,7 @@ module.exports = {
   },
   session: {
     nextSessionNumber: discoverySession.nextSessionNumber,
+    sessionLogs: discoverySession.sessionLogs,
   },
   roadmap: {
     roadmapState: roadmapDomain.roadmapState,

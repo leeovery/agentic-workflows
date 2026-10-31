@@ -48,6 +48,9 @@ const {
   workUnitNameRefusal,
 } = require('../kernel/manifest-schema.cjs');
 
+/** A unit's first discovery log, unit-relative (8.1.4). */
+const FIRST_LOG = 'discovery/session-001.md';
+
 /**
  * Refuse a name `workUnitNameRefusal` refuses, for every verb that mints a
  * work unit (create, promote).
@@ -86,7 +89,7 @@ function pushEntry(manifest, field, value) {
  * The work-type commit: create the work unit (manifest + project-manifest
  * registration; a name already taken refuses), copy imports into `imports/`,
  * move inbox seeds into `seeds/` (both manifest-tracked and KB-indexed,
- * warn-don't-block), install the session log verbatim as `session-001.md`
+ * warn-don't-block), install the session log verbatim as `discovery/session-001.md`
  * (epic also gets the `active_session` marker), and commit scoped to the work
  * unit and the project manifest, plus the inbox when seeds moved out of it.
  * @param {string} cwd project root
@@ -173,9 +176,8 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       });
     }
 
-    const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
-    fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
+    fs.mkdirSync(path.join(wuDir, 'discovery'), { recursive: true });
+    fs.writeFileSync(path.join(wuDir, FIRST_LOG), sessionLog);
 
     // Epic is the sole work type with a resumable discovery session loop.
     if (workType === 'epic') {
@@ -217,7 +219,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       source: SEED_SOURCES[move.item.folder],
     })),
     skipped_imports: skippedImports,
-    session_log: statePath(cwd, workUnit, 'discovery', 'sessions', 'session-001.md'),
+    session_log: statePath(cwd, workUnit, FIRST_LOG),
     committed: outcome.committed,
     warnings,
   };

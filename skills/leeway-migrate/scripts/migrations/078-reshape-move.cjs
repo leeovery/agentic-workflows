@@ -51,7 +51,8 @@
 // assessment was offered it — and one still under way kept as nothing, so
 // the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's
 // sources follow their files, once each, and the roadmap's imports' paths
-// follow theirs. The inbox and the environment setup file are carried as
+// follow theirs, its open session marked as the product's conversation's
+// (`product_session`). The inbox and the environment setup file are carried as
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
 // behind. `.roadmap/` is `.product/` (21.5.7): its sessions as they are,
@@ -1151,7 +1152,8 @@ function moveProduct(from, state, relocations) {
  * The project manifest less the baseline's status fields, a recorded
  * `native`, `skipped` or `completed` kept as the brownfield offer's answer
  * (21.11.1, 21.11.2); each roadmap item's sources following their files, once each,
- * and the roadmap's imports' paths into its assets (21.5.7).
+ * and the roadmap's imports' paths into its assets (21.5.7); the roadmap's
+ * open session the product's conversation's, `product_session`.
  * @param {Record<string, any>} project @param {Relocations} relocations
  * @returns {Record<string, any>}
  */
@@ -1164,6 +1166,10 @@ function reshapedProject(project, relocations) {
     if (isObject(item) && Array.isArray(item.sources)) item.sources = [...new Set(item.sources.map((source) => relocations.get(source) ?? source))];
   }
   if (Array.isArray(roadmap.imports)) roadmap.imports = roadmap.imports.map(asAsset);
+  if (Object.hasOwn(roadmap, 'active_session')) {
+    out.product_session = roadmap.active_session;
+    delete roadmap.active_session;
+  }
   return out;
 }
 

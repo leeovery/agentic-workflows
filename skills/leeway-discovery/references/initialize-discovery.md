@@ -4,7 +4,7 @@
 
 ---
 
-1. Ensure the session-log and briefs directories exist: `mkdir -p .workflows/{work_unit}/discovery/sessions/ .workflows/{work_unit}/discovery/briefs/` (safe to re-run).
+1. Ensure the session-log and briefs directories exist: `mkdir -p .workflows/{work_unit}/discovery/briefs/` (safe to re-run).
 2. Hold the following in conversation memory — the lazy session-log write records them in the log's header sections ([template.md](template.md) → *Description*, *Seeds*, *Imports*), and the session loop's opener and seed/import-launchpad branch read them:
    - `session_number` — set before this step (Step 6 on resume, Step 7 for a fresh session, the confirm-trigger for a new epic, or the roadmap pull for a pull-born one).
    - `description` — from the most recent discovery output.

@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, enterEntry, handoff, discussed, literal } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, enterEntry, handoff, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -214,7 +214,8 @@ describe('pipeline simulation: workunit', () => {
     assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
-    // the project manifest, `baseline` is the KB's project-baseline identity.
+    // the project manifest, `baseline` and `roadmap` are the project's own
+    // places.
     sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
@@ -288,11 +289,8 @@ describe('pipeline simulation: workunit', () => {
     }));
     assert.match(sim.render(['baseline-round', '--file', '.leeway/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
     assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
-    // The landing (author-doc.md C): index the doc, mark the area, commit.
+    // The landing (author-doc.md C): mark the area, commit.
     sim.write('.leeway/.baseline/overview.md', '# Overview\n\n## What it is\n\nA dispatcher that pushes orders downstream.\n');
-    const baselineIndexed = sim.engine(['knowledge', 'index', '.leeway/.baseline/overview.md']);
-    assert.strictEqual(baselineIndexed.code, 0, baselineIndexed.stderr);
-    assert.match(baselineIndexed.stdout, new RegExp(`^Indexed \\d+ chunks from ${literal(path.join(sim.dir, '.leeway/.baseline/overview.md'))}\\n$`));
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);

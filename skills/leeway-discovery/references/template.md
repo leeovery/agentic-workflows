@@ -4,7 +4,7 @@
 
 ---
 
-Structure for `.workflows/{work_unit}/discovery/sessions/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
+Structure for `.workflows/{work_unit}/discovery/session-{NNN}.md` where `NNN` is the next zero-padded sequence number after the existing session logs (first = `001`, second = `002`, etc.).
 
 One template, all sessions. Sections that don't apply this session write `(none)` rather than disappearing — the empty section is a positive signal it was considered, not missed.
 
@@ -104,7 +104,7 @@ To create it, draft the complete log at the staging path `.workflows/.cache/{wor
 node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session open {work_unit} --session-log-file .workflows/.cache/{work_unit}/discovery/session-draft.md
 ```
 
-The engine allocates the session number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log as `discovery/sessions/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.
+The engine allocates the session number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log as `discovery/session-{NNN}.md`, and sets the active-session marker so it always pairs with an existing log. The response's `session` is authoritative — set `session_number` from it. Later writes this session edit the installed file directly. The caller's own commit step stages and commits the log and marker.
 
 The `(none)` Conclusion is the **resume-detection signal** in concert with the `phases.discovery.active_session` manifest marker (see [resume-detection](resume-detection.md)). Always replace it at finalisation so the next entry sees a closed state.
 

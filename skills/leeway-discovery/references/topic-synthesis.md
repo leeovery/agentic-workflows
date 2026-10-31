@@ -8,7 +8,7 @@ The harvest ceremony. Analyse the session's exploration as a whole, produce a to
 
 ## A. Gather Source Material
 
-Read the active session log — `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md` — now, every time, whatever is already in context. It holds the first of three sources of truth:
+Read the active session log — `.workflows/{work_unit}/discovery/session-{session_number:03d}.md` — now, every time, whatever is already in context. It holds the first of three sources of truth:
 
 1. **The Exploration section** of that log.
 2. **In-context memory of the conversation.** When not compacted, this carries detail the Exploration summary may have skipped.
@@ -92,7 +92,7 @@ Emit the `=== DISPLAY` section verbatim per its marker — it shows the proposed
 **If the park set is non-empty:** write it to `.workflows/.cache/{work_unit}/discovery/proposed-parks.json` in the shape Step 12 persists as-is — provenance included:
 
 ```json
-[{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/sessions/session-{session_number}.md"]}]
+[{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/session-{session_number}.md"]}]
 ```
 
 Then render the roadmap overlay beneath the topic proposal, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow the same rules — `exists_on_roadmap=true` folds into the existing item or renames):
@@ -143,7 +143,7 @@ After applying, rewrite `proposed-topics.json`, re-render the proposal (back to 
 Reached from **C** when the harvest produced parks and no topics. Write the park set to `.workflows/.cache/{work_unit}/discovery/proposed-parks.json` in the shape Step 12 persists as-is — provenance included:
 
 ```json
-[{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/sessions/session-{session_number}.md"]}]
+[{"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "origin": "park:{work_unit}", "sources": ["{work_unit}/discovery/session-{session_number}.md"]}]
 ```
 
 Render the roadmap overlay, emitting its `=== DISPLAY` section verbatim per its marker (its DATA flags follow **E**'s park rules):

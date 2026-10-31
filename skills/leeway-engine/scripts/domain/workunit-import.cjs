@@ -60,7 +60,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   // The schema's vocabulary covers every entry anywhere; a work unit's own is
   // narrower — `roadmap` belongs to the product layer, which has its own verb.
   if (!isImportOrigin(origin) || origin === 'roadmap') {
-    throw new Error(`"${origin}" is not a work-unit import origin — discovery, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')} (roadmap is the product layer's own — engine roadmap import)`);
+    throw new Error(`"${origin}" is not a work-unit import origin — discovery, or {phase}/{topic} with phase one of ${IMPORT_PHASES.join(', ')} (roadmap is the product layer's own — engine asset import product)`);
   }
   assertLandableSources(cwd, paths);
 

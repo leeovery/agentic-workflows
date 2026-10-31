@@ -49,7 +49,6 @@
     "tick-near-miss-text-search": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":10,"bytes":9612},
     "tick-near-miss-effort-estimates": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":10,"bytes":10302},
     "tick-near-miss-secrets-in-tasks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":10,"bytes":9057},
-    "fumi-management-window-organiser": {"first":1,"first_primary":1,"first_excerpt":1,"primary_found":6,"primary_total":9,"results":10,"bytes":11134},
     "fumi-neg-portal-go-file-organisation": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":10,"bytes":11637},
     "fumi-neg-portal-tmux-resume-hooks": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":12,"bytes":12742},
     "fumi-neg-tick-same-second-ordering": {"first":null,"first_primary":null,"first_excerpt":null,"primary_found":0,"primary_total":0,"results":10,"bytes":10511},

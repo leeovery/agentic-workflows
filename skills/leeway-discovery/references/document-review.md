@@ -8,7 +8,7 @@
 
 The session log is created lazily — if no Exploration write, edit, or topic synthesis produced content, no file exists and there is nothing to reconcile.
 
-Check whether the active log exists at `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md`.
+Check whether the active log exists at `.workflows/{work_unit}/discovery/session-{session_number:03d}.md`.
 
 #### If the file does not exist
 
@@ -40,7 +40,7 @@ Document review — no log file (browse only). Nothing to reconcile.
 
 ## B. Re-Read the Session Log
 
-Read `.workflows/{work_unit}/discovery/sessions/session-{session_number:03d}.md` in full. Don't rely on memory of what you wrote during the session.
+Read `.workflows/{work_unit}/discovery/session-{session_number:03d}.md` in full. Don't rely on memory of what you wrote during the session.
 
 → Proceed to **C. Reconcile**.
 

@@ -298,14 +298,14 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('the re-wait merges into the sources the item already carries — never a duplicate', () => {
-    writeSource(dir, '.roadmap/sessions/session-001.md');
+    writeSource(dir, '.product/sessions/session-001.md');
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
-      '--source', '.roadmap/sessions/session-001.md', '--source', 'mvp/topics/ordering/log.md']);
+      '--source', '.product/sessions/session-001.md', '--source', 'mvp/topics/ordering/log.md']);
     runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
     runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
-      '.roadmap/sessions/session-001.md',
+      '.product/sessions/session-001.md',
       'mvp/topics/ordering/log.md',
       'mvp/discovery/briefs/ordering.md',
     ]);

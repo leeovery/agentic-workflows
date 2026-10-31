@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, gitPath, tryGit, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
+const { git, gitPath, tryGit, literally, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
@@ -35,6 +35,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { STATE_BRANCH, withStateLock, commitState } = require('./state-worktree.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
+const { PRODUCT_SESSIONS } = require('./layout.cjs');
 
 /** The project manifest, state-relative. */
 const PROJECT_MANIFEST_SPEC = 'manifest.json';
@@ -51,22 +52,34 @@ const WORKTREE_INCLUDE = '.worktreeinclude';
  */
 const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
+/** A topic's brief, state-relative. */
+const BRIEF = /^[^/]+\/topics\/[^/]+\/brief\.md$/;
+
 /**
- * The discovery scope — what a discovery session writes: its session logs,
- * the briefs it synthesises at the harvest, and the work-unit manifest (the
- * map lives there), state-relative. Shared by `commit --discovery` and the
- * discovery transaction tails so the session's every commit slices the same
- * paths.
- * @param {string} workUnit
+ * The discovery scope — what a unit's discovery writes: its `discovery/`
+ * folder, where its session logs are, each topic's brief on disk or
+ * committed and since removed, and the work-unit manifest (the map lives
+ * there), state-relative. Shared by `commit --discovery` and the discovery
+ * transaction tails so the session's every commit slices the same paths; a
+ * topic's mail and a peer session's documents stay out.
+ * @param {string} cwd @param {string} workUnit
  * @returns {string[]}
  */
-function discoveryScope(workUnit) {
-  return [
-    `${workUnit}/discovery/sessions`,
-    `${workUnit}/discovery/briefs`,
-    `${workUnit}/manifest.json`,
-  ];
+function discoveryScope(cwd, workUnit) {
+  const root = stateRoot(cwd);
+  const topics = path.join(root, workUnit, 'topics');
+  const onDisk = fs.existsSync(topics) ? fs.readdirSync(topics).map((topic) => `${workUnit}/topics/${topic}/brief.md`) : [];
+  const committed = (tryGit(root, ['ls-tree', '-r', '-z', '--name-only', 'HEAD', '--', ...literally([`${workUnit}/topics`])]) ?? '').split('\0');
+  const briefs = new Set([...onDisk.filter((brief) => fs.existsSync(path.join(root, brief))), ...committed.filter((file) => BRIEF.test(file))]);
+  return [`${workUnit}/discovery`, ...briefs, `${workUnit}/manifest.json`];
 }
+
+/**
+ * The product scope — what the product's conversation writes: its session
+ * logs and the project manifest, where its marker and the roadmap are.
+ * Shared by `commit --product` and `discovery-session close product`.
+ */
+const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PROJECT_MANIFEST_SPEC]);
 
 /**
  * The state commit: `paths` in the state worktree on `leeway-state`, with
@@ -336,6 +349,7 @@ module.exports = {
   onStateBranch,
   STATE_BRANCH_HELD,
   discoveryScope,
+  PRODUCT_SCOPE,
   OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,
 };

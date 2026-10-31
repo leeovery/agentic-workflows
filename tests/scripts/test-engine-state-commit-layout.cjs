@@ -9,7 +9,8 @@
 // transaction's tail, which answers the refusal as a commit pending (6.2.5,
 // 6.S6); a file gone, from the working tree or with its deletion staged,
 // refuses nothing. Every changed log of 4.11's rides along with the verb's
-// paths and is pushed with them, and no other file does (6.3.2, 6.S7). The
+// paths and is pushed with them, and no other file does (6.3.2, 6.S7) but
+// what a log links in a spike or the assets (9.10.11, 9.S39). The
 // files the person's tools leave beside the state's — Finder's, Explorer's,
 // AppleDouble's, Vim's, Emacs's, JetBrains' — are neither refused nor
 // committed; a name in another case is its place where the filesystem
@@ -185,16 +186,35 @@ describe('the logs a state commit takes along (6.3.2)', () => {
     assert.strictEqual(status(root), '');
   });
 
-  it('takes 4.11\'s four logs alone: today\'s session logs and the layout\'s other files stay as they are', () => {
+  it('takes 4.11\'s four logs alone: the layout\'s other files stay as they are', () => {
     const { root } = codeProject(folder(), { state: true });
-    const logs = [LOG, layout.unit(UNIT, 'discovery', 'session-001.md'), '.product/sessions/session-001.md', layout.unit(UNIT, 'build', 'log.md')];
-    const left = [layout.session(UNIT, '001'), '.roadmap/sessions/session-001.md', SPEC];
+    const logs = [LOG, layout.session(UNIT, '001'), layout.productSession('001'), layout.unit(UNIT, 'build', 'log.md')];
+    const left = [SPEC, BRIEF];
     for (const rel of [...logs, ...left]) createFile(root, rel, `${rel}\n`);
     createFile(root, layout.projectManifest, '{}\n');
 
     const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
 
     assert.deepStrictEqual(touched(root, out.commit || ''), [...logs.map((rel) => `A\t${rel}`), `M\t${layout.projectManifest}`].sort());
+    assert.deepStrictEqual(status(root).split('\n').filter(Boolean).sort(), left.map((rel) => `?? ${rel}`).sort());
+  });
+
+  it('9.S39: a changed log takes along each file it links in a spike or the assets — read from the log\'s folder or the state root, a spike\'s folder whole — and no file it does not link there', () => {
+    const { root } = codeProject(folder(), { state: true });
+    const log = layout.productSession('001');
+    const linked = [layout.spike('.product', '001-pricing', 'index.html'), layout.spike('.product', '001-pricing', 'round-1', 'a.html'), '.product/assets/mock 1.png', layout.assets(UNIT, 'flow.png')];
+    const left = [layout.spike('.product', '002-onboarding', 'index.html'), SPEC];
+    for (const rel of [...linked, ...left]) createFile(root, rel, `${rel}\n`);
+    createFile(root, log, [
+      '# Session 001', '',
+      'The [pricing spike](../spikes/001-pricing/) and ![the mock](<../assets/mock 1.png> "the mock"), and the [flow](acme/assets/flow.png#top).',
+      'Not the [spec](../../acme/spec.md), nor the [site](https://example.com/spikes/002-onboarding/index.html).', '',
+    ].join('\n'));
+    createFile(root, layout.projectManifest, '{}\n');
+
+    const out = withStateLock(root, () => commitState(root, [layout.projectManifest], 'state: the manifest'));
+
+    assert.deepStrictEqual(touched(root, out.commit || ''), [...[log, ...linked].map((rel) => `A\t${rel}`), `M\t${layout.projectManifest}`].sort());
     assert.deepStrictEqual(status(root).split('\n').filter(Boolean).sort(), left.map((rel) => `?? ${rel}`).sort());
   });
 

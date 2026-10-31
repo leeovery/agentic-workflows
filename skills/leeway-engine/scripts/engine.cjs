@@ -37,7 +37,7 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
+const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD, OWNED_PATHS } = require('./domain/commit.cjs');
 const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
@@ -96,7 +96,6 @@ const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
-const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
 const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
@@ -222,8 +221,8 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   discovery-map rename <work-unit> <old> <new>
   discovery-map handle <work-unit> <name>
   discovery-map unhandle <work-unit> <name>
-  discovery-session open  <work-unit> --session-log-file <path>
-  discovery-session close <work-unit> -m <message>
+  discovery-session open  <work-unit|product> --session-log-file <path>
+  discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
@@ -297,9 +296,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
   roadmap pull-forward <name> --into <epic> --routing <discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
-  roadmap session open --session-log-file <path>
-  roadmap session close -m <message>
-  roadmap import <path> [<path> …]
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
   roadmap horizon reorder <name> [<name> …]   (the complete order)
@@ -317,7 +313,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic>
   commit --state -m <message>
   commit --inbox -m <message>
-  commit --roadmap -m <message>
+  commit --product -m <message>
   commit --workflows -m <message>
   commit --migrations -m <message>
   code log    <work-unit> <topic> [--phase <N>]
@@ -412,7 +408,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--imports <N>] [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
-  render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
@@ -429,7 +424,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render horizon-pick
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
-  render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
   render roadmap-shape-gate
@@ -807,13 +801,12 @@ function runBuildOrder(call, argv) {
 
 
 // ---------------------------------------------------------------------------
-// discovery-session — the epic discovery-session lifecycle. open installs
-// the model-drafted log under the next session number and sets the
-// active-session marker — no commit (the session is live; the calling
-// flow's commit cadence picks the change up). close is one transaction:
-// clear the marker, index the finalised log (warn-don't-block), commit
-// scoped to the work unit with the caller's message. The log's content is
-// model-authored — the engine never writes prose.
+// discovery-session — discovery's sessions, an epic's or the product's
+// (domain/discovery-session.cjs). open installs the model-drafted log under
+// the next session number and sets the place's marker — no commit (the
+// session is live; every state commit takes its log along). close clears
+// the marker and commits the place's scope with the caller's message. The
+// log's content is model-authored — the engine never writes prose.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -830,7 +823,7 @@ function runDiscoverySession(call, argv) {
         else throw new Error(`unexpected argument "${a}"`);
       }
       if (!workUnit || !sessionLogFile) {
-        throw new Error('Usage: engine discovery-session open <work-unit> --session-log-file <path>');
+        throw new Error('Usage: engine discovery-session open <work-unit|product> --session-log-file <path>');
       }
       respond(call, openDiscoverySession(call.cwd, workUnit, { sessionLogFile }));
     } else if (command === 'close') {
@@ -843,7 +836,7 @@ function runDiscoverySession(call, argv) {
         else throw new Error(`unexpected argument "${a}"`);
       }
       if (!workUnit || !message) {
-        throw new Error('Usage: engine discovery-session close <work-unit> -m <message>');
+        throw new Error('Usage: engine discovery-session close <work-unit|product> -m <message>');
       }
       respond(call, closeDiscoverySession(call.cwd, workUnit, { message }));
     } else {
@@ -1488,37 +1481,6 @@ function runRoadmap(call, argv) {
       respond(call, roadmap.roadmapState(cwd));
       return;
     }
-    if (command === 'session') {
-      const [sub, ...srest] = rest;
-      if (sub === 'open') {
-        /** @type {string|null} */ let sessionLogFile = null;
-        for (let i = 0; i < srest.length; i++) {
-          if (srest[i] === '--session-log-file') sessionLogFile = srest[++i];
-          else throw new Error(`unexpected argument "${srest[i]}"`);
-        }
-        if (!sessionLogFile) throw new Error('Usage: engine roadmap session open --session-log-file <path>');
-        respond(call, roadmapSession.openRoadmapSession(cwd, { sessionLogFile }));
-        return;
-      }
-      if (sub === 'close') {
-        /** @type {string|null} */ let message = null;
-        for (let i = 0; i < srest.length; i++) {
-          if (srest[i] === '-m' || srest[i] === '--message') message = srest[++i];
-          else throw new Error(`unexpected argument "${srest[i]}"`);
-        }
-        if (!message) throw new Error('Usage: engine roadmap session close -m <message>');
-        respond(call, roadmapSession.closeRoadmapSession(cwd, { message }));
-        return;
-      }
-      throw new Error('Usage: engine roadmap session <open|close> …');
-    }
-    if (command === 'import') {
-      if (rest.length === 0 || rest.some((a) => a.startsWith('--'))) {
-        throw new Error('Usage: engine roadmap import <path> [<path> …]');
-      }
-      respond(call, roadmapSession.importRoadmapFiles(cwd, rest));
-      return;
-    }
     if (command === 'horizon') {
       const [sub, ...hrest] = rest;
       const { opts, positional } = parseArgs(hrest);
@@ -1831,9 +1793,10 @@ function runStateMerge(call, argv) {
 // ---------------------------------------------------------------------------
 // commit — the scoped commit helper. Every form computes a pathspec and
 // commits confined to it. The state's forms commit on the state branch: the
-// work unit, the inbox, the roadmap, the whole state, one topic's artifacts
-// (`--topic`), the discovery session's paths (`--discovery`), the imports
-// home and the manifest that records its entries (`--imports`). The code
+// work unit, the inbox, the product's conversation (`--product`), the whole
+// state, one topic's artifacts (`--topic`), a unit's discovery
+// (`--discovery`), the imports home and the manifest that records its
+// entries (`--imports`). The code
 // tree's commit on the branch checked out: declared code paths (`--paths`),
 // for the task in flight (`--task`) or a code topic (`--for`).
 // Two forms make one commit on each side: a plan (`--plan`), its state and
@@ -2061,7 +2024,7 @@ function commitCode(cwd, paths, message, forSpec, taskSpec) {
   return commitCodePaths(cwd, paths, message, { workUnit, phase, topic });
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --roadmap -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --paths <file> … -m <message> --for <work-unit> <implementation|review>/<topic> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -2079,7 +2042,7 @@ function runCommit(call, argv) {
     let inbox = false;
     let workflows = false;
     let migrationsScope = false;
-    let roadmapScope = false;
+    let productScope = false;
     let importsScope = false;
     let sweep = false;
     for (let i = 0; i < argv.length; i++) {
@@ -2100,7 +2063,8 @@ function runCommit(call, argv) {
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (a === '--migrations') migrationsScope = true;
-      else if (a === '--roadmap') roadmapScope = true;
+      // `--roadmap` names the product scope until the roadmap's rewrite (29.16).
+      else if (a === '--product' || a === '--roadmap') productScope = true;
       else if (paths) files.push(a);
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);
@@ -2111,7 +2075,7 @@ function runCommit(call, argv) {
       // Code commits are the one scope no layout derives (P7): declared,
       // validated, confined, and answered with the residual dirt.
       if (!message || files.length === 0 || plan !== null || topicSpec !== null
-          || discovery || importsScope || stateScope || inbox || workflows || migrationsScope || roadmapScope || sweep || workUnit !== null) {
+          || discovery || importsScope || stateScope || inbox || workflows || migrationsScope || productScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       respond(call, commitCode(cwd, files, message, forSpec, taskSpec));
@@ -2121,7 +2085,7 @@ function runCommit(call, argv) {
     // `--state` names two scopes by whether a work unit rides with it: the
     // unit's own analysis dir, or the global one.
     const globalState = stateScope && workUnit === null;
-    const scopeCount = [inbox, workflows, migrationsScope, roadmapScope, globalState, workUnit !== null].filter(Boolean).length;
+    const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [plan !== null, topicSpec !== null, discovery, importsScope, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || forSpec.length > 0 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || plan === '' || plan === undefined ||
@@ -2145,10 +2109,10 @@ function runCommit(call, argv) {
       return;
     } else if (inbox) {
       scope = '.inbox';
-    } else if (roadmapScope) {
-      // The product session's cadence commit: the roadmap dir (sessions,
-      // imports) plus the project manifest (the roadmap node lives there).
-      scope = [roadmap.ROADMAP_DIR, 'manifest.json'];
+    } else if (productScope) {
+      // The product's conversation's commit: its session logs and the project
+      // manifest, where its marker and the roadmap are.
+      scope = [...PRODUCT_SCOPE];
     } else {
       const wu = /** @type {string} */ (workUnit);
       if (wu === '' || wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
@@ -2210,10 +2174,10 @@ function runCommit(call, argv) {
         scope = [`${wu}/imports`, `${wu}/manifest.json`];
       }
       if (discovery) {
-        // --discovery: the discovery session's cadence commit. Discovery runs
-        // beside live discussion sessions, so it slices its own
-        // paths — session logs, briefs, the manifest the map lives in.
-        respond(call, stateCommitted(commitStateScoped(cwd, discoveryScope(wu), message)));
+        // --discovery: a unit's discovery commit. Discovery runs beside live
+        // discussion sessions, so it slices its own paths — session logs,
+        // briefs, the manifest the map lives in.
+        respond(call, stateCommitted(commitStateScoped(cwd, discoveryScope(cwd, wu), message)));
         return;
       }
       if (plan !== null) {

@@ -119,10 +119,7 @@ const LAYOUT = Object.freeze([
 
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */
 const TODAY = Object.freeze([
-  todays('29.12', 'file', '{unit}/discovery/sessions/session-{NNN}.md'),
   todays('29.12', 'file', '{unit}/discovery/briefs/{topic}.md'),
-  todays('29.12', 'file', '.roadmap/sessions/session-{NNN}.md'),
-  todays('29.12', 'free', '.roadmap/imports'),
   todays('29.12', 'free', '.baseline'),
   todays('29.13', 'free', '{unit}/.state'),
   todays('29.14', 'free', '{unit}/implementation/{topic}'),
@@ -134,6 +131,16 @@ const TODAY = Object.freeze([
   todays('29.15', 'free', '{unit}/imports'),
   todays('29.16', 'file', '.roadmap/notes/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md'),
 ]);
+
+/** The product's folder, and its conversation's session logs (4.11.16). */
+const PRODUCT_DIR = '.product';
+const PRODUCT_SESSIONS = `${PRODUCT_DIR}/sessions`;
+
+/** The places a file informing the work sits below: the assets and the spikes, a unit's and the product's (4.11.5, 4.11.12). */
+const ASSET_HOMES = Object.freeze(['{unit}/assets', '{unit}/spikes/{NNN}-{slug}', '.product/assets', '.product/spikes/{NNN}-{slug}']);
+
+/** The homes that are a spike's folder. */
+const SPIKE_HOMES = Object.freeze(['{unit}/spikes/{NNN}-{slug}', '.product/spikes/{NNN}-{slug}']);
 
 /** A name spelled as written. @type {Fold} */
 const AS_WRITTEN = (name) => name;
@@ -220,6 +227,18 @@ function layoutPlace(rel, fold = AS_WRITTEN) {
 }
 
 /**
+ * The home of `ASSET_HOMES` the state-relative path `rel` sits below, or is
+ * — a spike's folder itself — or null.
+ * @param {string} rel @param {Fold} [fold]
+ * @returns {string|null}
+ */
+function assetHome(rel, fold = AS_WRITTEN) {
+  const below = layoutPlace(rel, fold)?.path;
+  if (below !== undefined) return ASSET_HOMES.includes(below) ? below : null;
+  return SPIKE_HOMES.find((home) => placePattern({ kind: 'file', path: home }, fold).test(fold(rel))) ?? null;
+}
+
+/**
  * Why a write to the state-relative `rel`, at the place `at`, is refused as
  * a file only the engine writes, naming the verb that writes it where one
  * does; null where `at` is no such file, or none.
@@ -231,4 +250,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, engineRefusal };
+module.exports = { LAYOUT, TODAY, PRODUCT_DIR, PRODUCT_SESSIONS, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, assetHome, engineRefusal };

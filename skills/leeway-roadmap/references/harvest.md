@@ -12,7 +12,7 @@ If no session is open yet (a browse that grew content without an Exploration pau
 
 Three sources of truth, cross-referenced:
 
-1. **The Exploration section** of the active session log at `.workflows/.roadmap/sessions/session-{session_number}.md`. Read it now, every time, whatever is already in context.
+1. **The Exploration section** of the active session log at `.workflows/.product/sessions/session-{session_number}.md`. Read it now, every time, whatever is already in context.
 2. **In-context memory of the conversation** — richer but volatile.
 3. **The existing roadmap** — read it with `engine roadmap state` when it is not current in context.
 
@@ -42,7 +42,7 @@ Write the proposed set to `.workflows/.cache/roadmap/proposed-items.json` — a 
 
 ```json
 [
-  {"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "sources": [".roadmap/sessions/session-{NNN}.md"]}
+  {"name": "{item}", "horizon": "{horizon}", "summary": "{one-line summary}", "sources": [".product/sessions/session-{NNN}.md"]}
 ]
 ```
 

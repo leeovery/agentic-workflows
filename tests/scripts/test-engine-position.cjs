@@ -360,7 +360,7 @@ describe('conversation position', () => {
 
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
-    assert.strictEqual(skills.length, 11);
+    assert.strictEqual(skills.length, 12);
     for (const skill of skills) assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
     const whole = WHOLE.map((phase) => skillAt('pay', phase));
     for (const skill of skills.filter((named) => !whole.includes(named))) {
@@ -570,15 +570,15 @@ describe('conversation position', () => {
 
   it('discovery: the open session\'s log, else the latest on disk', () => {
     install('leeway-discovery');
-    for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/sessions/session-${n}.md`);
+    for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/session-${n}.md`);
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
     let answer = reads();
     assert.strictEqual(answer.skill, abs('.claude/skills/leeway-discovery/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/sessions/session-010.md')]);
-    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'leeway-discovery', ['.leeway/pay/discovery/sessions/session-010.md']));
+    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/session-010.md')]);
+    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'leeway-discovery', ['.leeway/pay/discovery/session-010.md']));
     workUnit('pay', 'epic', { discovery: { active_session: '002' } });
     answer = reads();
-    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/sessions/session-002.md')]);
+    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/session-002.md')]);
   });
 
   it('an experiment: each live record\'s files in register order, a concluded one\'s left out', () => {
@@ -616,17 +616,21 @@ describe('conversation position', () => {
     assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-experiment-process/SKILL.md'), []]);
   });
 
-  it('the project-level places: the roadmap with its open session\'s log, the baseline its skill alone', () => {
+  it('the project-level places: the product\'s conversation, in discovery\'s skill, and the roadmap, each with the product\'s open session\'s log; the baseline its skill alone', () => {
     install('leeway-roadmap');
     install('leeway-baseline');
-    write('.leeway/.roadmap/sessions/session-003.md');
+    install('leeway-discovery');
+    write('.leeway/.product/sessions/session-003.md');
     ok(['session', 'label', 'roadmap']);
     assert.deepStrictEqual([reads().skill, reads().files], [abs('.claude/skills/leeway-roadmap/SKILL.md'), []], 'no session open');
-    write('.leeway/manifest.json', JSON.stringify({ roadmap: { active_session: '003' } }));
+    write('.leeway/manifest.json', JSON.stringify({ product_session: '003' }));
     const roadmap = reads();
-    assert.deepStrictEqual(roadmap.files, [abs('.leeway/.roadmap/sessions/session-003.md')]);
+    assert.deepStrictEqual(roadmap.files, [abs('.leeway/.product/sessions/session-003.md')]);
     assert.strictEqual(roadmap.place, 'roadmap');
-    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'leeway-roadmap', ['.leeway/.roadmap/sessions/session-003.md']));
+    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'leeway-roadmap', ['.leeway/.product/sessions/session-003.md']));
+    ok(['session', 'label', 'product']);
+    const product = reads();
+    assert.deepStrictEqual([product.skill, product.files, product.place], [abs('.claude/skills/leeway-discovery/SKILL.md'), [abs('.leeway/.product/sessions/session-003.md')], 'product']);
     ok(['session', 'label', 'baseline']);
     const baseline = reads();
     assert.deepStrictEqual([baseline.skill, baseline.files, baseline.place], [abs('.claude/skills/leeway-baseline/SKILL.md'), [], 'baseline']);

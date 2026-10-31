@@ -34,7 +34,7 @@ Work unit: ${workUnit}
 ## Conclusion
 
 ${conclusionBody}${trailing}`;
-  createFile(dir, `.leeway/${workUnit}/discovery/sessions/${filename}`, content);
+  createFile(dir, `.leeway/${workUnit}/discovery/${filename}`, content);
 }
 
 describe('leeway-discovery discovery', () => {
@@ -364,8 +364,8 @@ describe('leeway-discovery discovery', () => {
   it('next_session_number ignores non-matching filenames in the sessions directory', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.leeway/payments/discovery/sessions/session-abc.md', 'should be ignored');
-    createFile(dir, '.leeway/payments/discovery/sessions/notes.md', 'should be ignored');
+    createFile(dir, '.leeway/payments/discovery/session-abc.md', 'should be ignored');
+    createFile(dir, '.leeway/payments/discovery/notes.md', 'should be ignored');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.next_session_number, 2);
   });
@@ -455,19 +455,19 @@ describe('leeway-discovery listSessionLogs', () => {
     writeSessionLog(dir, 'payments', 2, 'concluded');
     writeSessionLog(dir, 'payments', 3, '(none)');
     assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
-      { number: 1, path: path.join(dir, '.leeway/payments/discovery/sessions/session-001.md') },
-      { number: 2, path: path.join(dir, '.leeway/payments/discovery/sessions/session-002.md') },
-      { number: 3, path: path.join(dir, '.leeway/payments/discovery/sessions/session-003.md') },
+      { number: 1, path: path.join(dir, '.leeway/payments/discovery/session-001.md') },
+      { number: 2, path: path.join(dir, '.leeway/payments/discovery/session-002.md') },
+      { number: 3, path: path.join(dir, '.leeway/payments/discovery/session-003.md') },
     ]);
   });
 
   it('ignores filenames that are not session-NNN.md', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.leeway/payments/discovery/sessions/session-abc.md', 'ignore');
-    createFile(dir, '.leeway/payments/discovery/sessions/notes.md', 'ignore');
+    createFile(dir, '.leeway/payments/discovery/session-abc.md', 'ignore');
+    createFile(dir, '.leeway/payments/discovery/notes.md', 'ignore');
     assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
-      { number: 1, path: path.join(dir, '.leeway/payments/discovery/sessions/session-001.md') },
+      { number: 1, path: path.join(dir, '.leeway/payments/discovery/session-001.md') },
     ]);
   });
 
@@ -722,8 +722,8 @@ describe('leeway-discovery format', () => {
     writeSessionLog(dir, 'payments', 2, 'concluded');
     const out = format(discover(dir, 'payments'));
     assert.ok(out.includes('session_logs (2):'));
-    assert.ok(out.includes(`- 001 ${dir}/.leeway/payments/discovery/sessions/session-001.md`));
-    assert.ok(out.includes(`- 002 ${dir}/.leeway/payments/discovery/sessions/session-002.md`));
+    assert.ok(out.includes(`- 001 ${dir}/.leeway/payments/discovery/session-001.md`));
+    assert.ok(out.includes(`- 002 ${dir}/.leeway/payments/discovery/session-002.md`));
   });
 
   // --- next_session_number line ---
@@ -804,8 +804,8 @@ describe('leeway-discovery format', () => {
       'imports (0):',
       '  (none)',
       'session_logs (2):',
-      `  - 001 ${dir}/.leeway/payments/discovery/sessions/session-001.md`,
-      `  - 002 ${dir}/.leeway/payments/discovery/sessions/session-002.md`,
+      `  - 001 ${dir}/.leeway/payments/discovery/session-001.md`,
+      `  - 002 ${dir}/.leeway/payments/discovery/session-002.md`,
       'analysis_caches: gap_analysis=absent',
       'next_session_number: 003',
       '',

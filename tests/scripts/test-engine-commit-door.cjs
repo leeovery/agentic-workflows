@@ -20,7 +20,7 @@ const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
 
-const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState } = harness;
+const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState } = harness;
 
 /** Files in the state branch's head commit, state-relative. */
 function headFiles(dir) {
@@ -212,26 +212,36 @@ describe('engine commit --topic: pathspec isolation', () => {
   });
 });
 
-describe('engine commit --discovery: the discovery session\'s scope', () => {
+describe('engine commit --discovery: a unit\'s discovery scope', () => {
   let dir;
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('commits sessions, briefs and the manifest — never a live peer\'s topic', () => {
+  it('commits the unit\'s discovery logs, each topic\'s brief and the manifest — never a live peer\'s topic or a topic\'s mail', () => {
     writeState(dir, layout.session('payments', '001'), '# Session 001\n');
-    writeState(dir, layout.brief('payments', 'topic-a'), '# Brief — topic A\n');
+    writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-b'), '# Topic B\npeer session dirt\n');
+    writeState(dir, layout.mailbox('payments', 'topic-a', '001-retry-policy.md'), '# A message waiting\n');
 
     const res = ok(dir, ['commit', 'payments', '--discovery', '-m', 'discovery(payments): shape the map']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
-    const files = headFiles(dir);
-    assert.ok(files.includes(layout.session('payments', '001')), 'session log committed');
-    assert.ok(files.includes(layout.brief('payments', 'topic-a')), 'brief committed');
-    assert.ok(files.includes(layout.manifest('payments')), 'manifest committed');
-    assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-b')), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`], 'peer dirt untouched');
+    assert.deepStrictEqual(headFiles(dir).sort(), [layout.session('payments', '001'), layout.manifest('payments'), layout.topic('payments', 'topic-a', 'brief.md')].sort());
+    assert.deepStrictEqual(statusLines(dir).sort(), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`, `?? ${layout.mailbox('payments', 'topic-a')}/`].sort(), 'peer dirt and the mail untouched');
+  });
+
+  it('commits a brief removed and a topic folder removed whole, leaving the state clean', () => {
+    writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
+    writeState(dir, layout.topic('payments', 'topic-b', 'brief.md'), '# Brief — topic B\n');
+    commitAll(dir, 'two briefs');
+    fs.unlinkSync(statePath(dir, layout.topic('payments', 'topic-a', 'brief.md')));
+    fs.rmSync(statePath(dir, layout.topic('payments', 'topic-b')), { recursive: true });
+
+    ok(dir, ['commit', 'payments', '--discovery', '-m', 'discovery(payments): two topics gone']);
+
+    assert.deepStrictEqual(headFiles(dir).sort(), [layout.topic('payments', 'topic-a', 'brief.md'), layout.topic('payments', 'topic-b', 'brief.md')].sort());
+    assert.deepStrictEqual(statusLines(dir), []);
   });
 
   it('reports nothing to commit on a work unit with no discovery content', () => {
@@ -243,6 +253,40 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   it('refuses --discovery beside another scope flag', () => {
     assert.match(refuses(dir, ['commit', 'payments', '--discovery', '-m', 'x', '--topic', 'investigation/topic-a']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--discovery', '-m', 'x']).error, /Usage/);
+  });
+});
+
+// The product's session log and the project manifest written, beside every
+// file `commit --product` leaves out: a unit's brief, the inbox, the
+// roadmap's notes, and a shared file no log links (9.S38).
+const productWorld = fixtureFrom('engine-commit-product-', (dir) => {
+  twoTopics(dir);
+  writeState(dir, layout.productSession('001'), '# Product session 001\n');
+  writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
+  writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
+  writeState(dir, layout.inbox('ideas', '2026-10-30--dark-mode.md'), '# Dark mode\n');
+  writeState(dir, '.roadmap/notes/ideas/2026-10-30--loyalty.md', '# Loyalty\n');
+  writeState(dir, '.product/assets/market.md', '# Market\n');
+});
+
+describe('engine commit --product: the product\'s conversation\'s scope', () => {
+  it('commits the product\'s session logs and the project manifest, and --roadmap the same — never a unit\'s files, the inbox, the roadmap\'s notes or an unlinked shared file; beside a work unit or another scope it is refused', () => {
+    const dir = productWorld();
+    try {
+      assert.match(refuses(dir, ['commit', 'payments', '--product', '-m', 'x']).error, /Usage/);
+      assert.match(refuses(dir, ['commit', '--product', '--inbox', '-m', 'x']).error, /Usage/);
+      const untracked = ['?? .inbox/', '?? .product/assets/', '?? .roadmap/', '?? payments/topics/'];
+
+      ok(dir, ['commit', '--product', '-m', 'product: session 001']);
+      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);
+
+      writeState(dir, layout.productSession('001'), '# Product session 001\n\nMore.\n');
+      writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n`);
+      ok(dir, ['commit', '--roadmap', '-m', 'roadmap: session 001']);
+      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);
+    } finally {
+      cleanupFixture(dir);
+    }
   });
 });
 
@@ -1738,7 +1782,9 @@ describe('commit door: transaction-tail degrade', () => {
     } };
     writeState(dir, layout.manifest('payments'), JSON.stringify(manifest, null, 2) + '\n');
     writeState(dir, layout.session('payments', '001'), '# Session 001\n');
-    commitAll(dir, 'a discovery session and two specs');
+    writeState(dir, layout.projectManifest, JSON.stringify({ ...JSON.parse(readState(dir, layout.projectManifest)), product_session: '001' }, null, 2));
+    writeState(dir, layout.productSession('001'), '# Product session 001\n');
+    commitAll(dir, 'a discovery session, the product\'s, and two specs');
     ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
     holdStateRef(dir);
 
@@ -1755,5 +1801,8 @@ describe('commit door: transaction-tail degrade', () => {
 
     const closed = ok(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): close']);
     assert.match(closed.note, /engine commit payments --discovery -m/, 'so does the session log it just finalised');
+
+    const product = ok(dir, ['discovery-session', 'close', 'product', '-m', 'product: close']);
+    assert.match(product.note, /engine commit --product -m/, 'the product\'s close names its own scope');
   });
 });

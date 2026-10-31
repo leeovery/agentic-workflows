@@ -53,10 +53,6 @@ describe('engine knowledge index <file>', () => {
       ['payments/imports/seed-conversation.md', 'payments', 'epic', 'imports', 'seed-conversation', 'low'],
       ['login/seeds/2026-05-30-login.md', 'login', 'bugfix', 'seeds', '2026-05-30-login', 'low'],
       ['payments/.state/discovery-gap-analysis.md', 'payments', 'epic', 'analysis', 'gap-analysis', 'low'],
-      ['payments/discovery/sessions/session-001.md', 'payments', 'epic', 'discovery', 'session-001', 'low'],
-      ['payments/discovery/sessions/session-002.md', 'payments', 'epic', 'discovery', 'session-002', 'low'],
-      ['.baseline/overview.md', 'baseline', 'baseline', 'baseline', 'overview', 'low'],
-      ['.roadmap/sessions/session-001.md', 'roadmap', 'roadmap', 'roadmap', 'session-001', 'low'],
     ];
     for (const [rel] of artifacts) {
       write(rel, `# ${rel}\n\nWhat ${rel} settled.\n`);
@@ -161,15 +157,16 @@ describe('engine knowledge index <file>', () => {
         ['auth/planning/auth/planning.md', 'Cannot derive identity from path: auth/planning/auth/planning.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/discussion/auth.md', 'Cannot derive identity from path: auth/discussion/auth.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/topics/auth/log.md', 'Cannot derive identity from path: auth/topics/auth/log.md\nExpected path matching: {work_unit}/{phase}/...'],
+        ['auth/discovery/session-001.md', 'Cannot derive identity from path: auth/discovery/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],
+        ['.product/sessions/session-001.md', 'Cannot derive identity from path: .product/sessions/session-001.md\nExpected path matching: {work_unit}/{phase}/...'],
+        ['.product/assets/market.md', 'Cannot derive identity from path: .product/assets/market.md\nExpected path matching: {work_unit}/{phase}/...'],
         ['auth/investigation/sub/topic.md', 'Unexpected investigation path structure: sub/topic.md\nExpected: {work_unit}/investigation/{topic}.md'],
         ['.hidden/investigation/foo.md', 'Invalid work unit name: ".hidden"'],
         ['.hidden/.state/discovery-gap-analysis.md', 'Invalid work unit name: ".hidden"'],
         ['auth/.state/discussion-consolidation-analysis.md', `Refusing to index .state file "discussion-consolidation-analysis.md" — ${CACHES}`],
         ['auth/.state/migrations.md', `Refusing to index .state file "migrations.md" — ${CACHES}`],
-        ['.baseline/.state/agenda.md', 'Unexpected baseline path structure: .state/agenda.md\nExpected: .baseline/{topic}.md'],
         ['dot.unit/investigation/dot.unit.md', `Invalid work unit name "dot.unit": ${DOTS}`],
         ['auth/investigation/a.b.md', `Invalid topic name "a.b": ${DOTS}`],
-        ['.baseline/dotted.name.md', `Invalid topic name "dotted.name": ${DOTS}`],
         ['auth/imports/diagram.png', 'Refusing to index auth/imports/diagram.png — imports are tracked on the manifest; only markdown imports are indexed.'],
       ]) {
         write(rel, '# Heading\n\nSome content.\n');

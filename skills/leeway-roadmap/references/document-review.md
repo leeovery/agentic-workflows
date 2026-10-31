@@ -8,7 +8,7 @@
 
 The session log is created lazily — if no Exploration write or map operation produced content, no file exists and there is nothing to reconcile.
 
-Check whether a log was opened — `session_number` is set and the log exists at `.workflows/.roadmap/sessions/session-{session_number}.md`.
+Check whether a log was opened — `session_number` is set and the log exists at `.workflows/.product/sessions/session-{session_number}.md`.
 
 #### If no log exists
 
@@ -40,7 +40,7 @@ Document review — no log file (browse only). Nothing to reconcile.
 
 ## B. Reconcile
 
-Read `.workflows/.roadmap/sessions/session-{session_number}.md` in full — don't rely on memory of what you wrote — then walk the conversation against it. Five checks:
+Read `.workflows/.product/sessions/session-{session_number}.md` in full — don't rely on memory of what you wrote — then walk the conversation against it. Five checks:
 
 1. **Exploration is a faithful running record** — the intent, the staging language, the soft decisions and rejected paths with why, the threads left open. Add substance the log missed; remove anything that didn't come up.
 2. **Edits matches applied operations.** Each entry corresponds to an engine op that actually committed, and each committed op has an entry.

@@ -43,12 +43,6 @@
         "framing": 0
       },
       {
-        "source": "agent-first-portal/discovery/sessions/session-001.md",
-        "anchor": "Agent-state model — Working / Waiting / Idle / Unknown, the spine every",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "agent-first-portal/imports/portal-control-plane-plan.md",
         "anchor": "(Claude first), reporting events to the daemon over a unix socket, correlated",
         "grade": "primary",
@@ -1635,12 +1629,6 @@
         "source": "agent-first-portal/imports/portal-control-plane-plan.md",
         "anchor": "**`agent.Store` is the single source of truth** in the daemon",
         "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "agent-first-portal/discovery/sessions/session-001.md",
-        "anchor": "Agent-state model — Working / Waiting / Idle / Unknown, the spine every",
-        "grade": "supporting",
         "framing": 0
       },
       {

@@ -17,27 +17,22 @@
 // The knowledge base's root is the state root, and an artifact is named by
 // its path from there — state-relative, so an identity never moves when the
 // checkout does, and never carries the state directory's name.
+//
+// A log is never indexed (8.14.7, 9.2.2): discovery's sessions, the
+// product's among them, are reached through the pointers into them.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest-io.cjs');
 const { RECORDS_DIR } = require('../../kernel/knowledge/files.cjs');
-const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 
-/**
- * The roadmap's directory, from its owner — required where it is read, since
- * the owner requires the knowledge base itself.
- * @returns {string}
- */
-const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
-
-const BASELINE_PATH = /^\.baseline\/(.+)$/;
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const PHASE_PATH = /^([^/]+)\/(investigation|specification|imports|seeds|discovery)\/(.+)$/;
+const PHASE_PATH = /^([^/]+)\/(investigation|specification|imports|seeds)\/(.+)$/;
 
 /** The phase a record's chunks carry. */
 const RECORD_PHASE = 'record';
@@ -47,8 +42,8 @@ const UNIT_RECORD = '.unit';
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
- * topic — the per-topic manifest items. Imports, seeds, analysis caches and
- * discovery sessions are file-based and found by their own traversals.
+ * topic — the per-topic manifest items. Imports, seeds and analysis caches
+ * are file-based and found by their own traversals.
  * @type {Record<string, (wu: string, topic: string) => string>}
  */
 const INDEXED_ARTIFACTS = {
@@ -57,16 +52,7 @@ const INDEXED_ARTIFACTS = {
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap', RECORD_PHASE];
-
-// The project-level places carry their own name as both work unit and work
-// type: the engine reserves each, so no work unit collides with it.
-const [BASELINE_IDENTITY, ROADMAP_IDENTITY] = PROJECT_IDENTITIES;
-const RESERVED_IDENTITIES = new Set(PROJECT_IDENTITIES);
-
-// Phases whose artifact is a flat `{phase}/{basename}.md` file, the topic its
-// basename.
-const FLAT_PHASES = new Set(['investigation', 'imports', 'seeds']);
+const INDEXED_PHASES = ['investigation', 'specification', 'imports', 'seeds', 'analysis', RECORD_PHASE];
 
 // The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
@@ -132,24 +118,6 @@ function nonMarkdownImportError(filePath) {
 }
 
 /**
- * A baseline doc's identity: `.baseline/{topic}.md`, flat — the
- * session state nested beneath is refused.
- * @param {string} rest
- * @returns {Identity}
- */
-function baselineIdentity(rest) {
-  const fileMatch = /^([^/]+)\.md$/.exec(rest);
-  if (!fileMatch) {
-    throw new UserError(
-      `Unexpected baseline path structure: ${rest}\n` +
-        'Expected: .baseline/{topic}.md'
-    );
-  }
-  assertSegment('topic', fileMatch[1]);
-  return { workUnit: BASELINE_IDENTITY, phase: 'baseline', topic: fileMatch[1] };
-}
-
-/**
  * A record's rendered copy, state-relative: a topic's, or with no topic the
  * record of the unit's own level.
  * @param {string} unit @param {string|null} topic
@@ -199,28 +167,6 @@ function recordIdentity(rest) {
 }
 
 /**
- * A roadmap file's identity: a session log (topic its basename, so sessions
- * coexist) or an import (topic its filename).
- * @param {string} rest @param {string} filePath
- * @returns {Identity}
- */
-function roadmapIdentity(rest, filePath) {
-  const sessMatch = /^sessions\/(session-\d+)\.md$/.exec(rest);
-  if (sessMatch) return { workUnit: ROADMAP_IDENTITY, phase: 'roadmap', topic: sessMatch[1] };
-  const importMatch = /^imports\/([^/]+)\.md$/.exec(rest);
-  if (importMatch) {
-    assertSegment('topic', importMatch[1]);
-    return { workUnit: ROADMAP_IDENTITY, phase: 'imports', topic: importMatch[1] };
-  }
-  const otherImport = /^imports\/(.+)$/.exec(rest);
-  if (otherImport && isNonMarkdownImport(otherImport[1])) throw nonMarkdownImportError(filePath);
-  throw new UserError(
-    `Unexpected roadmap path structure: ${rest}\n` +
-      `Expected: ${roadmapDir()}/sessions/session-NNN.md or ${roadmapDir()}/imports/{name}.md`
-  );
-}
-
-/**
  * An analysis cache's identity: `{wu}/.state/{filename}.md`, the
  * whitelisted filenames alone.
  * @param {string} workUnit @param {string} rest
@@ -246,7 +192,8 @@ function analysisIdentity(workUnit, rest) {
 }
 
 /**
- * A phase artifact's topic from the path beneath its phase directory.
+ * A phase artifact's topic from the path beneath its phase directory: a
+ * specification's folder, or every other phase's flat `{topic}.md`.
  * @param {string} phase @param {string} rest @param {string} filePath
  * @returns {string}
  */
@@ -261,25 +208,15 @@ function phaseTopic(phase, rest, filePath) {
     }
     return specMatch[1];
   }
-  if (FLAT_PHASES.has(phase)) {
-    const flatMatch = /^([^/]+)\.md$/.exec(rest);
-    if (!flatMatch) {
-      if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);
-      throw new UserError(
-        `Unexpected ${phase} path structure: ${rest}\n` +
-          `Expected: {work_unit}/${phase}/{topic}.md`
-      );
-    }
-    return flatMatch[1];
-  }
-  const discMatch = /^sessions\/(session-\d+)\.md$/.exec(rest);
-  if (!discMatch) {
+  const flatMatch = /^([^/]+)\.md$/.exec(rest);
+  if (!flatMatch) {
+    if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);
     throw new UserError(
-      `Unexpected discovery path structure: ${rest}\n` +
-        'Expected: {work_unit}/discovery/sessions/session-NNN.md'
+      `Unexpected ${phase} path structure: ${rest}\n` +
+        `Expected: {work_unit}/${phase}/{topic}.md`
     );
   }
-  return discMatch[1];
+  return flatMatch[1];
 }
 
 /**
@@ -294,9 +231,6 @@ function deriveIdentity(filePath) {
   // The dotted directories first: they would otherwise fall into the `.state`
   // capture and read as an invalid work unit.
   if (norm.startsWith(`${RECORDS_DIR}/`)) return recordIdentity(norm.slice(RECORDS_DIR.length + 1));
-  const baselineMatch = BASELINE_PATH.exec(norm);
-  if (baselineMatch) return baselineIdentity(baselineMatch[1]);
-  if (norm.startsWith(`${roadmapDir()}/`)) return roadmapIdentity(norm.slice(roadmapDir().length + 1), filePath);
   const stateMatch = ANALYSIS_PATH.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
 
@@ -316,14 +250,11 @@ function deriveIdentity(filePath) {
 
 /**
  * The work type a chunk of the artifact carries: the work unit's — from the
- * manifests already read where they hold it — or the project-level place's
- * own name.
+ * manifests already read where they hold it.
  * @param {string} root @param {Identity} identity @param {Array<Record<string, any>>} [workUnits]
  * @returns {string}
  */
-function workTypeOf(root, { workUnit, phase }, workUnits = []) {
-  if (phase === 'baseline') return BASELINE_IDENTITY;
-  if (workUnit === ROADMAP_IDENTITY) return ROADMAP_IDENTITY;
+function workTypeOf(root, { workUnit }, workUnits = []) {
   const read = workUnits.find((unit) => unit.name === workUnit);
   if (read && read.work_type) return read.work_type;
   const manifestFile = path.join(root, workUnit, 'manifest.json');
@@ -343,11 +274,10 @@ function workTypeOf(root, { workUnit, phase }, workUnits = []) {
  * @property {Set<string>|null} registry  the registered names — null while none
  *   are, the work units then listed by directory, so an empty registry says
  *   nothing about which units exist
- * @property {string|null} roadmapSession  the live roadmap session's number
  */
 
 /** @type {Manifests} */
-const NO_MANIFESTS = { workUnits: [], registry: null, roadmapSession: null };
+const NO_MANIFESTS = { workUnits: [], registry: null };
 
 /**
  * Work-unit manifests by name — one without a name left out.
@@ -356,16 +286,6 @@ const NO_MANIFESTS = { workUnits: [], registry: null, roadmapSession: null };
  */
 function unitsByName(workUnits) {
   return new Map(workUnits.filter((u) => u && u.name).map((u) => [u.name, u]));
-}
-
-/**
- * The session number a manifest node marks live, or null.
- * @param {any} node  an epic's `phases.discovery`, or the project's `roadmap`
- * @returns {string|null}
- */
-function activeSession(node) {
-  const session = node && node.active_session;
-  return typeof session === 'string' && session !== '' ? session : null;
 }
 
 /**
@@ -381,7 +301,6 @@ function readManifests(root) {
     return {
       workUnits: listWorkUnitManifests(root, project),
       registry: registered.length > 0 ? new Set(registered) : null,
-      roadmapSession: activeSession(project.roadmap),
     };
   } catch (err) {
     throw new Error(`manifest read failed: ${messageOf(err)}`);
@@ -451,23 +370,7 @@ function flatEntries(root, unit, field, fileOf) {
 }
 
 /**
- * The session logs in a sessions directory, bar the live session's — a live
- * log is indexed when its session closes.
- * @param {string} root @param {string} dir  state-relative @param {string|null} liveSession
- * @returns {string[]} the log filenames
- */
-function closedSessionLogs(root, dir, liveSession) {
-  let files;
-  try {
-    files = fs.readdirSync(path.resolve(root, dir));
-  } catch {
-    return [];
-  }
-  return files.filter((f) => /^session-\d+\.md$/.test(f) && (liveSession === null || f !== `session-${liveSession}.md`));
-}
-
-/**
- * The markdown files directly in a project-level directory, their stems dot-free.
+ * The markdown files directly in a directory, their stems dot-free.
  * @param {string} root @param {string} dir @returns {string[]}
  */
 function flatMarkdown(root, dir) {
@@ -476,26 +379,6 @@ function flatMarkdown(root, dir) {
   } catch {
     return [];
   }
-}
-
-/**
- * The project-level artifacts: baseline docs, and the roadmap's closed
- * session logs and imports. They exist before the first work unit, so
- * nothing about them waits on a manifest.
- * @param {string} root @param {string|null} roadmapSession
- * @returns {Artifact[]}
- */
-function projectArtifacts(root, roadmapSession) {
-  const baselineDir = '.baseline';
-  const sessionsDir = `${roadmapDir()}/sessions`;
-  const importsDir = `${roadmapDir()}/imports`;
-  /** @param {string} dir @param {string} workUnit @param {string} phase @returns {(f: string) => Artifact} */
-  const artifact = (dir, workUnit, phase) => (f) => ({ file: path.posix.join(dir, f), workUnit, phase, topic: f.slice(0, -3) });
-  return [
-    ...flatMarkdown(root, baselineDir).map(artifact(baselineDir, BASELINE_IDENTITY, 'baseline')),
-    ...closedSessionLogs(root, sessionsDir, roadmapSession).map(artifact(sessionsDir, ROADMAP_IDENTITY, 'roadmap')),
-    ...flatMarkdown(root, importsDir).map(artifact(importsDir, ROADMAP_IDENTITY, 'imports')),
-  ];
 }
 
 /**
@@ -517,8 +400,7 @@ function recordArtifacts(root, workUnit) {
 
 /**
  * A live work unit's artifacts: each completed per-topic item's file, its
- * imports and seeds, its analysis caches, its record copies, and an epic's
- * closed discovery session logs.
+ * imports and seeds, its analysis caches and its record copies.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -544,12 +426,6 @@ function unitArtifacts(root, unit) {
     const file = path.posix.join(workUnit, '.state', `${basename}.md`);
     if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
   }
-  if (unit.work_type === 'epic') {
-    const sessionsDir = path.posix.join(workUnit, 'discovery', 'sessions');
-    for (const f of closedSessionLogs(root, sessionsDir, activeSession(unit.phases && unit.phases.discovery))) {
-      items.push({ file: path.posix.join(sessionsDir, f), workUnit, phase: 'discovery', topic: f.slice(0, -3) });
-    }
-  }
   return items;
 }
 
@@ -560,10 +436,7 @@ function unitArtifacts(root, unit) {
  */
 function discoverArtifacts(root, manifests) {
   const live = manifests.workUnits.filter((unit) => unit.name && unit.status !== 'cancelled');
-  return [
-    ...projectArtifacts(root, manifests.roadmapSession),
-    ...live.flatMap((unit) => unitArtifacts(root, unit)),
-  ];
+  return live.flatMap((unit) => unitArtifacts(root, unit));
 }
 
 // ---------------------------------------------------------------------------
@@ -574,8 +447,7 @@ function discoverArtifacts(root, manifests) {
  * Why an indexed identity no longer belongs in the store, or null while it
  * may. Only positive knowledge retires: the source gone from disk, the work
  * unit unregistered or cancelled, the per-topic item gone or terminal. A
- * work unit whose manifest could not be read is evidence of nothing, and the
- * project-level identities answer to their files alone.
+ * work unit whose manifest could not be read is evidence of nothing.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
  * @param {Set<string>|null} registry
@@ -583,7 +455,6 @@ function discoverArtifacts(root, manifests) {
  */
 function retiredReason(root, entry, units, registry) {
   if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
-  if (RESERVED_IDENTITIES.has(entry.workUnit)) return null;
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);
   if (!unit) return null;
@@ -618,7 +489,6 @@ module.exports = {
   INDEXED_ARTIFACTS,
   INDEXED_PHASES,
   RECORD_PHASE,
-  RESERVED_IDENTITIES,
   recordFile,
   recordScope,
   identityKey,

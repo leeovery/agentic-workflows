@@ -45,7 +45,8 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { nextSessionNumber } = require('./discovery-session.cjs');
+const { sessionLogs, nextSessionNumber, productSession } = require('./discovery-session.cjs');
+const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -60,7 +61,6 @@ const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 const DEFAULT_KIND = /** @type {RoadmapKind} */ ('idea');
 
 const ROADMAP_DIR = '.roadmap';
-const SESSIONS_DIR = `${ROADMAP_DIR}/sessions`;
 const NOTES_DIR = `${ROADMAP_DIR}/notes`;
 
 /**
@@ -148,7 +148,7 @@ function requireSourcesOnDisk(cwd, sources) {
   if (missing.length === 0) return;
   const named = missing.map((s) => JSON.stringify(s)).join(', ');
   const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
-  throw new Error(`${what} ${named} ${verb} not exist under ${statePath(cwd)}/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
+  throw new Error(`${what} ${named} ${verb} not exist under ${statePath(cwd)}/ — a source must exist before an item records it; open a session log's session first (discovery-session open product, or the session's own open)`);
 }
 
 /** @param {*} kind */
@@ -190,7 +190,7 @@ function hasRoadmapNode(manifest) {
  * a scalar `roadmap`, an object `horizons`, an array `items` all name their
  * corruption instead of being silently rebuilt.
  * @param {Record<string, any>} manifest
- * @returns {{horizons: string[], items: Record<string, any>, active_session?: string, imports?: Record<string, any>[]}}
+ * @returns {{horizons: string[], items: Record<string, any>, imports?: Record<string, any>[]}}
  */
 function ensureRoadmap(manifest) {
   const roadmap = ensureContainer(manifest, 'roadmap', 'roadmap');
@@ -199,7 +199,7 @@ function ensureRoadmap(manifest) {
     throw new Error('roadmap.horizons is malformed — expected an array of horizon names');
   }
   ensureContainer(roadmap, 'items', 'roadmap.items');
-  return /** @type {{horizons: string[], items: Record<string, any>, active_session?: string, imports?: Record<string, any>[]}} */ (roadmap);
+  return /** @type {{horizons: string[], items: Record<string, any>, imports?: Record<string, any>[]}} */ (roadmap);
 }
 
 /**
@@ -343,33 +343,22 @@ function deriveItemState(cwd, item) {
  * The whole roadmap, derived — the read every consumer shares (gateways,
  * render surfaces, tests). Absent or malformed state reads as no roadmap:
  * `{exists: false}` with empty collections, the never-born state the JIT
- * birth keys on. Items come back horizon-ordered (list order, then insertion
+ * birth keys on; a product session's log alone gives a roadmap that exists
+ * and holds nothing yet. Items come back horizon-ordered (list order, then insertion
  * order within a horizon; items naming an unknown horizon trail last so a
- * hand-edited manifest still renders). Session material rides along:
- * `active_session` (the marker, or null), `session_logs` (number + path,
- * ascending, from disk), `next_session_number`, and the `imports` entries
- * with their origins — a session can exist before any item does (the genesis
- * conversation), so these are read even when the node itself is absent.
+ * hand-edited manifest still renders). The product's conversation's
+ * session material rides along: `active_session` (its marker, or null),
+ * `session_logs` (number + path, ascending, from disk) and
+ * `next_session_number` — a session can exist before any item does, so
+ * these are read even when the node itself is absent; and the node's
+ * `imports` entries with their origins.
  * @param {string} cwd
  * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string, origin: string}[]}}
  */
 function roadmapState(cwd) {
-  const sessionsDir = statePath(cwd, SESSIONS_DIR);
-  /** @type {{number: number, path: string}[]} */
-  let sessionLogs = [];
-  try {
-    sessionLogs = fs.readdirSync(sessionsDir)
-      .filter((f) => /^session-\d+\.md$/.test(f))
-      .sort()
-      .map((f) => ({
-        number: parseInt(/** @type {RegExpMatchArray} */ (f.match(/^session-(\d+)\.md$/))[1], 10),
-        path: path.join(sessionsDir, f),
-      }));
-  } catch {
-    sessionLogs = [];
-  }
+  const sessionsDir = statePath(cwd, PRODUCT_SESSIONS);
   const sessionBase = {
-    session_logs: sessionLogs,
+    session_logs: sessionLogs(sessionsDir).map(({ number, file }) => ({ number, path: path.join(sessionsDir, file) })),
     next_session_number: nextSessionNumber(sessionsDir),
   };
   const empty = {
@@ -388,11 +377,9 @@ function roadmapState(cwd) {
   } catch {
     return empty;
   }
-  if (!hasRoadmapNode(manifest)) return empty;
+  const activeSession = productSession(manifest);
+  if (!hasRoadmapNode(manifest)) return { ...empty, exists: sessionBase.session_logs.length > 0, active_session: activeSession };
   const roadmap = manifest.roadmap;
-  const activeSession = typeof roadmap.active_session === 'string' && roadmap.active_session !== ''
-    ? roadmap.active_session
-    : null;
   const importEntries = Array.isArray(roadmap.imports)
     ? roadmap.imports
       .filter((/** @type {*} */ e) => e && typeof e.path === 'string')

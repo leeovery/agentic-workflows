@@ -88,6 +88,7 @@
 // ---------------------------------------------------------------------------
 
 const { isObject } = require('../kernel/manifest-io.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { type, TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, listOf, field, event, readFields } = require('./event-fields.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -123,9 +124,6 @@ const CITES = field('cites', listOf(CITE), sinceTwo([]));
 
 /** What opens a move's `to` that names an item of the roadmap, not a topic (9.5.4). */
 const ROADMAP = 'roadmap:';
-
-/** The unit the product's place is tagged with (8.12.9). */
-const PRODUCT = 'product';
 
 /** @type {Field[]} */
 const HEADER = [

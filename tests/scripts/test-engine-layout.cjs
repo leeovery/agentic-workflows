@@ -7,8 +7,10 @@
 // logs 4.11's four — and a sample outside each folder is in none; names are
 // compared as the fold spells them; the tracker's store is each shipped
 // task driver's; each of today's places holds its sample, is no log, and
-// names the phase from 29.11 to 29.17 that retires it (E4); and the suites'
-// layout helper names only places the table holds.
+// names the phase from 29.11 to 29.17 that retires it (E4); the product's
+// conversation keeps one folder of logs; the asset homes, and the spike
+// folders among them; and the suites' layout helper names only places the
+// table holds.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -17,7 +19,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
+const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { WRITE_VERBS } = require('../../skills/leeway-engine/scripts/domain/ledger-write.cjs');
 const { LEDGER } = require('../../skills/leeway-engine/scripts/domain/ledger-events.cjs');
@@ -75,10 +77,7 @@ const DRAWN = Object.freeze({
 
 /** A path in each of today's places, and the place's path. */
 const TODAYS = Object.freeze({
-  'pay/discovery/sessions/session-001.md': '{unit}/discovery/sessions/session-{NNN}.md',
   'pay/discovery/briefs/auth.md': '{unit}/discovery/briefs/{topic}.md',
-  '.roadmap/sessions/session-001.md': '.roadmap/sessions/session-{NNN}.md',
-  '.roadmap/imports/deck.pdf': '.roadmap/imports',
   '.baseline/.state/agenda-api.md': '.baseline',
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   'pay/implementation/auth/review-tasks-c1.md': '{unit}/implementation/{topic}',
@@ -107,6 +106,7 @@ const OUTSIDE = Object.freeze([
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',
   'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth/notes.md',
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
+  'pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', '.roadmap/imports/deck.pdf',
 ]);
 
 /** @param {import('../../skills/leeway-engine/scripts/domain/layout.cjs').Place|null} at */
@@ -135,6 +135,10 @@ describe('4.11\'s places (4.11.17)', () => {
     }
   });
 
+  it('27.S5: the product\'s conversation keeps its logs in one folder, .product/sessions/, and in no other', () => {
+    assert.deepStrictEqual(LAYOUT.filter((at) => at.kind === 'log' && at.path.startsWith('.product/')).map((at) => at.path), ['.product/sessions/session-{NNN}.md']);
+  });
+
   it('the ledger\'s refusal names every verb that writes it', () => {
     assert.strictEqual(layoutPlace(LEDGER)?.verb, `ledger ${WRITE_VERBS.join('|')}`);
   });
@@ -145,6 +149,28 @@ describe('4.11\'s places (4.11.17)', () => {
     for (const file of files) {
       assert.strictEqual(named(layoutPlace(file)), `file ${file}`, file);
       assert.strictEqual(layoutPlace(path.posix.join(path.posix.dirname(file), 'notes.md')), null, `beside ${file}`);
+    }
+  });
+});
+
+describe('the asset homes (4.11.5, 4.11.12)', () => {
+  it('a path below a unit\'s or the product\'s assets or one of their spikes is in that home, and so is a spike\'s folder itself', () => {
+    assert.deepStrictEqual(Object.fromEntries([
+      'pay/assets/mockups/home.png', 'pay/spikes/001-checkout/index.html', 'pay/spikes/001-checkout',
+      '.product/assets/brand.png', '.product/spikes/002-pricing/round-1/index.html', '.product/spikes/002-pricing',
+    ].map((rel) => [rel, assetHome(rel)])), {
+      'pay/assets/mockups/home.png': '{unit}/assets',
+      'pay/spikes/001-checkout/index.html': '{unit}/spikes/{NNN}-{slug}',
+      'pay/spikes/001-checkout': '{unit}/spikes/{NNN}-{slug}',
+      '.product/assets/brand.png': '.product/assets',
+      '.product/spikes/002-pricing/round-1/index.html': '.product/spikes/{NNN}-{slug}',
+      '.product/spikes/002-pricing': '.product/spikes/{NNN}-{slug}',
+    });
+  });
+
+  it('the assets folder itself, a folder in spikes/ that is no spike, and every other place are no home', () => {
+    for (const rel of ['pay/assets', '.product/assets', 'pay/spikes', 'pay/spikes/checkout/index.html', 'pay/imports/deck.pdf', 'pay/topics/auth/log.md', '.product/sessions/session-001.md', 'pay/seeds/2026-10-30--smart-retry.md']) {
+      assert.strictEqual(assetHome(rel), null, rel);
     }
   });
 });
@@ -182,6 +208,8 @@ describe('today\'s places (E4)', () => {
       spec: layout.spec('pay', 'auth'),
       plan: layout.plan('pay', 'auth'),
       session: layout.session('pay', '001'),
+      productSession: layout.productSession('001'),
+      spike: layout.spike('.product', '001-pricing', 'index.html'),
       brief: layout.brief('pay', 'auth'),
       imports: layout.imports('pay', 'deck.pdf'),
       unitState: layout.unitState('pay', 'discussion-consolidation-analysis.md'),

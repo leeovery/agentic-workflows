@@ -490,7 +490,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the project (21.5.20, 21.11.2)', () => {
-    it('carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, and the baseline\'s status gone, its skip the brownfield offer\'s answer', () => {
+    it('carries the manifest with the project\'s id minted first, the linters on its environment as 073 keeps them, the baseline\'s status gone, its skip the brownfield offer\'s answer, and the roadmap\'s open session the product\'s conversation\'s', () => {
       const project = JSON.parse(read('manifest.json'));
       assert.match(project.project_id, /^[0-9A-Za-z]{21}$/);
       const { items } = PROJECT_MANIFEST.roadmap;
@@ -500,7 +500,6 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         defaults: { plan_format: 'sample-format' },
         roadmap: {
           horizons: ['v1'],
-          active_session: '002',
           imports: [{ path: 'assets/market.md', imported_at: '2026-01-04T10:00:00Z', origin: 'roadmap' }],
           items: {
             loyalty: { ...items.loyalty, sources: ['.product/sessions/session-001.md', '.product/assets/market.md'] },
@@ -511,6 +510,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         },
         brownfield_offer: 'skipped',
         environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }] },
+        product_session: '002',
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
     });
