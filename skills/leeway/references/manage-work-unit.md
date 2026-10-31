@@ -117,10 +117,10 @@ Run the cancel transaction — one command sets `status: cancelled`, removes the
 node .claude/skills/leeway-engine/scripts/engine.cjs workunit cancel {selected.name}
 ```
 
-Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty:
+Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response's `warnings` is non-empty, and `--inbox {n}` when its `inbox` lists the waiting messages the cancel moved, `{n}` their count:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn]
+node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {selected.name} --verb cancel [--warn] [--inbox {n}]
 ```
 
 → Return to caller.

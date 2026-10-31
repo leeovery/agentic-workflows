@@ -123,7 +123,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(res, {
       ok: true, topic: 'data-export', phase: 'discovery', status: 'cancelled',
       cancelled: [], discarded: [], abandoned: [], released_waits: [], closed_agents: [],
-      committed: shortHead(dir), warnings: [], roadmap_reverted: [], next: { kind: 'continue' },
+      committed: shortHead(dir), warnings: [], roadmap_reverted: [], inbox: [], next: { kind: 'continue' },
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { source: 'discovery', cancelled: true, previous_order: 1 });

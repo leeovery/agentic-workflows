@@ -13,7 +13,8 @@
 //   (8.10.11), and the twin of a waiting roadmap item, unless the topic takes
 //   that item in, the item then leaving the roadmap and the topic's source
 //   naming it (8.1.6). add-batch is the same for several, in one
-//   transaction.
+//   transaction; the decided gate lands its candidates by the same checks,
+//   inside its own (decided.cjs).
 // - edit: a topic's summary or description, at any lifecycle.
 // - rename: an unstarted topic moves whole — its key, its folder and its
 //   place in the order, a roadmap item it took in following it; one that has
@@ -411,39 +412,102 @@ function twinRefusal(name, twin) {
 }
 
 /**
- * Topics landed on an epic's map, each with its brief, as one transaction:
- * every entry checked — its name, its draft, the map and the roadmap — before
- * anything is written, then the map saved, each brief installed, each
- * roadmap item taken in joined to its topic, and one commit. `reAddHint` says
- * how a name struck from the map is asked back.
- * @param {string} cwd @param {string} workUnit @param {BatchEntry[]} entries
- * @param {{said: string, fieldName?: FieldName, source?: string, requireBrief?: boolean, reAddHint?: string}} opts
+ * How a batch lands: the words its refusals open on, how its checks name an
+ * entry's field, each topic's source, whether every topic needs its brief,
+ * and how a name struck from the map is asked back.
+ * @typedef {{said: string, fieldName?: FieldName, source?: string, requireBrief?: boolean, reAddHint?: string}} LandOpts
  */
-function landTopics(cwd, workUnit, entries, { said, fieldName = batchField, source = 'discovery', requireBrief = true, reAddHint }) {
+
+/** A brief's draft as read, or null for an entry that has none. @typedef {{scratch: string, content: string}|null} Draft */
+
+/**
+ * The batch's shape and each entry's draft, checked before the map is read.
+ * @param {string} cwd @param {BatchEntry[]} entries @param {LandOpts} opts
+ * @returns {Draft[]}
+ */
+function batchDrafts(cwd, entries, { said, fieldName = batchField, requireBrief = true }) {
   checkBatchEntries(entries, said, fieldName);
-  const drafts = entries.map((e, i) => {
+  return entries.map((e, i) => {
     if (e.brief === undefined) {
       if (requireBrief) throw new Error(`${said}: a topic lands with its brief — ${fieldName(i, e, 'brief')} names its draft`);
       return null;
     }
     return draftIn(cwd, e.brief, `${said}: ${fieldName(i, e, 'brief')}`);
   });
+}
+
+/**
+ * Refused where the batch could not land on the loaded map as it and the
+ * roadmap stand, by every check `topic add-batch` makes — its shape, its
+ * drafts, the roadmap and the map — writing nothing. Answers the drafts as
+ * read.
+ * @param {string} cwd @param {string} workUnit @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {LandOpts} opts
+ * @returns {Draft[]}
+ */
+function checkTopics(cwd, workUnit, manifest, entries, opts) {
+  const drafts = batchDrafts(cwd, entries, opts);
+  checkRoadmap(readProjectManifest(cwd), workUnit, entries, opts.said);
+  addBatchTo(structuredClone(manifest), entries, opts.said, { source: opts.source, reAdd: opts.reAddHint });
+  return drafts;
+}
+
+/**
+ * The batch put on the loaded map under the writer lock its caller holds:
+ * every entry checked against the roadmap and the map as they stand before
+ * any of it is applied, then each topic added and each roadmap item taken in
+ * joined to its topic. The caller saves the manifest, then installs the
+ * briefs.
+ * @param {string} cwd @param {string} workUnit @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {LandOpts} opts
+ */
+function placeTopics(cwd, workUnit, manifest, entries, { said, source = 'discovery', reAddHint }) {
+  checkRoadmap(readProjectManifest(cwd), workUnit, entries, said);
+  const readded = addBatchTo(manifest, entries, said, { source, reAdd: reAddHint });
+  const takes = entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [{ item: e.from_roadmap, topic: e.name }]));
+  const priors = takes.length > 0 ? joinTakenIn(cwd, workUnit, takes) : {};
+  for (const [topic, prior] of Object.entries(priors)) mapItem(manifest, topic).prior = prior;
+  return { readded, priors, takes };
+}
+
+/**
+ * Each entry's brief installed from its draft. Answers the briefs,
+ * state-relative.
+ * @param {string} cwd @param {string} workUnit @param {BatchEntry[]} entries @param {Draft[]} drafts
+ * @returns {string[]}
+ */
+function installBriefs(cwd, workUnit, entries, drafts) {
+  return entries.flatMap((e, i) => {
+    const draft = drafts[i];
+    return draft === null ? [] : [installBrief(cwd, workUnit, e.name, draft)];
+  });
+}
+
+/**
+ * What a landing wrote, for its commit: the manifest, each brief, and the
+ * project manifest where a roadmap item was taken in.
+ * @param {string} workUnit @param {{briefs: string[], takes: unknown[]}} landed
+ */
+function landedPaths(workUnit, { briefs, takes }) {
+  return [`${workUnit}/manifest.json`, ...briefs, ...(takes.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
+}
+
+/**
+ * Topics landed on an epic's map, each with its brief, as one transaction:
+ * every entry checked — its name, its draft, the map and the roadmap — before
+ * anything is written, then the map saved, each brief installed, each
+ * roadmap item taken in joined to its topic, and the paths for one commit.
+ * @param {string} cwd @param {string} workUnit @param {BatchEntry[]} entries @param {LandOpts} opts
+ */
+function landTopics(cwd, workUnit, entries, opts) {
+  const drafts = batchDrafts(cwd, entries, opts);
   /** @type {string[]} */
   const warnings = [];
   const landed = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const project = readProjectManifest(cwd);
-    checkRoadmap(project, workUnit, entries, said);
-    const readded = addBatchTo(manifest, entries, said, { source, reAdd: reAddHint });
-    const takes = entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [{ item: e.from_roadmap, topic: e.name }]));
-    const priors = takes.length > 0 ? joinTakenIn(cwd, workUnit, takes) : {};
-    for (const [topic, prior] of Object.entries(priors)) mapItem(manifest, topic).prior = prior;
+    const placed = placeTopics(cwd, workUnit, manifest, entries, opts);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    const briefs = entries.flatMap((e, i) => (drafts[i] === null ? [] : [installBrief(cwd, workUnit, e.name, /** @type {{scratch: string, content: string}} */ (drafts[i]))]));
-    return { manifest, readded, priors, briefs, takes };
+    return { manifest, ...placed, briefs: installBriefs(cwd, workUnit, entries, drafts) };
   });
-  const paths = [`${workUnit}/manifest.json`, ...landed.briefs, ...(landed.takes.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
-  return { ...landed, paths, warnings };
+  return { ...landed, paths: landedPaths(workUnit, landed), warnings };
 }
 
 /**
@@ -620,6 +684,17 @@ function renameTopic(cwd, workUnit, said, newName) {
 }
 
 /**
+ * `names` recorded on the loaded manifest as the person's answer, struck
+ * from the map or from a one-topic unit's candidates, so nothing proposes
+ * them again (8.10.11). The caller saves the manifest.
+ * @param {Record<string, any>} manifest @param {string[]} names
+ */
+function dismiss(manifest, names) {
+  const discovery = ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'discovery', 'phases.discovery');
+  discovery.dismissed = [...dismissedNames(manifest).filter((n) => !names.includes(n)), ...names];
+}
+
+/**
  * `topic remove`: an unstarted topic, one the ledger names not, off the map
  * (8.8.6) — a started one is cancelled instead, with its confirm (8.8.8).
  * Under the writer lock, taken first: the manifest, the ledger and the
@@ -645,7 +720,7 @@ function removeTopic(cwd, workUnit, said) {
     const discovery = manifest.phases.discovery;
     delete discovery.items[name];
     if (itemOf(manifest, 'discussion', name)) delete manifest.phases.discussion.items[name];
-    discovery.dismissed = [...dismissedNames(manifest).filter((n) => n !== name), name];
+    dismiss(manifest, [name]);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     fs.rmSync(statePath(cwd, topicDir(workUnit, name)), { recursive: true, force: true });
     const reverted = revertJoins(cwd, workUnit, { topic: name });
@@ -766,5 +841,6 @@ function setPrior(cwd, workUnit, name, prior) {
 }
 
 module.exports = {
-  sequenceMap, addItem, addTopic, addTopics, checkBatchEntries, addBatchTo, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, removeRefusal, topicNameRefusal,
+  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, removeRefusal, topicNameRefusal,
+  checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
 };

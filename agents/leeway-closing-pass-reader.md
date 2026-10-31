@@ -19,6 +19,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **Other topics' records** — each other live topic of the work, under a heading naming it, in the same shape.
 - **The product record** — the findings and decisions that hold for the whole product, and apart from them, under `discovery`, what discovery found of the product, of this work and of this topic.
 - **The gap review** — whether a gap review has run since the topic's last decision.
+- **What the person struck or removed** — the names they struck as candidates or removed from the map. Each is their answer: never propose one as work no topic owns.
 - **Your report** — the file your report goes to.
 
 ## What You Look For

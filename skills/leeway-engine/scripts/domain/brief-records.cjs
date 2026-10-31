@@ -58,6 +58,9 @@
 //                  of the file `--path` names, which only a read takes
 //   gap-review     whether a gap review has run since the topic's last
 //                  decision, naming it where one has (9.9.6, agent-state.cjs)
+//   dismissed      the names the person struck as candidates or removed
+//                  from the map, the unit's answer that nothing proposes
+//                  them again (8.10.11), one a line
 //   report-to      where the agent writes its report: the file of the
 //                  dispatch `--agent` names, of the kind its role is briefed
 //                  for and still in flight
@@ -129,6 +132,7 @@ const { recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands } = re
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
+const { dismissedNames } = require('./derivations.cjs');
 const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
@@ -419,6 +423,12 @@ function drawGapReview(filling) {
   return run === null ? 'No gap review has run since this topic\'s last decision.' : `A gap review has run since this topic's last decision: ${run}.`;
 }
 
+/** @param {Filling} filling */
+function drawDismissed(filling) {
+  const { unit } = placeOf(filling);
+  return listed(dismissedNames(readWorkUnitManifest(stateRoot(filling.cwd), unit)).map((name) => `- ${name}`));
+}
+
 /**
  * The dispatch `--agent` names in the topic's agent store, refused where the
  * store lacks it, it is of another kind than its role is briefed for, or it
@@ -620,6 +630,7 @@ const RECORDS = Object.freeze({
   'pair-question': { of: 'topic', flags: [AGENT], draw: drawPairQuestion },
   'dive-kind': { of: null, flags: [{ name: 'kind', value: DIVE_KINDS.join('|') }, { name: 'path', value: 'file', optional: true }], draw: drawDiveKind },
   'gap-review': { of: 'topic', draw: drawGapReview },
+  dismissed: { of: 'topic', draw: drawDismissed },
   'report-to': { of: 'topic', flags: [AGENT], draw: drawReportTo },
   lens: { of: 'topic', flags: [AGENT], draw: drawLens },
   perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },

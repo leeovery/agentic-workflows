@@ -93,6 +93,10 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(taken.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
     assert.deepStrictEqual(taken.abandoned, ['E1']);
     assert.deepStrictEqual(taken.discarded, ['grouping']);
+    // Its waiting message went to the inbox as an idea, and the receipt says so.
+    assert.deepStrictEqual([taken.inbox.length, JSON.parse(sim.read(['topic', 'mailbox', wu, 'auth'])).count], [1, 0]);
+    assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'cancel', '--inbox', String(taken.inbox.length)], { expect: 'content' }),
+      /Cancelled "Auth"\. Its 1 waiting message went to the inbox as an idea\./);
     let m = sim.manifest(wu);
     assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress' });
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
@@ -104,17 +108,14 @@ describe('pipeline simulation: epic-topics', () => {
     // The conversation's entry refuses the cancelled topic, naming the reactivate.
     sim.refuses(['enter', 'discussion', wu, 'auth'], /^the topic "auth" is cancelled — reactivating it goes through the epic menu/);
 
-    // The reactivate restores the conversation, its message still waiting;
-    // answered, the topic is decided.
+    // The reactivate restores the conversation, no message waiting in it;
+    // its open question answered, the topic is decided.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
     enterEntry(sim, wu, 'discussion', 'auth');
     const claudes = { by: 'claude', who_moved_whom: 'none' };
-    const lifetime = sim.run(['ledger', 'ask', `${wu}.discussion.auth`], null, JSON.stringify({ ...claudes, text: 'How long does a token live?' }));
-    sim.run(['topic', 'answered', wu, 'auth', '001-token-lifetime', '--entry', lifetime.id]);
-    sim.run(['ledger', 'decide', `${wu}.discussion.auth`, '--answers', lifetime.id], null, JSON.stringify({ ...claudes, text: 'An hour.', why: 'Billing asked for no longer.' }));
     sim.run(['ledger', 'decide', `${wu}.discussion.auth`, '--answers', latency], null, JSON.stringify({ ...claudes, text: 'Under 200 ms.', why: 'The abandoned experiment left the budget as it stood.' }));
     decideTopic(sim, wu, 'auth');
 

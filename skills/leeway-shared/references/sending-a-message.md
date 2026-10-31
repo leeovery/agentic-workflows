@@ -21,7 +21,7 @@ The caller provides these via context before loading:
 
 After return, the caller reads these from conversation memory:
 
-- `result` — `landed` (message delivered and committed by the engine) or `cancelled` (the send was dropped or blocked; nothing written).
+- `result` — `landed` (message delivered and committed by the engine) or `cancelled` (the message reached no topic: the send was dropped or blocked, nothing written, or the target closed since and it went to the inbox).
 - `landed_topic` — the final target name (a new target may have been renamed during validation).
 
 ## Message Shape
@@ -82,7 +82,7 @@ Create the target via the shared topic-creation core. The core lands the map ite
 
 ## C. Send the Message
 
-One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox under the line naming its sender, consumes the scratch file, and commits the delivery (message file + manifest).
+One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox under the line naming its sender, consumes the scratch file, and commits the delivery (message file + manifest). A target cancelled or removed since **A** read the map takes no message: the send lands it in the inbox as an idea instead.
 
 1. Derive `slug` — kebab-case of the message's short title.
 2. Write the full entry (shape above) to `.leeway/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md` with the Write tool.
@@ -92,13 +92,19 @@ One engine transaction owns the whole delivery: `topic send` handles the item st
    node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {origin} --content .leeway/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug}
    ```
 
-**If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
-
-→ Return to **A. Resolve the Target**.
-
-**If the response is `ok: false` for any other reason:**
+**If the response is `ok: false`:**
 
 Surface the engine's error verbatim — it names the recovery path. Nothing has been written; set `result = cancelled`.
+
+→ Return to caller.
+
+**If the response carries `inbox_path`:**
+
+The target was cancelled or removed since **A** read the map, and the message went to the inbox as an idea, reaching no topic. Draw the report from that path and emit its DISPLAY section verbatim per its marker; set `result = cancelled`.
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render send-report {work_unit}.{target} --sent {inbox_path}
+```
 
 → Return to caller.
 

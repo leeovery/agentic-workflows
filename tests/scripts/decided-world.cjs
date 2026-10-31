@@ -7,7 +7,7 @@
 // the person's own answer, Claude's calls of two kinds and one unlabelled,
 // a call handed over — and its decided checklist marked but for the closing
 // pass; and a feature, `solo`, whose one question the person answered, its
-// checklist marked but for the closing pass. Built once per process and
+// checklist marked but for the closing pass and its log written. Built once per process and
 // copied for each test, its trust log in a config folder of the test's own.
 // ---------------------------------------------------------------------------
 
@@ -22,6 +22,7 @@ const { UNIT, SESSION, MADE, NOTE, row } = require('./ledger-world.cjs');
 
 const SOLO = 'solo';
 const SOLO_AT = `${SOLO}.discussion.${SOLO}`;
+const SOLO_LOG = `${SOLO}/topics/${SOLO}/log.md`;
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const NO_PAYLOAD = Object.freeze({ lines: [], candidates: [] });
 
@@ -82,6 +83,8 @@ const world = fixtureFrom('decided-', (dir) => {
     corner: answeredIn(dir, NOTE, 'Which corner does a note open in?', { ...MADE, given: 'your-call', text: 'Top left.' }),
   });
   answeredIn(dir, SOLO_AT, 'Does a tally reset daily?', { ...PERSON, text: 'At midnight.' });
+  fs.mkdirSync(path.dirname(statePath(dir, SOLO_LOG)), { recursive: true });
+  fs.writeFileSync(statePath(dir, SOLO_LOG), '# Solo\n\nA tally resets at midnight.\n');
 });
 
 /**
@@ -135,6 +138,17 @@ function decidedHelpers(dir) {
     return file;
   }
 
+  let drafted = 0;
+
+  /** An epic's candidate, its brief's draft written to a file of its own in the cache. @param {string} name @param {string} reason */
+  function candidate(name, reason) {
+    drafted += 1;
+    const brief = statePath(dir(), '.cache', 'scratch', `brief-${name}-${drafted}.md`);
+    fs.mkdirSync(path.dirname(brief), { recursive: true });
+    fs.writeFileSync(brief, `# ${name}\n\nWhat it is, where it was read, why it matters, its open questions.\n`);
+    return { name, reason, brief };
+  }
+
   /** The decided screen of `address`, `flags` given. @param {string[]} [flags] @param {string} [address] */
   function screen(flags = [], address = `${UNIT}.note-window`) {
     return output(dir(), ['render', 'decided', address, ...flags], { env: SESSION });
@@ -161,9 +175,9 @@ function decidedHelpers(dir) {
     return writeIn(dir(), 'replace', NOTE, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the old answer'], text, why: 'The person wants it so.' });
   }
 
-  return { close, payload, screen, staged, answer, run, reverse };
+  return { close, payload, candidate, screen, staged, answer, run, reverse };
 }
 
 module.exports = {
-  SOLO, SOLO_AT, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, sectionOf, decidedHelpers,
+  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, sectionOf, decidedHelpers,
 };

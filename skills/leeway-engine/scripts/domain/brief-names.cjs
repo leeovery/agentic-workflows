@@ -58,7 +58,7 @@ const ROLES = Object.freeze({
     agent: 'leeway-closing-pass-reader',
     whose: 'the closing-pass reader\'s',
     kind: 'closing-pass',
-    records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'gap-review', 'report-to'],
+    records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'gap-review', 'dismissed', 'report-to'],
   },
   'plain-search': { agent: 'leeway-plain-search', whose: 'the plain search\'s', records: ['knowledge-query'] },
   'migration-topic': { agent: 'leeway-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'carry-refusal', 'directive'] },

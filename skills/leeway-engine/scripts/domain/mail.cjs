@@ -40,8 +40,9 @@
 //   progress, as for any work on it. Git keeps the file.
 // A commit a send to the mailbox or a removal leaves pending is retried in
 // the topic's scope as a sweep, which takes no hold on the topic.
-// Removing a topic moves what waits for it to the inbox the same way, each
-// message an idea (`moveWaitingToInbox`).
+// Removing or cancelling a topic, and cancelling its unit, moves what waits
+// for it to the inbox the same way, each message an idea
+// (`moveWaitingToInbox`).
 // The send report and the waiting mail are drawn by projections/mail.cjs.
 // ---------------------------------------------------------------------------
 
@@ -247,6 +248,28 @@ function moveWaitingToInbox(cwd, unit, topic) {
     fs.unlinkSync(statePath(cwd, message));
     return { message, idea };
   });
+}
+
+/**
+ * The waiting mail of every topic a unit's cancel takes moved to the inbox,
+ * each topic's once (`moveWaitingToInbox`): all but a postponed topic,
+ * whose mail waits for its return (10.1.8). Runs under the caller's lock
+ * and commits nothing.
+ * @param {string} cwd @param {Record<string, any>} manifest
+ * @returns {{message: string, idea: string}[]}
+ */
+function moveUnitMailToInbox(cwd, manifest) {
+  const unit = manifest.name;
+  /** @type {string[]} */
+  let topics;
+  try {
+    topics = fs.readdirSync(statePath(cwd, unit, 'topics')).sort();
+  } catch {
+    return [];
+  }
+  return topics
+    .filter((topic) => computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed')
+    .flatMap((topic) => moveWaitingToInbox(cwd, unit, topic));
 }
 
 /** The scope a pending commit on a topic's mailbox is retried in. @param {string} unit @param {string|null} phase @param {string} topic */
@@ -457,4 +480,4 @@ function sendReportOf(cwd, address, sent) {
   return sendReport({ unit, topic, named: topicTitle(manifest, topic), title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
 }
 
-module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, moveWaitingToInbox, sendReportOf };
+module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, moveWaitingToInbox, moveUnitMailToInbox, sendReportOf };

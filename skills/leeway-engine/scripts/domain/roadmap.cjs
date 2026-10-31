@@ -114,11 +114,12 @@ function noteOfSource(source) {
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
 // valve, origin = the session's container), `inbox:{file stem}` (moved off
 // the inbox with its note), `postpone:{work_unit}` (a topic that left an epic
-// for the roadmap).
+// for the roadmap), `topic:{work_unit}/{topic}` (a candidate the person took
+// at a one-topic unit's decided gate, 8.10.2).
 /** @param {*} origin */
 function validateOrigin(origin) {
-  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+)$/.test(origin)) {
-    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{file stem}, postpone:{work_unit}`);
+  if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+|topic:[^\s/]+\/[^\s/]+)$/.test(origin)) {
+    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{file stem}, postpone:{work_unit}, topic:{work_unit}/{topic}`);
   }
 }
 
@@ -708,36 +709,57 @@ function planRoadmapBatch(cwd, entries) {
  * @returns {RoadmapOpResult}
  */
 function addRoadmapItemsBatch(cwd, entries) {
-  const result = transactProjectAndMove(cwd, (manifest) => {
-    let plan;
-    try {
-      plan = planBatch(cwd, entries, roadmapItems(manifest));
-    } catch (err) {
-      throw new Error(`add-batch: ${messageOf(err)}`);
-    }
-    const { resolved, moves } = plan;
-    const roadmap = ensureRoadmap(manifest);
-    /** @type {string[]} */
-    const horizonsCreated = [];
-    for (const e of resolved) {
-      if (ensureHorizon(roadmap, e.horizon)) horizonsCreated.push(e.horizon);
-      /** @type {Record<string, unknown>} */
-      const item = { horizon: e.horizon, summary: e.summary, kind: e.kind, origin: e.origin };
-      if (e.sources.length > 0) item.sources = e.sources;
-      roadmap.items[e.name] = item;
-    }
-    /** @type {RoadmapOpResult} */
-    const out = {
-      op: 'add-batch',
-      added: resolved.map((e) => ({ name: e.name, horizon: e.horizon, kind: e.kind })),
-      horizons_created: horizonsCreated,
-      horizons: [...roadmap.horizons],
-      item_total: Object.keys(roadmap.items).length,
-    };
-    if (moves.length > 0) out.notes_moved = movedPaths(cwd, moves);
-    return { out, moves };
-  });
+  const result = transactProjectAndMove(cwd, (manifest) => applyBatch(cwd, manifest, entries, 'add-batch'));
   return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`, { moves: result.notes_moved ?? [] });
+}
+
+/**
+ * An item set planned (planBatch) and put on the loaded manifest's roadmap,
+ * horizons JIT-created in entry order — refused, in the words of `said`, as
+ * the plan refuses it. Answers the result and the notes to move.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {*} entries @param {string} said
+ * @returns {{out: RoadmapOpResult, moves: {from: string, to: string}[]}}
+ */
+function applyBatch(cwd, manifest, entries, said) {
+  let plan;
+  try {
+    plan = planBatch(cwd, entries, roadmapItems(manifest));
+  } catch (err) {
+    throw new Error(`${said}: ${messageOf(err)}`);
+  }
+  const { resolved, moves } = plan;
+  const roadmap = ensureRoadmap(manifest);
+  /** @type {string[]} */
+  const horizonsCreated = [];
+  for (const e of resolved) {
+    if (ensureHorizon(roadmap, e.horizon)) horizonsCreated.push(e.horizon);
+    /** @type {Record<string, unknown>} */
+    const item = { horizon: e.horizon, summary: e.summary, kind: e.kind, origin: e.origin };
+    if (e.sources.length > 0) item.sources = e.sources;
+    roadmap.items[e.name] = item;
+  }
+  /** @type {RoadmapOpResult} */
+  const out = {
+    op: 'add-batch',
+    added: resolved.map((e) => ({ name: e.name, horizon: e.horizon, kind: e.kind })),
+    horizons_created: horizonsCreated,
+    horizons: [...roadmap.horizons],
+    item_total: Object.keys(roadmap.items).length,
+  };
+  if (moves.length > 0) out.notes_moved = movedPaths(cwd, moves);
+  return { out, moves };
+}
+
+/**
+ * Items parked on the roadmap inside a transaction of the caller's — a
+ * one-topic unit's decided gate (8.10.2) — each `{name, horizon, summary,
+ * origin, sources}`, as add-batch lands them and refused as it refuses
+ * them, in the words of `said`; committing nothing.
+ * @param {string} cwd @param {Record<string, any>[]} entries @param {string} said
+ * @returns {RoadmapOpResult}
+ */
+function parkItems(cwd, entries, said) {
+  return transactProject(cwd, (manifest) => applyBatch(cwd, manifest, entries, said).out);
 }
 
 /**
@@ -1530,6 +1552,7 @@ module.exports = {
   postponeToRoadmap,
   addRoadmapItem,
   addRoadmapItemsBatch,
+  parkItems,
   editRoadmapItem,
   renameRoadmapItem,
   moveRoadmapItem,

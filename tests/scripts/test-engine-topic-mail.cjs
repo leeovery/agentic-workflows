@@ -19,7 +19,10 @@
 // taking no lock (10.S4); `topic answered`, a message named whole removed
 // once the topic holds the question it raised there (5.3.8) or one any
 // move of the unit's took there, wherever it stands since (9.S17); a pending
-// commit's retry, in a scope that commits what was left; and `render
+// commit's retry, in a scope that commits what was left; a cancel's waiting
+// mail — a topic's, and each of a cancelled unit's topics' but a postponed
+// one's — moved to the inbox as ideas, the receipt counting them (10.S11);
+// and `render
 // send-report`, the send report ending with the command that opens the
 // target (10.3.4, 27.S4). The waiting mail raised at a topic's opening is
 // test-engine-enter.cjs's, a closed decided worked afresh after a reopen
@@ -335,6 +338,37 @@ describe('topic send (10.1, 10.2.7)', () => {
     const message = scratch();
     assert.deepStrictEqual(cases.map(([[unit, topic]]) => refused(['topic', 'send', unit, topic, '--from', SENDER[unit] ?? unit, '--content', message, '--slug', 'lost-key'])), cases.map(([, error]) => error));
     assert.strictEqual(fs.existsSync(message), true);
+  });
+});
+
+describe('a cancel\'s waiting mail (10.S11, 10.1.6)', () => {
+  /** Where the idea of a message sent as `slug` lands on the frozen day. @param {string} slug */
+  const idea = (slug) => layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--${slug}.md`);
+
+  it('topic cancel moves each message waiting for the topic to the inbox as an idea, its title an H1 over the rest, in the cancel\'s own commit, and the receipt says how many', () => {
+    withFrozenClock(() => { send(EPIC, 'licence', 'lost-key'); send(EPIC, 'licence', 'refund-window'); });
+    const res = withFrozenClock(() => ok(dir, ['topic', 'cancel', EPIC, 'discovery', 'licence']));
+    assert.deepStrictEqual([res.inbox, readState(dir, idea('lost-key')), fs.existsSync(at(layout.mailbox(EPIC, 'licence', '001-lost-key.md')))],
+      [[at(idea('lost-key')), at(idea('refund-window'))], `# ${landed('First Run')}`, false]);
+    assert.deepStrictEqual(changed('HEAD').sort(), [
+      `A\t${idea('lost-key')}`, `A\t${idea('refund-window')}`,
+      `D\t${layout.mailbox(EPIC, 'licence', '001-lost-key.md')}`, `D\t${layout.mailbox(EPIC, 'licence', '002-refund-window.md')}`, `M\t${layout.manifest(EPIC)}`,
+    ]);
+    const receipt = (/** @type {string[]} */ flags) => output(dir, ['render', 'topic-receipt', `${EPIC}.discovery.licence`, '--verb', 'cancel', ...flags]);
+    assert.deepStrictEqual([receipt(['--inbox', '2']), receipt([])].map((out) => out.split('\n')[1]),
+      ['Cancelled "Licence". Its 2 waiting messages went to the inbox as ideas.', 'Cancelled "Licence".']);
+    assert.match(refused(['render', 'topic-receipt', `${EPIC}.discovery.licence`, '--verb', 'cancel', '--inbox', 'two']), /--inbox takes how many messages the cancel moved, got "two"$/);
+    assert.match(refused(['render', 'topic-receipt', `${EPIC}.discovery.first-run`, '--verb', 'reactivate', '--inbox', '1']), /--inbox counts what a cancel moved to the inbox — it takes --verb cancel$/);
+  });
+
+  it('workunit cancel moves each cancelled topic\'s waiting mail once, a postponed topic\'s left waiting for its return, and the receipt says how many', () => {
+    withFrozenClock(() => { send(EPIC, 'licence', 'lost-key'); send(EPIC, 'commercialization', 'refund-window'); send(EPIC, 'widgets', 'pin-it'); });
+    const res = withFrozenClock(() => ok(dir, ['workunit', 'cancel', EPIC]));
+    assert.deepStrictEqual([res.inbox, fs.readdirSync(at(layout.inbox('ideas', ''))).length, fs.existsSync(at(layout.mailbox(EPIC, 'widgets', '001-pin-it.md')))],
+      [[at(idea('refund-window')), at(idea('lost-key'))], 2, true]);
+    assert.deepStrictEqual(changed('HEAD').filter((line) => line.includes('.inbox/')).sort(), [`A\t${idea('lost-key')}`, `A\t${idea('refund-window')}`]);
+    assert.strictEqual(output(dir, ['render', 'workunit-receipt', EPIC, '--verb', 'cancel', '--inbox', '2']).split('\n')[1],
+      '"Fumi" marked as cancelled. Its 2 waiting messages went to the inbox as ideas.');
   });
 });
 

@@ -4,8 +4,13 @@
 // A topic's decided gate answered (leeway-engine/scripts/domain/
 // decided.cjs): `engine decided yes`, the person's yes landing each line as
 // a product-wide decision of its own at the unit's level (8.S25), the
-// candidates not struck on the epic's map, the topic decided and what comes
-// next, the counts it covers in words; a refused yes writing nothing, and a yes run again after a kill
+// candidates not struck on the epic's map with their briefs (8.S59), by
+// every check `topic add-batch` makes, a roadmap twin among them (8.1.6),
+// or in a unit with one topic parked on the roadmap (8.S31), the struck
+// names recorded as the person's answer and refused when staged again, a
+// name the person asks back added as a topic (8.S60), the topic decided and
+// what comes next, the counts it covers in words; a refused yes writing
+// nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
 // yes refused with nothing staged, a verdict still to ask, or no
 // conversation; and a product-record line changed through a comment, never
@@ -20,24 +25,29 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, refusedPristine, readManifest, statePath, lastMessage, killedAt } = require('./engine-harness.cjs');
+const { ok, refusedPristine, readManifest, readState, statePath, layout, stateGit, lastMessage, killedAt } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
-const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, sectionOf, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, SOLO_LOG, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, sectionOf, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
-const { close, payload, staged, answer, run, reverse } = decidedHelpers(dir);
+const { close, payload, candidate, staged, answer, run, reverse } = decidedHelpers(dir);
 const { entries, full } = ledgerHelpers(dir);
+
+/** The paths the state's last commit wrote. */
+const committedPaths = () => stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n');
 
 describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
   it('stages the lines and the candidates in the cache, nothing on the ledger or the map, then lands each line as the person\'s product-wide decision, the candidates not struck on the map, the topic decided, and the epic\'s menu next', () => {
     close();
+    const taken = candidate('removing-fumi', 'Nothing decides what removing Fumi takes back.');
     const before = entries().length;
     const out = staged({
       lines: [
         { text: 'Sync stays off until you turn it on.', why: 'The sync call holds for the whole product.', widens: NOTE_MAP.sync.answer },
         { text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer },
       ],
-      candidates: [{ name: 'removing-fumi', reason: 'Nothing decides what removing Fumi takes back.' }, { name: 'dock-icon', reason: 'S.' }],
+      candidates: [taken, candidate('dock-icon', 'S.')],
     });
     assert.strictEqual(entries().length, before, 'nothing reaches the ledger before the yes (P10)');
     assert.ok(!('removing-fumi' in readManifest(dir(), UNIT).phases.discovery.items), 'nor the map');
@@ -63,12 +73,75 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
       '8.S28: with no product conversation, the product record holds the lines the yes landed and nothing else');
     const manifest = readManifest(dir(), UNIT);
     assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
+    assert.strictEqual(readState(dir(), layout.unit(UNIT, 'topics/removing-fumi/brief.md')), '# removing-fumi\n\nWhat it is, where it was read, why it matters, its open questions.\n',
+      '8.S59: the taken candidate lands with its brief, the draft installed');
+    assert.ok(!fs.existsSync(taken.brief), 'the draft is consumed');
     assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
+    assert.deepStrictEqual(manifest.phases.discovery.dismissed, ['dock-badge', 'dock-icon'], '8.S60: the struck candidate is the person\'s answer, beside the names struck before');
     assert.strictEqual(manifest.phases.discussion.items['note-window'].status, 'completed');
     assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
-    assert.deepStrictEqual([res.lines.length, res.candidates, res.warnings], [2, ['removing-fumi'], undefined]);
+    assert.deepStrictEqual([res.lines.length, res.candidates, res.struck, res.parked, res.warnings], [2, ['removing-fumi'], ['dock-icon'], undefined, undefined]);
     assert.strictEqual(lastMessage(dir()), 'decided(fumi): note-window');
+    assert.deepStrictEqual(committedPaths(), [layout.manifest(UNIT), layout.brief(UNIT, 'removing-fumi')].sort(), 'the yes commits the map and the brief it installed');
     assert.ok(!fs.existsSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json')), 'the staged payload goes');
+  });
+
+  it('8.S60: refuses a name the person struck when a later close stages it, and the person adds it back as a new topic', () => {
+    close();
+    staged({ lines: [], candidates: [candidate('dock-icon', 'S.')] });
+    ok(dir(), ['decided', 'strike', UNIT, 'note-window', '1'], { env: SESSION });
+    run(answer('decided', 'y'));
+    markAllButTheClosingPass(dir(), UNIT, 'space-homing');
+    close(UNIT, 'space-homing');
+    assert.strictEqual(refusedPristine(dir(), ['render', 'decided', `${UNIT}.space-homing`, '--file', payload({ lines: [], candidates: [candidate('dock-icon', 'Again.')] })], { env: SESSION }).error,
+      'render decided: the candidates: "dock-icon" was previously dismissed from this map — nothing was added; the person re-adds it on the map');
+    ok(dir(), ['topic', 'add', UNIT, 'dock-icon', '--summary', 'The person asked for it.', '--brief', candidate('dock-icon', 'S.').brief, '--re-add'], { env: SESSION });
+    assert.deepStrictEqual([readManifest(dir(), UNIT).phases.discovery.items['dock-icon'].summary, readManifest(dir(), UNIT).phases.discovery.dismissed], ['The person asked for it.', ['dock-badge']]);
+  });
+
+  it('lands the candidates by every check topic add-batch makes: a twin of a waiting roadmap item, appearing since the screen, refuses the yes; taken in, the item leaves the roadmap with it (8.1.6)', () => {
+    close();
+    const line = { text: 'Sync stays off until you turn it on.', why: 'The sync call holds for the whole product.', widens: NOTE_MAP.sync.answer };
+    staged({ lines: [line], candidates: [candidate('widget-sync', 'Nothing owns syncing widgets.')] });
+    ok(dir(), ['roadmap', 'add', 'widget-sync', '--horizon', 'later', '--summary', 'Sync widgets.'], { env: SESSION });
+    const [before, ledger] = [readState(dir(), layout.manifest(UNIT)), entries().length];
+    assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error,
+      'decided yes: the candidates: "widget-sync" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap widget-sync, or name the topic apart');
+    assert.deepStrictEqual([readState(dir(), layout.manifest(UNIT)), entries().length], [before, ledger], 'the twin is checked before the line lands');
+    staged({ lines: [line], candidates: [{ ...candidate('widget-sync', 'Nothing owns syncing widgets.'), from_roadmap: 'widget-sync' }] });
+    run(answer('decided', 'y'));
+    assert.deepStrictEqual([readManifest(dir(), UNIT).phases.discovery.items['widget-sync'].source, ok(dir(), ['roadmap', 'state']).items.find((/** @type {{name: string}} */ i) => i.name === 'widget-sync').state],
+      ['topic:note-window,roadmap:widget-sync', 'in-flight']);
+    assert.ok(committedPaths().includes(layout.projectManifest), 'the project manifest rides the yes\'s commit');
+  });
+
+  it('8.S31: in a unit with one topic, the yes parks each candidate standing on the horizon the person named, from the topic and pointing into its log; a struck one is recorded as the person\'s answer', () => {
+    close(SOLO, SOLO);
+    const shown = staged({ lines: [], candidates: [{ name: 'streak-freeze', reason: 'Nothing decides what a missed day costs.', horizon: 'later' }, { name: 'tally-widget', reason: 'S.', horizon: 'next' }] }, `${SOLO}.${SOLO}`);
+    assert.match(sectionOf(shown, 'DISPLAY: decided'), /\nTO THE ROADMAP \(2\)\n {2}├─ ○ Streak Freeze +\[later\]\n/);
+    assert.match(sectionOf(shown, 'MENU: decided'), /^Your yes marks Solo decided, with the two roadmap items\.$/m);
+    assert.match(sectionOf(shown, 'MENU: decided'), /^\*\*`s\/strike`\*\* +→ Strike a candidate — it doesn't go on the roadmap$/m);
+    ok(dir(), ['decided', 'strike', SOLO, SOLO, '2'], { env: SESSION });
+
+    const res = run(answer('decided', 'y'));
+    assert.deepStrictEqual([res.candidates, res.parked, res.struck], [['streak-freeze'], [{ name: 'streak-freeze', horizon: 'later' }], ['tally-widget']]);
+    const { roadmap } = JSON.parse(readState(dir(), layout.projectManifest));
+    assert.deepStrictEqual([roadmap.horizons, roadmap.items['streak-freeze'], roadmap.items['tally-widget']],
+      [['later'], { horizon: 'later', summary: 'Nothing decides what a missed day costs.', kind: 'idea', origin: `topic:${SOLO}/${SOLO}`, sources: [SOLO_LOG] }, undefined]);
+    assert.deepStrictEqual(readManifest(dir(), SOLO).phases.discovery, { dismissed: ['tally-widget'] }, 'the struck name is the person\'s answer, and the unit gains no map');
+    assert.deepStrictEqual(committedPaths(), [layout.projectManifest, layout.manifest(SOLO)].sort(), 'the park rides the yes\'s commit');
+  });
+
+  it('refuses a one-topic unit\'s candidate the person struck before, and one the roadmap holds already, writing nothing', () => {
+    close(SOLO, SOLO);
+    const manifest = readManifest(dir(), SOLO);
+    createManifest(dir(), SOLO, { ...manifest, phases: { ...manifest.phases, discovery: { dismissed: ['tally-widget'] } } });
+    ok(dir(), ['roadmap', 'add', 'streak-freeze', '--horizon', 'later', '--summary', 'Freeze a streak.'], { env: SESSION });
+    const refused = (/** @type {string} */ name) => refusedPristine(dir(), ['render', 'decided', `${SOLO}.${SOLO}`, '--file', payload({ lines: [], candidates: [{ name, reason: 'R.', horizon: 'next' }] })], { env: SESSION }).error;
+    assert.deepStrictEqual([refused('tally-widget'), refused('streak-freeze')], [
+      'render decided: the candidates: "tally-widget" was struck before — nothing was added; the person\'s answer stands',
+      'render decided: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name',
+    ]);
   });
 
   it('checks every line before it writes one: a refused yes lands nothing, and once staged again each line lands once', () => {
@@ -82,8 +155,8 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     const before = entries().length;
     assert.match(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error, /^decided yes: line 2 cannot land — .*; it is staged again with --file$/);
     assert.strictEqual(entries().length, before, 'line 1 never landed');
-    staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [{ name: 'removing-fumi', reason: 'R.' }] });
-    ok(dir(), ['discovery-map', 'add', UNIT, 'removing-fumi', 'discussion', '--summary', 'Added at the map meanwhile.'], { env: SESSION });
+    staged({ lines: [lines[0], { ...lines[1], text: 'Sync is off until turned on.', widens: replacement }], candidates: [candidate('removing-fumi', 'R.')] });
+    ok(dir(), ['topic', 'add', UNIT, 'removing-fumi', '--summary', 'Added at the map meanwhile.', '--brief', candidate('removing-fumi', 'R.').brief], { env: SESSION });
     assert.strictEqual(refusedPristine(dir(), ['decided', 'yes', UNIT, 'note-window'], { env: SESSION }).error,
       'decided yes: the candidates: "removing-fumi" is already on the map — nothing was added; edit it, or pick a different name');
     assert.strictEqual(entries().length, before, 'a candidate the map now refuses lands no line either');

@@ -34,6 +34,19 @@ function joined(parts) {
   return parts.filter(Boolean).join('\n');
 }
 
+/** @param {number} n @param {string} noun */
+const counted = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+/**
+ * What a removal or a cancel says of the waiting mail it moved to the inbox
+ * (8.8.16, 10.1.6): nothing where none waited.
+ * @param {number} n
+ * @returns {string[]}
+ */
+function inboxLine(n) {
+  return n > 0 ? [`Its ${counted(n, 'waiting message')} went to the inbox as ${n === 1 ? 'an idea' : 'ideas'}.`] : [];
+}
+
 /** @type {Record<string, string>} */
 const TYPE_LABELS = {
   feature: 'Feature',
@@ -51,10 +64,10 @@ const TYPE_LABELS = {
  * caller's menu step.
  * @param {'complete'|'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit @param {string|undefined} workType
- * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean}} [opts]
+ * @param {{pipeline?: boolean, skippedReview?: boolean, warn?: boolean, inbox?: number}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false } = {}) {
+function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedReview = false, warn = false, inbox = 0 } = {}) {
   const name = titlecase(workUnit);
   if (verb === 'complete') {
     if (!pipeline) return confirmation(`"${name}" marked as completed.`);
@@ -69,7 +82,7 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
-      confirmation(`"${name}" marked as cancelled.`),
+      confirmation([`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' ')),
     ]);
   }
   if (verb === 'reactivate') {
@@ -90,13 +103,14 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
  * advisory alone, empty without `--warn`. The rest confirm the unit by name:
  * the postpone names the horizon it waits under, and the reactivate and the
  * pull forward's restore the statuses their items returned to (none for a
- * never-started topic).
+ * never-started topic), and the cancel how many waiting messages it moved to
+ * the inbox (10.1.6).
  * @param {'complete'|'supersede'|'cancel'|'reactivate'|'postpone'|'restore'} verb
  * @param {string} name  the topic or specification as screens title it
- * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null}} [opts]
+ * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null, inbox?: number}} [opts]
  * @returns {string}
  */
-function topicReceipt(verb, name, { warn = false, restored = [], horizon = null } = {}) {
+function topicReceipt(verb, name, { warn = false, restored = [], horizon = null, inbox = 0 } = {}) {
   if (verb === 'complete') {
     return warn
       ? warningBlock('Knowledge indexing warning', 'The artifact is saved. The next start retries the indexing.', CONTINUE_INSTRUCTION)
@@ -110,7 +124,7 @@ function topicReceipt(verb, name, { warn = false, restored = [], horizon = null 
   if (verb === 'cancel') {
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The topic is cancelled. The next start removes its chunks from the knowledge base.') : null,
-      confirmation(`Cancelled "${name}".`),
+      confirmation([`Cancelled "${name}".`, ...inboxLine(inbox)].join(' ')),
     ]);
   }
   if (verb === 'postpone') {
@@ -274,9 +288,6 @@ function absorbContinuationMenu(feature, epic) {
   );
 }
 
-/** @param {number} n @param {string} noun */
-const counted = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
-
 /** @typedef {import('../discovery-map.cjs').MapChange} MapChange */
 /** @typedef {import('../discovery-map.cjs').SequenceResult} SequenceResult */
 
@@ -296,7 +307,7 @@ const MAP_LINES = {
   /** @param {MapChange} c */
   remove: (c) => [
     `Removed "${c.title}" from the map.`,
-    ...(c.inbox?.length ? [`Its ${counted(c.inbox.length, 'waiting message')} went to the inbox as ${c.inbox.length === 1 ? 'an idea' : 'ideas'}.`] : []),
+    ...inboxLine(c.inbox?.length ?? 0),
     ...(c.roadmap_returned ?? []).map(({ name, horizon }) => `"${titlecase(name)}" is back on the roadmap under ${horizon}.`),
   ].join(' '),
   /** @param {SequenceResult} c */

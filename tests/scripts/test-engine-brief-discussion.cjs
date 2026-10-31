@@ -15,6 +15,7 @@
 // 5.S40), the open question by any wording — its dispatch bound to it, and
 // a synthesis briefed on its pair's — a dive's kind and a read's file,
 // whether a gap review has run since the topic's last decision (9.9.6), the
+// names the person struck or removed (8.10.11), the
 // dispatch's report, a perspective's lens and a synthesis's perspectives
 // verbatim. The plain search, `engine brief plain-search`, is briefed from
 // the conversation's last knowledge query alone (22.6.10). Every refusal
@@ -22,7 +23,7 @@
 // or effort, which each role's agent's definition fixes (its roster is
 // test-engine-brief.cjs's); the perspective's definition names the engine's
 // polarity pairs, the deep dive's its kinds, the closing-pass reader's its
-// product lane.
+// product lane and every part of its brief (26.S15).
 //
 // Layer: verb. World: an epic with three topics under discussion, written
 // once through the ledger's verbs — on the note window a decision replaced,
@@ -308,6 +309,16 @@ describe('the closing-pass reader\'s brief (9.9)', () => {
     return { gap: section(brief, 'The gap review'), others: section(brief, 'Other topics\' records') };
   };
 
+  it('8.S60: carries the names the person struck or removed, none recorded where there are none (8.10.11)', () => {
+    const reader = dispatch('closing-pass');
+    const struck = () => section(issued(['closing-pass-reader', UNIT, TOPIC, '--agent', reader.id]).brief, 'What the person struck or removed');
+    const none = struck();
+    ok(dir, ['topic', 'add', UNIT, 'dock-badge', '--summary', 'A badge on the dock.', '--brief', writeState(dir, layout.cache('scratch', 'brief.md'), '# Dock badge\n')]);
+    ok(dir, ['topic', 'remove', UNIT, 'dock-badge']);
+
+    assert.deepStrictEqual([none, struck()], ['None recorded.', '- dock-badge']);
+  });
+
   it('5.S40: a cancelled topic\'s contradicting decision is not read; once reactivated, it is', () => {
     const reader = dispatch('closing-pass');
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'menu-bar']);
@@ -430,6 +441,14 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
     const definition = fs.readFileSync(path.join(AGENTS, 'leeway-deep-dive.md'), 'utf8');
 
     assert.deepStrictEqual([...definition.matchAll(/^- \*\*([a-z]+)\*\* — /gm)].map(([, kind]) => kind), [...DIVE_KINDS]);
+  });
+
+  it('26.S15: the closing-pass reader\'s definition names every part of its brief — the gap review and what the person struck among them — and looks for work no topic owns', () => {
+    const definition = fs.readFileSync(path.join(AGENTS, 'leeway-closing-pass-reader.md'), 'utf8');
+    const parts = [...template('closing-pass-reader').matchAll(/^# (.+)$/gm)].map(([, part]) => part);
+
+    assert.deepStrictEqual(parts.filter((part) => !definition.includes(`- **${part}** — `)), []);
+    assert.deepStrictEqual([parts.includes('The gap review'), parts.includes('What the person struck or removed'), /^3\. \*\*Work the decisions create that no topic owns\.\*\*$/m.test(definition)], [true, true, true]);
   });
 
   it('the closing-pass reader marks a line for the product record as a lane of its own', () => {
