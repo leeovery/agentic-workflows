@@ -1,10 +1,10 @@
 'use strict';
 
 // The world the roadmap's suites share (test-engine-roadmap.cjs,
-// test-engine-roadmap-topic-verbs.cjs): a project with an empty project
-// manifest committed, a suite's own fixture on top (`roadmapWorld`); the
-// roadmap verbs answering (`runOk`, `runFail`); and the reads their
-// assertions make of the project manifest and the state.
+// test-engine-roadmap-inbox.cjs, test-engine-roadmap-topic-verbs.cjs): a
+// project with an empty project manifest committed, a suite's own fixture on
+// top (`roadmapWorld`); the roadmap verbs answering (`runOk`, `runFail`); and
+// the reads their assertions make of the project manifest and the state.
 
 require('./hermetic-env.cjs');
 

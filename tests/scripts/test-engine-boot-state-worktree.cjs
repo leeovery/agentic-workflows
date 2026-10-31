@@ -82,6 +82,8 @@ describe('the state worktree (4.S29, 22.S3)', () => {
 
 // --- a moved or copied project folder ------------------------------------------------
 
+const CONFIG_HOOK_EVENTS = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit', 'reference-transaction', 'post-checkout', 'post-merge', 'post-index-change'];
+
 /** Every file git keeps for a project's worktrees, and each worktree's link, by path. @param {string} main @param {string[]} worktrees */
 function links(main, worktrees) {
   /** @type {Record<string, string>} */
@@ -98,14 +100,18 @@ function links(main, worktrees) {
 }
 
 describe('a project folder moved or copied', () => {
-  it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again', () => {
+  it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again — none of the config\'s hooks firing, though its link was broken when boot first read them', () => {
     const { main, root } = setUp();
     createFile(root, layout.projectManifest, '{"kept":true}\n');
     const moved = path.join(world(), 'moved');
     fs.renameSync(main, moved);
+    const fired = path.join(world(), 'hooks-fired');
+    git(moved, ['config', 'hook.guard.command', `echo "$PWD" >> "${fired}"`]);
+    for (const event of CONFIG_HOOK_EVENTS) git(moved, ['config', '--add', 'hook.guard.event', event]);
 
     const res = boot(moved);
 
+    assert.ok(!fs.existsSync(fired), `hooks fired: ${fs.existsSync(fired) ? fs.readFileSync(fired, 'utf8') : ''}`);
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     const movedRoot = statePath(moved);
     assert.deepStrictEqual(placed(movedRoot), IN_PLACE);

@@ -21,7 +21,9 @@
 // them read again. Outside a verb a runner reads them at its first call that
 // needs them, and again after its own `config` call. No read outlives its
 // verb, so a process running many verbs — the test harness, over many
-// worlds — never hands one verb's read to another.
+// worlds — never hands one verb's read to another. Only a read git made is
+// kept: one it could not make — in a folder whose link a moved project
+// broke, which boot then relinks — is made again at the next call.
 //
 // Files go into git and come out of it as the bytes they are, whatever the
 // person's config says: line endings are never converted (`core.autocrlf`),
@@ -132,29 +134,30 @@ function withVerbReads(fn) {
 }
 
 /**
- * The names of the hooks the config defines at `cwd` (`hook.<name>.command`),
- * none where git reads none.
+ * The names of the hooks the config defines at `cwd` (`hook.<name>.command`):
+ * none where it defines none — git's exit 1 — and null where git could not
+ * read it.
  * @param {string} cwd @param {Record<string, string>} env
- * @returns {string[]}
+ * @returns {string[]|null}
  */
 function configuredHookNames(cwd, env) {
   const res = spawnSync('git', ['config', '-z', '--name-only', '--get-regexp', '^hook\\..+\\.command$'], { cwd, env, encoding: 'utf8', timeout: CALL_TIMEOUT_MS });
-  if (res.error || res.status !== 0) return [];
+  if (res.error || (res.status !== 0 && res.status !== 1)) return null;
   return res.stdout.split('\0').filter((key) => key !== '').map((key) => key.slice('hook.'.length, -'.command'.length));
 }
 
 /**
- * The hooks the config defines at `cwd`, as `reads` holds them, read where
- * it holds none.
+ * The hooks the config defines at `cwd`, as `reads` holds them, else read
+ * and kept there — none where git could not read them, kept nowhere.
  * @param {HookReads} reads @param {string} cwd @param {Record<string, string>} env
  * @returns {string[]}
  */
 function hooksAt(reads, cwd, env) {
-  let names = reads.get(cwd);
-  if (names === undefined) {
-    names = configuredHookNames(cwd, env);
-    reads.set(cwd, names);
-  }
+  const held = reads.get(cwd);
+  if (held !== undefined) return held;
+  const names = configuredHookNames(cwd, env);
+  if (names === null) return [];
+  reads.set(cwd, names);
   return names;
 }
 

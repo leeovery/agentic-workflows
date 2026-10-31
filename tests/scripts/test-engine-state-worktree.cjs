@@ -6,11 +6,12 @@
 // `leeway-state` checked out at `.leeway/` in the main checkout and locked,
 // found from any worktree through the common git directory; every call made
 // with the caller's repository environment cleared, and within a time limit;
-// the config's hooks read once per verb and cwd, and for no command that
-// fires none; creating the state, inspecting it, each repair on its own, the remote
-// asked, and a branch holding code history. The locks are
-// test-engine-state-lock.cjs's; the commit, its push and its hooks off,
-// test-engine-state-commit.cjs's.
+// the config's hooks read afresh by each verb and after a `config` call, and
+// for no command that fires none; creating the state, inspecting it, each
+// repair on its own, the remote asked, and a branch holding code history. The
+// locks are test-engine-state-lock.cjs's; the commit, its push and its hooks
+// off, test-engine-state-commit.cjs's; one read of the hooks per call and
+// folder, test-engine-run.cjs's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote (state-worktree-world.cjs).
@@ -177,16 +178,6 @@ describe('the isolated runner', () => {
     for (const call of [() => runner.tryRun(['wait'], { timeoutMs: 100, env: waits }), () => runner.run(['wait'], { timeoutMs: 100, env: waits })]) {
       assert.throws(call, (/** @type {Error} */ err) => err instanceof GitError && err.message === 'git wait timed out after 0.1s');
     }
-  });
-
-  it('shares one read of the config\'s hooks among a verb\'s runners at a cwd, each cwd read on its own', () => {
-    const { main, root } = codeProject(world(), { state: true });
-
-    const { commands } = traced(() => withVerbReads(() => {
-      for (const cwd of [main, root, main, root]) isolatedGit(cwd).run(['var', '-l']);
-    }));
-
-    assert.strictEqual(commands.filter(readsHooks).length, 2);
   });
 
   it('reads none of the config\'s hooks for a command no form of which fires one', () => {

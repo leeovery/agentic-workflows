@@ -9,7 +9,10 @@
 // and that nothing of it survives the call. These tests hold that boundary:
 // two calls in two directories never cross, an environment key is held for
 // one call and restored after it, the width memo resolves per call, and a
-// handler that stops the command never stops the process.
+// handler that stops the command never stops the process. Within a call, its
+// git runners share one read of the config's hooks in each folder they run
+// in: boot's many git calls read them once in the project and once in the
+// state.
 //
 // A command that waits on the embedding provider answers through
 // `engine.runAsync`, the environment held until it settles; `run` refuses to
