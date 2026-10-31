@@ -10,15 +10,16 @@
 // navigation skill and the bridge `{original} · {work-unit}`, the roadmap
 // `{original} · roadmap`, and leeway puts the original back through boot's
 // `repair`. Leaving a place is never an event: the name changes on arrival,
-// and at session end, where `session cleanup` restores it. A resumed session gets its label back: `session resume`, a
-// SessionStart hook fired on `claude --resume`, re-applies the
-// conversation's position (position.cjs — recorded by the same arrivals,
-// labels on or off, and outliving the session) where the project has its
-// work unit. The feature is a display courtesy, never state: for the user
-// who has not opted in, or outside tmux, or on any tmux error, every path
-// degrades to a no-op JSON response and the label never gates a flow. (A
-// place the project lacks fails loudly whatever the opt-in — that is an
-// authoring bug, not an environment condition.)
+// and at session end, where `session cleanup` restores it. A resumed
+// session gets its label back: `session resume`, a SessionStart hook fired
+// on `claude --resume`, re-applies the conversation's position
+// (position.cjs — recorded by the same arrivals, labels on or off, and
+// outliving the session) where the project has its work unit. The feature
+// is a display courtesy, never state: for the user who has not opted in, or
+// outside tmux, or on any tmux error, every path degrades to a no-op JSON
+// response and the label never gates a flow. (A place the project lacks
+// fails loudly whatever the opt-in — that is an authoring bug, not an
+// environment condition.)
 //
 // Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
 // means never asked, which is what leeway's one-time prompt keys on

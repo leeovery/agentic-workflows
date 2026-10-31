@@ -214,10 +214,8 @@ describe('pipeline simulation: workunit', () => {
     assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
-    // the project manifest, `product` and `roadmap` are the project's own
-    // places.
+    // the project manifest, `roadmap` is the project's own place.
     sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
-    sim.refuses(['workunit', 'create', 'product', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
 
     // Start's gates render at any state, each at its own moment.

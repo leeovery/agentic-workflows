@@ -275,11 +275,6 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });
 
-  it('opens the topic all the same while a brownfield offer\'s research is owed — start never diverts to it (8.12.13)', () => {
-    createFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
-    assert.strictEqual(inline(dir, ['topic', 'fumi', 'commercialization']), inlineAnswer('leeway-discussion-process', 'epic fumi commercialization', '→ Discussion · commercialization'));
-  });
-
   it('refuses a call of another shape, and a quick-fix, which has no topics to open, in words a person reads', () => {
     createManifest(dir, 'typo', { work_type: 'quick-fix' });
     refused(dir, ['topic', 'fumi'], /^Usage: engine handoff topic <work-unit> <topic>$/);
