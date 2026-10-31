@@ -216,10 +216,8 @@ describe('engine experiment create — the spawn', () => {
 
 describe('the spawn commits its record and hands the conversation on', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); setup(dir); });
+  beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
-
-  const SESSION = { CLAUDE_CODE_SESSION_ID: 'spawn-session' };
 
   /** The spawn gate over `unit`'s `topic`, rendered, then `key` answered: the row's next. @param {string} unit @param {string} topic @param {string} key */
   function answered(unit, topic, key) {
@@ -257,7 +255,8 @@ describe('the spawn commits its record and hands the conversation on', () => {
   it('yes takes a single-topic unit\'s discussion straight into the laboratory for its topic', () => {
     writeManifest(dir, 'solo', { name: 'solo', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { solo: { status: 'in-progress' } } } } });
     commitAll(dir, 'solo');
-    engine(dir, ['experiment', 'create', 'solo', 'solo', '--slug', 'tally-cost', '--from', 'discussion', '--problem', problemScratch(dir, 'tally-cost')]);
+    const question = engine(dir, ['ledger', 'ask', 'solo.discussion.solo'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'What does a tally cost?' }) }).id;
+    engine(dir, ['experiment', 'create', 'solo', 'solo', '--slug', 'tally-cost', '--from', 'discussion', '--problem', problemScratch(dir, 'tally-cost'), '--question', question]);
     assert.deepStrictEqual(answered('solo', 'solo', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['feature', 'solo', 'solo'] });
   });
 });
