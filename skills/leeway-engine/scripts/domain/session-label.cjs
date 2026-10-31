@@ -5,9 +5,11 @@
 // session to show where the workflow session is working. Every place labels
 // itself on arrival: a phase's entry — `enter`, or a process skill's Step 0
 // where the phase is not entered through it — applies `{original} ·
-// {work-unit} · {phase} · {topic}`, a navigation skill and the bridge
-// `{original} · {work-unit}`, the roadmap and the baseline `{original} ·
-// roadmap` / `{original} · baseline`, and leeway puts the original
+// {work-unit} · {phase} · {topic}`, the topic left out where it is the
+// work unit, the product's conversation's entry `{original} · product`, a
+// navigation skill and the bridge `{original} · {work-unit}`, the roadmap
+// and the baseline `{original} · roadmap` / `{original} · baseline`, and
+// leeway puts the original
 // back through boot's `repair`. Leaving a place is never an event: the name
 // changes on arrival, and at session end, where `session cleanup` restores
 // it. A resumed session gets its label back: `session resume`, a

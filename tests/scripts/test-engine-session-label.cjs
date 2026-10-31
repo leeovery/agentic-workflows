@@ -8,7 +8,7 @@
 // `conversation end` regardless; SessionStart: `session resume` while labels
 // are on; PreToolUse: the layout, brief and shell hooks' groups regardless), the
 // per-checkout stash, the arrival forms (a work unit alone, the
-// roadmap and baseline identities), phase-hop recomposition, peer-checkout
+// roadmap, baseline and product identities), phase-hop recomposition, peer-checkout
 // isolation, user-rename adoption, id drift across a server restart (chain
 // resolution, drifted restore, boot repair, orphan pruning), owner identity,
 // the repair's own-label restore, restore ownership, the conversation's
@@ -312,14 +312,20 @@ describe('engine session label', () => {
     assert.strictEqual(stash.applied, 'proj-abc · pay');
   });
 
-  it('labels the roadmap and the baseline by identity — project-level places with no directory', () => {
+  it('labels the roadmap, the baseline and the product\'s conversation by identity — project-level places with no directory', () => {
     optIn();
-    for (const place of ['roadmap', 'baseline']) {
+    for (const place of ['roadmap', 'baseline', 'product']) {
       assert.ok(!fs.existsSync(path.join(dir, '.leeway', place)), `${place} has no work-unit directory`);
       const res = engine(['session', 'label', place]);
       assert.strictEqual(res.name, `proj-abc · ${place}`);
       assert.strictEqual(tmuxName(), `proj-abc · ${place}`);
     }
+  });
+
+  it('labels an epic\'s discovery at the unit, its topic left out', () => {
+    optIn();
+    assert.strictEqual(engine(['session', 'label', 'pay', 'discovery', 'pay']).name, 'proj-abc · pay · discovery');
+    assert.strictEqual(engine(['session', 'label', 'product']).name, 'proj-abc · product', 'a level move relabels from the true original');
   });
 
   it('a phase label after an arrival, and an arrival after a phase, both recompose from the true original', () => {

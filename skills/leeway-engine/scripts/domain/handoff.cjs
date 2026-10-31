@@ -127,6 +127,8 @@ function phaseTarget(phase) {
 
 /** @type {Record<string, Target>} */
 const TARGETS = {
+  // No unit named is the product's conversation, where every start lands; an
+  // epic named is its own discovery.
   'leeway-discovery': {
     usage: `<work-type|${NO_ARGUMENT}> <${NO_ARGUMENT}|epic> [<inbox-paths|${NO_ARGUMENT}>]`,
     counts: [2, 3],

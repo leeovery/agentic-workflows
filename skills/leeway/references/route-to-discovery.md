@@ -4,7 +4,7 @@
 
 ---
 
-Hand new work to discovery. Every new-work pick routes here — the work type is a pre-seed (a hint discovery still confirms), or `none` for the unknown-shape `s/start` path.
+Hand new work to discovery at no work unit, the product's conversation. Every new-work pick routes here: the work type is a pre-seed (a hint discovery still confirms), or `none` for the unknown-shape `s/start` path.
 
 Parameters the caller provides via context before loading:
 

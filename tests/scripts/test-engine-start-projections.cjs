@@ -204,6 +204,7 @@ describe('start projections: menu', () => {
       '**`5`**               → Continue "Caching" — *cross-cutting, discussion*',
       `${NB(18)}*(in-progress)*`,
       '**`6`**               → Continue "Quiz Competition V1" — *epic*',
+      '**`p/product`**       → Talk about the product',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -226,6 +227,7 @@ describe('start projections: menu', () => {
       '',
       '**`1`**               → Continue "Auth Flow" — *feature, ready for*',
       `${NB(18)}*discussion*`,
+      '**`p/product`**       → Talk about the product',
       '**`s/start`**         → Start something new (not sure what kind yet)',
       '**`f/feature`**       → Start new feature',
       '**`e/epic`**          → Start new epic',
@@ -271,6 +273,7 @@ describe('start projections: menu', () => {
         ['4', 'continue_work_unit', 'rename-api', '/leeway-continue-linear rename-api', null],
         ['5', 'continue_work_unit', 'caching', '/leeway-continue-linear caching', null],
         ['6', 'continue_work_unit', 'quiz-competition-v1', '/leeway-continue-epic quiz-competition-v1', null],
+        ['p', 'open_product', null, '/leeway-discovery none none', null],
         ['s', 'start_new', null, null, 'none'],
         ['f', 'start_new', null, null, 'feature'],
         ['e', 'start_new', null, null, 'epic'],
@@ -309,6 +312,7 @@ describe('start projections: empty state', () => {
       DOTS,
       '**`◆ What would you like to start?`**',
       '',
+      '**`p/product`**       → Talk about the product',
       "**`s/start`**         → Not sure what kind yet — describe it and we'll",
       `${NB(18)}shape it`,
       '**`f/feature`**       → Single topic: discussion → spec → plan →',
@@ -326,6 +330,7 @@ describe('start projections: empty state', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.pre_seed || null]),
       [
+        ['p', 'open_product', null],
         ['s', 'start_new', 'none'],
         ['f', 'start_new', 'feature'],
         ['e', 'start_new', 'epic'],
@@ -352,7 +357,7 @@ describe('start projections: empty state', () => {
     assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and triage its items \(1 item\)/.test(menu.rendered));
     assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
-      menu.keys.map((k) => k.action).slice(6),
+      menu.keys.map((k) => k.action).slice(7),
       ['view_inbox', 'view_completed', 'open_help']
     );
   });
@@ -815,8 +820,32 @@ describe('start projections: roadmap rows', () => {
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
 
     openProductSession(dir, '002');
-    const resumed = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
-    assert.strictEqual(drawLabel(resumed.label), 'Resume the product session — *roadmap, in progress*');
+    const open = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
+    assert.strictEqual(drawLabel(open.label), 'Open the product roadmap', 'an open product session is carried on through p, never the roadmap');
+  });
+
+  it('both menus carry the p/product row always, handing into discovery at no unit, with its session count and last date once it has sessions (18.2.13, 18.S70)', () => {
+    const productRow = (m) => m.keys.find((k) => k.action === 'open_product');
+    const PRODUCT = { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label: 'Talk about the product' };
+    assert.deepStrictEqual(productRow(emptyMenu(startDetail(dir))), PRODUCT, 'a bare project has the row, no sessions named');
+
+    createFile(dir, '.leeway/.product/sessions/session-001.md', '## 2026-10-12 · session one\n\nPricing first.\n');
+    assert.strictEqual(drawLabel(productRow(emptyMenu(startDetail(dir))).label), 'Talk about the product — *1 session, last on 12 Oct*');
+
+    createFile(dir, '.leeway/.product/sessions/session-002.md', '## 2026-10-18 · session two\n\nSync.\n\n## 2026-10-19 · session three\n\nLicensing.\n');
+    createFile(dir, '.leeway/.product/sessions/session-003.md', '');
+    const full = startMenu(fullFixture(dir));
+    assert.strictEqual(drawLabel(productRow(full).label), 'Talk about the product — *3 sessions, last on 19 Oct*',
+      'the date is the latest conversation a log names, past a log none has written in yet');
+    const keys = full.keys.map((k) => k.key);
+    assert.ok(keys.indexOf('3') < keys.indexOf('p') && keys.indexOf('p') < keys.indexOf('s'), `after the work, before start: ${keys}`);
+  });
+
+  it('sessions whose logs name no conversation are counted, with no date', () => {
+    createFile(dir, '.leeway/.product/sessions/session-001.md', '# Product session 001\n');
+    createFile(dir, '.leeway/.product/sessions/session-002.md', '# Product session 002\n');
+    const row = emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_product');
+    assert.strictEqual(drawLabel(row.label), 'Talk about the product — *2 sessions*');
   });
 
   it('both menus carry the h/help row unconditionally — nothing about the project hides the teaching', () => {
@@ -849,15 +878,6 @@ describe('start projections: roadmap rows', () => {
     assert.ok(menu.keys.some((k) => k.action === 'open_roadmap'));
   });
 
-  it('the mid-genesis state — open session, no roadmap yet — never contradicts its own resume row', () => {
-    openProductSession(dir, '001');
-    const detail = startDetail(dir);
-    const overview = emptyOverview(detail);
-    assert.match(overview, /^No work in flight\.\n\nA product session is open — resume it from the menu\.\n/);
-    assert.ok(!overview.includes('No active work found'), 'the empty copy never renders above a resume row');
-    const row = emptyMenu(detail).keys.find((k) => k.action === 'open_roadmap');
-    assert.strictEqual(drawLabel(row.label), 'Resume the product session — *roadmap, in progress*');
-  });
 });
 
 describe('start projections: manage unit', () => {

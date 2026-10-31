@@ -251,27 +251,20 @@ function roadmapAddGate(state, horizon) {
 }
 
 /**
- * The roadmap home menu — the `r/roadmap` row's landing. Option set varies
- * at runtime (pull only over waiting items; converse reads as resume over an
- * open session), so it is engine-rendered. `keys` carries the machine action
- * keys the skill routes on.
+ * The roadmap home menu — the `r/roadmap` row's landing. Pull shows only over
+ * waiting items, so it is engine-rendered. The product's conversation is the
+ * start menu's own (18.8.7), handed into discovery at no unit. `keys` carries
+ * the machine action keys the skill routes on.
  * @param {RoadmapState} state
  * @returns {{keys: {key: string, word?: string, action: string, label: string}[], rendered: string}}
  */
 function roadmapHomeMenu(state) {
   /** @type {{key: string, word?: string, action: string, label: string}[]} */
   const keys = [];
-  keys.push({
-    key: 'c',
-    word: 'converse',
-    action: 'converse',
-    label: state.active_session !== null
-      ? 'Resume the open product session'
-      : 'Talk about the product, add or re-sort items',
-  });
   if (state.totals.waiting > 0) {
-    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Start work on waiting item(s) — creates a piece of work (${state.totals.waiting} waiting)` });
+    keys.push({ key: 'w', word: 'work', action: 'pull', label: `Start work on waiting item(s) — creates a piece of work (${state.totals.waiting} waiting)` });
   }
+  keys.push({ key: 'p', word: 'product', action: 'open_product', label: 'Talk about the product' });
   keys.push({ key: 'b', word: 'back', action: 'back', label: 'Return to the start menu' });
 
   const options = keys.map((k) => cmdOption(k.key, k.word ?? null, k.label));

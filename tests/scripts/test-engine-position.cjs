@@ -16,8 +16,10 @@
 // whose skill the project lacks. A discussion's note carries its recovery
 // whole (24.2.6): the topic's record and its log, the log caught up from the
 // conversation's transcript, and the line its first write opens with where
-// the log does not name the conversation yet (24.S10, 9.S67); every other
-// phase's sends Claude to its skill's own steps.
+// the log does not name the conversation yet (24.S10, 9.S67); so does
+// discovery's, at an epic its map and its open log, at the product's
+// conversation its open log (24.S19, 8.S67); every other phase's sends
+// Claude to its skill's own steps.
 //
 
 require('./hermetic-env.cjs');
@@ -34,7 +36,7 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine
 
 // The phases whose note carries the recovery whole, their skills keeping no
 // steps of their own for it.
-const WHOLE = ['discussion'];
+const WHOLE = ['discussion', 'discovery'];
 
 let dir; // a workflows project
 let config; // this test's system config directory
@@ -568,17 +570,33 @@ describe('conversation position', () => {
     ]));
   });
 
-  it('discovery: the open session\'s log, else the latest on disk', () => {
+  /** A discovery home's note: its calls, then its log caught up from the transcript, found or not. */
+  function discoveryNote(where, calls, log, transcript = null) {
+    return [
+      `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
+      `- ${abs('.claude/skills/leeway-discovery/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`${call}\``),
+      `- ${abs(log)}`,
+      transcript === null
+        ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
+        : `Catch the log, ${abs(log)}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+  }
+
+  it('an epic\'s discovery carries its recovery whole: the skill, the unit\'s map and the open log — the latest on disk where none is open — caught up from the log\'s transcript (24.S19, 8.S67)', () => {
     install('leeway-discovery');
-    for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/session-${n}.md`);
+    for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/session-${n}.md`, '## 2026-01-01 · session sess-1\n');
+    const file = transcript();
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
+    const map = 'node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view pay';
     let answer = reads();
-    assert.strictEqual(answer.skill, abs('.claude/skills/leeway-discovery/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/session-010.md')]);
-    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'leeway-discovery', ['.leeway/pay/discovery/session-010.md']));
+    assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-discovery/SKILL.md'), [abs('.leeway/pay/discovery/session-010.md')]]);
+    assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.leeway/pay/discovery/session-010.md', file));
     workUnit('pay', 'epic', { discovery: { active_session: '002' } });
     answer = reads();
     assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/session-002.md')]);
+    assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.leeway/pay/discovery/session-002.md', file));
   });
 
   it('an experiment: each live record\'s files in register order, a concluded one\'s left out', () => {
@@ -616,11 +634,11 @@ describe('conversation position', () => {
     assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-experiment-process/SKILL.md'), []]);
   });
 
-  it('the project-level places: the product\'s conversation, in discovery\'s skill, and the roadmap, each with the product\'s open session\'s log; the baseline its skill alone', () => {
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with the product\'s open session\'s log; the baseline its skill alone', () => {
     install('leeway-roadmap');
     install('leeway-baseline');
     install('leeway-discovery');
-    write('.leeway/.product/sessions/session-003.md');
+    write('.leeway/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'roadmap']);
     assert.deepStrictEqual([reads().skill, reads().files], [abs('.claude/skills/leeway-roadmap/SKILL.md'), []], 'no session open');
     write('.leeway/manifest.json', JSON.stringify({ product_session: '003' }));
@@ -631,6 +649,9 @@ describe('conversation position', () => {
     ok(['session', 'label', 'product']);
     const product = reads();
     assert.deepStrictEqual([product.skill, product.files, product.place], [abs('.claude/skills/leeway-discovery/SKILL.md'), [abs('.leeway/.product/sessions/session-003.md')], 'product']);
+    assert.strictEqual(product.text, discoveryNote('the product\'s conversation', [], '.leeway/.product/sessions/session-003.md'), 'the transcript gone, said in one line');
+    const file = transcript();
+    assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.leeway/.product/sessions/session-003.md', file));
     ok(['session', 'label', 'baseline']);
     const baseline = reads();
     assert.deepStrictEqual([baseline.skill, baseline.files, baseline.place], [abs('.claude/skills/leeway-baseline/SKILL.md'), [], 'baseline']);

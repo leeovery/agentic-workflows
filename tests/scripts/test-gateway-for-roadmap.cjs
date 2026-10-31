@@ -58,14 +58,13 @@ describe('leeway-roadmap gateway: view', () => {
     assert.match(res.stdout, /  loyalty {2}v1 {2}bug {2}waiting {2}—/);
     assert.match(res.stdout, /SESSIONS \(number {2}path\):/);
     assert.match(res.stdout, /ACTIONS \(key {2}word {2}action\):/);
-    assert.match(res.stdout, /  c {2}converse/);
-    assert.match(res.stdout, /  p {2}pull/);
-    assert.match(res.stdout, /  b {2}back/);
+    assert.match(res.stdout, /ACTIONS \(key {2}word {2}action\):\n  w {2}work {2}pull\n  p {2}product {2}open_product\n  b {2}back {2}back\n/,
+      'work, then the product\'s conversation, then back (18.8.6)');
     assert.match(res.stdout, /=== TITLE[\s\S]*Roadmap/);
     assert.match(res.stdout, /=== DISPLAY[\s\S]*◐ Ordering/);
     assert.match(res.stdout, /Loyalty\n.*rewards\n.*↳ Bug · waiting/);
     assert.match(res.stdout, /Start work on waiting item\(s\) — creates a piece of\s+work \(2 waiting\)/);
-    assert.match(res.stdout, /=== MENU[\s\S]*Resume the open product session/);
+    assert.match(res.stdout, /=== MENU[\s\S]*\*\*`p\/product`\*\*\s+→ Talk about the product\n/, 'an open session changes nothing on the row');
     // The way out of the roadmap is the surface it was entered from.
     assert.match(res.stdout, /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
   });
@@ -78,7 +77,7 @@ describe('leeway-roadmap gateway: view', () => {
     assert.match(res.stderr, /no `index` handler registered/);
   });
 
-  it('drops the pull row with nothing waiting; converse reads as open with no session', () => {
+  it('drops the work row with nothing waiting, the product\'s conversation still there', () => {
     writeRoadmap(dir, {
       horizons: ['mvp'],
       items: { ordering: { horizon: 'mvp', summary: 's', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } } },
@@ -86,8 +85,7 @@ describe('leeway-roadmap gateway: view', () => {
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(!/ {2}p {2}pull {2}pull/.test(res.stdout), 'no pull action over zero waiting items');
-    assert.match(res.stdout, /Talk about the product, add or re-sort items/);
+    assert.match(res.stdout, /ACTIONS \(key {2}word {2}action\):\n  p {2}product {2}open_product\n  b {2}back {2}back\n/, 'no pull action over zero waiting items');
   });
 });
 

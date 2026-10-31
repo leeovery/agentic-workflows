@@ -17,7 +17,7 @@ The roadmap is project-level and outside the pipeline — no work unit, no phase
 Three invocation modes, dispatched at Step 1:
 
 - **genesis** — from discovery's shaping gate: the conversation is live and just read as product-altitude. Persist the shaping so far, continue the conversation at this altitude.
-- **open** — from the `r/roadmap` start-menu row: show the map, then converse, pull, or return to the start menu.
+- **open** — from the `r/roadmap` start-menu row: show the map, then pull, talk about the product in its own conversation, or return to the start menu.
 - **pull** — from a recognition offer: the user accepted pulling an existing waiting item, straight to the pull ceremony.
 
 **Stay in your lane**: shape the product and its staging — what exists, what's next, what waits. An idea is at capability grain — whatever you'd move around a roadmap as one thing; a bug or a quick-fix is one fix. Topic shaping, mechanism, and design decisions belong to the work units the pull creates; a pulled item's substance belongs to its work unit. Right of a pull the work unit is authoritative — the map edits waiting items freely and only watches joined ones.
@@ -148,11 +148,9 @@ The output arrives in demarcated sections: read `=== DATA` to reason from (state
 
 Match the input to its `ACTIONS` entry by `key` or `word` and route on the entry's `action`:
 
-#### If `action` is `converse`
+#### If `action` is `open_product`
 
-Set `session_number` from the DATA's `active_session` when one is open (the loop resumes it). With none open, leave it unset — the log is conjured lazily at the first state change, and the open's response sets it ([session-template.md](references/session-template.md)).
-
-→ Proceed to **Step 4**.
+→ Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none none`.
 
 #### If `action` is `pull`
 

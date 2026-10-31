@@ -56,7 +56,7 @@ function stateLines(s) {
 }
 
 // The home snapshot: derived state (DATA), the map (DISPLAY), the
-// converse/pull menu (MENU) — the `r/roadmap` row's landing.
+// work/product/back menu (MENU) — the `r/roadmap` row's landing.
 function view() {
   const s = state(process.cwd());
   const menu = engine.project.roadmapHomeMenu(s);

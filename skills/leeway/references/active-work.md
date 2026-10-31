@@ -43,6 +43,10 @@ This skill ends. The invoked skill will load into context and provide additional
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
 
+#### If `action` is `open_product`
+
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none none`.
+
 #### If `action` is `open_roadmap`
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-roadmap open`.

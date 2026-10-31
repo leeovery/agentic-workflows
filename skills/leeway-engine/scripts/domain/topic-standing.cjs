@@ -17,18 +17,22 @@
 //   waits in a postponed topic's mailbox, reopens a decided or concluded
 //   one and goes to the inbox for a cancelled one (10.1.6, 10.1.8, 10.2.7),
 //   so only a topic closed as a dead end or promoted refuses it.
+// And whether a unit's discovery can still be talked in: an epic's, until
+// its spec closes the map (8.6.5, 8.2.11); every other type's ended at
+// start this work. The product's conversation never closes.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
 
 /**
  * Where a topic stands as it is checked: the unit's manifest as it stood on
- * arrival, and the topic — none at a unit-level place, nor at an epic named
- * at none.
+ * arrival — at the product's conversation, the project manifest, the product
+ * having none of its own — and the topic: none at a unit-level place, nor at
+ * an epic named at none.
  * @typedef {{cwd: string, phase: string, unit: string, topic?: string, manifest: Record<string, any>}} Standing
  */
 
@@ -55,13 +59,22 @@ function unitInProgress(cwd, unit) {
 }
 
 /**
- * Refuses a phase the unit's work type has no place for, naming its phases.
+ * Refuses a phase the unit's work type has no place for, naming its phases;
+ * never discovery, which every work type opens on.
  * @param {Record<string, any>} manifest @param {string} phase
  */
 function assertPhaseHeld(manifest, phase) {
+  if (phase === 'discovery') return;
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
   if (!pipeline.includes(phase)) throw new Error(`a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`);
 }
+
+/**
+ * Whether the unit has its spec — past which no topic exists (4.11.2) and an
+ * epic's map is closed (8.6.5).
+ * @param {string} cwd @param {string} unit
+ */
+const hasSpec = (cwd, unit) => fs.existsSync(statePath(cwd, unit, 'spec.md'));
 
 /**
  * Where a decided or set-aside topic of the unit is reopened (8.6.5).
@@ -97,7 +110,7 @@ function topicStanding({ cwd, phase, unit, topic, manifest }) {
   if (topic === undefined) return `an epic enters ${phase} at one of its topics — name the topic: engine enter ${phase} ${unit} <topic>`;
   const illegal = illegalNameReason('topic', topic);
   if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
-  if (fs.existsSync(statePath(cwd, unit, 'spec.md'))) return `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here`;
+  if (hasSpec(cwd, unit)) return `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here`;
   return holdsTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
 }
 
@@ -171,6 +184,23 @@ function investigationStanding({ topic = '', manifest }) {
 }
 
 /**
+ * Why a discovery cannot be entered, or null where it can: a unit that is no
+ * epic, whose discovery ended at start this work, and an epic past its spec,
+ * whose map is closed and whose talk belongs in the product's conversation
+ * (8.6.5, 8.2.11). The product's conversation is always open.
+ * @param {Standing} at @returns {string|null}
+ */
+function discoveryStanding({ cwd, unit, manifest }) {
+  if (unit === PRODUCT) return null;
+  if (manifest.work_type !== 'epic') {
+    return `${unit} is a ${manifest.work_type} — its discovery ended at start this work, and reopening its decision goes through manage on the start menu`;
+  }
+  return hasSpec(cwd, unit)
+    ? `${unit} has its spec, so its map is closed — talk about it belongs in the product's conversation, where what comes of it lands as roadmap items: engine enter discovery ${PRODUCT}`
+    : null;
+}
+
+/**
  * Why each phase that enters at a topic cannot be entered there; a phase
  * with none of its own is held to the topic and its closure alone.
  * @type {Readonly<Record<string, (at: Standing) => string|null>>}
@@ -196,4 +226,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, assertEnterable };
+module.exports = { assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };
