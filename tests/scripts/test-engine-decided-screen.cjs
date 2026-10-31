@@ -132,11 +132,17 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       const res = refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`, '--file', payload(/** @type {Record<string, unknown>} */ (given))], { env: SESSION });
       assert.strictEqual(res.error, `render decided: ${refusal}`);
     }
+    const manifest = readManifest(dir(), SOLO);
+    createManifest(dir(), SOLO, { ...manifest, phases: { ...manifest.phases, discovery: { dismissed: ['tally-widget'] } } });
+    ok(dir(), ['roadmap', 'add', 'streak-freeze', '--horizon', 'later', '--summary', 'Freeze a streak.'], { env: SESSION });
     const solo = (/** @type {unknown[]} */ candidates) => refusedPristine(dir(), ['render', 'decided', `${SOLO}.${SOLO}`, '--file', payload({ lines: [], candidates })], { env: SESSION }).error;
-    assert.deepStrictEqual([solo([candidate('streaks', 'R.')]), solo([{ name: 'streaks', reason: 'R.', horizon: ' ' }])], [
+    const parked = (/** @type {string} */ name) => solo([{ name, reason: 'R.', horizon: 'next' }]);
+    assert.deepStrictEqual([solo([candidate('streaks', 'R.')]), solo([{ name: 'streaks', reason: 'R.', horizon: ' ' }]), parked('tally-widget'), parked('streak-freeze')], [
       'render decided: candidate 1 has no horizon — the horizon is the person\'s — where they named none, render horizon-pick --park <name> asks them',
       'render decided: candidate 1\'s horizon is a non-empty string',
-    ], 'a one-topic unit\'s candidate parks, so it carries the horizon the person named, never a brief (8.10.2, 18.8.2)');
+      'render decided: the candidates: "tally-widget" was struck before — nothing was added; the person can roadmap it themselves',
+      'render decided: the candidates: "streak-freeze" is already on the roadmap — edit it, or pick a different name',
+    ], 'a one-topic unit\'s candidate parks with the horizon the person named, never a brief, and never under a name the person struck or the roadmap holds (8.10.2, 8.10.11, 18.8.2)');
     assert.ok(!fs.existsSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json')));
   });
 

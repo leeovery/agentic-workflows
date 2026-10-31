@@ -42,7 +42,7 @@ Every finding carries the lane that says where it goes:
 
 - **`apply`** — the record or a fact settles it: carry the correction and cite the entries that settle it by short id.
 - **`call`** — a point this topic leaves unanswered, a gap inside it among them. It becomes an open question in the topic, and the matrix routes it: Claude's call, or the person's question. Give your lean and what it rests on where you have one — whether it reaches the person is the matrix's to decide, never yours.
-- **`route`** — another topic's, such as a contradiction its record must answer: name the topic; or, for work no topic owns, `no topic`, a candidate for a new one.
+- **`route`** — another topic's, such as a contradiction its record must answer: name the topic; or, for work no topic owns, `no topic`, a candidate for the decided screen.
 - **`product`** — a line for the product record: the entry that holds for the whole product, by short id, and the line it would add. It is put to the person, never written without their yes.
 
 ## Rules

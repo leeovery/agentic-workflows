@@ -61,10 +61,11 @@ describe('pipeline simulation: feature', () => {
     const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
     const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# ${wu}\n\nVisa and Mastercard; refunds left to another day.\n`);
-    // The closing pass finds work no topic owns: a feature has no map, so the
-    // candidate parks on the roadmap at the yes, on the horizon the person
-    // picks before the screen.
-    sim.run(['roadmap', 'add', 'apple-pay', '--horizon', 'later', '--summary', 'Take Apple Pay.']);
+    // The person puts Apple Pay off for later, naming its horizon: it goes on
+    // the roadmap at once. The closing pass then finds work no topic owns: a
+    // feature has no map, so that candidate parks on the roadmap at the yes,
+    // on the horizon the person picks before the screen.
+    sim.run(['roadmap', 'add', 'apple-pay', '--horizon', 'later', '--summary', 'Take Apple Pay.', '--origin', `park:${wu}`, '--source', `${wu}/topics/${wu}`]);
     assert.match(sim.render(['horizon-pick', '--park', 'refunds'], { expect: 'content' }), /^Putting "Refunds" on the roadmap\.$/m);
     assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', '1').next, { kind: 'continue' });
     const decided = decideTopic(sim, wu, wu, {

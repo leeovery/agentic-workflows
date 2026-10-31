@@ -390,32 +390,42 @@ function sourceOf(source, fromRoadmap) {
 /**
  * Refuse, in the words of `said`, a batch the roadmap stands against (8.1.6):
  * an item taken in that can't be, and a topic beside a waiting item of its
- * name that no entry takes in.
- * @param {Record<string, any>} project @param {string} unit @param {BatchEntry[]} entries @param {string} said
+ * name that no entry takes in, naming the way its caller takes one in.
+ * @param {Record<string, any>} project @param {string} unit @param {BatchEntry[]} entries @param {string} said @param {TakeIn} takeIn
  */
-function checkRoadmap(project, unit, entries, said) {
+function checkRoadmap(project, unit, entries, said, takeIn) {
   const taken = new Set(entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [e.from_roadmap])));
   for (const e of entries) {
     const refusal = e.from_roadmap === undefined ? null : takeInRefusal(project, unit, e.from_roadmap);
     if (refusal !== null) throw new Error(`${said}: "${e.name}" can't take the item in — ${refusal}`);
     const twin = waitingTwin(project, e.name);
-    if (twin !== null && !taken.has(twin)) throw new Error(`${said}: ${twinRefusal(e.name, twin)}`);
+    if (twin !== null && !taken.has(twin)) throw new Error(`${said}: ${twinRefusal(e.name, twin, takeIn)}`);
   }
 }
 
 /**
  * Why a topic can't go by `name` while a waiting roadmap item of that name
- * stands (8.1.6). @param {string} name @param {string} twin
+ * stands (8.1.6), and how its caller takes the item in, where it can.
+ * @param {string} name @param {string} twin @param {TakeIn|null} takeIn
  */
-function twinRefusal(name, twin) {
-  return `"${name}" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap ${twin}, or name the topic apart`;
+function twinRefusal(name, twin, takeIn) {
+  return `"${name}" would stand beside the waiting roadmap item of its name — ${takeIn === null ? '' : `take it in with ${takeIn(twin)}, or `}name the topic apart`;
 }
+
+/** How a caller takes a waiting roadmap item in: its flag, or its entry's key. @typedef {(twin: string) => string} TakeIn */
+
+/** @type {TakeIn} */
+const entryTakeIn = (twin) => `"from_roadmap": "${twin}"`;
+
+/** @type {TakeIn} */
+const flagTakeIn = (twin) => `--from-roadmap ${twin}`;
 
 /**
  * How a batch lands: the words its refusals open on, how its checks name an
- * entry's field, each topic's source, whether every topic needs its brief,
- * and how a name struck from the map is asked back.
- * @typedef {{said: string, fieldName?: FieldName, source?: string, requireBrief?: boolean, reAddHint?: string}} LandOpts
+ * entry's field and take a roadmap item in, each topic's source, whether
+ * every topic needs its brief, and how a name struck from the map is asked
+ * back.
+ * @typedef {{said: string, fieldName?: FieldName, takeIn?: TakeIn, source?: string, requireBrief?: boolean, reAddHint?: string}} LandOpts
  */
 
 /** A brief's draft as read, or null for an entry that has none. @typedef {{scratch: string, content: string}|null} Draft */
@@ -446,7 +456,7 @@ function batchDrafts(cwd, entries, { said, fieldName = batchField, requireBrief 
  */
 function checkTopics(cwd, workUnit, manifest, entries, opts) {
   const drafts = batchDrafts(cwd, entries, opts);
-  checkRoadmap(readProjectManifest(cwd), workUnit, entries, opts.said);
+  checkRoadmap(readProjectManifest(cwd), workUnit, entries, opts.said, opts.takeIn ?? entryTakeIn);
   addBatchTo(structuredClone(manifest), entries, opts.said, { source: opts.source, reAdd: opts.reAddHint });
   return drafts;
 }
@@ -459,8 +469,8 @@ function checkTopics(cwd, workUnit, manifest, entries, opts) {
  * briefs.
  * @param {string} cwd @param {string} workUnit @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {LandOpts} opts
  */
-function placeTopics(cwd, workUnit, manifest, entries, { said, source = 'discovery', reAddHint }) {
-  checkRoadmap(readProjectManifest(cwd), workUnit, entries, said);
+function placeTopics(cwd, workUnit, manifest, entries, { said, takeIn = entryTakeIn, source = 'discovery', reAddHint }) {
+  checkRoadmap(readProjectManifest(cwd), workUnit, entries, said, takeIn);
   const readded = addBatchTo(manifest, entries, said, { source, reAdd: reAddHint });
   const takes = entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [{ item: e.from_roadmap, topic: e.name }]));
   const priors = takes.length > 0 ? joinTakenIn(cwd, workUnit, takes) : {};
@@ -530,7 +540,7 @@ function addTopic(cwd, workUnit, name, { summary, description, brief, fromRoadma
     re_add: reAdd,
   };
   const { manifest, readded, priors, briefs, paths, warnings } = landTopics(cwd, workUnit, [entry],
-    { said: 'topic add', fieldName: flagField, source, requireBrief, reAddHint: 'add it back only at the person\'s ask — pass --re-add' });
+    { said: 'topic add', fieldName: flagField, takeIn: flagTakeIn, source, requireBrief, reAddHint: 'add it back only at the person\'s ask — pass --re-add' });
   const item = mapItem(manifest, name);
   /** @type {MapChange} */
   const result = { work_unit: workUnit, op: 'add', name, title: topicTitle(manifest, name), source: item.source, summary: item.summary, lifecycle: computeTopicLifecycle(manifest, name).lifecycle, map_total: mapTotal(manifest) };
@@ -655,7 +665,7 @@ function renameTopic(cwd, workUnit, said, newName) {
     const holder = nameTaken(manifest, oldName, newName);
     if (holder !== null) throw new Error(`topic rename: "${holder}" on the map goes by "${newName}" — pick a different name`);
     const twin = newName === oldName ? null : waitingTwin(readProjectManifest(cwd), newName);
-    if (twin !== null) throw new Error(`topic rename: ${twinRefusal(newName, twin)}`);
+    if (twin !== null) throw new Error(`topic rename: ${twinRefusal(newName, twin, null)}`);
     const moved = newName !== oldName && computeTopicLifecycle(manifest, oldName).lifecycle === 'fresh' && !ledgerNames(cwd, workUnit, oldName, warnings);
     if (moved) moveTopic(cwd, manifest, oldName, newName);
     if (moved || newName === oldName) delete item.title;

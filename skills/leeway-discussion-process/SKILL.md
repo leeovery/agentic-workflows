@@ -108,7 +108,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - An agent → `agent dispatch`, then `brief {role}`, then the Agent call with the agent and the pointer it answers; its report → `agent scan|ack|surface|incorporate`.
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
 - An experiment → `experiment create`, then `render experiment-spawn-gate`.
-- A question for later → `roadmap add`, then `ledger move --to roadmap:{item}`.
+- Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
 - The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`.
@@ -122,7 +122,7 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
 2. Load **[closing-pass.md](references/closing-pass.md)** and follow its instructions as written: the closing pass and the reads beside it.
 3. `product-lines-shown` — the product-record lines and any candidates written for the decided screen. Write its payload to `.leeway/.cache/{work_unit}/discussion/{topic}/decided-payload.json` — `{"lines": [{"text", "why", "widens"}], "withdraws": [{"line", "why"}], "candidates": [...]}`: each product-record line the closing pass found, `widens` the id of the decision it makes a rule for the whole product, one line to a decision; where a rule of the record should go, its line by id with why, `withdraws` left out where none should; and each candidate, work no topic owns that holds a call the person would make, with its reason.
    - **An epic's candidate** is `{"name", "reason", "brief"}`, named as a topic, `brief` the path of its brief's draft under `.leeway/.cache/{work_unit}/discussion/{topic}/`: what the work is, where it was read, why it matters, and its open questions. One matching a waiting roadmap item takes it in, `"from_roadmap": "{item}"`.
-   - **A single-topic unit's candidate** parks on the roadmap at the yes: `{"name", "reason", "horizon"}`, named as a roadmap item, on the horizon the person named. Where they named none, ask with `render horizon-pick --park {name}` before writing the payload, emit its MENU verbatim per its marker, and take the horizon picked; a pick that refuses has none to offer, so ask in the conversation.
+   - **A single-topic unit's candidate** parks on the roadmap at the yes: `{"name", "reason", "horizon"}`, named as a roadmap item, on the horizon the person named. Where they named none, ask with `render horizon-pick --park {name}` before writing the payload, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation.
 
    Once it is written, mark the item done.
 4. Close it: `checklist close decided {work_unit} {topic}`.
@@ -138,14 +138,19 @@ The screen asks a verdict of each call the person changed, one at a time: each a
 
 ## Backlogging
 
-The person puts a question off for later — "roadmap it", "backlog that", "push it back": it waits on the roadmap and closes here. A point not on the map is asked first. The horizon is the person's: take it from their words, or ask in the conversation. Bring the log up to date, then add the item — a kebab-case `{name}` and a one-line `{summary}` saying the question in the product's terms — and move the question to it:
+The person puts something off for later — "roadmap it", "backlog that", "push it back": it goes on the roadmap now, in a unit of any kind, a question of this topic or work no topic owns. A question closes here; a point of this topic not on the map is asked first. Bring the log up to date and name the item — a kebab-case `{name}` and a one-line `{summary}` saying it in the product's terms. The horizon is the person's: take it from their words; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. Then add the item:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
+```
+
+A refused add records nothing; a name already on the roadmap takes another. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
+
+```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
 ```
 
-The move takes `{"by": "person", "who_moved_whom": "none"}` on stdin. A refused add records nothing; a name already on the roadmap takes another. Work no topic owns is a candidate for the decided screen instead, and a point another topic owns is a message (**A Message to Another Topic**).
+Work no topic owns that the person has not put off is a candidate for the decided screen (**Closing**), and a point another topic owns is a message (**A Message to Another Topic**).
 
 ## Postponing the Topic
 

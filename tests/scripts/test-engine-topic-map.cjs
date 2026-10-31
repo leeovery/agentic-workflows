@@ -199,7 +199,7 @@ describe('topic add-batch', () => {
       [[good, { name: 'other', summary: ' ', brief: draft('o') }], 'topic add-batch: entry 2 ("other") — "summary" must be a non-empty string'],
       [[good, good], 'topic add-batch: "menu-management" appears more than once in the batch'],
       [[good, { name: 5, summary: 'S', brief: draft('n') }], 'topic add-batch: "5" is not a topic name — a lowercase slug of letters, digits and hyphens, since it names the topic\'s folder'],
-      [[good, { name: 'loyalty', summary: 'S', brief: draft('l') }], 'topic add-batch: "loyalty" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap loyalty, or name the topic apart'],
+      [[good, { name: 'loyalty', summary: 'S', brief: draft('l') }], 'topic add-batch: "loyalty" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "loyalty", or name the topic apart'],
       [[], 'topic add-batch: entries must be a non-empty array of {name, summary, brief?, description?, from_roadmap?, re_add?}'],
     ])) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'add-batch', UNIT, '--file', file(entries)]).error, refusal);
@@ -327,7 +327,7 @@ describe('topic rename (8.8.17)', () => {
       [['mailed-topic', 'mailed-topic'], 'topic rename: "mailed-topic" goes by "mailed-topic" already'],
       [['mailed-topic', 'decided-topic'], 'topic rename: "decided-topic" on the map goes by "decided-topic" — pick a different name'],
       [['mailed-topic', 'checkout-flow'], 'topic rename: "discussing-topic" on the map goes by "checkout-flow" — pick a different name'],
-      [['mailed-topic', 'loyalty'], 'topic rename: "loyalty" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap loyalty, or name the topic apart'],
+      [['mailed-topic', 'loyalty'], 'topic rename: "loyalty" would stand beside the waiting roadmap item of its name — name the topic apart'],
       [['mailed-topic', 'stray'], '"mailed-topic" can\'t be renamed — a folder already stands at payments/topics/stray'],
     ])) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'rename', UNIT, ...args]).error, refusal);

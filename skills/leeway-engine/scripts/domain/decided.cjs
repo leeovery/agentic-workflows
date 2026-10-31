@@ -362,7 +362,7 @@ function checkCandidates(cwd, manifest, topic, candidates) {
   const unit = manifest.name;
   if (!parksCandidates(manifest)) return checkTopics(cwd, unit, manifest, mapEntries(candidates), landOpts(topic));
   const struck = candidates.find(({ name }) => dismissedNames(manifest).includes(name));
-  if (struck !== undefined) throw new Error(`${CANDIDATES}: "${struck.name}" was struck before — nothing was added; the person's answer stands`);
+  if (struck !== undefined) throw new Error(`${CANDIDATES}: "${struck.name}" was struck before — nothing was added; the person can roadmap it themselves`);
   try {
     planRoadmapBatch(cwd, parkEntries(unit, topic, candidates));
   } catch (err) {
