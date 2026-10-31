@@ -186,11 +186,11 @@ engine workunit absorb <feature> --into <epic> --topic <name>
 engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
 ```
 
-**`discovery-map`** — the map verbs' alias, which today's discovery skill and the simulations call until discovery's rewrite moves them onto **`topic`**: `sequence` is `topic order`, and `edit`, `remove` and `rename` are the `topic` verbs of their names, each answering its JSON alone. `add` lands a topic without its brief, its old routing argument taken and dropped and `--force-dismissed` its re-add; `--backfill`, in place of `--summary` and `--description`, lands the topic with neither and commits nothing, for the next epic entry's summary-backfill to draft them. `add-batch` lands its entries without briefs, each entry's `routing` dropped and its `force_dismissed` the re-add. A brief pointer — `--brief-path`, or an entry's `brief_path` — is refused, naming the brief's one place, `topics/{topic}/brief.md`, which `topic add` installs.
+**`discovery-map`** — the map verbs' alias, which today's discovery skill and the simulations call until discovery's rewrite moves them onto **`topic`**: `sequence` is `topic order`, and `edit`, `remove` and `rename` are the `topic` verbs of their names, each answering its JSON alone. `add` lands a topic without its brief, its old routing argument taken and dropped, `--force-dismissed` its re-add and `--from-roadmap` the roadmap item it takes in, as `topic add`'s; `--backfill`, in place of `--summary` and `--description`, lands the topic with neither and commits nothing, for the next epic entry's summary-backfill to draft them. `add-batch` lands its entries without briefs, each entry's `routing` dropped and its `force_dismissed` the re-add. A brief pointer — `--brief-path`, or an entry's `brief_path` — is refused, naming the brief's one place, `topics/{topic}/brief.md`, which `topic add` installs.
 
 ```bash
 engine discovery-map <sequence|edit|remove|rename> …   # the topic verbs of those names, answering JSON alone
-engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]
+engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] [--from-roadmap <item>] | --backfill) [--source <tag>] [--force-dismissed]
 engine discovery-map add-batch <work-unit> --file <topics.json>   # entries {name, summary, description?, force_dismissed?}, routing dropped
 ```
 

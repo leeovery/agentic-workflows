@@ -59,7 +59,7 @@ describe('pipeline simulation: epic map', () => {
     // Harvest: three topics in one batch, each landing with its brief from
     // Claude's draft.
     /** @param {string} topic */
-    const draft = (topic) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}-brief.md`, `# Brief — ${topic}\n\nLeans toward a nightly run.\n`);
+    const draft = (topic) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}/brief-draft.md`, `# Brief — ${topic}\n\nLeans toward a nightly run.\n`);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, ['alpha', 'beta', 'gamma'].map((name) => ({ name, summary: `${name} summary`, brief: draft(name) })));
     const batch = sim.run(['topic', 'add-batch', wu, '--file', topics]);
     assert.strictEqual(batch.map_total, 3);

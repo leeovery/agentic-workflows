@@ -38,7 +38,7 @@ describe('pipeline simulation: epic supersession', () => {
     const wu = 'overhaul';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', sessionLog(sim, wu)]);
     /** @param {string} topic @param {string} [text] */
-    const draft = (topic, text = `# Brief — ${topic}\n`) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}-brief.md`, text);
+    const draft = (topic, text = `# Brief — ${topic}\n`) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}/brief-draft.md`, text);
     sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'alpha', summary: 'Alpha summary', brief: draft('alpha') },
       { name: 'beta', summary: 'Beta summary', brief: draft('beta') },

@@ -293,6 +293,16 @@ describe('engine session label', () => {
     assert.strictEqual(res.name, 'proj-abc · pay · scoping');
   });
 
+  it('labels a renamed topic by the name it goes by, in its topic\'s phases alone (8.S77)', () => {
+    optIn();
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { discovery: { items: { alpha: { source: 'discovery', summary: 'Alpha', order: 1, title: 'login' } } }, discussion: { items: { alpha: { status: 'completed' } } } },
+    }));
+    assert.deepStrictEqual(['discussion', 'specification'].map((phase) => engine(['session', 'label', 'pay', phase, 'alpha']).name),
+      ['proj-abc · pay · discussion · login', 'proj-abc · pay · specification · alpha']);
+  });
+
   it('recomposes from the stashed original on a phase hop', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);

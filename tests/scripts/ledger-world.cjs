@@ -402,7 +402,7 @@ function ledgerReadHelpers(dir) {
 }
 
 // ---------------------------------------------------------------------------
-// The write suites (test-engine-ledger-write.cjs, -verbs, -links, -trust).
+// The write suites (test-engine-ledger-write.cjs, -verbs, -append-race, -links, -trust).
 // ---------------------------------------------------------------------------
 
 const ID = /^[0-9A-Za-z]{21}$/;

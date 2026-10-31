@@ -48,11 +48,11 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicKeyOf } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKeyOf } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -108,8 +108,20 @@ function holdsSender(manifest, name) {
 }
 
 /**
+ * The phase a sender speaks from: the furthest its name reaches in its unit's
+ * pipeline, so a specification sharing its one discussion's key speaks as
+ * itself once it exists; a topic on the map with no item yet, from discovery.
+ * @param {Record<string, any>} manifest @param {string} name
+ */
+function senderPhase(manifest, name) {
+  const phases = (WORK_TYPE_PIPELINES[manifest.work_type] ?? []).filter((phase) => Object.hasOwn(manifest.phases?.[phase]?.items ?? {}, name));
+  return phases.at(-1) ?? 'discovery';
+}
+
+/**
  * How the waiting mail titles a topic sender: a topic or a phase's item of
- * the unit, or `{unit}.{name}` of another; null where `from` names none held.
+ * the unit, or `{unit}.{name}` of another, as screens title an item of the
+ * phase it speaks from; null where `from` names none held.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} from
  * @returns {string|null}
  */
@@ -117,7 +129,8 @@ function topicSender(cwd, manifest, from) {
   const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
   const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
   if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsSender(sender, held)) return null;
-  return unit === manifest.name || held === unit ? topicTitle(sender, held) : `${topicTitle(sender, held)}, on ${titlecase(unit)}`;
+  const title = itemTitle(topicTitles(sender), senderPhase(sender, held), held);
+  return unit === manifest.name || held === unit ? title : `${title}, on ${titlecase(unit)}`;
 }
 
 /**

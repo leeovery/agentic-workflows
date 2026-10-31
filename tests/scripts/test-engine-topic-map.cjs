@@ -10,8 +10,8 @@
 // the roadmap item a topic takes in, and gives back at its removal (8.1.6,
 // 18.8.20); a started topic renamed by its title, which names it wherever a
 // verb names it (8.8.17); a removal's waiting mail sent to the inbox
-// (8.8.16); a removal racing the writes on its topic, a finding it waited
-// behind and a start that waited behind it; and `discovery-map`, the verbs'
+// (8.8.16); a removal or a rename racing the writes on its topic, a finding
+// it waited behind and a start that waited behind a removal; and `discovery-map`, the verbs'
 // alias until discovery's rewrite, its dead-end verbs gone (8.6.6). A ledger
 // write that waited behind a removal is test-engine-ledger-write.cjs's; a
 // send to a removed topic, test-engine-topic-mail.cjs's; how a renamed topic's
@@ -38,7 +38,7 @@ const { createManifest, readManifest, readState, writeState, statePath, layout }
 const { SESSION, SESSION_ID, MADE } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { removeTopic } = require(path.join(SCRIPTS, 'domain/discovery-map.cjs'));
+const { removeTopic, renameTopic } = require(path.join(SCRIPTS, 'domain/discovery-map.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
@@ -382,7 +382,7 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
   });
 });
 
-describe('a removal racing the writes on its topic (8.8.6)', () => {
+describe('the map\'s verbs racing the writes on their topic (8.8.6, 8.8.17)', () => {
   /** The writer lock, held by a live peer. */
   function lockHeld() {
     const lock = statePath(dir, layout.lock);
@@ -390,16 +390,24 @@ describe('a removal racing the writes on its topic (8.8.6)', () => {
     return lock;
   }
 
-  it('takes the lock before it reads the ledger: a finding landed on the topic while it waited refuses it, the topic left on the map', (t) => {
+  /**
+   * The peer letting go of the lock and landing a finding on fresh-topic the
+   * moment the verb finds it held: the verb's attempts at the lock.
+   * @param {import('node:test').TestContext} t
+   */
+  function findingLandsWhileItWaits(t) {
     const lock = lockHeld();
-    // The peer lets go and lands a finding on fresh-topic the moment the removal finds the lock held.
-    const attempts = lockAttempts(t, lock, () => {
+    return lockAttempts(t, lock, () => {
       fs.unlinkSync(lock);
       appendEntry(statePath(dir), {
         event: 'found', unit: UNIT, topic: 'fresh-topic', phase: 'discovery', session: SESSION_ID, ...MADE,
         text: 'Landed first?', how: 'read Checkout.swift', known: 'read', command: null, result: null, product_wide: false, relies_on: [], cites: [],
       }, []);
     });
+  }
+
+  it('a removal takes the lock before it reads the ledger: a finding landed on the topic while it waited refuses it, the topic left on the map', (t) => {
+    const attempts = findingLandsWhileItWaits(t);
 
     assert.throws(() => removeTopic(dir, UNIT, 'fresh-topic'),
       { message: '"fresh-topic" can\'t be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead' });
@@ -408,7 +416,17 @@ describe('a removal racing the writes on its topic (8.8.6)', () => {
     assert.deepStrictEqual(Object.keys(items()), Object.keys(ITEMS));
   });
 
-  it('lands before a start that waited on the lock, which reads the map again and starts nothing', (t) => {
+  it('a rename takes the lock before it reads the ledger: a finding landed on the unstarted topic while it waited keeps its key, the new name its title', (t) => {
+    const attempts = findingLandsWhileItWaits(t);
+
+    const res = renameTopic(dir, UNIT, 'fresh-topic', 'offline-mode');
+
+    assert.deepStrictEqual([res.name, res.title, res.moved], ['fresh-topic', 'Offline Mode', false]);
+    assert.deepStrictEqual(attempts, ['taken', 'made', 'made', 'made'], 'waited, the peer landed, the rename took the lock, and its commit');
+    assert.deepStrictEqual([items()['fresh-topic'].title, readState(dir, layout.brief(UNIT, 'fresh-topic'))], ['offline-mode', '# Fresh\n']);
+  });
+
+  it('a removal lands before a start that waited on the lock, which reads the map again and starts nothing', (t) => {
     const lock = lockHeld();
     const { 'fresh-topic': _removed, ...mapped } = ITEMS;
     // The peer removes fresh-topic, as `topic remove` leaves the map, and lets go once the entry, its checks passed, finds the lock held.
@@ -487,6 +505,13 @@ describe('discovery-map, the alias', () => {
     assert.deepStrictEqual(items()['dismissed-name'], { source: 'gap-analysis', summary: 'Back' });
     assert.strictEqual(refusedPristine(dir, ['discovery-map', 'add', UNIT, 'other', 'discussion', '--summary', 'S', '--brief-path', 'discovery/briefs/other.md']).error,
       'discovery-map add: --brief-path is refused — a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add');
+  });
+
+  it('takes a waiting roadmap idea in under --from-roadmap, as topic add does (8.1.6)', () => {
+    const res = ok(dir, ['discovery-map', 'add', UNIT, 'loyalty', 'discussion', '--summary', 'Points', '--source', 'direct-start', '--from-roadmap', 'loyalty']);
+
+    assert.deepStrictEqual([res.from_roadmap, items().loyalty.source], ['loyalty', 'direct-start,roadmap:loyalty']);
+    assert.deepStrictEqual(roadmapItem('loyalty').pulled_to, { work_unit: UNIT, topic: 'loyalty' });
   });
 
   it('lands a topic with no summary under --backfill, uncommitted, as it always has', () => {

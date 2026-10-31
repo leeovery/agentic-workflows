@@ -37,33 +37,47 @@ Set `created_topic` to the validated `proposed_name`.
 
 ## B. Create the Topic
 
-Draw the topic's brief from `message` — a few lines on what it raises and why the topic needs it — and write it to `.leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md` with the Write tool. Derive `summary`, one line on what the topic covers.
+Draw the topic's brief from `message` — a few lines on what it raises and why the topic needs it — and write it to `.leeway/.cache/{work_unit}/discovery/{created_topic}/brief-draft.md` with the Write tool. Derive `summary`, one line on what the topic covers.
 
 Land the topic with its brief. `--re-add` brings back a name struck from the map: the creation is explicit — a message, a gap, a session add — so a prior dismissal never blocks it.
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md --re-add
+node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}/brief-draft.md --re-add
 ```
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 
 #### If the response is `ok: false` naming a waiting roadmap item of the name
 
-The topic is that item's work, so it takes the item in. Land it again with `--from-roadmap {item}`, the item the refusal names:
+The topic is that item's work, so it takes the item in, `item` the one the refusal names.
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md --re-add --from-roadmap {item}
-```
-
-The add commits itself.
-
-→ Return to caller.
+→ Proceed to **C. Take the Roadmap Item In**.
 
 #### If the response is `ok: false` naming the name taken
 
 The map moved since validation — a concurrent session landed the same name, or another topic goes by it. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
 
 → Return to **A. Validate the Name**.
+
+#### Otherwise
+
+The add commits itself.
+
+→ Return to caller.
+
+## C. Take the Roadmap Item In
+
+Land the topic again, taking the item in:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}/brief-draft.md --re-add --from-roadmap {item}
+```
+
+#### If the response is `ok: false`
+
+The item cannot be taken in, and the refusal says why. Surface the engine's error verbatim in one line; nothing was written.
+
+**STOP.** Wait for user response.
 
 #### Otherwise
 

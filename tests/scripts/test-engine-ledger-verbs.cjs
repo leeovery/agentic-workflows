@@ -13,7 +13,7 @@
 // commit around every write are test-engine-ledger-write.cjs's.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
-// library, the work unit's manifest written there.
+// library, the work unit's manifest written there, built once and copied.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -28,13 +28,15 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 
-const { UNIT, MADE, NOTE, SPACE, WRITE_PHASES, AT_NOTE, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, MADE, NOTE, SPACE, WRITE_PHASES, AT_NOTE, ledgerWriteHelpers, writtenWorld } = require('./ledger-world.cjs');
+
+const { world } = writtenWorld('ledger-verbs-', WRITE_PHASES, () => ({}));
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = ledgerWorld('ledger-verbs-', WRITE_PHASES);
+  dir = world();
 });
 
 afterEach(() => {

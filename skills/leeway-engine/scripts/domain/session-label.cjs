@@ -76,6 +76,8 @@ const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./c
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, assertPlace, isPlace, recordPosition, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
+const { loadManifest } = require('./reads.cjs');
+const { topicTitles, itemName } = require('./derivations.cjs');
 const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
 const { SHELL_HOOK_TOOLS } = require('./shell-guard.cjs');
@@ -471,10 +473,21 @@ function liveSessions(socket) {
 }
 
 /**
+ * The topic as the label shows it: in a topic phase the name it goes by, in
+ * plain form as the handoff line shows it.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ */
+function shownTopic(cwd, name, phase, topic) {
+  if (phase === undefined || topic === undefined) return topic;
+  const manifest = loadManifest(cwd, name);
+  return manifest === null ? topic : itemName(topicTitles(manifest), phase, topic);
+}
+
+/**
  * Rename the tmux session to carry the working position: `{name}` alone
  * on arrival at a work unit's menu or a project-level place, `{name} ·
  * {phase} · {topic}` inside a phase (topic collapsed when it equals the
- * work unit). The arguments name a place the project has — a work-unit
+ * work unit, a renamed topic by the name it goes by). The arguments name a place the project has — a work-unit
  * directory, or in the name-only form a project identity, `roadmap` or
  * `baseline`, which has no directory and no phase — checked by the caller
  * before anything is labelled (position.cjs `assertPlace`). No-op JSON
@@ -495,7 +508,7 @@ function applySessionLabel(cwd, name, phase, topic) {
   // alone: a server restart renumbers the id, so a stranded label's record
   // sits under a key this session will never look up directly.
   const { original, visited } = chainOriginal(listStashes(cwd, ctx.socket), ctx.name);
-  const position = placeLine({ name, phase, topic }, ' · ');
+  const position = placeLine({ name, phase, topic: shownTopic(cwd, name, phase, topic) }, ' · ');
   const applied = `${original} · ${position}`;
   const pid = Number(process.env.CLAUDE_PID) || null;
   // Stash before rename: a rename with no restore record strands the label,

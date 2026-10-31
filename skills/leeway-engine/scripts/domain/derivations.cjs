@@ -1275,13 +1275,23 @@ function titled(titles, topic) {
 }
 
 /**
- * How screens title an item of `phase`: a topic by the name it goes by, a
- * specification and what is built from it by its own name.
+ * The name an item of `phase` goes by: a topic the name it goes by, a
+ * specification and what is built from it its own name, though it may share
+ * a topic's key.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * @returns {string}
+ */
+function itemName(titles, phase, name) {
+  return TOPIC_PHASES.includes(phase) ? goesBy(titles, name) : name;
+}
+
+/**
+ * How screens title an item of `phase`: `itemName`, title-cased.
  * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
  * @returns {string}
  */
 function itemTitle(titles, phase, name) {
-  return TOPIC_PHASES.includes(phase) ? titled(titles, name) : titlecase(name);
+  return titlecase(itemName(titles, phase, name));
 }
 
 /** `titled` read from the unit's manifest. @param {object} manifest @param {string} topic @returns {string} */
@@ -1503,6 +1513,7 @@ module.exports = {
   topicTitles,
   goesBy,
   titled,
+  itemName,
   itemTitle,
   topicKeyOf,
   mailboxFiles,

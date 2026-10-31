@@ -24,7 +24,7 @@ const { parseInboxPaths } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase, topicTitles, goesBy } = require('./derivations.cjs');
+const { mailPhase, topicTitles, itemName } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
@@ -121,7 +121,7 @@ function phaseTarget(phase) {
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
     },
-    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : goesBy(topicTitles(loadWorkUnitManifest(cwd, unit)), topic)),
+    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
   };
 }
 

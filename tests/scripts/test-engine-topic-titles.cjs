@@ -59,6 +59,12 @@ function asPeer(dir, args) {
   }
 }
 
+/** A send in `dir` that must land: its response. @param {string} dir @param {string} to @param {string} from @param {string} slug */
+function sendIn(dir, to, from, slug) {
+  const content = writeState(dir, layout.cache('scratch', 'message.md'), 'Open it top left\n\nTheir reasoning: the eye lands there.\n');
+  return ok(dir, ['topic', 'send', UNIT, to, '--from', from, '--content', content, '--slug', slug]);
+}
+
 /** `out` names the topic as `phrase` does, and never by its key titlecased. @param {string} out @param {string} phrase */
 function assertTitled(out, phrase) {
   assert.ok(out.includes(phrase), `no "${phrase}" in:\n${out}`);
@@ -189,16 +195,37 @@ describe('a send by the title (8.8.17, 10.3.4)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  /** A send that must land: its response. @param {string} to @param {string} from @param {string} slug */
-  const send = (to, from, slug) => ok(dir, ['topic', 'send', UNIT, to, '--from', from, '--content', writeState(dir, layout.cache('scratch', 'message.md'), 'Open it top left\n\nTheir reasoning: the eye lands there.\n'), '--slug', slug]);
-
   it('lands in the topic\'s own mailbox, under its key, and its report and sender line name it by its title', () => {
-    const sent = send(NAME, 'space-homing', 'corner');
+    const sent = sendIn(dir, NAME, 'space-homing', 'corner');
     assert.strictEqual(sent.message_path, statePath(dir, layout.mailbox(UNIT, KEY, '001-corner.md')));
     assert.strictEqual(sent.topic, KEY);
     assert.match(output(dir, ['render', 'send-report', `${UNIT}.${KEY}`, '--sent', sent.message_path]), new RegExp(`^Sent to ${TITLE}, on Fumi$`, 'm'));
-    const back = send('space-homing', KEY, 'frame');
+    const back = sendIn(dir, 'space-homing', KEY, 'frame');
     assert.match(fs.readFileSync(back.message_path, 'utf8'), new RegExp(`^From ${TITLE} · `, 'm'));
+  });
+});
+
+describe('a specification sharing the renamed topic\'s key goes by its own name (8.8.17)', () => {
+  /** @type {string} */
+  let dir;
+  beforeEach(() => {
+    dir = world();
+    const manifest = readManifest(dir, UNIT);
+    manifest.phases.specification.items[KEY] = { status: 'in-progress', sources: { [KEY]: { status: 'incorporated' } } };
+    createManifest(dir, UNIT, manifest);
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** The line a hand into `skill` at the topic shows. @param {string} skill */
+  const handLine = (skill) => output(dir, ['handoff', skill, 'epic', UNIT, KEY]).split('\n').find((line) => line.startsWith('→ '));
+
+  it('the hand into it names it by its key, the hand into the topic\'s discussion by the title', () => {
+    assert.deepStrictEqual([handLine('leeway-specification-process'), handLine('leeway-discussion-process')], [`→ Specification · ${KEY}`, `→ Discussion · ${NAME}`]);
+  });
+
+  it('a message it sends names it by its own name', () => {
+    const sent = sendIn(dir, 'space-homing', KEY, 'frame');
+    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From Note Window · /m);
   });
 });
 
@@ -209,7 +236,7 @@ describe('every screen names a topic through one helper', () => {
   // which give a started topic its title.
   const NOT_A_TOPIC = {
     'the helpers a topic\'s name goes through': [
-      'derivations.cjs › itemTitle › name',
+      'derivations.cjs › itemTitle › itemName(titles, phase, name)',
       'derivations.cjs › titled › goesBy(titles, topic)',
     ],
     'a work unit, or the project': [

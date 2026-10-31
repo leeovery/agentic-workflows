@@ -8,16 +8,16 @@
 // and its links as flags, each naming an entry by a prefix of its id that the
 // engine resolves to the full id; the writer lock taken by the verb itself, a
 // refusal it needs no ledger for answering while a peer holds it; a topic
-// cancelled or removed while a write waited on the lock taking nothing; two
-// processes appending at once; and a ledger changed outside the engine
-// stopping the next write, showing the line found. Each verb's line and its
-// refusals are test-engine-ledger-verbs.cjs's; a removal racing a write on
-// its topic, test-engine-topic-map.cjs's; what the writes tell the trust log,
-// test-engine-ledger-trust.cjs's.
+// cancelled or removed while a write waited on the lock taking nothing; and a
+// ledger changed outside the engine stopping the next write, showing the line
+// found. Each verb's line and its refusals are test-engine-ledger-verbs.cjs's;
+// two processes appending at once, test-engine-ledger-append-race.cjs's; a
+// removal racing a write on its topic, test-engine-topic-map.cjs's; what the
+// writes tell the trust log, test-engine-ledger-trust.cjs's.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
-// library, the work unit's manifest written there. A `git` first on PATH
-// plays a commit git refuses.
+// library, the work unit's manifest written there, built once and copied. A
+// `git` first on PATH plays a commit git refuses.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -26,9 +26,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync } = require('child_process');
 const {
-  ENGINE, git, lockAttempts, ok, output, refuses, head, stateGit, statePath, layout, ledgerEntries, cleanupFixture,
+  git, lockAttempts, ok, output, refuses, head, stateGit, statePath, layout, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
@@ -39,14 +39,16 @@ const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, ID, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld,
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, WRITE_PHASES, ledgerWriteHelpers, writtenWorld,
 } = require('./ledger-world.cjs');
+
+const { world } = writtenWorld('ledger-write-', WRITE_PHASES, () => ({}));
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = ledgerWorld('ledger-write-', WRITE_PHASES);
+  dir = world();
 });
 
 afterEach(() => {
@@ -364,57 +366,5 @@ describe('the writer lock and the commit', () => {
 
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'taken', 'taken', 'made']);
     assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed on a topic removed while it waited');
-  });
-
-  it('lands two processes\' appends made at once, under ids that differ and are no sequence, a read made meanwhile meeting whole lines only (5.S2)', async () => {
-    const EACH = 6;
-    const script = [
-      'const engine = require(process.argv[1]);',
-      'const [cwd, session] = process.argv.slice(2);',
-      `for (let i = 0; i < ${EACH}; i += 1) {`,
-      `  const res = engine.run(['ledger', 'ask', '${NOTE}'], { cwd, env: { CLAUDE_CODE_SESSION_ID: session }, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: session + ' asks ' + i }) });`,
-      '  if (res.code !== 0) { process.stderr.write(res.stderr); process.exit(1); }',
-      '}',
-    ].join('\n');
-    const WRITER_TIMEOUT_MS = 30000;
-    const READS = 6000;
-    const writers = ['session-a', 'session-b'].map((session) => {
-      const child = spawn('node', ['-e', script, ENGINE, dir, session], { stdio: ['ignore', 'ignore', 'pipe'], timeout: WRITER_TIMEOUT_MS, killSignal: 'SIGKILL' });
-      let stderr = '';
-      child.stderr.on('data', (chunk) => { stderr += chunk; });
-      return new Promise((resolve) => child.on('close', (code, signal) => resolve({ code, stderr: signal ? `killed after ${WRITER_TIMEOUT_MS}ms\n${stderr}` : stderr })));
-    });
-    let done = false;
-    const landed = Promise.all(writers).finally(() => { done = true; });
-    const file = statePath(dir, layout.ledger);
-    let meanwhile = 0;
-    let read = 0;
-
-    for (let reads = 0; !done; reads += 1) {
-      assert.ok(reads < READS, `the two writers had not both ended after ${READS} reads`);
-      if (fs.existsSync(file)) {
-        const text = fs.readFileSync(file, 'utf8');
-        assert.ok(text.endsWith('\n'), `a read met half a line: …${JSON.stringify(text.slice(-60))}`);
-        const count = text.split('\n').slice(0, -1).map((line) => JSON.parse(line)).length;
-        const through = ledgerEntries(statePath(dir)).length;
-        assert.ok(through >= count, 'the engine\'s read met fewer entries than the file held before it');
-        read = Math.max(read, through);
-        if (count > 0 && count < 2 * EACH) meanwhile += 1;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    }
-
-    for (const outcome of /** @type {{code: number, stderr: string}[]} */ (await landed)) assert.strictEqual(outcome.code, 0, outcome.stderr);
-    assert.ok(meanwhile > 0, 'no read was made while the appends landed');
-    const all = entries();
-    const ids = all.map((e) => e.id);
-    assert.strictEqual(all.length, 2 * EACH);
-    assert.strictEqual(new Set(ids).size, ids.length, 'two appends took one id');
-    assert.ok(ids.every((id) => ID.test(id) && !/^\d+$/.test(id)), `an id is a sequence number: ${ids.join(' ')}`);
-    for (const session of ['session-a', 'session-b']) {
-      assert.deepStrictEqual(all.filter((e) => e.session === session).map((e) => e.text), [...Array(EACH).keys()].map((i) => `${session} asks ${i}`));
-    }
-    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
-    assert.strictEqual(stateGit(dir, ['rev-list', '--merges', 'HEAD']), '');
   });
 });

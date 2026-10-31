@@ -756,12 +756,12 @@ function aliasAdd(cwd, argv) {
   const { opts, flags, positional } = parseArgs(argv, ['force-dismissed', 'backfill']);
   if (opts['brief-path'] !== undefined) throw new Error(`discovery-map add: --brief-path is refused — ${BRIEF_POINTER}`);
   const backfill = flags.has('backfill');
-  if (![2, 3].includes(positional.length) || (opts.summary === undefined && !backfill)) {
-    throw new Error('Usage: engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]');
+  if (![2, 3].includes(positional.length) || (opts.summary === undefined && !backfill) || (backfill && opts['from-roadmap'] !== undefined)) {
+    throw new Error('Usage: engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] [--from-roadmap <item>] | --backfill) [--source <tag>] [--force-dismissed]');
   }
   const [unit, name] = positional;
   const fields = { summary: opts.summary, description: opts.description, source: opts.source, reAdd: flags.has('force-dismissed') };
-  return backfill ? addItem(cwd, unit, name, { ...fields, backfill }) : addTopic(cwd, unit, name, { ...fields, requireBrief: false });
+  return backfill ? addItem(cwd, unit, name, { ...fields, backfill }) : addTopic(cwd, unit, name, { ...fields, fromRoadmap: opts['from-roadmap'], requireBrief: false });
 }
 
 /** The alias's `add-batch`: topics landed without their briefs. @param {string} cwd @param {string[]} argv */
