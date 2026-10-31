@@ -476,19 +476,28 @@ function itemJoin(item) {
 }
 
 /**
+ * A topic's address — `{work_unit, topic}` — or null for an absent or
+ * malformed one. The write side owns shape, as it does for the join.
+ * @param {unknown} value
+ * @returns {{work_unit: string, topic: string}|null}
+ */
+function topicAddress(value) {
+  const at = /** @type {Record<string, unknown>} */ (value);
+  return at && typeof at === 'object' && !Array.isArray(at)
+    && typeof at.work_unit === 'string' && at.work_unit !== ''
+    && typeof at.topic === 'string' && at.topic !== ''
+    ? /** @type {{work_unit: string, topic: string}} */ (at)
+    : null;
+}
+
+/**
  * The postpone an item carries, when it carries one — the epic and topic it
- * left, or null for an absent or malformed field. The write side owns shape,
- * as it does for the join.
+ * left, or null.
  * @param {Record<string, any>} item
  * @returns {{work_unit: string, topic: string}|null}
  */
 function itemPostponedFrom(item) {
-  const from = item.postponed_from;
-  return from && typeof from === 'object' && !Array.isArray(from)
-    && typeof from.work_unit === 'string' && from.work_unit !== ''
-    && typeof from.topic === 'string' && from.topic !== ''
-    ? from
-    : null;
+  return topicAddress(item.postponed_from);
 }
 
 /**
@@ -1471,6 +1480,7 @@ module.exports = {
   openRecords,
   roadmapItems,
   itemJoin,
+  topicAddress,
   itemPostponedFrom,
   postponeTarget,
   postponeClashPhrase,

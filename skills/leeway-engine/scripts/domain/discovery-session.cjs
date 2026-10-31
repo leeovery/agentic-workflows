@@ -10,20 +10,18 @@
 //     `.product/sessions/session-NNN.md`, its marker `product_session` on the
 //     project manifest, under the project's lock.
 //
-// open allocates the next session number from the logs on disk, moves the
-// model-drafted log into place and sets the marker — one manifest write, no
-// commit: the session is live, and every state commit takes its log along
-// (state-worktree.cjs). The entry opens one the same way where none is open
-// (`openSession`, enter.cjs), its log made empty for the conversation to
-// write.
+// The entry opens one where none is open (`openSession`, enter.cjs): the
+// next session number from the logs on disk, its log made empty for the
+// conversation to write, and the marker set — one manifest write, no commit:
+// the session is live, and every state commit takes its log along
+// (state-worktree.cjs).
 //
 // close clears the marker and commits the place's scope with the caller's
 // message — the unit's discovery scope, or the product's — the log with it.
 // The knowledge base never indexes a log (8.14.7).
 //
-// The log's content is the model's — the engine never writes prose: open
-// installs a finished draft verbatim, close closes the session the marker
-// names. The marker always pairs with a log on disk: no marker means no
+// The log's content is the conversation's — the engine never writes prose.
+// The marker always pairs with a log on disk: no marker means no
 // session to close, and a marker without its log refuses, the manifest
 // untouched.
 // ---------------------------------------------------------------------------
@@ -95,12 +93,11 @@ const productSession = (project) => named(project.product_session);
  */
 
 /**
- * Where a session runs: its logs' folder, state-relative; whether it takes
- * one at all, given its manifest; its marker, worked under its lock; its
- * commit scope; and the retry a failed commit's note names.
+ * Where a session runs: its logs' folder, state-relative; its marker, worked
+ * under its lock; its commit scope; and the retry a failed commit's note
+ * names.
  * @typedef {object} SessionPlace
  * @property {string} logs
- * @property {(manifest: Record<string, any>) => void} opens  refuses a place that takes no session
  * @property {<T>(fn: (marker: Marker, manifest: Record<string, any>) => T) => T} withMarker
  * @property {() => string[]} scope
  * @property {string} retry
@@ -113,11 +110,6 @@ const sessionLogsAt = (name) => (name === PRODUCT ? PRODUCT_SESSIONS : `${name}/
 function unitPlace(cwd, unit) {
   return {
     logs: sessionLogsAt(unit),
-    opens: (manifest) => {
-      if (manifest.work_type !== 'epic') {
-        throw new Error(`discovery-session open is epic-only — "${unit}" is work_type "${manifest.work_type}" (single-phase work gets its session log at workunit create)`);
-      }
-    },
     withMarker: (fn) => withWorkUnitLock(cwd, unit, () => {
       const manifest = loadWorkUnitManifest(cwd, unit);
       const discovery = () => ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'discovery', 'phases.discovery');
@@ -139,7 +131,6 @@ function unitPlace(cwd, unit) {
 function productPlace(cwd) {
   return {
     logs: sessionLogsAt(PRODUCT),
-    opens: () => {},
     withMarker: (fn) => withProjectLock(cwd, () => {
       const manifest = readProjectManifest(cwd);
       return fn({
@@ -188,72 +179,22 @@ function productConversation(cwd) {
 }
 
 /**
- * Refuse a place that takes no session, or has one open already.
- * @param {SessionPlace} place @param {string} name @param {Marker} marker @param {Record<string, any>} manifest
- */
-function assertOpens(place, name, marker, manifest) {
-  place.opens(manifest);
-  if (marker.active !== null) {
-    throw new Error(`a discovery session ("${marker.active}") is already open for "${name}" — close it before opening another`);
-  }
-}
-
-/**
- * Install a place's next log, holding `content`, and set the marker to it:
- * the number one past the highest on disk.
- * @param {string} cwd @param {SessionPlace} place @param {Marker} marker @param {string} content
+ * Install a place's next log, empty, and set the marker to it: the number
+ * one past the highest on disk.
+ * @param {string} cwd @param {SessionPlace} place @param {Marker} marker
  * @returns {{session: string, path: string}}
  */
-function installLog(cwd, place, marker, content) {
+function installLog(cwd, place, marker) {
   const dir = statePath(cwd, place.logs);
   const session = String(nextSessionNumber(dir)).padStart(3, '0');
   const log = path.join(dir, `session-${session}.md`);
   // Log first, marker second: a failure between the two leaves a log
   // without a marker (a closed-looking session — recoverable), never a
-  // marker naming a missing log. The install resolves any literal {NNN} to
-  // the allocated number — the template's placeholder, written before the
-  // number exists — so the durable header matches the filename.
+  // marker naming a missing log.
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(log, content.split('{NNN}').join(session));
+  fs.writeFileSync(log, '');
   marker.set(session);
   return { session, path: log };
-}
-
-/**
- * Open a session at a place: allocate the next number from the logs on
- * disk, install the model-drafted log (moved, not copied) as
- * `session-NNN.md` in the place's logs' folder, and set the marker — one
- * manifest write under the place's lock. No commit.
- *
- * Validation is complete before any mutation: a unit must be an epic (the
- * sole work type with a resumable discovery session — single-phase work gets
- * its log at `workunit create`), no session may already be open, and the
- * draft must exist with content — a refusal leaves everything pristine, the
- * draft included.
- * @param {string} cwd project root
- * @param {string} name a work unit, or `product`
- * @param {{sessionLogFile: string}} opts  model-drafted log content, installed verbatim
- * @returns {{session: string, path: string}}
- */
-function openDiscoverySession(cwd, name, { sessionLogFile }) {
-  const place = sessionPlace(cwd, name);
-  return place.withMarker((marker, manifest) => {
-    assertOpens(place, name, marker, manifest);
-    const draftPath = path.resolve(cwd, sessionLogFile);
-    /** @type {string} */
-    let draft;
-    try {
-      draft = fs.readFileSync(draftPath, 'utf8');
-    } catch {
-      throw new Error(`session log draft not found: ${sessionLogFile}`);
-    }
-    if (draft.trim() === '') {
-      throw new Error(`session log draft is empty: ${sessionLogFile} — draft the log before opening the session`);
-    }
-    const opened = installLog(cwd, place, marker, draft);
-    fs.unlinkSync(draftPath);
-    return opened;
-  });
 }
 
 /**
@@ -265,9 +206,12 @@ function openDiscoverySession(cwd, name, { sessionLogFile }) {
  */
 function openSession(cwd, name) {
   const place = sessionPlace(cwd, name);
-  return place.withMarker((marker, manifest) => {
-    assertOpens(place, name, marker, manifest);
-    return installLog(cwd, place, marker, '');
+  return place.withMarker((marker) => {
+    // Read again under the lock: a peer's entry may have opened one since.
+    if (marker.active !== null) {
+      throw new Error(`a discovery session ("${marker.active}") is already open for "${name}" — close it before opening another`);
+    }
+    return installLog(cwd, place, marker);
   });
 }
 
@@ -312,6 +256,6 @@ function closeDiscoverySession(cwd, name, { message }) {
 }
 
 module.exports = {
-  openDiscoverySession, openSession, closeDiscoverySession, sessionLogs, latestSessionLog, nextSessionNumber, productSession,
+  openSession, closeDiscoverySession, sessionLogs, latestSessionLog, nextSessionNumber, productSession,
   activeSession, sessionLogsAt, productConversation,
 };

@@ -180,7 +180,7 @@ describe('the mark', () => {
   it('every gateway script marks the conversation that runs it, whatever its answer', () => {
     const gateways = fs.readdirSync(SKILLS)
       .filter((d) => d !== 'leeway-engine' && fs.existsSync(path.join(SKILLS, d, 'scripts/gateway.cjs')));
-    assert.ok(gateways.length > 5, `found ${gateways.length} gateways — the skills read is broken`);
+    assert.ok(gateways.length >= 5, `found ${gateways.length} gateways — the skills read is broken`);
     for (const gateway of gateways) {
       spawnSync('node', [path.join(SKILLS, gateway, 'scripts/gateway.cjs')],
         { cwd: dir, encoding: 'utf8', env: { ...process.env, ...session(`via-${gateway}`) } });

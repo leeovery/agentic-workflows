@@ -50,25 +50,18 @@ engine.derivations.phaseData(manifest, phase)     // → phases.{phase} ({} when
 engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] from phases.{phase}.items
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
-engine.derivations.computeAnalysisCacheStatus(manifest, stateDir, kind) // → { status, stamped, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, discussion_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
 engine.derivations.compareMapRows(a, b)           // map-row sort comparator (tier, order, name)
 engine.derivations.computeNeedsSequencing(items)  // → true when a live row lacks an order
-engine.derivations.buildDiscoveryMap(manifest, stateDir)    // → { map, summary, needs_sequencing } — the one discovery-map row builder; the mailboxes are counted from disk under the state root
 
 // domain: background-agent derivations
 engine.agents.completedReviewCycles(cwd, wu, topic)   // → number — report-backed discussion review cycles (legacy files counted by existence; tolerant reads)
 engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, moves_seen, moves_needed, reason } — discussion review-arming verdict (tolerant reads)
 
-// domain: discovery-session queries
-engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
-engine.session.sessionLogs(sessionsDir)           // → [{ number, file }] — the folder's session-NNN.md logs, ascending ([] when none)
-
 // domain: the product roadmap (roadmap.cjs — lifecycle by join, never stored)
-engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, totals, active_session, session_logs, next_session_number, imports } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned); a never-born roadmap reads exists:false, and one with a product session's log and no node exists:true. The roadmap gateway's views and discovery's anti-twin read
-engine.roadmap.becomesTopic(item)                 // → whether the item becomes a topic when it meets an epic — an idea alone; a bug or a quick-fix rides as material. Discovery's anti-twin flag keys on it
+engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, totals, active_session, session_logs, next_session_number, imports } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned); a never-born roadmap reads exists:false, and one with a product session's log and no node exists:true. The roadmap gateway's views read it
 
 // domain: session presence
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
@@ -100,8 +93,6 @@ engine.project.epicReactivateMenu(detail, { presence }) // → { keys, title, di
 engine.project.epicPostponeMenu(detail, { presence }) // → { keys, title, display, rendered } — Postponable Topics pick menu over the Discovery units; a locked unit renders keyless with its reason, a held one carries its in-session age
 engine.project.epicPullForwardMenu(detail)        // → { keys, title, display, rendered } — Postponed Topics pick menu over the topics this epic postponed that still wait, each row naming its horizon; the key carries the roadmap item's own name
 engine.project.epicUnblockMenu(detail)            // → { keys, title, display, rendered } — Blocked Plans unblock menu, one row per blocking dependency (`dep` on the key)
-engine.project.discoveryMapView(wu, map)          // → Discovery Map display block (tier header + rows)
-engine.project.discoverySynthesisView(wu, map, proposed) // → harvest proposal block (proposed set over the existing map)
 engine.project.discussionMap(topic, manifest)     // → Discussion Map display block
 engine.project.startOverview(detail)              // → Workflow Overview display block
 engine.project.startMenu(detail)                  // → { keys, rendered } — continue entries + start/lifecycle options

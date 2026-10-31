@@ -36,7 +36,6 @@ const DOMAIN = path.join(SKILLS, 'leeway-engine/scripts/domain');
 const { raiseScreenOf } = require(path.join(DOMAIN, 'raise.cjs'));
 const { epicDashboard, epicMenu, epicMenuKeys, epicInSessionGate } = require(path.join(DOMAIN, 'projections/epic.cjs'));
 const epicGateway = require(path.join(SKILLS, 'leeway-continue-epic/scripts/gateway.cjs'));
-const discoveryGateway = require(path.join(SKILLS, 'leeway-discovery/scripts/gateway.cjs'));
 
 const UNIT = 'fumi';
 const KEY = 'note-window';
@@ -127,7 +126,6 @@ describe('a started topic renamed goes by its title on every screen that names i
     ['the experiment register', () => shown('experiment-register', { dotpath: `${UNIT}.experiment.${KEY}` }), `Experiments — ${TITLE} (1 experiment)`],
     ['a paused discussion', () => shown('phase-paused', { dotpath: UNIT, phase: 'discussion' }), `"${TITLE}" awaits experiment evidence (E1)`],
     ['a paused specification', () => shown('phase-paused', { dotpath: UNIT, phase: 'specification' }), `"Windows" awaits the ${NAME} discussion`],
-    ['the direct-entry gate', () => shown('direct-entry-gate', { dotpath: `${UNIT}.discussion.${KEY}` }), `⚑ "${TITLE}" is already on the map`],
     ['the entry gate', () => shown('entry-gate', { dotpath: `${UNIT}.specification.windows` }), `Sources for "Windows" are not concluded: ${NAME}`],
     ['the resume gate', () => shown('resume-gate', { dotpath: `${UNIT}.discussion.${KEY}` }), `Found existing discussion for **${TITLE}**.`],
     ['the raise screen', () => raiseScreenOf(dir, /** @type {any} */ (SEAL)), `Fumi · ${TITLE}`],
@@ -147,9 +145,8 @@ describe('a started topic renamed goes by its title on every screen that names i
     it(`${surface} names it "${phrase}", never by its key titlecased`, () => assertTitled(render(), phrase));
   }
 
-  it('the readers Claude matches a name against carry the title beside the key', () => {
+  it('the reader Claude matches a name against carries the title beside the key', () => {
     const line = (dump) => dump.split('\n').find((l) => l.includes(` ${KEY} [`));
-    assert.match(line(discoveryGateway.format(discoveryGateway.discover(dir, UNIT))), new RegExp(`^ {2}- \\S+ ${KEY} \\[discussing\\] goes_by=${NAME} `));
     assert.match(line(epicGateway.formatScoped(UNIT, epicGateway.discover(dir, UNIT))), new RegExp(`^ {2}- \\S+ ${KEY} \\[discussing\\] goes_by=${NAME} `));
   });
 });
@@ -245,8 +242,6 @@ describe('every screen names a topic through one helper', () => {
       'mail.cjs › topicSender › unit',
       'projections/discovery-gates.cjs › approveMapScreen › unit',
       'projections/discovery-gates.cjs › startDisplay › name',
-      'projections/discovery-map.cjs › discoverySynthesisView › workUnit',
-      'projections/discovery-map.cjs › discoveryTitle › workUnit',
       'projections/mail.cjs › sendReport › unit',
       'projections/raise.cjs › header › unit',
       'projections/start.cjs › absorbTargetMenu › name',
@@ -328,7 +323,6 @@ describe('every screen names a topic through one helper', () => {
     'a name not on the map yet, or not on it any more': [
       'projections/decided.cjs › candidateTree › name',
       'projections/decided.cjs › strikePick › name',
-      'projections/discovery-map.cjs › proposedNodes › t.name',
       'projections/discovery-map.cjs › struckBlock › name',
       'projections/transactions.cjs › absorbReceipt › topic',
       'projections/transactions.cjs › MAP_LINES › name',

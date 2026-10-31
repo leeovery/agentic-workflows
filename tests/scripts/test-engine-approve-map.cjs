@@ -28,6 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 
 const { ok, output, refusedPristine, readManifest, readState, statePath, lastMessage, touched, head, layout } = require('./engine-harness.cjs');
+const { joinedTo } = require('./roadmap-world.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp, sectionOf } = require('./discovery-gates-world.cjs');
 
 const { epicMenuKeys } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
@@ -175,7 +176,7 @@ describe('approve the map, refused as staged — nothing staged, nothing written
   });
 
   it('refuses a bind of a bug the epic was started from: it rides with the work, never a topic', () => {
-    ok(dir(), ['roadmap', 'pull', 'export-timeout', '--into', EPIC]);
+    joinedTo(dir(), EPIC, 'export-timeout');
     refusesEach([['a bug bound', () => ({ topics: [sharing()], binds: [bound, { item: 'export-timeout', topic: 'sharing' }] }),
       'bind 2: "export-timeout" is a bug — it rides with the work as material, never a topic']]);
   });

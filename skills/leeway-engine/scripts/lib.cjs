@@ -29,7 +29,6 @@ const state = require('./kernel/state-root.cjs');
 const conventions = require('./domain/conventions.cjs');
 const reads = require('./domain/reads.cjs');
 const derivations = require('./domain/derivations.cjs');
-const discoverySession = require('./domain/discovery-session.cjs');
 const roadmapDomain = require('./domain/roadmap.cjs');
 const roadmapProjections = require('./domain/projections/roadmap.cjs');
 const presence = require('./domain/presence.cjs');
@@ -42,7 +41,6 @@ const workunitManage = require('./domain/workunit-manage.cjs');
 const specification = require('./domain/specification.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const epicProjections = require('./domain/projections/epic.cjs');
-const discoveryProjections = require('./domain/projections/discovery-map.cjs');
 const startProjections = require('./domain/projections/start.cjs');
 const workunitProjections = require('./domain/projections/workunit.cjs');
 const specificationProjections = require('./domain/projections/specification.cjs');
@@ -60,7 +58,6 @@ module.exports = {
   schema: {
     VALID_PHASES: schema.VALID_PHASES,
     WORK_TYPE_PIPELINES: schema.WORK_TYPE_PIPELINES,
-    KEBAB_SLUG_PATTERN: schema.KEBAB_SLUG_PATTERN,
   },
   reads: {
     listFiles: reads.listFiles,
@@ -75,13 +72,11 @@ module.exports = {
     phaseItems: derivations.phaseItems,
     phaseStatus: derivations.phaseStatus,
     computeNextPhase: derivations.computeNextPhase,
-    computeAnalysisCacheStatus: derivations.computeAnalysisCacheStatus,
     computeTopicLifecycle: derivations.computeTopicLifecycle,
     computeMapSummary: derivations.computeMapSummary,
     computeSourceProvenance: derivations.computeSourceProvenance,
     compareMapRows: derivations.compareMapRows,
     computeNeedsSequencing: derivations.computeNeedsSequencing,
-    buildDiscoveryMap: derivations.buildDiscoveryMap,
     inputMoved: derivations.inputMoved,
     movedFrom: derivations.movedFrom,
   },
@@ -90,13 +85,8 @@ module.exports = {
     reviewArming: agentState.reviewArming,
     latestReview: agentState.latestReview,
   },
-  session: {
-    nextSessionNumber: discoverySession.nextSessionNumber,
-    sessionLogs: discoverySession.sessionLogs,
-  },
   roadmap: {
     roadmapState: roadmapDomain.roadmapState,
-    becomesTopic: roadmapDomain.becomesTopic,
   },
   presence: {
     scanPresence: presence.scanPresence,
@@ -122,7 +112,6 @@ module.exports = {
     titlecase: conventions.titlecase,
     actionsTable: surfaces.actionsTable,
     workUnitTitle: workunitProjections.workUnitTitle,
-    discoveryTitle: discoveryProjections.discoveryTitle,
     SPEC_TITLE: specificationProjections.SPEC_TITLE,
     selectionNotFound: selectionProjections.selectionNotFound,
     epicDashboard: epicProjections.epicDashboard,
@@ -136,8 +125,6 @@ module.exports = {
     epicPostponeMenu: epicProjections.epicPostponeMenu,
     epicPullForwardMenu: epicProjections.epicPullForwardMenu,
     epicUnblockMenu: epicProjections.epicUnblockMenu,
-    discoveryMapView: discoveryProjections.discoveryMapView,
-    discoverySynthesisView: discoveryProjections.discoverySynthesisView,
     roadmapTitle: roadmapProjections.roadmapTitle,
     roadmapMapView: roadmapProjections.roadmapMapView,
     roadmapProposalView: roadmapProjections.roadmapProposalView,

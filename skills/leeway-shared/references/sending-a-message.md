@@ -43,10 +43,10 @@ Carry **everything** worked out about the message — as many paragraphs as it t
 Resolution is computed against the **live** state at landing time, never cached — a target created earlier in the same session must resolve correctly:
 
 ```bash
-node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-engine/scripts/engine.cjs render discovery-map {work_unit}
 ```
 
-Find the row whose name is `{target}`, or whose `goes_by` is — a started topic the person renamed goes by the new name — and set `target` to that row's name.
+Read its DATA, never shown. Find the topic row whose name is `{target}`, or whose `goes_by` is — a started topic the person renamed goes by the new name — and set `target` to that row's name.
 
 #### If no row matches
 

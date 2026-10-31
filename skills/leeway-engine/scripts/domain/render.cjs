@@ -32,7 +32,6 @@ const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, 
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
-const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
@@ -52,7 +51,6 @@ const {
   roadmapAddGate,
   roadmapHarvestGate,
   roadmapParksGate,
-  roadmapShapeGate,
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
@@ -60,9 +58,9 @@ const { waitGate, phasePaused, owedWaits, owedSources } = require('./projections
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
-  phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
+  phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments, waits, itemOf,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
   topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
@@ -2059,138 +2057,17 @@ function backlogGate(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// The discovery-map gates. A map edit, a staged candidate, a name collision
-// and a closed send target each stop the same way: the proposal above,
-// the confirm beneath. Judgment supplies the names and values; the bodies,
+// The discovery-map gates. A staged candidate and a closed send target each
+// stop the same way: the proposal above, the confirm beneath. Judgment supplies the names and values; the bodies,
 // the questions and the option sets are fixed here, so a gate reads the same
 // whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
-
-const { removeRefusal } = require('./discovery-map.cjs');
-const { namesTopic } = require('./ledger-fold.cjs');
 
 // A bare yes/no pair — no labels, because the question above them already
 // says what yes means (CONVENTIONS.md: The Design System, Menus). Composed
 // per render, as every option set is: a row records itself where it is
 // built.
 const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
-
-// The map-operation family: op → the confirm question its gate asks. The
-// batch ops (a run of summary or description edits confirmed together) ask
-// once for the whole batch; every other op is its own group of one. Each
-// lands at any lifecycle but a removal, which its topic's may refuse.
-const MAP_OP_QUESTIONS = {
-  'edit-summary': 'Apply?',
-  'edit-description': 'Apply?',
-  remove: 'Confirm removal?',
-  rename: 'Confirm rename?',
-};
-const MAP_OP_BATCHES = ['edit-summary', 'edit-description'];
-
-/** @param {object} p @param {string} field @returns {string} */
-function mapOpName(p, field) {
-  if (!isFilled(p[field])) throw new Error(`render map-op-gate: "${field}" must be a non-empty string`);
-  return p[field];
-}
-
-/**
- * The batch rows of an edit op: `[{name, <field>}]`, at least one.
- * @param {object} p @param {string} field @returns {{name: string, value: string}[]}
- */
-function mapOpRows(p, field) {
-  if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error(`render map-op-gate: "items" must be a non-empty array of {name, ${field}}`);
-  }
-  return p.items.map((row, i) => {
-    for (const key of ['name', field]) {
-      if (!row || !isFilled(row[key])) {
-        throw new Error(`render map-op-gate: item ${i + 1} is missing "${key}" (each item needs name and ${field})`);
-      }
-    }
-    return { name: row.name, value: row[field] };
-  });
-}
-
-/**
- * The proposal body for one map operation.
- * @param {string} op @param {object} p @returns {string[]}
- */
-function mapOpBody(op, p) {
-  if (op === 'edit-summary' || op === 'edit-description') {
-    const field = op === 'edit-summary' ? 'summary' : 'description';
-    const noun = op === 'edit-summary' ? 'summary(ies)' : 'description(s)';
-    const rows = mapOpRows(p, field);
-    return [
-      `Updating ${rows.length} ${noun}:`,
-      '',
-      ...rows.flatMap((r) => bulletRow(`${r.name}: "${r.value}"`)),
-    ];
-  }
-  if (op === 'remove') {
-    return [
-      `Remove "${mapOpName(p, 'name')}" from the map.`,
-      '',
-      ...indentedBody([
-        'Lifecycle: fresh — no work has started on this topic.',
-        "The name will be added to the dismissed list so the analysis won't auto-re-propose it.",
-      ]),
-    ];
-  }
-  return [`Rename "${mapOpName(p, 'name')}" → "${mapOpName(p, 'new_name')}".`];
-}
-
-// The names one op touches: a run of rows for the batch edits, the single
-// subject otherwise. The op's own payload validation has already run, so
-// every name here is a filled string.
-/** @param {string} op @param {object} p @returns {string[]} */
-function mapOpTargets(op, p) {
-  if (op === 'edit-summary') return mapOpRows(p, 'summary').map((r) => r.name);
-  if (op === 'edit-description') return mapOpRows(p, 'description').map((r) => r.name);
-  return [mapOpName(p, 'name')];
-}
-
-/** @param {object} manifest @param {string} name */
-function assertOnMap(manifest, name) {
-  const items = (((manifest.phases || {}).discovery || {}).items) || {};
-  if (!items[name]) throw new Error(`render map-op-gate: no discovery item "${name}" on the map`);
-}
-
-/**
- * Why a single-item op cannot land from where its topic stands, as the
- * refusal the gate shows in place of its confirm — or null where it can:
- * a removal's, the very refusal its verb throws, so the gate and the write
- * path cannot drift apart.
- * @param {string} cwd @param {object} manifest @param {string} op @param {string} name
- * @returns {string|null}
- */
-function mapOpRefusal(cwd, manifest, op, name) {
-  if (op !== 'remove') return null;
-  const refusal = removeRefusal(manifest, name, namesTopic(stateRoot(cwd), /** @type {{name: string}} */ (manifest).name, name, []));
-  return refusal && `"${name}" can't be removed — ${refusal}.`;
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, op?: string, file?: string}} args
- * @returns {string}
- */
-function mapOpGate(cwd, { dotpath, op, file }) {
-  if (!isFilled(op) || !Object.hasOwn(MAP_OP_QUESTIONS, op)) {
-    throw new Error(`render map-op-gate: --op must be one of ${Object.keys(MAP_OP_QUESTIONS).join(', ')}, got "${op}"`);
-  }
-  if (!file) throw new Error('render map-op-gate: --file <payload.json> is required');
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'map-op-gate');
-  const p = readJsonPayload(cwd, file, 'map-op-gate');
-  const body = mapOpBody(op, p);
-  const targets = mapOpTargets(op, p);
-  for (const name of targets) assertOnMap(manifest, name);
-  const refusal = MAP_OP_BATCHES.includes(op) ? null : mapOpRefusal(cwd, manifest, op, targets[0]);
-  if (refusal) return section('DISPLAY: map operation refused', CONTINUE_INSTRUCTION, indentedBody([refusal], { indent: '' }).join('\n'));
-  return [
-    section('DISPLAY: map operation', emitAs('text', ', directly above the menu'), body.join('\n')),
-    section('MENU: map operation gate', MENU_INSTRUCTION, menu('', yesNo(), { question: MAP_OP_QUESTIONS[op] })),
-  ].join('\n');
-}
 
 // candidate-gate — the analysis approval gate's per-candidate stop. The
 // candidate's own fields are judgment content staged by the analysis; the
@@ -2263,36 +2140,6 @@ function candidateGate(cwd, { dotpath, file, variant }) {
     cmdOption('p', 'postpone', 'Postpone — the topic joins the map with its brief and waits on the roadmap under a horizon you name'),
     promptOption('Comment', 'Tell me what to change (summary or description)'),
   ], { question: 'Add this topic to the map?' }))].join('\n');
-}
-
-// dismissed-topics — the names removed from the map, and the re-add offer
-// the session loop opens over them. The list is the display and the menu is
-// the ask: a re-add names topics, never one row. With
-// nothing dismissed there is nothing to re-add, so the display stands alone.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function dismissedTopics(cwd, { dotpath }) {
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'dismissed-topics');
-  const dismissed = ((manifest.phases || {}).discovery || {}).dismissed;
-  const names = Array.isArray(dismissed) ? dismissed : [];
-  const heading = ['Dismissed Topics', ''];
-  if (names.length === 0) {
-    return section('DISPLAY: dismissed topics', CONTINUE_INSTRUCTION, [...heading, ...indentedBody(['(none)'])].join('\n'));
-  }
-  return [
-    section('DISPLAY: dismissed topics', emitAs('text', ', directly above the menu'), [
-      ...heading,
-      ...names.flatMap((name) => bulletRow(name)),
-    ].join('\n')),
-    section('MENU: dismissed topics', MENU_INSTRUCTION, menu('', [
-      cmdOption('b', 'back', 'Return to the session'),
-      promptOption('Name them', 'Tell me which to re-add'),
-    ], { question: 'Re-add any of these to the map?' })),
-  ].join('\n');
 }
 
 // discovery-map — an epic's map for Claude and for the person: its topics in
@@ -4444,49 +4291,6 @@ function blocker(fact, guidance) {
   ].join('\n');
 }
 
-// ---------------------------------------------------------------------------
-// direct-entry-gate — the epic menu's d door takes a free-typed topic name.
-// A name already on the map is not a new topic: the menu row is the way in,
-// so the door refuses, naming where the topic stands; a closed topic names
-// its closure, which is what explains its empty menu. A cancelled,
-// postponed or decided topic carries no row of its own, so it
-// names the row that brings it back — a postponed one only while its roadmap
-// item still waits, since another epic's pull leaves it no way back. Red like
-// blocker(), but never terminal:
-// the menu the door was picked from renders again beneath it. Empty when the
-// name is new, or the work unit carries no map.
-// ---------------------------------------------------------------------------
-
-/** @type {Record<string, string>} */
-const DIRECT_ENTRY_WAY_BACK = {
-  cancelled: 'Reactivate it from the menu (`e/reactivate`) — a cancelled topic carries no row.',
-  postponed: 'Pull it forward from the menu (`f/forward`) — a postponed topic carries no row.',
-  decided: 'Resume it from the menu (`c/completed`) — a decided topic carries no row.',
-};
-const POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string} the refusal's sections, or '' when the name is free to start
- */
-function directEntryGate(cwd, { dotpath }) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
-  if (phase !== 'discussion') {
-    throw new Error(`render direct-entry-gate: phase must be discussion, got "${phase}"`);
-  }
-  if (manifest.work_type !== 'epic') return '';
-  if (!phaseItems(manifest, 'discovery').some((i) => i.name === topic)) return '';
-  const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  const guidance = lifecycle === 'postponed' && !postponedStillWaits(cwd, workUnit, topic)
-    ? POSTPONED_TAKEN
-    : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
-  return [
-    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${topicTitle(manifest, topic)}" is already on the map — ${lifecyclePhrase(lifecycle)}`),
-    section('DISPLAY: direct entry guidance', CONTINUE_MARKDOWN_INSTRUCTION, `> ${guidance}`),
-  ].join('\n');
-}
-
 /**
  * @param {string} cwd
  * @param {{dotpath: string, own?: string}} args
@@ -5615,128 +5419,9 @@ function roadmapParksGateSurface(_cwd, _args) {
   return section('MENU: roadmap parks gate', MENU_INSTRUCTION, roadmapParksGate());
 }
 
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function roadmapShapeGateSurface(_cwd, _args) {
-  return section('MENU: roadmap shape gate', MENU_INSTRUCTION, roadmapShapeGate());
-}
-
-// opener — the first words of a conversation that starts on material,
-// ending on the question the turn stops for. The engine names what was read
-// from state; the sketch and the questions are the session's, carried in a
-// payload. `inbox`: discovery over a working set of inbox items before any
-// work unit exists, the items named by kind (`--path`, comma-joined, the
-// shape the inbox seeds take). `seeded`: an epic's first session over the
-// seeds and imports its manifest holds. `discussion`: a fresh discussion's
-// core-problem question, its topic the address.
-
-const OPENER_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
-
-/** The full stop a sentence ending on `text` still needs — none where the text closes on its own mark. @param {string} text */
-function fullStop(text) {
-  return /[.?!]$/.test(text) ? '' : '.';
-}
-
-// What an opener names as read, largest shape first: each kind's article
-// and plural.
-/** @type {Record<string, {article: string, plural: string}>} */
-const READ_NOUNS = {
-  idea: { article: 'an', plural: 'ideas' },
-  bug: { article: 'a', plural: 'bugs' },
-  'quick-fix': { article: 'a', plural: 'quick-fixes' },
-  import: { article: 'an', plural: 'imports' },
-};
-
-/** "a", "a and b", "a, b and c". @param {string[]} parts */
-function listPhrase(parts) {
-  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
-}
-
-/**
- * What was read, named by kind and counted where several — "bug",
- * "3 ideas", "2 ideas and a bug", "idea and 2 imports". The first kind's
- * lone item takes no article: "your" is its determiner.
- * @param {string[]} kinds
- */
-function readPhrase(kinds) {
-  const counted = Object.keys(READ_NOUNS)
-    .map((kind) => ({ kind, n: kinds.filter((k) => k === kind).length }))
-    .filter(({ n }) => n > 0);
-  return listPhrase(counted.map(({ kind, n }, i) => {
-    if (n > 1) return `${n} ${READ_NOUNS[kind].plural}`;
-    return i === 0 ? kind : `${READ_NOUNS[kind].article} ${kind}`;
-  }));
-}
-
-/** The payload's sketch and its question field. @param {string} cwd @param {string|undefined} file @param {string} field */
-function openerPayload(cwd, file, field) {
-  if (!file) throw new Error('render opener: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'opener');
-  for (const key of ['sketch', field]) {
-    if (!isFilled(p[key])) throw new Error(`render opener: "${key}" must be a non-empty string`);
-  }
-  return { sketch: p.sketch.trim(), [field]: p[field].trim() };
-}
-
-/** @param {string} read @param {string} sketch @param {string} ask */
-function shapeOpener(read, sketch, ask) {
-  return section('DISPLAY: opener', OPENER_INSTRUCTION, [`${read}. Here's the shape I'm picking up:`, '', sketch, '', ask].join('\n'));
-}
-
-/** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
-const OPENERS = {
-  inbox: (cwd, { dotpath, path: given, file }) => {
-    if (dotpath !== undefined) throw new Error('render opener: --variant inbox takes no address — no work unit exists yet');
-    const paths = inboxPathsArg(given, 'opener', 'the inbox seeds read, comma-joined');
-    let items;
-    try {
-      items = parseInboxPaths(cwd, paths, { archived: false });
-    } catch (err) {
-      throw new Error(`render opener: ${messageOf(err)}`);
-    }
-    const p = openerPayload(cwd, file, 'question');
-    return shapeOpener(
-      `I've read your ${readPhrase(items.map((item) => FOLDER_KIND[item.folder]))}`,
-      p.sketch,
-      `${p.question} If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.`,
-    );
-  },
-  seeded: (cwd, { dotpath, file }) => {
-    const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'opener');
-    const seeds = Array.isArray(manifest.seeds) ? manifest.seeds : [];
-    const imports = Array.isArray(manifest.imports) ? manifest.imports : [];
-    if (seeds.length === 0 && imports.length === 0) {
-      throw new Error(`render opener: "${workUnit}" holds no seeds or imports — the seeded opener reads what they describe`);
-    }
-    const p = openerPayload(cwd, file, 'questions');
-    return shapeOpener(
-      `Read your ${readPhrase([...seeds.map(seedKind), ...imports.map(() => 'import')])}`,
-      p.sketch,
-      `Before we name topics, let's pull on a few things — ${p.questions}${fullStop(p.questions)}`,
-    );
-  },
-};
-
-/** @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function openerSurface(cwd, args) {
-  const { variant } = args;
-  if (variant === undefined || !Object.hasOwn(OPENERS, variant)) {
-    throw new Error(`render opener: --variant must be one of ${Object.keys(OPENERS).join(', ')}, got "${variant ?? ''}"`);
-  }
-  return OPENERS[variant](cwd, args);
-}
-
 // The cross-flow static gates — adopted engine-side as their files were
 // touched (menus are engine-rendered, static sets included). Wording is
 // the gates' own; each is fetched at the exact point it displays.
-
-/** Discovery's work-type commit confirm — the shaping conversation's hinge. @param {string} _cwd @param {object} _args @returns {string} */
-function shapeGateSurface(_cwd, _args) {
-  return section('MENU: shape gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', "That's the right shape, set it up"),
-    cmdOption('o', 'other', "It's something else (tell me what)"),
-    promptOption('Keep shaping', "Tell me what I'm missing"),
-  ], { question: 'Have I read this right?' }));
-}
 
 /**
  * leeway's migration summary — the payload is the session's summary,
@@ -5764,15 +5449,6 @@ function migrationsAppliedSurface(cwd, { file }) {
     notices: notices.map((notice) => notice.trim()),
     counts: given.length ? { migrations: p.migrations, files: p.files } : null,
   });
-}
-
-/** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */
-function synthesisGateSurface(_cwd, _args) {
-  return section('MENU: synthesis gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Commit these topics and conclude'),
-    cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
-    promptOption('Adjust', 'Tell me what to change (split, merge, rename, edit summary)'),
-  ], { question: 'Commit these topics?' }));
 }
 
 /**
@@ -5950,9 +5626,7 @@ const SURFACES = {
   'mail-offer': mailOffer,
   'mail-block': mailBlock,
   'backlog-gate': backlogGate,
-  'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
-  'dismissed-topics': dismissedTopics,
   'send-closed-target': sendClosedTarget,
   'conclude-gate': concludeGate,
   'experiment-register': experimentRegisterSurface,
@@ -5991,7 +5665,6 @@ const SURFACES = {
   'step-opening': stepOpeningSurface,
   'format-version-check': formatVersionCheck,
   'entry-gate': entryGate,
-  'direct-entry-gate': directEntryGate,
   'code-gate': codeGate,
   'next-phase-gate': nextPhaseGate,
   'cancel-gate': cancelGate,
@@ -6031,10 +5704,6 @@ const SURFACES = {
   'inbox-roadmap-gate': inboxRoadmapGate,
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
-  'roadmap-shape-gate': roadmapShapeGateSurface,
-  'shape-gate': shapeGateSurface,
-  'opener': openerSurface,
-  'synthesis-gate': synthesisGateSurface,
   'query-failure-gate': queryFailureGateSurface,
   'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,

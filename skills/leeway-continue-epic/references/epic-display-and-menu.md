@@ -87,11 +87,11 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 → Proceed to **I. Pull Forward Topic**.
 
-#### If `action` is `new_discussion`
+#### If `action` is `new_topic`
 
-→ Load **[new-topic.md](new-topic.md)** with phase = `discussion`.
+A new topic lands on the map in the epic's discovery.
 
-→ On return, proceed to **C. Route Selection**.
+→ Proceed to **C. Route Selection**.
 
 #### If `action` is `analyze_discussions`
 
@@ -155,7 +155,7 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/leeway-{phase}-process epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/leeway-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. The `new_discussion` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
+Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for the specification the specification menu returned, `/leeway-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. The `analyze_discussions` entry carries route `(internal)` and arrives here with the topic its flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
 
 #### If `route` enters the specification
 

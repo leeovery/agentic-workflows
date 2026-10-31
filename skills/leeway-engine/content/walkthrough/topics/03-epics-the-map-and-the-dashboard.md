@@ -1,6 +1,6 @@
 # Epics: the map and the dashboard
 
-An epic is a piece of work made of several distinct parts, called topics. Confirming an epic opens a design conversation rather than ending one, and when you say the ground is covered the system draws out the topics, writes each a brief carrying the decisions and rejected paths that concern it, and routes each to its discussion. The result is the map: the list of topics with their routing and their current state.
+An epic is a piece of work made of several distinct parts, called topics. Confirming an epic opens a design conversation rather than ending one, and when you say the ground is covered the system draws out the topics, writes each a brief carrying the decisions and rejected paths that concern it, ready for its discussion. The result is the map: the list of topics with their current state.
 
 The dashboard is how you live with an epic. It is arranged in the three stages, and under each you see the topics that have reached it, with a state line beneath each one.
 
@@ -8,7 +8,6 @@ The dashboard is how you live with an epic. It is arranged in the three stages, 
    ○  Fresh                  on the map, nothing started yet
    ◐  Discussing             the discussion is under way
    ✓  Decided                the discussion has concluded
-   ⊙  Dead end               closed with nothing to carry on
    ⊘  Cancelled              taken out of active work
 ```
 

@@ -42,18 +42,6 @@ const SEED_SOURCES = /** @type {Record<string, string>} */ ({ ideas: 'inbox:idea
 const ROADMAP_SEED = 'roadmap:';
 
 /**
- * The kind of item a landed seed was: read off its `source` tag, or, for a
- * roadmap item's note, the item as it stood.
- * @param {{source: string, item?: {kind: ItemKind}}} seed @returns {ItemKind}
- */
-function seedKind({ source, item }) {
-  if (source.startsWith(ROADMAP_SEED) && item !== undefined) return item.kind;
-  const folder = Object.keys(SEED_SOURCES).find((f) => SEED_SOURCES[f] === source);
-  if (!folder) throw new Error(`unknown seed source ${JSON.stringify(source)} — one of: ${Object.values(SEED_SOURCES).join(', ')}`);
-  return FOLDER_KIND[folder];
-}
-
-/**
  * @typedef {object} InboxItem
  * @property {string} rel     the path in the state, state-relative
  * @property {string} folder  ideas | bugs | quickfixes
@@ -279,6 +267,5 @@ module.exports = {
   ARCHIVED,
   FOLDER_KIND,
   SEED_SOURCES,
-  seedKind,
   ROADMAP_SEED,
 };

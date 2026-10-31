@@ -57,7 +57,7 @@ A small, mechanical change with nothing to debate. Its middle is a single scopin
 A standard, pattern or policy for the codebase to follow, rather than something to ship. It ends at its specification, which becomes a standing document.
 
 **topic**:
-One part of an epic, with its own name, its own routing and its own trip through the phases. For every other kind of work the topic is the work itself and the word never appears.
+One part of an epic, with its own name, its own brief and its own trip through the phases. For every other kind of work the topic is the work itself and the word never appears.
 
 ## The journey
 
@@ -147,9 +147,6 @@ An epic's view: the three stages as bands, the topics and their state beneath th
 
 **build order**:
 A suggested sequence over an epic's specifications for planning and building. Advisory: stepping ahead of it warns and never blocks.
-
-**dead end**:
-A topic closed with nothing to carry forward under its own name. It stays on the map as the record that it was explored.
 
 ## Everyday
 

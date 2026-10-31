@@ -280,7 +280,7 @@ class Sim {
   }
 }
 
-/** Session-log helper — workunit create and discovery-session open need one. */
+/** Session-log helper — workunit create needs one. */
 function sessionLog(sim, wu, n = 1) {
   return sim.write(`.leeway/.cache/${wu}/discovery/session-00${n}.md`,
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
@@ -297,12 +297,17 @@ function send(sim, wu, topic, from, slug) {
   return sim.run(sendArgv(sim, wu, topic, from, slug));
 }
 
-/** An epic whose map carries the named topics. */
+/** An epic whose map carries the named topics, each with its brief. */
 function mappedEpic(sim, wu, names) {
   sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
-  sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
-    names.map((name) => ({ name, summary: name })))]);
+  mapTopics(sim, wu, names.map((name) => ({ name, summary: name })));
   sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+}
+
+/** Topics landed on an epic's map in one batch, each with a brief drafted for it. @param {Sim} sim @param {string} wu @param {{name: string}[]} topics */
+function mapTopics(sim, wu, topics) {
+  return sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
+    topics.map((topic) => ({ ...topic, brief: briefDraft(sim, wu, topic.name) })))]);
 }
 
 /** One presence row from a scan, or undefined. */
@@ -572,10 +577,11 @@ function backToStart(sim, keys) {
 }
 
 // route-to-discovery: new work goes to discovery with its work type's
-// pre-seed, no work unit, and its inbox seeds quoted — `none` where it has none.
+// pre-seed, or `start` where it has none, no work unit, and its inbox seeds
+// quoted — `none` where it has none.
 /** @param {Sim} sim @param {string} workType @param {string} seeds */
 function toDiscovery(sim, workType, seeds) {
-  return handoff(sim, `/leeway-discovery ${workType} none "${seeds}"`);
+  return handoff(sim, `/leeway-discovery ${workType === 'none' ? 'start' : workType} none "${seeds}"`);
 }
 
 // A handoff into `discovery none` landing: the product's conversation
@@ -624,6 +630,16 @@ function approveTheMap(sim, wu, given) {
 function startNew(sim, preSeed) {
   assert.ok(startKeys(sim).some((k) => k.action === 'start_new' && k.pre_seed === preSeed), `the start menu offers new ${preSeed} work`);
   return toDiscovery(sim, preSeed, 'none');
+}
+
+// The roadmap's pull (pull.md): the picked items handed to discovery as its
+// seeds, their kinds giving the pre-seed — `start` where any is an idea.
+/** @param {Sim} sim @param {string[]} items */
+function pullFromRoadmap(sim, items) {
+  const { items: rows } = LIB.roadmap.roadmapState(sim.dir);
+  const kinds = items.map((name) => rows.find((/** @type {{name: string}} */ row) => row.name === name).kind);
+  const wayIn = kinds.includes('idea') ? 'start' : (kinds.includes('bug') ? 'bugfix' : 'quick-fix');
+  return handoff(sim, `/leeway-discovery ${wayIn} none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
 }
 
 // The working set's w/work (inbox-working-set F): a set of any mix goes to
@@ -1079,5 +1095,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

@@ -24,7 +24,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const {
   epicMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { Sim, sessionLog, enterEntry, discussed } = require('./pipeline-world.cjs');
+const { Sim, mapTopics, sessionLog, answerGate, enterEntry, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic postpone', () => {
   let sim;
@@ -34,13 +34,13 @@ describe('pipeline simulation: epic postpone', () => {
   it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {
     const wu = 'later';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Postpone units', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'fresh-one', summary: 'Nothing started' },
       { name: 'talking', summary: 'Discussion under way' },
       { name: 'decided', summary: 'Discussion concluded' },
       { name: 'specd', summary: 'Specified already' },
-    ])]);
-    sim.run(['discovery-map', 'sequence', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'specd=4']);
+    ]);
+    sim.run(['topic', 'order', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'specd=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
@@ -66,8 +66,13 @@ describe('pipeline simulation: epic postpone', () => {
     assert.deepStrictEqual(first.roadmap, { name: 'fresh-one', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.fresh-one`, '--verb', 'postpone'], { expect: 'content' }),
       /Postponed "Fresh One" → next\./);
+    // From the epic's discovery, the person names no horizon: the pick offers
+    // the roadmap's, the new one they name carries on, and the postpone takes it.
+    assert.match(sim.render(['horizon-pick', '--park', 'talking'], { expect: 'content' }), /Putting "Talking" on the roadmap\.[\s\S]*→ next — \*1 waiting\*/);
+    assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', 'n').next, { kind: 'continue' });
     const second = sim.run(['topic', 'postpone', wu, 'talking', '--horizon', 'later']);
     assert.deepStrictEqual(second.roadmap, { name: 'talking', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false });
+    assert.match(sim.render(['topic-receipt', `${wu}.discovery.talking`, '--verb', 'postpone'], { expect: 'content' }), /Postponed "Talking" → later\./);
     assert.deepStrictEqual(second.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
 

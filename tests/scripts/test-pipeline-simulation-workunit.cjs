@@ -142,10 +142,6 @@ describe('pipeline simulation: workunit', () => {
     sim.run(['discovery-session', 'close', epic, '-m', `discovery(${epic}): shape`]);
     sim.write('shared/dockset-05.png', "the epic's own shot\n");
     sim.run(['workunit', 'import', epic, 'shared/dockset-05.png', '--from', 'discovery']);
-    // The next session over the still-empty map opens on that material.
-    sim.write(`.leeway/.cache/${epic}/discovery/opener.json`, JSON.stringify({ sketch: 'An onboarding screen.', questions: 'who lands on it first?' }));
-    assert.match(sim.render(['opener', epic, '--variant', 'seeded', '--file', `.leeway/.cache/${epic}/discovery/opener.json`], { expect: 'content' }),
-      /Read your import\. Here's the shape I'm picking up:/);
 
     // Absorb re-homes the material: the collision suffixes, the links the
     // rename broke are rewritten in the documents absorb moved, and the

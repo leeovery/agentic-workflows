@@ -26,7 +26,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
-  Sim, sessionLog, arrive, handoffEntry, enterEntry, handoff, decideTopic, discussed, bridgeTo, linearPick, startNew, send, sendArgv,
+  Sim, mapTopics, sessionLog, arrive, handoffEntry, enterEntry, handoff, decideTopic, discussed, bridgeTo, linearPick, startNew, send, sendArgv,
 } = require('./pipeline-world.cjs');
 
 const { specDetail } = require('./pipeline-oracle.cjs');
@@ -95,12 +95,11 @@ describe('pipeline simulation: cross-cutting', () => {
   it('spec promotion: a cross-cutting concern leaves the epic with its discussions, roadmap sources follow the files, and the unit routes to each moved discussion by name', () => {
     const wu = 'host';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc message', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'logging', summary: 'Logging everywhere' },
       { name: 'tracing', summary: 'Tracing everywhere' },
       { name: 'billing', summary: 'Billing' },
     ]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): three topics`]);
     // The logging discussion parks a question for later — the roadmap item
     // first, its source the topic's log, then the move to it.

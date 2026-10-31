@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix scenarios: scoping registering the
 // specification and the plan in one pass, verification, review and the unit
-// complete; and a quick-fix promoted to a feature, its pipeline carrying on.
+// complete; and a quick-fix promoted to a feature, its pipeline carrying on,
+// or to a bugfix, handed to its investigation.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -116,9 +117,18 @@ describe('pipeline simulation: quick-fix', () => {
     sim.refuses(['render', 'complexity-gate', wu, '--file', concerns],
       /"grows" is a feature — the complexity check is the quick-fix's own/);
 
-    // The promoted feature's first phase is its discussion (complexity-check
-    // A), which it runs normally to its yes.
-    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    // The promotion hands straight to the new type's first phase (complexity-
+    // check C) — a feature's discussion, which it runs normally to its yes.
+    assert.strictEqual(handoff(sim, `/leeway-discussion-process feature ${wu}`).text, `Invoke \`/leeway-discussion-process feature ${wu}\`.`);
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+  });
+
+  it('quick-fix promotion to a bugfix hands straight to its investigation', () => {
+    const wu = 'deeper';
+    sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['manifest', 'set', wu, 'work_type', 'bugfix']);
+    sim.run(['manifest', 'set', `project.work_units.${wu}.work_type`, 'bugfix']);
+    sim.run(['commit', '--workflows', '-m', `workflow(${wu}): promote quick-fix to bugfix`]);
+    assert.strictEqual(handoff(sim, `/leeway-investigation-process bugfix ${wu}`).text, `Invoke \`/leeway-investigation-process bugfix ${wu}\`.`);
   });
 });

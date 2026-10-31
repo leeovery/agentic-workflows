@@ -141,7 +141,7 @@ function assertLegalName(kind, name) {
 
 // Where an import came from — required on every `imports[]` entry. The fixed
 // origins are the two places that belong to no phase session: `discovery`
-// (the opener or a discovery session) and `roadmap` (the project-level
+// (a discovery session, or the unit's creation) and `roadmap` (the project-level
 // product layer). Everything else is `{phase}/{topic}` — the session that
 // landed the file — and only the phases whose sessions read shared material
 // carry that door.

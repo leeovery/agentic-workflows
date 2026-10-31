@@ -23,7 +23,7 @@ const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
 const { git, stateGit } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, handoff, decideTopic, discussed } = require('./pipeline-world.cjs');
+const { Sim, mapTopics, sessionLog, handoff, decideTopic, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: concurrency', () => {
   let sim;
@@ -48,13 +48,12 @@ describe('pipeline simulation: concurrency', () => {
     // --- the map both sessions inherit -------------------------------------
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Event relay overhaul', '--session-log-file', log]);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'ingest', summary: 'How events arrive' },
       { name: 'ranking', summary: 'How events are ordered' },
       { name: 'metrics', summary: 'What good looks like' },
       { name: 'dispatch', summary: 'How events leave' },
     ]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 4 topics`]);
 
     // ingest is discussed and ready to specify; dispatch is built out to the

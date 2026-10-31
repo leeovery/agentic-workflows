@@ -136,7 +136,7 @@ describe('workunit create, its imports and its log (until 29.15)', () => {
     assert.deepStrictEqual(res.imports, ['my-design-doc.md', 'upper.md', 'plain.md', 'weird-name.md'].map((name) => ({ path: landed(`imports/${name}`) })));
     assert.deepStrictEqual([res.skipped_imports, res.session_log, readState(dir(), layout.session('payments', '001'))], [[], landed('discovery/session-001.md'), SESSION_LOG]);
     const [entry] = readManifest(dir(), 'payments').imports;
-    assert.deepStrictEqual([Object.keys(entry), entry.origin], [['path', 'imported_at', 'origin'], 'discovery'], 'the opener is discovery\'s own door');
+    assert.deepStrictEqual([Object.keys(entry), entry.origin], [['path', 'imported_at', 'origin'], 'discovery'], 'a new unit\'s files come in through discovery');
     assert.ok(fs.existsSync(path.join(dir(), 'notes/My Design DOC.txt')), 'an import is copied, its source untouched');
     assert.deepStrictEqual([lastMessage(dir()), stateGit(dir(), ['rev-list', '--count', `${before}..HEAD`]).trim()], ['discovery(payments): create work unit (feature)', '1']);
   });

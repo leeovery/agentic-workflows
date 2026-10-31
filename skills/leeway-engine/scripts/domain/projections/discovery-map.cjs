@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: discovery projections — the Discovery Map view over one
-// epic's map rows, with an optional synthesis overlay (the harvest's
-// proposed topic set, model-authored, not yet on the map).
+// epic's map rows.
 //
 // Deterministic: same input, same string. Rows carry their lifecycle label
 // as the `[tag]` (self-describing — no separate Key block); summaries wrap
@@ -11,7 +10,7 @@
 // the ragged hand-drawn layout this projection replaces.
 // ---------------------------------------------------------------------------
 
-const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
+const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 
@@ -37,13 +36,6 @@ const { section, dataSection, CONTINUE_INSTRUCTION } = require('./surfaces.cjs')
  * @property {number} fresh
  * @property {number} cancelled
  * @property {number} postponed
- */
-
-/**
- * @typedef {object} ProposedTopic
- * @property {string} name
- * @property {string} summary   one line, from the exploration
- * @property {string} description  a short paragraph, from the exploration — what the topic covers and why it surfaced
  */
 
 // Breakdown categories in display order. The whole breakdown is omitted when
@@ -73,17 +65,8 @@ function mapNodes(rows) {
   }));
 }
 
-/** Proposed rows: ○ (fresh-to-be) + name, the summary and — a blank line on — the description beneath. @param {ProposedTopic[] } proposed */
-function proposedNodes(proposed) {
-  return proposed.map((t) => ({
-    title: title({ glyph: '○', label: titlecase(t.name) }),
-    body: [t.summary, '', t.description],
-  }));
-}
-
 /**
- * The Discovery Map display block — the session's anchor render (opener,
- * "show map"): map header with the tier breakdown, one row per
+ * The Discovery Map display block: map header with the tier breakdown, one row per
  * topic in the given (tier-sorted) order.
  * @param {string} workUnit
  * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
@@ -96,41 +79,6 @@ function discoveryMapView(workUnit, map) {
   if (map.rows.length === 0) return head + '  (empty)\n';
   return head + renderTree(mapNodes(map.rows), { width: TREE_WIDTH, gap: true });
 }
-
-/**
- * The synthesised-map display block — the harvest proposal: the proposed
- * topics (summary and description wrapped beneath), the existing map
- * unchanged below it, and the framing footer.
- * @param {string} workUnit
- * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
- * @param {ProposedTopic[]} proposed
- * @returns {string}
- */
-function discoverySynthesisView(workUnit, map, proposed) {
-  if (!Array.isArray(proposed) || proposed.length === 0) {
-    throw new Error('discoverySynthesisView: proposed set is empty — nothing to render');
-  }
-  const parts = [`Synthesised Discovery Map — ${titlecase(workUnit)}\n`];
-  const hasExisting = map.rows.length > 0;
-
-  parts.push(`${hasExisting ? 'New this session' : 'Proposed topics'} (${proposed.length})`);
-  parts.push(renderTree(proposedNodes(proposed), { width: TREE_WIDTH, gap: true }));
-
-  if (hasExisting) {
-    parts.push(`Already on the map (${map.rows.length})`);
-    parts.push(renderTree(mapNodes(map.rows), { width: TREE_WIDTH, gap: true }));
-  }
-
-  // A closing sentence, not a detail of the tree above it — column 0.
-  const footer = `${proposed.length} topic${proposed.length === 1 ? '' : 's'}. `
-    + 'Summaries and descriptions come from the exploration.';
-  parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '' }).join('\n') + '\n');
-
-  return parts.join('\n');
-}
-
-/** The view's chrome heading. @param {string} workUnit */
-function discoveryTitle(workUnit) { return `Discovery — ${titlecase(workUnit)}`; }
 
 /** A map row as DATA names it: its order, key and lifecycle, the name it goes by where a rename gave it one, and its summary. @param {DiscoveryMapRow & {order?: number|null, goes_by?: string}} row */
 function rowData({ order, name, lifecycle, goes_by: goesBy, summary }) {
@@ -165,5 +113,4 @@ function discoveryMapScreen(workUnit, map, dismissed) {
   return dataSection(data) + section('DISPLAY: discovery map', CONTINUE_INSTRUCTION, discoveryMapView(workUnit, map) + struckBlock(dismissed));
 }
 
-module.exports = {
-  discoveryTitle, discoveryMapView, discoverySynthesisView, discoveryMapScreen };
+module.exports = { discoveryMapView, discoveryMapScreen };

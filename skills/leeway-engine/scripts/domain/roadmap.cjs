@@ -49,6 +49,7 @@ const { sessionLogs, nextSessionNumber, productSession } = require('./discovery-
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { earlierReads } = require('./earlier-record.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
 const { STATE_DIR_NAME, statePath } = require('../kernel/state-root.cjs');
@@ -149,7 +150,7 @@ function requireSourcesOnDisk(cwd, sources) {
   if (missing.length === 0) return;
   const named = missing.map((s) => JSON.stringify(s)).join(', ');
   const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
-  throw new Error(`${what} ${named} ${verb} not exist under ${statePath(cwd)}/ — a source must exist before an item records it; open a session log's session first (discovery-session open product, or the session's own open)`);
+  throw new Error(`${what} ${named} ${verb} not exist under ${statePath(cwd)}/ — a source must exist before an item records it; enter the conversation that writes it first (engine enter discovery product)`);
 }
 
 /** @param {*} kind */
@@ -300,6 +301,7 @@ function deriveItemState(cwd, item) {
  * @property {string} [work_unit]  the join's unit, when joined
  * @property {string} [topic]      the join's topic, when a pull-forward set one
  * @property {string} [work_type]  the joined unit's work type, when its manifest reads
+ * @property {import('./earlier-record.cjs').EarlierReads} [earlier]  the record a topic left where an epic postponed it
  */
 
 /**
@@ -326,8 +328,6 @@ function deriveItemState(cwd, item) {
  * @property {string} [into]
  * @property {number} [items_moved]
  * @property {string} [new_horizon]
- * @property {string[]} [pulled]
- * @property {Record<string, number>} [remainder]
  * @property {string} [work_unit]
  * @property {string} [topic]
  * @property {{work_unit: string, topic: string}} [prior]  bind / pull-forward: the epic the topic's prior record sits in
@@ -407,6 +407,8 @@ function roadmapState(cwd) {
     if (derived.work_unit !== undefined) row.work_unit = derived.work_unit;
     if (derived.topic !== undefined) row.topic = derived.topic;
     if (derived.work_type !== undefined) row.work_type = derived.work_type;
+    const from = itemPostponedFrom(item);
+    if (from !== null) row.earlier = earlierReads(cwd, from);
     items.push(row);
   }
   const rank = (/** @type {RoadmapItemRow} */ row) => {
@@ -1061,61 +1063,6 @@ function removeHorizon(cwd, name) {
 }
 
 /**
- * Pull items into a work unit — the commitment point. Sets `pulled_to` on
- * each named item; the unit must exist and be in-progress, every item must
- * exist and be un-joined. The response names the remainder per touched
- * horizon ("3 items stay waiting in mvp") so a partial pull is never
- * silent (design decision 30). The epic's seed set is derivable from these
- * joins — nothing is mirrored onto the work unit (one home per fact).
- * Self-commits.
- * @param {string} cwd @param {string[]} names @param {{into?: string}} [opts]
- * @returns {RoadmapOpResult}
- */
-function pullItems(cwd, names, { into } = {}) {
-  if (!Array.isArray(names) || names.length === 0) {
-    throw new Error('pull: at least one item name is required');
-  }
-  const dupe = names.find((n, i) => names.indexOf(n) !== i);
-  if (dupe) throw new Error(`pull: "${dupe}" appears more than once`);
-  if (typeof into !== 'string' || into === '') throw new Error('--into is required');
-
-  /** @type {any} */
-  let unit;
-  try {
-    unit = loadWorkUnitManifest(cwd, into);
-  } catch {
-    throw new Error(`no work unit "${into}" — the pull joins items to an existing unit (create it first)`);
-  }
-  if (unit.status !== 'in-progress') {
-    throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
-  }
-
-  const result = transactProject(cwd, (manifest) => {
-    const roadmap = requireRoadmap(manifest);
-    for (const name of names) {
-      const item = roadmapItem(roadmap, name);
-      const join = itemJoin(item);
-      if (join) throw new Error(`"${name}" is already joined to work unit "${join.work_unit}" — nothing was pulled`);
-    }
-    const touched = new Set();
-    for (const name of names) {
-      roadmap.items[name].pulled_to = { work_unit: into };
-      touched.add(roadmap.items[name].horizon);
-    }
-    // The remainder: waiting items left in each touched horizon.
-    /** @type {Record<string, number>} */
-    const remainder = {};
-    for (const horizon of touched) {
-      remainder[horizon] = Object.values(roadmap.items)
-        .filter((it) => it && typeof it === 'object' && it.horizon === horizon && !itemJoin(it)).length;
-    }
-    return { op: 'pull', into, pulled: [...names], remainder, item_total: Object.keys(roadmap.items).length };
-  });
-  const what = names.length === 1 ? names[0] : `${names.length} items`;
-  return commitRoadmap(cwd, result, `roadmap: pull ${what} into ${into}`);
-}
-
-/**
  * Bind a pulled item to the topic it crystallised as — the epic harvest's
  * closing move for a pulled item (the anti-twin rule: an item pulled
  * pre-harvest comes out of the harvest as itself). The topic must exist on
@@ -1576,7 +1523,6 @@ module.exports = {
   mergeHorizons,
   splitHorizon,
   removeHorizon,
-  pullItems,
   bindItem,
   pullForwardItem,
   takeInRefusal,

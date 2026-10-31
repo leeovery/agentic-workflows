@@ -4,7 +4,7 @@
 
 ---
 
-Validates a derived topic name, then lands the topic on the map with its brief. The caller owns the user-facing framing around the new topic; this reference owns only the validate → create sequence and reports back the name it wrote.
+Lands a new topic on the map with its brief. The caller owns the user-facing framing around the new topic; this reference owns only the create and reports back the name it wrote.
 
 ## Parameters
 
@@ -17,27 +17,11 @@ The caller provides these via context before loading:
 
 After return, the caller reads this from conversation memory:
 
-- `created_topic` — the validated topic name. A distinct variable from any caller-side `{topic}`, so it never collides with a parent topic the caller is already tracking.
+- `created_topic` — the name the topic landed under. A distinct variable from any caller-side `{topic}`, so it never collides with a parent topic the caller is already tracking.
 
-## A. Validate the Name
+## A. Create the Topic
 
-→ Load **[topic-name-validation.md](topic-name-validation.md)** with work_unit = `{work_unit}`, proposed_name = `{proposed_name}`.
-
-#### If `result` is `collision-active`
-
-The name is on the map already. Derive a different kebab-case name from the point in hand — never the current topic's name — set `proposed_name` to it, and re-validate:
-
-→ Return to **A. Validate the Name**.
-
-#### Otherwise
-
-Set `created_topic` to the validated `proposed_name`.
-
-→ Proceed to **B. Create the Topic**.
-
-## B. Create the Topic
-
-Draw the topic's brief from `message` — a few lines on what it raises and why the topic needs it — and write it to `.leeway/.cache/{work_unit}/discovery/{created_topic}/brief-draft.md` with the Write tool. Derive `summary`, one line on what the topic covers.
+Set `created_topic` to `proposed_name`, kebab-cased. Draw the topic's brief from `message` — a few lines on what it raises and why the topic needs it — and write it to `.leeway/.cache/{work_unit}/discovery/{created_topic}/brief-draft.md` with the Write tool. Derive `summary`, one line on what the topic covers.
 
 Land the topic with its brief. `--re-add` brings back a name struck from the map: the creation is explicit — a message, a gap, a session add — so a prior dismissal never blocks it.
 
@@ -51,13 +35,13 @@ Single-quote any value containing characters zsh would interpret — backticks, 
 
 The topic is that item's work, so it takes the item in, `item` the one the refusal names.
 
-→ Proceed to **C. Take the Roadmap Item In**.
+→ Proceed to **B. Take the Roadmap Item In**.
 
-#### If the response is `ok: false` naming the name taken
+#### If the response is `ok: false` naming the name taken or not a legal name
 
-The map moved since validation — a concurrent session landed the same name, or another topic goes by it. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
+Another topic holds or goes by the name, or it is not a kebab-case name. Derive a different kebab-case name from the point in hand — never the current topic's name — set `proposed_name` to it, and land it again:
 
-→ Return to **A. Validate the Name**.
+→ Return to **A. Create the Topic**.
 
 #### Otherwise
 
@@ -65,7 +49,7 @@ The add commits itself.
 
 → Return to caller.
 
-## C. Take the Roadmap Item In
+## B. Take the Roadmap Item In
 
 Land the topic again, taking the item in:
 

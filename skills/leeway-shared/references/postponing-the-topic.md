@@ -125,7 +125,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_
 
 **If `own`:**
 
-Invoke `/leeway-bridge {work_unit} {phase} none postponed`.
+Invoke `/leeway-bridge {work_unit} {phase} postponed`.
 
 **Otherwise:**
 

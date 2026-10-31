@@ -46,7 +46,7 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 The phases group into three **stages**, the top-level grouping of the epic dashboard: **Discovery** (discovery, experiment, discussion, investigation) — explore and decide; **Definition** (scoping, specification, planning) — specify and plan; **Delivery** (implementation, review) — build and verify.
 
-1. **Discovery** (`leeway-discovery`) — the first phase of every work type: confirms the type, shapes the work, persists it at the work-type commit, and routes it on; for an epic it builds the discovery map of topics and writes each topic's brief.
+1. **Discovery** (`leeway-discovery`) — one conversation at two levels, where nothing is decided: the product's, which finds each piece of work's type and creates its unit at start this work, its other output the roadmap; and an epic's, whose map of topics lands with each topic's brief at approve the map.
 2. **Experiment** (`leeway-experiment-process`) — the laboratory a discussion spawns to measure what a decision rests on; never a topic's first phase.
 3. **Discussion** (`leeway-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`leeway-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
@@ -71,12 +71,12 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 ### Skills and agents
 
 - **Start** (`leeway`) — the only user-invocable entry point: boot, the setup gates, the start menu, inbox triage.
-- **Discovery** (`leeway-discovery`) — new work, and re-shaping an epic's map.
+- **Discovery** (`leeway-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
 - **Navigation** (`leeway-continue-epic`, `leeway-continue-linear`) — a work unit's continue menu.
 - **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
 - **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
-- **Project-level** — `leeway-roadmap` (the product roadmap), `leeway-help` (the walkthrough and reference cards).
+- **Project-level** — `leeway-roadmap` (the product roadmap, and starting work from it through discovery), `leeway-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
 - **Engine** (`leeway-engine`) — state, derivation and rendering; `leeway-migrate` holds the migrations.
 - **Drivers** (`skills/leeway-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.

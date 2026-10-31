@@ -164,9 +164,9 @@ function roadmapProposalView(state, proposed) {
 }
 
 /**
- * The pull working set — the commitment point's selection screen: waiting
- * items numbered horizon-major, each row a sentence wrapped under its text,
- * a DATA table resolving numbers, the select
+ * The pull working set's selection screen: waiting items numbered
+ * horizon-major, each row a sentence wrapped under its text, a DATA table
+ * resolving numbers and one counting each horizon's waiting items, the select
  * menu. Consumed by the roadmap skill's gateway (numbers must resolve
  * mechanically, so the reasoning table rides beside the display).
  * @param {RoadmapState} state
@@ -179,7 +179,8 @@ function roadmapPullSetView(state) {
   }
   /** @type {{n: number, name: string, horizon: string, kind: string}[]} */
   const rows = [];
-  const groups = groupByHorizon(state.horizons, waiting).map((g) => {
+  const byHorizon = groupByHorizon(state.horizons, waiting);
+  const groups = byHorizon.map((g) => {
     const nodes = g.rows.map((row) => {
       rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon, kind: row.kind });
       const number = `${rows.length}. `;
@@ -193,6 +194,8 @@ function roadmapPullSetView(state) {
     `waiting_count: ${waiting.length}`,
     'ITEMS (n  name  horizon  kind):',
     ...rows.map((r) => `  ${r.n}  ${r.name}  ${r.horizon}  ${r.kind}`),
+    'HORIZONS (horizon  waiting):',
+    ...byHorizon.map((g) => `  ${g.horizon}  ${g.rows.length}`),
   ].join('\n');
 
   const options = [];
@@ -294,14 +297,6 @@ function roadmapParksGate() {
   ], { question: 'Park these on the roadmap?' });
 }
 
-/** The pull's shape confirm — the work's shape, the framing. */
-function roadmapShapeGate() {
-  return menu('', [
-    cmdOption('y', 'yes', 'Create it and carry on into it'),
-    promptOption('Adjust', 'Tell me what to change (the shape, the description)'),
-  ], { question: 'Shape it this way?' });
-}
-
 /** The view's chrome heading — project-level, no unit. */
 function roadmapTitle() { return 'Roadmap'; }
 
@@ -313,6 +308,5 @@ module.exports = {
   roadmapAddGate,
   roadmapHarvestGate,
   roadmapParksGate,
-  roadmapShapeGate,
   roadmapHomeMenu,
 };

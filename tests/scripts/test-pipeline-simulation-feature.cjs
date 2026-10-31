@@ -108,25 +108,23 @@ describe('pipeline simulation: feature', () => {
     assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
 
-  it('start: a working set of inbox ideas hands discovery its seeds, which the work-type commit lands', () => {
+  it('start: a working set of inbox ideas hands discovery its seeds, which start this work lands', () => {
     const ideas = [
       sim.write('.leeway/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
       sim.write('.leeway/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
     ];
     assert.ok(startKeys(sim).some((k) => k.action === 'view_inbox'), 'the start menu offers the inbox');
     // Ideas carry no work type, so discovery decides it.
-    const route = `/leeway-discovery none none "${ideas.map((rel) => path.join(sim.dir, rel)).join(',')}"`;
+    const seeds = ideas.map((rel) => path.join(sim.dir, rel));
+    const route = `/leeway-discovery start none "${seeds.join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
-    // Discovery opens on the seeds before any work unit exists, naming them
-    // from the inbox paths the route carries.
-    sim.write('.leeway/.cache/discovery-opener.json', JSON.stringify({ sketch: 'Filters that persist.', question: 'Who saves one first?' }));
-    assert.match(sim.render(['opener', '--variant', 'inbox', '--path', ideas.join(','), '--file', '.leeway/.cache/discovery-opener.json'], { expect: 'content' }),
-      /I've read your 2 ideas\. Here's the shape I'm picking up:/);
     const wu = 'saved-filters';
-    const created = sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved search filters',
-      '--session-log-file', sessionLog(sim, wu), ...ideas.flatMap((seed) => ['--seed', seed])]);
-    assert.deepStrictEqual(created.seeds.map((seed) => seed.source), ['inbox:idea', 'inbox:idea']);
-    // The commit moved the seeds out of the inbox, and the handoff checks each
+    const started = startThisWork(sim, {
+      type: 'feature', name: wu, description: 'Saved search filters', reason: 'One topic, decided in one discussion.',
+      shaped_by: [shapedInTheProduct(sim, 'filters')], seeds, brief: briefDraft(sim, wu, wu),
+    });
+    assert.deepStrictEqual(started.seeds.map((/** @type {{source: string}} */ seed) => seed.source), ['inbox:idea', 'inbox:idea']);
+    // The yes moved the seeds out of the inbox, and the handoff checks each
     // is still there — so it can only come first.
     sim.refuses(['handoff', ...shellWords(route)], /inbox file not found/);
   });

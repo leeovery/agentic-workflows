@@ -260,4 +260,4 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "spec
 
 Tell the user: this specification is blocked until the routed work concludes — name every one of them, the sources reopened and the topics opened for a gap alike. Do not run document dependencies, review, or conclusion.
 
-Invoke `/leeway-bridge {work_unit} specification none paused`.
+Invoke `/leeway-bridge {work_unit} specification paused`.

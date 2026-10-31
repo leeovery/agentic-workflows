@@ -65,6 +65,7 @@ const { entrySections, heldGate } = require('./projections/enter.cjs');
 const { waitingMessages } = require('./mail.cjs');
 const { waitingMail } = require('./projections/mail.cjs');
 const { DISCOVERY } = require('./discovery-entry.cjs');
+const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
 
@@ -137,13 +138,32 @@ function mailRaised({ cwd, unit, topic = '' }) {
 }
 
 /**
+ * The earlier record a topic postponed elsewhere and pulled here reads at its
+ * first opening, as input it never changes (18.8.17): none where it has none.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} unit @param {string} topic
+ * @returns {Line[]}
+ */
+function earlierLines(cwd, manifest, unit, topic) {
+  const address = earlierRecord(readProjectManifest(cwd), manifest, unit, topic);
+  if (address === null) return [];
+  const { brief, record, log, mail } = earlierReads(cwd, address);
+  return [
+    ...(brief === undefined ? [] : [/** @type {Line} */ (['earlier brief', brief])]),
+    /** @type {Line} */ (['earlier record', `\`${record}\``]),
+    ...(log === undefined ? [] : [/** @type {Line} */ (['earlier log', log])]),
+    ...mail.map((message) => /** @type {Line} */ (['earlier mail', message])),
+  ];
+}
+
+/**
  * What a discussion reads before its opening (9.3.2–9.3.6, 8.7.7): each
  * message waiting, its name the one `topic answered` takes; the topic's
  * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
  * product record, with what discovery found of the product and of the unit,
  * which no topic's record shows, and of the topic, which a first opening
- * reads no record for (9.3.6, 9.3.12); and the unit's spikes. Resuming
+ * reads no record for (9.3.6, 9.3.12); the unit's spikes; and, at a first
+ * opening, the earlier record of a topic postponed elsewhere. Resuming
  * adds the topic's own record (9.3.11), its map, and the entries a
  * replacement changed under it, each confirmed or replaced in the
  * conversation (9.3.6), and the reports of the agents the topic was left
@@ -166,6 +186,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
     as('product')(`\`${productCall(unit, topic)}\``),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
+    ...(started ? earlierLines(cwd, manifest, unit, topic) : []),
     ...(started ? [] : /** @type {const} */ (['record', 'map', 'affected']).map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``))),
     ...agents.landed.map(({ file }) => as('landed')(file)),
     ...agents.lost.map(as('lost')),

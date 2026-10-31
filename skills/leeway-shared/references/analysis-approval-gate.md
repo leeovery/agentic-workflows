@@ -111,10 +111,32 @@ Revise this block's `routing`, `summary`, or `description` in the staging file p
 
 ## C. Write Approved Candidate
 
-Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section verbatim per its marker. Then write the discovery item from the block's stored fields, pointing at the brief **D** writes:
+Record the approval (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest set {work_unit}.discovery analysis_staging.discovery-gap-analysis.candidates.{name}.status approved`); on the auto path, emit the held approval-line section verbatim per its marker.
+
+Draft the topic's brief — its read-in-full starting context at the next phase — at `.leeway/.cache/{work_unit}/discovery/{name}/brief-draft.md` with the Write tool from the block's stored fields. It is a written artifact, not user output — write the file, do not render it. A gap analysis is not a conversation, so the brief carries no soft decisions and no rejected paths; it carries what the analysis knows. Empty sections get `(none)`. A block staged without `source_artifacts` names no artifacts: its opening line ends at "analysis" — never invent the list.
+
+```markdown
+# Discovery Brief — {name:(titlecase)}
+
+Drawn from the discovery-gap analysis, read out of {source_artifacts}.
+
+## The gap
+
+{description — the paragraphs the block stores, verbatim}
+
+## Why it matters
+
+{one or two sentences: the gap type in plain words, and what the epic loses if the topic is never taken up — written from the description, never invented}
+
+## Open questions
+
+{the questions the gap raises, as bullets — what the next phase has to settle}
+```
+
+Then land the topic from the block's stored fields with its brief:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add {work_unit} {name} {routing} --source "gap-analysis" --summary "{summary}" --description "{description}" --brief-path "discovery/briefs/{name}.md"
+node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {name} --source "gap-analysis" --summary "{summary}" --description "{description}" --brief .leeway/.cache/{work_unit}/discovery/{name}/brief-draft.md
 ```
 
 #### If the response is `ok: false`
@@ -139,33 +161,13 @@ Honour the dismissal. Record the candidate `skipped` (same write as the skip arm
 
 Append `{name}` to the caller's `tracker`.
 
-→ Proceed to **D. Write the Brief**.
+→ Proceed to **D. Postpone if Asked**.
 
-## D. Write the Brief
-
-The topic's discovery brief — its read-in-full starting context at the next phase. Write `.workflows/{work_unit}/discovery/briefs/{name}.md` with the Write tool from the block's stored fields. It is a written artifact, not user output — write the file, do not render it. A gap analysis is not a conversation, so the brief carries no soft decisions and no rejected paths; it carries what the analysis knows. Empty sections get `(none)`. A block staged without `source_artifacts` names no artifacts: its opening line ends at "analysis" — never invent the list.
-
-```markdown
-# Discovery Brief — {name:(titlecase)}
-
-Drawn from the discovery-gap analysis, read out of {source_artifacts}.
-
-## The gap
-
-{description — the paragraphs the block stores, verbatim}
-
-## Why it matters
-
-{one or two sentences: the gap type in plain words, and what the epic loses if the topic is never taken up — written from the description, never invented}
-
-## Open questions
-
-{the questions the gap raises, as bullets — what the next phase has to settle}
-```
+## D. Postpone if Asked
 
 #### If `postpone_after` is `true`
 
-The row is on the map and its brief is written, so there is a whole topic for the postpone to take.
+The row is on the map with its brief, so there is a whole topic for the postpone to take.
 
 → Load **[postponing-the-topic.md](postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, phase = `none`, topic = `none`.
 

@@ -640,7 +640,7 @@ describe('engine writes take the writer lock', () => {
       if (taken === 2) fs.unlinkSync(lock);
     });
 
-    const res = ok(dir, ['discovery-map', 'edit', 'payments', 'auth-flow', '--summary', 'After the lock']);
+    const res = ok(dir, ['topic', 'edit', 'payments', 'auth-flow', '--summary', 'After the lock']);
 
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
     assert.deepStrictEqual(whileHeld, ['Auth', 'Auth'], 'no write while the lock is held');

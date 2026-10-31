@@ -43,7 +43,7 @@ const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
+const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
@@ -89,7 +89,7 @@ const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
-const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
+const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -224,8 +224,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map <sequence|add|add-batch|edit|remove|rename> …   (the topic verbs' alias, until discovery is rewritten)
-  discovery-session open  <work-unit|product> --session-log-file <path>
   discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
@@ -300,7 +298,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap rename <old> <new>
   roadmap move <name> --horizon <h>
   roadmap remove <name>
-  roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
@@ -349,9 +346,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render mail-offer       <wu.phase.topic> --file <payload.json>
   render mail-block       <wu.phase.topic>
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
-  render dismissed-topics <wu>
   render send-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (investigation|implementation|planning)
   render experiment-register <wu.experiment.topic>
@@ -390,7 +385,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render step-opening      <wu.phase.topic> --step conclude|consolidation|do-now
   render format-version-check --file <payload.json>
   render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
-  render direct-entry-gate <wu.discussion.topic>     (empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
@@ -433,10 +427,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
   render roadmap-parks-gate
-  render roadmap-shape-gate
-  render shape-gate
-  render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json>
-  render synthesis-gate
   render query-failure-gate --file <payload.json>
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
@@ -586,7 +576,7 @@ function runVerdict(call, argv) {
 // promote moves a completed epic specification (and its source discussions)
 // to a new, already-completed cross-cutting work unit — same shape: validated
 // completely before anything moves, one multi-pathspec commit at the end.
-// import is create's landing after the opener: files into the same
+// import is create's landing once the unit exists: files into the same
 // `imports/` home, stamped with the origin that took them, one confined
 // commit — and a beat on that origin's topic when a phase session landed it.
 // ---------------------------------------------------------------------------
@@ -675,15 +665,6 @@ function runWorkunit(call, argv) {
 // and answers its JSON and then its one-line report (8.8.7). An unquoted
 // payload would spill into positionals and silently truncate the text, so
 // every positional count is strict.
-//
-// `discovery-map` is their alias, which today's discovery skill and the
-// simulations still call until discovery's rewrite moves them onto `topic`:
-// `sequence` is `order`; `add` takes its old routing argument and drops it,
-// lands no brief, and takes `--force-dismissed` for `--re-add`, as a batch
-// entry takes `force_dismissed`; its `--backfill` lands the topic with no
-// summary and no commit. A brief pointer is refused: a topic's brief has one
-// place, written by `topic add` and `topic brief`. The alias answers its JSON
-// alone.
 // ---------------------------------------------------------------------------
 
 /** @param {keyof typeof MAP_USAGE} verb */
@@ -746,52 +727,6 @@ const MAP_VERBS = {
   },
 };
 
-const BRIEF_POINTER = 'a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add';
-
-/** The alias's `add`: a topic landed without its brief. @param {string} cwd @param {string[]} argv */
-function aliasAdd(cwd, argv) {
-  const { opts, flags, positional } = parseArgs(argv, ['force-dismissed', 'backfill']);
-  if (opts['brief-path'] !== undefined) throw new Error(`discovery-map add: --brief-path is refused — ${BRIEF_POINTER}`);
-  const backfill = flags.has('backfill');
-  if (![2, 3].includes(positional.length) || (opts.summary === undefined && !backfill) || (backfill && opts['from-roadmap'] !== undefined)) {
-    throw new Error('Usage: engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] [--from-roadmap <item>] | --backfill) [--source <tag>] [--force-dismissed]');
-  }
-  const [unit, name] = positional;
-  const fields = { summary: opts.summary, description: opts.description, source: opts.source, reAdd: flags.has('force-dismissed') };
-  return backfill ? addItem(cwd, unit, name, { ...fields, backfill }) : addTopic(cwd, unit, name, { ...fields, fromRoadmap: opts['from-roadmap'], requireBrief: false });
-}
-
-/** The alias's `add-batch`: topics landed without their briefs. @param {string} cwd @param {string[]} argv */
-function aliasAddBatch(cwd, argv) {
-  const { opts, positional } = parseArgs(argv);
-  if (positional.length !== 1 || opts.file === undefined) throw new Error('Usage: engine discovery-map add-batch <work-unit> --file <topics.json>');
-  const parsed = batchFile(cwd, opts.file, 'discovery-map add-batch');
-  const entries = Array.isArray(parsed) ? parsed.map((entry) => {
-    if (!entry || typeof entry !== 'object') return entry;
-    if (entry.brief_path !== undefined) throw new Error(`discovery-map add-batch: "${entry.name}"'s brief_path is refused — ${BRIEF_POINTER}`);
-    const { routing, force_dismissed: reAdd, ...rest } = entry;
-    return reAdd === undefined ? rest : { ...rest, re_add: reAdd };
-  }) : parsed;
-  return addTopics(cwd, positional[0], entries, { requireBrief: false });
-}
-
-/** The alias's verbs that are the map verbs under their old names. */
-const ALIASED = Object.freeze({ sequence: 'order', edit: 'edit', remove: 'remove', rename: 'rename' });
-
-/** @param {Call} call @param {string[]} argv */
-function runDiscoveryMap(call, argv) {
-  const [command, ...rest] = argv;
-  try {
-    if (command === 'add') respond(call, aliasAdd(call.cwd, rest));
-    else if (command === 'add-batch') respond(call, aliasAddBatch(call.cwd, rest));
-    else if (Object.hasOwn(ALIASED, command)) respond(call, MAP_VERBS[ALIASED[/** @type {keyof typeof ALIASED} */ (command)]](call.cwd, rest));
-    else throw new Error('Usage: engine discovery-map <sequence|add|add-batch|edit|remove|rename> …');
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-
 /**
  * Parse `{topic}={order}` pairs shared by the two sequencing verbs. Callers
  * guard for at least one pair before calling.
@@ -845,32 +780,16 @@ function runBuildOrder(call, argv) {
 
 
 // ---------------------------------------------------------------------------
-// discovery-session — discovery's sessions, an epic's or the product's
-// (domain/discovery-session.cjs). open installs the model-drafted log under
-// the next session number and sets the place's marker — no commit (the
-// session is live; every state commit takes its log along). close clears
-// the marker and commits the place's scope with the caller's message. The
-// log's content is model-authored — the engine never writes prose.
+// discovery-session — the close of discovery's sessions, an epic's or the
+// product's (domain/discovery-session.cjs): it clears the place's marker and
+// commits the place's scope with the caller's message. `enter` opens them.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runDiscoverySession(call, argv) {
   const [command, ...rest] = argv;
   try {
-    if (command === 'open') {
-      /** @type {string|null} */ let workUnit = null;
-      /** @type {string|null} */ let sessionLogFile = null;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '--session-log-file') sessionLogFile = rest[++i];
-        else if (workUnit === null) workUnit = a;
-        else throw new Error(`unexpected argument "${a}"`);
-      }
-      if (!workUnit || !sessionLogFile) {
-        throw new Error('Usage: engine discovery-session open <work-unit|product> --session-log-file <path>');
-      }
-      respond(call, openDiscoverySession(call.cwd, workUnit, { sessionLogFile }));
-    } else if (command === 'close') {
+    if (command === 'close') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
       for (let i = 0; i < rest.length; i++) {
@@ -884,7 +803,7 @@ function runDiscoverySession(call, argv) {
       }
       respond(call, closeDiscoverySession(call.cwd, workUnit, { message }));
     } else {
-      throw new Error('Usage: engine discovery-session <open|close> …');
+      throw new Error('Usage: engine discovery-session close <work-unit|product> -m <message>');
     }
   } catch (err) {
     failJson(call, err);
@@ -1628,11 +1547,6 @@ function runRoadmap(call, argv) {
     } else if (command === 'remove') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
       respond(call, roadmap.removeRoadmapItem(cwd, positional[0]));
-    } else if (command === 'pull') {
-      if (positional.length === 0 || !opts.into) {
-        throw new Error('Usage: engine roadmap pull <name> [<name> …] --into <work-unit>');
-      }
-      respond(call, roadmap.pullItems(cwd, positional, { into: opts.into }));
     } else if (command === 'bind') {
       if (positional.length !== 1 || !opts.topic) {
         throw new Error('Usage: engine roadmap bind <name> --topic <topic>');
@@ -2444,7 +2358,6 @@ const COMMANDS = Object.freeze({
   asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
-  'discovery-map': runDiscoveryMap,
   'build-order': runBuildOrder,
   'discovery-session': runDiscoverySession,
   topic: runTopic,
