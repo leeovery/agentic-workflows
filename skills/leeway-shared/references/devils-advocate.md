@@ -1,6 +1,6 @@
 # Devil's Advocate
 
-*Shared reference. Loaded by the discussion skill and the discovery guidelines.*
+*Shared reference. Loaded by the discussion skill and the discovery skill.*
 
 ---
 

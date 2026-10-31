@@ -426,10 +426,10 @@ function checkLinks(files) {
 
 // ---------------------------------------------------------------------------
 // Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
-// Processing backbones (leeway-*-process, plus the engine and the
-// project-level skills — roadmap, help) open with a title H1;
-// every other workflow backbone — leeway, the navigation skills,
-// discovery, the bridge — carries none.
+// Processing backbones (leeway-*-process, plus discovery — a phase that
+// talks — the engine and the project-level skills — roadmap, help) open with
+// a title H1; every other workflow backbone — leeway, the navigation skills,
+// the bridge — carries none.
 // ---------------------------------------------------------------------------
 
 /** Whether a skill is one of the workflows' own — `leeway` or `leeway-*`. @param {string} name */
@@ -447,7 +447,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['leeway-engine', 'leeway-roadmap', 'leeway-help']);
+  const H1_KNOWN = new Set(['leeway-discovery', 'leeway-engine', 'leeway-roadmap', 'leeway-help']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !isOurs(name)) continue; // only workflow backbones
@@ -1258,6 +1258,55 @@ function checkGrantsNameTheStateRoot(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 33 — nothing the workflows ship writes the project's CLAUDE.md
+// (8.9.5, 8.S27). It loads into every session and subagent and is the
+// person's to write: a pointer there to the product record is their line. No
+// prose sentence tells a session to write, add to or change it — a sentence
+// naming it with a verb of writing, neither negated nor with the person as
+// its writer — and no engine or mod code names it outside a comment.
+// ---------------------------------------------------------------------------
+
+const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten))\b/i;
+const NEGATED = /\b(never|not|no|nothing|nor)\b|n't\b/i;
+const THE_PERSON = /\b(the person|the user)\b/i;
+
+/** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
+const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence) && !THE_PERSON.test(sentence);
+
+/** The shipped code: the engine's, the gateways' and the mods', comments left out. */
+function codeFiles(root = REPO) {
+  const out = [];
+  const walk = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) { if (entry.name !== 'node_modules' && entry.name !== 'tests') walk(p); }
+      else if (/\.(cjs|js|mjs|ts)$/.test(entry.name)) out.push(p);
+    }
+  };
+  walk(path.join(root, 'skills'));
+  return out.sort();
+}
+
+/** A code line with any comment it carries taken off. @param {string} line */
+const uncommented = (line) => (/^\s*(\/\/|\*|\/\*)/.test(line) ? '' : line.replace(/\s\/\/.*$/, ''));
+
+function checkNoClaudeMdWrites(files, code = []) {
+  const out = [];
+  for (const file of files) {
+    readLines(file).forEach((line, i) => {
+      if (line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; the workflows never change it' });
+    });
+  }
+  for (const file of code) {
+    readLines(file).forEach((line, i) => {
+      if (/CLAUDE\.md/.test(uncommented(line))) out.push({ file, line: i + 1, message: 'names CLAUDE.md in code — the workflows never write the project\'s CLAUDE.md' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1291,6 +1340,7 @@ const CHECKS = [
   ['30: no design tool is named', checkNoDesignTools],
   ['31: a message\'s scratch is under the state\'s cache', checkSendScratch],
   ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
+  ['33: nothing writes the project\'s CLAUDE.md', (files) => checkNoClaudeMdWrites(files, codeFiles())],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1312,7 +1362,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process']);
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process', 'leeway-discovery']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -1619,7 +1669,11 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
     const procGood = write(dir, 'skills/leeway-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
     const bridgeGood = write(dir, 'skills/leeway-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     const engineGood = write(dir, 'skills/leeway-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
-    assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
+    const discoveryGood = write(dir, 'skills/leeway-discovery/SKILL.md', '---\nname: leeway-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
+
+    const discoveryNoH1 = write(dir, 'skills/leeway-discovery/SKILL.md', 'One-liner purpose.\n\n## Entering\n');
+    assert.strictEqual(checkH1Category([discoveryNoH1]).length, 1, 'discovery is a phase that talks: without an H1 it must be caught');
   });
 });
 
@@ -1685,7 +1739,8 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
 
     const sections = '## Research\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n## Closing\n\nDone.\n';
     const field = write(dir, 'skills/leeway-discussion-process/SKILL.md', sections);
-    assert.strictEqual(checkFooterlessLoads([field]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
+    const discovery = write(dir, 'skills/leeway-discovery/SKILL.md', sections);
+    assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
     const stepped = write(dir, 'skills/leeway-investigation-process/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
@@ -2472,6 +2527,42 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
     assert.deepStrictEqual(checkNoDesignTools([lower]).map((v) => v.message.split('"')[1]), ['figma'], 'a name in lower case is still named, the first on the line');
     const plain = write(dir, 'skills/x/SKILL.md', 'Sketch the outline, frame the question, canvas the options, stitch the parts; a Framework load; v0.3 of the format.\n');
     assert.strictEqual(checkNoDesignTools([plain]).length, 0, 'plain words and longer words are no tool');
+  });
+});
+
+test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a session to write, add to or change the project\'s CLAUDE.md, and code naming it outside a comment; permits prose that reads it or names its path, a negated sentence, one whose writer is the person, and a comment', () => {
+  withTemp((dir) => {
+    const writes = write(dir, 'skills/x/references/w.md', [
+      '# W', '',
+      'Append the pointer to the project\'s `CLAUDE.md`.',
+      'Add a line naming the record into CLAUDE.md.',
+      'Update CLAUDE.md with the rule.',
+      'Write the rule in the project\'s CLAUDE.md so every session reads it.',
+      'Use the Edit tool on CLAUDE.md to add the rule.',
+      'Nothing is decided here. Then append the pointer to CLAUDE.md.',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8]);
+    const reads = write(dir, 'agents/leeway-y.md', [
+      'Read `CLAUDE.md` and the project skills before running anything.',
+      '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
+      'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
+      'The product record is not CLAUDE.md, which is the person\'s to write.',
+      'The workflows never write CLAUDE.md.',
+      'Never change CLAUDE.md.',
+      'Recorded in the product record, never in CLAUDE.md.',
+      'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
+      'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',
+    ].join('\n'));
+    assert.strictEqual(checkNoClaudeMdWrites([reads]).length, 0, `reading it and naming it are clean, got ${report(checkNoClaudeMdWrites([reads]))}`);
+    const code = write(dir, 'skills/leeway-engine/scripts/domain/z.cjs', [
+      '// The record\'s file is for a CLAUDE.md line to point at.',
+      ' * CLAUDE.md reaches the agent without the brief.',
+      'const target = path.join(root, \'CLAUDE.md\');',
+      'fs.appendFileSync(target, line); // not CLAUDE.md itself',
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(checkNoClaudeMdWrites([], [code]).map((v) => v.line), [3]);
   });
 });
 

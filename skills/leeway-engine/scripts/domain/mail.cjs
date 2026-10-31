@@ -11,7 +11,8 @@
 //   topic is named by its key or by the title a rename gave it (8.8.17),
 //   either landing in its one mailbox. The sender is a name, never text: a topic of the unit or an item of one of
 //   its phases — a specification grouping its topics under a name of its own
-//   sends as that name — `{unit}.{topic}` for another unit's, or an
+//   sends as that name — `{unit}.discovery` for the epic's own discovery
+//   (8.2.13), `{unit}.{topic}` for another unit's, or an
 //   experiment of the unit — `E{n}` of the
 //   target topic's series, `{topic}/E{n}` of another topic's, where the
 //   person moved its question (9.1.11). It takes the next number under the
@@ -135,14 +136,25 @@ function topicSender(cwd, manifest, from) {
 }
 
 /**
+ * How the waiting mail titles the unit's own discovery, the place its
+ * entries take on the ledger (`{unit}.discovery`), whose input reaches a
+ * started topic as a message (8.7.6); null for any other `from`.
+ * @param {Record<string, any>} manifest @param {string} from
+ * @returns {string|null}
+ */
+function discoverySender(manifest, from) {
+  return from === `${manifest.name}.discovery` ? 'Discovery' : null;
+}
+
+/**
  * How the waiting mail titles a message's sender, refused where `from`
- * names neither an experiment nor a topic it takes.
+ * names neither the unit's discovery, an experiment nor a topic it takes.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} from
  */
 function senderTitle(cwd, manifest, topic, from) {
-  const title = experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
+  const title = discoverySender(manifest, from) ?? experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
   if (title === null) {
-    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name} or an item of one of its phases, {unit}.{topic} for another unit's, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
+    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name} or an item of one of its phases, ${manifest.name}.discovery for its discovery, {unit}.{topic} for another unit's, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
   }
   return title;
 }

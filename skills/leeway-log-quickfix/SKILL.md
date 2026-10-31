@@ -18,10 +18,10 @@ If there's already conversation context about a mechanical change, synthesise it
 When ready, generate a short kebab-case slug from the core change (e.g., `replace-interface-with-any`, `update-deprecated-api`) and write the file:
 
 ```bash
-mkdir -p .workflows/.inbox/quickfixes
+mkdir -p .leeway/.inbox/quickfixes
 ```
 
-**File:** `.workflows/.inbox/quickfixes/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
+**File:** `.leeway/.inbox/quickfixes/{YYYY-MM-DD}--{slug}.md` (use today's actual date)
 - H1 title, prose body, 100-300 words
 - No forced headings — let the content flow naturally
 - Naturally cover what needs changing, where, and why

@@ -45,17 +45,15 @@ Confidence is intrinsic to the source phase — how much weight to give the cont
 - `high` — specification: a decision validated and written down. Trust the *what*; verify the *why* against the source when it matters.
 - `high` — record: a topic's ledger record, what was asked and what stands decided on each question. Trust the decision; a replaced answer is history the record keeps beside it.
 - `medium` — investigation: diagnostic work tied to specific symptoms. Trust the diagnosis; check the symptom is still current.
-- `low` — imports, seeds, analysis, discovery, roadmap: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
+- `low` — imports, seeds, analysis: reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
 
-Low confidence is not low value. A discovery log that rejected an approach stops the next work unit re-exploring the same dead end. Weigh them, never filter them out.
+Low confidence is not low value. Weigh them, never filter them out.
 
 A `reopened` result is its topic's last concluded position, now being revisited — it may change.
 
-A `[roadmap | …]` hit is the product-level record — a roadmap session's exploration, staged thinking about capabilities that may never have been pulled. Exploration-grade, never a decision of record, and it may carry ground a pull's fence deliberately left behind: material beyond the work unit's pulled items informs the conversation but never silently widens the work's scope.
-
 ## D. Query failure handling
 
-If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `{session_cache}/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — where `{session_cache}` is the calling session's cache: `.workflows/.cache/{work_unit}/{phase}/{topic}` in a phase session, `.workflows/.cache/{work_unit}/discovery` in a discovery session, `.workflows/.cache/roadmap` in a roadmap session. Then fetch the gate, emitting each section verbatim per its marker:
+If `knowledge query` exits with a non-zero code, **pause the workflow**. Do not silently proceed without context — the knowledge base is high-value enough that silent skips are worse than a brief interruption. Write the command's error output, verbatim, to `{session_cache}/query-failure.json` with the Write tool — `{"error": "{the error output}"}` — where `{session_cache}` is the calling session's cache: `.leeway/.cache/{work_unit}/{phase}/{topic}` in a phase session, `.leeway/.cache/{work_unit}/discovery/{work_unit}` in an epic's discovery, `.leeway/.cache/product/discovery/product` in the product's conversation. Then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render query-failure-gate --file {session_cache}/query-failure.json
@@ -92,12 +90,6 @@ A result (or its source file) can carry a claim you have verified is wrong or ha
 Never leave it standing — the spec is the golden record and its chunks stay live at full confidence, so every future query re-serves the error as validated context.
 
 → Load **[correcting-historical-artifacts.md](correcting-historical-artifacts.md)** and follow its instructions.
-
-#### If the source is the roadmap
-
-Leave the artifact alone, and tell the user what the claim says and what is true now — roadmap material never decays, so the claim would go on being served as current. Record what is actually true in the current work's own artifact.
-
-→ Return to caller.
 
 #### If the source is any other phase
 

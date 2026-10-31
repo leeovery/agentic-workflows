@@ -223,7 +223,7 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(readState(dir, layout.manifest(EPIC)), before);
   });
 
-  it('names the sender under the title as the waiting mail heads it: a topic of the unit, a specification by its grouping name, another unit\'s topic — a single-topic unit by its name alone — an experiment of the target, or one of another topic by that topic, each on the day it was sent (10.4.2, 9.1.11)', () => {
+  it('names the sender under the title as the waiting mail heads it: a topic of the unit, a specification by its grouping name, the epic\'s own discovery (8.7.6), another unit\'s topic — a single-topic unit by its name alone — an experiment of the target, or one of another topic by that topic, each on the day it was sent (10.4.2, 9.1.11)', () => {
     const fromLine = (/** @type {string} */ unit, /** @type {string} */ topic, /** @type {string} */ from) => {
       const res = withFrozenClock(() => ok(dir, ['topic', 'send', unit, topic, '--from', from, '--content', scratch(), '--slug', `from-${from.replace(/[./]/g, '-').toLowerCase()}`]));
       return fs.readFileSync(res.message_path, 'utf8').split('\n')[1];
@@ -231,18 +231,18 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.deepStrictEqual([
       fromLine(EPIC, 'licence', 'commercialization'), fromLine('quick-sync', 'quick-sync', 'fumi.first-run'),
       fromLine(EPIC, 'licence', 'quick-sync.quick-sync'), fromLine(EPIC, 'commercialization', 'E1'),
-      fromLine(EPIC, 'licence', 'commercialization/E1'), fromLine(EPIC, 'licence', 'onboarding'),
-    ], ['From Commercialization · 1 Jan', 'From First Run, on Fumi · 1 Jan', 'From Quick Sync · 1 Jan', 'From Experiment E1 · 1 Jan', 'From Experiment E1, on Commercialization · 1 Jan', 'From Onboarding · 1 Jan']);
+      fromLine(EPIC, 'licence', 'commercialization/E1'), fromLine(EPIC, 'licence', 'onboarding'), fromLine(EPIC, 'licence', `${EPIC}.discovery`),
+    ], ['From Commercialization · 1 Jan', 'From First Run, on Fumi · 1 Jan', 'From Quick Sync · 1 Jan', 'From Experiment E1 · 1 Jan', 'From Experiment E1, on Commercialization · 1 Jan', 'From Onboarding · 1 Jan', 'From Discovery · 1 Jan']);
   });
 
-  it('refuses a sender that is no name it takes, writing nothing and keeping the scratch: text, a topic the unit lacks, a unit the project lacks, a topic another unit lacks, an experiment the target has not run, one another topic\'s series lacks, a topic with no series, the target\'s own by its topic, a name of three parts', () => {
+  it('refuses a sender that is no name it takes, writing nothing and keeping the scratch: text, a topic the unit lacks, a unit the project lacks, a topic another unit lacks, an experiment the target has not run, one another topic\'s series lacks, a topic with no series, the target\'s own by its topic, a name of three parts, another unit\'s discovery', () => {
     const message = scratch();
-    const refusal = (/** @type {string} */ from) => `--from names "${from}" — it takes who sent the message: a topic of ${EPIC} or an item of one of its phases, {unit}.{topic} for another unit's, E{n} for an experiment of licence, or {topic}/E{n} for one of another topic`;
-    const senders = ['Lost key', 'billing', 'nowhere.any', 'quick-sync.other', 'E1', 'commercialization/E9', 'first-run/E1', 'commercialization/E1/E1', 'fumi.first-run.extra'];
+    const refusal = (/** @type {string} */ from) => `--from names "${from}" — it takes who sent the message: a topic of ${EPIC} or an item of one of its phases, ${EPIC}.discovery for its discovery, {unit}.{topic} for another unit's, E{n} for an experiment of licence, or {topic}/E{n} for one of another topic`;
+    const senders = ['Lost key', 'billing', 'nowhere.any', 'quick-sync.other', 'E1', 'commercialization/E9', 'first-run/E1', 'commercialization/E1/E1', 'fumi.first-run.extra', 'quick-sync.discovery'];
     assert.deepStrictEqual(senders.map((from) => refused(['topic', 'send', EPIC, 'licence', '--from', from, '--content', message, '--slug', 'lost-key'])), senders.map(refusal));
     assert.strictEqual(
       refused(['topic', 'send', EPIC, 'commercialization', '--from', 'commercialization/E1', '--content', message, '--slug', 'lost-key']),
-      `--from names "commercialization/E1" — it takes who sent the message: a topic of ${EPIC} or an item of one of its phases, {unit}.{topic} for another unit's, E{n} for an experiment of commercialization, or {topic}/E{n} for one of another topic`,
+      `--from names "commercialization/E1" — it takes who sent the message: a topic of ${EPIC} or an item of one of its phases, ${EPIC}.discovery for its discovery, {unit}.{topic} for another unit's, E{n} for an experiment of commercialization, or {topic}/E{n} for one of another topic`,
     );
     assert.strictEqual(fs.existsSync(message), true);
   });
