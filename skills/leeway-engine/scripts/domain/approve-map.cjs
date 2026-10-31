@@ -19,10 +19,14 @@
 //   person for first, Claude naming none (8.8.4, 8.S49); a name struck from
 //   the map, which comes back only at the person's ask (8.10.11); a new topic
 //   beside a waiting roadmap item of its name that it does not take in
-//   (8.S52); and a live topic left out, since renames and removals happen at
-//   the person's word alone (8.8.21).
-// - On a re-shape, the screen marks each topic that is new and each that
-//   moved among the topics the map held (8.8.21, 8.S48).
+//   (8.S52), or beside a roadmap item the epic was started from that it is
+//   not bound to; and a live topic left out, since renames and removals
+//   happen at the person's word alone (8.8.21).
+// - On a re-shape — the map approved before, its topics holding their order
+//   — the screen marks each topic the approved map did not order as new, and
+//   each it did that moved as moved, a topic moved the one marked (8.8.21,
+//   8.S48). A first map is drawn unmarked, topics the person added while it
+//   was shaped among it.
 // - The yes checks the staged payload against the map and the roadmap as
 //   they stand, then, as one transaction under the writer lock, writes each
 //   new topic's brief, the roadmap — the items taken in and bound joined to
@@ -39,10 +43,10 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, readProjectManifest, writePr
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { unitInProgress, discoveryStanding } = require('./topic-standing.cjs');
-const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, topicKeyOf, topicTitle, roadmapItems, itemJoin, itemPostponedFrom, briefFile } = require('./derivations.cjs');
-const { topicNameRefusal, draftIn, writeBrief, addBatchTo, discoveryItems } = require('./discovery-map.cjs');
+const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, topicKeyOf, topicTitle, roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
+const { topicNameRefusal, draftIn, writeBrief, addBatchTo, discoveryItems, roadmapRefusal, entryTakeIn } = require('./discovery-map.cjs');
 const {
-  DEFAULT_KIND, becomesTopic, validateKind, takeInRefusal, waitingTwin, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk,
+  DEFAULT_KIND, becomesTopic, validateKind, joinToTopic, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk,
 } = require('./roadmap.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
@@ -153,12 +157,8 @@ function stagedTopics(cwd, unit, manifest, project, given) {
   once(topics.map((topic) => topic.from_roadmap), 'the roadmap item taken in');
   const left = liveInOrder(manifest).find((key) => !topics.some(({ name }) => name === key));
   if (left !== undefined) throw new Error(`the map's "${left}" is left out — every live topic stands in the order, and a topic leaves the map at the person's word alone: topic remove`);
-  for (const { name, from_roadmap: fromRoadmap } of topics.filter(({ brief }) => brief !== undefined)) {
-    const refusal = fromRoadmap === undefined ? null : takeInRefusal(project, unit, fromRoadmap);
-    if (refusal !== null) throw new Error(`"${name}" can't take the item in — ${refusal}`);
-    const twin = waitingTwin(project, name);
-    if (twin !== null && twin !== fromRoadmap) throw new Error(`"${name}" would stand beside the waiting roadmap item of its name — the topic takes it in with from_roadmap, or is named apart`);
-  }
+  const refusal = roadmapRefusal(project, unit, topics.filter(({ brief }) => brief !== undefined), entryTakeIn);
+  if (refusal !== null) throw new Error(refusal);
   return topics;
 }
 
@@ -220,28 +220,65 @@ function checked(cwd, unit, manifest, given) {
   if (parkedTopic !== undefined) throw new Error(`"${parkedTopic.name}" is a topic and a park at once`);
   const binds = listed(fields.binds ?? [], 'binds').map((bind, at) => stagedBind(unit, project, topics, bind, at));
   once(binds.map(({ item }) => item), 'the bound item');
+  const unbound = topics.find(({ name }) => unboundSeed(project, unit, name) && !binds.some((bind) => bind.item === name && bind.topic === name));
+  if (unbound !== undefined) {
+    throw new Error(`"${unbound.name}" would stand beside the roadmap item ${unit} was started from, unbound — bind it with {"item": "${unbound.name}", "topic": "${unbound.name}"} in binds, or name the topic apart`);
+  }
   return { topics, parks, binds };
 }
 
 /**
+ * Whether `name` is a roadmap item the epic was started from, not yet bound,
+ * which becomes a topic. @param {Record<string, any>} project @param {string} unit @param {string} name
+ */
+function unboundSeed(project, unit, name) {
+  const item = roadmapItems(project)[name];
+  const join = item === undefined ? null : itemJoin(item);
+  return join?.work_unit === unit && join.topic === undefined && becomesTopic(item);
+}
+
+/**
+ * The longest run of `b` standing in `a`'s order. @param {string[]} a @param {string[]} b @returns {string[]}
+ */
+function longestCommon(a, b) {
+  /** @type {string[][][]} */
+  const runs = Array.from({ length: a.length + 1 }, () => Array.from({ length: b.length + 1 }, () => /** @type {string[]} */ ([])));
+  for (let i = a.length - 1; i >= 0; i -= 1) {
+    for (let j = b.length - 1; j >= 0; j -= 1) {
+      const [down, across] = [runs[i + 1][j], runs[i][j + 1]];
+      runs[i][j] = a[i] === b[j] ? [a[i], ...runs[i + 1][j + 1]] : (down.length >= across.length ? down : across);
+    }
+  }
+  return runs[0][0];
+}
+
+/**
+ * The marks of a re-shape — the map approved before, `approved` its topics in
+ * the order approved — on the topics in their order now: new, a topic the
+ * approved map did not order; moved, an ordered one off the longest run kept
+ * in its order, so a topic moved is the one marked (8.8.21, 8.S48).
+ * @param {string[]} approved @param {string[]} now @returns {Map<string, 'new'|'moved'|null>}
+ */
+function reshapeMarks(approved, now) {
+  const kept = new Set(longestCommon(approved, now.filter((name) => approved.includes(name))));
+  return new Map(now.map((name) => [name, !approved.includes(name) ? 'new' : kept.has(name) ? null : 'moved']));
+}
+
+/**
  * The map as the screen draws it: each topic by its title, marked on a
- * re-shape where it is new or moved among the topics the map held; and each
- * park.
+ * re-shape — a map approved before, its topics holding their order — and
+ * each park.
  * @param {string} unit @param {Record<string, any>} manifest @param {Staged} staged
  * @returns {import('./projections/discovery-gates.cjs').MapView}
  */
 function mapView(unit, manifest, { topics, parks }) {
-  const held = liveInOrder(manifest);
-  const kept = topics.map(({ name }) => name).filter((name) => held.includes(name));
-  /** @param {string} name @returns {'new'|'moved'|null} */
-  const markOf = (name) => {
-    if (held.length === 0) return null;
-    if (!held.includes(name)) return 'new';
-    return held.indexOf(name) === kept.indexOf(name) ? null : 'moved';
-  };
+  const items = manifest.phases?.discovery?.items ?? {};
+  const approved = liveInOrder(manifest).filter((key) => Number.isInteger(items[key].order));
+  const names = topics.map(({ name }) => name);
+  const marks = approved.length === 0 ? new Map() : reshapeMarks(approved, names);
   return {
     unit,
-    topics: topics.map(({ name }) => ({ title: topicTitle(manifest, name), mark: markOf(name) })),
+    topics: names.map((name) => ({ title: topicTitle(manifest, name), mark: marks.get(name) ?? null })),
     parks: parks.map(({ summary, horizon }) => ({ summary, horizon })),
   };
 }
@@ -275,10 +312,8 @@ function landOnRoadmap(project, unit, { topics, parks, binds }) {
   const priors = {};
   const joins = [...topics.flatMap(({ name, from_roadmap: item }) => (item === undefined ? [] : [{ item, topic: name }])), ...binds];
   for (const { item, topic } of joins) {
-    const found = roadmapItems(project)[item];
-    const from = itemPostponedFrom(found);
-    if (from && from.work_unit !== unit) priors[topic] = { work_unit: from.work_unit, topic: from.topic };
-    found.pulled_to = { work_unit: unit, topic };
+    const prior = joinToTopic(project, unit, item, topic);
+    if (prior !== null) priors[topic] = prior;
   }
   const roadmap = ensureRoadmap(project);
   for (const { name, summary, horizon, kind, sources } of parks) {

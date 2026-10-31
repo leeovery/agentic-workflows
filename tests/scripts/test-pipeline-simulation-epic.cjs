@@ -26,7 +26,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap,
+  Sim, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -42,6 +42,15 @@ describe('pipeline simulation: epic', () => {
       shaped_by: [shapedInTheProduct(sim, 'notes')],
     });
     assert.deepStrictEqual(started.next, { kind: 'engine', argv: ['enter', 'discovery', wu, '--move'] });
+    // The product's session closed with the yes, so the move leaves no log
+    // behind: the epic's first log, pointing back, takes the conversation.
+    sim.run(started.next.argv);
+    assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'discovery', topic: wu });
+    const [pointer, ...rest] = fs.readFileSync(path.join(sim.dir, '.leeway', wu, 'discovery/session-001.md'), 'utf8').split('\n');
+    assert.strictEqual(pointer, 'Shaped by: [.product/sessions/session-001.md#notes](../../.product/sessions/session-001.md#notes)');
+    assert.match(rest.find((line) => line !== '') ?? '', /^## /, 'the conversation\'s line follows the pointer');
+    assert.ok(presenceRow(sim.run(['presence', 'scan', wu]), 'discovery', wu)?.held, 'the presence is the epic\'s');
+    assert.match(carryOn(sim).text, /render discovery-map fumi`/, 'a compaction re-reads the epic\'s map');
     const approved = approveTheMap(sim, wu, {
       topics: [
         { name: 'note-model', summary: 'What a note is', brief: briefDraft(sim, wu, 'note-model') },

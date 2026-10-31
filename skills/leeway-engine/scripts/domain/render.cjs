@@ -5709,7 +5709,7 @@ const OPENERS = {
     }
     const p = openerPayload(cwd, file, 'questions');
     return shapeOpener(
-      `Read your ${readPhrase([...seeds.map((seed) => seedKind(seed.source)), ...imports.map(() => 'import')])}`,
+      `Read your ${readPhrase([...seeds.map(seedKind), ...imports.map(() => 'import')])}`,
       p.sketch,
       `Before we name topics, let's pull on a few things — ${p.questions}${fullStop(p.questions)}`,
     );

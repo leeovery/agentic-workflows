@@ -4,8 +4,8 @@
 // Domain ring: a work unit's creation — discovery's durability boundary as
 // one transaction, in steps start this work composes with its own writes
 // (start-this-work.cjs) and `workunit create` runs alone: check everything,
-// write the unit (its manifest, imports, inbox seeds and first discovery
-// log), register it, index what landed, commit. The engine never authors
+// write the unit (its manifest, imports, seeds — inbox items and roadmap
+// items' notes — and first discovery log), register it, index what landed, commit. The engine never authors
 // prose — `workunit create` installs the model-authored log verbatim.
 //
 // Validation is complete before any mutation: a missing import fails the
@@ -32,7 +32,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { parseInboxPaths, INBOX, SEED_SOURCES } = require('./inbox.cjs');
+const { parseInboxPaths, INBOX, SEED_SOURCES, ROADMAP_SEED } = require('./inbox.cjs');
 const {
   normaliseBasename,
   dedupe,
@@ -76,12 +76,23 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
  */
 
-/** A seed as the unit's write moves it: the inbox item, and its file name in `seeds/`. @typedef {{item: import('./inbox.cjs').InboxItem, dest: string}} SeedMove */
+/**
+ * A roadmap item's note the unit starts from: the item's name, its note,
+ * state-relative, and the item as it stood (4.11.16).
+ * @typedef {{name: string, note: string, item: Record<string, any>}} NoteSeed
+ */
 
 /**
- * What a unit's write landed: its imports as copied, its seeds as moved, and
- * the imports filename normalisation skipped.
- * @typedef {{importMoves: {src: string, dest: string}[], seedMoves: SeedMove[], skippedImports: string[]}} Landed
+ * A seed as the unit's write landed it: its file name in `seeds/`, its
+ * source, and the inbox path it moved from where it moved — a roadmap
+ * item's note is copied, its item still naming it.
+ * @typedef {{dest: string, source: string, back?: string}} SeedLanding
+ */
+
+/**
+ * What a unit's write landed: its imports as copied, its seeds, and the
+ * imports filename normalisation skipped.
+ * @typedef {{importMoves: {src: string, dest: string}[], seeds: SeedLanding[], skippedImports: string[]}} Landed
  */
 
 /**
@@ -125,30 +136,31 @@ function checkWorkUnit(cwd, workUnit, workType, { imports = [], seeds = [] } = {
 }
 
 /**
- * Undo a unit's write: each seed moved back into the inbox, then the unit's
- * folder gone.
- * @param {string} cwd @param {string} workUnit @param {SeedMove[]} seedMoves
+ * Undo a unit's write: each seed that moved out of the inbox moved back,
+ * then the unit's folder gone.
+ * @param {string} cwd @param {string} workUnit @param {SeedLanding[]} seeds
  */
-function unwriteWorkUnit(cwd, workUnit, seedMoves) {
-  for (const { item, dest } of seedMoves) fs.renameSync(statePath(cwd, workUnit, 'seeds', dest), statePath(cwd, item.rel));
+function unwriteWorkUnit(cwd, workUnit, seeds) {
+  for (const { dest, back } of seeds) if (back !== undefined) fs.renameSync(statePath(cwd, workUnit, 'seeds', dest), statePath(cwd, back));
   fs.rmSync(path.join(stateRoot(cwd), workUnit), { recursive: true, force: true });
 }
 
 /**
  * Write a new unit, checked by `checkWorkUnit`, under its lock: its folder
  * and manifest, its imports copied into `imports/`, its inbox seeds moved
- * into `seeds/`, each recorded with its source so a cancel can put it back,
- * and its first discovery log holding `firstLog`, an epic's marked open — the
- * sole work type with a resumable discovery session. No registration and no
- * commit. A write that fails part-way is undone.
+ * into `seeds/` and each roadmap item's note copied there, each recorded with
+ * its source — a roadmap item's with the item as it stood — so a cancel can
+ * put it back, and its first discovery log holding `firstLog`, an epic's
+ * marked open — the sole work type with a resumable discovery session. No
+ * registration and no commit. A write that fails part-way is undone.
  * @param {string} cwd @param {string} workUnit @param {string} workType
- * @param {{description: string, firstLog: string, imports?: string[], seedItems?: import('./inbox.cjs').InboxItem[]}} unit
+ * @param {{description: string, firstLog: string, imports?: string[], seedItems?: import('./inbox.cjs').InboxItem[], noteSeeds?: NoteSeed[]}} unit
  * @returns {Landed}
  */
-function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports = [], seedItems = [] }) {
+function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports = [], seedItems = [], noteSeeds = [] }) {
   const wuDir = path.join(stateRoot(cwd), workUnit);
-  /** @type {SeedMove[]} */
-  const moved = [];
+  /** @type {SeedLanding[]} */
+  const seeds = [];
   fs.mkdirSync(wuDir, { recursive: true });
   try {
     return withWorkUnitLock(cwd, workUnit, () => {
@@ -167,10 +179,13 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       const { planned: importPlan, skipped } = planImports(imports, importsDir);
       const seedsDir = path.join(wuDir, 'seeds');
       const takenSeeds = new Set();
-      const seedPlan = seedItems.map((item) => {
-        const dest = dedupe(normaliseBasename(item.file) ?? 'seed.md', seedsDir, takenSeeds);
+      const seedPlan = [
+        ...seedItems.map((item) => ({ from: item.rel, moves: true, source: SEED_SOURCES[item.folder], item: undefined })),
+        ...noteSeeds.map(({ name, note, item }) => ({ from: note, moves: false, source: `${ROADMAP_SEED}${name}`, item })),
+      ].map((seed) => {
+        const dest = dedupe(normaliseBasename(path.posix.basename(seed.from)) ?? 'seed.md', seedsDir, takenSeeds);
         takenSeeds.add(dest);
-        return { item, dest };
+        return { ...seed, dest };
       });
 
       copyImports(cwd, importsDir, importPlan);
@@ -178,10 +193,11 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       for (const move of importPlan) pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
 
       if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
-      for (const move of seedPlan) {
-        fs.renameSync(statePath(cwd, move.item.rel), path.join(seedsDir, move.dest));
-        moved.push(move);
-        pushEntry(manifest, 'seeds', { path: `seeds/${move.dest}`, source: SEED_SOURCES[move.item.folder], seeded_at: isoNow() });
+      for (const { from, moves, source, item, dest } of seedPlan) {
+        if (moves) fs.renameSync(statePath(cwd, from), path.join(seedsDir, dest));
+        else fs.copyFileSync(statePath(cwd, from), path.join(seedsDir, dest));
+        seeds.push({ dest, source, ...(moves ? { back: from } : {}) });
+        pushEntry(manifest, 'seeds', { path: `seeds/${dest}`, source, seeded_at: isoNow(), ...(item === undefined ? {} : { item }) });
       }
 
       fs.mkdirSync(path.join(wuDir, 'discovery'), { recursive: true });
@@ -191,10 +207,10 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       }
 
       saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
+      return { importMoves: importPlan, seeds, skippedImports: skipped };
     });
   } catch (err) {
-    unwriteWorkUnit(cwd, workUnit, moved);
+    unwriteWorkUnit(cwd, workUnit, seeds);
     throw err;
   }
 }
@@ -209,11 +225,11 @@ function registerWorkUnit(project, workUnit, workType) {
  * warn-don't-block.
  * @param {string} cwd @param {string} workUnit @param {Landed} landed @param {string[]} warnings
  */
-function indexLanded(cwd, workUnit, { importMoves, seedMoves }, warnings) {
+function indexLanded(cwd, workUnit, { importMoves, seeds }, warnings) {
   syncKnowledge(cwd, [
     ...importMoves.filter((m) => isIndexableImport(m.dest))
       .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
-    ...seedMoves.map((move) => ({ index: `${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+    ...seeds.map(({ dest }) => ({ index: `${workUnit}/seeds/${dest}`, label: `knowledge index (seeds/${dest})` })),
   ], warnings);
 }
 
@@ -223,13 +239,13 @@ function indexLanded(cwd, workUnit, { importMoves, seedMoves }, warnings) {
  * new home.
  * @param {string} workUnit @param {Landed} landed @returns {string[]}
  */
-function createdPaths(workUnit, { seedMoves }) {
-  return [workUnit, PROJECT_MANIFEST_SPEC, ...(seedMoves.length > 0 ? [INBOX] : [])];
+function createdPaths(workUnit, { seeds }) {
+  return [workUnit, PROJECT_MANIFEST_SPEC, ...(seeds.some(({ back }) => back !== undefined) ? [INBOX] : [])];
 }
 
 /** The landed seeds as a response names them. @param {string} cwd @param {string} workUnit @param {Landed} landed */
-function landedSeeds(cwd, workUnit, { seedMoves }) {
-  return seedMoves.map((move) => ({ path: statePath(cwd, workUnit, 'seeds', move.dest), source: SEED_SOURCES[move.item.folder] }));
+function landedSeeds(cwd, workUnit, { seeds }) {
+  return seeds.map(({ dest, source }) => ({ path: statePath(cwd, workUnit, 'seeds', dest), source }));
 }
 
 /**
@@ -264,7 +280,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       writeProjectManifestAtomic(cwd, project);
     });
   } catch (err) {
-    unwriteWorkUnit(cwd, workUnit, landed.seedMoves);
+    unwriteWorkUnit(cwd, workUnit, landed.seeds);
     throw err;
   }
 

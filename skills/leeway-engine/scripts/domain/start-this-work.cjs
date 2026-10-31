@@ -12,15 +12,17 @@
 //   (8.2.4) — its name, its description, the one-line reason for the type,
 //   the inbox items and the roadmap items it starts from, and the places in
 //   the product's sessions that shaped it (8.14.3); a feature or a bugfix
-//   also its one topic's brief (8.7.7), the topic being the unit. The screen
-//   draws from the staged payload again without `--file`.
+//   also its one topic's brief (8.7.7), the topic being the unit, which is
+//   refused beside a waiting roadmap item of its name it does not start from
+//   (8.1.6). The screen draws from the staged payload again without `--file`.
 // - The name is Claude's to derive, with no question (8.8.10): a name a unit
 //   has already is refused, and so is a taken name with a number appended,
 //   so Claude derives a more specific one (8.8.18).
 // - The yes checks the staged payload against the project as it stands, then,
 //   as one transaction under the writer lock, writes the unit (workunit-
-//   create.cjs) — its manifest, its seeds moved out of the inbox, and its
-//   first discovery log holding a pointer line into the product's sessions
+//   create.cjs) — its manifest, its seeds moved out of the inbox, each
+//   roadmap item's note copied in beside them with the item as it stood
+//   (4.11.16), and its first discovery log holding a pointer line into the product's sessions
 //   for each place that shaped it — its one topic's brief, and then, in one
 //   write of the project manifest, the unit's registration, each roadmap item
 //   it starts from joined to it, and the product's open session closed
@@ -37,11 +39,12 @@ const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = req
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
+const { waitingTwin, noteOfSource, notePath } = require('./roadmap.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { productSession } = require('./discovery-session.cjs');
 const { SHAPED_BY } = require('./discovery-entry.cjs');
-const { draftIn, writeBrief } = require('./discovery-map.cjs');
+const { draftIn, writeBrief, twinRefusal } = require('./discovery-map.cjs');
 const {
   FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, indexLanded, createdPaths, landedSeeds,
 } = require('./workunit-create.cjs');
@@ -136,6 +139,16 @@ function roadmapSeeds(project, given) {
 }
 
 /**
+ * Refuses a one-topic unit named like a waiting roadmap item it does not
+ * start from: its topic would stand beside the item as a twin (8.1.6).
+ * @param {Record<string, any>} project @param {string} type @param {string} name @param {string[]} roadmap
+ */
+function refuseTwin(project, type, name, roadmap) {
+  const twin = ONE_TOPIC.includes(type) ? waitingTwin(project, name) : null;
+  if (twin !== null && !roadmap.includes(twin)) throw new Error(twinRefusal(name, twin, (item) => `"roadmap": ["${item}"]`));
+}
+
+/**
  * A one-topic unit's brief draft, which it must have; any other type's,
  * which it must not.
  * @param {string} cwd @param {string} type @param {unknown} brief @returns {string|undefined}
@@ -165,13 +178,16 @@ function checked(cwd, given) {
   const seeds = listed(fields.seeds ?? [], 'seeds');
   if (seeds.some((seed) => typeof seed !== 'string')) throw new Error('seeds are inbox paths');
   const seedItems = checkWorkUnit(cwd, name, type, { seeds: /** @type {string[]} */ (seeds) });
+  const project = readProjectManifest(cwd);
+  const roadmap = roadmapSeeds(project, fields.roadmap ?? []);
+  refuseTwin(project, type, name, roadmap);
   const staged = {
     type,
     name,
     description: fields.description,
     reason: fields.reason,
     seeds: /** @type {string[]} */ (seeds),
-    roadmap: roadmapSeeds(readProjectManifest(cwd), fields.roadmap ?? []),
+    roadmap,
     shaped_by: shapingPlaces(cwd, fields.shaped_by),
   };
   const brief = briefDraft(cwd, type, fields.brief);
@@ -186,6 +202,22 @@ function checked(cwd, given) {
 function firstLogOf(unit, places) {
   const from = path.posix.dirname(`${unit}/${FIRST_LOG}`);
   return places.map((place) => `${SHAPED_BY}[${place}](${path.posix.relative(from, place)})\n`).join('');
+}
+
+/**
+ * The notes of the roadmap items the unit starts from, each on disk with the
+ * item as it stood, for its seeds (4.11.16).
+ * @param {string} cwd @param {string[]} roadmap
+ * @returns {import('./workunit-create.cjs').NoteSeed[]}
+ */
+function noteSeedsOf(cwd, roadmap) {
+  const items = roadmapItems(readProjectManifest(cwd));
+  return roadmap.flatMap((name) => {
+    const item = items[name];
+    const note = (Array.isArray(item.sources) ? item.sources : []).map(noteOfSource).find((found) => found !== null);
+    const at = note ? notePath(note.folder, note.file) : null;
+    return at !== null && fs.existsSync(statePath(cwd, at)) ? [{ name, note: at, item: structuredClone(item) }] : [];
+  });
 }
 
 /** What comes after the yes. @param {string} type @param {string} unit @returns {Next} */
@@ -238,14 +270,16 @@ function startThisWorkYes(cwd) {
   const { staged, seedItems } = checked(cwd, stagedAt(stagedFile(cwd), NOTHING_STAGED));
   const { type, name } = staged;
   const draft = staged.brief === undefined ? null : draftIn(cwd, staged.brief, 'the brief');
-  const landed = writeWorkUnit(cwd, name, type, { description: staged.description, firstLog: firstLogOf(name, staged.shaped_by), seedItems });
+  const landed = writeWorkUnit(cwd, name, type, {
+    description: staged.description, firstLog: firstLogOf(name, staged.shaped_by), seedItems, noteSeeds: noteSeedsOf(cwd, staged.roadmap),
+  });
   /** @type {string|null} */
   let closed;
   try {
     if (draft !== null) writeBrief(cwd, name, name, draft.content);
     closed = writeProject(cwd, staged);
   } catch (err) {
-    unwriteWorkUnit(cwd, name, landed.seedMoves);
+    unwriteWorkUnit(cwd, name, landed.seeds);
     throw err;
   }
   if (draft !== null) fs.rmSync(draft.scratch, { force: true });

@@ -6,9 +6,11 @@
 // staging Claude's payload and drawing one screen of the topics in order and
 // the parks with their horizons (8.S17), refusing a park with no horizon
 // (8.S49), a name struck from the map, a twin of a waiting roadmap item not
-// taken in (8.S52) and a live topic left out, carrying the prior record of
-// an item another epic postponed, and marking new and moved
-// topics on a re-shape (8.S48); `approve-map yes` landing it all from the
+// taken in (8.S52), a topic beside the epic's own unbound seed, a live topic
+// left out, and every malformed order, park and bind, each writing nothing;
+// carrying the prior record of an item another epic postponed; drawing a
+// first map unmarked, and on a re-shape marking the topics new and the one
+// moved (8.S48); `approve-map yes` landing it all from the
 // staged copy as one transaction — the order on the manifest (8.S10), the
 // session closed, the epic's menu next with its first topic marked next
 // (8.S47, 24.S15) — and a yes the map moved under, or that fails part-way,
@@ -55,6 +57,16 @@ function firstMap() {
     parks: [park('fumi-sync', 'Fumi Sync, a hosted sync service', 'later'), park('a-lifetime-tier', 'A lifetime tier', 'someday')],
     binds: [{ item: 'share-links', topic: 'sharing' }],
   };
+}
+
+/** The topics a screen draws, each by its title with its mark, or none. @param {string} out @returns {[string, string|null][]} */
+function marksOf(out) {
+  return [...sectionOf(out, 'DISPLAY: approve the map').matchAll(/^ {2}[├└]─ \d+\. (.+?)(?: +\[(new|moved)\])?$/gm)].map(([, title, mark]) => [title, mark ?? null]);
+}
+
+/** Four topics, approved as the map in their order. */
+function fourApproved() {
+  approved({ topics: [fresh('note-model', 'What a note is'), fresh('storage-and-sync', 'Where notes live'), fresh('sharing', 'Sharing a note'), fresh('search', 'Finding a note')] });
 }
 
 /** The yes the staged screen's gate leads to, run. @param {unknown} given */
@@ -112,7 +124,7 @@ describe('approve the map, the screen (8.8.4, 8.S17)', () => {
 
   it('refuses a new topic beside a waiting roadmap item of its name, unless it takes the item in (8.S52)', () => {
     assert.strictEqual(refusedStage({ topics: [fresh('note-sync', 'Notes synced between Macs')] }),
-      'render approve-map: "note-sync" would stand beside the waiting roadmap item of its name — the topic takes it in with from_roadmap, or is named apart');
+      'render approve-map: "note-sync" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "note-sync", or name the topic apart');
     approved({ topics: [{ ...fresh('note-sync', 'Notes synced between Macs'), from_roadmap: 'note-sync' }] });
     assert.deepStrictEqual(readManifest(dir(), '.').roadmap.items['note-sync'].pulled_to, { work_unit: EPIC, topic: 'note-sync' }, 'the item leaves the waiting roadmap for its topic');
     assert.strictEqual(readManifest(dir(), EPIC).phases.discovery.items['note-sync'].source, 'roadmap:note-sync');
@@ -129,6 +141,57 @@ describe('approve the map, the screen (8.8.4, 8.S17)', () => {
   it('refuses a feature, whose discovery ended at start this work', () => {
     assert.match(refusedPristine(dir(), ['render', 'approve-map', 'atlas', '--file', payload(firstMap())], { env: SESSION }).error,
       /^render approve-map: atlas is a feature — its discovery ended at start this work/);
+  });
+});
+
+describe('approve the map, refused as staged — nothing staged, nothing written', () => {
+  /** @param {[string, () => unknown, string][]} cases */
+  const refusesEach = (cases) => {
+    for (const [what, given, error] of cases) assert.strictEqual(refusedStage(given()), `render approve-map: ${error}`, what);
+  };
+  const sharing = () => fresh('sharing', 'Sharing a note');
+  const bound = { item: 'share-links', topic: 'sharing' };
+
+  it('refuses each malformed order, park and bind against the first map', () => {
+    refusesEach([
+      ['no topics', () => ({ topics: [] }), 'topics names the map\'s topics in their order — at least one'],
+      ['a topic twice', () => ({ topics: [sharing(), sharing()], binds: [bound] }), 'the topic "sharing" stands twice'],
+      ['an item taken in twice', () => ({ topics: [{ ...fresh('note-sync', 'Sync'), from_roadmap: 'note-sync' }, { ...fresh('syncing', 'Sync'), from_roadmap: 'note-sync' }] }),
+        'the roadmap item taken in "note-sync" stands twice'],
+      ['a park twice', () => ({ topics: [sharing()], binds: [bound], parks: [park('fumi-sync', 'Sync', 'later'), park('fumi-sync', 'Sync again', 'later')] }), 'the park "fumi-sync" stands twice'],
+      ['a park named as a topic', () => ({ topics: [sharing()], binds: [bound], parks: [park('sharing', 'Sharing, later', 'later')] }), '"sharing" is a topic and a park at once'],
+      ['a park named as a roadmap item', () => ({ topics: [sharing()], binds: [bound], parks: [park('note-sync', 'Sync', 'later')] }), 'park "note-sync": the roadmap has an item of its name already'],
+      ['a park shaped by no log', () => ({ topics: [sharing()], binds: [bound], parks: [{ ...park('fumi-sync', 'Sync', 'later'), sources: [] }] }),
+        'park "fumi-sync": sources names the logs that shaped it — at least one'],
+      ['a bind of an item the epic was not started from', () => ({ topics: [sharing()], binds: [{ item: 'note-sync', topic: 'sharing' }] }),
+        `bind 1: "note-sync" is no roadmap item ${EPIC} was started from and not yet bound`],
+      ['a bind to a topic not staged', () => ({ topics: [sharing()], binds: [{ item: 'share-links', topic: 'search' }] }), 'bind 1: "search" is no topic of the map staged'],
+      ['an item bound twice', () => ({ topics: [sharing()], binds: [bound, bound] }), 'the bound item "share-links" stands twice'],
+      ['a topic beside the epic\'s unbound seed of its name', () => ({ topics: [fresh('share-links', 'Share a note by a link')] }),
+        `"share-links" would stand beside the roadmap item ${EPIC} was started from, unbound — bind it with {"item": "share-links", "topic": "share-links"} in binds, or name the topic apart`],
+    ]);
+    approved({ topics: [fresh('share-links', 'Share a note by a link')], binds: [{ item: 'share-links', topic: 'share-links' }] });
+    assert.deepStrictEqual(readManifest(dir(), '.').roadmap.items['share-links'].pulled_to, { work_unit: EPIC, topic: 'share-links' }, 'bound, the seed comes home with its topic');
+  });
+
+  it('refuses a bind of a bug the epic was started from: it rides with the work, never a topic', () => {
+    ok(dir(), ['roadmap', 'pull', 'export-timeout', '--into', EPIC]);
+    refusesEach([['a bug bound', () => ({ topics: [sharing()], binds: [bound, { item: 'export-timeout', topic: 'sharing' }] }),
+      'bind 2: "export-timeout" is a bug — it rides with the work as material, never a topic']]);
+  });
+
+  it('refuses, on a re-shape, a topic postponed or cancelled standing in the order, and a bind made already', () => {
+    approved(firstMap());
+    ok(dir(), ['topic', 'postpone', EPIC, 'storage-and-sync', '--horizon', 'later']);
+    ok(dir(), ['topic', 'cancel', EPIC, 'discovery', 'sharing']);
+    refusesEach([
+      ['a postponed topic in the order', () => ({ topics: [{ name: 'note-model' }, { name: 'storage-and-sync' }] }), 'topic 2: "storage-and-sync" is postponed — it stands in no order'],
+      ['a cancelled topic in the order', () => ({ topics: [{ name: 'note-model' }, { name: 'sharing' }] }), 'topic 2: "sharing" is cancelled — it stands in no order'],
+      ['a bind made already', () => ({ topics: [{ name: 'note-model' }], binds: [{ item: 'share-links', topic: 'note-model' }] }),
+        `bind 1: "share-links" is no roadmap item ${EPIC} was started from and not yet bound`],
+    ]);
+    const { items } = readManifest(dir(), EPIC).phases.discovery;
+    assert.strictEqual(items['storage-and-sync'].order, undefined, 'the postponed topic keeps its stashed place alone');
   });
 });
 
@@ -174,24 +237,45 @@ describe('approve the map, the yes (8.8.3, 8.8.13, 8.14.11)', () => {
       'the epic\'s menu marks the first topic in the map\'s order next');
   });
 
-  it('marks, on a re-shape, the topics that are new and those that moved; a topic on the map is named alone, and none is left out (8.S48)', () => {
+  it('draws a first map unmarked, a topic the person added while it was shaped among it (8.8.6)', () => {
+    ok(dir(), ['topic', 'add', EPIC, 'pricing', '--summary', 'What it costs', '--brief', scratch('# Pricing\n')]);
+    assert.deepStrictEqual(marksOf(screen(['approve-map', EPIC], { topics: [fresh('note-model', 'What a note is'), { name: 'pricing' }, fresh('sharing', 'Sharing a note')] })),
+      [['Note Model', null], ['Pricing', null], ['Sharing', null]]);
+  });
+
+  it('marks, on a re-shape, each topic the approved map did not order as new — one the person added since among them — and a topic moved as the one moved (8.S48)', () => {
+    fourApproved();
+    ok(dir(), ['topic', 'add', EPIC, 'pricing', '--summary', 'What it costs', '--brief', scratch('# Pricing\n')]);
+    const out = screen(['approve-map', EPIC], { topics: [{ name: 'search' }, { name: 'note-model' }, fresh('note-window', 'The note window'), { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'pricing' }] });
+    assert.strictEqual(sectionOf(out, 'DISPLAY: approve the map'), [
+      'THE MAP (6 topics, foundations first)',
+      '  ├─ 1. Search         [moved]',
+      '  ├─ 2. Note Model',
+      '  ├─ 3. Note Window    [new]',
+      '  ├─ 4. Storage And Sync',
+      '  ├─ 5. Sharing',
+      '  └─ 6. Pricing        [new]',
+      '',
+    ].join('\n'));
+    run(answer('approve the map', 'y'));
+    const { items } = readManifest(dir(), EPIC).phases.discovery;
+    assert.deepStrictEqual(['search', 'note-model', 'note-window', 'storage-and-sync', 'sharing', 'pricing'].map((name) => items[name].order), [1, 2, 3, 4, 5, 6]);
+  });
+
+  it('marks one of two topics swapped, and none where the order stands', () => {
+    fourApproved();
+    const swapped = marksOf(screen(['approve-map', EPIC], { topics: [{ name: 'note-model' }, { name: 'sharing' }, { name: 'storage-and-sync' }, { name: 'search' }] }));
+    assert.deepStrictEqual(swapped.filter(([, mark]) => mark !== null).length, 1);
+    assert.ok(swapped.every(([title, mark]) => mark === null || ['Sharing', 'Storage And Sync'].includes(title)), 'the mark falls on one of the two swapped');
+    assert.ok(marksOf(screen(['approve-map', EPIC], { topics: [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }] })).every(([, mark]) => mark === null));
+  });
+
+  it('names a topic on the map alone, and leaves none out', () => {
     approved(firstMap());
     assert.strictEqual(refusedStage({ topics: [{ name: 'note-model' }, { name: 'sharing' }] }),
       'render approve-map: the map\'s "storage-and-sync" is left out — every live topic stands in the order, and a topic leaves the map at the person\'s word alone: topic remove');
     assert.strictEqual(refusedStage({ topics: [{ name: 'note-model', summary: 'Rewritten' }, { name: 'storage-and-sync' }, { name: 'sharing' }] }),
       'render approve-map: topic 1: "note-model" is on the map already, so it is named alone — its summary and brief change at the person\'s word: topic edit, topic brief');
-    const out = screen(['approve-map', EPIC], { topics: [{ name: 'note-model' }, fresh('note-window', 'The note window'), { name: 'sharing' }, { name: 'storage-and-sync' }] });
-    assert.strictEqual(sectionOf(out, 'DISPLAY: approve the map'), [
-      'THE MAP (4 topics, foundations first)',
-      '  ├─ 1. Note Model',
-      '  ├─ 2. Note Window         [new]',
-      '  ├─ 3. Sharing             [moved]',
-      '  └─ 4. Storage And Sync    [moved]',
-      '',
-    ].join('\n'));
-    run(answer('approve the map', 'y'));
-    const { items } = readManifest(dir(), EPIC).phases.discovery;
-    assert.deepStrictEqual(['note-model', 'note-window', 'sharing', 'storage-and-sync'].map((name) => items[name].order), [1, 2, 3, 4]);
   });
 
   it('checks the staged map again at the yes: a topic landed on the map since refuses, writing nothing', () => {
