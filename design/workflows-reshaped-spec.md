@@ -740,10 +740,10 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `.inbox/`: one file per capture, `{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, as today; an archived item moves to `.inbox/.archived/{kind}/`, its name kept, and the unit that closed it is recorded on the project manifest (18.6.4);
 - `.product/`: the product's conversation (8.2.7), its logs `sessions/session-NNN.md`, every session before a work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); `spikes/` and `assets/` (4.11.12). The roadmap's items themselves are on the project manifest;
 - `.state/migrations`: each migration applied, its id on a line of its own (4.7.4);
-- a unit's `seeds/`: each seed's file under the name it had, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and, for a roadmap item, the item as it stood, its horizon included, so cancelling the work can put it back (18.8.20);
+- a unit's `seeds/`: each seed's file under its name normalised as every inbox seed's has always been, a double dash folded to one, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and, for a roadmap item, the item as it stood, its horizon included, so cancelling the work can put it back (18.8.20);
 - no unit has a `.state/`: nothing writes one once tracking and analysis files go (4.10.3).
 
-[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26]
+[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26; Claude's derivation, 29.12 slice 12.6: seeds land as today]
 
 4.11.17 The whole layout, as one tree: every path the workflows write under `.leeway/` and at user level is in it, each entry naming the line that sets it. The files the workflows own in the code tree are 6.3.15's. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal; Claude's derivation 2026-10-25: the tree draws `.leeway/` and user level, and 6.3.15 names the code tree's files; Claude's derivation 2026-10-28: the trust log's lock and a conversation's gate and pending event are user-level paths too; Claude's derivation 2026-10-30: the one-decision check's log, and a letter per reviewer (29.9)]
 
@@ -890,7 +890,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.product/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
-4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their own names and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
+4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their names normalised as every inbox seed's has always been, a double dash folded to one, and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
 
 4.S36 Given work on one machine pushed to the remote, when boot runs on another machine whose state branch is behind, then before anything writes state the branch fast-forwards to the remote's tip and no merge commit is made; given a clone holding state commits a failed push left behind, with the remote not moved, when boot runs, then they are pushed. (4.7.8, 4.3.3)
 
@@ -2353,9 +2353,9 @@ remembered and never asked again. It is remembered on the project manifest
 `completed` forward (21.11.2). [today's product; Claude's sort, T26; where,
 Claude's proposal; 21.11.2; Claude's derivation, 29.11 slice 11.14: a completed baseline is remembered too]
 
-8.12.12 A finding about the product as a whole sits in the ledger under the reserved unit `product`, with no topic, which answers 8.12.9. `product` is never a work unit's name (8.8.18). [Claude's proposal, 29.12 planning]
+8.12.12 A finding about the product as a whole sits in the ledger at the place `product`, phase `discovery`, with no topic, which answers 8.12.9. `product` is never a work unit's name. [Claude's proposal, 29.12 planning; Claude's derivation, 29.12 slice 12.4]
 
-8.12.13 While the baseline's research is owed, the brownfield offer's answer is `accepted`. It becomes `completed` once the findings land, and an accepted offer resumes the research at the next start (8.12.4). [Claude's proposal, 29.12 planning]
+8.12.13 While the baseline's research is owed, the brownfield offer's answer is `accepted`. It becomes `completed` once the findings land. An accepted offer's research resumes the next time the product's conversation opens, by any way in (8.12.4); start never diverts for it, and start's p row notes the research owed until the answer is `completed` (18.2.13). [Claude's proposal, 29.12 planning; Claude's proposal, 29.12 slice 12.7]
 
 8.12.14 The product researcher's open questions open the conversation (8.12.5). What still stands at the session's end is proposed as roadmap items on the screen that ends it (18.8.18); nothing is written to the roadmap without the person. [Claude's proposal, 29.12 planning]
 
@@ -2409,24 +2409,14 @@ person 2026-10-26]
 8.14.7 The knowledge base never indexes the logs (9.2.2): they are reached
 through these pointers. [R11, R44; the person 2026-10-22]
 
-8.14.8 Every log a conversation keeps — the product's sessions, a unit's
-discovery sessions, a topic's log — names the conversations that wrote it:
-each one's session id and the path of its transcript, added when that
-conversation first writes to it. The log is the record; the transcript is a
-backstop, there for as long as Claude Code keeps it (23.4.9). [agreed by the
-person 2026-10-26]
+8.14.8 Every log a conversation keeps — the product's sessions, a unit's discovery sessions, a topic's log — names the conversations that wrote it: each one's session id and the path of its transcript, in a header added when that conversation first writes to it, and again when it writes after another conversation has written the log since, so the log's last header always names its last writer. The log is the record; the transcript is a backstop, there for as long as Claude Code keeps it (23.4.9). [agreed by the person 2026-10-26; Claude's derivation, 29.12 slice 12.5]
 
-8.14.9 After a compaction, and on the first return after a session that ended
-without its check (8.14.4), Claude reads the transcript from the log's last
-write onward and adds what is missing before carrying on. If the transcript is
-gone, Claude says so in one line and carries on from the log. How often Claude
-writes the log stays its own (8.14.2). [agreed by the person 2026-10-26; how
-often, ruled by the person 2026-10-22]
+8.14.9 After a compaction, and on the first return after a session that ended without its check (8.14.4), Claude reads the transcript from the log's last write onward and adds what is missing before carrying on. No catch-up is owed when the log ends on a move's pointer line, its talk carried on in the log it points to (8.2.11). If the transcript is gone, Claude says so in one line and carries on from the log. How often Claude writes the log stays its own (8.14.2). [agreed by the person 2026-10-26; how often, ruled by the person 2026-10-22; Claude's derivation, 29.12 slice 12.5]
 
 8.14.10 Left to the builder: how a log learns its conversation's session id
 and transcript path (8.14.8). [Claude's sort 2026-10-26]
 
-8.14.11 A discovery log, the product's or a unit's, carries on until the person ends its session, or until approve the map or start this work closes it. A return carries on in the same log, the new conversation's header added on its first write (8.14.8). [Claude's proposal, 29.12 planning]
+8.14.11 A discovery log, the product's or a unit's, carries on until the person ends its session, or until approve the map or start this work closes it. A return carries on in the same log, the returning conversation's header added on its first write, and again whenever another conversation has written the log since (8.14.8). [Claude's proposal, 29.12 planning; Claude's derivation, 29.12 slice 12.5]
 
 ## 8-S. Scenarios for §8
 
@@ -2774,7 +2764,7 @@ Claude says so in one line and carries on from the log. (8.14.8, 8.14.9)
 
 8.S77 Given a started topic the person renames in their own words, then its title changes on the map and on every screen, while its folder, its mail and its ledger entries keep the name it started under; given an unstarted topic renamed, then it renames fully. (8.8.20, 8.8.6)
 
-8.S78 Given the person accepts the brownfield offer, then the answer is `accepted` while the baseline's research is owed, the next start resumes the research, and the answer becomes `completed` once the findings land. (8.12.13, 8.12.11)
+8.S78 Given the person accepts the brownfield offer, then the answer is `accepted` while the baseline's research is owed; the next time the product's conversation opens, by any way in, the research resumes, while start never diverts for it and its p row notes the research owed; and the answer becomes `completed` once the findings land, the p row's note gone with it. (8.12.13, 8.12.11, 18.2.13)
 
 ## 9. Discussion
 
@@ -2932,8 +2922,7 @@ opening with a log of its own reads that log. [R11, R43; put to the person
 9.3.5 A topic's opening view searches earlier work units' current entries in
 its area through the knowledge base. [R23]
 
-9.3.6 The first topics' opening views read what a discovery spike showed
-(8.11.1). [R12]
+9.3.6 A topic's first opening reads what discovery left on it: what a discovery spike showed (8.11.1), and a record carried for it before it started (21.6.12). [R12; Claude's derivation, 29.12 slice 12.4]
 
 9.3.7 What Claude says in the opening is its own and fits the topic: the shape
 of what has been said, a perspective from the brief or beyond it, what earlier
@@ -2952,11 +2941,7 @@ topic decided, so the forks shrink on their own (the cone, §16 Trust). [R24]
 
 9.3.11 Resuming a topic reads its record and its log after any question owed first, such as waiting mail (10.4.1). No question on resuming discards them: the ledger never discards (5.3.4), so starting a topic again is cancelling it and opening a fresh one. [R43; ruled by the person 2026-10-19; Claude's derivation 2026-10-30, 29.11 planning: no event sets a topic's entries aside short of cancelling it]
 
-9.3.12 The opening view reads the findings the product's conversation recorded
-from the code (8.12.5), as it reads the product record (9.3.3): they belong to
-no unit, so no topic's record and no search reaches them otherwise. [R17;
-Claude's derivation 2026-10-25: a finding with no unit reaches a topic only
-this way]
+9.3.12 The opening view reads the findings the product's conversation recorded from the code (8.12.5, 8.12.12), as it reads the product record (9.3.3), and a topic's first opening reads what discovery left on the topic, a carried record among it (9.3.6): the product's findings belong to no unit, and a first opening has no record of the topic's own to read, so nothing else reaches either. [R17; Claude's derivation 2026-10-25: a finding with no unit reaches a topic only this way; Claude's derivation, 29.12 slice 12.4]
 
 ### 9.4 A conversation, never a conveyor belt
 
@@ -3383,7 +3368,9 @@ how it looks, the design wins. [R23]
 or skipped, before anything lands. An image pasted with no file behind it is
 asked for as a saved file. [today's product; Claude's sort, T58]
 
-9.10.23 A discovery log's commit, the product's or a unit's, takes every spike and shared file the log links, as a ledger commit takes the files its entries link (9.10.4), so nothing linked from a log is left outside the state (8.14.1, 9.10.11). [Claude's derivation, 29.12 planning]
+9.10.23 Any log's commit, a discovery log's or a topic's, takes every spike and shared file the log links, as a ledger commit takes the files its links name (9.10.24), so nothing linked from a log is left outside the state (8.14.1, 9.10.11). [Claude's proposal, 29.12 planning; every log, Claude's derivation, 29.12 review]
+
+9.10.24 Each ledger commit takes every file the ledger's asset links name, its additions and its edits, a linked folder's new files among them, and never a removal. [Claude's proposal, 29.11 slice 11.5]
 
 ## 9-S. Scenarios for §9
 
@@ -10100,7 +10087,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.21 Once the tracker's store has moved (21.5.18), each task neither done nor closed in a unit whose building has started is given a type (12.4.1) through the task verbs, the change landing in the migration's commit (21.9.3): fix in a bugfix or quick-fix unit, feat in any other. It is the one change the migration makes to a building unit's tasks (21.8.8). [Claude's derivation 2026-10-28: today's tasks have no type, landing names a task's branch and pull request from it (7.2.18), and a type filled in at runtime would be code handling an old shape]
 
-21.5.22 A topic the old map marks a dead end becomes cancelled in the move, which writes no decision for it: the dead end goes (8.6.6). Its waiting mail goes to the inbox, as a cancelled topic's does (21.5.6). [Claude's proposal, 29.12 planning]
+21.5.22 The move drops the old map's dead-end mark from every topic: the dead end goes (8.6.6). The mark sat on decided topics and finished umbrellas as well as abandoned ones, so a marked topic whose work had concluded — its discussion decided, or, with no discussion of its own, its research done — keeps its concluded state, and its record is carried as any concluded topic's is (21.6). Any other marked topic becomes cancelled, with no decision written for it, and its waiting mail goes to the inbox, as a cancelled topic's does (21.5.6). [Claude's proposal, 29.12 planning; refined, Claude's proposal, 29.12 slice 12.1]
 
 ### 21.6 Step 4: the records
 
@@ -10122,9 +10109,11 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.6.9 The entries the directive marks product-wide start the product record (§8). [R37]
 
-21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15]
+21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. A point on a topic never started is not raised at the directive's end: it stays an open question on that topic, for its discussion to open with. [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15; Claude's proposal, 29.12 slice 12.4]
 
-21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles is raised to the person one at a time; each is answered or left open. [R38, R24]
+21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles on a topic that has started is raised to the person one at a time; each is answered or left open. A never-started topic's points stay open for its discussion (21.6.10). [R38, R24; Claude's derivation, 29.12 slice 12.4]
+
+21.6.12 A never-started epic topic's record is carried at its discovery place — its unit, phase `discovery`, the topic — and holds its questions and findings only, nothing decided, since nothing in discovery is a decision (8.3.4). [Claude's proposal, 29.12 slice 12.4]
 
 ### 21.7 Step 5: the cut and the merges
 
@@ -10336,7 +10325,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S24 Given entries the records directive marks product-wide, when the migration finishes, then the product record holds them. (21.6.9)
 
-21.S25 Given a point no log settles, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. (21.6.10, 21.6.11, 21.10.8)
+21.S25 Given a point no log settles on a topic that has started, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. Given a point on a topic never started, then it is not raised, and stays open for that topic's discussion. (21.6.10, 21.6.11, 21.10.8)
 
 21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec and its topics' logs sit in `.product/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
 
@@ -10390,7 +10379,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S52 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows` is a link to it, so another project still on today's skills reads them there; the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines, or is gone where it held nothing else, those project files changed in the migration's commit on the code branch. (21.5.19)
 
-21.S53 Given an old project with a dead-ended topic, when the move runs, then the topic is cancelled with no decision written for it, and its waiting mail is in the inbox. (21.5.22, 21.5.6)
+21.S53 Given an old project with a dead-ended topic whose work had not concluded, when the move runs, then the topic is cancelled with no decision written for it, and its waiting mail is in the inbox; given a dead-ended topic whose discussion was decided, then the mark goes, the topic stays decided, and its record is carried. (21.5.22, 21.5.6, 21.6.2)
 
 ## 22. Setup, environment and the knowledge base
 
@@ -11886,7 +11875,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.12.2 The baseline is folded in: the product's conversation opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1; ruled by the person 2026-10-22]
 
-29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2, §2.10, §18.2, §18.8, §21.5. [R14; Claude's derivation; Claude's derivation, 29.12 planning: the p rows and the pull (29.12.6, 8.1.8), and the move's dead ends (21.5.22)]
+29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2, §2.10, §18.2, §18.8, §21.5, §21.6. [R14; Claude's derivation; Claude's derivation, 29.12 planning: the p rows and the pull (29.12.6, 8.1.8), and the move's dead ends (21.5.22); Claude's derivation, 29.12 review: a never-started topic's record and its points (21.6.10, 21.6.12)]
 
 29.12.4 Relies on: 29.2 to 29.8, 29.11. [R14; Claude's derivation]
 
