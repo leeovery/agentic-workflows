@@ -31,6 +31,8 @@ const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheCl
 const dir = useDecidedWorld();
 const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(dir);
 const { full, carriedOver } = ledgerHelpers(dir);
+/** The candidates staged for the note window, each struck or standing. */
+const stagedCandidates = () => JSON.parse(fs.readFileSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json'), 'utf8')).candidates;
 
 describe('the decided screen (9.7.3, 9.S21)', () => {
   it('shows what the person decided, Claude\'s calls by kind with those unlabelled said so, the lines, the candidates and the skip, then the decided gate; and with --calls lists each call under its kind, one handed over marked so, drawing the gate without the calls row', () => {
@@ -102,10 +104,14 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     assert.deepStrictEqual(ok(dir(), ['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [elsewhere, price], 'the skipped verdict waits in the queue (16.10.6), and the departure on another topic, never asked here');
   });
 
-  it('refuses a payload that names no decision on the map, a candidate the map cannot take or a feature has no map for, and one of another shape, staging nothing', () => {
+  it('refuses a payload that names no decision on the map, a withdrawal of no line of the product record, a candidate the map cannot take or a feature has no map for, and one of another shape, staging nothing', () => {
     close();
     close(SOLO, SOLO);
     const finding = writeIn(dir(), 'find', NOTE, [], { ...MADE, text: 'Fumi asks for Accessibility.', how: 'read the code', known: 'read' });
+    const homing = answeredIn(dir(), SPACE, 'Does a space remember its notes?', { ...MADE, text: 'Yes.' });
+    const every = writeIn(dir(), 'ask', SPACE, [], { ...MADE, text: 'Does every space remember its notes?' });
+    writeIn(dir(), 'decide', SPACE, ['--answers', every, '--relies-on', homing.answer], { ...MADE, text: 'Every space does.', why: 'For the product.', product_wide: true });
+    const [elsewhere] = ok(dir(), ['ledger', 'product']).decisions;
     const cases = [
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: finding }], candidates: [] }, `line 1 widens ${finding}: ${finding} is no decision`],
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: NOTE_MAP.shape.question }], candidates: [] }, `line 1 widens ${NOTE_MAP.shape.question}: ${NOTE_MAP.shape.question} is no decision`],
@@ -114,7 +120,10 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       [{ lines: [], candidates: [{ name: 'dock-badge', reason: 'R.' }] }, 'the candidates: "dock-badge" was previously dismissed from this map — nothing was added; the person re-adds it on the map'],
       [{ lines: [], candidates: [{ name: 'dock.badge', reason: 'R.' }] }, 'the candidates: entry 1 — "dock.badge" is not a legal topic name (dots and slashes break manifest addressing)'],
       [{ lines: [], candidates: [{ name: 'a', reason: 'R.' }, { name: 'a', reason: 'S.' }] }, 'the candidates: "a" appears more than once in the batch'],
-      [{ lines: [] }, 'the payload must be {lines, candidates}'],
+      [{ lines: [], withdraws: [{ line: NOTE_MAP.shape.answer, why: 'Why.' }], candidates: [] }, `withdrawal 1 withdraws ${NOTE_MAP.shape.answer}: ${NOTE_MAP.shape.answer} is no line of the product record`],
+      [{ lines: [], withdraws: [{ line: elsewhere.id, why: 'Why.' }], candidates: [] }, `withdrawal 1 withdraws ${elsewhere.id}: it widens no decision of note-window standing`],
+      [{ lines: [], withdraws: [{ line: NOTE_MAP.shape.answer }], candidates: [] }, 'withdrawal 1 must be {line, why}'],
+      [{ lines: [] }, 'the payload must be {lines, candidates, withdraws?}'],
     ];
     for (const [given, refusal] of cases) {
       const res = refusedPristine(dir(), ['render', 'decided', `${UNIT}.note-window`, '--file', payload(/** @type {Record<string, unknown>} */ (given))], { env: SESSION });
@@ -142,7 +151,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
 });
 
 describe('striking a candidate (P8)', () => {
-  it('strikes a lone candidate from the gate, and the yes leaves it off the map', () => {
+  it('strikes a lone candidate from the gate, in the staged payload alone', () => {
     close();
     staged({ lines: [], candidates: [{ name: 'removing-fumi', reason: 'R.' }] });
     const struck = run(answer('decided', 's'));
@@ -151,8 +160,8 @@ describe('striking a candidate (P8)', () => {
     assert.match(again, /└─ ⊘ Removing Fumi +\[struck\]/);
     assert.match(sectionOf(again, 'MENU: decided'), /^Your yes marks Note Window decided\.$/m);
     assert.ok(!sectionOf(again, 'MENU: decided').includes('s/strike'));
-    assert.deepStrictEqual(run(answer('decided', 'y')).candidates, []);
-    assert.ok(!('removing-fumi' in readManifest(dir(), UNIT).phases.discovery.items));
+    assert.deepStrictEqual(stagedCandidates(), [{ name: 'removing-fumi', reason: 'R.', struck: true }]);
+    assert.ok(!('removing-fumi' in readManifest(dir(), UNIT).phases.discovery.items), 'a strike reaches no map');
   });
 
   it('picks the candidate by its number where more than one stands', () => {
@@ -162,7 +171,7 @@ describe('striking a candidate (P8)', () => {
     assert.deepStrictEqual([...sectionOf(pick, 'MENU: decided strike').matchAll(/^\*\*`([a-z0-9/]+)`\*\* +→ (.*)$/gm)].map((m) => [m[1], m[2]]),
       [['1', 'Removing Fumi'], ['2', 'Dock Icon'], ['3', 'Menu Extra'], ['b/back', 'Back to the decided screen — nothing struck']]);
     assert.match(run(run(answer('decided strike', '2')).next), /├─ ⊘ Dock Icon +\[struck\]/);
-    assert.deepStrictEqual(run(answer('decided', 'y')).candidates, ['removing-fumi', 'menu-extra']);
+    assert.deepStrictEqual(stagedCandidates().map((/** @type {{struck: boolean}} */ c) => c.struck), [false, true, false]);
   });
 
   it('keeps the strike of every candidate a restage still names', () => {
@@ -172,7 +181,7 @@ describe('striking a candidate (P8)', () => {
     ok(dir(), ['decided', 'strike', UNIT, 'note-window', '1'], { env: SESSION });
     const again = staged({ lines: [{ text: 'Sync is on.', why: 'Why.', widens: NOTE_MAP.sync.answer }], candidates: [...candidates].reverse() });
     assert.match(again, /└─ ⊘ Removing Fumi +\[struck\]/);
-    assert.deepStrictEqual(run(answer('decided', 'y')).candidates, ['dock-icon']);
+    assert.deepStrictEqual(stagedCandidates(), [{ name: 'dock-icon', reason: 'S.', struck: false }, { name: 'removing-fumi', reason: 'R.', struck: true }]);
   });
 
   it('undoes a strike, the candidate standing again on the screen; refuses a candidate the payload lacks, one struck already, and one not struck', () => {

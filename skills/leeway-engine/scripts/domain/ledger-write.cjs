@@ -1140,12 +1140,15 @@ function writeLedger(cwd, verb, args, stdin) {
  * What `raised` would land refused as its landing refuses it, against the
  * ledger as it stands, writing nothing: its place, and its links resolved
  * and checked — so a caller landing several checks each before it lands
- * any.
+ * any. A raise whose id the ledger holds already passes, as its landing
+ * answers it before any link is checked.
  * @param {string} cwd @param {Raised} raised @param {string[]} warnings
  */
 function checkRaised(cwd, raised, warnings) {
   const request = raisedRequest(cwd, raised, warnings);
-  eventOf(request, request.before());
+  const read = request.before();
+  if (request.id !== null && read.facts.has(request.id)) return;
+  eventOf(request, read);
 }
 
 /**

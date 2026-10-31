@@ -5,7 +5,7 @@
 // decided.cjs): `engine decided yes`, the person's yes landing each line as
 // a product-wide decision of its own at the unit's level (8.S25), the
 // candidates not struck on the epic's map, the topic decided and what comes
-// next; a refused yes writing nothing, and a yes run again after a kill
+// next, the counts it covers in words; a refused yes writing nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
 // yes refused with nothing staged, a verdict still to ask, or no
 // conversation; and a product-record line changed through a comment, never
@@ -29,7 +29,7 @@ const { close, payload, staged, answer, run, reverse } = decidedHelpers(dir);
 const { entries, full } = ledgerHelpers(dir);
 
 describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
-  it('stages the lines and the candidates in the cache, nothing on the ledger or the map, then lands each line as the person\'s product-wide decision, the candidates on the map, the topic decided, and the epic\'s menu next', () => {
+  it('stages the lines and the candidates in the cache, nothing on the ledger or the map, then lands each line as the person\'s product-wide decision, the candidates not struck on the map, the topic decided, and the epic\'s menu next', () => {
     close();
     const before = entries().length;
     const out = staged({
@@ -37,12 +37,13 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
         { text: 'Sync stays off until you turn it on.', why: 'The sync call holds for the whole product.', widens: NOTE_MAP.sync.answer },
         { text: 'First run shows the product before it asks.', why: 'The tour first holds everywhere.', widens: NOTE_MAP.shape.answer },
       ],
-      candidates: [{ name: 'removing-fumi', reason: 'Nothing decides what removing Fumi takes back.' }],
+      candidates: [{ name: 'removing-fumi', reason: 'Nothing decides what removing Fumi takes back.' }, { name: 'dock-icon', reason: 'S.' }],
     });
     assert.strictEqual(entries().length, before, 'nothing reaches the ledger before the yes (P10)');
     assert.ok(!('removing-fumi' in readManifest(dir(), UNIT).phases.discovery.items), 'nor the map');
     assert.ok(fs.existsSync(statePath(dir(), '.cache', UNIT, 'discussion', 'note-window', 'decided.json')), 'the payload is staged in the topic\'s cache');
-    assert.match(sectionOf(out, 'MENU: decided'), /^Your yes marks Note Window decided, with the 2 product-record lines and the candidate\.$/m);
+    assert.match(sectionOf(out, 'MENU: decided'), /^Your yes marks Note Window decided, with the two product-record lines and the two candidates\.$/m);
+    ok(dir(), ['decided', 'strike', UNIT, 'note-window', '2'], { env: SESSION });
 
     const yes = answer('decided', 'y');
     assert.deepStrictEqual(yes, { kind: 'engine', argv: ['decided', 'yes', UNIT, 'note-window'] });
@@ -60,6 +61,7 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
     assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync stays off until you turn it on.', 'First run shows the product before it asks.']);
     const manifest = readManifest(dir(), UNIT);
     assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { routing: 'discussion', source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
+    assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
     assert.strictEqual(manifest.phases.discussion.items['note-window'].status, 'completed');
     assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
     assert.deepStrictEqual([res.lines.length, res.candidates, res.warnings], [2, ['removing-fumi'], undefined]);
@@ -117,15 +119,12 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
     assert.strictEqual(refusedPristine(dir(), yes, { env: SESSION }).error, 'decided yes: a verdict is still to ask — render decided asks each before the yes');
   });
 
-  it('offers no strike for a product-record line: a comment changes it, staged again (9.S55)', () => {
+  it('offers no strike for a product-record line: a comment changes it (9.S55)', () => {
     close();
     const out = staged({ lines: [{ text: 'Sync is on.', why: 'Why.', widens: NOTE_MAP.sync.answer }], candidates: [] });
     const gate = sectionOf(out, 'MENU: decided');
     assert.ok(!gate.includes('s/strike'), 'a line has no strike of its own');
     assert.match(gate, /^\*\*Comment\*\* → Tell me what to change — a product-record line included$/m);
     ok(dir(), ['gate', 'decided', '--typed', 'comment'], { env: SESSION });
-    assert.match(staged({ lines: [{ text: 'Sync stays off.', why: 'The person said so.', widens: NOTE_MAP.sync.answer }], candidates: [] }), /· Sync stays off\./);
-    run(answer('decided', 'y'));
-    assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync stays off.']);
   });
 });

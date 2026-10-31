@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // The experiment series (leeway-engine/scripts/domain/experiment.cjs,
 // `engine experiment create|advance|approve|conclude|abandon`, with
-// domain/experiment-question.cjs): the spawn from a discussion and its lock,
+// domain/experiment-question.cjs): the spawn from a discussion, measuring a
+// question on its map it must name, and its lock,
 // the records in the topic's folder (4.11.15), the walk to verdict, splits,
 // the release edges, the question on the map an experiment measures and the
 // report that reaches as a message the topic that question stands on once it
@@ -76,9 +77,17 @@ function problemScratch(dir, slug) {
   return rel;
 }
 
-/** Spawn E{next} from the named phase. */
+const SESSION = { CLAUDE_CODE_SESSION_ID: 'session-1' };
+const MADE = { by: 'claude', who_moved_whom: 'none' };
+
+/** A question asked on timing's map: its short id. */
+function asked(dir, text) {
+  return engine(dir, ['ledger', 'ask', 'lab.discussion.timing'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text }) }).id;
+}
+
+/** Spawn E{next} from the named phase, measuring a question asked for it. */
 function spawn(dir, from, slug) {
-  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug)]);
+  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug), '--question', asked(dir, `What does ${slug} settle?`)]);
 }
 
 /** Walk an id to `status` through the legal steps. */
@@ -105,8 +114,9 @@ describe('engine experiment create — the spawn', () => {
     assert.deepStrictEqual(res.awaiting, { phase: 'discussion', ids: ['E1'] });
     const m = readManifest(dir, 'lab');
     assert.strictEqual(m.phases.experiment.items.timing.status, 'in-progress', 'the spawn opens the item');
-    assert.deepStrictEqual(m.phases.experiment.items.timing.experiments,
-      { E1: { slug: 'window-placement', status: 'conceived' } });
+    const { question, ...record } = m.phases.experiment.items.timing.experiments.E1;
+    assert.deepStrictEqual(record, { slug: 'window-placement', status: 'conceived' });
+    assert.ok(question.startsWith(res.question), 'the record keeps the question it measures');
     assert.deepStrictEqual(m.phases.discussion.items.timing.awaiting_experiments, ['E1']);
     assert.strictEqual(m.phases.research.items.timing.awaiting_experiments, undefined,
       'the lock lands on the spawning phase alone');
@@ -144,28 +154,37 @@ describe('engine experiment create — the spawn', () => {
     for (const from of ['research', 'planning']) {
       assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', from, '--problem', scratch()]).error, /--from must be one of discussion —/);
     }
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'ghost', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error, /no discussion item "ghost" to spawn from/);
+    const mapped = readManifest(dir, 'lab');
+    mapped.phases.discovery.items.ghost = { routing: 'discussion', summary: 'Ghost windows', order: 2 };
+    writeManifest(dir, 'lab', mapped);
+    const homeless = asked(dir, 'Where does a ghost window open?');
+    engine(dir, ['ledger', 'move', 'lab.discussion.timing', '--question', homeless, '--to', 'ghost'], { env: SESSION, stdin: JSON.stringify(MADE) });
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'ghost', '--slug', 'x', '--from', 'discussion', '--problem', scratch(), '--question', homeless]).error, /no discussion item "ghost" to spawn from/);
 
+    const placement = asked(dir, 'Where does a new window open?');
     const m = readManifest(dir, 'lab');
     m.phases.discussion.items.timing.status = 'completed';
     writeManifest(dir, 'lab', m);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error,
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch(), '--question', placement]).error,
       /discussion "timing" is completed — only an in-progress discussion spawns/);
     assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/x-problem.md')),
       'a refused spawn leaves the problem scratch intact — nothing consumed, nothing conceived');
   });
 
-  it('the problem statement is required, cache-confined, and never rides a split', () => {
+  it('the problem statement and the question measured are required, the problem cache-confined, and neither rides a split', () => {
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion']).error,
       /--problem <file> is required on a spawn/);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', 'notes/problem.md']).error,
+    assert.strictEqual(refusedPristine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', problemScratch(dir, 'x')]).error,
+      '--question <id> is required on a spawn — an experiment measures an open question on the topic\'s map, and its report reaches the topic through it');
+    const unread = ['--question', 'abc'];
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', 'notes/problem.md', ...unread]).error,
       /--problem must point inside \S*\/\.leeway\/\.cache\//);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.leeway/.cache/lab/scratch/ghost.md']).error,
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.leeway/.cache/lab/scratch/ghost.md', ...unread]).error,
       /problem file not found/);
     const empty = '.leeway/.cache/lab/scratch/empty.md';
     fs.mkdirSync(path.join(dir, path.dirname(empty)), { recursive: true });
     fs.writeFileSync(path.join(dir, empty), '  \n');
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', empty]).error,
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', empty, ...unread]).error,
       /problem file is empty/);
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment, undefined, 'a refused spawn conceives nothing');
 
@@ -377,8 +396,6 @@ describe('splits — sub-experiments under a running parent', () => {
 });
 
 describe('the question on the map an experiment measures (9.1.11)', () => {
-  const SESSION = { CLAUDE_CODE_SESSION_ID: 'session-1' };
-  const MADE = { by: 'claude', who_moved_whom: 'none' };
   let dir;
   beforeEach(() => { dir = setupGitFixture(); setup(dir); });
   afterEach(() => { cleanupFixture(dir); });

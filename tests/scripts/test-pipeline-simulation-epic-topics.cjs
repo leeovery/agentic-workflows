@@ -24,7 +24,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const {
   epicMenu, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn } = require('./pipeline-world.cjs');
 
 // A discussion in flight on alpha with its research reopened beneath it by
 // a peer, sitting in it — a discussion cannot be born beneath live
@@ -93,7 +93,7 @@ describe('pipeline simulation: epic-topics', () => {
     // live.
     sim.run(['topic', 'start', wu, 'discussion', 'auth']);
     sim.write(`.leeway/${wu}/discussion/auth.md`, '# Discussion — Auth\n');
-    const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion',
+    const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion', '--question', askedOn(sim, wu, 'auth', 'What latency does auth hold to?'),
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');

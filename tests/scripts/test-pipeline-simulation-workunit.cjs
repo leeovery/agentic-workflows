@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, handoff, literal } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, handoff, literal, askedOn } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -98,7 +98,7 @@ describe('pipeline simulation: workunit', () => {
       'the migration path is settled and out of scope']);
     // The discussion spawned an experiment still awaiting its evidence — the
     // series travels with the topic, wait and all.
-    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion',
+    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion', '--question', askedOn(sim, feat, feat, 'What does a cutover cost?'),
       '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
     assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
