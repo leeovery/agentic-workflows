@@ -38,8 +38,11 @@
 //
 // Judgment decides, code records. All errors throw loud and specific before
 // anything is written; every load→mutate→save runs under the work unit's
-// manifest lock. No git commit — the calling session's commit cadence picks
-// the manifest change up (`commit --topic experiment/{topic}`).
+// manifest lock. The spawn commits the record it installed with the
+// manifest that names it, and with them, as every state commit does, the
+// logs changed beside them — the spawning topic's among them. Every other
+// write is left to the calling session's commit cadence
+// (`commit --topic experiment/{topic}`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,6 +58,7 @@ const {
 const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
 const { releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
 const { sendMessage } = require('./mail.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
@@ -154,6 +158,8 @@ function liveSubs(item, parentId) {
  * @property {string} [parent]   sub-experiment creation — the running parent
  * @property {{phase: string, ids: string[]}} [awaiting]  the lock the spawn placed
  * @property {string} [question]  the question the spawn measures, by its short id
+ * @property {string|null} [committed]  the spawn's commit — null where none landed
+ * @property {string} [note]  a pending commit's retry
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
  * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
  * @property {string[]} [warnings]
@@ -176,7 +182,8 @@ function liveSubs(item, parentId) {
  * whole ends), and no problem file or question: the sub-record's design
  * frames its question, and the parent measures the map's. The record's
  * directory is the response's `dir`, where the design is authored before
- * anything is measured.
+ * anything is measured. A spawn commits what it wrote (`committedSpawn`); a
+ * split leaves its manifest change to the experiment session's cadence.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -298,7 +305,25 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
   if (scratchAbs !== null) {
     try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
   }
-  return warnings.length > 0 ? { ...result, warnings } : result;
+  const answer = from === undefined ? result : committedSpawn(cwd, workUnit, result, warnings);
+  return warnings.length > 0 ? { ...answer, warnings } : answer;
+}
+
+/**
+ * The spawn's commit: the record's problem statement and the manifest that
+ * names it, any log changed beside them riding along. A commit git refuses
+ * leaves the spawn saved, with the retry in its note.
+ * @param {string} cwd @param {string} workUnit @param {ExperimentOpResult} created @param {string[]} warnings
+ * @returns {ExperimentOpResult}
+ */
+function committedSpawn(cwd, workUnit, created, warnings) {
+  const { topic, id, slug, dir } = created;
+  const outcome = commitStateTail(cwd, [`${workUnit}/manifest.json`, path.join(dir, 'problem.md')],
+    `experiment(${workUnit}/${topic}): spawn ${id} ${slug}`, warnings);
+  /** @type {ExperimentOpResult & Record<string, unknown>} */
+  const answer = { ...created, committed: outcome.committed };
+  noteCommitOutcome(answer, outcome, `${workUnit} --topic experiment/${topic} --sweep`);
+  return answer;
 }
 
 /**

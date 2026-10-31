@@ -1191,6 +1191,29 @@ function checkFrameworkLoadsOnce(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 30 — no design tool is named in the workflows' prose (9.10.19). A
+// design lives in the unit as a file and its live link, whatever drew it, so
+// the prose names the artifact and never the tool. The list is the tools a
+// spike is likeliest to come from, each a proper noun no plain word shares —
+// a tool whose name is a common word (Sketch) stays off it, since a sentence
+// opening on the word would read as the tool.
+// ---------------------------------------------------------------------------
+
+const DESIGN_TOOLS = ['Figma', 'FigJam', 'Penpot', 'Framer', 'Adobe XD', 'Zeplin', 'InVision', 'Canva', 'Balsamiq', 'Whimsical', 'Miro', 'Excalidraw', 'tldraw', 'Lucidchart', 'Uizard', 'Google Stitch', 'v0.dev'];
+const DESIGN_TOOL = new RegExp(`(?<![\\w.])(${DESIGN_TOOLS.map((name) => name.replace(/\./g, '\\.')).join('|')})(?![\\w])`, 'i');
+
+function checkNoDesignTools(files) {
+  const out = [];
+  for (const file of files) {
+    readLines(file).forEach((line, i) => {
+      const hit = line.match(DESIGN_TOOL);
+      if (hit) out.push({ file, line: i + 1, message: `"${hit[1]}" names a design tool — the workflows name the design, its file and its live link, never the tool that drew it` });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1221,6 +1244,7 @@ const CHECKS = [
   ['27: the framework loads at the head of the skills a conversation opens on', checkFrameworkLoad],
   ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
   ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
+  ['30: no design tool is named', checkNoDesignTools],
 ];
 
 // ---------------------------------------------------------------------------
@@ -1235,13 +1259,19 @@ const CHECKS = [
 // The `## Instructions` framework load composes the whole skill and carries
 // no footer by design; the file's final `## ` step is terminal and exempt, as
 // is any segment that declares itself Terminal; a trailing `## Notes` is
-// documentation, not a step, and never counts as the last step.
+// documentation, not a step, and never counts as the last step. A skill
+// rewritten to the new shape has no steps to fall through — a field and its
+// requests, each load the last word of its section — so the check holds the
+// skills still on the step model alone, and retires with the last of them.
 // ---------------------------------------------------------------------------
+
+// The skills rewritten to the new shape, whose backbones hold no steps.
+const NEW_SHAPE_SKILLS = new Set(['leeway-discussion-process']);
 
 function checkFooterlessLoads(files) {
   const out = [];
   for (const file of files) {
-    if (!file.endsWith('SKILL.md')) continue;
+    if (!file.endsWith('SKILL.md') || NEW_SHAPE_SKILLS.has(skillNameOf(file))) continue;
     const lines = readLines(file);
     const { inFence } = parseFences(lines);
     const lastH2 = lines.reduce((acc, l, i) => (/^##\s/.test(l) && !/^##\s+Notes\b/.test(l) ? i : acc), -1);
@@ -1606,6 +1636,12 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
 
     const ref = write(dir, 'skills/x/references/r.md', '## A. One\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n## B. Two\n');
     assert.strictEqual(checkFooterlessLoads([ref]).length, 0, 'references are out of scope');
+
+    const sections = '## Research\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n## Closing\n\nDone.\n';
+    const field = write(dir, 'skills/leeway-discussion-process/SKILL.md', sections);
+    assert.strictEqual(checkFooterlessLoads([field]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
+    const stepped = write(dir, 'skills/leeway-investigation-process/SKILL.md', sections);
+    assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
 });
 
@@ -2378,6 +2414,19 @@ test('2.S17 — the framework load holds voice and altitude, once each', () => {
   for (const name of ['voice.md', 'altitude.md']) {
     assert.strictEqual(loaded.filter((n) => n === name).length, 1, `framework.md loads ${name} once, got ${JSON.stringify(loaded)}`);
   }
+});
+
+test('check 30 (no design tool) — 9.S53: catches each listed tool named in a skill, a reference or an agent, fenced or not, in any case; permits the plain words beside them and a name inside another word', () => {
+  withTemp((dir) => {
+    const named = DESIGN_TOOLS.map((name, i) => write(dir, `skills/x/references/r${i}.md`, `# R\n\nThe board is in ${name}, exported.\n`));
+    assert.deepStrictEqual(checkNoDesignTools(named).map((v) => v.message.split('"')[1]), DESIGN_TOOLS);
+    const fenced = write(dir, 'agents/leeway-x.md', '```text\nopen it in Figma\n```\n');
+    assert.strictEqual(checkNoDesignTools([fenced]).length, 1, 'a fenced name is still named');
+    const lower = write(dir, 'skills/x/references/lower.md', '# L\n\nthe figma file, the miro board\n');
+    assert.deepStrictEqual(checkNoDesignTools([lower]).map((v) => v.message.split('"')[1]), ['figma'], 'a name in lower case is still named, the first on the line');
+    const plain = write(dir, 'skills/x/SKILL.md', 'Sketch the outline, frame the question, canvas the options, stitch the parts; a Framework load; v0.3 of the format.\n');
+    assert.strictEqual(checkNoDesignTools([plain]).length, 0, 'plain words and longer words are no tool');
+  });
 });
 
 test('check 29 (the framework loads once) — catches a file the framework loads twice and a framework file loaded from anywhere else; permits the framework load itself, another shared reference, fenced content, and a corpus without the framework', () => {

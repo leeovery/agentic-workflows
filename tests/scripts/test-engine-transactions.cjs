@@ -122,8 +122,8 @@ describe('engine topic cancel — the discovery unit', () => {
     const { res, sections } = okSections(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'data-export', phase: 'discovery', status: 'cancelled',
-      cancelled: [], discarded: [], abandoned: [], released_waits: [],
-      committed: shortHead(dir), warnings: [], roadmap_reverted: [],
+      cancelled: [], discarded: [], abandoned: [], released_waits: [], closed_agents: [],
+      committed: shortHead(dir), warnings: [], roadmap_reverted: [], next: { kind: 'continue' },
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 1 });
@@ -305,7 +305,7 @@ describe('engine topic cancel — the specification unit', () => {
         { phase: 'specification', previous_status: 'in-progress' },
         { phase: 'planning', previous_status: 'in-progress' },
       ],
-      committed: shortHead(dir), warnings: [res.warnings[0]],
+      closed_agents: [], committed: shortHead(dir), warnings: [res.warnings[0]], next: { kind: 'continue' },
     });
     assert.match(res.warnings[0], /^knowledge remove failed: loadStore: corrupted store file at /);
     const m = readManifest(dir, 'payments');

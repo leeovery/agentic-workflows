@@ -20,9 +20,18 @@ function topicLog(unit, topic) {
   return `${unit}/topics/${topic}/log.md`;
 }
 
+/**
+ * The call that reads one of a topic's views of the ledger: its record, its
+ * map, or the entries a replacement changed under it.
+ * @param {'record'|'map'|'affected'} view @param {string} unit @param {string} topic
+ */
+function ledgerView(view, unit, topic) {
+  return `${ENGINE_COMMAND} ledger ${view} ${unit} ${topic}`;
+}
+
 /** The call that reads a topic's record. @param {string} unit @param {string} topic */
 function recordCall(unit, topic) {
-  return `${ENGINE_COMMAND} ledger record ${unit} ${topic}`;
+  return ledgerView('record', unit, topic);
 }
 
 /** The call that reads the product record. */
@@ -46,4 +55,4 @@ function owedHeader(file, sessionId, transcript) {
   return [`## ${todayStamp()}`, `session ${sessionId}`, ...(transcript === null ? [] : [`transcript ${transcript}`])].join(' · ');
 }
 
-module.exports = { topicLog, recordCall, productCall, owedHeader };
+module.exports = { topicLog, ledgerView, recordCall, productCall, owedHeader };

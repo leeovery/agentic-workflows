@@ -93,6 +93,7 @@ const { openDiscoverySession, closeDiscoverySession } = require('./domain/discov
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
+const { leaveNext } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
 const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -1266,7 +1267,7 @@ function runTopic(call, argv) {
       if (!workUnit || !topic || positional.length !== 2) {
         throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
       }
-      respond(call, postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }));
+      respond(call, { ...postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }), next: leaveNext(workUnit, 'discovery', topic, 'postponed') });
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
@@ -1277,6 +1278,11 @@ function runTopic(call, argv) {
     if (!workUnit || !phase || !topic || rest.length !== 3) {
       const phaseArg = UNIT_VERBS.includes(command) ? '<discovery|specification>' : '<phase>';
       throw new Error(`Usage: engine topic ${command} <work-unit> ${phaseArg} <topic>`);
+    }
+    if (command === 'cancel') {
+      const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
+      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.phase, topic, 'cancelled') });
+      return;
     }
     const result = fn(call.cwd, workUnit, phase, topic);
     if (TOPIC_BEATS.includes(command)) beatQuietly(call.cwd, workUnit, phase, topic);
@@ -1295,8 +1301,8 @@ function runTopic(call, argv) {
 // (domain/experiment.cjs): create is the spawn (id + item + the spawning
 // item's evidence lock — or a sub-experiment under a running parent);
 // advance/approve/conclude/abandon record one experiment's design-before-data
-// walk. Manifest writes with no git commit — the session's commit cadence
-// picks the change up.
+// walk. The spawn commits what it wrote; every other write is left to the
+// session's commit cadence.
 //
 // Beats follow the acting session: `create --from` is the spawning
 // discussion session recording the spawn on its own item, so it beats

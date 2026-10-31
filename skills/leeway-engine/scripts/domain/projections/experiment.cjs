@@ -120,20 +120,19 @@ function experimentNextGate(live) {
 
 /**
  * The now-or-later gate — rendered by the spawning session right after the
- * spawn is recorded, while the conversation still holds the knowledge. Both
- * roads end at the menu with the experiment queued; the choice is which turn
- * comes first.
- * @param {string} phase the spawning phase — `research` or `discussion`
- * @param {string} id
- * @param {boolean} epic  where the pause lands — the epic menu, or straight into the laboratory
+ * spawn is recorded, while the conversation still holds the knowledge. Yes
+ * pauses the conversation and hands off to the laboratory for the topic, as
+ * every spawn worked now does; later carries the conversation on, the
+ * question the experiment measures waiting on its result unless the person
+ * answers it first (9.1.11).
+ * @param {{phase: string, id: string, unit: string, topic: string, workType: string}} spawn
  * @returns {string}
  */
-function experimentSpawnGate(phase, id, epic) {
+function experimentSpawnGate({ phase, id, unit, topic, workType }) {
   return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', epic
-      ? `Pause this ${phase} here and return to the epic menu with ${id} queued`
-      : `Pause this ${phase} here and open the laboratory for ${id}`),
-    cmdOption('l', 'later', `Keep the conversation going — this ${phase} cannot conclude until ${id}'s evidence lands`),
+    cmdOption('y', 'yes', `Pause this ${phase} here and open the laboratory for ${id}`,
+      { next: { kind: 'handoff', skill: 'leeway-experiment-process', args: [workType, unit, topic] } }),
+    cmdOption('l', 'later', `Keep the conversation going — the question ${id} measures waits for its result, unless you answer it first`, { next: { kind: 'continue' } }),
   ], { question: `Work ${id} now?` }));
 }
 

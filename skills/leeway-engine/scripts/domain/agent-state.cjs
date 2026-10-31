@@ -728,6 +728,24 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
 }
 
 /**
+ * The agents a topic leaving the board takes with it — cancelled or
+ * postponed: each row of the phase still in flight, its report not on disk,
+ * closed as incorporated, so a report landing after is never taken in. A row
+ * whose report landed stays, for the topic's return. Answers the ids closed.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {string[]}
+ */
+function closeInFlight(cwd, workUnit, phase, topic) {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
+    const state = loadState(cwd, workUnit, phase, topic);
+    const closing = phaseRows(phase, state).filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit));
+    for (const row of closing) row.status = 'incorporated';
+    if (closing.length > 0) saveState(cwd, workUnit, phase, topic, state);
+    return closing.map((row) => row.id);
+  });
+}
+
+/**
  * A discussion topic's rows as a brief reads them, in the order they were
  * dispatched: each in scan's public shape, with the report its agent writes.
  * @param {string} cwd @param {string} workUnit @param {string} topic
@@ -765,6 +783,7 @@ module.exports = {
   announceAgent,
   surfaceFinding,
   incorporateAgent,
+  closeInFlight,
   completedReviewCycles,
   reviewArming,
   agentRows,

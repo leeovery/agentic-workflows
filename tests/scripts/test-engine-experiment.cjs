@@ -26,7 +26,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, fixtureFrom } = harness;
+const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, stateGit, output, fixtureFrom } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-exp-');
 
@@ -211,6 +211,53 @@ describe('engine experiment create — the spawn', () => {
       /--problem is refused with --parent — a split carries no spawn-side problem statement/);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1', '--question', 'abc']).error,
       /--question is refused with --parent — the parent measures the map's question/);
+  });
+});
+
+describe('the spawn commits its record and hands the conversation on', () => {
+  let dir;
+  beforeEach(() => { dir = labWorld(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** The spawn gate over `unit`'s `topic`, rendered, then `key` answered: the row's next. @param {string} unit @param {string} topic @param {string} key */
+  function answered(unit, topic, key) {
+    output(dir, ['render', 'experiment-spawn-gate', `${unit}.discussion.${topic}`, '--id', 'E1'], { env: SESSION });
+    return engine(dir, ['gate', 'experiment spawn gate', '--pick', key], { env: SESSION }).next;
+  }
+
+  it('commits the problem statement and the manifest that names it, the spawning topic\'s log riding along', () => {
+    const log = layout.topic('lab', 'timing', 'log.md');
+    fs.mkdirSync(path.dirname(statePath(dir, log)), { recursive: true });
+    fs.writeFileSync(statePath(dir, log), '# Timing\n\nA number would settle it.\n');
+    const res = spawn(dir, 'discussion', 'window-placement');
+    const changed = stateGit(dir, ['show', '--name-status', '--no-renames', '--format=', 'HEAD']).trim().split('\n').sort();
+    assert.deepStrictEqual([res.committed, lastMessage(dir), changed], [
+      stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
+      'experiment(lab/timing): spawn E1 window-placement',
+      [`A\t${layout.experiment('lab', 'timing', 'E1-window-placement', 'problem.md')}`, `A\t${log}`, `M\t${layout.manifest('lab')}`].sort(),
+    ]);
+  });
+
+  it('a split commits nothing — its manifest change is the experiment session\'s', () => {
+    spawn(dir, 'discussion', 'window-placement');
+    walkTo(dir, 'E1', 'running');
+    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    assert.strictEqual(engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']).committed, undefined);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before);
+  });
+
+  it('yes takes an epic\'s discussion into the laboratory for its topic, later carries the conversation on', () => {
+    spawn(dir, 'discussion', 'window-placement');
+    assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] });
+    assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
+  });
+
+  it('yes takes a single-topic unit\'s discussion straight into the laboratory for its topic', () => {
+    writeManifest(dir, 'solo', { name: 'solo', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { solo: { status: 'in-progress' } } } } });
+    commitAll(dir, 'solo');
+    const question = engine(dir, ['ledger', 'ask', 'solo.discussion.solo'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'What does a tally cost?' }) }).id;
+    engine(dir, ['experiment', 'create', 'solo', 'solo', '--slug', 'tally-cost', '--from', 'discussion', '--problem', problemScratch(dir, 'tally-cost'), '--question', question]);
+    assert.deepStrictEqual(answered('solo', 'solo', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['feature', 'solo', 'solo'] });
   });
 });
 
