@@ -286,8 +286,8 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
     const map = spawnSync('node', [path.join(SKILLS, 'leeway-discussion-process/scripts/gateway.cjs'), 'map', 'wu', 't'], { cwd: dir, encoding: 'utf8' });
     assert.match(map.stdout, /^all_decided: false$/m);
     assert.match(map.stdout, /^unresolved: \["token-refresh"\]$/m);
-    const defer = spawnSync('node', [ENGINE, 'render', 'defer-gate', 'wu.discussion.t'], { cwd: dir, encoding: 'utf8' });
-    assert.match(defer.stdout, /^=== MENU: defer gate/m, 'a defer gate is owed over this map — the recovery read must not carry it');
+    const wait = spawnSync('node', [ENGINE, 'render', 'wait-agents', 'wu.t'], { cwd: dir, encoding: 'utf8' });
+    assert.match(wait.stdout, /^=== MENU: wait for agents/m, 'a wait is owed over the review in flight — the recovery read must not carry it');
     const pick = spawnSync('node', [ENGINE, 'render', 'experiment-pick', 'wu.experiment.t'], { cwd: dir, encoding: 'utf8' });
     assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery read must not carry it');
     for (const phase of ['discussion', 'research']) {

@@ -32,6 +32,9 @@
 //   (16.10.6). The latest is the one given last, by its time, the order read
 //   breaking a tie — the log's, then each conversation's — as a verdict
 //   that waited lands after the log's.
+// - The asked: the entries given any verdict, a skip among them, each with
+//   when its latest was given — the departures a verdict point has put to
+//   the person, which a decided screen asks no more (16.10.2, decided.cjs).
 // ---------------------------------------------------------------------------
 
 const { readProjectEvents } = require('./trust-log.cjs');
@@ -44,8 +47,9 @@ const { readProjectEvents } = require('./trust-log.cjs');
  */
 /**
  * What this machine logged on a project: its answers in the order read; the
- * entries of its departures; and the entries given a verdict.
- * @typedef {{answers: Answer[], departures: Set<string>, judged: Set<string>}} Evidence
+ * entries of its departures; the entries given a verdict; and those given
+ * any verdict, a skip among them, by when the latest was given.
+ * @typedef {{answers: Answer[], departures: Set<string>, judged: Set<string>, asked: Map<string, number>}} Evidence
  */
 
 /** @typedef {(event: Record<string, unknown>) => AnswerStanding} StandsBy */
@@ -95,6 +99,7 @@ function evidenceOf(root) {
     answers,
     departures: new Set(answers.filter(({ standing }) => standing === 'departure').map(({ event }) => /** @type {string} */ (event.entry))),
     judged: new Set([...latest].filter(([, { verdict }]) => verdict !== 'skip').map(([entry]) => entry)),
+    asked: new Map([...latest].map(([entry, { at }]) => [entry, at])),
   };
 }
 

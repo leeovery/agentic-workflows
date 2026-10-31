@@ -24,7 +24,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const {
   epicMenu, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
-const { Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn } = require('./pipeline-world.cjs');
 
 // A discussion in flight on alpha with its research reopened beneath it by
 // a peer, sitting in it — a discussion cannot be born beneath live
@@ -93,7 +93,7 @@ describe('pipeline simulation: epic-topics', () => {
     // live.
     sim.run(['topic', 'start', wu, 'discussion', 'auth']);
     sim.write(`.leeway/${wu}/discussion/auth.md`, '# Discussion — Auth\n');
-    const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion',
+    const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion', '--question', askedOn(sim, wu, 'auth', 'What latency does auth hold to?'),
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
@@ -109,8 +109,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(taken.abandoned, ['E1']);
     assert.deepStrictEqual(taken.discarded, ['grouping']);
     let m = sim.manifest(wu);
-    assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress', reconcile_needed: 'experiment' },
-      'the release flagged the holder before the cancel closed it');
+    assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress' });
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
     assert.strictEqual(m.phases.experiment.items.auth.experiments.E1.reason, 'topic cancelled');
     assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is discarded, never cancelled');
@@ -121,15 +120,13 @@ describe('pipeline simulation: epic-topics', () => {
     assert.match(sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'content' }),
       /⚑ "Auth" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
 
-    // The reactivate restores the conversation with the release flag live,
-    // its message still waiting; answered, the discussion concludes.
+    // The reactivate restores the conversation, its message still waiting;
+    // answered, the discussion concludes.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
     sim.render(['entry-gate', `${wu}.discussion.auth`, '--own'], { expect: 'empty' });
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
-    sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
     const lifetime = sim.run(['ledger', 'ask', `${wu}.discussion.auth`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'How long does a token live?' }));
     sim.run(['topic', 'answered', wu, 'auth', '001-token-lifetime', '--entry', lifetime.id]);
     sim.run(['topic', 'complete', wu, 'discussion', 'auth']);

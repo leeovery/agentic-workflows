@@ -822,12 +822,13 @@ function settleItemStatus(item) {
   return item.status;
 }
 
-// Non-terminal items of one spawn phase holding a live evidence wait — the
+// In-progress items of one spawn phase holding a live evidence wait — the
 // state that blocks their conclusion and routes the linear pipeline to the
-// experiment.
+// experiment. A decided one waits on nothing: the experiment it spawned
+// runs on, and its report reaches the topic as mail.
 function waitingItems(manifest, phase) {
   return phaseItems(manifest, phase)
-    .filter((i) => !TERMINAL_STATUSES.includes(i.status)
+    .filter((i) => i.status === 'in-progress'
       && Array.isArray(i.awaiting_experiments) && i.awaiting_experiments.length > 0);
 }
 
@@ -862,6 +863,9 @@ function computeNextPhase(manifest) {
         if (awaiting) {
           return { next_phase: 'experiment', phase_label: 'experiment (awaiting evidence)' };
         }
+        // An experiment no conversation waits on runs beside the pipeline,
+        // which walks on past it.
+        if (DERIVED_PHASES.includes(phase)) continue;
         // Research feeds discussion: a stub parked beneath the live
         // discussion is invisible to the phase walk (pre-live), yet it holds
         // the discussion shut — at its door and its conclusion — so the way

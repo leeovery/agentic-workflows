@@ -25,7 +25,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, send, mappedEpic, arrive, menuEntry, handoffEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, walkDeliveryPhases,
+  Sim, sessionLog, send, decideTopic, mappedEpic, arrive, menuEntry, handoffEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, walkDeliveryPhases,
 } = require('./pipeline-world.cjs');
 
 
@@ -109,9 +109,8 @@ describe('pipeline simulation: epic', () => {
     sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
     sim.render(['epic-soft-gate', wu, '--action', 'start_research', '--topic', 'beta'], { expect: 'empty' });
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
-    // Landed: the wait and the gate release, the discussion row returns, and
-    // the discussion resumes.
-    sim.render(['wait-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
+    // Landed: the wait releases, the discussion row returns, and the
+    // discussion resumes.
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_discussion']);
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'alpha']).created, false);
@@ -127,17 +126,29 @@ describe('pipeline simulation: epic', () => {
     const raised = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does a-decision change alpha?' }));
     assert.strictEqual(sim.run(['topic', 'answered', wu, 'alpha', '001-a-decision', '--entry', raised.id]).remaining, 0);
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion*']]);
-    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+    // Claude answers the question the message raised, and alpha closes at
+    // the decided screen, its yes adding the candidate Claude staged to the
+    // map.
+    const claudes = (/** @type {string} */ question, /** @type {string} */ text) => sim.run(['ledger', 'decide', `${wu}.discussion.alpha`, '--answers', question], null,
+      JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, why: 'The message changes nothing alpha decided.' }));
+    claudes(raised.id, 'It leaves alpha as it stands.');
+    const decided = decideTopic(sim, wu, 'alpha', { lines: [], candidates: [{ name: 'gamma', reason: 'Alpha opened a question of its own.' }] });
+    assert.deepStrictEqual(decided.candidates, ['gamma']);
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu, 'discussion', 'completed'] });
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.gamma.summary, 'Alpha opened a question of its own.');
 
     // A message to the decided topic sets it back in progress, its mail
-    // waiting on its row; answered, it is decided again.
+    // waiting on its row; answered, it is decided again, its checklist
+    // worked afresh.
     const late = send(sim, wu, 'alpha', 'beta', 'late-call');
     assert.strictEqual(late.reopened, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
     const lateQuestion = sim.run(['ledger', 'ask', `${wu}.discussion.alpha`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does the late call hold?' }));
     sim.run(['topic', 'answered', wu, 'alpha', '001-late-call', '--entry', lateQuestion.id]);
-    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+    claudes(lateQuestion.id, 'It holds.');
+    sim.refuses(['render', 'decided', `${wu}.alpha`], /close was taken by the decided gate's yes, and the topic was set back in progress since/);
+    decideTopic(sim, wu, 'alpha');
 
     // A concluded discussion is held while its research reopens beneath it:
     // the discussion's reopen refuses until that research lands again.

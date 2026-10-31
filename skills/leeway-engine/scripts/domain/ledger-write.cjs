@@ -253,9 +253,10 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 
 /**
  * How a raise lands: as `ledger decide` writes, answering its question; as
- * `ledger replace` writes, replacing a decision; or as the person's keep of
- * that decision as it stands.
- * @typedef {'decide'|'replace'|'keep'} Lands
+ * `ledger replace` writes, replacing a decision; as the person's keep of
+ * that decision as it stands; or as `ledger ask` writes, the question a
+ * product-record line answers at the decided gate's yes (decided.cjs).
+ * @typedef {'decide'|'replace'|'keep'|'ask'} Lands
  */
 
 /**
@@ -365,7 +366,7 @@ const KEEP = writeOf('kept', [
 ], { checkGiven: checkCauseGiven, checkLinked: causeChecked('entry') });
 
 /** The writes a raise lands through, by how it lands. @type {Readonly<Record<Lands, Write>>} */
-const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP });
+const RAISED = Object.freeze({ decide: WRITES.decide, replace: WRITES.replace, keep: KEEP, ask: WRITES.ask });
 
 /** Every field a flag sets, whichever write takes it: never content. */
 const FLAG_FIELDS = new Set([...Object.values(WRITES), KEEP].flatMap((w) => w.flags.map((flag) => flag.field)));
@@ -1136,6 +1137,21 @@ function writeLedger(cwd, verb, args, stdin) {
 }
 
 /**
+ * What `raised` would land refused as its landing refuses it, against the
+ * ledger as it stands, writing nothing: its place, and its links resolved
+ * and checked — so a caller landing several checks each before it lands
+ * any. A raise whose id the ledger holds already passes, as its landing
+ * answers it before any link is checked.
+ * @param {string} cwd @param {Raised} raised @param {string[]} warnings
+ */
+function checkRaised(cwd, raised, warnings) {
+  const request = raisedRequest(cwd, raised, warnings);
+  const read = request.before();
+  if (request.id !== null && read.facts.has(request.id)) return;
+  eventOf(request, read);
+}
+
+/**
  * What a raise lands — a decision, a replacement or a keep — through the
  * lock the ledger's writes land through: answered as `writeLedger` answers,
  * `warnings` the raise's own among them, beside the line the ledger already
@@ -1153,5 +1169,5 @@ function landRaised(cwd, raised, warnings) {
 }
 
 module.exports = {
-  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, callLogged, staleness, phasesOf, contentFields, checkSaid, checkUnsealed,
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFields, checkSaid, checkUnsealed,
 };

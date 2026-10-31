@@ -324,7 +324,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('adds the whole set in one transaction — brief_path recorded, source always discovery, one map_total', () => {
       const file = payload(dir, [
         { name: 'menu-management', routing: 'research', summary: 's1', description: 'd1', brief_path: 'discovery/briefs/menu-management.md' },
-        { name: 'pricing', routing: 'discussion', summary: 's2' },
+        { name: 'pricing', routing: 'discussion', summary: 's2', source: 'topic:elsewhere' },
       ]);
       const res = runOk(dir, ['add-batch', 'payments', '--file', file]);
       assert.deepStrictEqual(res, {

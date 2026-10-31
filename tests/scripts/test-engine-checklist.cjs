@@ -157,7 +157,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'conflicts-read claude open: the read for conflicting answers run within the topic',
         'findings-rerun claude open: each measured finding the topic\'s decisions rest on re-run',
         'mailbox-empty engine done: the topic\'s mailbox empty: every message raised and answered',
-        'product-lines-shown claude open: the product-record lines and any candidates are on the screen',
+        'product-lines-shown claude open: the product-record lines and any candidates written for the decided screen',
       ],
       ready: [
         'topics-settled claude open: every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen',
@@ -205,7 +205,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         { key: 'conflicts-read', text: 'the read for conflicting answers run within the topic', by: 'claude', state: 'open' },
         { key: 'findings-rerun', text: 'each measured finding the topic\'s decisions rest on re-run', by: 'claude', state: 'open' },
         { key: 'mailbox-empty', text: 'the topic\'s mailbox empty: every message raised and answered', by: 'engine', state: 'done' },
-        { key: 'product-lines-shown', text: 'the product-record lines and any candidates are on the screen', by: 'claude', state: 'open' },
+        { key: 'product-lines-shown', text: 'the product-record lines and any candidates written for the decided screen', by: 'claude', state: 'open' },
       ],
       skips: [],
     });

@@ -77,6 +77,7 @@ const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./do
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
+const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -258,7 +259,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
-  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)
+  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
@@ -286,6 +287,7 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
+${DECIDED_USAGE.replace(/^/gm, '  ')}
   ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -370,15 +372,13 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render dismissed-topics <wu>
   render send-closed-target <wu.discovery.target>
-  render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
-  render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
-  render defer-gate       <wu.discussion.topic>
+  render conclude-gate    <wu.phase.topic>   (investigation|implementation|planning)
   render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
-  render wait-gate        <wu.discussion|planning.topic>  (empty when the item holds no wait)
+  render wait-gate        <wu.planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
@@ -477,6 +477,10 @@ ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
   render walkthrough-topics
   render walkthrough-topic --name <slug> [--menu-only]
   render send-report <work-unit>.<topic> --sent <path>
+  render map <work-unit>.<topic>
+  render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
+  render decided-strike <work-unit>.<topic>
+  render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
   render migrations-applied --file <payload.json>
   render migration-gate
   render state-lost-gate
@@ -1310,7 +1314,7 @@ function runExperiment(call, argv) {
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
-        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)');
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)');
       }
       const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem, question: opts.question });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
@@ -1491,6 +1495,23 @@ function runChecklist(call, argv) {
   const { opts, positional } = parseArgs(rest);
   try {
     respond(call, runChecklistVerb(call.cwd, verb, positional, opts));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// decided — the person's yes at a topic's decided gate, and a candidate
+// struck from its screen or its strike undone (domain/decided.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runDecided(call, argv) {
+  try {
+    const answer = runDecidedVerb(call.cwd, argv);
+    // The yes releases the topic's slot, as a conclusion does.
+    if (argv[0] === 'yes') clearQuietly(call.cwd, argv[1], 'discussion', argv[2]);
+    respond(call, answer);
   } catch (err) {
     failJson(call, err);
   }
@@ -2466,7 +2487,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed', 'first'];
+const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed', 'first', 'calls'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2555,6 +2576,7 @@ const COMMANDS = Object.freeze({
   cut: runCut,
   checklist: runChecklist,
   migrate: runMigrate,
+  decided: runDecided,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

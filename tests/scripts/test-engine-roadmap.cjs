@@ -19,6 +19,7 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
+const { computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const harness = require('./engine-harness.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;
@@ -1223,7 +1224,7 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
       status: 'in-progress',
       phases: {
         discovery: { items: { ordering: { routing: 'discussion', source: 'roadmap', summary: 's' } } },
-        research: { items: { ordering: { status: 'superseded' } } },
+        research: { items: { ordering: { status: 'in-progress' } } },
         discussion: { items: { ordering: { status: 'completed' } } },
       },
     });
@@ -1234,33 +1235,33 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
-  it('flags the live phase item, skips terminal ones, never clobbers', () => {
+  it('flags the live research, never the discussion, never clobbers', () => {
     const res = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(res.flagged, [{ phase: 'discussion', topic: 'ordering' }]);
+    assert.deepStrictEqual(res.flagged, [{ phase: 'research', topic: 'ordering' }]);
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: flag ordering — input moved');
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-    assert.strictEqual(manifest.phases.discussion.items.ordering.reconcile_needed, 'roadmap');
-    assert.strictEqual('reconcile_needed' in manifest.phases.research.items.ordering, false, 'terminal item skipped');
+    assert.strictEqual(manifest.phases.research.items.ordering.reconcile_needed, 'roadmap');
+    assert.strictEqual('reconcile_needed' in manifest.phases.discussion.items.ordering, false, 'a discussion takes no flag');
 
     // Never clobbered: a second flag finds the existing one and writes nothing.
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const again = runOk(dir, ['flag', 'ordering']);
     assert.deepStrictEqual(again.flagged, []);
     assert.strictEqual(again.committed, null);
-    assert.strictEqual(again.note, 'nothing reached "mvp" — every live research or discussion of topic "ordering" already carries a flag');
+    assert.strictEqual(again.note, 'nothing reached "mvp" — the live research of topic "ordering" already carries a flag');
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
-  it('a topic whose research and discussion are all terminal: nothing reached the work, and the note says why', () => {
+  it('a topic with no live research: nothing reached the work, and the note says why', () => {
     const p = path.join(dir, '.leeway', 'mvp', 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
-    manifest.phases.discussion.items.ordering.status = 'cancelled';
+    manifest.phases.research.items.ordering.status = 'superseded';
     fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
     const before = fs.readFileSync(p, 'utf8');
     const res = runOk(dir, ['flag', 'ordering']);
     assert.deepStrictEqual(res.flagged, []);
     assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'nothing reached "mvp" — topic "ordering" has no live research or discussion to flag');
+    assert.strictEqual(res.note, 'nothing reached "mvp" — topic "ordering" has no live research to flag');
     assert.strictEqual(fs.readFileSync(p, 'utf8'), before);
   });
 
@@ -1552,7 +1553,7 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'x']).error, /no longer exists — the join is orphaned/);
   });
 
-  it('flag lands on research and discussion together when both are live', () => {
+  it('flag lands on the live research alone, the live discussion beside it never flagged', () => {
     const m = epicManifest();
     m.phases.discovery.items.ordering = { routing: 'discussion', source: 'roadmap', summary: 's' };
     m.phases.research = { items: { ordering: { status: 'in-progress' } } };
@@ -1561,10 +1562,24 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
     runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
     const res = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(res.flagged, [
-      { phase: 'research', topic: 'ordering' },
-      { phase: 'discussion', topic: 'ordering' },
-    ]);
+    assert.deepStrictEqual(res.flagged, [{ phase: 'research', topic: 'ordering' }]);
+  });
+
+  it('a decided feature, its join bound to its topic, goes on to its specification after a flag', () => {
+    createManifest(dir, 'tally', {
+      work_type: 'feature',
+      status: 'in-progress',
+      phases: {
+        discovery: { items: { tally: { routing: 'discussion', source: 'roadmap', summary: 's' } } },
+        discussion: { items: { tally: { status: 'completed' } } },
+      },
+    });
+    runOk(dir, ['add', 'tallies', '--horizon', 'mvp', '--summary', 's']);
+    runOk(dir, ['pull', 'tallies', '--into', 'tally']);
+    runOk(dir, ['bind', 'tallies', '--topic', 'tally']);
+    assert.strictEqual(runOk(dir, ['flag', 'tallies']).note, 'nothing reached "tally" — topic "tally" has no live research to flag');
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'tally', 'manifest.json'), 'utf8'));
+    assert.strictEqual(computeNextPhase(manifest).next_phase, 'specification');
   });
 });
 

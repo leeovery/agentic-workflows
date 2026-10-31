@@ -1461,9 +1461,10 @@ function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
 /**
  * Flag the epic side of a join after a product session materially deepened
  * the item's ground (design decision 25b): `reconcile_needed: "roadmap"` on
- * the joined topic's live research/discussion items — `flagDownstream`
- * semantics across the roadmap boundary: terminal items skipped, an
- * existing flag never clobbered, a signal never a rewrite. What counts as
+ * the joined topic's live research — `flagDownstream` semantics across the
+ * roadmap boundary: terminal items skipped, an existing flag never
+ * clobbered, a signal never a rewrite. A discussion takes no flag: its
+ * conversation reads none, and a decided one would route back to itself. What counts as
  * "materially deepened" is the calling flow's judgment; this records it.
  * Where it flags nothing — a join with no topic (a bug or a quick-fix riding
  * with an epic, an idea not yet bound, anything pulled into a unit of another
@@ -1486,17 +1487,14 @@ function flagJoined(cwd, name) {
     const topic = join.topic;
     withWorkUnitLock(cwd, join.work_unit, () => {
       const manifest = loadWorkUnitManifest(cwd, join.work_unit);
-      for (const phase of ['research', 'discussion']) {
-        const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
-        const phaseItem = items[topic];
-        if (!phaseItem || typeof phaseItem !== 'object') continue;
-        if (TERMINAL_STATUSES.includes(phaseItem.status)) continue;
-        if (phaseItem.reconcile_needed !== undefined) {
+      const research = ((manifest.phases && manifest.phases.research && manifest.phases.research.items) || {})[topic];
+      if (research && typeof research === 'object' && !TERMINAL_STATUSES.includes(research.status)) {
+        if (research.reconcile_needed !== undefined) {
           alreadyFlagged++;
-          continue;
+        } else {
+          research.reconcile_needed = 'roadmap';
+          flagged.push({ phase: 'research', topic });
         }
-        phaseItem.reconcile_needed = 'roadmap';
-        flagged.push({ phase, topic });
       }
       if (flagged.length > 0) saveWorkUnitManifest(cwd, join.work_unit, manifest);
     });
@@ -1526,8 +1524,8 @@ function flagJoined(cwd, name) {
  */
 function flagMiss(join, alreadyFlagged) {
   const why = join.topic === undefined ? 'it has no topic there to flag'
-    : alreadyFlagged > 0 ? `every live research or discussion of topic "${join.topic}" already carries a flag`
-      : `topic "${join.topic}" has no live research or discussion to flag`;
+    : alreadyFlagged > 0 ? `the live research of topic "${join.topic}" already carries a flag`
+      : `topic "${join.topic}" has no live research to flag`;
   return `nothing reached "${join.work_unit}" — ${why}`;
 }
 

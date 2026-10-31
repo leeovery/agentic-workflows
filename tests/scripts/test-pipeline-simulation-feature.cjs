@@ -26,7 +26,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, decideTopic, bridgeTo, pauseCheck, linearPick, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -65,24 +65,24 @@ describe('pipeline simulation: feature', () => {
     assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
       /□ Discussion Session[\s\S]*> Discussion starting\./);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // The close's own consents render on the road to the conclude gate;
-    // every variant carries its own wording, so a --reason is refused.
-    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 're-review'], { expect: 'content' });
-    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'findings-owed'], { expect: 'content' });
-    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'review-running'], { expect: 'content' });
-    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review'], { expect: 'content' });
-    sim.render(['closing-gate', `${wu}.discussion.${wu}`, '--variant', 'wrap-up'], { expect: 'content' });
-    sim.refuses(['render', 'closing-gate', `${wu}.discussion.${wu}`, '--variant', 'final-review', '--reason', 'no review has run yet'], /takes no --reason/);
-    sim.render(['conclude-gate', `${wu}.discussion.${wu}`], { expect: 'content' });
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
-    sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`]);
+    // The person answers their question, and the topic closes at the decided
+    // screen: its yes lands Claude's product-record line, completes the topic
+    // and hands it to the specification.
+    const at = `${wu}.discussion.${wu}`;
+    const person = { by: 'person', who_moved_whom: 'none' };
+    const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
+    const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
+    const decided = decideTopic(sim, wu, wu, { lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }], candidates: [] });
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.
     assert.ok(fs.existsSync(statePath(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
-    // The engine's own door reads back what the completion indexed in process.
+    // The engine's own door reads back what the close indexed in process: the
+    // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
-    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}discussion: \d+$/m);
+    assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
     // A hop short of review carries no skip row — proceed or revisit.
     const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
     assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
@@ -171,10 +171,8 @@ describe('pipeline simulation: feature', () => {
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
       /Entry blocked — this discussion awaits research on "Ledger" \(in flight\)[\s\S]*Continue the work unit — the research is its next step\./);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
-    assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
-      /awaits research on "Ledger" \(in flight\)/);
-    // The wait gate's yes runs the in-flight check, then hands the session to
-    // the bridge as a pause: its banner names what the unit's one
+    // The pause runs the in-flight check, then hands the session to the
+    // bridge: its banner names what the unit's one
     // conversation awaits — the linear clause drops the topic name — and the
     // continuation routes to the research.
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
@@ -198,7 +196,6 @@ describe('pipeline simulation: feature', () => {
     sim.run(['topic', 'complete', wu, 'research', wu]);
     // Landed: the gates release and the discussion resumes. A pause banner
     // rendered over a wait a peer has since landed says only the bare truth.
-    sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
       /\nDiscussion paused for "Ledger"\.\n$/);
@@ -246,9 +243,8 @@ describe('pipeline simulation: feature', () => {
     sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
-    sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
-    // The session's next check — the loop's break, or the close before its
-    // wait gate: the flag reads `research`, the research item `completed`, so
+    // The session's next check — the loop's break, or the close: the flag
+    // reads `research`, the research item `completed`, so
     // the advisory reads the research file and clears the flag (prose-owned —
     // simulated here); until it does, the completion refuses.
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');

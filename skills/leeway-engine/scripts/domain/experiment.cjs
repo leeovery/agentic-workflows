@@ -16,12 +16,13 @@
 // loop drifts past. The spawn (`create`) is the phase's one door: it
 // allocates the id, installs the spawning session's problem statement
 // (moved from a cache scratch — the engine still never writes prose),
-// records the question on the topic's map it measures, where one is named
-// (experiment-question.cjs), and locks the spawning discussion
+// records the question on the topic's map it measures, required — every
+// experiment measures a point on the map (9.1.11; experiment-question.cjs),
+// and locks the spawning discussion
 // (`awaiting_experiments`); a split creates sub-experiments (`E{n}.{m}`)
 // under a running parent, and the lock stays on the parent — it releases
-// once, when the parent concludes or is abandoned. The release edges live in
-// transitions, the one home for the reconcile machinery.
+// once, when the parent concludes or is abandoned. The release edge lives in
+// transitions.
 //
 // The question an experiment measures stays open on the map, waiting on it,
 // until the discussion writes the result (9.1.11). A report concluding after
@@ -52,7 +53,7 @@ const {
   EXPERIMENT_SPAWN_PHASES,
 } = require('../kernel/manifest-schema.cjs');
 const { settleItemStatus, mailboxDir } = require('./derivations.cjs');
-const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
+const { releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
 const { sendMessage } = require('./mail.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
@@ -154,7 +155,6 @@ function liveSubs(item, parentId) {
  * @property {{phase: string, ids: string[]}} [awaiting]  the lock the spawn placed
  * @property {string} [question]  the question the spawn measures, by its short id
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
- * @property {{phase: string, topic: string}[]} [reconcile_flagged]
  * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
  * @property {string[]} [warnings]
  */
@@ -168,8 +168,8 @@ function liveSubs(item, parentId) {
  * (creating it, or setting a completed series back to in-progress — a new
  * spawn reopens the series), and locks the spawning item:
  * `awaiting_experiments` gains the id on the in-progress discussion the
- * question came from. `question` names, by a prefix of its ledger id, the
- * question open on the topic's map the experiment measures; the record keeps
+ * question came from. `question`, required on a spawn, names by a prefix of
+ * its ledger id the question open on the topic's map the experiment measures; the record keeps
  * its full id, and the map shows the question waiting on it. A split (`parent`
  * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
  * (the wait stays on the parent and releases once, when the parent as a
@@ -213,6 +213,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
   if (from !== undefined) {
     if (problem === undefined) {
       throw new Error('--problem <file> is required on a spawn — no record is conceived without its problem statement');
+    }
+    if (question === undefined) {
+      throw new Error('--question <id> is required on a spawn — an experiment measures an open question on the topic\'s map, and its report reaches the topic through it');
     }
     // The scratch is consumed after the create — confine it to the cache so
     // a mis-passed path can never read (and delete) a live artifact.
@@ -419,11 +422,9 @@ function sendReport(cwd, workUnit, topic, id, { record, to }) {
  * Conclude a running experiment with its one-line verdict — the decision
  * rule's mechanical outcome, recorded on the register row. A parent whose
  * sub-experiments are still live refuses: its verdict synthesises them. A
- * top-level conclusion releases the spawning item's evidence wait on this id
- * (flagging that conversation for its next entry) and runs the one-hop flag
- * on the topic's completed downstream neighbour — evidence arriving after a
- * decision must surface before the record is trusted; a sub-experiment's
- * conclusion moves neither — the parent's carries them. The item's derived
+ * top-level conclusion releases the spawning item's evidence wait on this
+ * id; a sub-experiment's conclusion releases nothing — the parent's carries
+ * them. The item's derived
  * status settles after every terminal transition. Where the question the
  * experiment measures left the open questions of the spawning topic while
  * it ran, the report then reaches as a message the topic the question
@@ -454,8 +455,6 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
     /** @type {Partial<ExperimentOpResult>} */
     const extra = { verdict: record.verdict };
     if (isParentExperimentId(id)) {
-      const fd = flagDownstream(manifest, /** @type {{work_type: string}} */ (manifest).work_type, 'experiment', topic);
-      if (fd.flagged.length > 0) extra.reconcile_flagged = fd.flagged;
       const released = releaseExperimentWaits(manifest, topic, { ids: [id] });
       if (released.length > 0) extra.released_waits = released;
     }
@@ -470,11 +469,9 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
  * Abandon an experiment from any pre-terminal status, with its one-line
  * reason — a first-class terminal: the register keeps the row. A parent with
  * live sub-experiments refuses — each ends on its own row first. A top-level
- * abandonment releases the spawning item's evidence wait on this id and
- * flags that conversation, whose waiting point reverts to open — no
- * downstream hop: there is no evidence to reconcile a decided record
- * against. The item's derived status settles after every terminal
- * transition.
+ * abandonment releases the spawning item's evidence wait on this id, and
+ * the question it measured stands open again. The item's derived status
+ * settles after every terminal transition.
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{reason: string}} opts

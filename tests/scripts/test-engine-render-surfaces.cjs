@@ -622,24 +622,10 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
     }
   });
 
-  it('renders the blocked-conclusion gate — blocker naming the ids, guidance, then the yes/keep menu', () => {
-    holderWith('discussion', ['E1', 'E2']);
-    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' });
-    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block \(```properties fence\)\) ===/);
-    assert.match(out, /⚑ Conclusion blocked — this discussion awaits experiment evidence \(E1, E2\)/);
-    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown \(not a code block\)\) ===/);
-    assert.match(out, /> The wait releases when each experiment ends\. The epic menu carries the way in\./);
-    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
-    assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /Pause this discussion here and return to the epic menu with E1, E2 queued/);
-    assert.match(unwrap(out), /Keep the conversation going — conclusion stays blocked until the evidence lands/);
-  });
-
-  it('the wait gate is empty over an item with no live wait, and refuses an address outside the waiting phases', () => {
-    holderWith('discussion');
-    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' }), '');
-    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.timing' }),
-      /address must be <work_unit>\.<discussion\|planning>\.<topic>/);
+  it('the wait gate refuses a discussion, whose waits are its map\'s and whose close is the decided screen (9.S22)', () => {
+    holderWith('discussion', ['E1']);
+    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.timing' }),
+      /render wait-gate: address must be <work_unit>\.<planning>\.<topic> — the waiting item itself; got phase "discussion"$/);
   });
 });
 
@@ -647,77 +633,6 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
-
-  /** @param {object|undefined} research @param {object} discussion */
-  function billingWith(research, discussion) {
-    writeManifest(dir, 'lab', {
-      phases: {
-        ...(research ? { research: { items: { billing: research } } } : {}),
-        discussion: { items: { billing: discussion } },
-      },
-    });
-  }
-
-  it('a research wait — the blocker names the topic and that the research is in flight, the guidance the ways out', () => {
-    billingWith({ status: 'in-progress' }, { status: 'in-progress' });
-    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
-    assert.match(out, /=== DISPLAY: wait block \(emit verbatim as a properties code block \(```properties fence\)\) ===/);
-    assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\)\n/);
-    assert.match(out, /=== DISPLAY: wait guidance \(emit verbatim as markdown \(not a code block\)\) ===/);
-    assert.match(out, /> Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The epic menu carries the way in\.\n/);
-    assert.match(out, /=== MENU: wait gate \(emit verbatim as markdown \(not a code block\), then STOP for the user's response\) ===/);
-    assert.match(out, /◆ Pause to the menu\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and return to the epic menu with the research queued/);
-    assert.match(unwrap(out), /\*\*`k\/keep`\*\* +→ Keep the conversation going — conclusion stays blocked until the research lands/);
-    assert.ok(!out.includes('experiment'), 'no experiment clause without an experiment wait');
-  });
-
-  it('a parked stub reads parked', () => {
-    billingWith({ status: 'unstarted' }, { status: 'in-progress' });
-    assert.match(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }),
-      /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(parked — not yet started\)\n/);
-  });
-
-  it('both kinds — every wait named, research first, and each clause of the guidance and the menu composed', () => {
-    billingWith({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] });
-    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
-    assert.match(out, /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(in flight\) and experiment evidence \(E1, E2\)\n/);
-    assert.match(out, /> Work the research first — concluding it releases its wait\. The wait releases when each experiment ends\. This discussion can conclude once the research and the evidence have landed\. The epic menu carries the way in\.\n/);
-    assert.match(unwrap(out), /return to the epic menu with the research and E1, E2 queued/);
-    assert.match(unwrap(out), /conclusion stays blocked until the research and the evidence land/);
-  });
-
-  it('an experiment-only wait names the evidence alone — landed research holds nothing', () => {
-    billingWith({ status: 'completed' }, { status: 'in-progress', awaiting_experiments: ['E1'] });
-    const out = renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' });
-    assert.match(out, /awaits experiment evidence \(E1\)\n/);
-    assert.ok(!out.includes('research'), 'no research clause once the research has landed');
-  });
-
-  it('empty when nothing blocks conclusion', () => {
-    billingWith({ status: 'completed' }, { status: 'in-progress' });
-    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
-    billingWith(undefined, { status: 'in-progress' });
-    assert.strictEqual(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }), '');
-    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.invoicing' }),
-      /no discussion item "invoicing" — nothing to hold shut/, 'an absent item is a misrouted address, never a clear conclusion');
-  });
-
-  it('a feature\'s discussion waits on its research the same way — the pause names the work unit\'s next step, never a menu', () => {
-    writeManifest(dir, 'feat', {
-      work_type: 'feature',
-      phases: {
-        research: { items: { feat: { status: 'unstarted' } } },
-        discussion: { items: { feat: { status: 'in-progress' } } },
-      },
-    });
-    const out = renderSurface(dir, 'wait-gate', { dotpath: 'feat.discussion.feat' });
-    assert.match(out, /awaits research on "Feat" \(parked — not yet started\)/);
-    assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
-    assert.match(out, /◆ Pause here\?/);
-    assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
-    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause hands off to what it waits on, never to a menu — no epic vocabulary');
-  });
 
   it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
     writeManifest(dir, 'feat', {
@@ -727,12 +642,6 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     const out = renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'feat.discussion.feat', id: 'E1' });
     assert.match(unwrap(out), /Pause this discussion here and open the laboratory for E1/);
     assert.ok(!out.includes('menu'), 'no menu on a linear unit');
-  });
-
-  it('refuses a phase that holds no wait', () => {
-    billingWith({ status: 'in-progress' }, { status: 'in-progress' });
-    assert.throws(() => renderSurface(dir, 'wait-gate', { dotpath: 'lab.experiment.billing' }),
-      /address must be <work_unit>\.<discussion\|planning>\.<topic>/);
   });
 
   it('a plan waits on its specification — the blocker names why it is unsettled, the guidance the way out', () => {
@@ -931,7 +840,7 @@ describe('render finding-batch', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } } } });
   });
   afterEach(() => teardown(dir));
 
@@ -1037,26 +946,32 @@ describe('render finding-batch', () => {
     }
   });
 
-  it("the call lane is the address's: settled at the specification, decide everywhere else", () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+  it("the call lane is the address's: settled at the specification, decide at the planning, none at the discussion", () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
     const settled = writePayload(dir, 'cl1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
     const decide = writePayload(dir, 'cl2.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
     assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: settled }),
-      /lane "settled" is not served at the discussion phase — its call lane is "decide"/,
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: settled }),
+      /lane "settled" is not served at the planning phase — its call lane is "decide"/,
     );
     assert.throws(
       () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: decide }),
       /lane "decide" is not served at the specification phase — its call lane is "settled"/,
     );
+    for (const file of [settled, decide]) {
+      assert.throws(
+        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }),
+        /render finding-batch: a discussion flushes no calls — each goes through raise, and Claude's own show on the map since the person last looked$/,
+      );
+    }
     assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: settled }).includes('`◆ Document it?`'));
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: decide }).includes('`◆ Document it?`'));
+    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: decide }).includes('`◆ Document it?`'));
   });
 
   it('only the settled lane offers the flip — the other lanes have no gate to set', () => {
     for (const lane of ['apply', 'decide', 'route']) {
       const file = writePayload(dir, `na-${lane}.json`, { lane, items: [{ title: 'A', target: 't', detail: 'a.' }] });
-      assert.ok(!renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }).includes('`a/auto`'), lane);
+      assert.ok(!renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }).includes('`a/auto`'), lane);
     }
   });
 
@@ -1068,7 +983,7 @@ describe('render finding-batch', () => {
         { title: 'Unrecognised socket peer stamps `via: cli`', detail: 'A script you wired up is the same class as the CLI; determined by the enum.' },
       ],
     });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
     assert.strictEqual(out, [
       '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "Each of these is a call I've made, with what it rests on named beside it.",
@@ -1101,25 +1016,25 @@ describe('render finding-batch', () => {
         { title: 'B', detail: 'b.' },
       ],
     });
-    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
+    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: two });
     assert.match(plural, /`◆ Document them\?`/);
     assert.match(plural, /→ Document all 2 and move on \(7 more after this\)$/m);
     const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: one });
+    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: one });
     assert.match(out, /`◆ Document it\?`/);
     assert.match(out, /→ Document it and move on$/m);
     assert.match(out, /^This one is a call I've made/m);
     const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
-    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: applyOne });
+    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: applyOne });
     assert.match(applied, /`◆ Apply it\?`/);
     assert.match(applied, /→ Apply it, then move on$/m);
     const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
-    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: routeOne });
+    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: routeOne });
     assert.match(routed, /`◆ Send it\?`/);
     assert.match(routed, /→ Send it$/m);
     const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
     assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: bad }),
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: bad }),
       /"remaining" must be a non-negative integer/,
     );
   });
@@ -1129,14 +1044,14 @@ describe('render finding-batch', () => {
     for (const lane of ['apply', 'decide']) {
       const file = writePayload(dir, `cap-${lane}.json`, { lane, items });
       assert.throws(
-        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }),
+        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }),
         /a screen holds at most 5 items \(6 given\)/,
       );
     }
     const routeItems = items.map((it) => ({ ...it, target: 'storage' }));
     const rfile = writePayload(dir, 'cap-route.json', { lane: 'route', items: routeItems });
     assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: rfile }),
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: rfile }),
       /a screen holds at most 5 items/,
     );
   });
@@ -1170,8 +1085,8 @@ describe('render finding-batch', () => {
       ['route', 'Belongs Elsewhere', { title: 'A', target: 't', detail: 'a.' }],
     ]) {
       const file = writePayload(dir, `first-${lane}.json`, { lane, items: [item] });
-      const later = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-      const opening = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file, first: '1' });
+      const later = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
+      const opening = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file, first: '1' });
       const [display, menuPart] = opening.split(/(?==== MENU: finding batch)/);
       assert.ok(display.startsWith(`=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===\n**\`▪ ${marker}\`**\n\n`),
         `${lane}: the marker heads the section it names, a blank line before the worklist`);
@@ -3317,16 +3232,6 @@ describe('render — the adopted phase gates', () => {
   afterEach(() => teardown(dir));
 
   it('conclude-gate: one surface, the address\'s phase picking the wording', () => {
-    assert.strictEqual(renderSurface(dir, 'conclude-gate', { dotpath: 'pay.discussion.checkout' }), [
-      "=== MENU: conclude gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Conclude this discussion and mark as completed?`**',
-      '',
-      '**`y/yes`** → Conclude discussion',
-      '**`n/no`**  → Continue discussing',
-      '',
-    ].join('\n'));
-
     const investigation = renderSurface(dir, 'conclude-gate', { dotpath: 'pay.investigation.checkout' });
     assert.match(investigation, /`◆ Investigation complete\. Ready to conclude\?`/);
     assert.match(investigation, /\*\*`y\/yes`\*\*\s+→ Conclude investigation/);
@@ -3360,72 +3265,15 @@ describe('render — the adopted phase gates', () => {
     assert.doesNotMatch(planning, /`n\/no`/);
   });
 
-  it('conclude-gate: refuses a phase that concludes some other way', () => {
-    assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.research.checkout' }),
-      /phase must be one of discussion, investigation, implementation, planning, got "research"/);
+  it('conclude-gate: refuses a phase that concludes some other way — a discussion closes at the decided screen (9.7)', () => {
+    for (const phase of ['research', 'discussion']) {
+      assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: `pay.${phase}.checkout` }),
+        new RegExp(`phase must be one of investigation, implementation, planning, got "${phase}"`));
+    }
     assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.planning' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
     assert.throws(() => renderSurface(dir, 'conclude-gate', { dotpath: 'pay.implementation.ghost' }),
       /no implementation item "ghost" — nothing to conclude/);
-  });
-
-  it('closing-gate: the discussion close\'s five consents, variant-keyed', () => {
-    const reReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 're-review' });
-    assert.match(reReview, /MENU: re-review gate/);
-    assert.match(unwrap(reReview), /The discussion has moved since the last review read it\. One more pass can catch what that movement opened — or conclude without one\./);
-    assert.match(reReview, /`◆ Run one more review\?`/);
-    assert.match(unwrap(reReview), /\*\*`y\/yes`\*\*\s+→ Run one more review before concluding/);
-    assert.match(unwrap(reReview), /\*\*`n\/no`\*\*\s+→ Conclude without it — the movement stays unreviewed/);
-    assert.doesNotMatch(unwrap(reReview), /final review/);
-    assert.match(unwrap(reReview), /\*\*Keep going\*\* → Tell me what else to explore/);
-
-    const owed = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'findings-owed' });
-    assert.match(owed, /MENU: findings-owed gate/);
-    assert.match(unwrap(owed), /Background findings have come back and are still to be walked — they must be heard before concluding\./);
-    assert.match(owed, /`◆ Walk them now\?`/);
-    assert.match(unwrap(owed), /\*\*`y\/yes`\*\*\s+→ Walk what came back/);
-
-    // A review still in flight at the close: yes is the wait, never a
-    // fresh dispatch — the surface must not read as "run another".
-    const running = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'review-running' });
-    assert.match(running, /MENU: review-running gate/);
-    assert.match(unwrap(running), /A review is still running over this discussion — what it finds must be heard before concluding\. Nothing new is dispatched\./);
-    assert.match(running, /`◆ Wait for it\?`/);
-    assert.match(unwrap(running), /\*\*`y\/yes`\*\*\s+→ Wait for it and walk what it finds/);
-    assert.doesNotMatch(unwrap(running), /[Rr]un the final review|final review/);
-    assert.doesNotMatch(unwrap(running), /`n\/no`|`p\/proceed`/);
-    assert.match(unwrap(running), /\*\*Keep going\*\* → Tell me what else to explore/);
-
-    const finalReview = renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review' });
-    assert.match(finalReview, /MENU: final-review gate/);
-    assert.match(unwrap(finalReview), /Next: a final gap review before concluding — no review has run yet\./);
-    assert.match(finalReview, /`◆ Proceed\?`/);
-    assert.match(unwrap(finalReview), /\*\*`y\/yes`\*\*\s+→ Run the final review/);
-
-    assert.strictEqual(renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'wrap-up' }), [
-      "=== MENU: wrap-up gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      "I'll reconcile the document against our conversation, then confirm before marking complete.",
-      '',
-      '**`◆ Do you wish to conclude?`**',
-      '',
-      '**`y/yes`** → Conclude — begin wrap-up',
-      '**`n/no`**  → Continue the conversation',
-      '',
-    ].join('\n'));
-  });
-
-  it('closing-gate: refuses out of place — wrong phase, unknown variant, a reason on any variant', () => {
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.research.checkout', variant: 'wrap-up' }),
-      /address must be <wu>\.discussion\.<topic> — the discussion close is the flow that runs these gates; got phase "research"/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout' }),
-      /--variant must be one of re-review, findings-owed, review-running, final-review, wrap-up, got ""/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'conclude' }),
-      /--variant must be one of/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'final-review', reason: 'no review has run yet' }),
-      /takes no --reason — every variant carries its own wording/);
-    assert.throws(() => renderSurface(dir, 'closing-gate', { dotpath: 'pay.discussion.checkout', variant: 'review-running', reason: 'x' }),
-      /takes no --reason/);
   });
 
   // A map whose rows are missing a summary (one drafted, one with no source
