@@ -285,7 +285,7 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(pickRoute(sim, startKeys(sim), 'open_roadmap').args, 'open');
     arrive(sim, 'roadmap');
 
-    // The home's converse over no open session: nothing is predicted. The
+    // A roadmap session over no open log: nothing is predicted. The
     // user places an item themselves — a direct add, an op recorded under
     // Edits — so the log opens first and the open's response numbers it.
     assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);

@@ -35,24 +35,24 @@
 // the pid check regardless, and a later conversation in the same process
 // owns its predecessor's row (`ownsRow`'s pid arm), never gating against it.
 //
-// Every phase a session sits in carries presence except discovery:
-// `discovery-session open` already refuses a second session per epic
-// (`active_session`), so it is engine-serialised with nothing for a heartbeat
-// to add.
+// Every phase a session sits in carries presence, discovery among them: an
+// epic's at the unit itself, and the product's conversation at
+// `product/discovery/product` — the product, which has no directory of its
+// own, keeping its row beside the units'.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { callerIdentity, startTimeReader, ownerAlive, ownsRow } = require('../kernel/process.cjs');
-const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
+const { PRODUCT, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { workTree } = require('../kernel/isolated-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 
-// Every phase a session sits in — the schema's list minus discovery.
-const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
+// Every phase a session sits in.
+const PHASES = VALID_PHASES;
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
 // The corpora the epic-wide analyses read. A held session in any other phase
@@ -75,7 +75,7 @@ function assertArgs(cwd, workUnit, phase, topic) {
   if (topic !== undefined && (!topic || /[\\/]/.test(topic) || topic.includes('..'))) {
     throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
-  if (!fs.existsSync(statePath(cwd, workUnit))) {
+  if (workUnit !== PRODUCT && !fs.existsSync(statePath(cwd, workUnit))) {
     throw new Error(`no work unit directory: ${statePath(cwd, workUnit)}`);
   }
 }

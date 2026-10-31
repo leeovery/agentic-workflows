@@ -13,7 +13,9 @@
 // open allocates the next session number from the logs on disk, moves the
 // model-drafted log into place and sets the marker — one manifest write, no
 // commit: the session is live, and every state commit takes its log along
-// (state-worktree.cjs).
+// (state-worktree.cjs). The entry opens one the same way where none is open
+// (`openSession`, enter.cjs), its log made empty for the conversation to
+// write.
 //
 // close clears the marker and commits the place's scope with the caller's
 // message — the unit's discovery scope, or the product's — the log with it.
@@ -36,6 +38,7 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PRODUCT_SCOPE } = require('./commit.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
+const { namedConversations } = require('./topic-log.cjs');
 
 const SESSION_LOG = /^session-(\d+)\.md$/;
 
@@ -103,10 +106,13 @@ const productSession = (project) => named(project.product_session);
  * @property {string} retry
  */
 
+/** The folder a place's logs are in, state-relative. @param {string} name a work unit, or `product` */
+const sessionLogsAt = (name) => (name === PRODUCT ? PRODUCT_SESSIONS : `${name}/discovery`);
+
 /** @param {string} cwd @param {string} unit @returns {SessionPlace} */
 function unitPlace(cwd, unit) {
   return {
-    logs: `${unit}/discovery`,
+    logs: sessionLogsAt(unit),
     opens: (manifest) => {
       if (manifest.work_type !== 'epic') {
         throw new Error(`discovery-session open is epic-only — "${unit}" is work_type "${manifest.work_type}" (single-phase work gets its session log at workunit create)`);
@@ -132,7 +138,7 @@ function unitPlace(cwd, unit) {
 /** @param {string} cwd @returns {SessionPlace} */
 function productPlace(cwd) {
   return {
-    logs: PRODUCT_SESSIONS,
+    logs: sessionLogsAt(PRODUCT),
     opens: () => {},
     withMarker: (fn) => withProjectLock(cwd, () => {
       const manifest = readProjectManifest(cwd);
@@ -154,6 +160,66 @@ function productPlace(cwd) {
 const sessionPlace = (cwd, name) => (name === PRODUCT ? productPlace(cwd) : unitPlace(cwd, name));
 
 /**
+ * The session a place has open, as its marker names it, or null — read
+ * without the lock, as a read is.
+ * @param {string} cwd @param {string} name a work unit, or `product`
+ * @returns {string|null}
+ */
+function activeSession(cwd, name) {
+  return name === PRODUCT
+    ? productSession(readProjectManifest(cwd))
+    : named(loadWorkUnitManifest(cwd, name).phases?.discovery?.active_session);
+}
+
+/**
+ * The product's conversation as the start menu names it (18.2.13): how many
+ * sessions it has had, and the date of the latest conversation its logs name
+ * — null while none names one.
+ * @param {string} cwd @returns {{sessions: number, last: string|null}}
+ */
+function productConversation(cwd) {
+  const dir = statePath(cwd, PRODUCT_SESSIONS);
+  const logs = sessionLogs(dir);
+  for (const { file } of [...logs].reverse()) {
+    const latest = namedConversations(path.join(dir, file)).at(-1);
+    if (latest !== undefined) return { sessions: logs.length, last: latest.date };
+  }
+  return { sessions: logs.length, last: null };
+}
+
+/**
+ * Refuse a place that takes no session, or has one open already.
+ * @param {SessionPlace} place @param {string} name @param {Marker} marker @param {Record<string, any>} manifest
+ */
+function assertOpens(place, name, marker, manifest) {
+  place.opens(manifest);
+  if (marker.active !== null) {
+    throw new Error(`a discovery session ("${marker.active}") is already open for "${name}" — close it before opening another`);
+  }
+}
+
+/**
+ * Install a place's next log, holding `content`, and set the marker to it:
+ * the number one past the highest on disk.
+ * @param {string} cwd @param {SessionPlace} place @param {Marker} marker @param {string} content
+ * @returns {{session: string, path: string}}
+ */
+function installLog(cwd, place, marker, content) {
+  const dir = statePath(cwd, place.logs);
+  const session = String(nextSessionNumber(dir)).padStart(3, '0');
+  const log = path.join(dir, `session-${session}.md`);
+  // Log first, marker second: a failure between the two leaves a log
+  // without a marker (a closed-looking session — recoverable), never a
+  // marker naming a missing log. The install resolves any literal {NNN} to
+  // the allocated number — the template's placeholder, written before the
+  // number exists — so the durable header matches the filename.
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(log, content.split('{NNN}').join(session));
+  marker.set(session);
+  return { session, path: log };
+}
+
+/**
  * Open a session at a place: allocate the next number from the logs on
  * disk, install the model-drafted log (moved, not copied) as
  * `session-NNN.md` in the place's logs' folder, and set the marker — one
@@ -172,10 +238,7 @@ const sessionPlace = (cwd, name) => (name === PRODUCT ? productPlace(cwd) : unit
 function openDiscoverySession(cwd, name, { sessionLogFile }) {
   const place = sessionPlace(cwd, name);
   return place.withMarker((marker, manifest) => {
-    place.opens(manifest);
-    if (marker.active !== null) {
-      throw new Error(`a discovery session ("${marker.active}") is already open for "${name}" — close it before opening another`);
-    }
+    assertOpens(place, name, marker, manifest);
     const draftPath = path.resolve(cwd, sessionLogFile);
     /** @type {string} */
     let draft;
@@ -187,21 +250,24 @@ function openDiscoverySession(cwd, name, { sessionLogFile }) {
     if (draft.trim() === '') {
       throw new Error(`session log draft is empty: ${sessionLogFile} — draft the log before opening the session`);
     }
-
-    const dir = statePath(cwd, place.logs);
-    const session = String(nextSessionNumber(dir)).padStart(3, '0');
-    const log = path.join(dir, `session-${session}.md`);
-
-    // Log first, marker second: a failure between the two leaves a log
-    // without a marker (a closed-looking session — recoverable), never a
-    // marker naming a missing log. The install resolves any literal {NNN} to
-    // the allocated number — the template's placeholder, written before the
-    // number exists — so the durable header matches the filename.
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(log, draft.split('{NNN}').join(session));
+    const opened = installLog(cwd, place, marker, draft);
     fs.unlinkSync(draftPath);
-    marker.set(session);
-    return { session, path: log };
+    return opened;
+  });
+}
+
+/**
+ * Open a place's next session for a conversation entering it (enter.cjs):
+ * its log made empty, the conversation's to write, and the marker set — one
+ * manifest write under the place's lock. No commit: the entry's.
+ * @param {string} cwd @param {string} name a work unit, or `product`
+ * @returns {{session: string, path: string}}
+ */
+function openSession(cwd, name) {
+  const place = sessionPlace(cwd, name);
+  return place.withMarker((marker, manifest) => {
+    assertOpens(place, name, marker, manifest);
+    return installLog(cwd, place, marker, '');
   });
 }
 
@@ -246,5 +312,6 @@ function closeDiscoverySession(cwd, name, { message }) {
 }
 
 module.exports = {
-  openDiscoverySession, closeDiscoverySession, sessionLogs, latestSessionLog, nextSessionNumber, productSession,
+  openDiscoverySession, openSession, closeDiscoverySession, sessionLogs, latestSessionLog, nextSessionNumber, productSession,
+  activeSession, sessionLogsAt, productConversation,
 };

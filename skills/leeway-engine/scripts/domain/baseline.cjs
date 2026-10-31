@@ -5,7 +5,9 @@
 // manifest's `baseline` object, and the brownfield offer's remembered
 // answer the reshape's move leaves in its place (`brownfield_offer`: native,
 // skipped or completed), which reads as that status with no areas, so a
-// moved project is never judged or offered again. Boot's status field, the
+// moved project is never judged or offered again; `accepted` says the
+// baseline's research is owed, which the product's conversation opens on
+// (`researchOwed`). Boot's status field, the
 // start menus' resume/manage rows, and the render surfaces all derive from
 // this state, so
 // the vocabulary and the remaining-count exist exactly once. Two more things
@@ -33,6 +35,19 @@ const VERDICTS = /** @type {const} */ (['native', 'skipped']);
  * words: each means the offer is made no more.
  */
 const BROWNFIELD_ANSWERS = /** @type {readonly unknown[]} */ (['native', 'skipped', 'completed']);
+
+/**
+ * The brownfield offer's answer while the baseline's research is owed: the
+ * offer accepted, its findings not yet landed (8.12.13).
+ */
+const RESEARCH_OWED = 'accepted';
+
+/**
+ * Whether the baseline's research is owed: the project manifest's offer
+ * answered `accepted` (8.12.13).
+ * @param {Record<string, any>} project
+ */
+const researchOwed = (project) => project.brownfield_offer === RESEARCH_OWED;
 
 /** @typedef {'none' | typeof RECORDED_STATUSES[number]} BaselineStatus */
 /** @typedef {typeof VERDICTS[number]} BaselineVerdict */
@@ -380,4 +395,4 @@ function recordBaselineVerdict(cwd, verdict) {
   return result;
 }
 
-module.exports = { baselineState, baselineSignal, recordBaselineVerdict };
+module.exports = { baselineState, baselineSignal, recordBaselineVerdict, researchOwed };

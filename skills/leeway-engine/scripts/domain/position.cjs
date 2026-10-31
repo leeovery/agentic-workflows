@@ -50,7 +50,7 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { topicLog, recordCall, owedHeader } = require('./topic-log.cjs');
+const { topicLog, recordCall, mapCall, owedHeader, namedConversations } = require('./topic-log.cjs');
 
 const COMPACTED = 'The conversation was just compacted.';
 
@@ -61,9 +61,7 @@ const PLACE_SEPARATOR = ' › ';
 // recorded on its map row, whatever each item reads.
 const MAP_PHASES = [...UNIT_PHASES.discovery, 'experiment'];
 
-// The project places whose work keeps the product's session log: the
-// product's conversation, and the roadmap, whose skill runs it too.
-const SESSION_PLACES = [PRODUCT, 'roadmap'];
+const ROADMAP = 'roadmap';
 
 /**
  * @typedef {object} Position
@@ -244,8 +242,10 @@ function dropPosition(sessionId) {
 // carry it whole (24.2.6), naming the engine calls it re-reads beside its
 // documents and the log its conversation keeps, which is caught up from the
 // conversation's transcript (8.14.9): discussion's names the topic's record
-// and its log (24.2.1–24.2.3). Every other phase's note sends Claude to its
-// skill's own steps.
+// and its log (24.2.1–24.2.3); discovery's, at an epic, the unit's map and
+// the open log, and at the product's conversation its open log (24.2.8,
+// 8.14.6) — the latest on disk where none is open. Every other phase's note
+// sends Claude to its skill's own steps.
 // ---------------------------------------------------------------------------
 
 /**
@@ -332,13 +332,20 @@ function experimentFiles(cwd, workUnit, topic, manifest) {
 }
 
 /**
- * The log of the product's open session — the one the project manifest
- * marks open; none where no session is open.
+ * The product's session the project manifest marks open, or null.
+ * @param {string} cwd @returns {string|null}
+ */
+function productActive(cwd) {
+  const project = loadProjectManifest(cwd);
+  return isObject(project) ? productSession(project) : null;
+}
+
+/**
+ * The log of the product's open session; none where no session is open.
  * @param {string} cwd @returns {string[]}
  */
 function productSessionLog(cwd) {
-  const project = loadProjectManifest(cwd);
-  const active = isObject(project) ? productSession(project) : null;
+  const active = productActive(cwd);
   return active === null ? [] : sessionLog(statePath(cwd, PRODUCT_SESSIONS), active);
 }
 
@@ -346,9 +353,19 @@ function productSessionLog(cwd) {
  * What carries the work on at a position: the skill that runs it, and the
  * topic's documents, whether or not they exist — neither at a work unit's
  * menu; and, for a phase whose note carries its recovery whole, the engine
- * calls it re-reads and the log its conversation keeps.
- * @typedef {{skill: string|null, documents: string[], calls?: string[], log?: string}} Work
+ * calls it re-reads and the log its conversation keeps, where it keeps one.
+ * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null}}} Work
  */
+
+/**
+ * A discovery home's note, carried whole: its calls, and its log — the open
+ * one, else the latest on disk — read and caught up.
+ * @param {string} skill @param {string[]} calls @param {string[]} log
+ * @returns {Work}
+ */
+function discoveryWork(skill, calls, log) {
+  return { skill, documents: log, whole: { calls, log: log[0] ?? null } };
+}
 
 /**
  * @param {string} cwd @param {Position} position @param {Manifest} manifest
@@ -358,17 +375,20 @@ function workAt(cwd, position, manifest) {
   const { name, phase } = position;
   const skill = skillAt(name, phase);
   if (skill === null) return { skill: null, documents: [] };
-  if (phase === undefined) return { skill, documents: SESSION_PLACES.includes(name) ? productSessionLog(cwd) : [] };
+  if (phase === undefined) {
+    if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)));
+    return { skill, documents: name === ROADMAP ? productSessionLog(cwd) : [] };
+  }
   if (manifest === null) return { skill: null, documents: [] };
   const wu = statePath(cwd, name);
   const topic = /** @type {string} */ (position.topic);
   const plan = path.join(wu, 'planning', topic);
   switch (phase) {
     case 'discovery':
-      return { skill, documents: sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session) };
+      return discoveryWork(skill, [mapCall(name)], sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session));
     case 'discussion': {
       const log = statePath(cwd, topicLog(name, topic));
-      return { skill, documents: [log], calls: [recordCall(name, topic)], log };
+      return { skill, documents: [log], whole: { calls: [recordCall(name, topic)], log } };
     }
     case 'investigation':
     case 'specification':
@@ -402,7 +422,7 @@ function workAt(cwd, position, manifest) {
  */
 function placeName(position, manifest) {
   const { name, phase, topic } = position;
-  if (isProjectPlace(name, phase)) return `the project's ${name}`;
+  if (isProjectPlace(name, phase)) return name === PRODUCT ? 'the product\'s conversation' : `the project's ${name}`;
   const unit = typeof manifest?.work_type === 'string' ? `the ${manifest.work_type} "${name}"` : `"${name}"`;
   if (phase === undefined) return unit;
   const at = topic === name ? `the ${phase} of ${unit}` : `the ${phase} of "${topic}" in ${unit}`;
@@ -455,27 +475,40 @@ function carryOnText(where, skillName, skill, files) {
 }
 
 /**
- * The note for a phase that carries its recovery whole: the skill and its
- * framework re-read, then its engine calls and its documents; its log
- * caught up from the conversation's transcript, or the transcript's loss
- * said in one line; the line the conversation's first write to the log
- * opens with, where it has not written there yet; and the conversation
- * carried on.
- * @param {string} where @param {string} skill absolute @param {string[]} calls @param {string[]} files absolute
+ * The lines a whole note gives the log its conversation keeps: caught up
+ * from the conversation's transcript, or the transcript's loss said in one
+ * line; and the line the conversation's next write to it opens with, where
+ * it has not written there yet or another conversation has since.
  * @param {string} log absolute @param {string} sessionId
  */
-function wholeNote(where, skill, calls, files, log, sessionId) {
+function logLines(log, sessionId) {
   const transcript = runningTranscript(sessionId);
   const header = owedHeader(log, sessionId, transcript);
+  const written = namedConversations(log).some((conversation) => conversation.session === sessionId);
+  return [
+    transcript === null
+      ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
+      : `Catch the log, ${log}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+    ...(header === null ? [] : [written
+      ? `Another conversation has written to the log since this one did: its next write opens with this line again: \`${header}\``
+      : `This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+  ];
+}
+
+/**
+ * The note for a phase that carries its recovery whole: the skill and its
+ * framework re-read, then its engine calls and its documents; its log, where
+ * it keeps one, caught up (`logLines`); and the conversation carried on.
+ * @param {string} where @param {string} skill absolute @param {string[]} calls @param {string[]} files absolute
+ * @param {string|null} log absolute @param {string} sessionId
+ */
+function wholeNote(where, skill, calls, files, log, sessionId) {
   return [
     `${COMPACTED} This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
     `- ${skill} and its framework`,
     ...calls.map((c) => `- \`${c}\``),
     ...files.map((f) => `- ${f}`),
-    transcript === null
-      ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
-      : `Catch the log, ${log}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
-    ...(header === null ? [] : [`This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+    ...(log === null ? [] : logLines(log, sessionId)),
     'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
   ].join('\n');
 }
@@ -518,9 +551,9 @@ function positionReads(cwd, sessionId) {
   const skill = absolute(skillFile(work.skill));
   if (!fs.existsSync(skill)) return nothing(`This conversation was working in ${where}, but this project has no ${work.skill} skill, so there is nothing to carry on from.`);
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f));
-  const text = work.log === undefined
+  const text = work.whole === undefined
     ? carryOnText(where, work.skill, skill, files)
-    : wholeNote(where, skill, work.calls ?? [], files, work.log, sessionId);
+    : wholeNote(where, skill, work.whole.calls, files, work.whole.log, sessionId);
   return { session_id: sessionId, position, place, skill, files, text };
 }
 

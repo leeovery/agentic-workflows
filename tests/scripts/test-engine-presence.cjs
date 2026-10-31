@@ -193,15 +193,21 @@ describe('engine presence', () => {
     assert.strictEqual(engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res.cleared, true);
   });
 
-  it('covers every phase a session sits in — discovery excepted', () => {
-    for (const phase of ['experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
+  it('covers every phase a session sits in, discovery among them', () => {
+    for (const phase of ['discovery', 'experiment', 'discussion', 'investigation', 'scoping', 'specification', 'planning', 'implementation', 'review']) {
       assert.strictEqual(engine(dir, ['presence', 'beat', 'pay', phase, 'alpha']).res.beat, true, `${phase} beats`);
     }
     const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.length, 8, 'every phase reports a row');
-    assert.strictEqual(scan.held, 8);
-    // Discovery is engine-serialised by `discovery-session open` — no heartbeat.
-    assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discovery', 'x']).error, /presence is experiment\|discussion\|/);
+    assert.strictEqual(scan.sessions.length, 9, 'every phase reports a row');
+    assert.strictEqual(scan.held, 9);
+  });
+
+  it('the product\'s conversation beats at product, which has no directory of its own', () => {
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway', 'product')));
+    assert.strictEqual(engine(dir, ['presence', 'beat', 'product', 'discovery', 'product']).res.beat, true);
+    const scan = engine(dir, ['presence', 'scan']).res;
+    assert.deepStrictEqual(scan.sessions.map((r) => `${r.work_unit}/${r.phase}/${r.topic}`), ['product/discovery/product']);
+    assert.match(engineFails(dir, ['presence', 'beat', 'ghost', 'discovery', 'ghost']).error, /no work unit directory/);
   });
 
   it('refuses illegal phases, unknown work units, and malformed calls', () => {

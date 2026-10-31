@@ -16,6 +16,7 @@ const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { baselineState } = require('./baseline.cjs');
 const { roadmapState } = require('./roadmap.cjs');
+const { productConversation } = require('./discovery-session.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
@@ -120,6 +121,7 @@ function pipelineOf(workType) {
  * @property {InboxDetail} inbox
  * @property {import('./baseline.cjs').BaselineState} baseline
  * @property {ReturnType<import('./roadmap.cjs').roadmapState>} roadmap
+ * @property {ReturnType<import('./discovery-session.cjs').productConversation>} product
  * @property {StartState} state
  */
 
@@ -292,6 +294,7 @@ function startDetail(cwd) {
     inbox,
     baseline: baselineState(cwd),
     roadmap: roadmapState(cwd),
+    product: productConversation(cwd),
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,

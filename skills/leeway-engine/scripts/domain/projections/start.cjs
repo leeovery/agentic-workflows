@@ -20,6 +20,7 @@ const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
 const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, autoSelectLine } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
+const { dayMonth } = require('../dates.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
 /** @typedef {import('../start.cjs').WorkUnitEntry} WorkUnitEntry */
@@ -100,16 +101,23 @@ function roadmapRows(roadmap) {
   });
 }
 
-// The roadmap menu row — one key, the skill self-routes on state (baseline's
-// pattern): an open session reads as unfinished work, otherwise the layer's
-// management/continue entry. Rendered only once the layer exists.
+// The roadmap menu row, rendered only once the layer exists.
 /** @param {StartDetail} detail @returns {StartMenuKey|null} */
 function roadmapMenuRow(detail) {
   if (!detail.roadmap.exists) return null;
-  const label = detail.roadmap.active_session !== null
-    ? { head: 'Resume the product session', tail: 'roadmap, in progress' }
-    : 'Open the product roadmap';
-  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/leeway-roadmap open', label };
+  return { key: 'r', word: 'roadmap', action: 'open_roadmap', route: '/leeway-roadmap open', label: 'Open the product roadmap' };
+}
+
+/**
+ * The product's conversation's row, always there (18.2.13): its session count
+ * and last date once it has sessions. It hands into discovery at no unit.
+ * @param {StartDetail} detail @returns {StartMenuKey}
+ */
+function productMenuRow({ product: { sessions, last } }) {
+  const head = 'Talk about the product';
+  const count = `${sessions} session${sessions === 1 ? '' : 's'}`;
+  const label = sessions === 0 ? head : { head, tail: last === null ? count : `${count}, last on ${dayMonth(last)}` };
+  return { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label };
 }
 
 /** @type {StartMenuKey} */
@@ -189,7 +197,8 @@ function continueLabel(unit, type) {
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * Numbered continue entries first (overview order and numbering), then the
  * baseline resume row (`a`, in-progress only — completed manages via `m`),
- * then the start-new and lifecycle command options (`i` only with a live
+ * the product's conversation (`p`, always), the roadmap once it exists, then
+ * the start-new and lifecycle command options (`i` only with a live
  * inbox, `v` only with completed/cancelled work units).
  * @param {StartDetail} detail
  * @returns {{keys: StartMenuKey[], rendered: string}}
@@ -215,6 +224,7 @@ function startMenu(detail) {
   if (detail.baseline.status === 'in-progress') {
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: baselineResumeLabel(detail) });
   }
+  options.push(productMenuRow(detail));
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);
   options.push(
@@ -261,10 +271,6 @@ function emptyOverview(detail) {
   let out;
   if (detail.roadmap.exists && detail.roadmap.items.length > 0) {
     out = 'No work in flight.\n\nRoadmap\n' + roadmapRows(detail.roadmap).join('\n') + '\n';
-  } else if (detail.roadmap.exists && detail.roadmap.active_session !== null) {
-    // Mid-genesis: a session is open but no item has landed yet. The menu
-    // carries the resume row — "no active work" would contradict it.
-    out = 'No work in flight.\n\nA product session is open — resume it from the menu.\n';
   } else {
     out = 'No active work found.\n';
   }
@@ -278,7 +284,8 @@ function emptyOverview(detail) {
  * The empty-state start menu — a baseline row first when one exists to act
  * on (`a`: resume in-progress, view/expand completed, start a declined one —
  * the empty state has no manage row, so `skipped` rides here; `none` and
- * `native` render nothing), then the six start-new options with
+ * `native` render nothing), then the product's conversation and the roadmap
+ * once it exists, then the six start-new options with
  * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
  * work units. Same key shape as startMenu, so the ACTIONS table and routing
  * are uniform.
@@ -299,6 +306,7 @@ function emptyMenu(detail) {
     // never sees a baseline row.
     options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: 'Start the project baseline assessment' });
   }
+  options.push(productMenuRow(detail));
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);
   options.push(
