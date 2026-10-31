@@ -86,7 +86,7 @@ Once the conversation has got going, a background review reads the topic with a 
 
 ### Other Topics
 
-A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is not this topic's to settle, and a decision another topic owns changes only through its mailbox: load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written.
+A detail that informs a decision within this topic stays here: token refresh in an auth topic. A point whose home is another topic — the caching strategy that surfaces because tokens need caching — is not this topic's to settle, and a decision another topic owns changes only through its mailbox: load **[sending-a-message.md](references/sending-a-message.md)** and follow its instructions as written. Talk that rises past every topic, to the epic as a whole or to the product, is **Moving Up**.
 
 ### The Log
 
@@ -110,6 +110,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - An experiment → `experiment create`, then `render experiment-spawn-gate`.
 - A question for later → `roadmap add`, then `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
+- The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
@@ -165,6 +166,18 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_
 ```
 
 A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. Its receipt is `render workunit-receipt {work_unit} --verb cancel [--warn]`; the unit is closed, and the turn ends.
+
+## Moving Up
+
+The talk rises past the topic: to the epic as a whole, or to the product. Suggest going there in a line; only the person's word moves it. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`.
+
+Then move, in this conversation: `{home}` is `{work_unit}` for an epic's discovery, or `product` for the product's conversation, the only place a single-topic unit's talk moves up to.
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs enter discovery {home} --move
+```
+
+A refusal names the way on: say it in a line. Otherwise invoke `/leeway-discovery none {work_unit}`, or `/leeway-discovery none none` for the product's conversation; the conversation carries on there.
 
 ## A Shared File
 

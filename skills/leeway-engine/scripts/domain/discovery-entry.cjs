@@ -9,8 +9,9 @@
 // epic's can be entered is topic-standing.cjs's.
 //
 // The session (8.14.11): the entry carries on the home's open log, or opens
-// the next where none is open, and writes the conversation's line into it on
-// its first entry (8.14.8), so the log always names who wrote last.
+// the next where none is open, and writes the conversation's line into it
+// where the log's last such line is another's (8.14.8), so the log always
+// names who wrote last.
 //
 // What it reads, as it found the home before writing anything:
 //   - the product's: its two latest logs in full, the roadmap, the product
@@ -22,7 +23,8 @@
 //     the unit (8.6.7);
 //   - either, where the open log was last written by another conversation:
 //     that conversation's transcript, to catch the log up from its last write
-//     onward, or one line that the transcript is gone (8.14.9).
+//     onward, or one line that the transcript is gone (8.14.9) — none where
+//     the log ends on a level move's pointer, its talk carried on elsewhere.
 //
 // A level move (`--move`) carries the conversation on from where it is
 // working — the product's conversation, an epic's discovery, or a topic's
@@ -89,14 +91,26 @@ function linesOf(file) {
   }
 }
 
+/** A log's written lines, trimmed, blank lines left out. @param {string} file absolute */
+function writtenLines(file) {
+  return linesOf(file).map((line) => line.trim()).filter((line) => line !== '');
+}
+
 /**
  * A log's closing line: its last written line that is neither a
  * conversation's line nor a pointer the engine wrote; null where it has none.
  * @param {string} file absolute
  */
 function closingLine(file) {
-  return linesOf(file).map((line) => line.trim()).filter((line) => line !== '' && !isHeader(line) && !line.startsWith(POINTER)).at(-1) ?? null;
+  return writtenLines(file).filter((line) => !isHeader(line) && !line.startsWith(POINTER)).at(-1) ?? null;
 }
+
+/**
+ * Whether a log ends on the pointer a level move wrote: the sitting there
+ * ended cleanly, and what came after it is in the log moved to.
+ * @param {string} file absolute
+ */
+const endsOnPointer = (file) => writtenLines(file).at(-1)?.startsWith(POINTER) === true;
 
 /** An older log as read: its path, and its closing line where it has one. @param {string} file absolute */
 function closedBy(file) {
@@ -122,13 +136,15 @@ function shapedBy(first) {
 /**
  * Where the open log was last written by a conversation other than this
  * one: its transcript, to catch the log up from, or the one line that it is
- * gone. Nothing for a log opened by this entry.
+ * gone. Nothing for a log opened by this entry, nor for one a level move
+ * left, ending on its pointer.
  * @param {Entering} at @returns {Line[]}
  */
 function catchUp({ cwd, unit, started }) {
   if (started) return [];
-  const last = namedConversations(statePath(cwd, logAt(unit, /** @type {string} */ (activeSession(cwd, unit))))).at(-1);
-  if (last === undefined || last.session === handedSession()) return [];
+  const log = statePath(cwd, logAt(unit, /** @type {string} */ (activeSession(cwd, unit))));
+  const last = namedConversations(log).at(-1);
+  if (last === undefined || last.session === handedSession() || endsOnPointer(log)) return [];
   const transcript = last.transcript !== null && fs.existsSync(last.transcript) ? last.transcript : runningTranscript(last.session);
   return [as('catch up')(transcript === null
     ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log`

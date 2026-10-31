@@ -50,7 +50,7 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
-const { topicLog, recordCall, mapCall, owedHeader } = require('./topic-log.cjs');
+const { topicLog, recordCall, mapCall, owedHeader, namedConversations } = require('./topic-log.cjs');
 
 const COMPACTED = 'The conversation was just compacted.';
 
@@ -477,18 +477,21 @@ function carryOnText(where, skillName, skill, files) {
 /**
  * The lines a whole note gives the log its conversation keeps: caught up
  * from the conversation's transcript, or the transcript's loss said in one
- * line; and the line the conversation's first write to it opens with, where
- * it has not written there yet.
+ * line; and the line the conversation's next write to it opens with, where
+ * it has not written there yet or another conversation has since.
  * @param {string} log absolute @param {string} sessionId
  */
 function logLines(log, sessionId) {
   const transcript = runningTranscript(sessionId);
   const header = owedHeader(log, sessionId, transcript);
+  const written = namedConversations(log).some((conversation) => conversation.session === sessionId);
   return [
     transcript === null
       ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
       : `Catch the log, ${log}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
-    ...(header === null ? [] : [`This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+    ...(header === null ? [] : [written
+      ? `Another conversation has written to the log since this one did: its next write opens with this line again: \`${header}\``
+      : `This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
   ];
 }
 

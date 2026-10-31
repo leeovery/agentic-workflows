@@ -25,7 +25,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, handoff, startKeys, startNew, pickRoute, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, handoff, startKeys, startNew, pickRoute, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
 const EPIC = 'fumi';
@@ -172,6 +172,8 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.conversations, conversation, 'no handoff: the same conversation throughout');
   });
 
+  // The discussion skill's Moving Up: the log brought up to date, the wait
+  // for the topic's agents, then the move in the same conversation.
   it('a topic\'s talk moving up to its epic: its agents waited on, the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
@@ -184,6 +186,22 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', `${EPIC}/topics/licensing/log.md`]), '', 'the sitting is committed with the move');
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', EPIC]), 'discussion', 'licensing'), undefined, 'the topic\'s presence is gone');
     assert.deepStrictEqual(carryOn(sim).position, { name: EPIC, phase: 'discovery', topic: EPIC });
+    assert.strictEqual(sim.conversations, conversation);
+  });
+
+  it('a single-topic unit\'s talk moving up to the product\'s conversation, the only place above it (8.2.12, 24.S20)', () => {
+    const wu = 'saved-filters';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
+    enterEntry(sim, wu, 'discussion', wu);
+    const conversation = sim.conversations;
+    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
+    waitAgents(sim, wu, wu);
+
+    sim.refuses(['enter', 'discovery', wu, '--move'], /its discovery ended at start this work/);
+    sim.run(['enter', 'discovery', PRODUCT, '--move']);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', `${wu}/topics/${wu}/log.md`]), '', 'the sitting is committed with the move');
+    assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', wu), undefined);
+    assert.deepStrictEqual(carryOn(sim).position, { name: PRODUCT });
     assert.strictEqual(sim.conversations, conversation);
   });
 });

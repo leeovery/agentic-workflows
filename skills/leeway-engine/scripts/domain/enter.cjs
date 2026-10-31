@@ -15,7 +15,7 @@
 // question first, then a DATA naming what to read, as paths and engine
 // calls, never their contents, read as the place stood before the entry
 // wrote anything, and the log the conversation keeps with the line it opens
-// its first write with (8.14.8) — or, for a row that writes that line
+// its next write with (8.14.8) — or, for a row that writes that line
 // itself, the line written. The reading comes after the question (2.10.3).
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at

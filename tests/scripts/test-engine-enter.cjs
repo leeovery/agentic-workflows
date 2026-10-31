@@ -25,13 +25,13 @@
 // epic's discovery entered with no question (8.S1), a feature, bugfix or
 // quick-fix refused for manage (8.S12) and an epic past its spec for the
 // product's conversation; the open log carried on, or the next opened and
-// committed, the conversation's line written into it on its first entry
-// (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, the
+// committed, the conversation's line written into it where the log's last
+// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, the
 // roadmap, the product record and the research owed (8.S69), an epic's older
 // logs by their closing lines and two latest in full, its first log's
 // pointers, its map and the product record (8.S53) — and a log another
-// conversation left named for catch-up, or its transcript gone (8.S65,
-// 8.S75); and the level move, from the product's conversation, an epic's
+// conversation left named for catch-up, or its transcript gone, and none
+// where a level move left it on its pointer (8.S65, 8.S75); and the level move, from the product's conversation, an epic's
 // discovery or a topic, its pointer, its sitting and its presence (8.S71,
 // 8.S72, 24.S20). The label the entry applies is `session label`'s own
 // (test-engine-session-label.cjs), and the recovery note
@@ -476,13 +476,16 @@ describe('the answer', () => {
     assert.doesNotMatch(enter(['discussion', EPIC, 'licence']).sections, /^landed:/m);
   });
 
-  it('the log\'s header line is owed until the log names the conversation, and each conversation is owed its own (9.S67)', () => {
+  it('the log\'s header line is owed until the log\'s last conversation line is the conversation\'s own, again once another has written since, and each conversation is owed its own (9.S67)', () => {
     const header = (/** @type {string|null} */ sessionId) => enter(['discussion', EPIC, 'licence'], sessionId).sections.match(/^log header: (.*)$/m)?.[1] ?? null;
     const first = withFrozenClock(() => header('sess-1'));
     assert.strictEqual(first, `## ${TODAY} · session sess-1`);
     writeState(dir, layout.topic(EPIC, 'licence', 'log.md'), `${first}\n\nWhat we talked about.\n`);
     assert.strictEqual(header('sess-1'), null, 'the log names the conversation');
-    assert.strictEqual(withFrozenClock(() => header('sess-2')), `## ${TODAY} · session sess-2`);
+    const second = withFrozenClock(() => header('sess-2'));
+    assert.strictEqual(second, `## ${TODAY} · session sess-2`);
+    fs.appendFileSync(at(layout.topic(EPIC, 'licence', 'log.md')), `\n${second}\n\nMore of it.\n`);
+    assert.strictEqual(withFrozenClock(() => header('sess-1')), `## ${TODAY} · session sess-1`, 'another conversation having written since, the line is owed again');
     assert.strictEqual(header(null), null, 'no session id names none');
   });
 });
@@ -582,6 +585,18 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     assert.strictEqual(readState(dir, layout.productSession('003')), log);
   });
 
+  it('a conversation entering again after another wrote takes its line again, so the log\'s last line names its last writer and the next conversation catches up from that one (8.14.8, 8.S65)', () => {
+    const log = at(layout.productSession('003'));
+    const turns = [['A', 'A wrote.'], ['B', 'B wrote.'], ['A', 'A wrote again, last.']];
+    for (const [sessionId, line] of turns) {
+      enter(['discovery', 'product'], sessionId);
+      fs.appendFileSync(log, `\n${line}\n`);
+    }
+    const caughtUp = (/** @type {string} */ sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: the transcript of session (\S+),/m)?.[1];
+    assert.deepStrictEqual([caughtUp('B'), caughtUp('C')], ['A', 'B']);
+    assert.deepStrictEqual(readState(dir, layout.productSession('003')).match(/^## .* · session \S+/gm)?.map((line) => line.split(' ').at(-1)), ['A', 'B', 'A', 'B', 'C']);
+  });
+
   it('a log left by a conversation whose transcript is gone: one line says so (8.S75)', () => {
     enter(['discovery', 'product'], 'sess-gone');
     assert.match(enter(['discovery', 'product']).sections,
@@ -662,6 +677,26 @@ describe('discovery: a level move, in the same session (8.2.11, 8.2.12, 24.1.8)'
     enter(['discovery', EPIC, '--move']);
     assert.deepStrictEqual([lastMessage(dir), committedFiles()], [`discovery(${EPIC}): carried on from ${EPIC} › discussion › licence`, [layout.topic(EPIC, 'licence', 'log.md')]]);
     assert.deepStrictEqual([position(), presence(EPIC, 'licence'), presence(EPIC, EPIC, 'discovery')?.session_id], [{ name: EPIC, phase: 'discovery', topic: EPIC }, null, 'sess-1']);
+  });
+
+  it('a topic\'s talk moving up to the product\'s conversation: the sitting committed, the topic\'s presence gone, the position the product\'s (8.2.12, 24.S20)', () => {
+    enter(['discussion', EPIC, 'licence']);
+    writeState(dir, layout.topic(EPIC, 'licence', 'log.md'), '## 2026-01-06 · session sess-1\n\nThe sitting.\n');
+    enter(['discovery', 'product', '--move']);
+    assert.strictEqual(lastMessage(dir), `discovery(product): carried on from ${EPIC} › discussion › licence`);
+    assert.ok(committedFiles().includes(layout.topic(EPIC, 'licence', 'log.md')), 'the sitting is committed with the move');
+    assert.deepStrictEqual([position(), presence(EPIC, 'licence'), presence('product', 'product', 'discovery')?.session_id], [{ name: 'product' }, null, 'sess-1']);
+  });
+
+  it('a log a level move left ends on its pointer, so the next conversation entering it has nothing to catch up, whichever way the move went', () => {
+    enter(['discovery', 'product'], 'mover');
+    enter(['discovery', EPIC, '--move'], 'mover');
+    assert.doesNotMatch(enter(['discovery', 'product'], 'next').sections, /^catch up:/m, 'product to epic');
+    enter(['discovery', EPIC], 'mover');
+    enter(['discovery', 'product', '--move'], 'mover');
+    assert.doesNotMatch(enter(['discovery', EPIC], 'after').sections, /^catch up:/m, 'epic to product');
+    fs.appendFileSync(at(layout.productSession('003')), '\nThe mover talked on here.\n');
+    assert.match(enter(['discovery', 'product'], 'later').sections, /^catch up: the transcript of session mover,/m, 'talk written after the pointer is caught up as any is');
   });
 
   it('refused, writing nothing, where the conversation holds no place, is in the home already, is a topic moving to another epic than its own, or works anywhere but discovery or a topic\'s discussion', () => {

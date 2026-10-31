@@ -7,10 +7,11 @@
 // `topics/{topic}/log.md`; the product record, through `ledger product`; an
 // epic's map — and the line a conversation opens its first write to a log
 // with (8.14.8): the date, its session id and its transcript's path. The
-// line is owed until the log names the conversation, which is read from the
-// log itself, so a conversation that has not written to it yet is told
-// again wherever it is told what to read; and a log's lines name the
-// conversations that wrote it, in the order they first wrote.
+// line is owed until the log's last conversation line is the conversation's
+// own — on its first write, and again after another conversation wrote —
+// which is read from the log itself, so a conversation that has not written
+// since is told again wherever it is told what to read; and a log's last
+// conversation line names the conversation that wrote it last.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -54,29 +55,26 @@ function mapCall(unit) {
 }
 
 /**
- * The line the conversation `sessionId` opens its first write to the log at
+ * The line the conversation `sessionId` opens its next write to the log at
  * `file` with — today's date, the session id, and the transcript where one
- * was found — or null where the log names the conversation already, or no
- * session id names it.
+ * was found — or null where the log's last conversation line is its own
+ * already, or no session id names it.
  * @param {string} file absolute @param {string|null} sessionId @param {string|null} transcript
  * @returns {string|null}
  */
 function owedHeader(file, sessionId, transcript) {
-  if (sessionId === null) return null;
-  let text = '';
-  try { text = fs.readFileSync(file, 'utf8'); } catch { /* not written yet */ }
-  if (text.includes(sessionId)) return null;
+  if (sessionId === null || namedConversations(file).at(-1)?.session === sessionId) return null;
   return [`## ${todayStamp()}`, `session ${sessionId}`, ...(transcript === null ? [] : [`transcript ${transcript}`])].join(' · ');
 }
 
 /**
- * A conversation a log names, by the line it opened its first write with.
+ * A conversation a log names, by a line it opened a write with.
  * @typedef {{date: string, session: string, transcript: string|null}} Conversation
  */
 
 /**
- * The conversations the log at `file` names, in the order they first wrote
- * to it; none where it is not written yet.
+ * The conversations the log at `file` names, a line for each turn one took
+ * writing it, in order; none where it is not written yet.
  * @param {string} file absolute @returns {Conversation[]}
  */
 function namedConversations(file) {

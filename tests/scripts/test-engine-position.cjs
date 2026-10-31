@@ -15,8 +15,9 @@
 // of JSON for the gate mod — nothing from a place no longer open, or one
 // whose skill the project lacks. A discussion's note carries its recovery
 // whole (24.2.6): the topic's record and its log, the log caught up from the
-// conversation's transcript, and the line its first write opens with where
-// the log does not name the conversation yet (24.S10, 9.S67); so does
+// conversation's transcript, and the line its next write opens with where
+// the log does not name the conversation yet, or another conversation has
+// written since (24.S10, 9.S67); so does
 // discovery's, at an epic its map and its open log, at the product's
 // conversation its open log (24.S19, 8.S67); every other phase's sends
 // Claude to its skill's own steps.
@@ -405,8 +406,8 @@ describe('conversation position', () => {
     });
   });
 
-  /** A discussion's note: its log named where written, the transcript found or not, the log's header line owed or not. */
-  function topicNote(where, unit, topic, { log = false, transcript = null, header = null } = {}) {
+  /** A discussion's note: its log named where written, the transcript found or not, the log's header line owed or not — again where the conversation wrote there before another. */
+  function topicNote(where, unit, topic, { log = false, transcript = null, header = null, again = false } = {}) {
     const logFile = abs(`.leeway/${unit}/topics/${topic}/log.md`);
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
@@ -416,7 +417,9 @@ describe('conversation position', () => {
       transcript === null
         ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
         : `Catch the log, ${logFile}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
-      ...(header === null ? [] : [`This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
+      ...(header === null ? [] : [again
+        ? `Another conversation has written to the log since this one did: its next write opens with this line again: \`${header}\``
+        : `This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
       'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
     ].join('\n');
   }
@@ -442,7 +445,7 @@ describe('conversation position', () => {
     assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { log: true, transcript: file }));
   });
 
-  it('a discussion whose log does not name the conversation yet: the line its first write opens with, and a transcript gone said in one line (9.S67)', () => {
+  it('a discussion whose log does not name the conversation yet: the line its first write opens with, and a transcript gone said in one line; and one another conversation has written since: the line again (9.S67)', () => {
     install('leeway-discussion-process');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const today = harness.FROZEN_AT.slice(0, 10);
@@ -454,6 +457,10 @@ describe('conversation position', () => {
     assert.strictEqual(harness.withFrozenClock(() => reads()).text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', {
       log: true, transcript: file, header: `## ${today} · session sess-1 · transcript ${file}`,
     }), 'another conversation\'s write leaves this one\'s line owed');
+    write('.leeway/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nMine.\n\n## 2026-01-02 · session sess-2\n\nTheirs.\n');
+    assert.strictEqual(harness.withFrozenClock(() => reads()).text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', {
+      log: true, transcript: file, header: `## ${today} · session sess-1 · transcript ${file}`, again: true,
+    }), 'the log\'s last line naming another, this conversation\'s is owed again');
   });
 
   it('names the work unit by its work type, the topic collapsed where it is the work unit', () => {

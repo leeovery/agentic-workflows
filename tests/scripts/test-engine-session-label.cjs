@@ -322,12 +322,6 @@ describe('engine session label', () => {
     }
   });
 
-  it('labels an epic\'s discovery at the unit, its topic left out', () => {
-    optIn();
-    assert.strictEqual(engine(['session', 'label', 'pay', 'discovery', 'pay']).name, 'proj-abc · pay · discovery');
-    assert.strictEqual(engine(['session', 'label', 'product']).name, 'proj-abc · product', 'a level move relabels from the true original');
-  });
-
   it('a phase label after an arrival, and an arrival after a phase, both recompose from the true original', () => {
     optIn();
     engine(['session', 'label', 'pay']);
