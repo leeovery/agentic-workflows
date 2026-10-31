@@ -8,7 +8,7 @@
 // {work-unit} · {phase} · {topic}`, the topic left out where it is the
 // work unit, the product's conversation's entry `{original} · product`, a
 // navigation skill and the bridge `{original} · {work-unit}`, the roadmap
-// and the baseline `{original} · roadmap` / `{original} · baseline`, and
+// `{original} · roadmap`, and
 // leeway puts the original
 // back through boot's `repair`. Leaving a place is never an event: the name
 // changes on arrival, and at session end, where `session cleanup` restores
@@ -489,7 +489,7 @@ function shownTopic(cwd, name, phase, topic) {
  * {phase} · {topic}` inside a phase (topic collapsed when it equals the
  * work unit, a renamed topic by the name it goes by). The arguments name a place the project has — a work-unit
  * directory, or in the name-only form a project identity, `roadmap` or
- * `baseline`, which has no directory and no phase — checked by the caller
+ * `product`, which has no directory and no phase — checked by the caller
  * before anything is labelled (position.cjs `assertPlace`). No-op JSON
  * when the feature is off for the project, the session runs outside tmux,
  * tmux errors, or the stash cannot be written — the label never blocks a

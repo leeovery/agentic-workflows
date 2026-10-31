@@ -38,14 +38,14 @@ const NB = (n) => '\u00a0'.repeat(n);
 // and menu projections. Fixtures go through real manifests and inbox files in
 // temp dirs (the same shapes the discovery tests produce).
 
-// Merge a baseline object into the project manifest (preserving the registry
-// the manifest helpers may have written).
-function writeProjectBaseline(dir, baseline) {
+// Set the brownfield offer's answer on the project manifest (preserving the
+// registry the manifest helpers may have written).
+function writeBrownfieldOffer(dir, answer) {
   const fs = require('fs');
   const path = require('path');
   const p = path.join(dir, '.leeway', 'manifest.json');
   const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-  fs.writeFileSync(p, JSON.stringify({ ...existing, baseline }, null, 2));
+  fs.writeFileSync(p, JSON.stringify({ ...existing, brownfield_offer: answer }, null, 2));
 }
 
 /** All five type sections populated, plus inbox and completed/cancelled. */
@@ -657,7 +657,6 @@ describe('start projections: manage list', () => {
     const v = manageListView(fullFixture(dir));
     assert.strictEqual(v.data, [
       'unit_count: 6',
-      'baseline: none',
       'UNITS (n  work_type  work_unit):',
       '  1  feature  auth-flow',
       '  2  feature  dark-mode',
@@ -670,98 +669,36 @@ describe('start projections: manage list', () => {
       DOTS,
       '**`◆ Which work unit?`**',
       '',
-      '**`1`**          → Auth Flow — *feature*',
-      '**`2`**          → Dark Mode — *feature*',
-      '**`3`**          → Login Crash — *bugfix*',
-      '**`4`**          → Rename Api — *quick-fix*',
-      '**`5`**          → Caching — *cross-cutting*',
-      '**`6`**          → Quiz Competition V1 — *epic*',
-      '**`a/baseline`** → Start the project baseline assessment',
-      '**`b/back`**     → Return',
+      '**`1`**      → Auth Flow — *feature*',
+      '**`2`**      → Dark Mode — *feature*',
+      '**`3`**      → Login Crash — *bugfix*',
+      '**`4`**      → Rename Api — *quick-fix*',
+      '**`5`**      → Caching — *cross-cutting*',
+      '**`6`**      → Quiz Competition V1 — *epic*',
+      '**`b/back`** → Return',
     ].join('\n'));
     assert.strictEqual(v.display, undefined, 'the menu is the list — no display beside it');
   });
-
-  it('with no units the menu still offers the baseline and back', () => {
-    const v = manageListView(startDetail(dir));
-    assert.deepStrictEqual(v.rows, []);
-    assert.strictEqual(v.menu, [
-      DOTS,
-      '**`◆ Which work unit?`**',
-      '',
-      '**`a/baseline`** → Start the project baseline assessment',
-      '**`b/back`**     → Return',
-    ].join('\n'));
-  });
-
-  it('labels the baseline option by status', () => {
-    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'researched' } });
-    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Resume the baseline interview/);
-    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
-    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → View or expand the project baseline/);
-    writeProjectBaseline(dir, { status: 'skipped' });
-    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Start the project baseline assessment/);
-    writeProjectBaseline(dir, { status: 'native' });
-    assert.match(manageListView(fullFixture(dir)).menu, /\*\*`a\/baseline`\*\* → Start the project baseline assessment/);
-  });
 });
 
-describe('start projections: baseline rows', () => {
+describe('start projections: the brownfield offer\'s answer (8.S44, 8.12.1)', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('startMenu carries the resume row only while in-progress, ahead of the start options', () => {
-    const bare = startMenu(fullFixture(dir));
-    assert.ok(!bare.keys.some((k) => k.action === 'open_baseline'), 'no baseline row without an assessment');
-
-    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'researched' } });
-    const m = startMenu(fullFixture(dir));
-    const row = m.keys.find((k) => k.action === 'open_baseline');
-    assert.ok(row, 'in-progress renders the resume row');
-    assert.strictEqual(row.key, 'a');
-    assert.strictEqual(row.route, '/leeway-baseline');
-    assert.strictEqual(drawLabel(row.label), 'Resume the baseline interview — *2 areas remaining*');
-    const keys = m.keys.map((k) => k.key);
-    assert.ok(keys.indexOf('a') < keys.indexOf('s'), 'the resume row precedes the start options');
-
-    // Completed baselines manage from m/manage — no row on the populated menu.
-    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
-    assert.ok(!startMenu(fullFixture(dir)).keys.some((k) => k.action === 'open_baseline'));
-  });
-
-  it('emptyMenu carries the resume row in-progress and the view/expand row completed', () => {
-    writeProjectBaseline(dir, { status: 'in-progress', areas: { overview: 'researched' } });
-    const inProgress = emptyMenu(startDetail(dir));
-    const row = inProgress.keys.find((k) => k.action === 'open_baseline');
-    assert.ok(row);
-    assert.strictEqual(drawLabel(row.label), 'Resume the baseline interview — *1 area remaining*');
-
-    writeProjectBaseline(dir, { status: 'completed', areas: { overview: 'completed' } });
-    const completed = emptyMenu(startDetail(dir));
-    assert.strictEqual(drawLabel(completed.keys.find((k) => k.action === 'open_baseline').label), 'View or expand the project baseline');
-
-    // The empty state has no manage row, so a declined baseline rides here —
-    // the only surface a work-free project renders.
-    writeProjectBaseline(dir, { status: 'skipped' });
-    assert.strictEqual(drawLabel(emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_baseline').label), 'Start the project baseline assessment');
-  });
-
-  it('every status reaches the baseline from somewhere: empty state, populated menu, or manage', () => {
-    const reachable = (status, areas) => {
-      writeProjectBaseline(dir, { status, areas });
-      const empty = emptyMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline');
-      const full = fullFixture(dir) && startMenu(startDetail(dir)).keys.some((k) => k.action === 'open_baseline');
-      const manage = manageListView(startDetail(dir)).menu.includes('a/baseline');
-      return { empty, full, manage };
-    };
-    assert.deepStrictEqual(reachable('in-progress', { overview: 'researched' }), { empty: true, full: true, manage: true });
-    assert.deepStrictEqual(reachable('completed', { overview: 'completed' }), { empty: true, full: false, manage: true });
-    assert.deepStrictEqual(reachable('skipped', undefined), { empty: true, full: false, manage: true });
-    assert.deepStrictEqual(reachable('none', undefined), { empty: false, full: false, manage: true });
-    // A native verdict is a project that grew up on the workflows: no row
-    // anywhere but manage, the one way in should it want the assessment.
-    assert.deepStrictEqual(reachable('native', undefined), { empty: false, full: false, manage: true });
+  it('changes no menu: the empty state, the start menu and manage are the same whatever the answer — nothing asks whether to use the workflows, and no answer gates a way into work', () => {
+    const menus = () => ({
+      empty: emptyMenu(startDetail(dir)).rendered,
+      start: startMenu(fullFixture(dir)).rendered,
+      manage: manageListView(startDetail(dir)).menu,
+    });
+    const unanswered = menus();
+    for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
+      cleanupFixture(dir);
+      dir = setupFixture();
+      writeBrownfieldOffer(dir, answer);
+      assert.deepStrictEqual(menus(), unanswered, answer);
+    }
   });
 });
 

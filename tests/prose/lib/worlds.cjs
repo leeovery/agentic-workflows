@@ -433,7 +433,7 @@ const SETTINGS = path.join('.claude', 'settings.json');
 // collected tree ever holds.
 const STAMP_MARKER = path.join('.git', 'prose-stamp.json');
 
-/** @typedef {{baseline: boolean, walkthrough: boolean, settings_created: boolean}} Stamped */
+/** @typedef {{brownfield_offer: boolean, walkthrough: boolean, settings_created: boolean}} Stamped */
 
 /**
  * Write `defaults.tmux_labels: false` into the world's project manifest
@@ -453,13 +453,13 @@ function stampHarnessState(dir) {
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
   // A world grows up on the workflows, and leeway's one-time
-  // baseline judgment would record exactly that — a manifest write and a
+  // brownfield judgment would record exactly that — a manifest write and a
   // commit in every start case's delta. `native` pins the branch shut; a
   // case about the judgment itself stamps its own state in
-  // fixture-state.cjs (`baseline: {}` reads as nothing recorded), which
-  // wins here.
-  const baseline = manifest.baseline === undefined;
-  if (baseline) manifest.baseline = { status: 'native' };
+  // fixture-state.cjs (`brownfield_offer: null` reads as nothing recorded),
+  // which wins here.
+  const brownfield = manifest.brownfield_offer === undefined;
+  if (brownfield) manifest.brownfield_offer = 'native';
   // The same shape for the same reason: leeway's Step 0.3 offers
   // the walkthrough while nothing is recorded, so an unstamped world would
   // meet the offer in every start case that has no business with it.
@@ -480,18 +480,18 @@ function stampHarnessState(dir) {
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
   const sync = syncSessionHooks(dir, { session: false, workflows: true });
   if (sync.error) throw new Error(`cannot seed the project settings: ${sync.error}`);
-  return { baseline, walkthrough, settings_created: settingsCreated };
+  return { brownfield_offer: brownfield, walkthrough, settings_created: settingsCreated };
 }
 
 /** What materialise stamped into a world, per its marker. @param {string} dir @returns {Stamped} */
 function readStampMarker(dir) {
   const file = path.join(dir, STAMP_MARKER);
-  const none = { baseline: false, walkthrough: false, settings_created: false };
+  const none = { brownfield_offer: false, walkthrough: false, settings_created: false };
   if (!fs.existsSync(file)) return none;
   try {
     const marker = JSON.parse(fs.readFileSync(file, 'utf8'));
     return {
-      baseline: Boolean(marker.baseline),
+      brownfield_offer: Boolean(marker.brownfield_offer),
       walkthrough: Boolean(marker.walkthrough),
       settings_created: Boolean(marker.settings_created),
     };
@@ -500,7 +500,7 @@ function readStampMarker(dir) {
 
 /**
  * Reverse the stamp on a collected tree so deltas compare against
- * unstamped snapshots: the manifest's label kill, baseline and walkthrough
+ * unstamped snapshots: the manifest's label kill, brownfield and walkthrough
  * stamps, then the seeded session hooks.
  * @param {Map<string, Buffer>} tree
  * @param {Stamped} stamped  what materialise recorded stamping
@@ -523,7 +523,7 @@ function isExactly(node, status) {
 
 /**
  * Drop `defaults.tmux_labels` when it carries the harness value, drop an
- * emptied `defaults`, drop the baseline and walkthrough stamps only when
+ * emptied `defaults`, drop the brownfield and walkthrough stamps only when
  * materialise stamped them (an answer the walk recorded itself is a real
  * delta the case pins, never a stamp), and drop the manifest entirely when
  * the stamp was all it held.
@@ -538,7 +538,7 @@ function unstampManifest(tree, stamped) {
   if (!manifest || typeof manifest !== 'object' || !manifest.defaults || manifest.defaults.tmux_labels !== false) return;
   delete manifest.defaults.tmux_labels;
   if (Object.keys(manifest.defaults).length === 0) delete manifest.defaults;
-  if (stamped.baseline && isExactly(manifest.baseline, 'native')) delete manifest.baseline;
+  if (stamped.brownfield_offer && manifest.brownfield_offer === 'native') delete manifest.brownfield_offer;
   if (stamped.walkthrough && isExactly(manifest.walkthrough, 'skipped')) delete manifest.walkthrough;
   if (Object.keys(manifest).length === 0) {
     tree.delete(PROJECT_MANIFEST);
@@ -667,7 +667,7 @@ function buildWorld(caseId) {
   // before the workflows' arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
   let stamped = manifestLayered
-    ? { baseline: false, walkthrough: false, settings_created: false }
+    ? { brownfield_offer: false, walkthrough: false, settings_created: false }
     : stampHarnessState(dir);
 
   git('init', '-q', '-b', 'main');

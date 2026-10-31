@@ -1,7 +1,5 @@
 {
-  "baseline": {
-    "status": "native"
-  },
+  "brownfield_offer": "native",
   "work_units": {
     "payments-overhaul": {
       "work_type": "epic"

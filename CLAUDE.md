@@ -76,7 +76,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Phase skills** (`leeway-{phase}-process`) — one per phase after discovery; what each holds is in CONVENTIONS.md (The Phase Skill).
 - **Bridge** (`leeway-bridge`) — where the work goes after a phase concludes, pauses, or leaves its topic.
 - **Capture** (`leeway-log-idea`, `leeway-log-bug`, `leeway-log-quickfix`) — write to the inbox; no steps, no gates.
-- **Project-level** — `leeway-roadmap` (the product roadmap), `leeway-baseline` (the brownfield assessment), `leeway-help` (the walkthrough and reference cards).
+- **Project-level** — `leeway-roadmap` (the product roadmap), `leeway-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/leeway-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
 - **Engine** (`leeway-engine`) — state, derivation and rendering; `leeway-migrate` holds the migrations.
 - **Drivers** (`skills/leeway-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
@@ -88,7 +88,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 `{topic}` is `{work_unit}` for the single-topic types.
 
-- `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, baseline
+- `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, the brownfield offer's answer
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
 - `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
 - `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
@@ -105,7 +105,6 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.workflows/.roadmap/` — the roadmap's notes
 - `.workflows/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
-- `.workflows/.baseline/{area}.md` — the brownfield assessment
 - `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state
 

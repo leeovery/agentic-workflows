@@ -54,7 +54,7 @@ describe('engine boot', () => {
       label_repaired: false,
       session_hooks_installed: false,
       gate_surface: 'unavailable',
-      baseline: 'none',
+      brownfield_offer: 'none',
       walkthrough: 'none',
       github_rule_offer: false,
       github_squash_offer: false,

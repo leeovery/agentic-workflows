@@ -96,7 +96,7 @@ const { gitShortfall } = require('./git-floor.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { dropPosition } = require('./position.cjs');
-const { baselineState, baselineSignal } = require('./baseline.cjs');
+const { brownfieldOffer, baselineSignal } = require('./brownfield.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
@@ -189,9 +189,9 @@ const DIRECTIVE_MARKER = /^---DIRECTIVE: (\S+)---$/m;
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end`, and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`), brief hook (`brief guard`, matcher `Agent|SendMessage`) and shell hook (`shell guard`, matcher `Bash`), for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — leeway shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
- * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (leeway's one-time judgment: native, or the offer)
+ * @property {import('./brownfield.cjs').BrownfieldOffer} brownfield_offer the answer to the brownfield offer from the project manifest — `none` means nothing recorded yet (leeway's one-time judgment: native, or the offer), `accepted` that its research is owed, which the next start resumes
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state leeway's one-time offer keys on
- * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
+ * @property {import('./brownfield.cjs').BaselineSignal|null} [baseline_signal] present only while brownfield_offer is `none` — the repository facts the judgment is made from; null when there is no git history to read
  * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
  */
 
@@ -309,12 +309,12 @@ function boot(cwd, { startAgain = false } = {}) {
   tidyConversations(holdsWaiting);
   launchLateCheck(root, warnings);
 
-  const baseline = baselineState(cwd).status;
+  const brownfield = brownfieldOffer(cwd);
   /** @type {BootResult} */
-  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), brownfield_offer: brownfield, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
-  if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
+  if (brownfield === 'none') result.baseline_signal = baselineSignal(cwd);
   // Not-ready responses carry the system-config report so the calling
   // skill's knowledge gate can branch (reuse the system config, offer a
   // mode choice, or fall back to the terminal wizard) without extra probes.

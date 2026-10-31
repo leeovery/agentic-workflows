@@ -321,7 +321,7 @@ describe('pipeline simulation: epic map', () => {
     // project identities (no directory behind them) validate and answer
     // no-tmux; a phase without its topic, a name that is neither, and an
     // identity carrying a phase refuse.
-    for (const name of [wu, 'roadmap', 'baseline']) {
+    for (const name of [wu, 'roadmap', 'product']) {
       assert.deepStrictEqual(sim.run(['session', 'label', name]), { ok: true, labelled: false, reason: 'no-tmux' });
     }
     sim.refuses(['session', 'label', wu, 'discussion'], /Usage: engine session label <name> \[<phase> <topic>\]/);

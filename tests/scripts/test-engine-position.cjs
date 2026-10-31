@@ -131,7 +131,7 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
     ok(['session', 'label', 'pay']);
     assert.deepStrictEqual(position(), { name: 'pay' });
-    for (const name of ['roadmap', 'baseline']) {
+    for (const name of ['roadmap', 'product']) {
       ok(['session', 'label', name]);
       assert.deepStrictEqual(position(), { name });
     }
@@ -363,7 +363,7 @@ describe('conversation position', () => {
 
   it('names only skills that open a conversation — a phase\'s own, discovery\'s, a project place\'s; none at a work unit\'s menu — each its note sends Claude to carrying the recovery steps', () => {
     const skills = [...VALID_PHASES.map((phase) => skillAt('pay', phase)), ...PROJECT_IDENTITIES.map((name) => skillAt(name))];
-    assert.strictEqual(skills.length, 12);
+    assert.strictEqual(skills.length, 11);
     for (const skill of skills) assert.ok(skill !== null && OPENING_SKILLS.includes(skill), `${skill} is a skill a conversation opens on`);
     const whole = WHOLE.map((phase) => skillAt('pay', phase));
     for (const skill of skills.filter((named) => !whole.includes(named))) {
@@ -641,9 +641,8 @@ describe('conversation position', () => {
     assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/leeway-experiment-process/SKILL.md'), []]);
   });
 
-  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with the product\'s open session\'s log; the baseline its skill alone', () => {
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with the product\'s open session\'s log', () => {
     install('leeway-roadmap');
-    install('leeway-baseline');
     install('leeway-discovery');
     write('.leeway/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
     ok(['session', 'label', 'roadmap']);
@@ -659,10 +658,11 @@ describe('conversation position', () => {
     assert.strictEqual(product.text, discoveryNote('the product\'s conversation', [], '.leeway/.product/sessions/session-003.md'), 'the transcript gone, said in one line');
     const file = transcript();
     assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.leeway/.product/sessions/session-003.md', file));
-    ok(['session', 'label', 'baseline']);
-    const baseline = reads();
-    assert.deepStrictEqual([baseline.skill, baseline.files, baseline.place], [abs('.claude/skills/leeway-baseline/SKILL.md'), [], 'baseline']);
-    assert.strictEqual(baseline.text, note('the project\'s baseline', 'leeway-baseline', []));
+  });
+
+  it('a position left at the baseline, a place the project no longer has, carries nothing on', () => {
+    writePosition({ name: 'baseline' });
+    assert.deepStrictEqual([reads().skill, reads().files], [null, []]);
   });
 
   it('a place no longer open carries nothing on — the work unit gone from this project or closed, the place\'s item closed', () => {

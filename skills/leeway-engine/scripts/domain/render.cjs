@@ -32,16 +32,11 @@ const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, ar
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
-const {
-  baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
-  baselineScopeGate, baselineArea, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
-  baselineOfferGate,
-} = require('./projections/baseline.cjs');
-const { baselineState } = require('./baseline.cjs');
+const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -5776,184 +5771,15 @@ function queryFailureGateSurface(cwd, { file }) {
 }
 
 // ---------------------------------------------------------------------------
-// The baseline surfaces — project-level, no address. Each handler resolves
-// the one BaselineState (domain/baseline.cjs), refuses states the calling
-// prose never reaches, and hands the pure projection its detail.
+// The brownfield offer — project-level, no address, drawn only while the
+// offer is unanswered (domain/brownfield.cjs).
 // ---------------------------------------------------------------------------
 
-/** Resolve baseline state, refusing the never-started states — nothing recorded, or a native verdict. @param {string} cwd @param {string} surface */
-function resolveBaseline(cwd, surface) {
-  const d = baselineState(cwd);
-  if (d.status === 'none' || d.status === 'native') {
-    throw new Error(`render ${surface}: the baseline is "${d.status}" — no assessment has been started`);
-  }
-  return d;
-}
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function baselineProgressSurface(cwd, _args) {
-  const d = resolveBaseline(cwd, 'baseline-progress');
-  if (d.areas.length === 0) {
-    throw new Error('render baseline-progress: the baseline has no areas');
-  }
-  return baselineProgress(d);
-}
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function baselineAreaGateSurface(cwd, { area }) {
-  const d = resolveBaseline(cwd, 'baseline-area-gate');
-  if (!area) throw new Error('render baseline-area-gate: --area is required');
-  const entry = d.areas.find((a) => a.name === area);
-  if (!entry) throw new Error(`render baseline-area-gate: unknown area "${area}"`);
-  if (entry.status !== 'completed') {
-    throw new Error(`render baseline-area-gate: area "${area}" is "${entry.status}", not completed — the gate follows the doc landing`);
-  }
-  if (d.remaining === 0) {
-    throw new Error('render baseline-area-gate: no areas remain — the flow concludes instead of gating');
-  }
-  return baselineAreaGate(d, area);
-}
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function baselinePausedSurface(cwd, _args) {
-  const d = resolveBaseline(cwd, 'baseline-paused');
-  if (d.status !== 'in-progress') {
-    throw new Error(`render baseline-paused: the baseline is "${d.status}", not in-progress`);
-  }
-  return baselinePaused(d);
-}
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function baselineReceiptSurface(cwd, _args) {
-  const d = resolveBaseline(cwd, 'baseline-receipt');
-  if (d.status !== 'completed') {
-    throw new Error(`render baseline-receipt: the baseline is "${d.status}", not completed — the receipt follows the completion write`);
-  }
-  const unlanded = d.areas.filter((a) => a.status !== 'completed');
-  if (unlanded.length > 0) {
-    throw new Error(`render baseline-receipt: area "${unlanded[0].name}" is "${unlanded[0].status}", not completed — a receipt never names a doc that was not landed`);
-  }
-  return baselineReceipt(d);
-}
-
-// An area name doubles as the doc's knowledge-base identity — kebab-case,
-// dot- and slash-free, enforced where the proposal is rendered so an illegal
-// name never survives to the interview.
-const AREA_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
-/** Read + validate a `--file` JSON payload. @param {string} cwd @param {string} surface @param {string|undefined} file @returns {any} */
-function readBaselinePayload(cwd, surface, file) {
-  if (!file) throw new Error(`render ${surface}: --file <payload.json> is required`);
-  let raw;
-  try {
-    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
-  } catch {
-    throw new Error(`render ${surface}: payload file not found: ${file}`);
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`render ${surface}: payload is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function baselineScopeGateSurface(cwd, { file }) {
-  const payload = readBaselinePayload(cwd, 'baseline-scope-gate', file);
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('render baseline-scope-gate: payload must be an object {mode, areas}');
-  }
-  if (payload.mode !== 'fresh' && payload.mode !== 'expand') {
-    throw new Error('render baseline-scope-gate: "mode" must be "fresh" or "expand"');
-  }
-  if (!Array.isArray(payload.areas) || payload.areas.length === 0) {
-    throw new Error('render baseline-scope-gate: "areas" must be a non-empty array of {name, detail}');
-  }
-  for (const [i, a] of payload.areas.entries()) {
-    if (!a || typeof a.name !== 'string' || !AREA_NAME_RE.test(a.name)) {
-      throw new Error(`render baseline-scope-gate: area ${i + 1} "name" must be kebab-case (dot- and slash-free — it is the doc's knowledge-base identity)`);
-    }
-    if (typeof a.detail !== 'string' || a.detail.trim() === '') {
-      throw new Error(`render baseline-scope-gate: area ${i + 1} ("${a.name}") is missing "detail" — one line on what it covers`);
-    }
-  }
-  return baselineScopeGate(payload);
-}
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function baselineAreaSurface(cwd, { file }) {
-  const payload = readBaselinePayload(cwd, 'baseline-area', file);
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('render baseline-area: payload must be an object {area, summary}');
-  }
-  const d = resolveBaseline(cwd, 'baseline-area');
-  const entry = d.areas.find((a) => a.name === payload.area);
-  if (!entry) throw new Error(`render baseline-area: unknown area "${payload.area}"`);
-  if (entry.status !== 'researched') {
-    throw new Error(`render baseline-area: area "${payload.area}" is "${entry.status}", not researched — the interview opens on a researched area`);
-  }
-  if (!isFilled(payload.summary) || payload.summary.includes('\n')) {
-    throw new Error('render baseline-area: "summary" must be one non-empty line — what the area covers and what the questions are after');
-  }
-  return baselineArea(d, payload.area, payload.summary.trim());
-}
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function baselineRoundSurface(cwd, { file }) {
-  const payload = readBaselinePayload(cwd, 'baseline-round', file);
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('render baseline-round: payload must be an object {area, questions}');
-  }
-  const d = resolveBaseline(cwd, 'baseline-round');
-  const entry = d.areas.find((a) => a.name === payload.area);
-  if (!entry) throw new Error(`render baseline-round: unknown area "${payload.area}"`);
-  if (entry.status !== 'researched') {
-    throw new Error(`render baseline-round: area "${payload.area}" is "${entry.status}", not researched — rounds walk a researched area's agenda`);
-  }
-  if (!Array.isArray(payload.questions) || payload.questions.length === 0 || payload.questions.length > 4) {
-    throw new Error('render baseline-round: "questions" must be an array of 1-4 {text, candidates?}');
-  }
-  for (const [i, q] of payload.questions.entries()) {
-    if (!q || typeof q.text !== 'string' || q.text.trim() === '') {
-      throw new Error(`render baseline-round: question ${i + 1} is missing "text"`);
-    }
-    if (q.candidates !== undefined && (!Array.isArray(q.candidates) || q.candidates.length > 4 || q.candidates.some((c) => typeof c !== 'string' || c.trim() === ''))) {
-      throw new Error(`render baseline-round: question ${i + 1} "candidates" must be up to 4 non-empty strings when present`);
-    }
-  }
-  return baselineRound(payload);
-}
-
-/** @param {string} _cwd @param {object} _args @returns {string} */
-function baselineDocGateSurface(_cwd, _args) {
-  return baselineDocGate();
-}
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function baselineManageGateSurface(cwd, _args) {
-  const d = resolveBaseline(cwd, 'baseline-manage-gate');
-  if (d.status !== 'completed') {
-    throw new Error(`render baseline-manage-gate: the baseline is "${d.status}", not completed — manage serves a completed assessment`);
-  }
-  return baselineManageGate();
-}
-
-/** The one-time offer gate — only while nothing is recorded; a native verdict is recorded state and refuses here. @param {string} cwd @param {object} _args @returns {string} */
-function baselineOfferGateSurface(cwd, _args) {
-  const d = baselineState(cwd);
-  if (d.status !== 'none') {
-    throw new Error(`render baseline-offer-gate: the baseline is "${d.status}" — the offer fires once, before anything is recorded`);
-  }
-  return baselineOfferGate();
-}
-
-/** @param {string} cwd @param {object} _args @returns {string} */
-function baselineDocPickSurface(cwd, _args) {
-  const d = resolveBaseline(cwd, 'baseline-doc-pick');
-  if (d.status !== 'completed') {
-    throw new Error(`render baseline-doc-pick: the baseline is "${d.status}", not completed`);
-  }
-  return baselineDocPick(d);
+/** @param {string} cwd @returns {string} */
+function brownfieldOfferGateSurface(cwd) {
+  const answer = brownfieldOffer(cwd);
+  if (answer !== 'none') throw new Error(`render brownfield-offer-gate: the offer's answer is "${answer}" — the offer is made once, while nothing is recorded`);
+  return brownfieldOfferGate();
 }
 
 // ---------------------------------------------------------------------------
@@ -6166,17 +5992,7 @@ const SURFACES = {
   'opener': openerSurface,
   'synthesis-gate': synthesisGateSurface,
   'query-failure-gate': queryFailureGateSurface,
-  'baseline-progress': baselineProgressSurface,
-  'baseline-area-gate': baselineAreaGateSurface,
-  'baseline-paused': baselinePausedSurface,
-  'baseline-receipt': baselineReceiptSurface,
-  'baseline-scope-gate': baselineScopeGateSurface,
-  'baseline-area': baselineAreaSurface,
-  'baseline-round': baselineRoundSurface,
-  'baseline-doc-gate': baselineDocGateSurface,
-  'baseline-manage-gate': baselineManageGateSurface,
-  'baseline-doc-pick': baselineDocPickSurface,
-  'baseline-offer-gate': baselineOfferGateSurface,
+  'brownfield-offer-gate': brownfieldOfferGateSurface,
   'walkthrough-offer': walkthroughOfferSurface,
   'walkthrough-screen': walkthroughScreenSurface,
   'walkthrough-home': walkthroughHomeSurface,

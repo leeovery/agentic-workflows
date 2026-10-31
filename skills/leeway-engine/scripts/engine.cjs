@@ -93,7 +93,7 @@ const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { leaveNext } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
-const baseline = require('./domain/baseline.cjs');
+const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
@@ -285,7 +285,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
   inbox delete <path> [<path> …]
-  baseline record <native|skipped>
+  brownfield record <native|skipped|accepted|completed>
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
   ${TOPIC_HANDOFF_USAGE}
@@ -434,17 +434,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json>
   render synthesis-gate
   render query-failure-gate --file <payload.json>
-  render baseline-progress
-  render baseline-area-gate --area <name>
-  render baseline-paused
-  render baseline-receipt
-  render baseline-scope-gate --file <payload.json>
-  render baseline-area --file <payload.json>
-  render baseline-round --file <payload.json>
-  render baseline-doc-gate
-  render baseline-manage-gate
-  render baseline-doc-pick
-  render baseline-offer-gate
+  render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
   render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
   render walkthrough-home
@@ -1468,27 +1458,29 @@ function runInbox(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// baseline, walkthrough — the project's two one-time records
-// (domain/baseline.cjs, domain/walkthrough.cjs). Each answers a question
+// brownfield, walkthrough — the project's two one-time records
+// (domain/brownfield.cjs, domain/walkthrough.cjs). Each answers a question
 // leeway asks once, writes one field on the project manifest, and
 // commits it confined in the same call.
 // ---------------------------------------------------------------------------
 
+const BROWNFIELD_USAGE = 'Usage: engine brownfield record <native|skipped|accepted|completed>';
+
 /**
- * `baseline record <native|skipped>` — leeway's one-time verdict,
- * written and committed in one confined transaction.
+ * `brownfield record <native|skipped|accepted|completed>` — the brownfield
+ * offer's answer, written and committed in one confined transaction.
  * @param {Call} call @param {string[]} argv
  */
-function runBaseline(call, argv) {
+function runBrownfield(call, argv) {
   const [command, ...rest] = argv;
   const { cwd } = call;
   try {
     if (command === 'record') {
-      if (rest.length !== 1) throw new Error('Usage: engine baseline record <native|skipped>');
-      respond(call, baseline.recordBaselineVerdict(cwd, rest[0]));
+      if (rest.length !== 1) throw new Error(BROWNFIELD_USAGE);
+      respond(call, brownfield.recordBrownfield(cwd, rest[0]));
       return;
     }
-    throw new Error(`Unknown baseline command: ${command}. Usage: engine baseline record <native|skipped>`);
+    throw new Error(`Unknown brownfield command: ${command}. ${BROWNFIELD_USAGE}`);
   } catch (err) {
     failJson(call, err);
   }
@@ -2439,7 +2431,7 @@ const COMMANDS = Object.freeze({
   brief: runBrief,
   inbox: runInbox,
   roadmap: runRoadmap,
-  baseline: runBaseline,
+  brownfield: runBrownfield,
   walkthrough: runWalkthrough,
   cache: runCache,
   agent: runAgent,

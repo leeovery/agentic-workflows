@@ -791,10 +791,9 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('leeway-continue-epic'), []);
   });
 
-  it('accepts discovery, the roadmap and the baseline, where a handoff lands their own work', () => {
+  it('accepts discovery and the roadmap, where a handoff lands their own work', () => {
     assert.deepEqual(cases.entryErrors('leeway-discovery'), []);
     assert.deepEqual(cases.entryErrors('leeway-roadmap'), []);
-    assert.deepEqual(cases.entryErrors('leeway-baseline'), []);
   });
 
   it('rejects help — only ever opened in place, from the start menu\'s own row', () => {

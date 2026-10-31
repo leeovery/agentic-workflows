@@ -2,10 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // What boot reads of the project for the start menu
-// (leeway-engine/scripts/domain/boot.cjs): the baseline's status, a moved
-// project's remembered brownfield answer standing for it, the
-// walkthrough's recorded answer, and the baseline signal — the code history
-// from before the workflows arrived; and no worktree include written.
+// (leeway-engine/scripts/domain/boot.cjs): the brownfield offer's answer,
+// the walkthrough's recorded answer, and the baseline signal — the code
+// history from before the workflows arrived; and no worktree include written.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
 // with its state worktree and the workflows' hooks, made once per process and
@@ -33,43 +32,23 @@ describe('engine boot', () => {
   beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
+  it('brownfield_offer: a recorded answer — a moved project\'s among them — reads as itself, so boot hands over no signal and the judgment and the offer are not made again; accepted stands for the research owed (21.S50, 8.S78, 8.12.11)', () => {
     const projManifest = statePath(fix.project, layout.projectManifest);
 
-    for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
-      fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
-      const res = runEngine(stubbed, fix.project, ['boot']);
-      assert.strictEqual(res.baseline, status);
-      // A recorded verdict is never re-judged, so the signal travels only with `none`.
-      assert.ok(!('baseline_signal' in res), `${status}: no signal once a status is recorded`);
-    }
-
-    // Unrecognised value → none (the judgment-eligible default), signal attached.
-    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
-    const weird = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(weird.baseline, 'none');
-    assert.strictEqual(weird.baseline_signal.commits_total, 2);
-
-    // An object with nothing recorded → none.
-    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
-
-    // Malformed field shape → none.
-    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: 'in-progress' }));
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
-
-    // No project manifest at all → none.
-    fs.rmSync(projManifest);
-    assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).baseline, 'none');
-  });
-
-  it('baseline: a moved project\'s remembered brownfield answer reads as its status, so boot hands over no signal and the judgment and the offer are not made again (21.S50, 8.12.11)', () => {
-    const projManifest = statePath(fix.project, layout.projectManifest);
-
-    for (const answer of ['native', 'skipped', 'completed']) {
+    for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, brownfield_offer: answer }));
       const res = runEngine(stubbed, fix.project, ['boot']);
-      assert.deepStrictEqual([res.baseline, 'baseline_signal' in res], [answer, false], answer);
+      assert.deepStrictEqual([res.brownfield_offer, 'baseline_signal' in res], [answer, false], answer);
+    }
+  });
+
+  it('brownfield_offer: nothing recorded — no field, an unrecognised value, a malformed one, no project manifest — reads none, the signal attached', () => {
+    const projManifest = statePath(fix.project, layout.projectManifest);
+    for (const project of [{ work_units: {} }, { work_units: {}, brownfield_offer: 'in-progress' }, { work_units: {}, brownfield_offer: { status: 'native' } }, null]) {
+      if (project === null) fs.rmSync(projManifest);
+      else fs.writeFileSync(projManifest, JSON.stringify(project));
+      const res = runEngine(stubbed, fix.project, ['boot']);
+      assert.deepStrictEqual([res.brownfield_offer, res.baseline_signal?.commits_total], ['none', 2], JSON.stringify(project));
     }
   });
 
@@ -86,11 +65,11 @@ describe('engine boot', () => {
       assert.strictEqual(runEngine(stubbed, fix.project, ['boot']).walkthrough, 'none', JSON.stringify(walkthrough));
     }
 
-    // The two one-time records are independent: a recorded baseline says
-    // nothing about the offer, and vice versa.
-    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'native' }, walkthrough: { status: 'skipped' } }));
+    // The two one-time records are independent: a recorded brownfield answer
+    // says nothing about the walkthrough's offer, and vice versa.
+    fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, brownfield_offer: 'native', walkthrough: { status: 'skipped' } }));
     const both = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(both.baseline, 'native');
+    assert.strictEqual(both.brownfield_offer, 'native');
     assert.strictEqual(both.walkthrough, 'skipped');
 
     fs.rmSync(projManifest);
@@ -131,7 +110,7 @@ describe('engine boot', () => {
 
     // No state yet — the workflows arriving now: the whole history predates
     // them, and the tree is HEAD's.
-    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/baseline.cjs'));
+    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
     assert.deepStrictEqual(baselineSignal(project), {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
@@ -144,7 +123,7 @@ describe('engine boot', () => {
     createFile(project, 'src/later.js', 'export const y = 3;\n');
     commit('after the workflows', '2025-10-01');
     const res = runEngine(stubbed, project, ['boot']);
-    assert.strictEqual(res.baseline, 'none');
+    assert.strictEqual(res.brownfield_offer, 'none');
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
@@ -250,10 +229,10 @@ describe('engine boot', () => {
     createFile(empty, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
     fs.chmodSync(path.join(empty, '.git/hooks/pre-commit'), 0o755);
     const res = runEngine(stubbed, empty, ['boot']);
-    assert.strictEqual(res.baseline, 'none');
+    assert.strictEqual(res.brownfield_offer, 'none');
     assert.strictEqual(res.baseline_signal, null);
 
-    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/baseline.cjs'));
+    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
     const plain = path.join(fix.root, 'plain');
     fs.mkdirSync(plain, { recursive: true });
     assert.strictEqual(baselineSignal(plain), null);
@@ -272,19 +251,15 @@ describe('engine boot', () => {
   });
 
   it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
-    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {}, baseline: {} }));
+    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {} }));
     const res = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(res.knowledge, 'not-ready');
-    assert.strictEqual(res.baseline, 'none');
-    assert.strictEqual(res.baseline_signal.commits_total, 2, 'the fixture\'s code commits');
+    assert.deepStrictEqual([res.knowledge, res.brownfield_offer, res.baseline_signal.commits_total], ['not-ready', 'none', 2]);
   });
 
-  it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
-    fs.writeFileSync(statePath(fix.project, layout.projectManifest),
-      JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
+  it('brownfield_offer: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
+    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
     const res = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(res.knowledge, 'not-ready');
-    assert.strictEqual(res.baseline, 'in-progress');
+    assert.deepStrictEqual([res.knowledge, res.brownfield_offer], ['not-ready', 'accepted']);
   });
 });
 

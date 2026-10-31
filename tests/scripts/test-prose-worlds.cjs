@@ -105,12 +105,12 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     try {
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST), JSON.stringify({ work_units: {} }, null, 2) + '\n');
       const stamped = worlds.stampHarnessState(dir);
-      assert.deepStrictEqual(stamped, { baseline: true, walkthrough: true, settings_created: true });
+      assert.deepStrictEqual(stamped, { brownfield_offer: true, walkthrough: true, settings_created: true });
       const tree = worlds.collectTree(dir);
       assert.deepStrictEqual(manifestOf(tree), {
         work_units: {},
         defaults: { tmux_labels: false },
-        baseline: { status: 'native' },
+        brownfield_offer: 'native',
         walkthrough: { status: 'skipped' },
       });
       worlds.unstampHarnessState(tree, stamped);
@@ -120,23 +120,23 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     }
   });
 
-  it('a fixture holding `baseline: {}` is not stamped, so a verdict the walk records survives the strip', () => {
+  it('a fixture holding `brownfield_offer: null` is not stamped, so a verdict the walk records survives the strip', () => {
     const dir = scratch();
     try {
-      fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST), JSON.stringify({ work_units: {}, baseline: {} }, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST), JSON.stringify({ work_units: {}, brownfield_offer: null }, null, 2) + '\n');
       const stamped = worlds.stampHarnessState(dir);
-      assert.deepStrictEqual(stamped, { baseline: false, walkthrough: true, settings_created: true });
+      assert.deepStrictEqual(stamped, { brownfield_offer: false, walkthrough: true, settings_created: true });
       // The walk records its verdict.
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({
           work_units: {},
           defaults: { tmux_labels: false },
-          baseline: { status: 'native' },
+          brownfield_offer: 'native',
           walkthrough: { status: 'skipped' },
         }, null, 2) + '\n');
       const tree = worlds.collectTree(dir);
       worlds.unstampHarnessState(tree, stamped);
-      assert.deepStrictEqual(manifestOf(tree), { work_units: {}, baseline: { status: 'native' } },
+      assert.deepStrictEqual(manifestOf(tree), { work_units: {}, brownfield_offer: 'native' },
         'the recorded verdict is a real delta, never mistaken for the stamp');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -149,20 +149,20 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({ work_units: {}, walkthrough: {} }, null, 2) + '\n');
       const stamped = worlds.stampHarnessState(dir);
-      assert.deepStrictEqual(stamped, { baseline: true, walkthrough: false, settings_created: true });
+      assert.deepStrictEqual(stamped, { brownfield_offer: true, walkthrough: false, settings_created: true });
       // The walk skips the offer — the same status the stamp would have
       // written, which is exactly why the marker decides and not the value.
       fs.writeFileSync(path.join(dir, worlds.PROJECT_MANIFEST),
         JSON.stringify({
           work_units: {},
           defaults: { tmux_labels: false },
-          baseline: { status: 'native' },
+          brownfield_offer: 'native',
           walkthrough: { status: 'skipped' },
         }, null, 2) + '\n');
       const tree = worlds.collectTree(dir);
       worlds.unstampHarnessState(tree, stamped);
       assert.deepStrictEqual(manifestOf(tree), { work_units: {}, walkthrough: { status: 'skipped' } },
-        'the recorded answer is a real delta, and the baseline stamp still goes');
+        'the recorded answer is a real delta, and the brownfield stamp still goes');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -173,12 +173,12 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     // and a record grown a second field is no longer the stamp either.
     const tree = new Map([[worlds.PROJECT_MANIFEST, Buffer.from(JSON.stringify({
       defaults: { tmux_labels: false },
-      baseline: { status: 'native', areas: {} },
+      brownfield_offer: 'accepted',
       walkthrough: { status: 'walked' },
     }, null, 2) + '\n')]]);
-    worlds.unstampHarnessState(tree, { baseline: true, walkthrough: true, settings_created: false });
+    worlds.unstampHarnessState(tree, { brownfield_offer: true, walkthrough: true, settings_created: false });
     assert.deepStrictEqual(JSON.parse(tree.get(worlds.PROJECT_MANIFEST).toString('utf8')), {
-      baseline: { status: 'native', areas: {} },
+      brownfield_offer: 'accepted',
       walkthrough: { status: 'walked' },
     });
   });
@@ -235,7 +235,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
         env: { EDITOR: 'vim' },
       });
       tree = worlds.collectTree(dir);
-      worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: false });
+      worlds.unstampHarnessState(tree, { brownfield_offer: false, walkthrough: false, settings_created: false });
       assert.deepStrictEqual(settingsOf(tree), {
         permissions: PERMISSIONS,
         hooks: { SessionEnd: [{ hooks: [FOREIGN_HOOK] }] },
@@ -245,13 +245,13 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       // A harness-created file the walk filled stays, minus our hooks.
       writeSettings(dir, { permissions: PERMISSIONS, hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: PRESENCE_HOOK }] }] } });
       tree = worlds.collectTree(dir);
-      worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: true });
+      worlds.unstampHarnessState(tree, { brownfield_offer: false, walkthrough: false, settings_created: true });
       assert.deepStrictEqual(settingsOf(tree), { permissions: PERMISSIONS }, 'the permission edit is a real delta');
 
       // A file holding none of ours is not rewritten — not even its bytes.
       const untouched = Buffer.from('{"permissions": {"allow": []}}\n');
       tree = new Map([[worlds.SETTINGS, untouched]]);
-      worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: false });
+      worlds.unstampHarnessState(tree, { brownfield_offer: false, walkthrough: false, settings_created: false });
       assert.strictEqual(tree.get(worlds.SETTINGS), untouched);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -261,7 +261,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   it('a settings file the harness cannot parse makes the strip throw, never silently keep the seeded hooks', () => {
     const tree = new Map([[worlds.SETTINGS, Buffer.from('{not json')]]);
     assert.throws(
-      () => worlds.unstampHarnessState(tree, { baseline: false, walkthrough: false, settings_created: true }),
+      () => worlds.unstampHarnessState(tree, { brownfield_offer: false, walkthrough: false, settings_created: true }),
       /cannot strip the session hooks: .*not valid JSON/);
   });
 

@@ -78,7 +78,6 @@ const DRAWN = Object.freeze({
 
 /** A path in each of today's places, and the place's path. */
 const TODAYS = Object.freeze({
-  '.baseline/.state/agenda-api.md': '.baseline',
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   'pay/implementation/auth/review-tasks-c1.md': '{unit}/implementation/{topic}',
   'pay/review/auth/report.md': '{unit}/review/{topic}',
@@ -95,12 +94,12 @@ const OUTSIDE = Object.freeze([
   'notes.md', '.ledger.jsonl.bak', 'manifest.json.bak', '.tmp/notes.md',
   '.inbox/2026-10-30--smart-retry.md', '.inbox/ideas/smart-retry.md', '.inbox/notes/2026-10-30--smart-retry.md', '.inbox/.archived/2026-10-30--smart-retry.md',
   '.product/notes.md', '.product/sessions/notes.md', '.product/notes/smart-retry.md', '.product/spikes/pricing-page/index.html',
-  '.state/notes.md',
+  '.state/notes.md', '.baseline/overview.md',
   'pay/notes.md', 'pay/scratch/notes.md', 'pay/discovery/notes.md', 'pay/topics/auth.md', 'pay/topics/auth/notes.md', 'pay/topics/auth/mail/retry-policy.md',
   'pay/topics/auth/experiments/notes.md', 'pay/topics/auth/experiments/E1-token-cost/notes.md', 'pay/topics/auth/experiments/E1-token-cost/E1.1-cold-start/notes.md',
   'pay/spikes/checkout/index.html', 'pay/build/notes/today.md', 'pay/build/tasks/notes.md', 'pay/build/tasks/1.2/notes.md', 'pay/build/phases/phase-1/notes.md',
   'pay/build/runs/3.S2/notes.json', 'pay/review/notes.md',
-  '.cache', '.knowledge', 'pay/assets', 'pay/seeds', 'pay/spikes/001-checkout', 'pay/topics/auth/experiments/E1-token-cost/data', '.baseline', 'pay/imports',
+  '.cache', '.knowledge', 'pay/assets', 'pay/seeds', 'pay/spikes/001-checkout', 'pay/topics/auth/experiments/E1-token-cost/data', 'pay/imports',
   'Pay/spec.md', 'pay/topics/a.b/log.md', 'pay/discovery/session-1.md', 'pay/build/tasks/1.md', 'pay/build/tasks/0.2.md', 'pay/build/runs/3.s2/run-001.json', 'pay/review/round-0.md',
   '.inbox/ideas/30-10-2026--smart-retry.md', '.inbox/ideas/today--smart-retry.md', '.inbox/ideas/2026-10-30--smart_retry.md', 'pay/build/phases/phase-1/check_out-a.md',
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',

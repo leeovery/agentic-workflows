@@ -27,7 +27,6 @@ const PHASE_WORDS: ReadonlyMap<string, string> = new Map([
 /** What the project-level places' work is, as the spinner says it. */
 const PLACE_WORDS: ReadonlyMap<string, string> = new Map([
   ['roadmap', 'Roadmapping'],
-  ['baseline', 'Assessing'],
   ['product', 'Shaping'],
 ])
 

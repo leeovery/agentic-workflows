@@ -1,5 +1,18 @@
 'use strict';
 
+// ---------------------------------------------------------------------------
+// The brownfield offer (leeway-engine/scripts/domain/brownfield.cjs):
+// `brownfield record`, the offer's answer written and committed confined to
+// the project manifest — native, skipped or accepted once, while nothing is
+// recorded, and completed once an accepted offer's research has landed
+// (8.12.11, 8.12.13) — and the baseline signal, the code history from before
+// the workflows arrived, read across the project's repos (8.12.10).
+//
+// Layer: git. World: the project fixture for the verb; plain repositories
+// the test commits into, with dated commits and a state begun at a date, for
+// the signal.
+// ---------------------------------------------------------------------------
+
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
@@ -10,94 +23,81 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { datedAt } = require('./discovery-test-utils.cjs');
+const { datedAt, createFile: writeFile, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { createState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
 
-const { git, stateGit, commitAll } = harness;
+const { git, stateGit, commitAll, refusedPristine } = harness;
 
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
-}
-const run = (dir, args) => harness.ok(dir, args);
-function refuses(dir, args, pattern) {
-  const parsed = harness.refuses(dir, args);
-  assert.match(parsed.error, pattern);
-  return parsed;
-}
-function projectManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
-}
+/** The project manifest as it stands on disk. @param {string} dir */
+const projectManifest = (dir) => JSON.parse(readState(dir, layout.projectManifest));
 
-describe('engine baseline record', () => {
+/** The subject of the state branch's last commit. @param {string} dir */
+const lastSubject = (dir) => stateGit(dir, ['log', '-1', '--pretty=%s']).trim();
+
+describe('engine brownfield record', () => {
   let dir;
   beforeEach(() => {
-    dir = harness.setupGitFixture('engine-baseline-');
-    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeFile(dir, '.leeway/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
-    writeFile(dir, '.leeway/pay/investigation/pay.md', '# Investigation\n');
+    dir = harness.setupGitFixture('engine-brownfield-');
+    writeState(dir, layout.projectManifest, JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeState(dir, layout.manifest('pay'), '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
+    writeState(dir, 'pay/summary.md', '# Summary\n');
     commitAll(dir, 'init');
   });
   afterEach(() => harness.cleanupFixture(dir));
 
-  it('native: writes the verdict and commits it on the state branch, confined to the project manifest — a peer session\'s dirt never rides', () => {
-    // A peer mid-write: an untracked spec and a modified investigation.
-    writeFile(dir, '.leeway/pay/spec.md', 'peer scratch\n');
-    writeFile(dir, '.leeway/pay/investigation/pay.md', '# Investigation\n\npeer session dirt\n');
+  it('native: writes the answer and commits it on the state branch, confined to the project manifest — a peer session\'s dirt never rides', () => {
+    writeState(dir, 'pay/spec.md', 'peer scratch\n');
+    writeState(dir, 'pay/summary.md', '# Summary\n\npeer session dirt\n');
 
-    const res = run(dir, ['baseline', 'record', 'native']);
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.status, 'native');
+    const res = harness.ok(dir, ['brownfield', 'record', 'native']);
+    assert.deepStrictEqual(res, { ok: true, answer: 'native', committed: res.committed });
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'native' });
-    assert.deepStrictEqual(projectManifest(dir).work_units, { pay: { work_type: 'feature' } }, 'sibling keys survive');
-
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: the project grew up on the workflows');
-    const landed = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.deepStrictEqual(landed, ['manifest.json']);
+    assert.deepStrictEqual(projectManifest(dir), { work_units: { pay: { work_type: 'feature' } }, brownfield_offer: 'native' });
+    assert.strictEqual(lastSubject(dir), 'brownfield: the project grew up on the workflows');
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean), ['manifest.json']);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'the default branch takes no state commit');
-    const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
-    assert.ok(status.some((l) => l.startsWith('?? ') && l.includes('pay/spec.md')), `the peer's untracked spec is still untracked:\n${status.join('\n')}`);
-    assert.ok(status.some((l) => l.startsWith(' M ') && l.includes('investigation/pay.md')), `the peer's modified investigation is still dirty:\n${status.join('\n')}`);
+    const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort();
+    assert.deepStrictEqual(status, [' M pay/summary.md', '?? pay/spec.md'], 'the peer\'s files are as it left them');
   });
 
-  it('skipped: the decline, with its own message', () => {
-    const res = run(dir, ['baseline', 'record', 'skipped']);
-    assert.strictEqual(res.status, 'skipped');
-    assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'skipped' });
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: decline the assessment offer');
-  });
-
-  it('refuses any other value, and refuses once anything is recorded — the judgment happens once', () => {
-    refuses(dir, ['baseline', 'record', 'bananas'], /one of native, skipped — got "bananas"/);
-    refuses(dir, ['baseline', 'record'], /Usage: engine baseline record/);
-    refuses(dir, ['baseline', 'nope'], /Unknown baseline command/);
-    assert.strictEqual(projectManifest(dir).baseline, undefined, 'a refused verdict writes nothing');
-
-    run(dir, ['baseline', 'record', 'native']);
-    refuses(dir, ['baseline', 'record', 'skipped'], /the baseline is "native" — the verdict is recorded once/);
-    refuses(dir, ['baseline', 'record', 'native'], /recorded once/);
-    for (const status of ['in-progress', 'completed', 'skipped']) {
-      const m = projectManifest(dir);
-      m.baseline = { status, areas: { overview: 'completed' } };
-      writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
-      refuses(dir, ['baseline', 'record', 'native'], new RegExp(`the baseline is "${status}"`));
+  it('skipped and accepted answer the offer too, each under its own message', () => {
+    for (const [answer, subject] of [['skipped', 'brownfield: decline the research offer'], ['accepted', 'brownfield: accept the research offer']]) {
+      writeState(dir, layout.projectManifest, JSON.stringify({ work_units: {} }) + '\n');
+      commitAll(dir, `reset for ${answer}`);
+      assert.strictEqual(harness.ok(dir, ['brownfield', 'record', answer]).answer, answer);
+      assert.deepStrictEqual([projectManifest(dir).brownfield_offer, lastSubject(dir)], [answer, subject]);
     }
   });
 
-  it('a nothing-recorded object and a missing project manifest both take the verdict', () => {
-    const m = projectManifest(dir);
-    m.baseline = {};
-    writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    commitAll(dir, 'nothing recorded');
-    run(dir, ['baseline', 'record', 'native']);
-    assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'native' });
+  it('completed follows accepted, once its research has landed (8.12.13)', () => {
+    harness.ok(dir, ['brownfield', 'record', 'accepted']);
+    assert.strictEqual(harness.ok(dir, ['brownfield', 'record', 'completed']).answer, 'completed');
+    assert.deepStrictEqual([projectManifest(dir).brownfield_offer, lastSubject(dir)], ['completed', 'brownfield: the research landed']);
+  });
 
-    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
+  it('refuses any other value, and any answer out of order — the offer is answered once, and only an accepted one completes', () => {
+    refusedPristine(dir, ['brownfield', 'record', 'in-progress'], /the answer is one of native, skipped, accepted, completed — got "in-progress"/);
+    refusedPristine(dir, ['brownfield', 'record'], /^Usage: engine brownfield record <native\|skipped\|accepted\|completed>$/);
+    refusedPristine(dir, ['brownfield', 'nope'], /^Unknown brownfield command: nope\. Usage: engine brownfield record/);
+    refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "none" — completed follows "accepted"$/);
+
+    harness.ok(dir, ['brownfield', 'record', 'accepted']);
+    for (const answer of ['native', 'skipped', 'accepted']) {
+      refusedPristine(dir, ['brownfield', 'record', answer], new RegExp(`the offer's answer is "accepted" — ${answer} follows nothing recorded$`));
+    }
+    harness.ok(dir, ['brownfield', 'record', 'completed']);
+    refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "completed" — completed follows "accepted"$/);
+
+    writeState(dir, layout.projectManifest, JSON.stringify({ work_units: {}, brownfield_offer: 'skipped' }) + '\n');
+    commitAll(dir, 'declined');
+    refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "skipped" — completed follows "accepted"$/);
+  });
+
+  it('a missing project manifest takes an answer', () => {
+    fs.rmSync(statePath(dir, layout.projectManifest));
     commitAll(dir, 'drop the project manifest');
-    const res = run(dir, ['baseline', 'record', 'skipped']);
-    assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'skipped' });
+    const res = harness.ok(dir, ['brownfield', 'record', 'skipped']);
+    assert.strictEqual(projectManifest(dir).brownfield_offer, 'skipped');
     assert.match(res.committed, /^[0-9a-f]+$/);
   });
 });
@@ -117,11 +117,11 @@ function bareProject(prefix) {
 }
 
 describe('the baseline signal across the project\'s repos', () => {
-  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/baseline.cjs');
+  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
   let dir;
   let api;
   beforeEach(() => {
-    dir = bareProject('engine-baseline-repos-');
+    dir = bareProject('engine-brownfield-repos-');
     writeFile(dir, '.gitignore', 'api/\n.leeway/\n');
     writeFile(dir, 'README.md', '# Project\n');
     api = harness.initRepo(path.join(dir, 'api'));
@@ -206,31 +206,31 @@ describe('the baseline signal across the project\'s repos', () => {
 
 describe('the baseline signal\'s failures', () => {
   const reposModule = require.resolve('../../skills/leeway-engine/scripts/kernel/repos.cjs');
-  const baselineModule = require.resolve('../../skills/leeway-engine/scripts/domain/baseline.cjs');
+  const brownfieldModule = require.resolve('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
 
   it('throws a failure that is no git read — only a failed git read nulls the signal', () => {
-    const dir = harness.setupGitFixture('engine-baseline-bug-');
+    const dir = harness.setupGitFixture('engine-brownfield-bug-');
     const repos = require(reposModule);
     const projectRepos = repos.projectRepos;
     // A repo list with no root: the signal's own code then reads a property of undefined.
     repos.projectRepos = () => [];
-    delete require.cache[baselineModule];
+    delete require.cache[brownfieldModule];
     try {
-      const { baselineSignal } = require(baselineModule);
+      const { baselineSignal } = require(brownfieldModule);
       assert.throws(() => baselineSignal(dir), TypeError);
     } finally {
       repos.projectRepos = projectRepos;
-      delete require.cache[baselineModule];
+      delete require.cache[brownfieldModule];
       harness.cleanupFixture(dir);
     }
   });
 });
 
 describe('the baseline signal of a project inside a larger repository', () => {
-  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/baseline.cjs');
+  const { baselineSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
   let dir;
   beforeEach(() => {
-    dir = bareProject('engine-baseline-nested-');
+    dir = bareProject('engine-brownfield-nested-');
     writeFile(dir, '.gitignore', '.leeway/\n');
   });
   afterEach(() => harness.cleanupFixture(dir));

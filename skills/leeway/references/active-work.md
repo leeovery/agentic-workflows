@@ -39,10 +39,6 @@ Invoke the entry's stored `route` (e.g. `/leeway-continue-linear {work_unit}`).
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
-#### If `action` is `open_baseline`
-
-→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
-
 #### If `action` is `open_product`
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none none`.

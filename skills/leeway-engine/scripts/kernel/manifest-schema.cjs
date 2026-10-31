@@ -208,10 +208,9 @@ const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 const PRODUCT = 'product';
 
 // The project-level places with no work unit, named by identity alone:
-// `baseline` is the baseline's place; `roadmap` is the product-roadmap
-// layer's (the project manifest's `roadmap` node); `product` the product's
-// conversation.
-const PROJECT_IDENTITIES = ['baseline', 'roadmap', PRODUCT];
+// `roadmap` is the product-roadmap layer's (the project manifest's `roadmap`
+// node); `product` the product's conversation.
+const PROJECT_IDENTITIES = ['roadmap', PRODUCT];
 
 // The literal a skill takes in an argument's place where it has nothing to
 // name there — no work type, no work unit, no inbox seeds.

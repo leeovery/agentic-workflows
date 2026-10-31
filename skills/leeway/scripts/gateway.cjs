@@ -119,7 +119,6 @@ function view() {
   dataLines.push(`inbox_count: ${detail.state.inbox_count}`);
   dataLines.push(`completed_count: ${detail.completed_count}`);
   dataLines.push(`cancelled_count: ${detail.cancelled_count}`);
-  dataLines.push(`baseline: ${detail.baseline.status}`);
   dataLines.push(...engine.project.actionsTable(['action', 'work_unit', '→ route'], menu.keys, (k) => [
     k.action, k.work_unit || '—', `→ ${k.route || '(internal)'}`, ...(k.pre_seed ? [`(pre_seed: ${k.pre_seed})`] : []),
   ]));

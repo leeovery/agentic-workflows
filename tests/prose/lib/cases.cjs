@@ -40,7 +40,7 @@
 // real session starts — one of the engine's OPENING_SKILLS:
 // `leeway` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
-// roadmap, the baseline. Nothing else is a legitimate opening — help, the
+// roadmap. Nothing else is a legitimate opening — help, the
 // linear continue menu and the bridge are only ever opened in place,
 // mid-session, and a reference is never entered directly. A case about help enters at leeway and picks the start
 // menu's `h/help` row.

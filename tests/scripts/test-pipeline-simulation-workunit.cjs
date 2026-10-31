@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, enterEntry, handoff, discussed } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, menuEntry, handoffEntry, enterEntry, discussed } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -214,19 +214,13 @@ describe('pipeline simulation: workunit', () => {
     assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
-    // the project manifest, `baseline` and `roadmap` are the project's own
+    // the project manifest, `product` and `roadmap` are the project's own
     // places.
     sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
-    sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
+    sim.refuses(['workunit', 'create', 'product', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
 
-    // The project baseline labels the terminal on arrival, then walks its
-    // lifecycle on the project manifest, and each render surface serves its
-    // prescribed moment: the offer only while
-    // nothing is recorded, then the progress map and area gate mid-interview,
-    // the pause receipt, the doc list and completion receipt once every area
-    // lands. A native verdict is a recorded state like any other: the offer
-    // refuses over it, and the mid-flight surfaces read it as never started.
+    // Start's gates render at any state, each at its own moment.
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /Use the existing configuration for this project\?[\s\S]*openai ·\s+text-embedding-3-small/);
@@ -250,66 +244,8 @@ describe('pipeline simulation: workunit', () => {
     sim.refuses(['render', 'archived-actions'], /--path is required/);
     sim.refuses(['render', 'archived-delete-gate', '--path', '.leeway/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
     sim.refuses(['render', 'archived-actions', '--path', '.leeway/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
-    assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
-    // The offer's yes hands off to the assessment. Carried by the gate mod,
-    // the handoff clears into a fresh conversation, whose first engine call
-    // is the assessment's label: it marks the conversation and records the
-    // place, so the conversation carries on there.
-    assert.strictEqual(handoff(sim, '/leeway-baseline').line, '→ Baseline');
-    sim.handOver();
-    assert.ok(!fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID)), 'no call has marked the fresh conversation');
-    arrive(sim, 'baseline');
-    assert.ok(fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, 'workflow')), 'the label marked the fresh conversation');
-    assert.match(carryOn(sim).text, /^The conversation was just compacted\. This conversation is working in the project's baseline\./);
-    sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);
-    const verdict = sim.run(['baseline', 'record', 'native']);
-    assert.match(verdict.committed, /^[0-9a-f]+$/, 'the verdict commits in the same call');
-    assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'native');
-    sim.refuses(['baseline', 'record', 'skipped'], /recorded once/);
-    sim.refuses(['render', 'baseline-offer-gate'], /the offer fires once/);
-    sim.refuses(['render', 'baseline-progress'], /no assessment has been started/);
-    sim.run(['manifest', 'set', 'project.baseline.status', 'in-progress']);
-    assert.strictEqual(sim.read(['manifest', 'get', 'project.baseline.status']), 'in-progress');
-    sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'pending']);
-    sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'pending']);
-    sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'researched']);
-    sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'researched']);
-    sim.write('.leeway/.cache/scratch/baseline-scope.json', JSON.stringify({
-      mode: 'fresh',
-      areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push' }],
-    }));
-    assert.match(sim.render(['baseline-scope-gate', '--file', '.leeway/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
-    // Each area's interview opens on its marker, counted across the areas.
-    const areaOpening = sim.write('.leeway/.cache/baseline/area.json', { area: 'overview', summary: 'What the product is and who it serves.' });
-    assert.match(sim.render(['baseline-area', '--file', areaOpening], { expect: 'content' }),
-      /□ Interviewing Overview \(1 of 2\)[\s\S]*> What the product is and who it serves\. Answer in your own words/);
-    sim.write('.leeway/.cache/scratch/baseline-round.json', JSON.stringify({
-      area: 'dispatcher',
-      questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
-    }));
-    assert.match(sim.render(['baseline-round', '--file', '.leeway/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
-    assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
-    // The landing (author-doc.md C): mark the area, commit.
-    sim.write('.leeway/.baseline/overview.md', '# Overview\n\n## What it is\n\nA dispatcher that pushes orders downstream.\n');
-    sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
-    sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
-    assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
-    sim.write('.leeway/.cache/baseline/area.json', { area: 'dispatcher', summary: 'The downstream push.' });
-    assert.match(sim.render(['baseline-area', '--file', '.leeway/.cache/baseline/area.json'], { expect: 'content' }), /□ Interviewing Dispatcher \(2 of 2\)/);
-    sim.write('.leeway/.cache/baseline/area.json', { area: 'overview', summary: 'Again.' });
-    sim.refuses(['render', 'baseline-area', '--file', '.leeway/.cache/baseline/area.json'], /area "overview" is "completed", not researched/);
-    assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
-    assert.match(sim.render(['baseline-paused'], { expect: 'content' }), /Paused — 1 of 2/);
-    sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'completed']);
-    sim.run(['manifest', 'set', 'project.baseline.status', 'completed']);
-    assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /2 area\(s\) documented/);
-    assert.match(sim.render(['baseline-receipt'], { expect: 'content' }), /Baseline complete — 2 area\(s\)/);
-    assert.match(sim.render(['baseline-manage-gate'], { expect: 'content' }), /What would you like to do\?/);
-    const docPick = sim.render(['baseline-doc-pick'], { expect: 'content' });
-    assert.match(docPick, /DOCS \(key {2}area\):\n {2}1 {2}overview\n {2}2 {2}dispatcher\n/);
-    assert.match(docPick, /Which doc\?/);
 
-    // The walkthrough is the project's other one-time record, and the same
+    // The walkthrough is a one-time record of the project's, and the same
     // shape: refuse anything but the two answers, write once, and stay
     // recorded. Its offer and screens are content, so they render at any
     // state; the offer stands before the walk, so its yes records before
