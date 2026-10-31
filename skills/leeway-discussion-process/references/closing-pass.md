@@ -15,7 +15,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/leeway-engine/scripts/engine.cjs brief closing-pass-reader {work_unit} {topic} --agent {id}
 ```
 
-Its findings are taken as a review's are: load **[reviews.md](reviews.md)** and follow its instructions as written, where this conversation has not loaded it already. A `product` finding is a line for the decided screen's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or in an epic a candidate — never left in the log as a thread no one owns.
+Its findings are taken as a review's are: load **[reviews.md](reviews.md)** and follow its instructions as written, where this conversation has not loaded it already. A `product` finding is a line for the decided screen's payload, written nowhere before the person's yes. Every point the pass finds lands — an entry, a question on the map, a message, later on the roadmap, a product-record line, or a candidate — never left in the log as a thread no one owns.
 
 Where the pass changed what the topic decides — a question opened, an answer replaced — another pass reads what changed, unasked, once the conversation has closed what it opened. The passes end at one that changes nothing, and `closing-pass` is done.
 

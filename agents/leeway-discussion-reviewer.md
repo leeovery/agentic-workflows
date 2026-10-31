@@ -36,7 +36,7 @@ Every finding is a question the review asks, and carries the lane that says wher
 
 - **`apply`** — the record or a fact settles it: an entry does not reflect what another already decides, or a finding contradicts it. Carry the correction and cite the entries that settle it by short id; where it rests on a fact the record does not hold yet, name the fact and how to check it.
 - **`call`** — a call this topic leaves open, of intent or taste, or a gap inside the topic. It becomes an open question in the topic, and the matrix routes it: Claude's call, or the person's question. Give your lean and what it rests on where you have one, and say so where you have none — whether it reaches the person is the matrix's to decide, never yours.
-- **`route`** — not this topic's: name the topic of the work it belongs to, never a part of one; or, where it is work no topic owns, `no topic`, a candidate for a new one.
+- **`route`** — not this topic's: name the topic of the work it belongs to, never a part of one; or, where it is work no topic owns, `no topic`, a candidate for the decided screen.
 
 Findings do not overlap: two observations that resolve to one correction are one finding.
 

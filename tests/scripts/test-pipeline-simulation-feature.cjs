@@ -24,7 +24,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, decideTopic, discussed, bridgeTo, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, answerGate, decideTopic, discussed, bridgeTo, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -60,8 +60,19 @@ describe('pipeline simulation: feature', () => {
     const person = { by: 'person', who_moved_whom: 'none' };
     const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
     const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
-    const decided = decideTopic(sim, wu, wu, { lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }], candidates: [] });
-    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# ${wu}\n\nVisa and Mastercard; refunds left to another day.\n`);
+    // The person puts Apple Pay off for later, naming its horizon: it goes on
+    // the roadmap at once. The closing pass then finds work no topic owns: a
+    // feature has no map, so that candidate parks on the roadmap at the yes,
+    // on the horizon the person picks before the screen.
+    sim.run(['roadmap', 'add', 'apple-pay', '--horizon', 'later', '--summary', 'Take Apple Pay.', '--origin', `park:${wu}`, '--source', `${wu}/topics/${wu}`]);
+    assert.match(sim.render(['horizon-pick', '--park', 'refunds'], { expect: 'content' }), /^Putting "Refunds" on the roadmap\.$/m);
+    assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', '1').next, { kind: 'continue' });
+    const decided = decideTopic(sim, wu, wu, {
+      lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }],
+      candidates: [{ name: 'refunds', reason: 'Nothing decides how a refund reaches the card.', horizon: 'later' }],
+    });
+    assert.deepStrictEqual([decided.parked, decided.next], [[{ name: 'refunds', horizon: 'later' }], { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] }]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'specification');
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.

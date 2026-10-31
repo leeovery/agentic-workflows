@@ -11,7 +11,9 @@
 //   (8.9.7), one replacing a line the record holds shown with the text it
 //   replaces, and the record's lines withdrawn with the text each withdraws
 //   (8.9.2); the new-topic candidates, each with its
-//   reason, struck ones marked; and every checklist item skipped, with its
+//   reason, struck ones marked — in a unit with one topic, the items its yes
+//   parks on the roadmap, each with its horizon (8.10.2); and every
+//   checklist item skipped, with its
 //   reason (6.4.5). Then the first departure on the topic still to be asked
 //   its verdict (16.10.2) — the verdict gate, one at a time — and once none
 //   is, the decided gate, an authority gate that always stops (3.2.3): its
@@ -38,7 +40,8 @@ const { ROW_MAX, counted } = require('./map.cjs');
  *   listed: boolean,
  *   lines: {text: string, replaces: string|null}[],
  *   withdrawals: {text: string, why: string}[],
- *   candidates: {name: string, reason: string, struck: boolean}[],
+ *   parks: boolean,
+ *   candidates: {name: string, reason: string, struck: boolean, horizon: string|null}[],
  *   skips: {text: string, reason: string}[],
  *   verdict: {entry: string, at: number, of: number, question: string, lean: string|null, yours: string}|null,
  * }} DecidedView
@@ -113,13 +116,30 @@ function recordBlock({ lines, withdrawals }) {
   ].join('\n'));
 }
 
-/** The candidates, each with its reason beneath, a struck one marked. @param {DecidedView['candidates']} candidates */
+/**
+ * How the screen speaks of the candidates: as topics for an epic's map, or
+ * as items a one-topic unit parks on the roadmap (8.10.2).
+ */
+const CANDIDATE_WORDS = Object.freeze({
+  map: { heading: 'NEW-TOPIC CANDIDATES', one: 'candidate', many: 'candidates', off: 'it doesn\'t become a topic', ask: 'Which candidate should not become a topic?' },
+  roadmap: { heading: 'TO THE ROADMAP', one: 'roadmap item', many: 'roadmap items', off: 'it doesn\'t go on the roadmap', ask: 'Which candidate should stay off the roadmap?' },
+});
+
+/** The words for the candidates of a unit that parks them or one that maps them. @param {boolean} parks */
+function candidateWords(parks) {
+  return CANDIDATE_WORDS[parks ? 'roadmap' : 'map'];
+}
+
+/** The candidates, each with its reason beneath, a struck one marked, one parking tagged with its horizon. @param {DecidedView['candidates']} candidates */
 function candidateTree(candidates) {
-  return renderTree(candidates.map(({ name, reason, struck }) => ({
-    title: struck ? `⊘ ${titlecase(name)}` : `○ ${titlecase(name)}`,
-    ...(struck ? { tag: 'struck' } : {}),
-    body: [reason],
-  })), { width: TREE_WIDTH });
+  return renderTree(candidates.map(({ name, reason, struck, horizon }) => {
+    const tag = struck ? 'struck' : horizon;
+    return {
+      title: struck ? `⊘ ${titlecase(name)}` : `○ ${titlecase(name)}`,
+      ...(tag === null ? {} : { tag }),
+      body: [reason],
+    };
+  }), { width: TREE_WIDTH });
 }
 
 /** The verdict asked of one departure: the question, Claude's answer and the person's. @param {NonNullable<DecidedView['verdict']>} verdict */
@@ -135,13 +155,13 @@ function verdictBlock({ at, of, question, lean, yours }) {
  * @param {DecidedView} view
  */
 function decidedDisplay(view) {
-  const { title, decided, carried, calls, listed, lines, withdrawals, candidates, skips, verdict } = view;
+  const { title, decided, carried, calls, listed, lines, withdrawals, parks, candidates, skips, verdict } = view;
   const blocks = [`${title} — decided`];
   blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0 ? `${INDENT}${noneOfYours(view)}` : questionTree(decided)));
   if (carried.length > 0) blocks.push(block(`CARRIED OVER (${carried.length})`, questionTree(carried)));
   if (calls.length > 0) blocks.push(block(`CLAUDE'S CALLS (${calls.length})`, `${INDENT}${kindCounts(calls)}${listed ? `\n${callTree(calls)}` : ''}`));
   if (lines.length + withdrawals.length > 0) blocks.push(recordBlock(view));
-  if (candidates.length > 0) blocks.push(block(`NEW-TOPIC CANDIDATES (${candidates.length})`, candidateTree(candidates)));
+  if (candidates.length > 0) blocks.push(block(`${candidateWords(parks).heading} (${candidates.length})`, candidateTree(candidates)));
   if (skips.length > 0) blocks.push(skips.map(({ text, reason }) => callout(`Skipped: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks.join('\n\n');
@@ -157,11 +177,12 @@ function theCount(n, one, many) {
 }
 
 /** What the person's yes covers, said on the gate: the lines, the withdrawals and the candidates not struck. @param {DecidedView} view */
-function yesCovers({ title, lines, withdrawals, candidates }) {
+function yesCovers({ title, lines, withdrawals, parks, candidates }) {
+  const words = candidateWords(parks);
   const covers = [
     ...theCount(lines.length, 'product-record line', 'product-record lines'),
     ...theCount(withdrawals.length, 'withdrawal', 'withdrawals'),
-    ...theCount(candidates.filter(({ struck }) => !struck).length, 'candidate', 'candidates'),
+    ...theCount(candidates.filter(({ struck }) => !struck).length, words.one, words.many),
   ];
   return `Your yes marks ${title} decided${covers.length === 0 ? '' : `, with ${series(covers, 'and')}`}.`;
 }
@@ -184,12 +205,13 @@ function verdictGate({ entry }) {
  * @param {DecidedView} view
  */
 function decidedGate(view) {
-  const { unit, topic, calls, listed, candidates } = view;
+  const { unit, topic, calls, listed, parks, candidates } = view;
+  const { off } = candidateWords(parks);
   const standing = candidates.flatMap(({ struck }, at) => (struck ? [] : [at + 1]));
   const rows = [cmdOption('y', 'yes', 'Mark it decided', runs(['decided', 'yes', unit, topic]))];
   if (calls.length > 0 && !listed) rows.push(cmdOption('c', 'calls', `See Claude's ${counted(calls.length, 'call')}`, runs(['render', 'decided', addressOf(view), '--calls'])));
-  if (standing.length === 1) rows.push(cmdOption('s', 'strike', 'Strike the candidate — it doesn\'t become a topic', runs(['decided', 'strike', unit, topic, String(standing[0])])));
-  if (standing.length > 1) rows.push(cmdOption('s', 'strike', 'Strike a candidate — it doesn\'t become a topic', runs(['render', 'decided-strike', addressOf(view)])));
+  if (standing.length === 1) rows.push(cmdOption('s', 'strike', `Strike the candidate — ${off}`, runs(['decided', 'strike', unit, topic, String(standing[0])])));
+  if (standing.length > 1) rows.push(cmdOption('s', 'strike', `Strike a candidate — ${off}`, runs(['render', 'decided-strike', addressOf(view)])));
   rows.push(promptOption('Comment', 'Tell me what to change — a product-record line included'));
   return section('MENU: decided', MENU_INSTRUCTION, menu(yesCovers(view), rows, { question: 'Mark it decided?' }));
 }
@@ -208,16 +230,16 @@ function decidedScreen(view) {
 /**
  * The pick of the candidate to strike: each standing candidate by its
  * number on the screen, and back to the screen as it was.
- * @param {{unit: string, topic: string, candidates: DecidedView['candidates']}} view
+ * @param {{unit: string, topic: string, parks: boolean, candidates: {name: string, struck: boolean}[]}} view
  * @returns {string}
  */
 function strikePick(view) {
-  const { unit, topic, candidates } = view;
+  const { unit, topic, parks, candidates } = view;
   const rows = candidates.flatMap(({ name, struck }, at) => (struck ? [] : [
     cmdOption(String(at + 1), null, { head: titlecase(name) }, runs(['decided', 'strike', unit, topic, String(at + 1)])),
   ]));
   rows.push(cmdOption('b', 'back', 'Back to the decided screen — nothing struck', runs(['render', 'decided', addressOf(view)])));
-  return section('MENU: decided strike', MENU_INSTRUCTION, menu('', rows, { question: 'Which candidate should not become a topic?' }));
+  return section('MENU: decided strike', MENU_INSTRUCTION, menu('', rows, { question: candidateWords(parks).ask }));
 }
 
 /** The kinds of agent whose plural is not their name and an s. @type {Readonly<Record<string, string>>} */

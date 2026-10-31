@@ -7,7 +7,7 @@
 A point another topic owns goes to it as a message, and that topic's session decides it in its own frame. Never visit the target: its record and log stay out of this conversation, and no agent carries the message.
 
 - **Only between topics.** A single-topic unit has no other topic: the point goes aside through the skill's **Backlogging**, or, where the work has outgrown one topic, load **[pivot-to-epic.md](../../leeway-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}` first.
-- **A topic on the map.** Name the target as the map names it, never a part of one. Work no topic owns is no message: in an epic it is a candidate for the decided screen.
+- **A topic on the map.** Name the target as the map names it, never a part of one. Work no topic owns is no message: it is a candidate for the decided screen.
 - **One ask.** What this topic found, the reasoning, and what the target is asked to decide. A change to a decision the target owns is asked for, never written here.
 - **A question that moves.** A question on this topic's map moves first, `ledger move {work_unit}.discussion.{topic} --question {id} --to {target}`; the message carries it.
 

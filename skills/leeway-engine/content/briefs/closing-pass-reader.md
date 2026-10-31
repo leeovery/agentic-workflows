@@ -18,6 +18,10 @@
 
 {{gap-review}}
 
+# What the person struck or removed
+
+{{dismissed}}
+
 # Your report
 
 {{report-to}}

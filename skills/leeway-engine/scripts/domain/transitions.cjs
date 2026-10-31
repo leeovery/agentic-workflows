@@ -99,6 +99,7 @@ function postponedRefusal(phase, topic) {
  * @property {string[]} abandoned  the open records closed as abandoned, reason recorded on each row — always empty for a specification unit
  * @property {WaitRelease[]} released_waits  the evidence waits the topic's conversations held — always empty for a specification unit
  * @property {string[]} [roadmap_reverted] discovery unit: roadmap items handed back to waiting by the cancel-revert hop
+ * @property {string[]} [inbox]  discovery unit: each waiting message's idea in the inbox, absolute
  * @property {string[]} closed_agents  the agents still running on the items taken, closed
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]     set when committed is null
@@ -947,7 +948,9 @@ function cancelSpecificationUnit(manifest, spec) {
 
 /**
  * Cancel a topic — the Discovery unit (`discovery`) or the Definition unit
- * (`specification`) under the name — in one locked write, then remove the
+ * (`specification`) under the name — in one locked write, a Discovery
+ * unit's waiting mail moved to the inbox as ideas under the same lock
+ * (10.1.6), then remove the
  * cancelled artifacts' knowledge-base chunks (warn-don't-block), release the
  * calling session's own heartbeat on each item taken, run the roadmap's
  * cancel-revert hop for a Discovery unit, and commit the manifest write.
@@ -960,13 +963,14 @@ function cancelSpecificationUnit(manifest, spec) {
  */
 function cancelTopic(cwd, workUnit, phase, topic) {
   const stage = assertUnitStage('cancel', phase);
-  const taken = withWorkUnitLock(cwd, workUnit, () => {
+  const { mail, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const outcome = stage === 'discovery'
       ? cancelDiscoveryUnit(manifest, topic)
       : cancelSpecificationUnit(manifest, topic);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return outcome;
+    const { moveWaitingToInbox } = require('./mail.cjs');
+    return { ...outcome, mail: stage === 'discovery' ? moveWaitingToInbox(cwd, workUnit, topic) : [] };
   });
 
   /** @type {string[]} */
@@ -985,16 +989,22 @@ function cancelTopic(cwd, workUnit, phase, topic) {
     ? revertJoins(cwd, workUnit, { topic })
     : [];
 
-  // A cancel writes the work-unit manifest (and the project manifest when a
-  // roadmap join reverted) and nothing else on disk — it runs from the epic
-  // menu, beside sessions holding the unit's other topics.
-  const cancelSpec = reverted.length > 0
-    ? [`${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC]
-    : `${workUnit}/manifest.json`;
+  // A cancel writes the work-unit manifest, the topic's waiting mail moved
+  // to the inbox, and the project manifest when a roadmap join reverted, and
+  // nothing else on disk — it runs from the epic menu, beside sessions
+  // holding the unit's other topics.
+  const cancelSpec = [
+    `${workUnit}/manifest.json`,
+    ...mail.flatMap(({ message, idea }) => [message, idea]),
+    ...(reverted.length > 0 ? [PROJECT_MANIFEST_SPEC] : []),
+  ];
   const outcome = commitStateTail(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
   const result = { topic, phase: stage, status: 'cancelled', ...taken, closed_agents: closedAgents, committed: outcome.committed, warnings };
-  if (stage === 'discovery') result.roadmap_reverted = reverted;
+  if (stage === 'discovery') {
+    result.roadmap_reverted = reverted;
+    result.inbox = mail.map(({ idea }) => statePath(cwd, idea));
+  }
   // The manifest alone is narrower than any state scope, so the retry stays
   // generic — the commit door's own rule.
   noteCommitOutcome(result, outcome);

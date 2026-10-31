@@ -33,10 +33,14 @@
 //   lands as the person's replacement of that line by the decision the widened
 //   one now stands as, at the unit's level and not for the product (8.9.2), so
 //   the line leaves the product record and its trail stays. A restage keeps the
-//   strike of every candidate it still names. Candidates are an epic's alone,
-//   each checked by the map's own rules for adding a topic (discovery-map.cjs).
-//   The screen draws from the staged payload again without `--file`, the calls
-//   listed with `--calls`.
+//   strike of every candidate it still names. An epic's candidate is a topic
+//   for its map with its brief's draft (8.10.10), and any waiting roadmap item
+//   it takes in, checked by every check `topic add-batch` makes
+//   (discovery-map.cjs); a unit with one topic has no map, so its candidate
+//   parks on the roadmap, on the horizon the person named (8.10.2, 18.8.2),
+//   checked as the roadmap's add-batch checks it. A name the person struck
+//   before is refused either way (8.10.11). The screen draws from the staged
+//   payload again without `--file`, the calls listed with `--calls`.
 // - What the person decided is shown apart from the rows carried over,
 //   which never pass as theirs (21.6.5), and from Claude's calls, counted by
 //   the kind each decision carries; a call the labeller has not reached is
@@ -58,11 +62,14 @@
 //   person's product-wide decision answering it (by the person, their own,
 //   moving no one: their yes over Claude's line) — each through the
 //   ledger's lock with its commit, a line or withdrawal its first run
-//   landed passing its check and landing nothing again; then, in one
-//   manifest save and its commit, adds the candidates not struck to the
-//   epic's map, each its source the topic, marks the topic
-//   decided, and records that the yes took the close. Each withdrawal lands
-//   as the lines do, after them. The staged payload goes. It
+//   landed passing its check and landing nothing again; then, under the
+//   writer lock, in one manifest save and its commit, lands the candidates
+//   not struck — on the epic's map, each its source the topic and its brief
+//   installed, or parked on the roadmap, each its origin the topic and its
+//   source the topic's log — records the struck ones' names as the person's
+//   answer, marks the topic decided, and records that the yes took the
+//   close. Each withdrawal lands as the lines do, after them. The staged
+//   payload goes. It
 //   answers what comes next: an epic's menu, else today's specification
 //   (9.7.6 waits on 29.15).
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
@@ -88,12 +95,14 @@ const { readShown, answerMap } = require('./ledger-read.cjs');
 const { departureRow } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
-const { itemOf, topicTitle } = require('./derivations.cjs');
+const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
-const { checkBatchEntries, addBatchTo } = require('./discovery-map.cjs');
+const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
+const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
+const { topicLog } = require('./topic-log.cjs');
 const { runningAgents } = require('./agent-state.cjs');
-const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
 
@@ -116,7 +125,12 @@ const { decidedScreen, strikePick, waitAgents } = require('./projections/decided
  * @typedef {{id: string, line: string, text: string, why: string, now: {id: string, text: string}}} StagedWithdrawal
  */
 
-/** A new-topic candidate as staged, struck or standing. @typedef {{name: string, reason: string, struck: boolean}} StagedCandidate */
+/**
+ * A new-topic candidate as staged, struck or standing: an epic's with its
+ * brief's draft and any waiting roadmap item it takes in, a one-topic
+ * unit's with the horizon it parks on.
+ * @typedef {{name: string, reason: string, struck: boolean, brief?: string, from_roadmap?: string, horizon?: string}} StagedCandidate
+ */
 
 /**
  * Claude's payload as staged in the topic's cache, against the close it was
@@ -283,48 +297,112 @@ function checkWithdrawn(shower, lines, withdrawals) {
   });
 }
 
+/** How the candidates' refusals open. */
+const CANDIDATES = 'the candidates';
+
 /** How a candidate dismissed from the map is re-added: by the person, on the map. */
 const RE_ADD = 'the person re-adds it on the map';
 
+/** What a candidate needs beside its name and reason, where its unit has a map, and where it parks on the roadmap. */
+const NEEDS = Object.freeze({
+  brief: 'a candidate lands as a topic with its brief, "brief" naming its draft under .leeway/.cache/',
+  horizon: 'the horizon is the person\'s — where they named none, render horizon-pick --park <name> asks them',
+});
+
+/**
+ * Whether the unit's candidates park on the roadmap: a unit with one topic,
+ * which has no map to add one to (8.10.2).
+ * @param {Record<string, any>} manifest
+ */
+function parksCandidates(manifest) {
+  return manifest.work_type !== 'epic';
+}
+
+/**
+ * How the candidates land on an epic's map: as `topic add-batch` lands
+ * topics, each its source the topic it came from.
+ * @param {string} topic @returns {import('./discovery-map.cjs').LandOpts}
+ */
+function landOpts(topic) {
+  return { said: CANDIDATES, source: `topic:${topic}`, reAddHint: RE_ADD };
+}
+
 /**
  * The candidates as the map adds them: each a topic from this one, its
- * reason its summary.
- * @param {{name: string, reason: string}[]} candidates
+ * reason its summary, with its brief and any roadmap item it takes in.
+ * @param {StagedCandidate[]} candidates
+ * @returns {import('./discovery-map.cjs').BatchEntry[]}
  */
 function mapEntries(candidates) {
-  return candidates.map(({ name, reason }) => ({ name, summary: reason }));
+  return candidates.map(({ name, reason, brief, from_roadmap: fromRoadmap }) => ({
+    name, summary: reason, brief, ...(fromRoadmap === undefined ? {} : { from_roadmap: fromRoadmap }),
+  }));
 }
 
 /**
- * Refused, in the words of `said`, where the epic's map would refuse to add
- * the candidates as it stands — by the map's own rules, writing nothing.
- * @param {Record<string, any>} manifest @param {string} topic @param {{name: string, reason: string}[]} candidates @param {string} said
+ * The candidates as the roadmap parks them: each an item on its horizon,
+ * its reason its summary, from this topic and pointing into its log.
+ * @param {string} unit @param {string} topic @param {StagedCandidate[]} candidates
  */
-function checkCandidates(manifest, topic, candidates, said) {
-  if (candidates.length === 0) return;
-  const entries = mapEntries(candidates);
-  checkBatchEntries(entries, said);
-  addBatchTo(structuredClone(manifest), entries, said, { source: `topic:${topic}`, reAdd: RE_ADD });
+function parkEntries(unit, topic, candidates) {
+  return candidates.map(({ name, reason, horizon }) => ({ name, horizon, summary: reason, origin: `topic:${unit}/${topic}`, sources: [topicLog(unit, topic)] }));
 }
 
 /**
- * The candidates as Claude's payload gives them, staged: an epic's alone,
- * each `{name, reason}` the map can take, struck where the candidate of
- * that name staged before was.
- * @param {Record<string, any>} manifest @param {string} topic @param {unknown[]} given @param {StagedCandidate[]} before
+ * Refused, as their landing would refuse them, where the candidates could
+ * not land as the unit and the roadmap stand — an epic's by every check
+ * `topic add-batch` makes, a one-topic unit's by the roadmap's, and a name
+ * the person struck before — writing nothing. Answers the drafts of an
+ * epic's briefs as read.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {StagedCandidate[]} candidates
+ * @returns {import('./discovery-map.cjs').Draft[]}
+ */
+function checkCandidates(cwd, manifest, topic, candidates) {
+  if (candidates.length === 0) return [];
+  const unit = manifest.name;
+  if (!parksCandidates(manifest)) return checkTopics(cwd, unit, manifest, mapEntries(candidates), landOpts(topic));
+  const struck = candidates.find(({ name }) => dismissedNames(manifest).includes(name));
+  if (struck !== undefined) throw new Error(`${CANDIDATES}: "${struck.name}" was struck before — nothing was added; the person can roadmap it themselves`);
+  try {
+    planRoadmapBatch(cwd, parkEntries(unit, topic, candidates));
+  } catch (err) {
+    throw new Error(`${CANDIDATES}: ${messageOf(err)}`);
+  }
+  return [];
+}
+
+/**
+ * A candidate as Claude's payload gives it: `{name, reason, brief,
+ * from_roadmap?}` where the unit has a map, `{name, reason, horizon}` where
+ * it parks on the roadmap, each a non-empty string.
+ * @param {unknown} given @param {number} at @param {boolean} parks
+ * @returns {Omit<StagedCandidate, 'struck'>}
+ */
+function candidateOf(given, at, parks) {
+  const what = `candidate ${at + 1}`;
+  const needs = parks ? 'horizon' : 'brief';
+  if (isObject(given) && !(needs in given)) throw new Error(`${what} has no ${needs} — ${NEEDS[needs]}`);
+  const candidate = shaped(given, what, ['name', 'reason', needs], parks ? [] : ['from_roadmap']);
+  const empty = Object.keys(candidate).find((key) => !filled(candidate[key]));
+  if (empty !== undefined) throw new Error(`${what}'s ${empty} is a non-empty string`);
+  return /** @type {Omit<StagedCandidate, 'struck'>} */ (candidate);
+}
+
+/**
+ * The candidates as Claude's payload gives them, staged, each checked as
+ * its landing checks it, struck where the candidate of that name staged
+ * before was.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {unknown[]} given @param {StagedCandidate[]} before
  * @returns {StagedCandidate[]}
  */
-function stagedCandidates(manifest, topic, given, before) {
-  if (given.length > 0 && manifest.work_type !== 'epic') throw new Error(`a ${manifest.work_type} has no map to add a topic to — candidates are an epic's`);
-  const candidates = given.map((candidate, at) => {
-    const what = `candidate ${at + 1}`;
-    const { name, reason } = shaped(candidate, what, ['name', 'reason']);
-    if (!filled(name) || !filled(reason)) throw new Error(`${what}'s name and reason are each a non-empty string`);
-    return { name, reason };
-  });
-  checkCandidates(manifest, topic, candidates, 'the candidates');
+function stagedCandidates(cwd, manifest, topic, given, before) {
   const struck = new Set(before.filter((candidate) => candidate.struck).map(({ name }) => name));
-  return candidates.map(({ name, reason }) => ({ name, reason, struck: struck.has(name) }));
+  const candidates = given.map((candidate, at) => {
+    const taken = candidateOf(candidate, at, parksCandidates(manifest));
+    return { ...taken, struck: struck.has(taken.name) };
+  });
+  checkCandidates(cwd, manifest, topic, candidates);
+  return candidates;
 }
 
 /**
@@ -355,7 +433,7 @@ function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
     closed,
     lines: widened,
     withdrawals,
-    candidates: stagedCandidates(manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
+    candidates: stagedCandidates(cwd, manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
   };
   fs.mkdirSync(path.dirname(stagedFile(cwd, unit, topic)), { recursive: true });
   writeJsonAtomic(stagedFile(cwd, unit, topic), staged);
@@ -485,7 +563,8 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
         listed: calls !== undefined,
         lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
         withdrawals: staged.withdrawals.map(({ text, why }) => ({ text, why })),
-        candidates: staged.candidates,
+        parks: parksCandidates(manifest),
+        candidates: staged.candidates.map(({ name, reason, struck, horizon }) => ({ name, reason, struck, horizon: horizon ?? null })),
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
       });
@@ -504,11 +583,11 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
 function decidedStrikeSurface(cwd, { dotpath }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided-strike');
-    openTopic(cwd, unit, topic);
+    const manifest = openTopic(cwd, unit, topic);
     const { closed } = decidedClose(cwd, unit, topic);
     const { candidates } = stagedFor(cwd, unit, topic, closed);
     if (candidates.filter(({ struck }) => !struck).length < 2) throw new Error('the pick is for more than one candidate standing — the decided gate strikes a lone one itself');
-    return strikePick({ unit, topic, candidates });
+    return strikePick({ unit, topic, parks: parksCandidates(manifest), candidates });
   } catch (err) {
     throw refusedAs('render decided-strike', err);
   }
@@ -637,26 +716,50 @@ function decidedYes(cwd, unit, topic) {
     return ready;
   });
   const added = staged.candidates.filter(({ struck }) => !struck);
-  checkCandidates(loadWorkUnitManifest(cwd, unit), topic, added, 'the candidates');
+  const struck = staged.candidates.filter((candidate) => candidate.struck).map(({ name }) => name);
+  const drafts = checkCandidates(cwd, loadWorkUnitManifest(cwd, unit), topic, added);
   checkLines(cwd, unit, staged, warnings);
   const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1));
   const withdrawn = staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal), warnings).landed.id);
   const at = new Date().toISOString();
-  const manifest = withWorkUnitLock(cwd, unit, () => {
+  const { manifest, paths, parked } = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
-    if (added.length > 0) addBatchTo(fresh, mapEntries(added), 'the candidates', { source: `topic:${topic}`, reAdd: RE_ADD });
+    const taken = landCandidates(cwd, fresh, topic, added);
+    if (struck.length > 0) dismiss(fresh, struck);
     fresh.phases[PHASE].items[topic].status = 'completed';
     takeDecidedClose(fresh, topic, at);
     saveWorkUnitManifest(cwd, unit, fresh);
-    return fresh;
+    const briefs = taken.entries === null ? [] : installBriefs(cwd, unit, taken.entries, drafts);
+    const paths = [...landedPaths(unit, { briefs, takes: taken.takes }), ...(taken.parked.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
+    return { manifest: fresh, paths, parked: taken.parked };
   });
-  const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `decided(${unit}): ${topic}`, warnings);
+  const outcome = commitStateTail(cwd, paths, `decided(${unit}): ${topic}`, warnings);
   fs.rmSync(stagedFile(cwd, unit, topic), { force: true });
   /** @type {Record<string, unknown>} */
-  const result = { unit, topic, decided: at, lines, withdrawn, candidates: added.map(({ name }) => name), committed: outcome.committed, next: nextAfter(manifest, unit) };
+  const result = { unit, topic, decided: at, lines, withdrawn, candidates: added.map(({ name }) => name), struck, committed: outcome.committed, next: nextAfter(manifest, unit) };
+  if (parksCandidates(manifest)) result.parked = parked;
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${unit} --state`);
   return result;
+}
+
+/**
+ * The candidates taken, landed under the writer lock the yes holds, before
+ * the manifest is saved: an epic's put on its map, as `topic add-batch`
+ * puts them, a one-topic unit's parked on the roadmap. Answers what the map
+ * took — the entries whose briefs go in once the manifest is saved, and the
+ * roadmap items taken in — and what was parked, each on its horizon.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {StagedCandidate[]} added
+ */
+function landCandidates(cwd, manifest, topic, added) {
+  const none = { entries: null, takes: /** @type {unknown[]} */ ([]), parked: /** @type {{name: string, horizon: string}[]} */ ([]) };
+  if (added.length === 0) return none;
+  if (parksCandidates(manifest)) {
+    parkItems(cwd, parkEntries(manifest.name, topic, added), CANDIDATES);
+    return { ...none, parked: added.map(({ name, horizon }) => ({ name, horizon: /** @type {string} */ (horizon) })) };
+  }
+  const entries = mapEntries(added);
+  return { ...none, entries, takes: placeTopics(cwd, manifest.name, manifest, entries, landOpts(topic)).takes };
 }
 
 /**

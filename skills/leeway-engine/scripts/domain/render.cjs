@@ -4969,13 +4969,28 @@ function cycleGate() {
 
 const WORKUNIT_RECEIPT_STATUS = { complete: 'completed', cancel: 'cancelled', reactivate: 'in-progress' };
 
-/** @param {string} cwd @param {{dotpath: string, verb?: string, pipeline?: string, 'skipped-review'?: string, warn?: string}} args @returns {string} */
+/**
+ * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
+ * carries it from the cancel's `inbox` — none where it is not given;
+ * refused for another verb, and for a value that is no count.
+ * @param {string} surface @param {string|undefined} verb @param {string|undefined} inbox
+ * @returns {number}
+ */
+function inboxCount(surface, verb, inbox) {
+  if (inbox === undefined) return 0;
+  if (verb !== 'cancel') throw new Error(`render ${surface}: --inbox counts what a cancel moved to the inbox — it takes --verb cancel`);
+  if (!/^(0|[1-9][0-9]*)$/.test(inbox)) throw new Error(`render ${surface}: --inbox takes how many messages the cancel moved, got "${inbox}"`);
+  return Number(inbox);
+}
+
+/** @param {string} cwd @param {{dotpath: string, verb?: string, pipeline?: string, 'skipped-review'?: string, warn?: string, inbox?: string}} args @returns {string} */
 function workunitReceiptSurface(cwd, args) {
   const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
   const verb = args.verb;
   if (verb !== 'complete' && verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
     throw new Error(`render workunit-receipt: --verb must be complete, cancel, reactivate, or pivot, got "${verb}"`);
   }
+  const inbox = inboxCount('workunit-receipt', verb, args.inbox);
   if (verb === 'pivot') {
     if (manifest.work_type !== 'epic') {
       throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — nothing to receipt for a pivot`);
@@ -4987,6 +5002,7 @@ function workunitReceiptSurface(cwd, args) {
     pipeline: args.pipeline === '1',
     skippedReview: args['skipped-review'] === '1',
     warn: args.warn === '1',
+    inbox,
   });
 }
 
@@ -5036,12 +5052,13 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
  * `reactivate`, `postpone` and `restore` address the unit —
  * `<wu>.discovery.<topic>` or `<wu>.specification.<spec>` — and read its
  * state after the verb ran.
- * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string}} args @returns {string}
+ * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string}} args @returns {string}
  */
 function topicReceiptSurface(cwd, args) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
   const verb = args.verb;
   const warn = args.warn === '1';
+  const inbox = inboxCount('topic-receipt', verb, args.inbox);
   const name = itemTitle(topicTitles(manifest), phase, topic);
   if (verb === 'complete') {
     const item = itemOf(manifest, phase, topic);
@@ -5086,7 +5103,7 @@ function topicReceiptSurface(cwd, args) {
   const cancelled = unitCancelled(manifest, stage, topic);
   if (verb === 'cancel') {
     if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
-    return topicReceipt(verb, name, { warn });
+    return topicReceipt(verb, name, { warn, inbox });
   }
   if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
@@ -5456,12 +5473,16 @@ function postponeAddress(cwd, dotpath) {
 }
 
 /**
- * The pick over the roadmap's horizons. Addressed to a topic leaving for the
- * roadmap, `<wu>.discovery.<topic>`, each horizon's row leads to that
- * topic's postpone gate; a new horizon, named in words, carries on.
- * @param {string} cwd @param {{dotpath?: string}} args @returns {string}
+ * The pick over the roadmap's horizons, naming none as its own (18.8.2).
+ * Addressed to a topic leaving for the roadmap, `<wu>.discovery.<topic>`,
+ * each horizon's row leads to that topic's postpone gate; a new horizon,
+ * named in words, carries on. With `--park <name>`, it asks where an item
+ * Claude is putting on the roadmap goes, saying so above the question
+ * (18.8.11), and every row carries on with the horizon picked.
+ * @param {string} cwd @param {{dotpath?: string, park?: string}} args @returns {string}
  */
-function horizonPick(cwd, { dotpath }) {
+function horizonPick(cwd, { dotpath, park }) {
+  if (park !== undefined && dotpath !== undefined) throw new Error('render horizon-pick: --park names the item being put on the roadmap, and takes no address');
   const postponing = dotpath === undefined ? null : postponeAddress(cwd, dotpath);
   const state = roadmapState(cwd);
   if (!state.exists) {
@@ -5470,13 +5491,16 @@ function horizonPick(cwd, { dotpath }) {
   if (state.horizons.length === 0) {
     throw new Error('render horizon-pick: the roadmap holds no horizons — the caller names one in prose');
   }
+  /** @type {import('./projections/surfaces.cjs').Next|undefined} */
+  const carryOn = postponing === null && park === undefined ? undefined : { kind: 'continue' };
   const options = state.horizons.map((horizon, i) => {
     const waiting = state.items.filter((r) => r.horizon === horizon && r.state === 'waiting').length;
-    const next = postponing === null ? undefined : { kind: /** @type {const} */ ('engine'), argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] };
+    const next = postponing === null ? carryOn : { kind: /** @type {const} */ ('engine'), argv: ['render', 'postpone-gate', postponing, '--horizon', horizon] };
     return cmdOption(String(i + 1), null, { head: horizon, tail: `${waiting} waiting` }, { next });
   });
-  options.push(cmdOption('n', 'new', 'A new horizon — name it', postponing === null ? {} : { next: { kind: 'continue' } }));
-  return section('MENU: horizon pick', MENU_INSTRUCTION, menu('Which horizon?', options));
+  options.push(cmdOption('n', 'new', 'A new horizon — name it', carryOn === undefined ? {} : { next: carryOn }));
+  const putting = park === undefined ? '' : `Putting "${titlecase(park)}" on the roadmap.`;
+  return section('MENU: horizon pick', MENU_INSTRUCTION, menu(putting, options, { question: 'Which horizon?' }));
 }
 
 // ` (new)` for a horizon an existing map does not hold yet; a never-born map

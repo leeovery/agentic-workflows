@@ -30,6 +30,8 @@ const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
+const { moveUnitMailToInbox } = require('./mail.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
 
@@ -55,6 +57,7 @@ function assertLegalStatus(status) {
  * @property {string} [note]     set when committed is null
  * @property {string[]} warnings non-blocking failures (knowledge-base sync)
  * @property {string[]} [roadmap_reverted] cancel: roadmap items handed back to waiting by the cancel-revert hop
+ * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
  */
 
 /**
@@ -106,8 +109,10 @@ function completeWorkUnit(cwd, workUnit, { message }) {
 }
 
 /**
- * Cancel a work unit: `status: cancelled`, remove its knowledge-base chunks
- * (warn-don't-block), commit scoped to the work unit. Refuses an
+ * Cancel a work unit: `status: cancelled`, each of its topics' waiting mail
+ * moved to the inbox as ideas under the same lock (10.1.6), remove its
+ * knowledge-base chunks (warn-don't-block), commit scoped to the work unit
+ * and the ideas. Refuses an
  * already-cancelled unit; a completed unit must go through reactivate first —
  * cancellation is only offered on active work.
  * @param {string} cwd project root
@@ -116,7 +121,7 @@ function completeWorkUnit(cwd, workUnit, { message }) {
  */
 function cancelWorkUnit(cwd, workUnit) {
   assertLegalStatus('cancelled');
-  withWorkUnitLock(cwd, workUnit, () => {
+  const mail = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is already cancelled`);
@@ -127,6 +132,7 @@ function cancelWorkUnit(cwd, workUnit) {
     manifest.status = 'cancelled';
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
+    return moveUnitMailToInbox(cwd, manifest);
   });
 
   /** @type {string[]} */
@@ -139,11 +145,11 @@ function cancelWorkUnit(cwd, workUnit) {
   const reverted = revertJoins(cwd, workUnit);
 
   purgeWorkUnitCache(cwd, workUnit);
-  const specs = [workUnit];
+  const specs = [workUnit, ...mail.map(({ idea }) => idea)];
   if (reverted.length > 0) specs.push('manifest.json');
   const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'cancelled', committed: outcome.committed, warnings };
+  const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), committed: outcome.committed, warnings };
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   noteCommitOutcome(result, outcome);
   return result;

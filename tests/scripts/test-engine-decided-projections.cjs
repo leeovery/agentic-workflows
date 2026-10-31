@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // The decided screen as drawn from its view (leeway-engine/scripts/domain/
 // projections/decided.cjs): the verdict's question cut to the map's length,
-// as the other rows are, and the gate's yes saying the small counts it
-// covers in words, as 9.7.3 draws it.
+// as the other rows are, the gate's yes saying the small counts it covers
+// in words, as 9.7.3 draws it, and a one-topic unit's candidates spoken of
+// as the items its yes parks on the roadmap (8.10.2).
 //
 // Layer: unit. World: none — the view is a value.
 // ---------------------------------------------------------------------------
@@ -14,13 +15,13 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { decidedScreen } = require('../../skills/leeway-engine/scripts/domain/projections/decided.cjs');
+const { decidedScreen, strikePick } = require('../../skills/leeway-engine/scripts/domain/projections/decided.cjs');
 
 /** @type {import('../../skills/leeway-engine/scripts/domain/projections/decided.cjs').DecidedView} */
 const VIEW = {
   unit: 'fumi', topic: 'note-window', title: 'Note Window',
   decided: [], carried: [], moved: 0, calls: [], listed: false,
-  lines: [], withdrawals: [], candidates: [], skips: [], verdict: null,
+  lines: [], withdrawals: [], parks: false, candidates: [], skips: [], verdict: null,
 };
 
 /** What the decided gate says the yes covers. @param {Partial<typeof VIEW>} view */
@@ -38,11 +39,19 @@ describe('the decided screen drawn', () => {
   it('says the counts its yes covers in words, up to nine', () => {
     const line = (/** @type {number} */ at) => ({ text: `Rule ${at}.`, replaces: null });
     const withdrawal = (/** @type {number} */ at) => ({ text: `Old ${at}.`, why: `Why ${at}.` });
-    const candidate = (/** @type {number} */ at) => ({ name: `topic-${at}`, reason: 'R.', struck: false });
+    const candidate = (/** @type {number} */ at) => ({ name: `topic-${at}`, reason: 'R.', struck: false, horizon: null });
     assert.strictEqual(covers({}), 'Your yes marks Note Window decided.');
     assert.strictEqual(covers({ lines: many(2, line), withdrawals: many(1, withdrawal), candidates: many(3, candidate) }),
       'Your yes marks Note Window decided, with the two product-record lines, the withdrawal and the three candidates.');
     assert.strictEqual(covers({ withdrawals: many(9, withdrawal), candidates: [...many(12, candidate), { ...candidate(12), struck: true }] }),
       'Your yes marks Note Window decided, with the nine withdrawals and the 12 candidates.');
+  });
+
+  it('speaks of a one-topic unit\'s candidates as items for the roadmap, each tagged with its horizon, on the screen, the gate and the strike pick (8.10.2)', () => {
+    const parked = [{ name: 'streak-freeze', reason: 'R.', struck: false, horizon: 'later' }, { name: 'tally-widget', reason: 'S.', struck: false, horizon: 'next' }];
+    const screen = decidedScreen({ ...VIEW, parks: true, candidates: parked });
+    const pick = strikePick({ unit: 'solo', topic: 'solo', parks: true, candidates: parked });
+    assert.deepStrictEqual([/^TO THE ROADMAP \(2\)$/m.test(screen), /○ Tally Widget +\[next\]$/m.test(screen), covers({ parks: true, candidates: parked }), /◆ Which candidate should stay off the roadmap\?/.test(pick)],
+      [true, true, 'Your yes marks Note Window decided, with the two roadmap items.', true]);
   });
 });

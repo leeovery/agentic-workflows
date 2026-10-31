@@ -400,10 +400,10 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render blocked-tasks     <wu.implementation.topic> --file <payload.json>
   render cycle-limit       <wu.implementation.topic>
   render cycle-gate
-  render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
+  render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn] [--inbox <n>]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
   render topic-receipt     <wu.specification.spec> --verb supersede [--warn]
-  render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
+  render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
   render absorb-receipt    <epic> --topic <name> [--moved seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
@@ -424,7 +424,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
-  render horizon-pick
+  render horizon-pick      [<wu.discovery.topic> | --park <name>]
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate

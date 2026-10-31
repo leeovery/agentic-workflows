@@ -2034,6 +2034,19 @@ describe('roadmap surfaces', () => {
     ].join('\n'), 'the pulled item counts against no horizon — only what waits is offered');
   });
 
+  it('horizon-pick --park: says what is going on the roadmap above the same rows, naming no horizon as its own (18.8.2, 18.8.11); refuses an address beside it', () => {
+    writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
+    assert.deepStrictEqual(renderSurface(dir, 'horizon-pick', { park: 'streak-freeze' }).split('\n').slice(1, 6), [
+      '· · · · · · · · · · · ·',
+      'Putting "Streak Freeze" on the roadmap.',
+      '',
+      '**`◆ Which horizon?`**',
+      '',
+    ]);
+    assert.throws(() => renderSurface(dir, 'horizon-pick', { park: 'streak-freeze', dotpath: 'mvp.discovery.auth' }),
+      /render horizon-pick: --park names the item being put on the roadmap, and takes no address$/);
+  });
+
   it('horizon-pick: refuses a never-born roadmap and one with no horizons', () => {
     assert.throws(() => renderSurface(dir, 'horizon-pick', {}),
       /render horizon-pick: no roadmap on the project manifest — the caller names its first horizon in prose/);

@@ -335,6 +335,7 @@ describe('every screen names a topic through one helper', () => {
       'projections/roadmap.cjs › roadmapNodes › row.name',
       'projections/roadmap.cjs › roadmapPullSetView › row.name',
       'projections/transactions.cjs › MAP_LINES › c.from_roadmap',
+      'render.cjs › horizonPick › park',
       'render.cjs › inboxRoadmapGate › item.name',
       'render.cjs › parkGate › name',
       'render.cjs › postponeStatement › target.name',
