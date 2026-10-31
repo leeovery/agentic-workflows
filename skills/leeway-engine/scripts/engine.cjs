@@ -77,7 +77,7 @@ const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
-const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
 const { recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
@@ -309,7 +309,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
-  agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
@@ -329,7 +328,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render plan-progress <wu.planning.topic> --variant construction-complete|concluded
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
-  render finding-batch    <wu.phase.topic> --file <payload.json> [--first]
+  render finding-batch    <wu.specification.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
@@ -1198,7 +1197,7 @@ function runExperiment(call, argv) {
       const result = command === 'conclude'
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
-      (isParentExperimentId(id) ? clearQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
+      (isParentExperimentId(id) ? clearOwnQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
       respond(call, result);
       return;
     }
@@ -1683,12 +1682,11 @@ function runAgent(call, argv) {
       answer(agentState.ackAgent(cwd, workUnit, phase, topic, id, { findings }));
       return;
     }
-    if (command === 'announce' || command === 'incorporate') {
+    if (command === 'incorporate') {
       if (!workUnit || !phase || !topic || !id || positional.length !== 4) {
-        throw new Error(`Usage: engine agent ${command} <work-unit> <phase> <topic> <id>`);
+        throw new Error('Usage: engine agent incorporate <work-unit> <phase> <topic> <id>');
       }
-      const fn = command === 'announce' ? agentState.announceAgent : agentState.incorporateAgent;
-      answer(fn(cwd, workUnit, phase, topic, id));
+      answer(agentState.incorporateAgent(cwd, workUnit, phase, topic, id));
       return;
     }
     if (command === 'surface') {
@@ -1698,7 +1696,7 @@ function runAgent(call, argv) {
       answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
       return;
     }
-    throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate> <work-unit> <phase> <topic> …');
+    throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> …');
   } catch (err) {
     failJson(call, err);
   }
@@ -2352,7 +2350,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'first', 'calls'];
+const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'calls'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {

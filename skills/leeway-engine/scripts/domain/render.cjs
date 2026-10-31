@@ -3492,154 +3492,76 @@ function specConfirmGate(cwd, { dotpath, single, unify }) {
   ].join('\n');
 }
 
-// finding-batch — a surfacing lane whose findings need at most a scan from
-// the user: the `apply` batch (corrections determined by decisions already
-// made), the call batch (`settled` at the specification, `decide` at every
-// other door but the discussion — calls the session made, presented for a
-// scan before they land), and the `route` batch (findings owned by a sibling topic). The lane
-// fixes the chrome; the payload carries only judgment content, so the screen
-// is one call and the prose holds no template. A screen holds at most
-// BATCH_MAX items — a larger lane renders over successive screens, each
-// approved on its own.
+// finding-batch — the specification's settled calls, the calls its review
+// has made, presented for a scan before they land; every other door walks
+// its calls one at a time through `render finding`. The payload carries only
+// judgment content, so the screen is one call and the prose holds no
+// template. A screen holds at most BATCH_MAX items — a longer batch renders
+// over successive screens, each approved on its own.
 //
-// A drain's first screen opens on its lane's marker — whether a screen is the
-// first is the session's to know, so it travels as `--first`. The settled
-// batch heads nothing: the specification's walk names no lanes.
-//
-// The settled lane at the specification is the one screen a gate mode
-// reaches: it carries the row that sets the mode, and under auto it renders
-// as a display of what is landing, with no menu — a scan the user opted out
-// of is a screen with nothing on it to do. Every other lane is a scan for a
-// user who is present, and renders its gated screen whatever the mode says.
+// It is the one screen a gate mode reaches: it carries the row that sets the
+// mode, and under auto it renders as a display of what is landing, with no
+// menu — a scan the user opted out of is a screen with nothing on it to do.
 
 const BATCH_MAX = 5;
 
-/** A confirm's remainder tail — how many of the lane wait beyond this screen. @param {number} more */
+/** A confirm's remainder tail — how many wait beyond this screen. @param {number} more */
 const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
 
-// The call screen — one presentation under the name each door uses. The
-// `auto` member rides the specification's name alone: its walk is the one
-// with a gate mode this screen can flip, so its lane is the only one with an
-// unstopped form.
-/** @type {{intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss: string, ask: string, fields: string[]}} */
-const CALL_LANE = {
-  intro: (n) => (n === 1
-    ? "This one is a call I've made, with what it rests on named beside it."
-    : "Each of these is a call I've made, with what it rests on named beside it."),
-  question: (n) => (n === 1 ? 'Document it?' : 'Document them?'),
-  confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
-  discuss: "Say discuss and a number — I'll raise it after the rest land",
-  ask: 'Tell me a number to expand',
-  fields: ['title', 'detail'],
-};
-
-/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, auto?: {row: string, line: (n: number) => string}, marker?: string, fields: string[]}>} */
-const BATCH_LANES = {
-  apply: {
-    marker: 'No Decision Needed',
-    intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
-    question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
-    confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
-    ask: "Tell me a number to expand, or one you don't think is settled",
-    fields: ['title', 'detail'],
-  },
-  settled: {
-    ...CALL_LANE,
-    // The opt-in and its unstopped form: the row that sets the gate mode,
-    // and the line the screen closes on once it is set. The landings follow
-    // the line, so it speaks in the present.
-    auto: {
-      row: 'Document this screen and every remaining settled finding automatically',
-      line: (n) => (n === 1 ? 'Documenting it' : `Documenting all ${n}`),
-    },
-  },
-  decide: { ...CALL_LANE, marker: 'Decided From the Record' },
-  route: {
-    marker: 'Belongs Elsewhere',
-    intro: (n) => (n === 1
-      ? "Not this topic's to answer. It goes to its owner's mailbox as a message, carrying the context built here."
-      : "Not this topic's to answer. Each goes to its owner's mailbox as a message, carrying the context built here."),
-    question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
-    confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
-    ask: 'Tell me a number to expand, or one that should stay here',
-    fields: ['title', 'target', 'detail'],
-  },
-};
-
-// The call screen's two names, and the fact that picks between them: the
-// specification batches the calls its review has made, every other caller
-// walks them. Both surfaces read it — it names the batch lane here, and at
-// `render finding` it says whether a settled finding carries its own gate.
-const CALL_LANE_NAMES = ['settled', 'decide'];
+// The phase that batches its review's calls; `render finding` reads it too,
+// to say whether a settled finding carries its own gate.
 const SETTLED_BATCH_PHASE = 'specification';
-
-/** The call lane the address serves — the other name is refused there. @param {string} phase */
-const callLaneOf = (phase) => (phase === SETTLED_BATCH_PHASE ? 'settled' : 'decide');
-
-// The phase whose calls never batch: a discussion's go through raise one at
-// a time, and its close is the decided screen (9.7.5).
-const UNFLUSHED_PHASE = 'discussion';
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string, first?: string}} args
+ * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function findingBatch(cwd, { dotpath, file, first }) {
+function findingBatch(cwd, { dotpath, file }) {
   if (!file) throw new Error('render finding-batch: --file <payload.json> is required');
   const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'finding-batch');
+  if (phase !== SETTLED_BATCH_PHASE) {
+    throw new Error(`render finding-batch: only a specification batches its review's calls — ${phase} walks each through render finding`);
+  }
   const p = readJsonPayload(cwd, file, 'finding-batch');
-  if (!Object.hasOwn(BATCH_LANES, p.lane)) {
-    throw new Error(`render finding-batch: "lane" must be one of ${Object.keys(BATCH_LANES).join(', ')}`);
-  }
-  const lane = BATCH_LANES[p.lane];
-  if (CALL_LANE_NAMES.includes(p.lane) && phase === UNFLUSHED_PHASE) {
-    throw new Error('render finding-batch: a discussion flushes no calls — each goes through raise, and Claude\'s own show on the map since the person last looked');
-  }
-  if (CALL_LANE_NAMES.includes(p.lane) && p.lane !== callLaneOf(phase)) {
-    throw new Error(`render finding-batch: lane "${p.lane}" is not served at the ${phase} phase — its call lane is "${callLaneOf(phase)}"`);
-  }
-  if (first && !lane.marker) {
-    throw new Error(`render finding-batch: --first opens a drain on its lane's marker, and lane "${p.lane}" carries none`);
-  }
   if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
+    throw new Error('render finding-batch: "items" must be a non-empty array of {title, detail}');
   }
   if (p.items.length > BATCH_MAX) {
-    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the lane over successive screens`);
+    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the batch over successive screens`);
   }
   const more = p.remaining === undefined ? 0 : p.remaining;
   if (!Number.isInteger(more) || more < 0) {
-    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of this lane\'s findings beyond the screen');
+    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of settled findings beyond the screen');
   }
   p.items.forEach((it, i) => {
-    for (const field of lane.fields) {
+    for (const field of ['title', 'detail']) {
       if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
     }
   });
   const count = p.items.length;
-  // Batch rows carry no walk-state — the lane is all-or-nothing, so no
-  // glyph column. A route row's destination rides the tag slot.
   const body = worklist({
-    intro: lane.intro(count),
-    items: p.items.map((it) => ({ title: it.title, tag: it.target ? `→ ${it.target}` : undefined, note: it.detail })),
+    intro: count === 1
+      ? "This one is a call I've made, with what it rests on named beside it."
+      : "Each of these is a call I've made, with what it rests on named beside it.",
+    items: p.items.map((it) => ({ title: it.title, note: it.detail })),
   });
-  if (lane.auto && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
+  if (laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
+    // The landings follow the line, so it speaks in the present.
     return section('DISPLAY: finding batch auto-approved', AUTO_GATE_MARKDOWN_INSTRUCTION,
-      `${body}\n\n${lane.auto.line(count)} [auto].`);
+      `${body}\n\n${count === 1 ? 'Documenting it' : `Documenting all ${count}`} [auto].`);
   }
-  const heading = first ? `**\`▪ ${lane.marker}\`**\n\n` : '';
   return [
-    section('DISPLAY: finding batch', emitAs('markdown'), `${heading}${body}`),
+    section('DISPLAY: finding batch', emitAs('markdown'), body),
     section(
       'MENU: finding batch',
       MENU_INSTRUCTION,
       menu('', [
-        cmdOption('y', 'yes', lane.confirm(count, more)),
-        ...(lane.auto ? [cmdOption('a', 'auto', lane.auto.row)] : []),
-        ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
-        promptOption('Ask', lane.ask),
-      ], { question: lane.question(count) }),
+        cmdOption('y', 'yes', `${count === 1 ? 'Document it' : `Document all ${count}`} and move on${moreTail(more)}`),
+        cmdOption('a', 'auto', 'Document this screen and every remaining settled finding automatically'),
+        promptOption('Discuss', "Say discuss and a number — I'll raise it after the rest land"),
+        promptOption('Ask', 'Tell me a number to expand'),
+      ], { question: count === 1 ? 'Document it?' : 'Document them?' }),
     ),
   ].join('\n');
 }
@@ -3857,10 +3779,10 @@ function mailOffer(cwd, { dotpath, file }) {
   const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
   if (!files.length) throw new Error(`render mail-offer: ${topic}'s mailbox is empty — nothing to offer`);
   if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
-  /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
+  /** @type {Map<string, {file: string, title: string, from: string}>} */
   const byFile = new Map();
   p.items.forEach((it, i) => {
-    for (const field of ['file', 'title', 'origin', 'from_phase', 'from_date']) {
+    for (const field of ['file', 'title', 'from']) {
       if (!isFilled(it[field])) throw new Error(`render mail-offer: item ${i + 1} is missing "${field}"`);
     }
     if (byFile.has(it.file)) throw new Error(`render mail-offer: duplicate item for "${it.file}"`);
@@ -3877,7 +3799,7 @@ function mailOffer(cwd, { dotpath, file }) {
     heading: { label: 'Mailbox', noun: 'message' },
     items: files.map((f) => {
       const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return { title: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
+      return { title: it.title, note: it.from };
     }),
     walked: true,
   });

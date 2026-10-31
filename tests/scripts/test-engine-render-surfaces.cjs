@@ -825,49 +825,20 @@ describe('render finding-batch', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } } } });
+    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
   });
   afterEach(() => teardown(dir));
 
-  it('renders the apply lane — fixed intro, unglyphed worklist rows, y/Ask menu', () => {
-    const file = writePayload(dir, 'a.json', {
-      lane: 'apply',
-      items: [
-        { title: 'Self-containment is holed by `excluded`', detail: 'Restate the invariant as ownership, not transport.' },
-        { title: 'A retracted rationale survives unmarked', detail: 'Superseded when copy-only won; mark it superseded.' },
-      ],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-    assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
-      "The fix follows from what's already decided. Nothing here is a choice.",
-      '',
-      '1\\. Self-containment is holed by \\`excluded\\`',
-      `${NB(5)}↳ Restate the invariant as ownership, not transport.`,
-      '2\\. A retracted rationale survives unmarked',
-      `${NB(5)}↳ Superseded when copy-only won; mark it superseded.`,
-      '',
-      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Apply them?`**',
-      '',
-      '**`y/yes`** → Apply all 2, then move on',
-      "**Ask**   → Tell me a number to expand, or one you don't think is",
-      `${NB(8)}settled`,
-      '',
-    ].join('\n'));
-  });
+  /** The screen over `payload` at the specification. @param {string} name @param {object} payload */
+  const batch = (name, payload) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: writePayload(dir, name, payload) });
 
-  it('renders the settled lane — the call intro, the a/auto row above the prompts', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 's.json', {
-      lane: 'settled',
+  it('renders the specification\'s settled calls — the call intro, the a/auto row above the prompts', () => {
+    const out = batch('s.json', {
       items: [
         { title: 'A repeated field name resolves to its last occurrence', detail: 'The sweep table leans this way; first-wins also fits the record.' },
         { title: 'An empty bare value writes a newline', detail: 'The output contract leans this way; zero bytes also fits the record.' },
       ],
     });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file });
     assert.strictEqual(out, [
       '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "Each of these is a call I've made, with what it rests on named beside it.",
@@ -893,215 +864,46 @@ describe('render finding-batch', () => {
     ].join('\n'));
   });
 
-  it('a settled screen under auto lands as a display — no menu, nothing overridden', () => {
+  it('under auto lands as a display — no menu, nothing overridden', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
-    const two = writePayload(dir, 'auto.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: two });
+    const out = batch('auto.json', { items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
     assert.ok(out.startsWith('=== DISPLAY: finding batch auto-approved (emit verbatim as markdown (not a code block) — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\n'));
     assert.ok(out.includes("Each of these is a call I've made"), 'the screen still shows what landed');
     assert.ok(out.endsWith('\nDocumenting all 2 [auto].\n'), 'the line is true when it is emitted — the landings follow it');
-    assert.ok(!out.includes('MENU'), 'the lane that carries the flip never stops once it is set');
+    assert.ok(!out.includes('MENU'), 'the screen that carries the flip never stops once it is set');
     assert.ok(!out.includes('Auto is on'), 'a screen that does not stop overrides nothing');
-    const one = writePayload(dir, 'auto1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: one })
-      .endsWith('\nDocumenting it [auto].\n'), 'the singular reads singular');
+    assert.ok(batch('auto1.json', { items: [{ title: 'A', detail: 'a.' }] }).endsWith('\nDocumenting it [auto].\n'), 'the singular reads singular');
   });
 
-  it('the other lanes are scans a user is present for — auto never lands one', () => {
-    // The gate mode is the findings walk's, and the planning walk holds one:
-    // its call lane is `decide`, which has no flip of its own to answer.
-    writeManifest(dir, 'pay', {
-      phases: {
-        planning: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
-        specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
-      },
-    });
-    for (const [dotpath, lane, items] of [
-      ['pay.planning.checkout', 'decide', [{ title: 'A', detail: 'a.' }]],
-      ['pay.planning.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
-      ['pay.planning.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
-      ['pay.specification.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
-      ['pay.specification.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
-    ]) {
-      const file = writePayload(dir, `scan-${dotpath}-${lane}.json`, { lane, items });
-      const out = renderSurface(dir, 'finding-batch', { dotpath, file });
-      assert.ok(out.includes('=== MENU: finding batch'), `${dotpath} ${lane}: the screen still asks`);
-      assert.ok(!out.includes('auto-approved'), `${dotpath} ${lane}: no lane but settled has an auto form`);
-      assert.ok(!out.includes('Auto is on'), `${dotpath} ${lane}: a scan overrides nothing`);
-    }
-  });
-
-  it("the call lane is the address's: settled at the specification, decide at the planning, none at the discussion", () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    const settled = writePayload(dir, 'cl1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    const decide = writePayload(dir, 'cl2.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: settled }),
-      /lane "settled" is not served at the planning phase — its call lane is "decide"/,
-    );
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: decide }),
-      /lane "decide" is not served at the specification phase — its call lane is "settled"/,
-    );
-    for (const file of [settled, decide]) {
-      assert.throws(
-        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }),
-        /render finding-batch: a discussion flushes no calls — each goes through raise, and Claude's own show on the map since the person last looked$/,
-      );
-    }
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: settled }).includes('`◆ Document it?`'));
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: decide }).includes('`◆ Document it?`'));
-  });
-
-  it('only the settled lane offers the flip — the other lanes have no gate to set', () => {
-    for (const lane of ['apply', 'decide', 'route']) {
-      const file = writePayload(dir, `na-${lane}.json`, { lane, items: [{ title: 'A', target: 't', detail: 'a.' }] });
-      assert.ok(!renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }).includes('`a/auto`'), lane);
-    }
-  });
-
-  it('renders the decide lane — call intro, y/Discuss/Ask menu', () => {
-    const file = writePayload(dir, 'd.json', {
-      lane: 'decide',
-      items: [
-        { title: 'The drain signal carries intent', detail: 'All three exit routes sent one signal; determined by the exit table.' },
-        { title: 'Unrecognised socket peer stamps `via: cli`', detail: 'A script you wired up is the same class as the CLI; determined by the enum.' },
-      ],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
-    assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
-      "Each of these is a call I've made, with what it rests on named beside it.",
-      '',
-      '1\\. The drain signal carries intent',
-      `${NB(5)}↳ All three exit routes sent one signal; determined by the`,
-      `${NB(7)}exit table.`,
-      '2\\. Unrecognised socket peer stamps \\`via: cli\\`',
-      `${NB(5)}↳ A script you wired up is the same class as the CLI;`,
-      `${NB(7)}determined by the enum.`,
-      '',
-      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Document them?`**',
-      '',
-      '**`y/yes`**   → Document all 2 and move on',
-      "**Discuss** → Say discuss and a number — I'll raise it after the rest",
-      `${NB(10)}land`,
-      '**Ask**     → Tell me a number to expand',
-      '',
-    ].join('\n'));
-  });
-
-  it('a remainder count rides the confirm; singleton screens read singular', () => {
-    const two = writePayload(dir, 'rem.json', {
-      lane: 'decide',
-      remaining: 7,
-      items: [
-        { title: 'A', detail: 'a.' },
-        { title: 'B', detail: 'b.' },
-      ],
-    });
-    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: two });
+  it('a remainder count rides the confirm; a singleton screen reads singular', () => {
+    const plural = batch('rem.json', { remaining: 7, items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
     assert.match(plural, /`◆ Document them\?`/);
     assert.match(plural, /→ Document all 2 and move on \(7 more after this\)$/m);
-    const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: one });
-    assert.match(out, /`◆ Document it\?`/);
-    assert.match(out, /→ Document it and move on$/m);
-    assert.match(out, /^This one is a call I've made/m);
-    const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
-    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: applyOne });
-    assert.match(applied, /`◆ Apply it\?`/);
-    assert.match(applied, /→ Apply it, then move on$/m);
-    const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
-    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: routeOne });
-    assert.match(routed, /`◆ Send it\?`/);
-    assert.match(routed, /→ Send it$/m);
-    const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: bad }),
-      /"remaining" must be a non-negative integer/,
-    );
+    const one = batch('one.json', { items: [{ title: 'A', detail: 'a.' }] });
+    assert.match(one, /`◆ Document it\?`/);
+    assert.match(one, /→ Document it and move on$/m);
+    assert.match(one, /^This one is a call I've made/m);
+    assert.throws(() => batch('badrem.json', { remaining: -1, items: [{ title: 'A', detail: 'a.' }] }), /"remaining" must be a non-negative integer/);
   });
 
-  it('caps a screen at five items across every lane', () => {
+  it('caps a screen at five items', () => {
     const items = Array.from({ length: 6 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    for (const lane of ['apply', 'decide']) {
-      const file = writePayload(dir, `cap-${lane}.json`, { lane, items });
-      assert.throws(
-        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }),
-        /a screen holds at most 5 items \(6 given\)/,
-      );
-    }
-    const routeItems = items.map((it) => ({ ...it, target: 'storage' }));
-    const rfile = writePayload(dir, 'cap-route.json', { lane: 'route', items: routeItems });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: rfile }),
-      /a screen holds at most 5 items/,
-    );
+    assert.throws(() => batch('cap.json', { items }), /a screen holds at most 5 items \(6 given\)/);
   });
 
-  it('renders the route lane — destination in the tag slot, send wording, no label line', () => {
-    const file = writePayload(dir, 'r.json', {
-      lane: 'route',
-      items: [{ title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' }],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-    assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
-    assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
-    assert.match(out, /one that should stay here/);
-    assert.ok(out.includes(`${DOTS}\n**\`◆ Send it?\`**\n\n**\`y/yes\`**`), 'a label-less menu opens on its question');
-    const two = writePayload(dir, 'r2.json', {
-      lane: 'route',
-      items: [
-        { title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' },
-        { title: 'Retry budget belongs to the sync loop', target: 'storage-and-sync', detail: 'Their loop owns the budget.' },
-      ],
-    });
-    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
-    assert.ok(plural.includes(`${DOTS}\n**\`◆ Send them?\`**\n\n**\`y/yes\`**`), 'the plural asks for the set');
-    assert.match(plural, /\*\*`y\/yes`\*\* → Send all 2$/m);
-  });
-
-  it("--first opens the drain's first screen on its lane's marker, the menu unchanged", () => {
-    for (const [lane, marker, item] of [
-      ['apply', 'No Decision Needed', { title: 'A', detail: 'a.' }],
-      ['decide', 'Decided From the Record', { title: 'A', detail: 'a.' }],
-      ['route', 'Belongs Elsewhere', { title: 'A', target: 't', detail: 'a.' }],
-    ]) {
-      const file = writePayload(dir, `first-${lane}.json`, { lane, items: [item] });
-      const later = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
-      const opening = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file, first: '1' });
-      const [display, menuPart] = opening.split(/(?==== MENU: finding batch)/);
-      assert.ok(display.startsWith(`=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===\n**\`▪ ${marker}\`**\n\n`),
-        `${lane}: the marker heads the section it names, a blank line before the worklist`);
-      assert.strictEqual(display.replace(`**\`▪ ${marker}\`**\n\n`, ''), later.split(/(?==== MENU: finding batch)/)[0],
-        `${lane}: the worklist beneath it is the screen's own`);
-      assert.ok(later.endsWith(menuPart), `${lane}: the menu is the same either way`);
-      assert.ok(!later.includes('▪'), `${lane}: a later screen or a re-render carries no marker`);
+  it('serves the specification alone: every other door walks its calls through render finding', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'elsewhere.json', { items: [{ title: 'A', detail: 'a.' }] });
+    for (const phase of ['planning', 'discussion']) {
+      assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: `pay.${phase}.checkout`, file }),
+        new RegExp(`^Error: render finding-batch: only a specification batches its review's calls — ${phase} walks each through render finding$`));
     }
   });
 
-  it('refuses --first on the settled lane — the specification batch heads nothing', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 'first-settled.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file, first: '1' }),
-      /--first opens a drain on its lane's marker, and lane "settled" carries none/,
-    );
-  });
-
-  it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
-    const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    // `ask` is the walked lane's name — the plausible producer mistake is
-    // sending it to the batch surface, which has no walked screen.
-    assert.throws(() => bad('l.json', { lane: 'ask', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, settled, decide, route/);
-    // An inherited property name is not a lane — the lookup is own-keys only.
-    assert.throws(() => bad('proto.json', { lane: 'constructor', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, settled, decide, route/);
-    assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
-    assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
-    assert.throws(() => bad('t.json', { lane: 'route', items: [{ title: 't', detail: 'd' }] }), /item 1 is missing "target"/);
-    assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
+  it('validates loudly — empty items, a missing field, no payload', () => {
+    assert.throws(() => batch('e.json', { items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
+    assert.throws(() => batch('m.json', { items: [{ title: 't' }] }), /item 1 is missing "detail"/);
+    assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout' }), /--file <payload\.json> is required/);
   });
 });
 
@@ -1133,8 +935,8 @@ describe('render mailbox surfaces', () => {
   it('mail-offer renders the agenda in mailbox order and the yes/later menu', () => {
     writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
-      { file: '001-metrics.md', title: 'Offline metrics', origin: 'ranking', from_phase: 'discussion', from_date: '2026-08-01' },
+      { file: '002-tracking.md', title: 'Expansion tracking', from: 'From Synonyms · 2 Aug' },
+      { file: '001-metrics.md', title: 'Offline metrics', from: 'From Ranking · 1 Aug' },
     ] });
     const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
     assert.ok(out.startsWith([
@@ -1142,9 +944,9 @@ describe('render mailbox surfaces', () => {
       '**Mailbox** — 2 messages',
       '',
       '○ 1. Offline metrics',
-      `${NB(7)}↳ From ranking · discussion · 2026-08-01`,
+      `${NB(7)}↳ From Ranking · 1 Aug`,
       '○ 2. Expansion tracking',
-      `${NB(7)}↳ From synonyms · discussion · 2026-08-02`,
+      `${NB(7)}↳ From Synonyms · 2 Aug`,
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: mail offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
@@ -1155,7 +957,7 @@ describe('render mailbox surfaces', () => {
   it('mail-offer wraps a sentence-length title under itself, with the note beneath', () => {
     writeMailbox('measurement', { '001-metrics.md': 'a' });
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', origin: 'note-model', from_phase: 'discussion', from_date: '2026-07-30' },
+      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', from: 'From Note Model · 30 Jul' },
     ] });
     const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
     assert.ok(out.includes([
@@ -1163,7 +965,7 @@ describe('render mailbox surfaces', () => {
       '',
       '○ 1. A preset binding persists until broken — three revisions to',
       `${NB(5)}the positioning model`,
-      `${NB(7)}↳ From note-model · discussion · 2026-07-30`,
+      `${NB(7)}↳ From Note Model · 30 Jul`,
     ].join('\n')), out);
     // No agenda row may overflow the width the display was sized to —
     // engine-wrapped even as markdown, so a soft-wrap never restarts a
@@ -1174,18 +976,18 @@ describe('render mailbox surfaces', () => {
 
   it('mail-offer refuses an empty mailbox, a short payload, and a payload naming a file the mailbox lacks', () => {
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
     ] });
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /mailbox is empty — nothing to offer/);
     writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /payload items must cover the mailbox exactly/);
     const wrong = writePayload(dir, 'wrong.json', { items: [
-      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
-      { file: '999-ghost.md', title: 'G', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
+      { file: '999-ghost.md', title: 'G', from: 'From O · 1 Aug' },
     ] });
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: wrong }), /payload items must cover the mailbox exactly/);
-    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T', origin: 'o', from_date: 'd' }] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: missing }), /item 1 is missing "from_phase"/);
+    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T' }] });
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: missing }), /item 1 is missing "from"/);
   });
 
   it('mail-block derives the count, refusing an empty mailbox', () => {

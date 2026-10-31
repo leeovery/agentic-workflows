@@ -147,8 +147,8 @@
 // subtopics, staging, the spec's build order (a cancelled spec's stashed one
 // too) and its review cycles and baseline, the plan's review tracking and
 // dependencies, and the caches of the discovery gap analysis and the
-// discussion analysis, whose files go with them (21.5.17), and a discussion's
-// own wait on research, a phase gone. Everything else carries as it stood,
+// discussion analysis, whose files go with them (21.5.17), and every
+// discussion's reconcile flag, whatever it holds. Everything else carries as it stood,
 // the fields 21.5.9 names among them, a brief's path following its brief.
 // Each later reshape of a manifest updates this move until it is released
 // (E4): the reshape's own steps written for `.leeway/` before this one —
@@ -260,13 +260,13 @@ const RETIRED_PHASE_FIELDS = {
 };
 const RETIRED_ITEM_FIELDS = {
   discovery: ['routing'],
-  discussion: ['subtopics'],
+  discussion: ['subtopics', 'reconcile_needed'],
   specification: ['order', 'previous_order', 'review_cycle', 'review_baseline_words', 'tracking'],
   planning: ['review_cycle', 'review_baseline_words', 'approvals', 'tracking', 'external_dependencies'],
 };
 const RESEARCH_STANDING = { unstarted: 'unstarted', cancelled: 'cancelled', postponed: 'postponed' };
 // A research item's wait on its experiments, carried to its topic's discussion.
-const RESEARCH_WAITS = ['awaiting_experiments', 'reconcile_needed'];
+const RESEARCH_WAITS = ['awaiting_experiments'];
 
 // A completed quick-fix's spec and plan, gone with their files.
 const QUICK_FIX_SPENT = ['specification', 'planning'];
@@ -512,15 +512,13 @@ const standingOf = (status) => RESEARCH_STANDING[String(status)] ?? 'in-progress
 
 /**
  * A discussion item, of its research's standing, for each topic whose
- * research joined its log and that has no discussion yet; a discussion's
- * own wait on research, a phase gone, dropped; and the research's wait on
- * its experiments carried onto its topic's discussion, where the discussion
- * has none of its own.
+ * research joined its log and that has no discussion yet, and the research's
+ * wait on its experiments carried onto its topic's discussion, where the
+ * discussion has none of its own.
  * @param {Record<string, any>} manifest @param {Set<string>} topics
  */
 function foldResearch(manifest, topics) {
   const discussion = itemsOf(manifest, 'discussion');
-  for (const item of Object.values(discussion)) if (isObject(item) && item.reconcile_needed === 'research') delete item.reconcile_needed;
   for (const [topic, item] of Object.entries(itemsOf(manifest, 'research'))) {
     if (!topics.has(topic) || !isObject(item)) continue;
     if (!Object.hasOwn(discussion, topic)) {

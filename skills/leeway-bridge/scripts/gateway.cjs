@@ -6,20 +6,20 @@ const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manife
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { stateRoot } = engine.state;
 const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;
+const { seriesDir } = require('../../leeway-engine/scripts/domain/experiment-paths.cjs');
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
-/** A discussion's file is a topic's log. @param {string} cwd @param {string} workUnit */
-function topicLogExists(cwd, workUnit) {
-  const topics = path.join(stateRoot(cwd), workUnit, 'topics');
-  return listDirs(topics).some((t) => fileExists(path.join(topics, t, 'log.md')));
+/** Whether any of the unit's topics passes `holds`, given the topic's name. @param {string} cwd @param {string} workUnit @param {(topic: string) => boolean} holds */
+function anyTopic(cwd, workUnit, holds) {
+  return listDirs(path.join(stateRoot(cwd), workUnit, 'topics')).some(holds);
 }
 
 function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(stateRoot(cwd), workUnit, phase);
   switch (phase) {
-    case 'experiment':     return listDirs(dir).length > 0;
-    case 'discussion':     return topicLogExists(cwd, workUnit);
+    case 'experiment':     return anyTopic(cwd, workUnit, (topic) => listDirs(path.join(stateRoot(cwd), seriesDir(workUnit, topic))).length > 0);
+    case 'discussion':     return anyTopic(cwd, workUnit, (topic) => fileExists(path.join(stateRoot(cwd), workUnit, 'topics', topic, 'log.md')));
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;
     case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));

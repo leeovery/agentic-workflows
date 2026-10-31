@@ -4,7 +4,7 @@
 
 ---
 
-Raises the current topic's mailbox — messages other topics sent here, one engine-numbered file each, shape pinned in [sending-a-message.md](sending-a-message.md) — one at a time, through conversation. A message leaves the mailbox only after it has been raised, worked with the user, folded into the topic's content as the record of that discussion, and absorbed under its own commit. An empty mailbox is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its mailbox holds messages, so nothing is lost however freely the user moves.
+Raises the current topic's mailbox — messages other topics sent here, one engine-numbered file each, shape pinned in [sending-a-message.md](sending-a-message.md) — one at a time, through conversation. A message leaves the mailbox only after it has been raised, worked with the user, folded into the topic's content as the record of that discussion, and answered: the question it raised on the ledger, the message removed under its own commit. An empty mailbox is a no-op. The conclusion gate backstops the whole protocol: the topic cannot conclude while its mailbox holds messages, so nothing is lost however freely the user moves.
 
 ## Parameters
 
@@ -38,7 +38,7 @@ The conversation owns it — its outcome routes through **D. Fold**, and the use
 
 #### If the opt-in is standing
 
-The previous message's absorb is the natural break.
+The previous message's answer is the natural break.
 
 → Proceed to **C. Raise One Message**.
 
@@ -84,16 +84,16 @@ Mid-thread — never interrupt. The next iteration's check reconsiders.
 
 ## B. Offer
 
-Read the first two lines only of each mailbox file — the `### {title}` heading and the `*From: {origin} · {from_phase} · {from_date}*` provenance line — with the Read tool's `limit` set to 2, never a whole-file read: a body read here is a body in context before the user has opted in. Write the agenda payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/mail-offer.json` with the Write tool — one item per mailbox file, keyed by its basename:
+Read the first two lines only of each mailbox file — the title and the `From {sender} · {date}` line under it — with the Read tool's `limit` set to 2, never a whole-file read: a body read here is a body in context before the user has opted in. Write the agenda payload to `.leeway/.cache/{work_unit}/{phase}/{topic}/mail-offer.json` with the Write tool — one item per mailbox file, keyed by its basename, `from` its `From` line as written:
 
 ```json
-{"items": [{"file": "{NNN-slug}.md", "title": "…", "origin": "…", "from_phase": "…", "from_date": "…"}]}
+{"items": [{"file": "{NNN-slug}.md", "title": "…", "from": "From … · …"}]}
 ```
 
 Render the offer:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render mail-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/mail-offer.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render mail-offer {work_unit}.{phase}.{topic} --file .leeway/.cache/{work_unit}/{phase}/{topic}/mail-offer.json
 ```
 
 **If the response is `ok: false`** — the mailbox moved beneath the payload (a peer session sent a message): re-run **A. Check**'s mailbox command, rebuild the payload over the fresh mailbox, and render again.
@@ -116,7 +116,7 @@ No opt-in. The check re-offers at a later break; the conclusion gate holds regar
 
 ## C. Raise One Message
 
-Take the lowest-numbered message still waiting — or whichever the user asks for. Read its mailbox file — `.leeway/{work_unit}/topics/{topic}/mail/{NNN-slug}.md` — with the Read tool; `{origin}` is where its provenance line says the message came from — the topic named there, or that topic's phase when the name is this topic's own. The entry is your brief, never the user's display: it reaches the conversation only through the raise you compose from it and the responses that follow, and the raw entry is shown only when the user asks.
+Take the lowest-numbered message still waiting — or whichever the user asks for. Read its mailbox file — `.leeway/{work_unit}/topics/{topic}/mail/{NNN-slug}.md` — with the Read tool; `{origin}` is the sender its `From` line names. The entry is your brief, never the user's display: it reaches the conversation only through the raise you compose from it and the responses that follow, and the raw entry is shown only when the user asks.
 
 The raise covers this message alone — for a walked entry, this ask alone: no other waiting message, open item, or finding rides along, and a gap you spot while preparing it is your finding, not the entry's — it parks as a tangent (below), never joins the raise. An entry carrying one ask is one raise. An entry carrying several distinct asks — points the user could accept or reject independently — is walked one ask at a time: a one-line map of what the entry brings (titles only) sits above the raise, beside the bridge where one is owed, then the first unresolved ask is raised alone — on a fresh raise that is the first ask; on a re-raise of a half-walked entry, the first its earlier walk left open; each later ask waits for the one before it to resolve and gets its own raise when its turn comes.
 
@@ -146,21 +146,31 @@ Record the discussion in the topic's content. The fold is an engagement decision
 
 A cross-topic correction tempts you to write guidance about the documents themselves. Do not: never write rules for how documents cite, edit, or point at each other, and never write lessons about how the topics drifted apart. The fold records only what changed and why, in the topic's own terms.
 
-Fold the message into the investigation file in its own idiom: revise the passages the settled answer touches directly, and where the message opened ground the file never covered, add a `### {title}` section opening with the provenance line, followed by what the investigation made of it.
+Fold the message into the investigation file in its own idiom: revise the passages the settled answer touches directly, and where the message opened ground the file never covered, add a `### {title}` section opening with the message's `From` line, followed by what the investigation made of it.
 
-→ Proceed to **E. Absorb**.
+→ Proceed to **E. Answer**.
 
-## E. Absorb
+## E. Answer
 
-Absorb the message — one engine transaction deletes its mailbox file and commits the fold action-scoped under its name, bracketing the message's life in history with the send commit that delivered it. The response answers `remaining` — route on it; never recap the absorbed message on either branch:
+Put the question the message raised on the ledger, as this topic's, content on stdin; its response's `id` names it:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic absorb {work_unit} {phase} {topic} --file {NNN-slug}.md -m "{phase}({work_unit}/{topic}): absorb {NNN-slug} (from {origin})"
+node .claude/skills/leeway-engine/scripts/engine.cjs ledger ask {work_unit}.{phase}.{topic}
+```
+
+```json
+{"text": "…", "by": "claude", "who_moved_whom": "none"}
+```
+
+Then take the message out of the mailbox — the engine removes its file and commits the removal under its name. The response answers `remaining` — route on it; never recap the answered message on either branch:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs topic answered {work_unit} {topic} {NNN-slug} --entry {id}
 ```
 
 #### If `remaining` is non-zero
 
-Emit nothing here — no recap, no pause for permission. The absorb is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise — whose bridge, the line above its problem, says what this one settled and how many remain.
+Emit nothing here — no recap, no pause for permission. The answer is the next raise's natural break: re-enter the check now, in this same turn, and the standing opt-in routes it straight to the next raise — whose bridge, the line above its problem, says what this one settled and how many remain.
 
 → Return to **A. Check**.
 

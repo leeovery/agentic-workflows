@@ -777,4 +777,19 @@ describe('presence rides the experiment verbs mechanically', () => {
     engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'held']);
     assert.ok(!fs.existsSync(presenceFile('experiment')), 'the top-level close releases the slot');
   });
+
+  it('a top-level close releases only its own session\'s slot, never a peer\'s working another record of the topic', () => {
+    const [a, b] = [{ CLAUDE_CODE_SESSION_ID: 'lab-a', CLAUDE_PID: '101' }, { CLAUDE_CODE_SESSION_ID: 'lab-b', CLAUDE_PID: '202' }];
+    spawn(dir, 'discussion', 'window-placement');
+    spawn(dir, 'discussion', 'window-size');
+    for (const step of ['advance', 'approve', 'advance']) engine(dir, ['experiment', step, 'lab', 'timing', 'E1'], { env: a });
+    engine(dir, ['experiment', 'advance', 'lab', 'timing', 'E2'], { env: b });
+    const holder = () => JSON.parse(fs.readFileSync(presenceFile('experiment'), 'utf8')).session_id;
+    assert.strictEqual(holder(), 'lab-b');
+
+    engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'held'], { env: a });
+    assert.strictEqual(holder(), 'lab-b', 'the peer keeps its slot');
+    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E2', '--reason', 'superseded'], { env: b });
+    assert.ok(!fs.existsSync(presenceFile('experiment')), 'its own close releases it');
+  });
 });

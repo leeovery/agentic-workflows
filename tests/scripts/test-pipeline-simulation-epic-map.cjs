@@ -222,7 +222,7 @@ describe('pipeline simulation: epic map', () => {
     // (agenda payload validated against the live mailbox), and the conclusion
     // blocker — the entry itself is read by the session, never rendered.
     sim.write('.leeway/.cache/scratch/mail-offer.json', JSON.stringify({
-      items: [{ file: '001-parked-message.md', title: 'Parked message', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
+      items: [{ file: '001-parked-message.md', title: 'Parked message', from: 'From Alpha · 23 Jul' }],
     }));
     sim.render(['mail-announce', `${wu}.discussion.delta`], { expect: 'content' });
     sim.render(['mail-offer', `${wu}.discussion.delta`, '--file', '.leeway/.cache/scratch/mail-offer.json'], { expect: 'content' });

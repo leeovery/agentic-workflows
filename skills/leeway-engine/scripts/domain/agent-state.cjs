@@ -14,8 +14,8 @@
 // IS its completion signal (no skeleton files, no frontmatter).
 //
 // Lifecycle per row: in-flight → pending → acknowledged → incorporated,
-// with `announced` (user told the file exists) and `surfaced[]` (finding
-// ids raised so far) tracked on acknowledged rows. `scan` is the one read
+// with `surfaced[]` (finding ids raised so far) tracked on acknowledged
+// rows. `scan` is the one read
 // the surfacing protocol and conclusion gates need: it promotes finished
 // rows and answers with a decision-ready snapshot. Each row names the
 // Claude process and conversation that dispatched it, as a presence record
@@ -448,7 +448,6 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         set: nnn,
         ...(labels.length ? { label: labels[i] } : {}),
         status: 'in-flight',
-        announced: false,
         findings: [],
         surfaced: [],
         created,
@@ -488,7 +487,6 @@ function publicRow(row) {
     status: row.status,
     set: row.set,
     created: row.created,
-    announced: row.announced,
     findings: row.findings,
     surfaced: row.surfaced,
     remaining: unsurfaced(row),
@@ -621,27 +619,6 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
 }
 
 /**
- * Mark the row announced — the user has been told the report exists.
- * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {string} id
- */
-function announceAgent(cwd, workUnit, phase, topic, id) {
-  requireWorkUnit(cwd, workUnit);
-  validatePhase(phase);
-  validateSegment(topic, 'topic');
-  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit, phase, topic);
-    const row = requireRow(state, phase, topic, id);
-    if (row.status !== 'acknowledged') {
-      throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row announces`);
-    }
-    row.announced = true;
-    saveState(cwd, workUnit, phase, topic, state);
-    return { work_unit: workUnit, phase, topic, ...publicRow(row) };
-  });
-}
-
-/**
  * Surface one finding, or a comma-separated batch of them — a lane's whole
  * screen lands in one call. Every id is validated before any is recorded, so
  * a bad entry fails the batch whole. When the last unsurfaced finding is
@@ -759,7 +736,6 @@ module.exports = {
   dispatchAgent,
   scanAgents,
   ackAgent,
-  announceAgent,
   surfaceFinding,
   incorporateAgent,
   closeInFlight,

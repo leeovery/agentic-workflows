@@ -47,6 +47,15 @@ describe('leeway-bridge discovery', () => {
     assert.strictEqual(r.phases.specification.exists, false);
   });
 
+  it('finds an experiment by a record in a topic\'s own folder, and none in the old phase folder', () => {
+    createManifest(dir, 'pay', { work_type: 'feature', phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
+    createFile(dir, '.leeway/pay/topics/pay/log.md', '# Pay');
+    createFile(dir, '.leeway/pay/experiment/pay/E1-window/problem.md', '# Problem');
+    assert.strictEqual(discover(dir, 'pay').phases.experiment.exists, false);
+    createFile(dir, '.leeway/pay/topics/pay/experiments/E1-window/problem.md', '# Problem');
+    assert.strictEqual(discover(dir, 'pay').phases.experiment.exists, true);
+  });
+
   it('returns done for completed pipeline', () => {
     createManifest(dir, 'done', {
       work_type: 'feature',

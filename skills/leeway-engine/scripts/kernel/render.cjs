@@ -173,8 +173,8 @@ function titleLines(title, head, childPrefix, width, reserve, hang = 0) {
 //   ├─ ◐ Ai Content Engine        [discussing]    ← title + columnised tag
 //   │  │  Summary text wrapped to the budget…      ← body[0], hanging off
 //   │  │  ↳ From exploration                       ← body[1], marker hangs
-//   │  ├─ ✓ Field Order           [decided]        ← child
-//   │  └─ ◐ Truncation Rules      [exploring]
+//   │  ├─ ✓ Field Order           [yours]          ← child
+//   │  └─ ○ Truncation Rules      [yours]
 //   └─ ◐ Menu And Admin           [discussing]     ← last sibling drops the │
 //         Summary with no children sits unconnected
 //

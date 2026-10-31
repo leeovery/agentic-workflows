@@ -6,7 +6,7 @@
 // Pins the state machine that replaced hand-edited cache frontmatter
 // (design/analysis-state.md): dispatch allocates ids and records in-flight
 // rows without creating files; the content file's existence is the
-// completion signal scan promotes on; ack/announce/surface/incorporate walk
+// completion signal scan promotes on; ack/surface/incorporate walk
 // a validated lifecycle with loud refusals off the legal path. Store is
 // `.leeway/.cache/{wu}/state.json` — cache-resident, purged at close. The
 // background review's back-off arms on the topic's moves on the ledger since
@@ -175,7 +175,6 @@ describe('engine agent — lifecycle store', () => {
     writeContent(dir, d.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     runJson(dir, ['ack', 'pay', 'discussion', 'alpha', 'synthesis-001', '--findings', 'T1,T2']);
-    runJson(dir, ['announce', 'pay', 'discussion', 'alpha', 'synthesis-001']);
 
     const s1 = runJson(dir, ['surface', 'pay', 'discussion', 'alpha', 'synthesis-001', 'T1']);
     assert.strictEqual(s1.status, 'acknowledged');
@@ -394,7 +393,6 @@ describe('engine agent — lifecycle store', () => {
       assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', topic, '--kind', 'deep-dive', '--label', 'auth']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['ack', 'pay', 'discussion', topic, 'deep-dive-001-auth', '--clean']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['scan', 'pay', 'discussion', topic]).error, /Invalid topic|Usage:/);
-      assert.match(runFails(dir, ['announce', 'pay', 'discussion', topic, 'deep-dive-001-auth']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['surface', 'pay', 'discussion', topic, 'deep-dive-001-auth', 'F1']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['incorporate', 'pay', 'discussion', topic, 'deep-dive-001-auth']).error, /Invalid topic|Usage:/);
     }
@@ -475,7 +473,7 @@ describe('engine agent — discussion review arming (9.8.14)', () => {
       const id = `review-00${i + 1}`;
       const findings = mark === null ? [] : ['F1'];
       return [id, {
-        id, kind: 'review', phase: 'discussion', topic, set: `00${i + 1}`, status: 'incorporated', announced: false, findings, surfaced: findings, created: `2026-08-0${i + 1}T00:00:00.000Z`, ledger_mark: mark ?? last(),
+        id, kind: 'review', phase: 'discussion', topic, set: `00${i + 1}`, status: 'incorporated', findings, surfaced: findings, created: `2026-08-0${i + 1}T00:00:00.000Z`, ledger_mark: mark ?? last(),
       }];
     }));
     writeContent(dir, `.leeway/.cache/${UNIT}/discussion/${topic}/state.json`, JSON.stringify({ agents }));

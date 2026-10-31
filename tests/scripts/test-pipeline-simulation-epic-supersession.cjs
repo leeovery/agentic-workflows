@@ -356,11 +356,10 @@ describe('pipeline simulation: epic supersession', () => {
     };
     sim.write('.leeway/.cache/scratch/spec-choice.json', JSON.stringify(choice));
     sim.render(['finding', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/spec-choice.json'], { expect: 'content' });
-    // The specification's calls batch on the settled lane — gated it asks
-    // once for the screen and offers the flip; under auto the same screen
-    // lands as a display, the one gate that never stops.
+    // The specification's calls batch — gated it asks once for the screen
+    // and offers the flip; under auto the same screen lands as a display,
+    // the one gate that never stops.
     sim.write('.leeway/.cache/scratch/finding-batch.json', JSON.stringify({
-      lane: 'settled',
       remaining: 0,
       items: [
         { title: 'A repeated field name resolves to its last occurrence', detail: 'The sweep table leans this way; first-wins also fits the record.' },
@@ -368,14 +367,9 @@ describe('pipeline simulation: epic supersession', () => {
       ],
     }));
     const settledBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch.json'], { expect: 'content' });
-    assert.match(settledBatch, /DISPLAY: finding batch/, 'the settled lane renders its screen at a specification address');
-    assert.match(settledBatch, /`◆ Document them\?`/, 'the batch asks the call lane\'s question');
+    assert.match(settledBatch, /DISPLAY: finding batch/, 'the batch renders its screen at a specification address');
+    assert.match(settledBatch, /`◆ Document them\?`/, 'the batch asks to document the calls');
     assert.match(settledBatch, /`a\/auto`/, 'the screen offers the flip that retires the rest');
-    sim.write('.leeway/.cache/scratch/finding-batch-decide.json', JSON.stringify({
-      lane: 'decide', items: [{ title: 'A', detail: 'a.' }],
-    }));
-    sim.refuses(['render', 'finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch-decide.json'],
-      /lane "decide" is not served at the specification phase/);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'finding_gate_mode', 'auto']);
     const autoBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch.json'], { expect: 'content' });
     assert.match(autoBatch, /DISPLAY: finding batch auto-approved/, 'auto lands the screen as a display');

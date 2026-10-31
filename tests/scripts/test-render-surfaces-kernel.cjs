@@ -329,8 +329,9 @@ describe('worklist shape', () => {
     holdWidth(render(dir, ['findings-summary', 'wu3.planning.portal', '--file', writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
       { title: long, tag: 'Important', summary: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
     ] })]));
-    holdWidth(render(dir, ['finding-batch', 'wu3.discussion.checkout', '--file', writePayload(dir, 'w3.json', { lane: 'route', items: [
-      { title: long, target: 'payments-reconciliation-storage', detail: 'Their subtopic owns the claim.' },
+    writeManifest(dir, 'wu4', { phases: { specification: { items: { checkout: { status: 'in-progress' } } } } });
+    holdWidth(render(dir, ['finding-batch', 'wu4.specification.checkout', '--file', writePayload(dir, 'w3.json', { items: [
+      { title: long, detail: 'The payments reconciliation storage owns the claim, and its subtopic says why.' },
     ] })]));
   });
 
@@ -358,7 +359,8 @@ describe('worklist shape', () => {
     // Batch rows are capped below padding range, but the leading column must
     // still never open on a real space — a markdown renderer would strip it.
     const batch = Array.from({ length: 5 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    const bout = render(dir, ['finding-batch', 'wu2.discussion.checkout', '--file', writePayload(dir, 'b2.json', { lane: 'apply', items: batch })]);
+    writeManifest(dir, 'wu5', { phases: { specification: { items: { checkout: { status: 'in-progress' } } } } });
+    const bout = render(dir, ['finding-batch', 'wu5.specification.checkout', '--file', writePayload(dir, 'b2.json', { items: batch })]);
     assert.ok(bout.includes('1\\. Item 1'), 'unglyphed row opens on its number');
     for (const line of [...out.split('\n'), ...bout.split('\n')]) {
       assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);

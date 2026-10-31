@@ -9,7 +9,7 @@
 A prior pass's cache is about to be superseded by this one. Clear it — only when the file exists:
 
 ```bash
-rm .workflows/{work_unit}/.state/discussion-consolidation-analysis.md
+rm .leeway/{work_unit}/.state/discussion-consolidation-analysis.md
 ```
 
 > *Output the next fenced block as a text code block (```text fence):*
