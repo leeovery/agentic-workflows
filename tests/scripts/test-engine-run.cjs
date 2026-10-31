@@ -9,7 +9,10 @@
 // and that nothing of it survives the call. These tests hold that boundary:
 // two calls in two directories never cross, an environment key is held for
 // one call and restored after it, the width memo resolves per call, and a
-// handler that stops the command never stops the process.
+// handler that stops the command never stops the process. Within a call, its
+// git runners share one read of the config's hooks in each folder they run
+// in: boot's many git calls read them once in the project and once in the
+// state.
 //
 // A command that waits on the embedding provider answers through
 // `engine.runAsync`, the environment held until it settles; `run` refuses to
@@ -75,6 +78,32 @@ function withProcessEnv(values, fn) {
     fn();
   } finally {
     assign(earlier);
+  }
+}
+
+/**
+ * The folder of each read of the config's hooks the git processes `fn`
+ * starts make, as trace2 records them: `fn` is given the environment to run
+ * them under.
+ * @param {(env: Record<string, string>) => void} fn
+ * @returns {string[]}
+ */
+function hooksReadIn(fn) {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'trace2-'));
+  const file = path.join(folder, 'events.json');
+  try {
+    fn({ GIT_TRACE2_EVENT: file });
+    /** @type {Map<string, {argv?: string[], worktree?: string}>} */
+    const processes = new Map();
+    for (const event of fs.readFileSync(file, 'utf8').trim().split('\n').map((line) => JSON.parse(line))) {
+      const seen = processes.get(event.sid) ?? {};
+      if (event.event === 'start') seen.argv = event.argv;
+      if (event.event === 'def_repo') seen.worktree = event.worktree;
+      processes.set(event.sid, seen);
+    }
+    return [...processes.values()].filter(({ argv }) => argv?.includes('^hook\\..+\\.command$')).map(({ worktree }) => String(worktree));
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
   }
 }
 
@@ -166,6 +195,12 @@ describe('engine.run — the invocation is the caller\'s', () => {
         'the engine saw no session id at all');
       assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, 'ambient-session', 'and it came back');
     });
+  });
+
+  it('a call reads the config\'s hooks once in each folder its git runs in — boot\'s many calls in each among them', () => {
+    const folders = hooksReadIn((env) => assert.strictEqual(engine.run(['boot'], { cwd: dir, env }).code, 0));
+
+    assert.deepStrictEqual(folders.sort(), [dir, path.join(dir, '.leeway')]);
   });
 
   it('the display width resolves per call, and the process keeps its own', () => {

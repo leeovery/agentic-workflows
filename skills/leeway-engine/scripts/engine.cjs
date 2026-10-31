@@ -101,6 +101,7 @@ const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cj
 const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
 const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
 const { codeRoot } = require('./kernel/code-root.cjs');
+const { withVerbReads } = require('./kernel/isolated-git.cjs');
 const { handedSession } = require('./kernel/process.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
@@ -2534,23 +2535,26 @@ const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', '
  * answered records the gate its MENU stated as the gate the conversation was
  * shown, where a failed one showed none. Both after the command, which may
  * take the folder both live in: boot's tidy-up deletes one whose transcript
- * is gone.
+ * is gone. Its git runners share one read of the config's hooks at each
+ * cwd (kernel/isolated-git).
  * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
  */
 function dispatch(call, argv) {
-  openGate();
-  const settle = (/** @type {number} */ code) => {
-    if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
-    if (code === 0) recordGateShown();
-    return code;
-  };
-  let answer;
-  try {
-    answer = runCli(call, argv);
-  } catch (err) {
-    return settle(exitCodeOf(call, err));
-  }
-  return answer ? answer.then(() => 0, (err) => exitCodeOf(call, err)).then(settle) : settle(0);
+  return withVerbReads(() => {
+    openGate();
+    const settle = (/** @type {number} */ code) => {
+      if (!HOOK_TARGETS.includes(argv.slice(0, 2).join(' '))) markConversation(call.cwd);
+      if (code === 0) recordGateShown();
+      return code;
+    };
+    let answer;
+    try {
+      answer = runCli(call, argv);
+    } catch (err) {
+      return settle(exitCodeOf(call, err));
+    }
+    return answer ? answer.then(() => 0, (err) => exitCodeOf(call, err)).then(settle) : settle(0);
+  });
 }
 
 /**

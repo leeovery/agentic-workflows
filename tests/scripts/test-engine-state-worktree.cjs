@@ -6,10 +6,12 @@
 // `leeway-state` checked out at `.leeway/` in the main checkout and locked,
 // found from any worktree through the common git directory; every call made
 // with the caller's repository environment cleared, and within a time limit;
-// creating the state, inspecting it, each repair on its own, the remote
-// asked, and a branch holding code history. The locks are
-// test-engine-state-lock.cjs's; the commit, its push and its hooks off,
-// test-engine-state-commit.cjs's.
+// the config's hooks read afresh by each verb and after a `config` call, and
+// for no command that fires none; creating the state, inspecting it, each
+// repair on its own, the remote asked, and a branch holding code history. The
+// locks are test-engine-state-lock.cjs's; the commit, its push and its hooks
+// off, test-engine-state-commit.cjs's; one read of the hooks per call and
+// folder, test-engine-run.cjs's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote (state-worktree-world.cjs).
@@ -26,7 +28,7 @@ const { git, initRepo, testIdentity, bareRepo, STATE_DIR_NAME, statePath, layout
 const { useWorld, elsewhereRepo, snapshot, ignored } = require('./state-worktree-world.cjs');
 
 const ISOLATED_GIT = path.join(__dirname, '../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
-const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout } = require(ISOLATED_GIT);
+const { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, mainCheckout } = require(ISOLATED_GIT);
 const { GitError } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
 
 const { stateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
@@ -53,6 +55,19 @@ function worktreeRecord(main, root) {
 /** @param {string} text @returns {string[]} */
 function lines(text) {
   return text.split('\n').filter(Boolean).sort();
+}
+
+/**
+ * The hooks git reads as disabled at a call through the runner.
+ * @param {import('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs').IsolatedGit} runner
+ */
+function disabledHooks(runner) {
+  return runner.run(['var', '-l']).split('\n').filter((line) => /^hook\.[^=]+\.enabled=false$/.test(line));
+}
+
+/** Whether a traced git command is the read of the config's hooks. @param {string} command */
+function readsHooks(command) {
+  return command.startsWith('config -z --name-only --get-regexp');
 }
 
 describe('the main checkout', () => {
@@ -163,6 +178,41 @@ describe('the isolated runner', () => {
     for (const call of [() => runner.tryRun(['wait'], { timeoutMs: 100, env: waits }), () => runner.run(['wait'], { timeoutMs: 100, env: waits })]) {
       assert.throws(call, (/** @type {Error} */ err) => err instanceof GitError && err.message === 'git wait timed out after 0.1s');
     }
+  });
+
+  it('reads none of the config\'s hooks for a command no form of which fires one', () => {
+    const { main } = codeProject(world());
+    const runner = isolatedGit(main);
+
+    const { commands } = traced(() => {
+      for (const args of [['rev-parse', 'HEAD'], ['cat-file', '-e', 'HEAD'], ['ls-tree', 'HEAD'], ['for-each-ref'], ['rev-list', 'HEAD'], ['config', '--get', 'user.name']]) {
+        runner.run(args);
+      }
+    });
+
+    assert.deepStrictEqual(commands.filter(readsHooks), []);
+  });
+
+  it('never hands one verb\'s read of the hooks to the next: a second world at the same path has its own disabled', () => {
+    const dir = initRepo(path.join(world(), 'project'));
+    assert.deepStrictEqual(withVerbReads(() => disabledHooks(isolatedGit(dir))), []);
+    fs.rmSync(dir, { recursive: true });
+    initRepo(dir);
+    git(dir, ['config', 'hook.guard.command', 'exit 1']);
+
+    assert.deepStrictEqual(withVerbReads(() => disabledHooks(isolatedGit(dir))), ['hook.guard.enabled=false']);
+  });
+
+  it('reads the hooks again after a config call through a runner, so a hook the verb itself defines is disabled', () => {
+    const dir = initRepo(path.join(world(), 'project'));
+
+    const disabled = withVerbReads(() => {
+      disabledHooks(isolatedGit(dir));
+      isolatedGit(dir).run(['config', 'hook.guard.command', 'exit 1']);
+      return disabledHooks(isolatedGit(dir));
+    });
+
+    assert.deepStrictEqual(disabled, ['hook.guard.enabled=false']);
   });
 
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {

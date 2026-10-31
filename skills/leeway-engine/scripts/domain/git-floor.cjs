@@ -54,4 +54,4 @@ function gitFloorStopSurface() {
   return gitFloorStop(GIT_FLOOR.join('.'), shortfall.found);
 }
 
-module.exports = { GIT_FLOOR, gitShortfall, gitFloorStopSurface };
+module.exports = { GIT_FLOOR, versionOf, gitShortfall, gitFloorStopSurface };

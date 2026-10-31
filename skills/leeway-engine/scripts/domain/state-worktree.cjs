@@ -80,7 +80,7 @@ const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFil
 const { folding, layoutPlace } = require('./layout.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
-const { finishLanding } = require('./state-merge-landing.cjs');
+const { landingRecorded, finishLanding } = require('./state-merge-landing.cjs');
 const { checkLedgerCommit, spendPass, dropStop } = require('./ledger-check.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 const { newId } = require('./ledger-ids.cjs');
@@ -172,17 +172,19 @@ const NETWORK_ENV = Object.freeze({ GIT_TERMINAL_PROMPT: '0' });
  * @typedef {(held: string|null) => string|null} Change
  */
 
+/** The commit HEAD stands at, and its tree. @typedef {{commit: string, tree: string}} HeadAt */
+
 /**
  * The state worktree as git opens it: its root, a runner bound to it, the
- * ref its HEAD names (`HEAD` when detached), whether that branch has a
- * commit yet, where its private index goes, its own git dir, and the hash
- * its objects are named by.
+ * ref its HEAD names (`HEAD` when detached), where HEAD stands as it was
+ * opened — null where that branch has no commit yet — where its private
+ * index goes, its own git dir, and the hash its objects are named by.
  * @typedef {{
  *   opened: true,
  *   root: string,
  *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   head: string,
- *   born: boolean,
+ *   at: HeadAt|null,
  *   index: string,
  *   gitDir: string,
  *   objectFormat: string,
@@ -211,10 +213,10 @@ function trackingRef(remote) {
 function stateRemote(git) {
   const remotes = git.run(['remote']).split('\n').filter((name) => name !== '');
   if (remotes.includes('origin')) return { remote: 'origin', remotes };
+  if (remotes.length < 2) return { remote: remotes[0] ?? null, remotes };
   const branch = (git.tryRun(['symbolic-ref', '--quiet', '--short', 'HEAD']) || '').trim();
   const tracked = branch === '' ? '' : (git.tryRun(['config', '--get', `branch.${branch}.remote`]) || '').trim();
-  if (remotes.includes(tracked)) return { remote: tracked, remotes };
-  return { remote: remotes.length === 1 ? remotes[0] : null, remotes };
+  return { remote: remotes.includes(tracked) ? tracked : null, remotes };
 }
 
 /** Why several remotes choose none. @param {string[]} remotes @returns {string} */
@@ -247,7 +249,13 @@ function registeredWorktree(git, root) {
   };
 }
 
-const OPENING = ['rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--show-object-format'];
+const OPENING = ['--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--show-object-format'];
+
+/** Where HEAD stands. @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @returns {HeadAt} */
+function headAt(git) {
+  const [commit, tree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
+  return { commit, tree };
+}
 
 /**
  * The branch HEAD names where that branch has no commit yet, else null.
@@ -270,23 +278,25 @@ function unbornHead(git) {
  */
 function openWorktree(root) {
   const git = isolatedGit(root);
-  let out;
-  let born = true;
+  let answers;
+  /** @type {HeadAt|null} */
+  let at = null;
   try {
-    out = git.run([...OPENING, '--symbolic-full-name', 'HEAD']);
+    const [commit, tree, ...rest] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}', ...OPENING, '--symbolic-full-name', 'HEAD']).split('\n');
+    answers = rest;
+    at = { commit, tree };
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     const unborn = unbornHead(git);
     if (unborn === null) return { opened: false, why: err.message };
-    out = `${git.run(OPENING).trimEnd()}\n${unborn}`;
-    born = false;
+    answers = [...git.run(['rev-parse', ...OPENING]).trimEnd().split('\n'), unborn];
   }
-  const [top, common, index, gitDir, objectFormat, head] = out.split('\n');
+  const [top, common, index, gitDir, objectFormat, head] = answers;
   const repository = realpathOrSelf(path.resolve(root, common));
   if (realpathOrSelf(top) !== root || repository !== path.join(mainOf(root), '.git')) {
     return { opened: false, why: `git reads it as part of ${top}, whose repository is ${repository}` };
   }
-  return { opened: true, root, git, head, born, index: path.resolve(root, index), gitDir, objectFormat };
+  return { opened: true, root, git, head, at, index: path.resolve(root, index), gitDir, objectFormat };
 }
 
 /**
@@ -798,12 +808,13 @@ function refuseOutsideLayout(root, changes) {
 }
 
 /**
- * Commit the working tree's state of the pathspecs onto `leeway-state`. The
- * tree is built in a private index seeded from HEAD — never the worktree's
- * own, whatever it holds staged — and the branch moves only from the HEAD it
- * was built on. A tree whose ledger does not start with HEAD's is refused
- * (ledger-check.cjs), but for a conversion's, whose pass the commit spends;
- * a commit that lands clears the engine's kept stop on the ledger.
+ * Commit the working tree's state of the pathspecs onto `leeway-state`,
+ * HEAD standing `at`. The tree is built in a private index seeded from HEAD
+ * — never the worktree's own, whatever it holds staged — and the branch
+ * moves only from the HEAD it was built on. A tree whose ledger does not
+ * start with HEAD's is refused (ledger-check.cjs), but for a conversion's,
+ * whose pass the commit spends; a commit that lands clears the engine's
+ * kept stop on the ledger.
  * A kill at any step leaves the branch where it was or at the whole commit,
  * and the private index is cleared before and after. A file given a change
  * is committed as the change makes it of HEAD's, whatever the working tree
@@ -811,24 +822,23 @@ function refuseOutsideLayout(root, changes) {
  * staged. Of `kept`, what is on disk is staged as additions and edits
  * alone — a folder's new files with them — never a removal. Null where the
  * tree comes out as HEAD's.
- * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
+ * @param {OpenWorktree} worktree @param {HeadAt} at @param {string[]} specs @param {string} message
  * @param {Record<string, Change>} changes @param {string[]} kept
  * @returns {string|null}
  */
-function commitPaths(worktree, specs, message, changes, kept) {
+function commitPaths(worktree, { commit: head, tree: headTree }, specs, message, changes, kept) {
   const { git, root, index, gitDir } = worktree;
-  const [head, headTree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
   const changed = Object.entries(changes).flatMap(([spec, change]) => {
     const text = changedAt(git, head, spec, change);
     return text === null ? [] : [{ spec, text }];
   });
   return withPrivateIndex(index, (env) => {
     git.run(['read-tree', head], { env });
-    const known = specs.length === 0 ? [] : git.run(['ls-files', '-z', '--', ...literally(specs)], { env }).split('\0').filter((file) => file !== '');
     // `add` refuses a pathspec that matches nothing on disk or in the index:
     // a path gone from both has nothing to commit.
-    const stageable = specs.filter((spec) => spec === '.' || onDisk(path.join(root, spec))
-      || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
+    const gone = specs.filter((spec) => spec !== '.' && !onDisk(path.join(root, spec)));
+    const known = gone.length === 0 ? [] : git.run(['ls-files', '-z', '--', ...literally(gone)], { env }).split('\0').filter((file) => file !== '');
+    const stageable = specs.filter((spec) => !gone.includes(spec) || known.some((file) => file === spec || file.startsWith(`${spec}/`)));
     if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable), ...SIDECARS_HELD_OUT], { env });
     const present = kept.filter((spec) => onDisk(path.join(root, spec)));
     if (present.length > 0) {
@@ -921,15 +931,16 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
   }
   const taken = [...specs, ...Object.keys(given)];
   if (taken.length === 0) return { commit: null, warnings: [] };
-  if (!worktree.born) {
+  if (worktree.at === null) {
     refuseOutsideLayout(root, placedChanges(worktree));
     return { commit: null, held: true, warnings: [] };
   }
+  const recorded = landingRecorded(worktree);
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
   const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
-  const commit = commitPaths(worktree, [...specs, ...logs], message, given, keptSpecs);
+  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keptSpecs);
   return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keptSpecs])] };
 }
 
