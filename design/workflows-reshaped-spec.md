@@ -1693,6 +1693,8 @@ person 2026-10-21]
 before any work is committed to, as important as any phase; settling the
 work's type is only its last step. [ruled by the person 2026-10-22]
 
+8.1.8 Pulling roadmap items hands into discovery, the picked items its seeds. The pull creates no unit itself: start this work creates it, as for every other way in (8.8.1). [Claude's derivation, 29.12 planning (8.8.1)]
+
 ### 8.2 One phase, at whatever level the conversation reaches
 
 8.2.1 Discovery is one phase at whatever level the conversation reaches. The
@@ -1754,8 +1756,8 @@ the type call. [ruled by the person 2026-10-26]
 
 8.2.10 A return to the product's conversation reads its two most recent
 sessions in full and the roadmap, whose items' pointers reach the older
-sessions, after any question whose answer may discard them (2.10.4), and opens
-with where the conversation had got to. [agreed by the person 2026-10-26]
+sessions, and opens with where the conversation had got to. [agreed by the
+person 2026-10-26; Claude's derivation, 29.12 planning: no question discards them (2.10.4, 8.8.12)]
 
 8.2.11 Within discovery, Claude carries the conversation to the level it has
 reached. When the product's conversation turns to an epic whose map is still
@@ -1906,9 +1908,9 @@ Claude's derivation, T2]
 as its decision, or cancelled (and see 8.8.10). [R17, R10]
 
 8.6.7 A return to an epic's discovery reads its two most recent discovery logs
-in full and the older ones by their closing line, after any question whose
-answer may discard them (2.10.4). It opens with a short account of where the
-conversation had got to. [today's product; Claude's sort, T41]
+in full and the older ones by their closing line. It opens with a short
+account of where the conversation had got to. [today's product; Claude's
+sort, T41; Claude's derivation, 29.12 planning: no question discards them (2.10.4, 8.8.12)]
 
 ### 8.7 The brief
 
@@ -2139,6 +2141,10 @@ would break a path, a branch or an id]
 when the person calls for it. Convergence earns one passing nudge, never a
 forced harvest. [today's product; Claude's sort, T49]
 
+8.8.20 A started topic's rename changes its title on the map and on every screen; its folder, its mail and its ledger entries keep the name it started under. An unstarted topic renames fully. This answers 8.8.17. [Claude's proposal, 29.12 planning]
+
+8.8.21 On a re-shape (8.8.14), approve the map marks the topics that are new and those that moved. Renames and removals happen only at the person's word (8.8.6). [Claude's proposal, 29.12 planning]
+
 ### 8.9 The product record
 
 8.9.1 The product record is the project's product-wide ledger entries, read as
@@ -2190,7 +2196,8 @@ record, which fills from its decisions. [R10]
 
 8.9.11 The product record sums up the product's character, not roadmap items:
 the roadmap keeps capabilities in horizons, an item's substance left in its
-session logs until a pull creates its topic. [R10]
+session logs until a pull hands it into discovery and start this work creates
+its topic (8.1.8). [R10; Claude's derivation, 29.12 planning (8.1.8)]
 
 8.9.12 The product record stays apart from the feature map (§15): the build writes the feature map and proving the work reads
 it; discussion writes the product record and the opening view reads it. [R10,
@@ -2339,11 +2346,18 @@ ledger when no work unit exists (8.12.5), so the opening view finds it
 code predates the workflows once the baseline's status fields go. [Claude's
 sort, B26]
 
-8.12.11 The offer is made once per project, as today. A decline, or the
-judgment that the project grew up on the workflows, is remembered and never
-asked again. It is remembered on the project manifest (4.11.3), where the
-migration carries a recorded `native`, `skipped` or `completed` forward (21.11.2). [today's
-product; Claude's sort, T26; where, Claude's proposal; 21.11.2; Claude's derivation, 29.11 slice 11.14]
+8.12.11 The offer is made once per project, as today. A decline, the judgment
+that the project grew up on the workflows, or a completed baseline, is
+remembered and never asked again. It is remembered on the project manifest
+(4.11.3), where the migration carries a recorded `native`, `skipped` or
+`completed` forward (21.11.2). [today's product; Claude's sort, T26; where,
+Claude's proposal; 21.11.2; Claude's derivation, 29.11 slice 11.14: a completed baseline is remembered too]
+
+8.12.12 A finding about the product as a whole sits in the ledger under the reserved unit `product`, with no topic, which answers 8.12.9. `product` is never a work unit's name (8.8.18). [Claude's proposal, 29.12 planning]
+
+8.12.13 While the baseline's research is owed, the brownfield offer's answer is `accepted`. It becomes `completed` once the findings land, and an accepted offer resumes the research at the next start (8.12.4). [Claude's proposal, 29.12 planning]
+
+8.12.14 The product researcher's open questions open the conversation (8.12.5). What still stands at the session's end is proposed as roadmap items on the screen that ends it (18.8.18); nothing is written to the roadmap without the person. [Claude's proposal, 29.12 planning]
 
 ### 8.13 One-way doors
 
@@ -2411,6 +2425,8 @@ often, ruled by the person 2026-10-22]
 
 8.14.10 Left to the builder: how a log learns its conversation's session id
 and transcript path (8.14.8). [Claude's sort 2026-10-26]
+
+8.14.11 A discovery log, the product's or a unit's, carries on until the person ends its session, or until approve the map or start this work closes it. A return carries on in the same log, the new conversation's header added on its first write (8.14.8). [Claude's proposal, 29.12 planning]
 
 ## 8-S. Scenarios for §8
 
@@ -2606,13 +2622,14 @@ reconcile flag is set. (8.7.6)
 
 8.S47 Given an epic, when discovery runs, then start this work creates the
 unit, the conversation shapes the topics, approve the map shows, and on its
-yes the work hands off into the first topic; given a feature, the work hands
-off from start this work with no approve-the-map screen. (8.8.13)
+yes the work hands off to the epic's menu, the first topic in the map's order
+marked next; given a feature, the work hands off from start this work with no
+approve-the-map screen. (8.8.13)
 
 8.S48 Given an existing epic re-shaped through the discovery row, when the
 person asks for a change in their own words, then no confirm shows; when
 Claude changes the topics or their order beyond what was asked, then the
-session ends on approve the map. (8.8.14)
+session ends on approve the map, which marks the topics that are new and those that moved. (8.8.14, 8.8.21)
 
 8.S49 Given a park the person gave no horizon, when the map goes for approval,
 then Claude first asks which horizon, listing the person's existing horizons
@@ -2634,10 +2651,9 @@ nothing of it; given the map proposes a topic matching a waiting roadmap item,
 the topic takes that item in and no twin stands beside it. (8.1.6)
 
 8.S53 Given an epic with four discovery logs, when the person returns to its
-discovery, then after any question whose answer may discard them, the two most
-recent logs are read in full and the older two by their closing line, and the
-session opens with a short account of where the conversation had got to. (8.6.7,
-2.10.4)
+discovery, then the two most recent logs are read in full and the older two
+by their closing line, and the session opens with a short account of where
+the conversation had got to. (8.6.7)
 
 8.S54 Given a feature created at start this work from two seeds, when its
 discussion first opens, then the session has read the topic's brief and both
@@ -2755,6 +2771,10 @@ adds what was missing before carrying on; given the transcript is gone, then
 Claude says so in one line and carries on from the log. (8.14.8, 8.14.9)
 
 8.S76 Given a product-record line widening a decision its topic has since replaced, when that topic next reaches decided, then the screen shows the line replaced by one widening the replacement, or withdrawn, and the person's yes lands it, a withdrawn line leaving the product record with its trail kept; while nothing replaces or withdraws the line, the yes is refused, so the record never holds two rules for one call. (8.9.14, 8.9.7, 8.9.2)
+
+8.S77 Given a started topic the person renames in their own words, then its title changes on the map and on every screen, while its folder, its mail and its ledger entries keep the name it started under; given an unstarted topic renamed, then it renames fully. (8.8.20, 8.8.6)
+
+8.S78 Given the person accepts the brownfield offer, then the answer is `accepted` while the baseline's research is owed, the next start resumes the research, and the answer becomes `completed` once the findings land. (8.12.13, 8.12.11)
 
 ## 9. Discussion
 
@@ -3363,6 +3383,8 @@ how it looks, the design wins. [R23]
 or skipped, before anything lands. An image pasted with no file behind it is
 asked for as a saved file. [today's product; Claude's sort, T58]
 
+9.10.23 A discovery log's commit, the product's or a unit's, takes every spike and shared file the log links, as a ledger commit takes the files its entries link (9.10.4), so nothing linked from a log is left outside the state (8.14.1, 9.10.11). [Claude's derivation, 29.12 planning]
+
 ## 9-S. Scenarios for §9
 
 9.S1 Given a topic in discussion, when a question needs data, then Claude runs
@@ -3418,7 +3440,7 @@ knowledge base. (9.3.5)
 decision is in the ledger from it. (9.3.9)
 
 9.S13 Given a topic resumed in a new session, then it reads the topic's record
-and log after any question whose answer may discard them. (9.3.11)
+and log. (9.3.11)
 
 9.S14 Given a discussion walk, when it ends, then every answer the person gave
 in conversation is recorded. (9.4.4)
@@ -10078,6 +10100,8 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.21 Once the tracker's store has moved (21.5.18), each task neither done nor closed in a unit whose building has started is given a type (12.4.1) through the task verbs, the change landing in the migration's commit (21.9.3): fix in a bugfix or quick-fix unit, feat in any other. It is the one change the migration makes to a building unit's tasks (21.8.8). [Claude's derivation 2026-10-28: today's tasks have no type, landing names a task's branch and pull request from it (7.2.18), and a type filled in at runtime would be code handling an old shape]
 
+21.5.22 A topic the old map marks a dead end becomes cancelled in the move, which writes no decision for it: the dead end goes (8.6.6). Its waiting mail goes to the inbox, as a cancelled topic's does (21.5.6). [Claude's proposal, 29.12 planning]
+
 ### 21.6 Step 4: the records
 
 21.6.1 The records step is a directive. [R37, plan 5.2]
@@ -10365,6 +10389,8 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 21.S50 Given a project whose baseline status records `native`, another whose status records `skipped`, and a third whose status records `completed`, when the migration runs, then none holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes none of them the offer. (21.11.2, 8.12.11)
 
 21.S52 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows` is a link to it, so another project still on today's skills reads them there; the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines, or is gone where it held nothing else, those project files changed in the migration's commit on the code branch. (21.5.19)
+
+21.S53 Given an old project with a dead-ended topic, when the move runs, then the topic is cancelled with no decision written for it, and its waiting mail is in the inbox. (21.5.22, 21.5.6)
 
 ## 22. Setup, environment and the knowledge base
 
@@ -11195,8 +11221,7 @@ names the skill, the topic's record and its log, and the conversation
 carries on where it was. (24.2.1, 24.2.2)
 
 24.S11 Given a topic whose session crashed, when a new session opens the
-topic, then the note names its record and log, and they are read after any
-question whose answer may discard them. (24.2.1, 24.2.3)
+topic, then the note names its record and log, and they are read. (24.2.1, 24.2.3)
 
 24.S12 Given a build that compacts with three tasks in flight, when a fix
 round is due on one of them, then it goes back to that task's builder.
@@ -11575,8 +11600,9 @@ one-command open of a topic still feels clunky. A forked agent is rejected
 for it, since it carries the sender's lens. [plan 12.4, R13; ruled by the
 person 2026-10-16]
 
-27.2.6 A folder for product conversations is not built in this release; one
-is added only if it is ever wanted. [plan 12.5, R22]
+27.2.6 No second home for the product's conversations is built in this
+release: they are kept in `.product/sessions/` alone (8.1.4, 4.11.16).
+[plan 12.5, R22; Claude's derivation, 29.12 planning]
 
 27.2.7 A questions page as a workflows surface is not built in this release:
 a batch of questions worked through at the person's own pace, commented on
@@ -11616,8 +11642,8 @@ and no kind is split along them. (27.2.2)
 the command that opens the target topic, and no subagent answers the message
 in the target's terms. (27.2.5, 10.3.3)
 
-27.S5 Given the release's layout on disk, then it holds no folder for
-product conversations. (27.2.6)
+27.S5 Given the release's layout on disk, then the product's conversations
+are kept in `.product/sessions/` and in no other folder. (27.2.6)
 
 27.S6 Given the release, then no questions-page surface exists. (27.2.7)
 
@@ -11860,11 +11886,13 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.12.2 The baseline is folded in: the product's conversation opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1; ruled by the person 2026-10-22]
 
-29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2, §2.10. [R14; Claude's derivation]
+29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2, §2.10, §18.2, §18.8, §21.5. [R14; Claude's derivation; Claude's derivation, 29.12 planning: the p rows and the pull (29.12.6, 8.1.8), and the move's dead ends (21.5.22)]
 
 29.12.4 Relies on: 29.2 to 29.8, 29.11. [R14; Claude's derivation]
 
-29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64, 8.S65, 8.S66, 8.S67, 8.S68, 8.S69, 8.S70, 8.S71, 8.S72, 8.S73, 8.S74, 8.S75, 24.S20 (66). [R14; Claude's derivation]
+29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S56, 8.S57, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64, 8.S65, 8.S67, 8.S69, 8.S70, 8.S71, 8.S72, 8.S73, 8.S74, 8.S75, 24.S20, 8.S77, 8.S78, 21.S53 (60). [R14; Claude's derivation; Claude's derivation, 29.12 planning: 8.S54 goes to 29.15 for its bugfix half, and the walk-only scenarios to 29.20 (29.1.11); Claude's proposal, 29.12 planning: 8.S77, 8.S78 and 21.S53, a started topic's rename, the offer's `accepted` and the move's dead end (8.8.20, 8.12.13, 21.5.22)]
+
+29.12.6 It builds the start menu's p row (18.2.13) and the roadmap's p (18.8.7), so 8.S3, 8.S62 and 8.S69 are proven here; 29.16 restyles both rows with the menus it rebuilds (29.16.1). [Claude's derivation, 29.12 planning]
 
 ### 29.13 Specification and the phase cut
 
@@ -11908,11 +11936,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.15.2 Cross-cutting goes as a type (19.6). [plan 11.3; Claude's proposal]
 
-29.15.3 Draws on: §19, §1.5, §3.1, §3.2, §4.11, §6.1, §6.3, §8.5, §8.8, §9.7, §11.1, §11.8, §15.5, §16.10, §17.1, §17.3, §18.3, §20.12, §20.14, §22.6, §24.1, §26.4, §27.2, §5.8. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.8.18 hands it the absorb question]
+29.15.3 Draws on: §19, §1.5, §3.1, §3.2, §4.11, §6.1, §6.3, §8.5, §8.8, §9.7, §11.1, §11.8, §15.5, §16.10, §17.1, §17.3, §18.3, §20.12, §20.14, §22.6, §24.1, §26.4, §27.2, §5.8, §8.7. [R14; Claude's derivation; Claude's derivation 2026-10-28: 5.8.18 hands it the absorb question; Claude's derivation, 29.12 planning: 8.S54, proven here, reads 8.7.7]
 
 29.15.4 Relies on: 29.2 to 29.8, 29.11 to 29.14. [R14; Claude's derivation]
 
-29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8, 19.S38, 6.S14 (57). [R14; Claude's derivation; Claude's derivation 2026-10-30: 6.S14's quick-fix half reads the person asking a quick-fix for review (19.5.13), built here]
+29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8, 19.S38, 6.S14, 8.S54 (58). [R14; Claude's derivation; Claude's derivation 2026-10-30: 6.S14's quick-fix half reads the person asking a quick-fix for review (19.5.13), built here; Claude's derivation, 29.12 planning: 8.S54's bugfix half observes investigation's entry, rewritten here]
 
 29.15.6 The bug-proven run comes with it (6.1.12, 15.5). [Claude's derivation 2026-10-30, 29.8 slicing: 15.S8 observes it here]
 
@@ -11982,11 +12010,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.20.2 Then the test project's run (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5; Claude's proposal; ruled by the person 2026-10-22]
 
-29.20.3 Draws on: §1.2 to §1.4, §1.7, §2.2, §2.4, §2.10, §6.1, §7.2, §9.4, §12.13, §17.1, §17.2, §21.12, §25, §26.2. [R14; Claude's derivation; Claude's derivation 2026-10-28: 7.S12, 12.S47 and 17.S5, moved here, cite them]
+29.20.3 Draws on: §1.2 to §1.4, §1.7, §2.2, §2.4, §2.10, §6.1, §7.2, §9.4, §12.13, §17.1, §17.2, §21.12, §25, §26.2, §8. [R14; Claude's derivation; Claude's derivation 2026-10-28: 7.S12, 12.S47 and 17.S5, moved here, cite them; Claude's derivation, 29.12 planning: the walk-only scenarios of §8, moved here, cite it]
 
 29.20.4 Relies on: 29.2 to 29.19. [R14; Claude's derivation]
 
-29.20.5 Proven by: 1.S1, 1.S4, 1.S5, 1.S6, 1.S7, 1.S11, 1.S12, 1.S13, 1.S15, 21.S39, 21.S40, 21.S41, 21.S42, 2.S4, 2.S5, 2.S6, 2.S7, 2.S12, 2.S14, 2.S16, 6.S1, 6.S2, 7.S12, 9.S14, 12.S47, 17.S5, 25.S1, 25.S2, 25.S3, 25.S4, 25.S5, 25.S7, 25.S8, 25.S9, 25.S13, 2.S15 (36). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S15 is a walk's alone (29.1.11)]
+29.20.5 Proven by: 1.S1, 1.S4, 1.S5, 1.S6, 1.S7, 1.S11, 1.S12, 1.S13, 1.S15, 21.S39, 21.S40, 21.S41, 21.S42, 2.S4, 2.S5, 2.S6, 2.S7, 2.S12, 2.S14, 2.S16, 6.S1, 6.S2, 7.S12, 9.S14, 12.S47, 17.S5, 25.S1, 25.S2, 25.S3, 25.S4, 25.S5, 25.S7, 25.S8, 25.S9, 25.S13, 2.S15, 8.S5, 8.S6, 8.S7, 8.S45, 8.S55, 8.S58, 8.S66, 8.S68 (44). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S15 is a walk's alone (29.1.11); Claude's derivation, 29.12 planning: walk-only scenarios (29.1.11)]
 
 29.20.6 Once step 3 is built, the person tests the rebuilt workflows by hand, and what that finds is fixed in the prose, the code and their tests. Then the prose tests are rewritten, scoped with the person: as few cases as cover what the code's tests cannot — whether the prose gets the model to use the machinery, the run end to end, and each phase's context before its first question (2.10) — and none where those are covered otherwise. The harness's adaptation comes with them: worlds holding the state branch as a worktree, invariants over the ledger, and each walk's context before its first question recorded (25.1, 25.3). Then they run, as the clean baseline, best effort: before the release or after it, and nothing in the build relies on them. A short walk of each phase to its first question measures its context, reported to the person at the end (1.4.5). [ruled by the person 2026-10-27; plan 9.5; ruled by the person 2026-10-28: the budget is a report at the end, no release condition; Claude's derivation 2026-10-28: step 4 holds the release (29.1.7), so "after the build" read as after it]
 
@@ -11998,7 +12026,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 870 listed are the 870 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 873 listed are the 873 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
