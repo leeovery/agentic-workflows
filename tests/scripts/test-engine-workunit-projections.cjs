@@ -584,7 +584,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
       },
     });
     const unit = unitOf(dir, 'cross-cutting', 'naming');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'specification', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['specification']);
     assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.filter((k) => k.route).map((k) => k.route), [
       '/leeway-specification-process cross-cutting naming',
     ]);
@@ -698,11 +698,11 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'specification', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['specification']);
   });
 
   it('pins the labelled section byte-for-byte', () => {
-    assert.strictEqual(revisitPhasesSection([{ phase: 'specification', topic: null }, { phase: 'planning', topic: null }]), [
+    assert.strictEqual(revisitPhasesSection(['specification', 'planning']), [
       "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
@@ -731,6 +731,6 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'quick-fix', 'hotfix');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'scoping', topic: null }, { phase: 'implementation', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['scoping', 'implementation']);
   });
 });

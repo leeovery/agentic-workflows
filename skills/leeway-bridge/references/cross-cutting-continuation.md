@@ -4,7 +4,7 @@
 
 ---
 
-Route a cross-cutting concern to its next pipeline phase, with an option to revisit earlier phases.
+Route a cross-cutting concern to its next pipeline phase.
 
 Cross-cutting pipeline: (Experiment) → Discussion → Specification (terminal)
 
@@ -26,64 +26,12 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render workunit-receipt {wo
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If `outcome` is `paused`
-
-A paused phase revisits nothing — the pipeline continues at what it waits on. Set `route` = `next_route`.
-
-→ Proceed to **D. Hand Off**.
-
 #### Otherwise
 
 Set `route` = `next_route`.
 
-→ Proceed to **B. Offer Next Phase**.
+→ Proceed to **B. Hand Off**.
 
-## B. Offer Next Phase
-
-The engine derives the offer from manifest state — the revisit row where an earlier phase is completed. An empty response means continuing is the only way forward:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render next-phase-gate {work_unit} --prev {completed_phase} --next {next_phase}
-```
-
-#### If the response is empty
-
-→ Proceed to **D. Hand Off**.
-
-#### If the response carried `MENU: next phase gate`
-
-Emit the section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-**If user chose `y/yes`:**
-
-→ Proceed to **D. Hand Off**.
-
-**If user chose `r/revisit`:**
-
-→ Proceed to **C. Select Phase**.
-
-## C. Select Phase
-
-Fetch and emit the `MENU: revisit phases` section verbatim per its marker (its numbering follows `revisitable_phases` order):
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render revisit-phases {work_unit}
-```
-
-**STOP.** Wait for user response.
-
-#### If user chose `back`
-
-→ Return to **B. Offer Next Phase**.
-
-#### If user chose a phase
-
-Set `route` = the number's entry in `revisit_routes`.
-
-→ Proceed to **D. Hand Off**.
-
-## D. Hand Off
+## B. Hand Off
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `{route}`.

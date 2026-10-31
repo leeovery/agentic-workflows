@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's cross-cutting scenarios: the discussion to
-// specification hop asking nothing — no revisit, never the skip; a
+// specification hop handing straight on, with nothing to revisit; a
 // specification still being written stopping a peer's fresh plan, a
 // completed one referenced; and a cross-cutting concern promoted out of an
 // epic with its discussions, the roadmap's sources following the files.
@@ -36,19 +36,16 @@ describe('pipeline simulation: cross-cutting', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('cross-cutting: the discussion→specification hop asks nothing — no revisit, never the skip', () => {
+  it('cross-cutting: the discussion→specification hop hands straight on, with nothing to revisit', () => {
     const wu = 'error-shape';
     startNew(sim, 'cross-cutting');
     sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
     // Cross-cutting goes to its discussion first, as a feature does.
     handoff(sim, `/leeway-discussion-process cross-cutting ${wu}`);
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['cross-cutting', wu] });
-    // The decided discussion is no revisit — it reopens by a message — so
-    // the hop asks nothing. The pipeline ends at specification, so review is
-    // never this type's next phase — the gate refuses the hop rather than
-    // offering a skip.
-    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
-    sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
+    // The decided discussion is no revisit — it reopens by a message — and
+    // the pipeline ends at specification, so the bridge offers nothing.
+    assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, wu)), /^revisitable_phases: \(none\)$/m);
     // A session that stops here resumes from the cross-cutting continue menu,
     // which hands off where the bridge does.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);

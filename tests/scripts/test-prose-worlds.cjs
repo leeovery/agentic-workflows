@@ -7,21 +7,24 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it } = require('node:test');
+const { describe, it, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { Worker } = require('worker_threads');
 
+// The harness is pointed at a temp folder before it loads, so the scratch
+// cases and their cached hashes never land in the repository, and a suite
+// reading the corpus beside this one never meets them.
+const PROSE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-worlds-'));
+process.env.LEEWAY_PROSE_ROOT = PROSE_ROOT;
+after(() => fs.rmSync(PROSE_ROOT, { recursive: true, force: true }));
+
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
 const harness = require('./engine-harness.cjs');
 const { createVerifyPool } = require('../prose/lib/verify-pool.cjs');
-
-// A case the corpus never sees: `_`-prefixed directories under cases/ are not
-// cases, so a suite validating the corpus beside this one can never meet one.
-const SCRATCH_PREFIX = '_scratch-';
 
 /** The scratch case and whatever it recorded in the hash cache. */
 function removeScratchCase(id) {
@@ -38,7 +41,7 @@ function removeScratchCase(id) {
  * committed snapshot.
  */
 function writeScratchCase(name, { recipe = 'note\n', snapshot = recipe } = {}) {
-  const id = `${SCRATCH_PREFIX}${name}`;
+  const id = name;
   removeScratchCase(id);
   const dir = path.join(cases.CASES_DIR, id);
   fs.mkdirSync(dir, { recursive: true });
@@ -289,7 +292,7 @@ describe('a recipe\'s calls belong to no conversation', () => {
   });
 
   it('a recipe\'s engine calls mark no conversation', () => {
-    const id = `${SCRATCH_PREFIX}marks-nothing`;
+    const id = 'marks-nothing';
     removeScratchCase(id);
     fs.mkdirSync(path.join(cases.CASES_DIR, id), { recursive: true });
     fs.writeFileSync(path.join(cases.CASES_DIR, id, cases.FILES.fixtureState),
@@ -408,8 +411,8 @@ describe('the recipe-hash cache: the skip the verify maintains', () => {
       assert.deepStrictEqual(worlds.verifySnapshot(id, 'fixture'), { skipped: true }, 'a just-snapped world skips');
       assert.deepStrictEqual(fs.readdirSync(path.join(cases.CASES_DIR, id, cases.SNAPSHOTS.fixture)), ['note.txt'],
         'no bookkeeping inside the snapshot — nothing for a PR to carry');
-      assert.ok(worlds.hashCacheFile(id, 'fixture').startsWith(path.join(cases.PROSE_DIR, '.cache') + path.sep),
-        'the hash is cached in the gitignored cache instead');
+      assert.ok(worlds.hashCacheFile(id, 'fixture').startsWith(cases.CACHE_DIR + path.sep),
+        'the hash is cached in the harness\'s local cache instead');
     } finally {
       removeScratchCase(id);
     }

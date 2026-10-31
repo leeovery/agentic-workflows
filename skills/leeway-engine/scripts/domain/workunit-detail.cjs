@@ -70,7 +70,7 @@ const WORK_UNIT_TYPES = {
  * @property {string} name
  * @property {string} next_phase
  * @property {string|null} next_topic  the item the route into next_phase names, null for the unit alone (see phaseTargets)
- * @property {PhaseTarget[]} revisit   the revisit candidates, in pipeline order (see phaseTargets)
+ * @property {string[]} revisit   the revisit candidates' phases, in pipeline order (see phaseTargets)
  * @property {string} phase_label
  * @property {boolean} finalising      pipeline finished (`next_phase: done`), no phase in
  *                                     flight, but the unit is still in-progress — `workunit
@@ -128,15 +128,15 @@ const UNREVISITABLE = [...DERIVED_PHASES, 'discussion'];
  * Where a single-topic unit's routes enter from `nextPhase`. The next route
  * enters the phase, naming the item in flight — else a parked stub its
  * session starts, else the one whose input moved — where the phase's items
- * carry names of their own. The revisit candidates are the completed phases
- * before `nextPhase` in the pipeline (every completed phase where it sits
- * outside — the finalising case), one per completed item where a phase's
- * items carry names of their own; never the derived phase, since a concluded
+ * carry names of their own (a promoted unit's moved discussions); a unit
+ * whose items all carry its name routes to the unit alone. The revisit
+ * candidates are the completed phases before `nextPhase` in the pipeline
+ * (every completed phase where it sits outside — the finalising case), each
+ * entered by the unit alone; never the derived phase, since a concluded
  * verdict stands and a new spawn is what reopens the series, nor a decided
- * discussion, which reopens through a message sent to it. A unit whose
- * items all carry its name routes to the unit alone.
+ * discussion, which reopens through a message sent to it.
  * @param {object} manifest @param {string} nextPhase
- * @returns {{next: PhaseTarget, revisit: PhaseTarget[]}}
+ * @returns {{next: PhaseTarget, revisit: string[]}}
  */
 function phaseTargets(manifest, nextPhase) {
   const cfg = typeConfig(manifest.work_type);
@@ -148,13 +148,7 @@ function phaseTargets(manifest, nextPhase) {
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
     revisit: completedPhases(cfg, manifest)
-      .filter((phase) => !UNREVISITABLE.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx))
-      .flatMap((phase) => {
-        const completed = ownNamedItems(manifest, phase).filter((i) => i.status === 'completed');
-        /** @type {PhaseTarget[]} */
-        const targets = completed.length > 0 ? completed.map((i) => ({ phase, topic: i.name })) : [{ phase, topic: null }];
-        return targets;
-      }),
+      .filter((phase) => !UNREVISITABLE.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx)),
   };
 }
 

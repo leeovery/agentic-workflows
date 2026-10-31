@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const cases = require('./cases.cjs');
 
-const VERDICTS_DIR = path.join(cases.PROSE_DIR, '.cache', 'verdicts');
+const VERDICTS_DIR = path.join(cases.CACHE_DIR, 'verdicts');
 const NONE = 'NO VERDICT RECORDED — the orchestrator died or never recorded one.';
 
 function verdictFile(caseId) {

@@ -20,7 +20,6 @@ const { phaseSkill } = require('../handoff.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
 /** @typedef {import('../workunit-detail.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
-/** @typedef {import('../workunit-detail.cjs').PhaseTarget} PhaseTarget */
 
 /**
  * @typedef {object} WorkUnitMenuKey
@@ -43,11 +42,6 @@ const { phaseSkill } = require('../handoff.cjs');
  */
 function phaseRoute(type, phase, workUnit, topic = null) {
   return [`/${phaseSkill(phase)}`, typeConfig(type).workType, workUnit, ...(topic === null ? [] : [topic])].join(' ');
-}
-
-/** A revisit candidate as its row names it — the phase, and the item quoted where it names one. @param {PhaseTarget} target */
-function targetLabel({ phase, topic }) {
-  return topic === null ? titlecase(phase) : `${titlecase(phase)} "${titlecase(topic)}"`;
 }
 
 // computeNextPhase's label vocabulary discriminates the next phase's state:
@@ -144,10 +138,10 @@ function workUnitMenu(type, unit) {
   /** @type {WorkUnitMenuKey[]} */
   const keys = [
     ...options,
-    ...revisitable.map((target, i) => ({
-      key: String(i + 1), action: 'revisit_phase', topic: target.topic ?? unit.name, phase: target.phase,
-      route: phaseRoute(type, target.phase, unit.name, target.topic),
-      label: `${targetLabel(target)} — completed`,
+    ...revisitable.map((phase, i) => ({
+      key: String(i + 1), action: 'revisit_phase', topic: unit.name, phase,
+      route: phaseRoute(type, phase, unit.name),
+      label: `${titlecase(phase)} — completed`,
     })),
   ];
 
@@ -194,18 +188,18 @@ function workUnitData(type, unit, menu) {
  * The revisit-phase menu, served by `render revisit-phases` at the gate that
  * displays it — one numbered option per revisit candidate, numbering matching
  * the `revisit_phase` keys. Empty string when there is nothing to revisit.
- * @param {PhaseTarget[]} targets  the revisit candidates, in phaseTargets order
+ * @param {string[]} phases  the revisit candidates, in phaseTargets order
  * @returns {string}
  */
-function revisitPhasesSection(targets) {
-  if (targets.length === 0) return '';
+function revisitPhasesSection(phases) {
+  if (phases.length === 0) return '';
   return section(
     'MENU: revisit phases',
     MENU_INSTRUCTION,
     menuFrame([
       'Which phase would you like to revisit?',
       '',
-      ...targets.map((target, i) => cmdOption(String(i + 1), null, { head: targetLabel(target), tail: 'completed' })),
+      ...phases.map((phase, i) => cmdOption(String(i + 1), null, { head: titlecase(phase), tail: 'completed' })),
       cmdOption('b', 'back', 'Return to the previous menu'),
     ]),
   );

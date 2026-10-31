@@ -77,7 +77,7 @@ function discover(cwd, workUnit) {
 // The thin scoped dump: the fields the continuation references branch on —
 // the derived next phase, the completed set (in pipeline order), the revisit
 // candidates (completed phases before next_phase, filtered to the type's
-// pipeline — `phase/item` where the route names an item of the phase), and
+// pipeline), and
 // the route each move is entered by.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
@@ -94,10 +94,10 @@ function format(result) {
 
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
     const { next, revisit } = result.targets || { next: null, revisit: [] };
-    const route = (/** @type {{phase: string, topic: string|null}} */ target) => engine.project.phaseRoute(result.work_type, target.phase, result.work_unit, target.topic);
-    lines.push(`revisitable_phases: ${revisit.map((t) => (t.topic === null ? t.phase : `${t.phase}/${t.topic}`)).join(', ') || '(none)'}`);
-    lines.push(`next_route: ${next ? route(next) : '(none)'}`);
-    lines.push(`revisit_routes: ${revisit.map(route).join(', ') || '(none)'}`);
+    const route = (/** @type {string} */ phase, /** @type {string|null} */ topic = null) => engine.project.phaseRoute(result.work_type, phase, result.work_unit, topic);
+    lines.push(`revisitable_phases: ${revisit.join(', ') || '(none)'}`);
+    lines.push(`next_route: ${next ? route(next.phase, next.topic) : '(none)'}`);
+    lines.push(`revisit_routes: ${revisit.map((/** @type {string} */ phase) => route(phase)).join(', ') || '(none)'}`);
   }
 
   return lines.join('\n') + '\n';
