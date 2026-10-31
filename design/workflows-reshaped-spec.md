@@ -1331,9 +1331,9 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 - the read for conflicting answers run within the topic (5.6.14);
 - each measured finding the topic's decisions rest on re-run (9.9.7);
 - the topic's mailbox empty: every message raised and answered (10.2.7);
-- the product-record lines and any candidates are on the screen.
+- the product-record lines and any candidates written for the decided screen.
 
-[plan 6.4; Claude's; R23; today's product; Claude's sort, T28, T30]
+[plan 6.4; Claude's; R23; today's product; Claude's sort, T28, T30; Claude's derivation, 29.11 slice 11.9: the screen draws only after the close]
 
 6.4.7 Ready to build:
 - every topic decided, cancelled or postponed, a feature's one topic being decided by this same screen (11.8.5);
@@ -2201,6 +2201,8 @@ in markdown. A CLAUDE.md line pointing at it names its full path, since a
 code worktree holds no `.leeway/` (4.1.4). [Claude's sort, B23; Claude's
 proposal]
 
+8.9.14 A product-record line resting on a decision its topic has since replaced is replaced or withdrawn at that topic's next decided, under the person's yes. A line widening the replacement replaces it; a withdrawal takes it out of the record, its trail kept. The record never holds two rules for one call. [Claude's derivation, 29.11 slice 11.7]
+
 ### 8.10 The gap analysis
 
 8.10.1 The gap analysis moves out of the background: nothing runs at the epic
@@ -2340,8 +2342,8 @@ sort, B26]
 8.12.11 The offer is made once per project, as today. A decline, or the
 judgment that the project grew up on the workflows, is remembered and never
 asked again. It is remembered on the project manifest (4.11.3), where the
-migration carries a recorded `native` or `skipped` forward (21.11.2). [today's
-product; Claude's sort, T26; where, Claude's proposal; 21.11.2]
+migration carries a recorded `native`, `skipped` or `completed` forward (21.11.2). [today's
+product; Claude's sort, T26; where, Claude's proposal; 21.11.2; Claude's derivation, 29.11 slice 11.14]
 
 ### 8.13 One-way doors
 
@@ -2752,6 +2754,8 @@ compaction, then Claude reads the transcript from the log's last write and
 adds what was missing before carrying on; given the transcript is gone, then
 Claude says so in one line and carries on from the log. (8.14.8, 8.14.9)
 
+8.S76 Given a product-record line widening a decision its topic has since replaced, when that topic next reaches decided, then the screen shows the line replaced by one widening the replacement, or withdrawn, and the person's yes lands it, a withdrawn line leaving the product record with its trail kept; while nothing replaces or withdraws the line, the yes is refused, so the record never holds two rules for one call. (8.9.14, 8.9.7, 8.9.2)
+
 ## 9. Discussion
 
 ### 9.1 One conversational phase
@@ -2787,10 +2791,7 @@ the opening view and one answer. [R19]
 
 9.1.9 The merged phase is named discussion throughout (§18). [R17]
 
-9.1.10 When a deep dive lands, the person hears what came back at the next
-natural pause. A question brief gets its answers in full; any other brief gets a
-short digest of what was asked, what came back and what it opened. [today's
-product; Claude's sort, T47]
+9.1.10 When a deep dive lands, the person hears what came back at the next natural pause. Every deep dive's brief carries a question, so every dive is a question brief: its answers are told in full, with a short digest of what was asked, what came back and what it opened. [today's product; Claude's sort, T47; Claude's derivation, 29.11 slice 11.9]
 
 9.1.11 The point an experiment measures stays open on the topic's map, marked
 as waiting on it, until the discussion reads the report and writes the result:
@@ -3045,6 +3046,8 @@ pauses, at Claude's judgement, and whenever the person asks. The
 last-looked mark is kept on each machine (5.8.15). [R11, R23, record 1481–1482;
 Claude's derivation, O8]
 
+9.5.12 On the map, a row carried over (21.6.5) is drawn apart from the person's questions and Claude's calls, and counted as neither. [Claude's derivation, 29.11 slice 11.7]
+
 ### 9.6 Once the shape is agreed
 
 9.6.3 Until a topic's shape is agreed, Claude makes no call of intent or taste
@@ -3173,6 +3176,10 @@ conclude gate among them. [R11]
 to wait for any of the topic's deep dives or review agents still running; this
 is a process gate. A report that lands after the session left is taken in when
 the topic next opens. [today's product; Claude's sort, T35]
+
+9.7.9 Once decided's checklist has closed, a message delivered to the topic, or a question opened on it, voids the close, and the next yes needs a fresh close. A decision changed through a comment at the gate does not void it. [Claude's derivation, 29.11 slice 11.7]
+
+9.7.10 On the decided screen, a row carried over (21.6.5) is drawn apart from what the person decided and from Claude's calls, and counted as neither. [Claude's derivation, 29.11 slice 11.7]
 
 ### 9.8 The reviews
 
@@ -3590,10 +3597,7 @@ where several ways are open it puts ideas forward and asks what the person
 thinks, and where one way is clear it sets out how it sees the thing working and
 invites the person to pull it apart. (9.6.3, 16.7.3)
 
-9.S60 Given a deep dive on a question brief, when it lands mid-exchange, then at
-the next natural pause the person hears its answers in full; given any other
-brief, they hear a short digest of what was asked, what came back and what it
-opened. (9.1.10)
+9.S60 Given a deep dive, when it lands mid-exchange, then at the next natural pause the person hears its answers in full, with a short digest of what was asked, what came back and what it opened. (9.1.10)
 
 9.S61 Given a topic with an experiment running on one of its points, when every
 other question of the person's is closed, then the topic is not decided, the
@@ -6745,7 +6749,7 @@ Comment → Tell me how to word it
 
 16.S74 Given a trust log append that fails, when the command returns, then it has warned and the event waits in the conversation's folder; when a boot runs while the append still fails, then the event still waits and the tidy-up keeps its folder, though Claude Code has deleted the transcript; once the append can succeed, when the conversation next writes to the trust log, or the next boot runs, then the event lands, and landing it again counts it once. (16.13.3)
 
-16.S75 Given a fact Claude cannot check and only the person holds, when Claude raises it as a fact, then it is asked whatever Claude's lean and the counts, with rows or none, and the person answers in their own words; no label is taken, and no count, evidence or threshold changes. (16.3.8, 16.3.2, 2.2.9)
+16.S75 Given a fact Claude cannot check and only the person holds, when Claude raises it as a fact, then it carries no lean and is asked whatever the counts, with rows or none, and the person answers in their own words; no label is taken, and no count, evidence or threshold changes. (16.3.8, 16.3.2, 2.2.9)
 
 ## 17. Measures
 
@@ -10047,7 +10051,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.11 `.workflows/` leaves the default branch (§4). The new layout becomes the first commit of the state's own branch, checked out at `.leeway/` (28.1.2), and the default branch drops `.workflows/` and ignores `.leeway/`. These two commits are the migration's commit, made at finish on the person's yes (21.9). [R37, R23, plan 5.2, plan 6.3]
 
-21.5.12 Anything still pending in the old state — a review not folded in, carry-notes waiting — is folded into its topic's log by the records directive (21.6). [R37]
+21.5.12 Anything still pending in the old state reaches its topic's log. A review never folded in is appended to the log by the move, by code, its report verbatim under a heading of its own (21.10.3: as much as can be mechanical is). Carry-notes waiting are prose in the research or discussion they were left in, and reach the log with it (21.5.2). The records directive only cites them (21.6.3). [R37; Claude's derivation, 29.11 slice 11.15]
 
 21.5.13 Each topic's experiment records move to the layout's home for them (§4). [R37, R11; Claude's derivation, O12]
 
@@ -10080,7 +10084,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.6.2 Every topic gets a record, completed and cancelled units included, so everything moves forward in one shape: reopening or revisiting a completed unit meets nothing special, the knowledge base reaches shipped decisions, and a mature product's ledger is not empty where most of its decisions sit in finished work. [R37, plan 5.3; ruled by the person 2026-10-17; Claude's derivation, O78]
 
-21.6.3 The stream starts at the migration: each question's current answer only, one thing per entry, each citing the log section it came from, with the earlier answers left in the log. [R37, plan 5.3; ruled by the person 2026-10-17; the person 2026-10-14]
+21.6.3 The stream starts at the migration: each question's current answer only, one thing per entry, with the earlier answers left in the log. Each entry cites where it came from, naming a section by a heading its file holds once. The file is one of the topic's own sources — its log, its brief, its experiments' records — or one of the unit's kept assets, or `{unit}/spec.md` where building has started (21.8.5), checked against the specs the cut joins into it; never a file of another topic, and never one in the cache. [R37, plan 5.3; ruled by the person 2026-10-17; the person 2026-10-14; Claude's derivation, 29.11 slice 11.15]
 
 21.6.4 Specs are read as well as logs. Decisions made at the spec stage — review gaps decided in the spec, amendments, corrigenda — exist nowhere else, and each becomes an entry on the topic it belongs to, citing the spec section it came from (21.10.7). [R37; Claude's derivation, O77]
 
@@ -10088,13 +10092,13 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.6.6 Measured results become findings saying how they are known. [R37]
 
-21.6.7 Items still exploring or pending become open questions on the topic's map. [R37]
+21.6.7 Subtopics the old map shows still exploring, converging, pending or deferred, and research threads still open or digging, each become an open question on the topic's map. [R37; Claude's derivation, 29.11 slice 11.15: what the records directive carries]
 
 21.6.8 Nothing is invented. [R37]
 
 21.6.9 The entries the directive marks product-wide start the product record (§8). [R37]
 
-21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). [R38; ruled by the person 2026-10-17]
+21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15]
 
 21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles is raised to the person one at a time; each is answered or left open. [R38, R24]
 
@@ -10203,7 +10207,7 @@ r/roadmap → The roadmap, as postponed topics — I'll ask which
 
 21.10.6 A directive names the files it may touch. [R38]
 
-21.10.7 A directive's check passes before the directive is recorded. The check is mechanical, through an engine verb — every entry cites a log section that exists, or a section of the old spec (now in `spec.md` or `assets/`); every decided map item has its entry — plus an independent verifier per topic hunting, against the log, detail the record dropped (§6 for the check, §26 for the verifier). [R38, plan 5.5, plan 6.4; Claude's derivation, O77]
+21.10.7 A directive's check passes before the directive is recorded. The check is mechanical, through an engine verb — every entry cites a section, by a heading its file holds once, of the topic's log, its brief or its experiments' records, of one of the unit's kept assets, or of `{unit}/spec.md` where building has started (21.6.3); every decided map item has its entry — plus an independent verifier per topic hunting, against the log, detail the record dropped (§6 for the check, §26 for the verifier). [R38, plan 5.5, plan 6.4; Claude's derivation, O77; Claude's derivation, 29.11 slice 11.15: the check allows what 21.6.3 allows]
 
 21.10.8 A directive may ask the person: the person started the migration and is watching. Each directive's file says what it asks. The split keeps its interview (21.4.5); the records directive asks nothing per entry and raises at its end (21.6.10); the cut and the merges asks where a mixed unit's topics go (21.8.9). [R38, R37; ruled by the person 2026-10-17]
 
@@ -10238,7 +10242,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.product/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32; ruled by the person 2026-10-22]
 
-21.11.2 The move carries a project's recorded baseline status of `native` or `skipped` onto the project manifest as the brownfield offer's remembered answer (8.12.11), so a project that grew up on the workflows, or that declined the offer, is never asked again. [8.12.11; today's product; Claude's derivation 2026-10-25: today's answer stays remembered once its status field goes]
+21.11.2 The move carries a project's recorded baseline status of `native`, `skipped` or `completed` onto the project manifest as the brownfield offer's remembered answer (8.12.11), so a project that grew up on the workflows, that declined the offer, or whose baseline was completed is never asked again: the offer is made once per project. [8.12.11; today's product; Claude's derivation 2026-10-25: today's answer stays remembered once its status field goes; Claude's derivation, 29.11 slice 11.14: a completed baseline was offered already]
 
 ### 21.12 Rehearsal before release
 
@@ -10358,7 +10362,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S49 Given an epic whose building started, with discovery sessions, plans, implementation folders and review reports, when the move runs, then its sessions are `discovery/session-NNN.md` with their numbers, its plans are under `assets/plans/{topic}/` and its review folders under `assets/reviews/{topic}/` with their files' names, no implementation folder remains, and a promoted topic and a roadmap item's kind are on their manifest entries. (21.5.9, 21.5.16, 21.5.17)
 
-21.S50 Given a project whose baseline status records `native`, and another whose status records `skipped`, when the migration runs, then neither holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes neither the offer. (21.11.2, 8.12.11)
+21.S50 Given a project whose baseline status records `native`, another whose status records `skipped`, and a third whose status records `completed`, when the migration runs, then none holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes none of them the offer. (21.11.2, 8.12.11)
 
 21.S52 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows` is a link to it, so another project still on today's skills reads them there; the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines, or is gone where it held nothing else, those project files changed in the migration's commit on the code branch. (21.5.19)
 
@@ -10642,10 +10646,7 @@ knowledge base reaches through the topic's record. [R20]
 22.6.9 A quick-fix's short record after the work, saying what changed, why
 and what it leaves out, is indexed. [R21; ruled by the person 2026-10-12]
 
-22.6.10 Plain search, when depth matters, runs in a helper agent, the
-plain-search helper on the roster (§26), so
-its cost stays out of the conversation. [R44, R43; ruled by the person
-2026-10-12; Claude's derivation, O1]
+22.6.10 Plain search, when depth matters, runs in a helper agent, the plain-search helper on the roster (§26), so its cost stays out of the conversation. The helper is briefed from the knowledge query it follows, the conversation's last, never from a ledger question. [R44, R43; ruled by the person 2026-10-12; Claude's derivation, O1; Claude's derivation, 29.11 slice 11.8]
 
 22.6.11 The product record's rendered file sits in `.leeway/.knowledge/`
 beside the rendered records, for a CLAUDE.md line to point at (§8). [Layout on disk, R10, plan 3.3; Claude's call]
@@ -11837,7 +11838,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
-29.11.7 Proven by: 2.S17, 3.S2, 5.S11, 5.S26, 5.S40, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 26.S3, 27.S4, 21.S49, 2.S18, 21.S52, 18.S71, 16.S75 (118). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S18 and 21.S52 replace 2.S13 and 21.S51, and 2.S15, a walk's alone, goes to 29.20 (29.1.11); Claude's derivation, C43 assessment: 18.S71 is `enter`'s question (29.11.13); Claude's proposal: 16.S75, a fact raise's engine half (29.11.14)]
+29.11.7 Proven by: 2.S17, 3.S2, 5.S11, 5.S26, 5.S40, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 26.S3, 27.S4, 21.S49, 2.S18, 21.S52, 18.S71, 16.S75, 8.S76 (119). [R14; Claude's derivation; Claude's derivation 2026-10-30: 2.S18 and 21.S52 replace 2.S13 and 21.S51, and 2.S15, a walk's alone, goes to 29.20 (29.1.11); Claude's derivation, C43 assessment: 18.S71 is `enter`'s question (29.11.13); Claude's proposal: 16.S75, a fact raise's engine half (29.11.14); Claude's derivation, 29.11 slice 11.7: 8.S76, a replaced decision's product-record line (8.9.14)]
 
 29.11.8 Its first part rewrites the framework every phase loads — its instructions, the rule for what reaches `raise`, and the voice and altitude guidance — to CONVENTIONS.md's new shape (29.10), so each phase after builds on it (2.10.9, 16.1, 16.3). [Claude's derivation 2026-10-30, 29.10's review]
 
@@ -11997,7 +11998,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 869 listed are the 869 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 870 listed are the 870 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
