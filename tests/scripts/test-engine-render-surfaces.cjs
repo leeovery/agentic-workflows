@@ -2641,6 +2641,8 @@ describe('render opener', () => {
       assert.match(read(), /^Read your import\. Here's/m);
       writeManifest(dir, 'pay', { seeds: seeds('inbox:idea', 'inbox:bug'), imports: imports(1) });
       assert.match(read(), /^Read your idea, a bug and an import\. Here's/m);
+      writeManifest(dir, 'pay', { seeds: [{ path: 'seeds/note.md', source: 'roadmap:retry', item: { horizon: 'next', summary: 's', kind: 'bug' } }], imports: [] });
+      assert.match(read(), /^Read your bug\. Here's/m, 'a roadmap item\'s note reads as the item it was');
     });
 
     it('refuses a unit holding neither, and a payload missing its questions', () => {

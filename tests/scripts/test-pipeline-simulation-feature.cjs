@@ -24,7 +24,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, answerGate, decideTopic, discussed, bridgeTo, startKeys, startNew, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, answerGate, decideTopic, discussed, bridgeTo, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -36,16 +36,16 @@ describe('pipeline simulation: feature', () => {
 
   it('feature: discovery → discussion → spec → plan → implement → review → complete', () => {
     const wu = 'pay';
-    // The start menu's new-feature pick hands the work to discovery, whose
-    // confirm creates the unit.
+    // The start menu's new-feature pick hands the work to discovery, which
+    // shapes it in the product's conversation; start this work's yes creates
+    // the unit, its brief its one topic's, and hands it to its discussion.
     startNew(sim, 'feature');
-    const log = sessionLog(sim, wu);
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
-    // Discovery's single-phase endpoint (first-phase-routing A) sends a
-    // feature to its discussion. Nothing completed and no review to skip: the bridge's gate renders
-    // empty and the continuation goes straight to the handoff.
-    sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
-    // Discovery's conclusion hands the work to the first phase it settled.
+    const shaped = shapedInTheProduct(sim, 'payments');
+    const started = startThisWork(sim, {
+      type: 'feature', name: wu, description: 'Payments feature', reason: 'One topic, decided in one discussion.',
+      shaped_by: [shaped], brief: briefDraft(sim, wu, wu),
+    });
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', wu] });
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
 
     // First phase: discussion (topic = work unit for single-topic types),

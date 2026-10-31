@@ -625,7 +625,7 @@ describe('discovery: an epic\'s (8.6.7)', () => {
       `session log: ${at(layout.session(EPIC, '003'))}`,
       `session log: ${at(layout.session(EPIC, '004'))}`,
       `shaped by: ${at(layout.productSession('001'))}#pricing`,
-      `map: \`node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view ${EPIC}\``,
+      `map: \`${ENGINE} render discovery-map ${EPIC}\``,
       `product: \`${ENGINE} ledger product ${EPIC}\``,
       `catch up: read ${four} from the log's last write onward, and add to the log what it is missing`,
       `log: ${at(layout.session(EPIC, '004'))}`,
@@ -639,7 +639,7 @@ describe('discovery: an epic\'s (8.6.7)', () => {
     assert.deepStrictEqual([res.started, res.committed, lastMessage(dir), committedFiles()], [true, shortHead(), `discovery(${ATLAS}): start`, [layout.session(ATLAS, '001'), layout.manifest(ATLAS)].sort()]);
     assert.strictEqual(readManifest(dir, ATLAS).phases.discovery.active_session, '001');
     assert.strictEqual(sections, data([
-      `map: \`node .claude/skills/leeway-discovery/scripts/gateway.cjs map-view ${ATLAS}\``,
+      `map: \`${ENGINE} render discovery-map ${ATLAS}\``,
       `product: \`${ENGINE} ledger product ${ATLAS}\``,
       `log: ${at(layout.session(ATLAS, '001'))}`,
     ]));

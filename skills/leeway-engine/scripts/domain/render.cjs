@@ -15,7 +15,9 @@
 // finds the slot free is what takes it. `map` moves the last-looked mark as
 // it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
-// what the gate's yes lands (decided.cjs).
+// what the gate's yes lands (decided.cjs); `start-this-work --file` and
+// `approve-map --file` stage theirs in discovery's cache the same way
+// (start-this-work.cjs, approve-map.cjs).
 
 const fs = require('fs');
 const path = require('path');
@@ -61,12 +63,15 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
-  topicTitle, topicTitles, titled, itemTitle, goesBy,
+  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
 const { decidedSurface, decidedStrikeSurface, waitAgentsSurface } = require('./decided.cjs');
+const { startThisWorkSurface } = require('./start-this-work.cjs');
+const { approveMapSurface } = require('./approve-map.cjs');
+const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -2288,6 +2293,21 @@ function dismissedTopics(cwd, { dotpath }) {
       promptOption('Name them', 'Tell me which to re-add'),
     ], { question: 'Re-add any of these to the map?' })),
   ].join('\n');
+}
+
+// discovery-map — an epic's map for Claude and for the person: its topics in
+// their order with their lifecycles, and the names struck from it.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string}
+ */
+function discoveryMapSurface(cwd, { dotpath }) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'discovery-map');
+  if (manifest.work_type !== 'epic') throw new Error(`render discovery-map: a ${manifest.work_type} has no map — its one topic is the unit itself`);
+  const { map, summary } = buildDiscoveryMap(manifest, stateRoot(cwd));
+  return discoveryMapScreen(workUnit, { rows: map, summary }, dismissedNames(manifest));
 }
 
 // send-closed-target — the send's stop over a cancelled target, which no
@@ -5689,7 +5709,7 @@ const OPENERS = {
     }
     const p = openerPayload(cwd, file, 'questions');
     return shapeOpener(
-      `Read your ${readPhrase([...seeds.map((seed) => seedKind(seed.source)), ...imports.map(() => 'import')])}`,
+      `Read your ${readPhrase([...seeds.map(seedKind), ...imports.map(() => 'import')])}`,
       p.sketch,
       `Before we name topics, let's pull on a few things — ${p.questions}${fullStop(p.questions)}`,
     );
@@ -6039,6 +6059,9 @@ const SURFACES = {
   'decided': decidedSurface,
   'decided-strike': decidedStrikeSurface,
   'wait-agents': waitAgentsSurface,
+  'start-this-work': startThisWorkSurface,
+  'approve-map': approveMapSurface,
+  'discovery-map': discoveryMapSurface,
 };
 
 /**

@@ -1299,6 +1299,21 @@ function waitingTwin(project, name) {
 }
 
 /**
+ * Join the roadmap item `name` to `unit`'s `topic` on the project manifest
+ * given, its horizon kept for a return (18.8.20). Answers the earlier epic's
+ * record an item postponed from another epic carries, or null — a return to
+ * the epic that postponed it needs none.
+ * @param {Record<string, any>} project @param {string} unit @param {string} name @param {string} topic
+ * @returns {{work_unit: string, topic: string}|null}
+ */
+function joinToTopic(project, unit, name, topic) {
+  const item = roadmapItems(project)[name];
+  const from = itemPostponedFrom(item);
+  item.pulled_to = { work_unit: unit, topic };
+  return from && from.work_unit !== unit ? { work_unit: from.work_unit, topic: from.topic } : null;
+}
+
+/**
  * Join each roadmap item taken in to the topic of `unit` that took it,
  * under the project lock, as a pull forward joins one: the item leaves the
  * waiting roadmap, its horizon kept for a return (18.8.20). Each is checked
@@ -1315,10 +1330,8 @@ function joinTakenIn(cwd, unit, takes) {
     for (const { item: name, topic } of takes) {
       const refusal = takeInRefusal(manifest, unit, name);
       if (refusal !== null) throw new Error(refusal);
-      const item = roadmapItems(manifest)[name];
-      const from = itemPostponedFrom(item);
-      if (from) priors[topic] = { work_unit: from.work_unit, topic: from.topic };
-      item.pulled_to = { work_unit: unit, topic };
+      const prior = joinToTopic(manifest, unit, name, topic);
+      if (prior !== null) priors[topic] = prior;
     }
     return priors;
   });
@@ -1568,9 +1581,16 @@ module.exports = {
   pullForwardItem,
   takeInRefusal,
   waitingTwin,
+  joinToTopic,
   joinTakenIn,
   reaimJoins,
   revertJoins,
   carrySources,
   reaimAbsorbed,
+  ensureHorizon,
+  validateSummary,
+  validateSources,
+  requireSourcesOnDisk,
+  noteOfSource,
+  notePath,
 };

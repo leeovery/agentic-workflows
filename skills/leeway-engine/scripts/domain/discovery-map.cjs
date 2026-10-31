@@ -188,15 +188,25 @@ function draftIn(cwd, draft, what) {
 }
 
 /**
+ * A topic's brief written, its draft kept. Answers the brief, state-relative.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {string} content
+ * @returns {string}
+ */
+function writeBrief(cwd, unit, topic, content) {
+  const rel = briefFile(unit, topic);
+  fs.mkdirSync(statePath(cwd, topicDir(unit, topic)), { recursive: true });
+  fs.writeFileSync(statePath(cwd, rel), content);
+  return rel;
+}
+
+/**
  * A topic's brief written from its draft, the draft consumed. Answers the
  * brief, state-relative.
  * @param {string} cwd @param {string} unit @param {string} topic @param {{scratch: string, content: string}} draft
  * @returns {string}
  */
 function installBrief(cwd, unit, topic, { scratch, content }) {
-  const rel = briefFile(unit, topic);
-  fs.mkdirSync(statePath(cwd, topicDir(unit, topic)), { recursive: true });
-  fs.writeFileSync(statePath(cwd, rel), content);
+  const rel = writeBrief(cwd, unit, topic, content);
   fs.rmSync(scratch, { force: true });
   return rel;
 }
@@ -388,19 +398,30 @@ function sourceOf(source, fromRoadmap) {
 }
 
 /**
- * Refuse, in the words of `said`, a batch the roadmap stands against (8.1.6):
- * an item taken in that can't be, and a topic beside a waiting item of its
- * name that no entry takes in, naming the way its caller takes one in.
- * @param {Record<string, any>} project @param {string} unit @param {BatchEntry[]} entries @param {string} said @param {TakeIn} takeIn
+ * Why the roadmap stands against a batch (8.1.6), or null: an item taken in
+ * that can't be, and a topic beside a waiting item of its name that no entry
+ * takes in, naming the way its caller takes one in.
+ * @param {Record<string, any>} project @param {string} unit @param {{name: string, from_roadmap?: string}[]} entries @param {TakeIn} takeIn
+ * @returns {string|null}
  */
-function checkRoadmap(project, unit, entries, said, takeIn) {
+function roadmapRefusal(project, unit, entries, takeIn) {
   const taken = new Set(entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [e.from_roadmap])));
   for (const e of entries) {
     const refusal = e.from_roadmap === undefined ? null : takeInRefusal(project, unit, e.from_roadmap);
-    if (refusal !== null) throw new Error(`${said}: "${e.name}" can't take the item in — ${refusal}`);
+    if (refusal !== null) return `"${e.name}" can't take the item in — ${refusal}`;
     const twin = waitingTwin(project, e.name);
-    if (twin !== null && !taken.has(twin)) throw new Error(`${said}: ${twinRefusal(e.name, twin, takeIn)}`);
+    if (twin !== null && !taken.has(twin)) return twinRefusal(e.name, twin, takeIn);
   }
+  return null;
+}
+
+/**
+ * Refuse, in the words of `said`, a batch the roadmap stands against.
+ * @param {Record<string, any>} project @param {string} unit @param {BatchEntry[]} entries @param {string} said @param {TakeIn} takeIn
+ */
+function checkRoadmap(project, unit, entries, said, takeIn) {
+  const refusal = roadmapRefusal(project, unit, entries, takeIn);
+  if (refusal !== null) throw new Error(`${said}: ${refusal}`);
 }
 
 /**
@@ -853,4 +874,5 @@ function setPrior(cwd, workUnit, name, prior) {
 module.exports = {
   sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, removeRefusal, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
+  addBatchTo, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
 };
