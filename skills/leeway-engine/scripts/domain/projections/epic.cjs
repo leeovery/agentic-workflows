@@ -117,7 +117,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null);
+  return discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -208,7 +208,6 @@ function mapStatusSuffix(detail) {
   if (s.decided) parts.push(`${s.decided} decided`);
   if (s.in_flight) parts.push(`${s.in_flight} in flight`);
   if (s.fresh) parts.push(`${s.fresh} fresh`);
-  if (s.handled) parts.push(`${s.handled} dead-ended`);
   if (s.cancelled) parts.push(`${s.cancelled} cancelled`);
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }
@@ -242,7 +241,7 @@ function mapNodes(rows, heldAges) {
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
     body.push(stateNote(`${lifecycleLabel(row)}${inSessionCue(heldAges.get(row.name))}`));
     return {
-      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
+      title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title }),
       body,
     };
   });
@@ -535,9 +534,8 @@ function topicRoute(action, workUnit, topic) {
 // The mail cue rides every row shape: the bare start rows carry it as
 // their tail; a row that already has a tail carries it as the tail's cue,
 // the way continueLabel cues `input moved`.
-/** @param {string} action @param {string} name @param {boolean} [mailWaiting] @returns {LabelParts} */
-function discoveryEntryLabel(action, name, mailWaiting) {
-  const t = titlecase(name);
+/** @param {string} action @param {string} t the topic as screens title it @param {boolean} [mailWaiting] @returns {LabelParts} */
+function discoveryEntryLabel(action, t, mailWaiting) {
   const cue = mailWaiting ? 'mail waiting' : undefined;
   return action === 'continue_discussion'
     ? { head: `Continue "${t}"`, tail: 'discussion', cue }
@@ -575,7 +573,7 @@ function discoveryEntry(workUnit, row, action) {
     action,
     topic: row.name,
     route: topicRoute(action, workUnit, row.name),
-    label: discoveryEntryLabel(action, row.name, row.mail_waiting),
+    label: discoveryEntryLabel(action, row.title, row.mail_waiting),
   };
 }
 

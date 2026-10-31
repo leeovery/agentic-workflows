@@ -57,7 +57,7 @@ function epicManifest() {
     work_type: 'epic',
     status: 'in-progress',
     phases: {
-      discovery: { items: { 'topic-a': { routing: 'discussion', source: 'discovery' } } },
+      discovery: { items: { 'topic-a': { source: 'discovery' } } },
       discussion: { items: { 'topic-a': { status: 'in-progress' }, 'topic-b': { status: 'in-progress' } } },
       investigation: { items: { 'topic-a': { status: 'in-progress' }, 'topic-b': { status: 'in-progress' } } },
     },
@@ -1429,9 +1429,9 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   it('a beat never changes a verb\'s answer, and discovery stays out of presence', () => {
     // Discovery carries no heartbeat — `discovery-session open` serialises it
     // engine-side — so the write lands and the beat silently no-ops.
-    const res = ok(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'routing', 'discussion']);
+    const res = ok(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'summary', 'Topic A']);
     assert.strictEqual(res.ok, true);
-    assert.deepStrictEqual(res.set, { routing: 'discussion' }, 'the response is the field surface\'s, untouched');
+    assert.deepStrictEqual(res.set, { summary: 'Topic A' }, 'the response is the field surface\'s, untouched');
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments', 'discovery', 'topic-a', 'presence'))));
   });
 });
@@ -1637,7 +1637,6 @@ describe('commit door: transaction tails commit their own scope', () => {
     commitAll(dir, 'an open session');
 
     writeState(dir, layout.session('payments', '001'), '# Session 001\n\n## Conclusion\n');
-    writeState(dir, layout.brief('payments', 'topic-a'), '# Brief\n');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\na peer session mid-turn\n');
 
     const res = ok(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): synthesise 1 topic']);
@@ -1645,7 +1644,6 @@ describe('commit door: transaction tails commit their own scope', () => {
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
     assert.ok(files.includes(layout.session('payments', '001')));
-    assert.ok(files.includes(layout.brief('payments', 'topic-a')));
     assert.ok(!files.includes(layout.doc('payments', 'investigation', 'topic-a')), 'the peer\'s half-written document stays uncommitted');
   });
 });

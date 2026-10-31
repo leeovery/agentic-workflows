@@ -35,10 +35,10 @@ describe('pipeline simulation: epic postpone', () => {
     const wu = 'later';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Postpone units', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'fresh-one', routing: 'discussion', summary: 'Nothing started' },
-      { name: 'talking', routing: 'discussion', summary: 'Discussion under way' },
-      { name: 'decided', routing: 'discussion', summary: 'Discussion concluded' },
-      { name: 'specd', routing: 'discussion', summary: 'Specified already' },
+      { name: 'fresh-one', summary: 'Nothing started' },
+      { name: 'talking', summary: 'Discussion under way' },
+      { name: 'decided', summary: 'Discussion concluded' },
+      { name: 'specd', summary: 'Specified already' },
     ])]);
     sim.run(['discovery-map', 'sequence', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'specd=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
@@ -130,7 +130,7 @@ describe('pipeline simulation: epic postpone', () => {
     const next = 'later-v2';
     sim.run(['workunit', 'create', next, 'epic', '--description', 'The next release', '--session-log-file', sessionLog(sim, next)]);
     sim.run(['discovery-session', 'close', next, '-m', `discovery(${next}): shape the map`]);
-    const elsewhere = sim.run(['roadmap', 'pull-forward', 'decided', '--into', next, '--routing', 'discussion']);
+    const elsewhere = sim.run(['roadmap', 'pull-forward', 'decided', '--into', next]);
     assert.deepStrictEqual(elsewhere.prior, { work_unit: wu, topic: 'decided' });
     assert.deepStrictEqual(sim.manifest(next).phases.discovery.items.decided.prior, { work_unit: wu, topic: 'decided' });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.decided.postponed, true, 'the prior epic keeps its record');

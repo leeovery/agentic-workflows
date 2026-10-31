@@ -60,7 +60,7 @@
 //   ledger's lock with its commit, a line or withdrawal its first run
 //   landed passing its check and landing nothing again; then, in one
 //   manifest save and its commit, adds the candidates not struck to the
-//   epic's map, each routed to discussion from the topic, marks the topic
+//   epic's map, each its source the topic, marks the topic
 //   decided, and records that the yes took the close. Each withdrawal lands
 //   as the lines do, after them. The staged payload goes. It
 //   answers what comes next: an epic's menu, else today's specification
@@ -287,12 +287,12 @@ function checkWithdrawn(shower, lines, withdrawals) {
 const RE_ADD = 'the person re-adds it on the map';
 
 /**
- * The candidates as the map adds them: each a topic routed to discussion
- * from this one, its reason its summary.
- * @param {string} topic @param {{name: string, reason: string}[]} candidates
+ * The candidates as the map adds them: each a topic from this one, its
+ * reason its summary.
+ * @param {{name: string, reason: string}[]} candidates
  */
-function mapEntries(topic, candidates) {
-  return candidates.map(({ name, reason }) => ({ name, routing: PHASE, summary: reason }));
+function mapEntries(candidates) {
+  return candidates.map(({ name, reason }) => ({ name, summary: reason }));
 }
 
 /**
@@ -302,7 +302,7 @@ function mapEntries(topic, candidates) {
  */
 function checkCandidates(manifest, topic, candidates, said) {
   if (candidates.length === 0) return;
-  const entries = mapEntries(topic, candidates);
+  const entries = mapEntries(candidates);
   checkBatchEntries(entries, said);
   addBatchTo(structuredClone(manifest), entries, said, { source: `topic:${topic}`, reAdd: RE_ADD });
 }
@@ -643,7 +643,7 @@ function decidedYes(cwd, unit, topic) {
   const at = new Date().toISOString();
   const manifest = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
-    if (added.length > 0) addBatchTo(fresh, mapEntries(topic, added), 'the candidates', { source: `topic:${topic}`, reAdd: RE_ADD });
+    if (added.length > 0) addBatchTo(fresh, mapEntries(added), 'the candidates', { source: `topic:${topic}`, reAdd: RE_ADD });
     fresh.phases[PHASE].items[topic].status = 'completed';
     takeDecidedClose(fresh, topic, at);
     saveWorkUnitManifest(cwd, unit, fresh);

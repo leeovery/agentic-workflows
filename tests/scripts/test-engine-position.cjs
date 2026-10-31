@@ -690,7 +690,7 @@ describe('conversation position', () => {
   it('an experiment under a topic cancelled from the epic menu carries nothing on — the series settles, the map row is cancelled', () => {
     install('leeway-experiment-process');
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
@@ -708,7 +708,7 @@ describe('conversation position', () => {
 
   it('a concluded discussion whose topic was postponed to the roadmap carries nothing on', () => {
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'completed' } } },
     });
     harness.commitAll(dir, 'the epic');
@@ -724,7 +724,7 @@ describe('conversation position', () => {
   it('a concluded experiment series whose topic was postponed to the roadmap carries nothing on — the series stays as it stands, the map row is postponed', () => {
     install('leeway-experiment-process');
     workUnit('pay', 'epic', {
-      discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
+      discovery: { items: { ledger: { summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'completed' } } },
       experiment: { items: { ledger: { status: 'completed', experiments: { E1: { slug: 'latency', status: 'concluded', verdict: 'Fast enough.' } } } } },
     });

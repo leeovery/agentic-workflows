@@ -46,7 +46,7 @@ const MENU = `${UNIT}.discussion.menu-bar`;
 
 /** A discovery map row a topic's cancel and postpone take. @param {number} order @param {string} summary */
 function row(order, summary) {
-  return { order, summary, routing: 'discussion', source: 'discovery' };
+  return { order, summary, source: 'discovery' };
 }
 
 // The unit's two topics, each mapped and under discussion.

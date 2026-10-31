@@ -329,7 +329,6 @@ function deriveItemState(cwd, item) {
  * @property {Record<string, number>} [remainder]
  * @property {string} [work_unit]
  * @property {string} [topic]
- * @property {string} [routing]
  * @property {{work_unit: string, topic: string}} [prior]  bind / pull-forward: the epic the topic's prior record sits in
  * @property {{work_unit: string, topic: string}} [epic_row_cancelled]  remove: the postponed row this removal cancelled
  * @property {{phase: string, status: string|null}[]} [restored]  pull-forward: the postponed items the return brought back
@@ -1184,14 +1183,14 @@ function returnPostponed(cwd, name, into, topic) {
  * An item this very epic postponed takes the **return** branch instead: the
  * epic's own row is restored rather than a second one created — the marker
  * cleared, every stash returned, each restored `completed` artifact
- * re-indexed — and `--routing` names nothing, the row keeping its own. A
- * postponed item landing in any other epic creates as usual, the new row
- * carrying `prior` so its conversation reads the earlier record in full.
+ * re-indexed. A postponed item landing in any other epic creates as usual,
+ * the new row carrying `prior` so its conversation reads the earlier record
+ * in full.
  * @param {string} cwd @param {string} name
- * @param {{into?: string, routing?: string, forceDismissed?: boolean}} [opts]
+ * @param {{into?: string, forceDismissed?: boolean}} [opts]
  * @returns {RoadmapOpResult}
  */
-function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = {}) {
+function pullForwardItem(cwd, name, { into, forceDismissed = false } = {}) {
   if (typeof into !== 'string' || into === '') throw new Error('--into is required');
 
   // Validate the roadmap side before touching the epic's map.
@@ -1223,16 +1222,13 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     && mapItems[from.topic].postponed === true ? from.topic : null;
   if (returning) return returnPostponed(cwd, name, into, returning);
 
-  if (typeof routing !== 'string' || routing === '') throw new Error('--routing is required');
-
   // The discovery-map domain owns the map write: its lock, its name gates,
   // its dismissed-list discipline.
   const { addItem: addMapItem } = require('./discovery-map.cjs');
   addMapItem(cwd, into, name, {
-    routing,
     source: 'roadmap',
     summary: typeof preItem.summary === 'string' ? preItem.summary : '',
-    forceDismissed,
+    reAdd: forceDismissed,
     ...(from ? { prior: { work_unit: from.work_unit, topic: from.topic } } : {}),
   });
 
@@ -1242,11 +1238,89 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
     const item = roadmapItem(roadmap, name);
     item.pulled_to = { work_unit: into, topic: name };
     /** @type {RoadmapOpResult} */
-    const out = { op: 'pull-forward', name, into, topic: name, routing, state: 'in-flight' };
+    const out = { op: 'pull-forward', name, into, topic: name, state: 'in-flight' };
     if (from) out.prior = { work_unit: from.work_unit, topic: from.topic };
     return out;
   });
   return commitRoadmap(cwd, result, `roadmap: pull-forward ${name} into ${into}`, { workUnit: into });
+}
+
+/**
+ * Why a roadmap item can't be taken in by a topic landing on `unit`'s map
+ * (8.1.6), or null where it can: the roadmap holds no such item, it is
+ * joined to work already, it never becomes a topic, or this very epic
+ * postponed it, its own row waiting there for the pull forward.
+ * @param {Record<string, any>} project @param {string} unit @param {string} name
+ * @returns {string|null}
+ */
+function takeInRefusal(project, unit, name) {
+  const item = roadmapItems(project)[name];
+  if (!item || typeof item !== 'object') return `the roadmap has no item "${name}"`;
+  const join = itemJoin(item);
+  if (join) return `the roadmap's "${name}" is joined to work unit "${join.work_unit}" already`;
+  if (!becomesTopic(item)) return `the roadmap's "${name}" is a ${item.kind} — it rides with work as material, never a topic`;
+  const from = itemPostponedFrom(item);
+  if (from && from.work_unit === unit) return `the roadmap's "${name}" waits for ${unit}'s own postponed topic "${from.topic}" — pull it forward instead`;
+  return null;
+}
+
+/**
+ * The waiting roadmap item a topic named `name` would stand beside as a
+ * twin (8.1.6) — the waiting idea of that name — or null. A bug or a
+ * quick-fix of the name is no twin: it never becomes a topic.
+ * @param {Record<string, any>} project @param {string} name
+ * @returns {string|null}
+ */
+function waitingTwin(project, name) {
+  const item = roadmapItems(project)[name];
+  return item && typeof item === 'object' && !itemJoin(item) && becomesTopic(item) ? name : null;
+}
+
+/**
+ * Join each roadmap item taken in to the topic of `unit` that took it,
+ * under the project lock, as a pull forward joins one: the item leaves the
+ * waiting roadmap, its horizon kept for a return (18.8.20). Each is checked
+ * again under the lock; no commit — the calling transaction stages the
+ * project manifest. Answers, by topic, the earlier epic's record an item
+ * postponed from another epic carries.
+ * @param {string} cwd @param {string} unit @param {{item: string, topic: string}[]} takes
+ * @returns {Record<string, {work_unit: string, topic: string}>}
+ */
+function joinTakenIn(cwd, unit, takes) {
+  return transactProject(cwd, (manifest) => {
+    /** @type {Record<string, {work_unit: string, topic: string}>} */
+    const priors = {};
+    for (const { item: name, topic } of takes) {
+      const refusal = takeInRefusal(manifest, unit, name);
+      if (refusal !== null) throw new Error(refusal);
+      const item = roadmapItems(manifest)[name];
+      const from = itemPostponedFrom(item);
+      if (from) priors[topic] = { work_unit: from.work_unit, topic: from.topic };
+      item.pulled_to = { work_unit: unit, topic };
+    }
+    return priors;
+  });
+}
+
+/**
+ * Re-aim each join naming `from` on `unit` at `to` — a topic renamed before
+ * it started, its folder and key moved with it. Under the project lock, no
+ * commit. Answers the items re-aimed.
+ * @param {string} cwd @param {string} unit @param {string} from @param {string} to
+ * @returns {string[]}
+ */
+function reaimJoins(cwd, unit, from, to) {
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const reaimed = Object.entries(roadmapItems(manifest))
+      .filter(([, item]) => item && typeof item === 'object' && itemJoin(item)?.work_unit === unit && itemJoin(item)?.topic === from)
+      .map(([name, item]) => {
+        item.pulled_to = { work_unit: unit, topic: to };
+        return name;
+      });
+    if (reaimed.length > 0) writeProjectManifestAtomic(cwd, manifest);
+    return reaimed;
+  });
 }
 
 /**
@@ -1469,6 +1543,10 @@ module.exports = {
   pullItems,
   bindItem,
   pullForwardItem,
+  takeInRefusal,
+  waitingTwin,
+  joinTakenIn,
+  reaimJoins,
   revertJoins,
   carrySources,
   reaimAbsorbed,

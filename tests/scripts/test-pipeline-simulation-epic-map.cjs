@@ -4,7 +4,10 @@
 // The pipeline simulation's epic map: the discovery map's lifecycle
 // through its topics' discussions — a review's back-off, mail reopening a
 // decided topic, presence, session labels and the hooks, a topic cancelled
-// and reactivated, a dead end — the map deriving after every change. What
+// and reactivated, the map's own verbs — each brief written with its topic,
+// a rename, a brief refused once its topic has started, a topic a message
+// names landed with its brief, and one removed with its mail sent to the
+// inbox — the map deriving after every change. What
 // the grouping makes of the decided topics is
 // test-pipeline-simulation-epic-supersession.cjs.
 //
@@ -36,7 +39,7 @@ describe('pipeline simulation: epic map', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: map lifecycle, per-topic discussions, mail, presence, cancel/reactivate, a dead end', () => {
+  it('epic: map lifecycle, per-topic discussions, mail, presence, cancel/reactivate, the map\'s verbs', () => {
     const wu = 'overhaul';
     startNew(sim, 'epic');
     const log = sessionLog(sim, wu);
@@ -50,26 +53,30 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/session-001.md`)]);
     assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
-    // Harvest: three topics in one batch, briefs pointed.
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'alpha', routing: 'discussion', summary: 'Alpha summary', brief_path: 'discovery/briefs/alpha.md' },
-      { name: 'beta', routing: 'discussion', summary: 'Beta summary', brief_path: 'discovery/briefs/beta.md' },
-      { name: 'gamma', routing: 'discussion', summary: 'Gamma summary' },
-    ]);
-    sim.write(`.leeway/${wu}/discovery/briefs/alpha.md`, '# Brief — Alpha\n');
-    sim.write(`.leeway/${wu}/discovery/briefs/beta.md`, '# Brief — Beta\n');
-    const batch = sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
+    // Harvest: three topics in one batch, each landing with its brief from
+    // Claude's draft.
+    /** @param {string} topic */
+    const draft = (topic) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}-brief.md`, `# Brief — ${topic}\n\nLeans toward a nightly run.\n`);
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, ['alpha', 'beta', 'gamma'].map((name) => ({ name, summary: `${name} summary`, brief: draft(name) })));
+    const batch = sim.run(['topic', 'add-batch', wu, '--file', topics]);
     assert.strictEqual(batch.map_total, 3);
-    sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2', 'gamma=3']);
+    assert.match(sim.sections, /^Added 3 topics to the map: "Alpha", "Beta", "Gamma"\.$/m);
+    assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/beta/brief.md`), 'utf8'), '# Brief — beta\n\nLeans toward a nightly run.\n');
+    sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma=3']);
 
     // The menu row is the way into a mapped topic: the d door's gate refuses
     // a name on the map and passes one not on it.
     sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' });
     sim.render(['direct-entry-gate', `${wu}.discussion.omega`], { expect: 'empty' });
 
-    // Map operations the session loop supports.
-    sim.run(['discovery-map', 'edit', wu, 'gamma', '--summary', 'Gamma, sharpened']);
-    sim.run(['discovery-map', 'rename', wu, 'gamma', 'gamma-prime']);
+    // The map's verbs, each at the person's word with its one-line report: an
+    // edit, a brief rewritten before its topic starts, and an unstarted
+    // topic's rename, which moves its brief with it.
+    sim.run(['topic', 'edit', wu, 'gamma', '--summary', 'Gamma, sharpened']);
+    sim.run(['topic', 'brief', wu, 'beta', '--brief', draft('beta')]);
+    sim.run(['topic', 'rename', wu, 'gamma', 'gamma-prime']);
+    assert.match(sim.sections, /^Renamed "Gamma" to "Gamma Prime"\.$/m);
+    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/gamma-prime/brief.md`)), 'the brief moved with its topic');
     // The discovery session's cadence commit.
     sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
     // A session interrupted here resumes from the epic menu, whose discovery
@@ -102,6 +109,9 @@ describe('pipeline simulation: epic map', () => {
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, why: 'The record settles it.' }));
     epicPick(sim, wu, 'start_discussion', 'beta');
     enterEntry(sim, wu, 'discussion', 'beta');
+    // Started, beta's brief stays as it was written: what bears on it now
+    // goes as a message.
+    sim.refuses(['topic', 'brief', wu, 'beta', '--brief', draft('beta')], /^topic brief: "beta" started — what bears on it goes as a message$/);
     const retryPolicy = ask('beta', 'Which retry policy?');
     // Review arming: the first background review is free and stamps the
     // ledger's mark; after a completed cycle the next refuses until the topic
@@ -190,7 +200,7 @@ describe('pipeline simulation: epic map', () => {
     // talked through — its discussion created, not started; the send is one
     // self-committing transaction (engine-numbered message file, scratch
     // consumed, commit confined to message + manifest).
-    sim.run(['discovery-map', 'add', wu, 'delta', 'discussion', '--summary', 'Delta summary', '--source', 'message:alpha']);
+    sim.run(['topic', 'add', wu, 'delta', '--source', 'message:alpha', '--summary', 'Delta summary', '--brief', draft('delta'), '--re-add']);
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Parked message\n\nDetails.\n');
     const parked = sim.run(['topic', 'send', wu, 'delta', '--from', 'alpha', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'parked-message']);
     assert.strictEqual(parked.message_path, path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/001-parked-message.md`));
@@ -356,35 +366,21 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.previous_status, 'unstarted');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
-    // Delta closes as a dead end without being talked through — the d door
-    // refuses it like any mapped name. Every waiting message is answered
-    // before the topic closes: a dead end never buries a message.
+    // The d door refuses delta like any mapped name. The ledger names it now,
+    // so it leaves the map only by its cancel.
     sim.render(['direct-entry-gate', `${wu}.discussion.delta`], { expect: 'content' });
-    for (const waiting of sim.run(['topic', 'mailbox', wu, 'delta']).files.map((f) => path.basename(f))) {
-      sim.run(['topic', 'answered', wu, 'delta', path.basename(waiting, '.md'), '--entry', ask('delta', `What does ${waiting} ask?`)]);
-    }
+    sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead$/);
 
-    // Dead end: the map op marks the item, and the discussion's stub is
-    // untouched. The marker is the whole move, and it is reversible both
-    // ways.
-    const deadEnd = sim.run(['discovery-map', 'handle', wu, 'delta']);
-    assert.strictEqual(deadEnd.handled, true);
-    assert.strictEqual(deadEnd.lifecycle, 'handled');
-    assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, true);
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted',
-      'the dead-end marker leaves the discussion alone');
-    // A send aimed at the closed topic stops at the gate — the surface
-    // derives the closure from the same join the marker wrote.
-    assert.match(sim.render(['send-closed-target', `${wu}.discovery.delta`], { expect: 'content' }),
-      /"delta" is closed as a dead end, so it won't pick up messages\./);
-    sim.refuses(['discovery-map', 'handle', wu, 'delta'],
-      /"delta" can't be closed as a dead end — it's already closed/);
-    const reopenedMap = sim.run(['discovery-map', 'unhandle', wu, 'delta']);
-    assert.strictEqual(reopenedMap.handled, false);
-    assert.strictEqual(reopenedMap.lifecycle, 'fresh',
-      'reopening returns the topic to its name-matched lifecycle');
-    assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, undefined);
-    sim.refuses(['discovery-map', 'unhandle', wu, 'delta'],
-      /"delta" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen/);
+    // Epsilon: a topic a message names that the map lacks, landed with a
+    // brief drawn from the message, then removed before anyone starts it —
+    // its waiting message an idea in the inbox, which its report names, its
+    // name struck from the map; a later send to it lands in the inbox too.
+    sim.run(['topic', 'add', wu, 'epsilon', '--source', 'message:alpha', '--summary', 'Epsilon summary', '--brief', draft('epsilon'), '--re-add']);
+    send(sim, wu, 'epsilon', 'alpha', 'stray-thought');
+    const removed = sim.run(['topic', 'remove', wu, 'epsilon']);
+    assert.match(sim.sections, /^Removed "Epsilon" from the map\. Its 1 waiting message went to the inbox as an idea\.$/m);
+    assert.deepStrictEqual(removed.inbox.map((file) => path.relative(sim.dir, file).replace(/\d{4}-\d{2}-\d{2}/, 'DATE')), ['.leeway/.inbox/ideas/DATE--stray-thought.md']);
+    assert.deepStrictEqual([fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/epsilon`)), sim.manifest(wu).phases.discovery.dismissed], [false, ['epsilon']]);
+    assert.ok(send(sim, wu, 'epsilon', 'alpha', 'late-thought').inbox_path, 'a send to a removed topic goes to the inbox');
   });
 });

@@ -49,7 +49,7 @@ function epicManifest() {
     phases: {
       discovery: {
         items: {
-          timing: { routing: 'discussion', summary: 'Timing behaviour', order: 1 },
+          timing: { summary: 'Timing behaviour', order: 1 },
         },
       },
       discussion: {
@@ -165,7 +165,7 @@ describe('engine experiment create — the spawn', () => {
       assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', from, '--problem', scratch()]).error, /--from must be one of discussion —/);
     }
     const mapped = readManifest(dir, 'lab');
-    mapped.phases.discovery.items.ghost = { routing: 'discussion', summary: 'Ghost windows', order: 2 };
+    mapped.phases.discovery.items.ghost = { summary: 'Ghost windows', order: 2 };
     writeManifest(dir, 'lab', mapped);
     const homeless = asked(dir, 'Where does a ghost window open?');
     engine(dir, ['ledger', 'move', 'lab.discussion.timing', '--question', homeless, '--to', 'ghost'], { env: SESSION, stdin: JSON.stringify(MADE) });
@@ -508,7 +508,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
 
   it('a report whose question the person moved to another topic reaches that topic, whose map waits on the experiment until it writes the result', () => {
     const m = readManifest(dir, 'lab');
-    m.phases.discovery.items.sizing = { routing: 'discussion', summary: 'Window sizing', order: 2 };
+    m.phases.discovery.items.sizing = { summary: 'Window sizing', order: 2 };
     m.phases.discussion.items.sizing = { status: 'completed' };
     writeManifest(dir, 'lab', m);
     commitAll(dir, 'sizing');
@@ -641,7 +641,7 @@ describe('epic topic cancel takes the series with its topic', () => {
     assert.strictEqual(discussion.status, 'cancelled');
     assert.strictEqual(discussion.awaiting_experiments, undefined);
     assert.strictEqual(discussion.reconcile_needed, undefined, 'the release flags nothing');
-    assert.deepStrictEqual(after.phases.discovery.items.timing, { routing: 'discussion', summary: 'Timing behaviour', cancelled: true, previous_order: 1 });
+    assert.deepStrictEqual(after.phases.discovery.items.timing, { summary: 'Timing behaviour', cancelled: true, previous_order: 1 });
   });
 
   it('a live sub-experiment is abandoned with its parent', () => {

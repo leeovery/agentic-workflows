@@ -96,9 +96,9 @@ describe('pipeline simulation: cross-cutting', () => {
     const wu = 'host';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc message', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'logging', routing: 'discussion', summary: 'Logging everywhere' },
-      { name: 'tracing', routing: 'discussion', summary: 'Tracing everywhere' },
-      { name: 'billing', routing: 'discussion', summary: 'Billing' },
+      { name: 'logging', summary: 'Logging everywhere' },
+      { name: 'tracing', summary: 'Tracing everywhere' },
+      { name: 'billing', summary: 'Billing' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): three topics`]);

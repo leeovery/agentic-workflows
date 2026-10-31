@@ -10,8 +10,10 @@
 // the topic's conversation parked as a
 // landing parks it — set back in progress where decided (10.S10) — a
 // postponed topic's message waiting in its mailbox and a cancelled topic's
-// gone to the inbox as an idea, as is a cancelled unit's, the report and the
-// commit naming which is cancelled (10.1.8), each send under the writer lock and
+// gone to the inbox as an idea, as are a removed topic's — one removed while
+// the send waited on the writer lock among them (8.8.16) — and a cancelled
+// unit's, the report and the commit naming which went and how (10.1.8),
+// each send under the writer lock and
 // committed, and any other target the entry refuses refused by its rule — a
 // unit completed, or past its spec (10.2.2); `topic mailbox`, what waits,
 // taking no lock (10.S4); `topic answered`, a message named whole removed
@@ -33,7 +35,7 @@
 // holds `commercialization` under discussion with a question asked on it and
 // an experiment, E1, `licence` not yet discussed, `first-run` decided with a question of its
 // own and sourced by a concluded specification, `widgets` postponed,
-// `removal` cancelled, `dead-end` closed as one, and `export` promoted; a
+// `removal` cancelled, and `export` promoted; a
 // feature, `quick-sync`; a bugfix, `crash`, under investigation; a
 // quick-fix, `typo`; a cancelled feature, `retired`; a completed one,
 // `shipped`; one with its spec, `specced`; and a cancelled epic, `shelved`,
@@ -65,7 +67,7 @@ const SENDER = { [EPIC]: 'first-run', shelved: 'pricing' };
 const landed = (sender) => MESSAGE.replace('\n', `\nFrom ${sender} · 1 Jan\n`);
 
 /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
-const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery', ...marks });
+const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
 
 /** The questions the world asks, by topic: each one's short id. @type {Record<string, string>} */
 const asked = {};
@@ -77,7 +79,7 @@ const world = fixtureFrom('engine-mail-', (dir) => {
       discovery: {
         items: {
           commercialization: row(1), licence: row(2), 'first-run': row(3), widgets: row(4, { postponed: true }),
-          removal: row(5, { cancelled: true }), 'dead-end': row(6, { handled: true }), export: row(7),
+          removal: row(5, { cancelled: true }), export: row(7),
         },
       },
       discussion: {
@@ -242,18 +244,32 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('keeps a postponed topic\'s mail through its pull-forward: the topic, fresh again, refuses its removal and rename while the mail waits (10.1.8)', () => {
+  it('keeps a postponed topic\'s mail through its pull-forward, waiting for it there (10.1.8)', () => {
     ok(dir, ['topic', 'postpone', EPIC, 'licence', '--horizon', 'v2']);
     send(EPIC, 'licence', 'lost-key');
-    ok(dir, ['roadmap', 'pull-forward', 'licence', '--into', EPIC, '--routing', 'discussion']);
-    const map = () => readManifest(dir, EPIC).phases.discovery.items;
-    const before = map();
-    const verbs = [['remove', EPIC, 'licence', 'removed'], ['rename', EPIC, 'licence', 'licensing', 'renamed']];
-    assert.deepStrictEqual(
-      verbs.map((args) => refused(['discovery-map', ...args.slice(0, -1)])),
-      verbs.map((args) => `"licence" can't be ${args.at(-1)} — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead`),
-    );
-    assert.deepStrictEqual([map(), fs.existsSync(at(layout.mailbox(EPIC, 'licence', '001-lost-key.md')))], [before, true]);
+    ok(dir, ['roadmap', 'pull-forward', 'licence', '--into', EPIC]);
+    assert.deepStrictEqual(ok(dir, ['topic', 'mailbox', EPIC, 'licence']).files, [at(layout.mailbox(EPIC, 'licence', '001-lost-key.md'))]);
+  });
+
+  it('sends a message to a topic removed from the map to the inbox as an idea, read under the writer lock: one removed while the send waited lands there too (8.8.16)', (t) => {
+    const idea = layout.inbox('ideas', `${FROZEN_AT.slice(0, 10)}--lost-key.md`);
+    const lock = holdLock(at(layout.lock));
+    // The peer removes licence, as `topic remove` leaves the map, and lets go the moment the send finds the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      const manifest = readManifest(dir, EPIC);
+      delete manifest.phases.discovery.items.licence;
+      manifest.phases.discovery.dismissed = ['licence'];
+      writeState(dir, layout.manifest(EPIC), JSON.stringify(manifest, null, 2) + '\n');
+      fs.unlinkSync(lock);
+    });
+
+    const res = withFrozenClock(() => send(EPIC, 'licence', 'lost-key'));
+
+    assert.deepStrictEqual(res, { ok: true, unit: EPIC, topic: 'licence', inbox_path: at(idea), committed: shortHead() });
+    assert.deepStrictEqual(attempts.slice(0, 2), ['taken', 'made']);
+    assert.strictEqual(readState(dir, idea), `# ${landed('First Run')}`);
+    assert.deepStrictEqual([lastMessage(dir), fs.existsSync(at(layout.topic(EPIC, 'licence'))), 'licence' in readManifest(dir, EPIC).phases.discussion.items],
+      [`mail(${EPIC}): lost-key to the inbox — licence was removed`, false, false]);
   });
 
   it('sends a cancelled topic\'s message, or a cancelled unit\'s, to the inbox as an idea, its first line the title, the line naming its sender kept under it, the commit naming what is cancelled (10.1.8, P5)', () => {
@@ -307,13 +323,12 @@ describe('topic send (10.1, 10.2.7)', () => {
     assert.strictEqual(fs.existsSync(message), true);
   });
 
-  it('refuses a target the entry refuses, by its rule, writing nothing and keeping the scratch: a unit the project lacks, one completed, one past its spec — a change from there settled where it is found (10.2.2) — a topic the unit lacks, one closed as a dead end, one promoted out of the unit, a quick-fix', () => {
+  it('refuses a target the entry refuses, by its rule, writing nothing and keeping the scratch: a unit the project lacks, one completed, one past its spec — a change from there settled where it is found (10.2.2) — a topic the unit lacks, one promoted out of the unit, a quick-fix', () => {
     const cases = [
       [['nowhere', 'nowhere'], 'there is no work unit "nowhere"'],
       [['shipped', 'shipped'], 'shipped is completed — new work starts from the start menu'],
       [['specced', 'specced'], 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here'],
       [[EPIC, 'billing'], 'fumi has no topic "billing" — the epic\'s map holds its topics, and a new one comes through its discovery'],
-      [[EPIC, 'dead-end'], 'the topic "dead-end" is closed as a dead end — reopening it goes through the epic menu\'s discovery row'],
       [[EPIC, 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
       [['typo', 'typo'], 'a quick-fix has no conversation for a message to wait in'],
     ];
@@ -487,11 +502,13 @@ describe('render send-report (10.3.4)', () => {
     ].join('\n'));
   });
 
-  it('names a single-topic unit once, a postponed topic\'s wait for its return, and a cancelled topic\'s inbox in one line — or a cancelled unit\'s, naming the unit', () => {
+  it('names a single-topic unit once, a postponed topic\'s wait for its return, and a cancelled or removed topic\'s inbox in one line — or a cancelled unit\'s, naming the unit', () => {
     assert.match(report('quick-sync.quick-sync', send('quick-sync', 'quick-sync', 'lost-key')), /^Sent to Quick Sync\n/m);
     assert.match(report(`${EPIC}.widgets`, send(EPIC, 'widgets', 'lost-key')), /^ {2}↳ Postponed — waiting in its mailbox for its return$/m);
     assert.deepStrictEqual(report(`${EPIC}.removal`, send(EPIC, 'removal', 'lost-key')).split('\n').slice(1), ['Removal is cancelled, so the message went to the inbox as an idea', '']);
     assert.deepStrictEqual(report('shelved.pricing', send('shelved', 'pricing', 'price-floor')).split('\n').slice(1), ['Shelved is cancelled, so the message went to the inbox as an idea', '']);
+    ok(dir, ['topic', 'remove', EPIC, 'licence']);
+    assert.deepStrictEqual(report(`${EPIC}.licence`, send(EPIC, 'licence', 'stray')).split('\n').slice(1), ['Licence was removed from the map, so the message went to the inbox as an idea', '']);
   });
 
   it('refuses a path that is no message sent to the topic, and a call of another shape', () => {

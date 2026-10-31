@@ -35,7 +35,7 @@ const SOLO = 'solo';
 const LOG = `${EPIC}/topics/licence/log.md`;
 
 /** A map row. @param {number} order */
-const row = (order) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery' });
+const row = (order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });
 
 const world = fixtureFrom('topic-leave-', (dir) => {
   createManifest(dir, EPIC, {

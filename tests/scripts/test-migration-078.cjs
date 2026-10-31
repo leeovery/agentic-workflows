@@ -20,7 +20,8 @@
 // topic's log, a person's files named for tracking or
 // analysis kept beside the reviews' tracking files dropped; nothing in a
 // topic's folder no topic owns; its manifest less research and the retired
-// state; the project's manifest with its id, the baseline's skip its
+// state, the dead end off every topic — one whose work concluded keeping its
+// close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
 // brownfield answer and the roadmap's sources following their files; the
 // roadmap as the product, the baseline's docs its assets; the store in the
 // state; the hooks naming the engine's new path and the workflows' lines
@@ -734,7 +735,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
           discovery: {
             active_session: '002',
             items: {
-              alpha: { source: 'discovery', summary: 'Alpha', order: 1, brief_path: 'topics/alpha/brief.md' },
+              alpha: { source: 'discovery', summary: 'Alpha', order: 1 },
               beta: { source: 'message:alpha', summary: 'Beta', order: 2 },
               gamma: { source: 'discovery', summary: 'Gamma' },
               delta: { source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
@@ -894,6 +895,47 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-status']).trim(), 'M\t.claude/settings.json\nA\t.gitignore\nD\t.worktreeinclude');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
       assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('takes the dead end off every topic: a decided one, and a research umbrella whose content went to other discussions (043), keep their conclusion; any other is cancelled, no decision written, its mail an idea in the inbox (21.5.22, P4)', () => {
+    dir = tempProject('migration-078-dead-ends-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: { lab: { work_type: 'epic' } } }));
+      write(dir, '.workflows/lab/manifest.json', json(unit('lab', 'epic', 'in-progress', {
+        discovery: {
+          items: {
+            settled: { routing: 'discussion', source: 'discovery', summary: 'Settled', order: 1, handled: true },
+            umbrella: { routing: 'research', source: 'migration-seeded', summary: 'Umbrella', order: 2, handled: true },
+            stalled: { routing: 'discussion', source: 'discovery', summary: 'Stalled', order: 3, handled: true },
+            spun: { routing: 'discussion', source: 'discovery', summary: 'Spun', order: 4 },
+          },
+        },
+        research: { items: { umbrella: { status: 'completed' } } },
+        discussion: { items: { settled: { status: 'completed' }, stalled: { status: 'in-progress' }, spun: { status: 'completed' } } },
+      })));
+      write(dir, '.workflows/lab/research/umbrella.md', '# Research: Umbrella\n');
+      for (const topic of ['settled', 'stalled', 'spun']) write(dir, `.workflows/lab/discussion/${topic}.md`, `# Discussion: ${topic}\n`);
+      write(dir, '.workflows/lab/discussion/.mailbox/stalled/001-late-word.md', message('Late word', 'spun'));
+      commitAll(dir);
+      run(dir);
+      const { phases } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/lab/manifest.json'), 'utf8'));
+      assert.deepStrictEqual(phases.discovery.items, {
+        settled: { source: 'discovery', summary: 'Settled', order: 1 },
+        umbrella: { source: 'migration-seeded', summary: 'Umbrella', order: 2 },
+        stalled: { source: 'discovery', summary: 'Stalled', cancelled: true, previous_order: 3 },
+        spun: { source: 'discovery', summary: 'Spun', order: 4 },
+      });
+      assert.deepStrictEqual(phases.discussion.items, {
+        settled: { status: 'completed' },
+        stalled: { status: 'cancelled', previous_status: 'in-progress' },
+        spun: { status: 'completed' },
+        umbrella: { status: 'completed' },
+      });
+      assert.strictEqual(fs.readFileSync(path.join(dir, `.leeway/.inbox/ideas/${TODAY}--late-word.md`), 'utf8'), '# Late word\nFrom Spun · 1 Jan\n\nDetails of late word.\n');
+      assert.deepStrictEqual(tree(path.join(dir, '.leeway'), 'lab/topics/stalled'), ['log.md']);
     } finally {
       cleanupFixture(dir);
     }

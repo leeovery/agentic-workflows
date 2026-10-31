@@ -20,15 +20,15 @@
 //   close it holds voided (checklist.cjs), so the next decided needs a
 //   fresh close and the gate's yes. A postponed topic is
 //   left as it stands, the message waiting in its mailbox for its return
-//   (10.1.8), and while it waits the topic is never fresh enough to remove
-//   or rename (discovery-map.cjs). A message to a cancelled topic,
-//   or a cancelled unit's, goes to the inbox as an idea instead, its first
-//   line the title, the line saying who sent it kept under it (10.1.6,
-//   10.1.8). Any other target the entry would refuse is refused, by the
-//   entry's own rule (topic-standing.cjs), the scratch kept: a unit not in
-//   progress, a topic it lacks or has closed, and any topic once the unit
-//   has its spec, from which a change is settled where it is found
-//   (10.2.2). Each send commits what it wrote.
+//   (10.1.8). A message to a cancelled topic, a topic removed from the
+//   map, or a cancelled unit's, goes to the inbox as an idea instead, its
+//   first line the title, the line saying who sent it kept under it
+//   (10.1.6, 10.1.8, 8.8.16) — read under the writer lock, so a send racing
+//   a remove lands there whichever goes first. Any other target the entry
+//   would refuse is refused, by the entry's own rule (topic-standing.cjs),
+//   the scratch kept: a unit not in progress, a topic it lacks or has
+//   closed, and any topic once the unit has its spec, from which a change
+//   is settled where it is found (10.2.2). Each send commits what it wrote.
 // - `topic mailbox <unit> <topic>` lists what waits, lock-free, for the
 //   conversation's loop to raise (10.1.5).
 // - `topic answered <unit> <topic> <NNN-slug> --entry <id>` removes a
@@ -39,6 +39,8 @@
 //   progress, as for any work on it. Git keeps the file.
 // A commit a send to the mailbox or a removal leaves pending is retried in
 // the topic's scope as a sweep, which takes no hold on the topic.
+// Removing a topic moves what waits for it to the inbox the same way, each
+// message an idea (`moveWaitingToInbox`).
 // The send report and the waiting mail are drawn by projections/mail.cjs.
 // ---------------------------------------------------------------------------
 
@@ -46,10 +48,10 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -142,10 +144,7 @@ function withSender(content, sender) {
  * @param {string} cwd @param {string} contentFile @returns {{scratch: string, content: string}}
  */
 function messageIn(cwd, contentFile) {
-  const scratch = path.resolve(cwd, contentFile);
-  if (!(stateRelative(cwd, scratch) ?? '').startsWith('.cache/')) {
-    throw new Error(`--content must point inside ${statePath(cwd, '.cache')}/ — got "${contentFile}"`);
-  }
+  const scratch = cacheScratch(cwd, contentFile, '--content');
   let content;
   try {
     content = fs.readFileSync(scratch, 'utf8');
@@ -181,19 +180,59 @@ function nextNumber(cwd, unit, topic) {
  * @property {Record<string, unknown>} fields  the response's own fields
  */
 
-/**
- * A message to a cancelled topic, or a cancelled unit's, landed in the inbox
- * as an idea (10.1.6), its title an H1 over the rest, the line saying who
- * sent it first; `cancelled` naming which.
- * @param {string} cwd @param {string} unit @param {string} cancelled @param {string} message the message with its sender line
- * @param {string} slug @returns {Landed}
- */
-function toInbox(cwd, unit, cancelled, message, slug) {
-  const rel = `${INBOX_IDEAS}/${todayStamp()}--${slug}.md`;
-  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`the inbox already holds ${statePath(cwd, rel)} — send it under another slug`);
+/** Where an idea of `slug` lands in the inbox today, state-relative. @param {string} slug */
+function ideaPath(slug) {
+  return `${INBOX_IDEAS}/${todayStamp()}--${slug}.md`;
+}
+
+/** Write a message, its sender line under its title, as an idea at `rel`: its title an H1 over the rest. @param {string} cwd @param {string} rel @param {string} message */
+function writeIdea(cwd, rel, message) {
   fs.mkdirSync(statePath(cwd, INBOX_IDEAS), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `# ${titleOf(message)}\n${bodyOf(message)}\n`);
-  return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${cancelled} is cancelled`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
+}
+
+/**
+ * Whether the unit removed `topic` from its map: off it, and among the
+ * names struck from it.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+function removedTopic(manifest, topic) {
+  return !holdsTopic(manifest, topic) && dismissedNames(manifest).includes(topic);
+}
+
+/**
+ * A message to a cancelled topic, a removed one, or a cancelled unit's,
+ * landed in the inbox as an idea (10.1.6, 8.8.16), its title an H1 over the
+ * rest, the line saying who sent it first; `why` saying what went.
+ * @param {string} cwd @param {string} unit @param {string} why @param {string} message the message with its sender line
+ * @param {string} slug @returns {Landed}
+ */
+function toInbox(cwd, unit, why, message, slug) {
+  const rel = ideaPath(slug);
+  if (fs.existsSync(statePath(cwd, rel))) throw new Error(`the inbox already holds ${statePath(cwd, rel)} — send it under another slug`);
+  writeIdea(cwd, rel, message);
+  return { rel, paths: [rel], message: `mail(${unit}): ${slug} to the inbox — ${why}`, retry: '--inbox', fields: { inbox_path: statePath(cwd, rel) } };
+}
+
+/**
+ * Every message waiting for a topic moved to the inbox as an idea, as a send
+ * to a cancelled topic lands one (10.1.6, 8.8.16): named for the message's
+ * slug, a name the inbox holds already today taking the next free `-{n}`.
+ * Runs under the caller's lock and commits nothing. Answers, state-relative,
+ * each message removed and the idea it became, in the order they landed.
+ * @param {string} cwd @param {string} unit @param {string} topic
+ * @returns {{message: string, idea: string}[]}
+ */
+function moveWaitingToInbox(cwd, unit, topic) {
+  return mailboxFiles(stateRoot(cwd), unit, topic).map((name) => {
+    const message = `${mailboxDir(unit, topic)}/${name}`;
+    const slug = name.replace(/^\d+-/, '').replace(/\.md$/, '');
+    let idea = ideaPath(slug);
+    for (let n = 2; fs.existsSync(statePath(cwd, idea)); n += 1) idea = ideaPath(`${slug}-${n}`);
+    writeIdea(cwd, idea, fs.readFileSync(statePath(cwd, message), 'utf8'));
+    fs.unlinkSync(statePath(cwd, message));
+    return { message, idea };
+  });
 }
 
 /** The scope a pending commit on a topic's mailbox is retried in. @param {string} unit @param {string|null} phase @param {string} topic */
@@ -235,7 +274,8 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
 
 /**
  * Where a message to a topic of a unit in progress lands: the inbox for a
- * cancelled topic, else its mailbox — refused where the topic takes nothing.
+ * cancelled or removed topic, else its mailbox — refused where the topic
+ * takes nothing.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} message the message with its sender line
  * @param {string} slug @returns {Landed}
  */
@@ -243,10 +283,11 @@ function toTopic(cwd, manifest, topic, message, slug) {
   assertInProgress(manifest);
   const phase = mailPhase(manifest.work_type);
   if (phase === null) throw new Error(`a ${manifest.work_type} has no conversation for a message to wait in`);
+  if (removedTopic(manifest, topic)) return toInbox(cwd, manifest.name, `${topic} was removed`, message, slug);
   const closure = topicClosure({ cwd, phase, unit: manifest.name, topic, manifest });
   if (closure !== null) throw new Error(closure);
   return computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled'
-    ? toInbox(cwd, manifest.name, topic, message, slug)
+    ? toInbox(cwd, manifest.name, `${topic} is cancelled`, message, slug)
     : toMailbox(cwd, manifest, phase, topic, message, slug);
 }
 
@@ -265,7 +306,7 @@ function sendMessage(cwd, unit, topic, { from, contentFile, slug }) {
   const landed = withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
     const message = withSender(content, senderTitle(cwd, manifest, topic, from));
-    return manifest.status === 'cancelled' ? toInbox(cwd, unit, unit, message, slug) : toTopic(cwd, manifest, topic, message, slug);
+    return manifest.status === 'cancelled' ? toInbox(cwd, unit, `${unit} is cancelled`, message, slug) : toTopic(cwd, manifest, topic, message, slug);
   });
   fs.rmSync(scratch, { force: true });
   /** @type {string[]} */
@@ -392,8 +433,9 @@ function sendReportOf(cwd, address, sent) {
   /** @type {import('./projections/mail.cjs').Landing} */
   let landing = 'inbox';
   if (folder !== INBOX_IDEAS) landing = computeTopicLifecycle(manifest, topic).lifecycle === 'postponed' ? 'postponed' : 'mailbox';
-  const cancelled = manifest.status === 'cancelled' ? unit : topic;
-  return sendReport({ unit, topic, title: titleOf(fs.readFileSync(at, 'utf8')), landing, cancelled });
+  /** @type {{name: string, how: 'cancelled'|'removed'}} */
+  const gone = manifest.status === 'cancelled' ? { name: unit, how: 'cancelled' } : { name: topic, how: removedTopic(manifest, topic) ? 'removed' : 'cancelled' };
+  return sendReport({ unit, topic, title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
 }
 
-module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, sendReportOf };
+module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, moveWaitingToInbox, sendReportOf };

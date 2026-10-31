@@ -6,7 +6,7 @@
 // joined-item guards, horizon restructuring, and the derived state read. The
 // inbox's notes onto the roadmap and back are test-engine-roadmap-inbox.cjs's;
 // the postpone, and a cancel's revert of a join, are
-// test-engine-roadmap-topic-verbs.cjs's.
+// test-engine-roadmap-topic-verbs.cjs's; a removal's, test-engine-topic-map.cjs's.
 //
 // Layer: verb. World: the roadmap's (roadmap-world.cjs).
 
@@ -419,7 +419,7 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
     assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'guest-ordering']).error, /no discovery item "guest-ordering" on "mvp"/);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-    manifest.phases.discovery.items['guest-ordering'] = { routing: 'discussion', source: 'roadmap', summary: 's' };
+    manifest.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
     fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
     assert.strictEqual(res.work_unit, 'mvp');
@@ -428,13 +428,13 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   });
 
   it('pull-forward lands the map topic and the join in one commit staging both manifests', () => {
-    const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);
+    const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp']);
     assert.strictEqual(res.topic, 'loyalty');
     assert.strictEqual(res.state, 'in-flight');
     // The epic's map item, source roadmap, summary carried from the item.
     const epicItem = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'))
       .phases.discovery.items.loyalty;
-    assert.deepStrictEqual(epicItem, { routing: 'discussion', source: 'roadmap', summary: 'rewards' });
+    assert.deepStrictEqual(epicItem, { source: 'roadmap', summary: 'rewards' });
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.pulled_to, { work_unit: 'mvp', topic: 'loyalty' });
     // One commit, both manifests staged.
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull-forward loyalty into mvp');
@@ -443,33 +443,26 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     assert.ok(staged.includes('mvp/manifest.json'), 'epic manifest staged');
   });
 
-  it('pull-forward requires --routing on the creating branch — only the return names nothing', () => {
-    assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp']).error, /--routing is required/);
-    assert.strictEqual(
-      JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.loyalty,
-      undefined, 'nothing lands on the map');
-  });
-
   it('pull-forward refuses a non-epic, a joined item, and an occupied topic name', () => {
     createManifest(dir, 'small', { work_type: 'feature', status: 'in-progress' });
-    assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'small', '--routing', 'discussion']).error, /is a feature/);
+    assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'small']).error, /is a feature/);
     runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
-    assert.match(runFail(dir, ['pull-forward', 'ordering', '--into', 'mvp', '--routing', 'discussion']).error, /already joined/);
-    runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);
+    assert.match(runFail(dir, ['pull-forward', 'ordering', '--into', 'mvp']).error, /already joined/);
+    runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp']);
     runOk(dir, ['move', 'kds', '--horizon', 'v1']);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-    manifest.phases.discovery.items.kds = { routing: 'discussion', source: 'discovery', summary: 'already here' };
+    manifest.phases.discovery.items.kds = { source: 'discovery', summary: 'already here' };
     fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
-    assert.match(runFail(dir, ['pull-forward', 'kds', '--into', 'mvp', '--routing', 'discussion']).error, /already on the map/);
+    assert.match(runFail(dir, ['pull-forward', 'kds', '--into', 'mvp']).error, /already on the map/);
   });
 
   it('pull-forward refuses a bug or a quick-fix, naming the pull as the way to start it — the epic\'s map never moves', () => {
     runOk(dir, ['add', 'login-crash', '--horizon', 'mvp', '--summary', 'sign-in crashes', '--kind', 'bug']);
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
     const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
-    assert.strictEqual(runFail(dir, ['pull-forward', 'login-crash', '--into', 'mvp', '--routing', 'discussion']).error,
+    assert.strictEqual(runFail(dir, ['pull-forward', 'login-crash', '--into', 'mvp']).error,
       '"login-crash" is a bug — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own');
-    assert.match(runFail(dir, ['pull-forward', 'typo', '--into', 'mvp', '--routing', 'discussion']).error, /^"typo" is a quick-fix — /);
+    assert.match(runFail(dir, ['pull-forward', 'typo', '--into', 'mvp']).error, /^"typo" is a quick-fix — /);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
     assert.strictEqual('pulled_to' in readProject(dir).roadmap.items['login-crash'], false);
   });
@@ -478,8 +471,9 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.dismissed = ['loyalty'];
     fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
-    assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']).error, /previously dismissed/);
-    const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
+    assert.strictEqual(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp']).error,
+      '"loyalty" was previously dismissed from this map — nothing was added; add it back only at the person\'s ask — re-run with --force-dismissed');
+    const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--force-dismissed']);
     assert.strictEqual(res.state, 'in-flight');
   });
 });
@@ -601,8 +595,8 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   it('re-binding re-aims the join at the new topic, the unit carried', () => {
     runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
     const m = epicManifest();
-    m.phases.discovery.items.ordering = { routing: 'discussion', source: 'roadmap', summary: 's' };
-    m.phases.discovery.items['guest-ordering'] = { routing: 'discussion', source: 'roadmap', summary: 's' };
+    m.phases.discovery.items.ordering = { source: 'roadmap', summary: 's' };
+    m.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
     writeEpic(m);
     runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
@@ -637,7 +631,7 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   });
 });
 
-describe('engine CLI: the un-pull and the re-aim — remove and absorb move joins, never orphan them', () => {
+describe('engine CLI: the re-aim — absorb moves a join, never orphans it', () => {
   let dir;
   const setup = roadmapWorld((at) => {
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
@@ -648,24 +642,6 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
   afterEach(() => { cleanup(dir); });
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
-
-  it('discovery-map remove of a fresh joined topic reverts the join, staged in its own commit', () => {
-    runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);
-    const res = engineOk(['discovery-map', 'remove', 'mvp', 'loyalty']);
-    assert.deepStrictEqual(res.roadmap_reverted, ['loyalty']);
-    const item = readProject(dir).roadmap.items.loyalty;
-    assert.strictEqual('pulled_to' in item, false);
-    assert.strictEqual(item.origin, 'harvest', 'origin survives the un-pull');
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: un-pull loyalty (loyalty removed from mvp)');
-    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.deepStrictEqual(staged, ['manifest.json'], 'the un-pull commit carries the project manifest alone');
-  });
-
-  it('discovery-map remove of an unjoined fresh topic reverts nothing', () => {
-    engineOk(['discovery-map', 'add', 'mvp', 'plain-topic', 'discussion', '--summary', 's']);
-    const res = engineOk(['discovery-map', 'remove', 'mvp', 'plain-topic']);
-    assert.strictEqual('roadmap_reverted' in res, false);
-  });
 
   it('workunit absorb re-aims the feature-held join at the epic topic', () => {
     createManifest(dir, 'loyalty-feat', {

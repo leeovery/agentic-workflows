@@ -46,7 +46,7 @@ function epicManifest() {
     work_type: 'epic',
     status: 'in-progress',
     phases: {
-      discovery: { items: { 'auth-flow': { routing: 'discussion', order: 2, source: 'discovery' } } },
+      discovery: { items: { 'auth-flow': { order: 2, source: 'discovery' } } },
       investigation: { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'completed' } } },
       discussion: { items: { 'session-model': { status: 'completed' }, 'refund-policy': { status: 'in-progress' } } },
     },
@@ -77,10 +77,10 @@ function unitManifest() {
     phases: {
       discovery: {
         items: {
-          'data-export': { routing: 'discussion', source: 'discovery', order: 1 },
-          'auth-flow': { routing: 'discussion', source: 'discovery', order: 2 },
-          'fee-model': { routing: 'discussion', source: 'discovery', order: 3 },
-          'session-model': { routing: 'discussion', source: 'discovery', order: 4 },
+          'data-export': { source: 'discovery', order: 1 },
+          'auth-flow': { source: 'discovery', order: 2 },
+          'fee-model': { source: 'discovery', order: 3 },
+          'session-model': { source: 'discovery', order: 4 },
         },
       },
       discussion: {
@@ -126,7 +126,7 @@ describe('engine topic cancel — the discovery unit', () => {
       committed: shortHead(dir), warnings: [], roadmap_reverted: [], next: { kind: 'continue' },
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
-      { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 1 });
+      { source: 'discovery', cancelled: true, previous_order: 1 });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel data-export (discovery)');
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'cancel']),
@@ -150,7 +150,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.strictEqual(series.experiments['E1.1'].reason, 'topic cancelled');
     assert.strictEqual(m.phases.specification.items.grouping, undefined, 'the proposed grouping is gone, not cancelled');
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'],
-      { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 2 });
+      { source: 'discovery', cancelled: true, previous_order: 2 });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel']),
       /Cancelled "Auth Flow"\./);
@@ -193,23 +193,6 @@ describe('engine topic cancel — the discovery unit', () => {
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'completed' }]);
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'decided');
-  });
-
-  it('a dead end cancels and comes back a dead end — the marker sits over the close', () => {
-    const m = unitManifest();
-    m.phases.discovery.items['data-export'].handled = true;
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
-    assert.deepStrictEqual(res.cancelled, []);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
-      { routing: 'discussion', source: 'discovery', handled: true, cancelled: true, previous_order: 1 });
-    assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'data-export').lifecycle, 'cancelled');
-    assert.match(engineFails(dir, ['discovery-map', 'unhandle', 'payments', 'data-export']).error,
-      /"data-export" can't be reopened — it's cancelled; reactivate it from the epic menu first/);
-    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'data-export']);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
-      { routing: 'discussion', source: 'discovery', handled: true, order: 1 });
-    assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'data-export').lifecycle, 'handled');
   });
 
   it('a legacy array-form sources list locks and holds the same way', () => {
@@ -348,8 +331,8 @@ function collidingManifest() {
     phases: {
       discovery: {
         items: {
-          'auth-flow': { routing: 'discussion', order: 1, source: 'discovery' },
-          'fee-model': { routing: 'discussion', order: 2, source: 'discovery' },
+          'auth-flow': { order: 1, source: 'discovery' },
+          'fee-model': { order: 2, source: 'discovery' },
         },
       },
       discussion: {
@@ -381,7 +364,7 @@ describe('a specification cancel leaves the discovery order alone', () => {
 
   it('reactivating a specification does not overwrite a re-sequenced map order', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'auth-flow']);
-    engine(dir, ['discovery-map', 'sequence', 'payments', 'auth-flow=2', 'fee-model=1']);
+    engine(dir, ['topic', 'order', 'payments', 'auth-flow=2', 'fee-model=1']);
     engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'auth-flow']);
 
     const items = readManifest(dir, 'payments').phases.discovery.items;
@@ -403,25 +386,13 @@ describe('a specification cancel leaves the discovery order alone', () => {
 
   it('a taken map number is not restored — the stash drops and the row reads unordered', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
-    engine(dir, ['discovery-map', 'sequence', 'payments', 'auth-flow=2']);
+    engine(dir, ['topic', 'order', 'payments', 'auth-flow=2']);
     engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
 
     const items = readManifest(dir, 'payments').phases.discovery.items;
     assert.strictEqual(items['fee-model'].order, undefined, 'stale number not restored over auth-flow');
     assert.strictEqual(items['fee-model'].previous_order, undefined, 'stash dropped');
     assert.strictEqual(items['auth-flow'].order, 2, 'no collision');
-  });
-
-  it('a closed row squatting on the number does not veto the restore', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
-    engine(dir, ['discovery-map', 'handle', 'payments', 'auth-flow']);
-    const m = readManifest(dir, 'payments');
-    m.phases.discovery.items['auth-flow'].order = 2;
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    commitAll(dir, 'squat');
-
-    engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['fee-model'].order, 2, 'restored over the dead-ended squatter');
   });
 });
 
@@ -438,7 +409,7 @@ describe('engine topic reactivate', () => {
       committed: shortHead(dir), warnings: [],
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
-      { routing: 'discussion', source: 'discovery', order: 1 });
+      { source: 'discovery', order: 1 });
     assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate data-export (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'reactivate']),
       /Reactivated "Data Export"\.\n/);
@@ -453,7 +424,7 @@ describe('engine topic reactivate', () => {
 
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'in-progress' });
-    assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { routing: 'discussion', source: 'discovery', order: 2 });
+    assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { source: 'discovery', order: 2 });
     assert.strictEqual(m.phases.experiment.items['auth-flow'].experiments.E1.status, 'abandoned', 'the abandoned records stand on the register');
     assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate auth-flow (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']),
@@ -510,7 +481,7 @@ describe('engine topic reactivate', () => {
   it('the reactivate refusal names every unavailable source — cancelled and held alike, singular and plural', () => {
     const m = unitManifest();
     for (const topic of ['alpha', 'beta']) {
-      m.phases.discovery.items[topic] = { routing: 'discussion', source: 'discovery' };
+      m.phases.discovery.items[topic] = { source: 'discovery' };
       m.phases.discussion.items[topic] = { status: 'completed' };
     }
     m.phases.specification.items.pair = { status: 'cancelled', previous_status: 'completed', sources: { alpha: { status: 'incorporated' }, beta: { status: 'incorporated' } } };
@@ -641,7 +612,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']).error, /unknown or non-lifecycle phase "research"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'investigation']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|answered>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
@@ -1508,7 +1479,7 @@ describe('engine workunit reactivate', () => {
     writeFile(epicDir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: {
-        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { 'auth-flow': { source: 'discovery' } } },
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
       },
     }, null, 2) + '\n');
@@ -1915,7 +1886,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
     const dir = setupGitFixture();
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
-      phases: { discovery: { items: { 'auth-flow': { routing: 'discussion' } } } },
+      phases: { discovery: { items: { 'auth-flow': {} } } },
     }, null, 2));
     for (const verb of ['start', 'complete', 'reopen']) {
       assert.match(
@@ -2003,19 +1974,6 @@ describe('engine commit --plan — hardening', () => {
   });
 });
 
-describe('discovery-map add-batch — name typing', () => {
-  let dir;
-  beforeEach(() => { dir = setupEpicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
-
-  it('a non-string name is refused before anything persists', () => {
-    const p = path.join(dir, 'topics.json');
-    fs.writeFileSync(p, JSON.stringify([{ name: 5, routing: 'discussion', summary: 's' }]));
-    const err = engineFails(dir, ['discovery-map', 'add-batch', 'payments', '--file', p]);
-    assert.match(err.error, /not a legal topic name/);
-  });
-});
-
 describe('engine topic start — the discovery map gates the birth of a phase item', () => {
   let dir;
   beforeEach(() => {
@@ -2027,12 +1985,12 @@ describe('engine topic start — the discovery map gates the birth of a phase it
       phases: {
         discovery: {
           items: {
-            beta: { routing: 'discussion', source: 'discovery' },
-            gamma: { routing: 'discussion', source: 'discovery' },
-            epsilon: { routing: 'discussion', source: 'discovery' },
-            zeta: { routing: 'discussion', source: 'discovery' },
-            delta: { routing: 'discussion', source: 'discovery' },
-            iota: { routing: 'discussion', source: 'discovery', cancelled: true },
+            beta: { source: 'discovery' },
+            gamma: { source: 'discovery' },
+            epsilon: { source: 'discovery' },
+            zeta: { source: 'discovery' },
+            delta: { source: 'discovery' },
+            iota: { source: 'discovery', cancelled: true },
           },
         },
         discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'unstarted' }, zeta: { status: 'in-progress' }, delta: { status: 'completed' } } },
@@ -2058,7 +2016,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).created, true);
     writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
-      phases: { discovery: { items: { feat: { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { feat: { source: 'discovery' } } } },
     }, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'start', 'feat', 'discussion', 'feat']).created, true);
   });

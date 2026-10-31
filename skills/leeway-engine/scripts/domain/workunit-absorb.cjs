@@ -363,7 +363,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
 
   // The absorbed topic joins the map (no summary/description — the next epic
   // entry's summary-backfill drafts them). Its own locked read-modify-write.
-  addItem(cwd, into, topic, { routing: 'discussion', backfill: true });
+  addItem(cwd, into, topic, { backfill: true });
 
   // Registration removal — a fresh read under the project lock.
   withProjectLock(cwd, () => {

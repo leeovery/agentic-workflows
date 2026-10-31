@@ -4,7 +4,7 @@
 
 ---
 
-Validates a derived topic name, then writes the discovery item via the engine's topic commands. The caller owns the user-facing framing around the new topic (seed file creation, map markers, the commit); this reference owns only the validate → create sequence and reports back the name it wrote.
+Validates a derived topic name, then lands the topic on the map with its brief. The caller owns the user-facing framing around the new topic; this reference owns only the validate → create sequence and reports back the name it wrote.
 
 ## Parameters
 
@@ -12,8 +12,8 @@ The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
 - `proposed_name` — the topic name the caller derived. Always present.
-- `routing` — the literal `discussion`.
 - `source` — the provenance string for the discovery item (e.g. `message:{origin}`).
+- `message` — what the new topic is created to receive. Always present.
 
 After return, the caller reads this from conversation memory:
 
@@ -37,22 +37,24 @@ Set `created_topic` to the validated `proposed_name`.
 
 ## B. Create the Topic
 
-Create the discovery item — `--backfill` stands in for the summary and description the next epic entry's summary-backfill drafts, and `--force-dismissed` clears any matching dismissed entry (the creation is explicit — a message, a gap, a session add — so a prior dismissal never blocks it):
+Draw the topic's brief from `message` — a few lines on what it raises and why the topic needs it — and write it to `.leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md` with the Write tool. Derive `summary`, one line on what the topic covers.
+
+Land the topic with its brief. `--re-add` brings back a name struck from the map: the creation is explicit — a message, a gap, a session add — so a prior dismissal never blocks it.
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map add {work_unit} {created_topic} {routing} --source "{source}" --backfill --force-dismissed
+node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md --re-add
 ```
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 
-#### If the response is `ok: false` naming an active duplicate
+#### If the response is `ok: false` naming the name taken
 
-The map moved since validation — a concurrent session landed the same name. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
+The map moved since validation — a concurrent session landed the same name, another topic goes by it, or a waiting roadmap item carries it. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
 
 → Return to **A. Validate the Name**.
 
 #### Otherwise
 
-No commit here — the caller folds this write into its own commit.
+The add commits itself.
 
 → Return to caller.

@@ -39,6 +39,10 @@ const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-eng
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
 
 // The project every scenario starts from, made once per process.
+// The topic family's map verbs, which answer their one-line report after
+// their JSON (8.8.7).
+const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
+
 const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
   // This checkout's knowledge setup: keyword-only, pinned as setup records
   // it, so the transactions' indexing builds a store as a set-up project's does.
@@ -115,7 +119,7 @@ class Sim {
   // the phase reads on arrival.
   /** @param {string[]} args */
   static carriesSections([group, verb]) {
-    return group === 'presence' || group === 'enter' || (group === 'raise' && verb !== 'answer');
+    return group === 'presence' || group === 'enter' || (group === 'raise' && verb !== 'answer') || (group === 'topic' && MAP_VERBS.includes(verb));
   }
 
   /**
@@ -293,11 +297,11 @@ function send(sim, wu, topic, from, slug) {
   return sim.run(sendArgv(sim, wu, topic, from, slug));
 }
 
-/** An epic whose map carries the named topics, each routed to discussion. */
+/** An epic whose map carries the named topics. */
 function mappedEpic(sim, wu, names) {
   sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
   sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
-    names.map((name) => ({ name, routing: 'discussion', summary: name })))]);
+    names.map((name) => ({ name, summary: name })))]);
   sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
 }
 

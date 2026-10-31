@@ -44,7 +44,7 @@ function epicManifest(overrides = {}) {
     imports: [{ path: 'imports/roadmap.md', imported_at: '2026-05-01T08:00:00Z', origin: 'discovery' }],
     phases: {
       discovery: {
-        items: { 'fee-model': { routing: 'discussion', source: 'discovery', summary: 'Fees' } },
+        items: { 'fee-model': { source: 'discovery', summary: 'Fees' } },
         dismissed: ['dead-idea'],
       },
     },
@@ -227,7 +227,7 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.seeds, [
       { path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' },
     ]);
-    assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'discussion', source: 'discovery' });
+    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery' });
 
     // Registration removed; the epic's stays.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
@@ -254,7 +254,7 @@ describe('engine workunit absorb — happy path', () => {
     ]);
   });
 
-  it('an in-progress discussion alone: its status mirrored, the map row routed to discussion, nothing indexed', () => {
+  it('an in-progress discussion alone: its status mirrored, a map row written for it, nothing indexed', () => {
     const feature = featureManifest({
       imports: undefined,
       seeds: undefined,
@@ -272,7 +272,7 @@ describe('engine workunit absorb — happy path', () => {
 
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'in-progress' } });
-    assert.deepStrictEqual(m.phases.discovery.items.auth, { routing: 'discussion', source: 'discovery' });
+    assert.deepStrictEqual(m.phases.discovery.items.auth, { source: 'discovery' });
     assert.deepStrictEqual(indexedFiles(fix.project), ['payments/imports/roadmap.md']);
   });
 
@@ -437,7 +437,7 @@ describe('engine workunit absorb — imports follow the material', () => {
     writeFile(fix.project, '.leeway/auth-flow/topics/auth-flow/log.md',
       '# Discussion\n\nSee ![the ask](../../imports/notes.md) and ![the screen](../../imports/screen.png).\nAlso ../../imports/brief.md.\n');
     // The epic's own document links its own same-named file — untouched.
-    writeFile(fix.project, '.leeway/payments/discovery/briefs/fee-model.md',
+    writeFile(fix.project, '.leeway/payments/topics/fee-model/brief.md',
       '# Fees\n\n![epic notes](../../imports/notes.md)\n');
     commitAll(fix.project, 'importing feature');
   }
@@ -465,7 +465,7 @@ describe('engine workunit absorb — imports follow the material', () => {
     assert.match(read('.leeway/payments/topics/auth/log.md'), /!\[the screen\]\(\.\.\/\.\.\/imports\/screen\.png\)/);
     assert.match(read('.leeway/payments/topics/auth/log.md'), /Also \.\.\/\.\.\/imports\/brief\.md\./);
     // The epic's own document names the epic's own notes.md — never rewritten.
-    assert.match(read('.leeway/payments/discovery/briefs/fee-model.md'), /!\[epic notes\]\(\.\.\/\.\.\/imports\/notes\.md\)/);
+    assert.match(read('.leeway/payments/topics/fee-model/brief.md'), /!\[epic notes\]\(\.\.\/\.\.\/imports\/notes\.md\)/);
   });
 
   it('a link already naming the landed file is left as it is — the substitution is exact', () => {

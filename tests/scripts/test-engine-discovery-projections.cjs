@@ -20,20 +20,19 @@ const ADAPTER = path.resolve(__dirname, '../../skills/leeway-discovery/scripts/g
 // discovery result → projection). Long wrapped summaries are the point — the
 // hand-drawn render this projection replaced wrapped raggedly.
 
-/** All six tiers, plural rows, so glyphs, labels, and the breakdown all show. */
+/** All five tiers, plural rows, so glyphs, labels, and the breakdown all show; a started topic renamed, by its title. */
 function richFixture(dir) {
   createManifest(dir, 'payments', {
     work_type: 'epic',
     phases: {
       discovery: {
         items: {
-          'kitchen-hardware': { routing: 'discussion', source: 'discovery', summary: 'printers and tills' },
-          'menu-management': { routing: 'discussion', source: 'discovery', summary: 'menus', postponed: true },
-          'ordering-flow': { routing: 'discussion', source: 'discovery', summary: 'order lifecycle' },
+          'kitchen-hardware': { source: 'discovery', summary: 'printers and tills', title: 'kitchen-kit' },
+          'menu-management': { source: 'discovery', summary: 'menus', postponed: true },
+          'ordering-flow': { source: 'discovery', summary: 'order lifecycle' },
           'loyalty': { source: 'discovery', summary: 'points and rewards' },
-          'operator-analytics': { routing: 'discussion', source: 'discovery', summary: 'dashboards' },
-          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
-          'legacy-import': { routing: 'discussion', source: 'discovery' },
+          'operator-analytics': { source: 'discovery', summary: 'dashboards' },
+          'legacy-import': { source: 'discovery' },
         },
         dismissed: ['old-idea'],
       },
@@ -59,25 +58,22 @@ describe('discoveryMapView', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('renders the header, the tier breakdown, and one state-noted row per topic in tier order', () => {
+  it('renders the header, the tier breakdown, and one state-noted row per topic in tier order, each by its title (P2)', () => {
     richFixture(dir);
     assert.strictEqual(discoveryMapView('payments', mapOf(dir, 'payments')), [
-      'Discovery Map (7 topics — 1 decided · 1 in flight · 2 fresh · 1',
-      'dead-ended · 1 cancelled · 1 postponed)',
+      'Discovery Map (6 topics — 1 decided · 1 in flight · 2 fresh · 1',
+      'cancelled · 1 postponed)',
       '  ├─ ✓ Ordering Flow',
       '  │     ↳ Decided',
       '  │',
-      '  ├─ ◐ Kitchen Hardware',
+      '  ├─ ◐ Kitchen Kit',
       '  │     ↳ Discussing',
       '  │',
       '  ├─ ○ Loyalty',
       '  │     ↳ Fresh',
       '  │',
       '  ├─ ○ Operator Analytics',
-      '  │     ↳ Fresh · routed to discussion',
-      '  │',
-      '  ├─ ⊙ Dead Lead',
-      '  │     ↳ Dead end',
+      '  │     ↳ Fresh',
       '  │',
       '  ├─ ⊘ Legacy Import',
       '  │     ↳ Cancelled',
@@ -95,7 +91,7 @@ describe('discoveryMapView', () => {
         discovery: {
           items: {
             'alpha': { source: 'discovery' },
-            'beta': { routing: 'discussion', source: 'discovery' },
+            'beta': { source: 'discovery' },
           },
         },
       },
@@ -106,7 +102,7 @@ describe('discoveryMapView', () => {
       '  │     ↳ Fresh',
       '  │',
       '  └─ ○ Beta',
-      '        ↳ Fresh · routed to discussion',
+      '        ↳ Fresh',
       '',
     ].join('\n'));
   });
@@ -115,7 +111,7 @@ describe('discoveryMapView', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { alpha: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { alpha: { source: 'discovery' } } },
         discussion: { items: { alpha: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
         experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
       },
@@ -136,30 +132,6 @@ describe('discoveryMapView', () => {
       '',
     ].join('\n'));
   });
-
-  it('states a dead end plainly, whatever the discussion behind it', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: {
-          items: {
-            'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
-            'never-discussed': { routing: 'discussion', source: 'discovery', handled: true },
-          },
-        },
-        discussion: { items: { 'dead-lead': { status: 'completed' } } },
-      },
-    });
-    assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      'Discovery Map (2 topics)',
-      '  ├─ ⊙ Dead Lead',
-      '  │     ↳ Dead end',
-      '  │',
-      '  └─ ⊙ Never Discussed',
-      '        ↳ Dead end',
-      '',
-    ].join('\n'));
-  });
 });
 
 describe('discoverySynthesisView', () => {
@@ -170,17 +142,15 @@ describe('discoverySynthesisView', () => {
   const PROPOSED = [
     {
       name: 'kitchen-printers',
-      routing: 'discussion',
       summary: 'Print routing by station, failure handling, and offline queueing for kitchen ticket printers across multiple sites',
       description: 'Tickets must keep printing through a network drop, and each station only wants its own lines.',
     },
     {
       name: 'operator-analytics',
-      routing: 'discussion',
       summary: 'Daily service dashboards for shift leads — covers order throughput, voids, and prep-time drift with per-branch comparison',
       description: 'Shift leads read these after service; what can be measured cheaply is still unknown.',
     },
-    { name: 'loyalty', routing: 'discussion', summary: 'Points and rewards', description: 'Repeat diners earn points toward rewards.' },
+    { name: 'loyalty', summary: 'Points and rewards', description: 'Repeat diners earn points toward rewards.' },
   ];
 
   it('wraps long summaries under aligned rows and keeps the existing map below — continuing session', () => {
@@ -189,8 +159,8 @@ describe('discoverySynthesisView', () => {
       phases: {
         discovery: {
           items: {
-            'payments-core': { routing: 'discussion', source: 'discovery' },
-            'onboarding-flow': { routing: 'discussion', source: 'discovery' },
+            'payments-core': { source: 'discovery' },
+            'onboarding-flow': { source: 'discovery' },
           },
         },
         discussion: { items: { 'payments-core': { status: 'in-progress' }, 'onboarding-flow': { status: 'completed' } } },
@@ -207,7 +177,6 @@ describe('discoverySynthesisView', () => {
       '  │',
       '  │     Tickets must keep printing through a network drop, and',
       '  │     each station only wants its own lines.',
-      '  │     ↳ Routed to discussion',
       '  │',
       '  ├─ ○ Operator Analytics',
       '  │     Daily service dashboards for shift leads — covers order',
@@ -216,13 +185,11 @@ describe('discoverySynthesisView', () => {
       '  │',
       '  │     Shift leads read these after service; what can be',
       '  │     measured cheaply is still unknown.',
-      '  │     ↳ Routed to discussion',
       '  │',
       '  └─ ○ Loyalty',
       '        Points and rewards',
       '',
       '        Repeat diners earn points toward rewards.',
-      '        ↳ Routed to discussion',
       '',
       'Already on the map (2)',
       '  ├─ ✓ Onboarding Flow',
@@ -231,8 +198,7 @@ describe('discoverySynthesisView', () => {
       '  └─ ◐ Payments Core',
       '        ↳ Discussing',
       '',
-      '3 topics. Summaries and descriptions come from the exploration;',
-      'routing is my read of where each one goes next.',
+      '3 topics. Summaries and descriptions come from the exploration.',
       '',
     ].join('\n'));
   });
@@ -247,10 +213,8 @@ describe('discoverySynthesisView', () => {
       '        Points and rewards',
       '',
       '        Repeat diners earn points toward rewards.',
-      '        ↳ Routed to discussion',
       '',
-      '1 topic. Summaries and descriptions come from the exploration;',
-      'routing is my read of where each one goes next.',
+      '1 topic. Summaries and descriptions come from the exploration.',
       '',
     ].join('\n'));
   });
@@ -283,8 +247,8 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
-    assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 2 fresh, 1 handled, 1 cancelled, 1 postponed/);
-    assert.ok(res.stdout.includes('  ├─ ◐ Kitchen Hardware\n  │     ↳ Discussing'));
+    assert.match(res.stdout, /map: 6 topics — 1 decided, 1 in-flight, 2 fresh, 1 cancelled, 1 postponed/);
+    assert.ok(res.stdout.includes('  ├─ ◐ Kitchen Kit\n  │     ↳ Discussing'));
   });
 
   it('--proposed-file renders the synthesis view and flags each proposed name in DATA', () => {
@@ -303,24 +267,24 @@ describe('gateway.cjs adapter: map-view', () => {
       },
     }, null, 2));
     createFile(dir, 'proposed.json', JSON.stringify([
-      { name: 'kitchen-printers', routing: 'discussion', summary: 'Print routing by station', description: 'd' },
-      { name: 'menu-management', routing: 'discussion', summary: 'collides with an active item', description: 'd' },
-      { name: 'old-idea', routing: 'discussion', summary: 'previously dismissed', description: 'd' },
-      { name: 'bad.name', routing: 'discussion', summary: 'dots break addressing', description: 'd' },
-      { name: 'receipt-crash', routing: 'discussion', summary: 'shares a waiting bug\'s name', description: 'd' },
+      { name: 'kitchen-printers', summary: 'Print routing by station', description: 'd' },
+      { name: 'menu-management', summary: 'collides with an active item', description: 'd' },
+      { name: 'old-idea', summary: 'previously dismissed', description: 'd' },
+      { name: 'Bad_Name', summary: 'no lowercase slug, so no folder name', description: 'd' },
+      { name: 'receipt-crash', summary: 'shares a waiting bug\'s name', description: 'd' },
     ]));
     const res = run(['map-view', 'payments', '--proposed-file', 'proposed.json']);
     assert.strictEqual(res.status, 0);
     assert.match(res.stdout, /mode: synthesis\n/);
     assert.match(res.stdout, /proposed \(5\):/);
-    assert.match(res.stdout, /receipt-crash routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
-    assert.match(res.stdout, /kitchen-printers routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=true/);
-    assert.match(res.stdout, /menu-management routing=discussion exists_on_map=true matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
-    assert.match(res.stdout, /old-idea routing=discussion exists_on_map=false matches_dismissed=true legal_name=true waiting_on_roadmap=false/);
-    assert.match(res.stdout, /bad\.name routing=discussion exists_on_map=false matches_dismissed=false legal_name=false waiting_on_roadmap=false/);
+    assert.match(res.stdout, /^ {2}receipt-crash exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=false$/m);
+    assert.match(res.stdout, /^ {2}kitchen-printers exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=true$/m);
+    assert.match(res.stdout, /^ {2}menu-management exists_on_map=true matches_dismissed=false legal_name=true waiting_on_roadmap=false$/m);
+    assert.match(res.stdout, /^ {2}old-idea exists_on_map=false matches_dismissed=true legal_name=true waiting_on_roadmap=false$/m);
+    assert.match(res.stdout, /^ {2}Bad_Name exists_on_map=false matches_dismissed=false legal_name=false waiting_on_roadmap=false$/m);
     assert.ok(res.stdout.includes('\nSynthesised Discovery Map — Payments'));
     assert.ok(res.stdout.includes('\nNew this session (5)\n'));
-    assert.ok(res.stdout.includes('\nAlready on the map (7)\n'));
+    assert.ok(res.stdout.includes('\nAlready on the map (6)\n'));
   });
 
   it('fails loudly on a missing, malformed, or empty proposed file', () => {
@@ -339,12 +303,12 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.strictEqual(empty.status, 1);
     assert.match(empty.stderr, /non-empty JSON array/);
 
-    createFile(dir, 'shape.json', JSON.stringify([{ name: 'x', routing: 'discussion' }]));
+    createFile(dir, 'shape.json', JSON.stringify([{ name: 'x' }]));
     const shape = run(['map-view', 'payments', '--proposed-file', 'shape.json']);
     assert.strictEqual(shape.status, 1);
     assert.match(shape.stderr, /missing "summary"/);
 
-    createFile(dir, 'undescribed.json', JSON.stringify([{ name: 'x', routing: 'discussion', summary: 's', description: '  ' }]));
+    createFile(dir, 'undescribed.json', JSON.stringify([{ name: 'x', summary: 's', description: '  ' }]));
     const undescribed = run(['map-view', 'payments', '--proposed-file', 'undescribed.json']);
     assert.strictEqual(undescribed.status, 1);
     assert.match(undescribed.stderr, /missing "description"/);

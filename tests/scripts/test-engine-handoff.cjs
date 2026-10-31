@@ -255,7 +255,7 @@ describe('engine handoff — announced and unannounced', () => {
 describe('engine handoff topic — a topic opened by its unit and name, as /leeway {unit} {topic} opens it (10.3.1, 10.S2)', () => {
   let dir;
   /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
-  const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery', ...marks });
+  const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
   beforeEach(() => {
     dir = seed();
     createManifest(dir, 'fumi', {
@@ -264,7 +264,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
         discovery: {
           items: {
             commercialization: row(1), sync: row(2), export: row(3), removal: row(4, { cancelled: true }),
-            widgets: row(5, { postponed: true }), 'dead-end': row(6, { handled: true }),
+            widgets: row(5, { postponed: true }),
           },
         },
         discussion: { items: { sync: { status: 'completed' }, export: { status: 'promoted', promoted_to: 'portability' }, removal: { status: 'cancelled' }, widgets: { status: 'postponed' } } },
@@ -286,7 +286,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     refused(dir, ['topic', 'typo', 'typo'], /^typo is a quick-fix, with no topics to open by name — it carries on from the start menu$/);
   });
 
-  it('refuses, before anything travels, what the topic\'s entry refuses, by its rule: a unit the project lacks, one cancelled or completed, one past its spec, a topic the unit lacks, and one cancelled, postponed, promoted, closed as a dead end or decided', () => {
+  it('refuses, before anything travels, what the topic\'s entry refuses, by its rule: a unit the project lacks, one cancelled or completed, one past its spec, a topic the unit lacks, and one cancelled, postponed, promoted or decided', () => {
     createManifest(dir, 'retired', { status: 'cancelled' });
     createManifest(dir, 'shipped', { status: 'completed' });
     createManifest(dir, 'specced');
@@ -300,7 +300,6 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
       [['fumi', 'removal'], 'the topic "removal" is cancelled — reactivating it goes through the epic menu\'s discovery row'],
       [['fumi', 'widgets'], 'the topic "widgets" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back'],
       [['fumi', 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
-      [['fumi', 'dead-end'], 'the topic "dead-end" is closed as a dead end — reopening it goes through the epic menu\'s discovery row'],
       [['fumi', 'sync'], 'the topic "sync" is decided — it reopens through a message sent to it, or through the epic menu\'s discovery row'],
     ];
     assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'topic', ...args]).error), cases.map(([, error]) => error));

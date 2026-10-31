@@ -103,7 +103,7 @@ function reconcilePending(d) {
 
 // The scoped state dump for one epic — the reasoning surface Steps 1–6
 // read: the all-done flag, analysis-cache statuses, the sequencing flag, and
-// the discovery-map rows (tier, lifecycle, routing, field presence, current
+// the discovery-map rows (tier, lifecycle, field presence, current
 // summary text).
 /** @param {string} workUnit @param {EpicDetail|null} d */
 function formatScoped(workUnit, d) {
@@ -124,7 +124,6 @@ function formatScoped(workUnit, d) {
   }
   for (const t of d.discovery_map) {
     let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
-    line += ` routing=${t.routing || 'none'}`;
     line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
     if (t.mail_waiting) line += ` mail=waiting`;

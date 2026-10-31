@@ -60,7 +60,7 @@ const {
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES, VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
@@ -2065,7 +2065,8 @@ function backlogGate(cwd, { dotpath, file }) {
 // whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
 
-const { markerRefusal, MARKER_VERBS, freshRefusal } = require('./discovery-map.cjs');
+const { removeRefusal } = require('./discovery-map.cjs');
+const { namesTopic } = require('./ledger-fold.cjs');
 
 // A bare yes/no pair — no labels, because the question above them already
 // says what yes means (CONVENTIONS.md: The Design System, Menus). Composed
@@ -2075,15 +2076,13 @@ const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
 
 // The map-operation family: op → the confirm question its gate asks. The
 // batch ops (a run of summary or description edits confirmed together) ask
-// once for the whole batch and land at any lifecycle; every other op is its
-// own group of one, which its topic's lifecycle may refuse.
+// once for the whole batch; every other op is its own group of one. Each
+// lands at any lifecycle but a removal, which its topic's may refuse.
 const MAP_OP_QUESTIONS = {
   'edit-summary': 'Apply?',
   'edit-description': 'Apply?',
   remove: 'Confirm removal?',
   rename: 'Confirm rename?',
-  close: 'Confirm close as dead end?',
-  reopen: 'Confirm reopen?',
 };
 const MAP_OP_BATCHES = ['edit-summary', 'edit-description'];
 
@@ -2136,34 +2135,7 @@ function mapOpBody(op, p) {
       ]),
     ];
   }
-  if (op === 'rename') {
-    return [
-      `Rename "${mapOpName(p, 'name')}" → "${mapOpName(p, 'new_name')}".`,
-      '',
-      ...indentedBody([
-        'Lifecycle: fresh — no work has started, no files exist under this name. Manifest mutation only.',
-      ]),
-    ];
-  }
-  if (op === 'close') {
-    const name = mapOpName(p, 'name');
-    return [
-      `Close "${name}" as a dead end.`,
-      '',
-      ...indentedBody([
-        'It stays on the map and in the knowledge base as record and seed material, but stops '
-        + 'prompting for a next action and no longer counts against convergence — nothing to carry '
-        + `forward under its own name. Reversible with "reopen ${name}".`,
-      ]),
-    ];
-  }
-  return [
-    `Reopen "${mapOpName(p, 'name')}".`,
-    '',
-    ...indentedBody([
-      'Clears the dead-end marker. The topic returns to its name-matched lifecycle and counts against convergence again.',
-    ]),
-  ];
+  return [`Rename "${mapOpName(p, 'name')}" → "${mapOpName(p, 'new_name')}".`];
 }
 
 // The names one op touches: a run of rows for the batch edits, the single
@@ -2182,41 +2154,18 @@ function assertOnMap(manifest, name) {
   if (!items[name]) throw new Error(`render map-op-gate: no discovery item "${name}" on the map`);
 }
 
-// A destructive op — remove, rename — lands on a fresh topic
-// alone. Its refusal names where the topic stands and the way to what the
-// user is after: the way back for a closed lifecycle, the cancel or the
-// postpone for live work.
-const DESTRUCTIVE_VERBS = { remove: 'removed', rename: 'renamed' };
-/** @type {Record<string, (name: string) => string>} */
-const DESTRUCTIVE_RECOVERY = {
-  handled: (name) => `Say "reopen ${name}" to make it actionable again.`,
-  cancelled: () => 'Reactivate it from the epic menu first.',
-  postponed: () => 'Pull it forward from the roadmap first.',
-};
-const STOP_WORK_RECOVERY = 'To stop work on it, use `a`/`cancel` from the epic menu instead — or postpone it to the roadmap for later.';
-
 /**
  * Why a single-item op cannot land from where its topic stands, as the
- * refusal the gate shows in place of its confirm — or null where it can.
- * The lifecycle join is the one every map consumer uses, and the marker ops
- * and a fresh topic's destructive ops read the very refusal their
- * transactions throw, so the gate and the write path cannot drift apart.
+ * refusal the gate shows in place of its confirm — or null where it can:
+ * a removal's, the very refusal its verb throws, so the gate and the write
+ * path cannot drift apart.
  * @param {string} cwd @param {object} manifest @param {string} op @param {string} name
  * @returns {string|null}
  */
 function mapOpRefusal(cwd, manifest, op, name) {
-  if (op === 'close' || op === 'reopen') {
-    const phrase = markerRefusal(cwd, manifest, op, name);
-    return phrase && `"${name}" can't be ${MARKER_VERBS[op]} — ${phrase}.`;
-  }
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  const verb = DESTRUCTIVE_VERBS[/** @type {keyof typeof DESTRUCTIVE_VERBS} */ (op)];
-  if (lifecycle === 'fresh') {
-    const held = freshRefusal(cwd, manifest, name);
-    return held && `"${name}" can't be ${verb} from the map — ${held}.`;
-  }
-  const recovery = Object.hasOwn(DESTRUCTIVE_RECOVERY, lifecycle) ? DESTRUCTIVE_RECOVERY[lifecycle](name) : STOP_WORK_RECOVERY;
-  return `"${name}" can't be ${verb} from the map — ${lifecyclePhrase(lifecycle)}. ${recovery}`;
+  if (op !== 'remove') return null;
+  const refusal = removeRefusal(manifest, name, namesTopic(stateRoot(cwd), /** @type {{name: string}} */ (manifest).name, name, []));
+  return refusal && `"${name}" can't be removed — ${refusal}.`;
 }
 
 /**
@@ -2285,9 +2234,6 @@ function candidateGate(cwd, { dotpath, file, variant }) {
   }
   const p = readJsonPayload(cwd, file, 'candidate-gate');
   if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
-  if (!VALID_ROUTINGS.includes(p.routing)) {
-    throw new Error(`render candidate-gate: "routing" must be one of ${VALID_ROUTINGS.join(', ')}, got "${p.routing}"`);
-  }
   if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
   const row = (staging.candidates || {})[p.name];
   if (!row || typeof row !== 'object' || row.status !== 'pending') {
@@ -2299,7 +2245,7 @@ function candidateGate(cwd, { dotpath, file, variant }) {
   }
   const name = titlecase(p.name);
   const display = section('DISPLAY: candidate', emitAs('text'), [
-    `${name} [${p.routing}]`,
+    name,
     ...indentedBody([p.summary, 'surfaced by gap analysis']),
   ].join('\n'));
   if (mode === 'auto') {
@@ -2314,13 +2260,13 @@ function candidateGate(cwd, { dotpath, file, variant }) {
     cmdOption('a', 'auto', 'Approve this and all remaining candidates automatically'),
     cmdOption('s', 'skip', 'Skip and dismiss — the analysis never re-proposes this name'),
     cmdOption('p', 'postpone', 'Postpone — the topic joins the map with its brief and waits on the roadmap under a horizon you name'),
-    promptOption('Comment', 'Tell me what to change (routing, summary, or description)'),
+    promptOption('Comment', 'Tell me what to change (summary or description)'),
   ], { question: 'Add this topic to the map?' }))].join('\n');
 }
 
 // dismissed-topics — the names removed from the map, and the re-add offer
 // the session loop opens over them. The list is the display and the menu is
-// the ask: a re-add names topics and their routing, never one row. With
+// the ask: a re-add names topics, never one row. With
 // nothing dismissed there is nothing to re-add, so the display stands alone.
 
 /**
@@ -2343,16 +2289,15 @@ function dismissedTopics(cwd, { dotpath }) {
     ].join('\n')),
     section('MENU: dismissed topics', MENU_INSTRUCTION, menu('', [
       cmdOption('b', 'back', 'Return to the session'),
-      promptOption('Name them', 'Tell me which to re-add (and routing if known)'),
+      promptOption('Name them', 'Tell me which to re-add'),
     ], { question: 'Re-add any of these to the map?' })),
   ].join('\n');
 }
 
-// send-closed-target — the send's stop over a target no future session
-// will surface. The address names the target and the surface derives its
-// lifecycle with the same join every other map consumer uses, so the two
-// closed states cannot drift apart in the wording. The statement names the
-// closed target; the ask beneath it is fixed.
+// send-closed-target — the send's stop over a cancelled target, which no
+// future session will surface. The address names the target and the surface
+// derives its lifecycle with the same join every other map consumer uses.
+// The statement names the target; the ask beneath it is fixed.
 
 /**
  * @param {string} cwd
@@ -2369,17 +2314,13 @@ function sendClosedTarget(cwd, { dotpath }) {
     throw new Error(`render send-closed-target: no discovery item "${topic}" on the map`);
   }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
-  if (lifecycle !== 'handled' && lifecycle !== 'cancelled') {
-    throw new Error(`render send-closed-target: "${topic}" is "${lifecycle}", not closed — the gate serves handled and cancelled targets`);
+  if (lifecycle !== 'cancelled') {
+    throw new Error(`render send-closed-target: "${topic}" is "${lifecycle}", not cancelled — the gate serves cancelled targets`);
   }
-  const closed = lifecycle === 'handled' ? 'closed as a dead end' : 'cancelled';
   // The reopen row states its consequence: choosing it does not only land the
   // message, it puts the topic back in front of every convergence read.
-  const reopen = lifecycle === 'handled'
-    ? 'Reopen it and send the message there — it returns to its name-matched lifecycle and counts as open again'
-    : 'Reactivate it and send the message there — the topic returns to its previous state and counts as open again';
-  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is ${closed}, so it won't pick up messages.`, [
-    cmdOption('o', 'open', reopen),
+  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is cancelled, so it won't pick up messages.`, [
+    cmdOption('o', 'open', 'Reactivate it and send the message there — the topic returns to its previous state and counts as open again'),
     cmdOption('e', 'elsewhere', 'Pick a different target'),
     cmdOption('d', 'drop', "Don't send it; it stays with the current topic"),
   ], { question: 'Where should the message go?' }));
@@ -2653,7 +2594,7 @@ function proposedSummaries(rows, drafted, instruction) {
   const indent = '       ';
   const lines = [`Proposed summaries for ${rows.length} topic(s):`, ''];
   rows.forEach((row, i) => {
-    lines.push(`  ${i + 1}. ${titlecase(row.name)}  (${row.routing ?? 'none'})`);
+    lines.push(`  ${i + 1}. ${row.title}`);
     if (!row.summary_present) {
       lines.push(...indentedBody([drafted[row.name] ?? '(source file missing — please provide)'], { indent }));
       return;
@@ -4490,7 +4431,7 @@ function blocker(fact, guidance) {
 // A name already on the map is not a new topic: the menu row is the way in,
 // so the door refuses, naming where the topic stands; a closed topic names
 // its closure, which is what explains its empty menu. A cancelled,
-// postponed, decided or dead-ended topic carries no row of its own, so it
+// postponed or decided topic carries no row of its own, so it
 // names the row that brings it back — a postponed one only while its roadmap
 // item still waits, since another epic's pull leaves it no way back. Red like
 // blocker(), but never terminal:
@@ -4503,7 +4444,6 @@ const DIRECT_ENTRY_WAY_BACK = {
   cancelled: 'Reactivate it from the menu (`e/reactivate`) — a cancelled topic carries no row.',
   postponed: 'Pull it forward from the menu (`f/forward`) — a postponed topic carries no row.',
   decided: 'Resume it from the menu (`c/completed`) — a decided topic carries no row.',
-  handled: 'Reopen it in discovery (`i/discovery`) — a dead-ended topic carries no row.',
 };
 const POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
 

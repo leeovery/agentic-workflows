@@ -32,15 +32,15 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       status: 'in-progress',
       phases: {
         discovery: { items: {
-          ordering: { routing: 'discussion', source: 'discovery', summary: 'Customers order', order: 1, brief_path: 'discovery/briefs/ordering.md' },
-          menus: { routing: 'discussion', source: 'discovery', summary: 'Operators maintain', order: 2 },
-          loyalty: { routing: 'discussion', source: 'discovery', order: 3 },
+          ordering: { source: 'discovery', summary: 'Customers order', order: 1 },
+          menus: { source: 'discovery', summary: 'Operators maintain', order: 2 },
+          loyalty: { source: 'discovery', order: 3 },
         } },
         discussion: { items: { ordering: { status: 'in-progress' }, menus: { status: 'completed' } } },
         specification: { items: { grp: { status: 'proposed', sources: { ordering: { status: 'pending' } } } } },
       },
     });
-    for (const rel of ['discovery/briefs/ordering.md', 'topics/ordering/log.md']) {
+    for (const rel of ['topics/ordering/brief.md', 'topics/ordering/log.md']) {
       const abs = path.join(at, '.leeway', 'mvp', rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, '# x\n');
@@ -72,12 +72,12 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
         kind: 'idea',
         origin: 'postpone:mvp',
         postponed_from: { work_unit: 'mvp', topic: 'ordering' },
-        sources: ['mvp/discovery/briefs/ordering.md', 'mvp/topics/ordering/log.md'],
+        sources: ['mvp/topics/ordering/brief.md', 'mvp/topics/ordering/log.md'],
       } },
     });
     const m = epic();
     assert.deepStrictEqual(m.phases.discovery.items.ordering,
-      { routing: 'discussion', source: 'discovery', summary: 'Customers order', brief_path: 'discovery/briefs/ordering.md', postponed: true, previous_order: 1 });
+      { source: 'discovery', summary: 'Customers order', postponed: true, previous_order: 1 });
     assert.strictEqual(m.phases.discussion.items.ordering.status, 'postponed');
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
     assert.strictEqual(m.phases.specification.items.grp, undefined, 'the proposed grouping is discarded, never stashed');
@@ -307,7 +307,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
       '.product/sessions/session-001.md',
       'mvp/topics/ordering/log.md',
-      'mvp/discovery/briefs/ordering.md',
+      'mvp/topics/ordering/brief.md',
     ]);
   });
 
@@ -319,10 +319,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   it('pull-forward into another epic creates as usual and carries prior onto the new row', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     createManifest(dir, 'v2', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    const res = runOk(dir, ['pull-forward', 'ordering', '--into', 'v2', '--routing', 'discussion']);
+    const res = runOk(dir, ['pull-forward', 'ordering', '--into', 'v2']);
     assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
     const row = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
-    assert.deepStrictEqual(row, { routing: 'discussion', source: 'roadmap', summary: 'Customers order', prior: { work_unit: 'mvp', topic: 'ordering' } });
+    assert.deepStrictEqual(row, { source: 'roadmap', summary: 'Customers order', prior: { work_unit: 'mvp', topic: 'ordering' } });
     assert.strictEqual(epic().phases.discovery.items.ordering.postponed, true, 'the prior epic keeps its record and its marker');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
   });
@@ -332,7 +332,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     createManifest(dir, 'v2', {
       work_type: 'epic',
       status: 'in-progress',
-      phases: { discovery: { items: { checkout: { routing: 'discussion', source: 'discovery', summary: 's' } } } },
+      phases: { discovery: { items: { checkout: { source: 'discovery', summary: 's' } } } },
     });
     commitAll(dir, 'v2');
     runOk(dir, ['pull', 'ordering', '--into', 'v2']);
@@ -370,7 +370,7 @@ describe('engine CLI: the cancel-revert hop', () => {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
-        discovery: { items: { ordering: { routing: 'discussion', source: 'roadmap', summary: 's' } } },
+        discovery: { items: { ordering: { source: 'roadmap', summary: 's' } } },
         discussion: { items: { ordering: { status: 'in-progress' } } },
       },
     });

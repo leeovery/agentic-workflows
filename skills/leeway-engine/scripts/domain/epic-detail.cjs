@@ -145,12 +145,12 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {boolean} summary_present
  * @property {string|null} summary
  * @property {boolean} description_present
- * @property {string|null} routing
+ * @property {string} title  how screens title the topic (derivations' `topicTitle`)
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
- * @property {string} lifecycle  `fresh` | `discussing` | `decided` | `handled` | `cancelled` | `postponed`
- * @property {string} tier       `◐` | `✓` | `○` | `⊙` | `⊘` | `⊖`
+ * @property {string} lifecycle  `fresh` | `discussing` | `decided` | `cancelled` | `postponed`
+ * @property {string} tier       `◐` | `✓` | `○` | `⊘` | `⊖`
  * @property {string|null} current_phase
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
@@ -166,7 +166,6 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {number} decided
  * @property {number} in_flight
  * @property {number} fresh
- * @property {number} handled
  * @property {number} cancelled
  * @property {number} postponed
  */
@@ -294,9 +293,9 @@ function discoveryUnits(manifest, discoveryMap) {
 
 /** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {string} cwd @param {object} manifest @param {string} name @param {MapRow|undefined} row */
 function topicState(cwd, manifest, name, row) {
-  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.mail_waiting, row.waits, row.promoted_to);
+  if (row) return discoveryLifecycleLabel(row.lifecycle, row.mail_waiting, row.waits, row.promoted_to);
   const { lifecycle } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, mailboxDepth(stateRoot(cwd), manifest.name, name) > 0);
+  return discoveryLifecycleLabel(lifecycle, mailboxDepth(stateRoot(cwd), manifest.name, name) > 0);
 }
 
 /**

@@ -62,7 +62,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.deepStrictEqual([product.findings, product.decisions.map((/** @type {{text: string}} */ d) => d.text), product.discovery], [[], ['Sync stays off until you turn it on.', 'First run shows the product before it asks.'], []],
       '8.S28: with no product conversation, the product record holds the lines the yes landed and nothing else');
     const manifest = readManifest(dir(), UNIT);
-    assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { routing: 'discussion', source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
+    assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
     assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
     assert.strictEqual(manifest.phases.discussion.items['note-window'].status, 'completed');
     assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });

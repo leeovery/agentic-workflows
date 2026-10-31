@@ -7,7 +7,8 @@
 // at the call site and emitted verbatim. Warnings render as a state-class
 // advisory above the confirmation (the `--warn` flag, set by the caller when
 // the transaction's JSON carried `warnings`) — the failure detail itself
-// stays in the JSON line, already on screen one tool result up.
+// stays in the JSON line, already on screen one tool result up. The map's
+// `topic` verbs print their one line themselves, after their JSON.
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('../conventions.cjs');
@@ -274,6 +275,48 @@ function absorbContinuationMenu(feature, epic) {
   );
 }
 
+/** @param {number} n @param {string} noun */
+const counted = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+/** @typedef {import('../discovery-map.cjs').MapChange} MapChange */
+/** @typedef {import('../discovery-map.cjs').SequenceResult} SequenceResult */
+
+/** @type {Record<string, (change: any) => string>} */
+const MAP_LINES = {
+  /** @param {MapChange} c */
+  add: (c) => `Added "${c.title}" to the map${c.re_added ? ' again' : ''}${c.from_roadmap ? `, taking "${titlecase(c.from_roadmap)}" off the roadmap` : ''}.`,
+  /** @param {MapChange} c */
+  'add-batch': (c) => {
+    const added = c.added ?? [];
+    return `Added ${counted(added.length, 'topic')} to the map: ${added.map(({ title }) => `"${title}"`).join(', ')}.`;
+  },
+  /** @param {MapChange} c */
+  edit: (c) => `Updated "${c.title}"'s ${[c.summary === undefined ? null : 'summary', c.description === undefined ? null : 'description'].filter(Boolean).join(' and ')}.`,
+  /** @param {MapChange} c */
+  rename: (c) => `Renamed "${c.was}" to "${c.title}".`,
+  /** @param {MapChange} c */
+  remove: (c) => [
+    `Removed "${c.title}" from the map.`,
+    ...(c.inbox?.length ? [`Its ${counted(c.inbox.length, 'waiting message')} went to the inbox as ${c.inbox.length === 1 ? 'an idea' : 'ideas'}.`] : []),
+    ...(c.roadmap_returned ?? []).map(({ name, horizon }) => `"${titlecase(name)}" is back on the roadmap under ${horizon}.`),
+  ].join(' '),
+  /** @param {SequenceResult} c */
+  order: (c) => `Ordered the map: ${Object.entries(c.ordered).sort(([, a], [, b]) => a - b).map(([topic, n]) => `${n} "${c.titles[topic]}"`).join(', ')}.`,
+  /** @param {MapChange} c */
+  brief: (c) => `Rewrote "${c.title}"'s brief.`,
+};
+
+/**
+ * A map verb's one-line report (8.8.7): what changed, by the titles screens
+ * show — and for a removal, the waiting messages it sent to the inbox and
+ * the roadmap items it put back (8.8.16, 18.8.20).
+ * @param {MapChange|SequenceResult} change
+ * @returns {string}
+ */
+function mapReceipt(change) {
+  return confirmation(MAP_LINES[change.op](change));
+}
+
 /** The archived item's restore receipt. @param {string} title @returns {string} */
 function inboxRestoreReceipt(title) {
   return confirmation(`Restored "${title}" to the inbox.`);
@@ -284,4 +327,4 @@ function inboxDeleteReceipt(title) {
   return confirmation(`Deleted "${title}".`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };

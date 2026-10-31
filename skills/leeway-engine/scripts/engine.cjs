@@ -42,8 +42,8 @@ const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.c
 const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
-const { VALID_ROUTINGS, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
+const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
@@ -71,6 +71,7 @@ const { answerGate, recordGateShown } = require('./domain/gate.cjs');
 const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits } = require('./domain/raise.cjs');
 const { raiseScreen } = require('./domain/projections/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
+const { mapReceipt } = require('./domain/projections/transactions.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
@@ -175,6 +176,17 @@ function parseArgs(argv, booleans = [], repeatable = []) {
   return { opts, flags, lists, positional };
 }
 
+/** The `topic` verbs that change an epic's map, each its usage. */
+const MAP_USAGE = Object.freeze({
+  add: 'topic add <work-unit> <name> --summary <text> --brief <draft> [--description <text>] [--from-roadmap <item>] [--re-add] [--source <tag>]',
+  'add-batch': 'topic add-batch <work-unit> --file <topics.json>',
+  edit: 'topic edit <work-unit> <name> [--summary <text>] [--description <text>]',
+  rename: 'topic rename <work-unit> <old> <new>',
+  remove: 'topic remove <work-unit> <name>',
+  order: 'topic order <work-unit> <topic>=<n> [<topic>=<n> …]',
+  brief: 'topic brief <work-unit> <name> --brief <draft>',
+});
+
 const USAGE = `Usage: engine <command> [args]
 
 Commands:
@@ -211,19 +223,11 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> <discussion>
-                (--summary <text> [--description <text>] [--brief-path <path>] | --backfill)
-                [--source <tag>] [--force-dismissed]
-  discovery-map add-batch <work-unit> --file <topics.json>
-  discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
-  discovery-map remove <work-unit> <name>
-  discovery-map rename <work-unit> <old> <new>
-  discovery-map handle <work-unit> <name>
-  discovery-map unhandle <work-unit> <name>
+  discovery-map <sequence|add|add-batch|edit|remove|rename> …   (the topic verbs' alias, until discovery is rewritten)
   discovery-session open  <work-unit|product> --session-log-file <path>
   discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
+${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
   topic incorporations <work-unit> <topic>
@@ -295,7 +299,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap remove <name>
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
-  roadmap pull-forward <name> --into <epic> --routing <discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
+  roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
   roadmap horizon reorder <name> [<name> …]   (the complete order)
@@ -670,78 +674,122 @@ function runWorkunit(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// discovery-map — the Discovery Map's writes. sequence records the suggested
-// execution order as one transaction with its own scoped commit; the per-item
-// map operations (add/edit/remove/rename/handle/unhandle) write the
-// manifest with no git commit — the calling session's commit cadence picks
-// the change up. Judgment (what to change) stays with the caller; lifecycle
-// gates are enforced in the domain op.
+// The map's verbs — `topic add|add-batch|edit|rename|remove|order|brief`
+// (domain/discovery-map.cjs): each does what the person asked, commits it,
+// and answers its JSON and then its one-line report (8.8.7). An unquoted
+// payload would spill into positionals and silently truncate the text, so
+// every positional count is strict.
+//
+// `discovery-map` is their alias, which today's discovery skill and the
+// simulations still call until discovery's rewrite moves them onto `topic`:
+// `sequence` is `order`; `add` takes its old routing argument and drops it,
+// lands no brief, and takes `--force-dismissed` for `--re-add`, as a batch
+// entry takes `force_dismissed`; its `--backfill` lands the topic with no
+// summary and no commit. A brief pointer is refused: a topic's brief has one
+// place, written by `topic add` and `topic brief`. The alias answers its JSON
+// alone.
 // ---------------------------------------------------------------------------
+
+/** @param {keyof typeof MAP_USAGE} verb */
+const mapUsage = (verb) => new Error(`Usage: engine ${MAP_USAGE[verb]}`);
+
+/**
+ * A batch's topics, read from Claude's JSON file.
+ * @param {string} cwd @param {string} file @param {string} said
+ * @returns {any}
+ */
+function batchFile(cwd, file, said) {
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
+  } catch (err) {
+    throw new Error(`${said}: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * Each map verb, reading its arguments into the change it makes.
+ * @type {Record<keyof typeof MAP_USAGE, (cwd: string, argv: string[]) => import('./domain/discovery-map.cjs').MapChange|import('./domain/discovery-map.cjs').SequenceResult>}
+ */
+const MAP_VERBS = {
+  add: (cwd, argv) => {
+    const { opts, flags, positional } = parseArgs(argv, ['re-add']);
+    if (positional.length !== 2 || opts.summary === undefined || opts.brief === undefined) throw mapUsage('add');
+    return addTopic(cwd, positional[0], positional[1], {
+      summary: opts.summary, description: opts.description, brief: opts.brief, fromRoadmap: opts['from-roadmap'], reAdd: flags.has('re-add'), source: opts.source,
+    });
+  },
+  'add-batch': (cwd, argv) => {
+    const { opts, positional } = parseArgs(argv);
+    if (positional.length !== 1 || opts.file === undefined) throw mapUsage('add-batch');
+    return addTopics(cwd, positional[0], batchFile(cwd, opts.file, 'topic add-batch'));
+  },
+  edit: (cwd, argv) => {
+    const { opts, positional } = parseArgs(argv);
+    if (positional.length !== 2 || (opts.summary === undefined && opts.description === undefined)) throw mapUsage('edit');
+    return editTopic(cwd, positional[0], positional[1], { summary: opts.summary, description: opts.description });
+  },
+  rename: (cwd, argv) => {
+    const { positional } = parseArgs(argv);
+    if (positional.length !== 3) throw mapUsage('rename');
+    return renameTopic(cwd, positional[0], positional[1], positional[2]);
+  },
+  remove: (cwd, argv) => {
+    const { positional } = parseArgs(argv);
+    if (positional.length !== 2) throw mapUsage('remove');
+    return removeTopic(cwd, positional[0], positional[1]);
+  },
+  order: (cwd, argv) => {
+    const { positional } = parseArgs(argv);
+    if (positional.length < 2) throw mapUsage('order');
+    return sequenceMap(cwd, positional[0], parseOrderPairs(positional.slice(1)));
+  },
+  brief: (cwd, argv) => {
+    const { opts, positional } = parseArgs(argv);
+    if (positional.length !== 2 || opts.brief === undefined) throw mapUsage('brief');
+    return rewriteBrief(cwd, positional[0], positional[1], opts.brief);
+  },
+};
+
+const BRIEF_POINTER = 'a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add';
+
+/** The alias's `add`: a topic landed without its brief. @param {string} cwd @param {string[]} argv */
+function aliasAdd(cwd, argv) {
+  const { opts, flags, positional } = parseArgs(argv, ['force-dismissed', 'backfill']);
+  if (opts['brief-path'] !== undefined) throw new Error(`discovery-map add: --brief-path is refused — ${BRIEF_POINTER}`);
+  const backfill = flags.has('backfill');
+  if (![2, 3].includes(positional.length) || (opts.summary === undefined && !backfill)) {
+    throw new Error('Usage: engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] | --backfill) [--source <tag>] [--force-dismissed]');
+  }
+  const [unit, name] = positional;
+  const fields = { summary: opts.summary, description: opts.description, source: opts.source, reAdd: flags.has('force-dismissed') };
+  return backfill ? addItem(cwd, unit, name, { ...fields, backfill }) : addTopic(cwd, unit, name, { ...fields, requireBrief: false });
+}
+
+/** The alias's `add-batch`: topics landed without their briefs. @param {string} cwd @param {string[]} argv */
+function aliasAddBatch(cwd, argv) {
+  const { opts, positional } = parseArgs(argv);
+  if (positional.length !== 1 || opts.file === undefined) throw new Error('Usage: engine discovery-map add-batch <work-unit> --file <topics.json>');
+  const parsed = batchFile(cwd, opts.file, 'discovery-map add-batch');
+  const entries = Array.isArray(parsed) ? parsed.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    if (entry.brief_path !== undefined) throw new Error(`discovery-map add-batch: "${entry.name}"'s brief_path is refused — ${BRIEF_POINTER}`);
+    const { routing, force_dismissed: reAdd, ...rest } = entry;
+    return reAdd === undefined ? rest : { ...rest, re_add: reAdd };
+  }) : parsed;
+  return addTopics(cwd, positional[0], entries, { requireBrief: false });
+}
+
+/** The alias's verbs that are the map verbs under their old names. */
+const ALIASED = Object.freeze({ sequence: 'order', edit: 'edit', remove: 'remove', rename: 'rename' });
 
 /** @param {Call} call @param {string[]} argv */
 function runDiscoveryMap(call, argv) {
   const [command, ...rest] = argv;
-  const { cwd } = call;
-
   try {
-    const { opts, flags, positional } = parseArgs(rest, ['force-dismissed', 'backfill']);
-    const [workUnit] = positional;
-    if (command === 'add-batch') {
-      if (!workUnit) throw new Error('Usage: engine discovery-map add-batch <work-unit> --file <topics.json>');
-      if (!opts.file) throw new Error('discovery-map add-batch: --file <topics.json> is required');
-      let parsed;
-      try {
-        parsed = JSON.parse(fs.readFileSync(path.resolve(cwd, opts.file), 'utf8'));
-      } catch (err) {
-        throw new Error(`discovery-map add-batch: cannot read payload: ${err instanceof Error ? err.message : String(err)}`);
-      }
-      respond(call, addItemsBatch(cwd, workUnit, parsed));
-      return;
-    }
-    if (command === 'sequence') {
-      if (!workUnit || positional.length < 2) {
-        throw new Error('Usage: engine discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]');
-      }
-      const orders = parseOrderPairs(positional.slice(1));
-      respond(call, sequenceMap(cwd, workUnit, orders));
-    } else if (command === 'add') {
-      // Strict positional count: an unquoted payload would spill into
-      // positionals and silently truncate the text — refuse instead.
-      if (!workUnit || positional.length !== 3 || (opts.summary === undefined && !flags.has('backfill'))) {
-        throw new Error(`Usage: engine discovery-map add <work-unit> <name> <${VALID_ROUTINGS.join('|')}> (--summary <text> [--description <text>] [--brief-path <path>] | --backfill) [--source <tag>] [--force-dismissed]`);
-      }
-      respond(call, addItem(cwd, workUnit, positional[1], {
-        routing: positional[2],
-        source: opts.source,
-        summary: opts.summary,
-        description: opts.description,
-        briefPath: opts['brief-path'],
-        forceDismissed: flags.has('force-dismissed'),
-        backfill: flags.has('backfill'),
-      }));
-    } else if (command === 'edit') {
-      // Strict positional count: an unquoted payload would spill into
-      // positionals and silently truncate the text — refuse instead.
-      const summary = typeof opts.summary === 'string' ? opts.summary : undefined;
-      const description = typeof opts.description === 'string' ? opts.description : undefined;
-      if (!workUnit || positional.length !== 2 || (summary === undefined && description === undefined)) {
-        throw new Error('Usage: engine discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>] (at least one flag required)');
-      }
-      respond(call, editItem(cwd, workUnit, positional[1], { summary, description }));
-    } else if (command === 'remove' || command === 'handle' || command === 'unhandle') {
-      if (!workUnit || positional.length !== 2) {
-        throw new Error(`Usage: engine discovery-map ${command} <work-unit> <name>`);
-      }
-      const fn = command === 'remove' ? removeItem : command === 'handle' ? handleItem : unhandleItem;
-      respond(call, fn(cwd, workUnit, positional[1]));
-    } else if (command === 'rename') {
-      if (!workUnit || positional.length !== 3) {
-        throw new Error('Usage: engine discovery-map rename <work-unit> <old> <new>');
-      }
-      respond(call, renameItem(cwd, workUnit, positional[1], positional[2]));
-    } else {
-      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|handle|unhandle> …');
-    }
+    if (command === 'add') respond(call, aliasAdd(call.cwd, rest));
+    else if (command === 'add-batch') respond(call, aliasAddBatch(call.cwd, rest));
+    else if (Object.hasOwn(ALIASED, command)) respond(call, MAP_VERBS[ALIASED[/** @type {keyof typeof ALIASED} */ (command)]](call.cwd, rest));
+    else throw new Error('Usage: engine discovery-map <sequence|add|add-batch|edit|remove|rename> …');
   } catch (err) {
     failJson(call, err);
   }
@@ -1126,8 +1174,14 @@ function runTopic(call, argv) {
       respond(call, { ...postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }), next: leaveNext(workUnit, 'discovery', topic, 'postponed') });
       return;
     }
+    if (Object.hasOwn(MAP_VERBS, command)) {
+      const change = MAP_VERBS[/** @type {keyof typeof MAP_VERBS} */ (command)](call.cwd, rest);
+      respond(call, change);
+      respondSections(call, mapReceipt(change));
+      return;
+    }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|answered> <work-unit> …');
+      throw new Error(`Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1564,14 +1618,11 @@ function runRoadmap(call, argv) {
       }
       respond(call, roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
-      // `--routing` belongs to the creating branch: the return of a topic
-      // this epic postponed restores the row it already has, routing and all.
       if (positional.length !== 1 || !opts.into) {
-        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)');
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> [--force-dismissed]');
       }
       respond(call, roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,
-        routing: opts.routing,
         forceDismissed: flags.has('force-dismissed'),
       }));
     } else {

@@ -6,7 +6,8 @@
 // - the send report (10.3.4): where the message landed — the target's
 //   mailbox, where a postponed topic's waits for its return, ending with
 //   the command that opens the target (10.3.3); or the inbox, a cancelled
-//   topic's or unit's, said in one line naming which (10.1.8);
+//   topic's or unit's, or a removed topic's, said in one line naming which
+//   (10.1.8, 8.8.16);
 // - the waiting mail (10.4.2), raised at a topic's opening before anything
 //   else: each message headed by who sent it and when, its title over what
 //   follows it.
@@ -35,15 +36,18 @@ function indented(line, width) {
   return wrapWithPrefix(line.trim(), { width, prefix: INDENT, hang: line.trimStart().startsWith('↳ ') ? 2 : 0 });
 }
 
+/** What the send report says of what went, a message sent to the inbox. @type {Record<'cancelled'|'removed', string>} */
+const GONE = { cancelled: 'is cancelled', removed: 'was removed from the map' };
+
 /**
  * The send report: where the message landed, and for a mailbox the command
  * that opens the target topic.
- * @param {{unit: string, topic: string, title: string, landing: Landing, cancelled: string}} sent  `cancelled` the unit or topic whose cancel sent it to the inbox
+ * @param {{unit: string, topic: string, title: string, landing: Landing, gone: {name: string, how: 'cancelled'|'removed'}}} sent  `gone` the unit or topic whose going sent it to the inbox
  * @param {{width?: number}} [opts]
  * @returns {string}
  */
-function sendReport({ unit, topic, title, landing, cancelled }, { width = displayWidth() } = {}) {
-  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${titlecase(cancelled)} is cancelled, so the message went to the inbox as an idea`);
+function sendReport({ unit, topic, title, landing, gone }, { width = displayWidth() } = {}) {
+  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${titlecase(gone.name)} ${GONE[gone.how]}, so the message went to the inbox as an idea`);
   const to = topic === unit ? titlecase(unit) : `${titlecase(topic)}, on ${titlecase(unit)}`;
   return section('DISPLAY: send report', CONTINUE_INSTRUCTION, [
     `Sent to ${to}`,

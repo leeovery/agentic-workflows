@@ -13,9 +13,9 @@
 //   file    one file;
 //   free    a folder whose contents are named by whoever fills it: the
 //           assets, a spike, the seeds, an experiment's data, the cache;
-//   engine  a file only the engine writes — the manifests, the ledger, the
-//           record of the person's review of the spec — with what it is and
-//           the verb that writes it, where one does;
+//   engine  a file only the engine writes — the manifests, the ledger, a
+//           topic's brief, the record of the person's review of the spec —
+//           with what it is and the verb that writes it, where one does;
 //   log     a log a session writes to, which a state commit takes along
 //           (6.3.2).
 // A path's names are literal but for its placeholders: `{unit}` a unit's
@@ -94,7 +94,7 @@ const LAYOUT = Object.freeze([
   engineFile('{unit}/manifest.json', '4.11.5', 'a unit\'s manifest', 'manifest set|push|pull|delete|apply'),
   place('log', '{unit}/discovery/session-{NNN}.md', '4.11.5'),
   place('free', '{unit}/seeds', '4.11.16'),
-  place('file', '{unit}/topics/{topic}/brief.md', '4.11.5'),
+  engineFile('{unit}/topics/{topic}/brief.md', '4.11.5', 'a topic\'s brief', 'topic add|brief'),
   place('log', '{unit}/topics/{topic}/log.md', '4.11.5'),
   place('file', '{unit}/topics/{topic}/mail/{NNN}-{slug}.md', '4.11.5'),
   place('file', '{unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md', '4.11.15'),
@@ -119,7 +119,6 @@ const LAYOUT = Object.freeze([
 
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */
 const TODAY = Object.freeze([
-  todays('29.12', 'file', '{unit}/discovery/briefs/{topic}.md'),
   todays('29.12', 'free', '.baseline'),
   todays('29.13', 'free', '{unit}/.state'),
   todays('29.14', 'free', '{unit}/implementation/{topic}'),

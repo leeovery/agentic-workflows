@@ -925,18 +925,13 @@ describe('reads + derivations', () => {
   });
 
   describe('TIER_RANK', () => {
-    it('orders tiers from decided → in-flight → fresh → handled → cancelled → postponed', () => {
-      assert.deepStrictEqual(TIER_RANK, { '✓': 0, '◐': 1, '○': 2, '⊙': 3, '⊘': 4, '⊖': 5 });
+    it('orders tiers from decided → in-flight → fresh → cancelled → postponed', () => {
+      assert.deepStrictEqual(TIER_RANK, { '✓': 0, '◐': 1, '○': 2, '⊘': 3, '⊖': 4 });
     });
 
     it('ranks decided above every unsettled tier (the map leads with what is agreed)', () => {
       assert.ok(TIER_RANK['✓'] < TIER_RANK['◐']);
       assert.ok(TIER_RANK['✓'] < TIER_RANK['○']);
-    });
-
-    it('ranks handled just before cancelled (both non-actionable)', () => {
-      assert.ok(TIER_RANK['⊙'] < TIER_RANK['⊘']);
-      assert.ok(TIER_RANK['○'] < TIER_RANK['⊙']);
     });
   });
 
@@ -949,7 +944,7 @@ describe('reads + derivations', () => {
         name: 'pay',
         work_type: 'epic',
         phases: {
-          discovery: { items: { auth: { routing: 'discussion', source: 'discovery' }, gone: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+          discovery: { items: { auth: { source: 'discovery' }, gone: { source: 'discovery', cancelled: true } } },
           discussion: { items: { auth: { status: 'in-progress' }, timing: { status: 'completed' }, gone: { status: 'completed' }, held: { status: 'completed' } } },
           experiment: { items: {
             auth: { status: 'in-progress', experiments: { E2: { status: 'running' }, E1: { status: 'concluded' }, 'E2.1': { status: 'conceived' } } },
@@ -1061,19 +1056,18 @@ describe('reads + derivations', () => {
   describe('the postpone plan', () => {
     // A live topic with a proposed grouping over its discussion, a topic
     // under a started specification, one with a live record on its series,
-    // one already postponed, one cancelled, and one closed as a dead end.
+    // one already postponed, and one cancelled.
     function manifest() {
       return {
         name: 'pay',
         work_type: 'epic',
         phases: {
           discovery: { items: {
-            auth: { routing: 'discussion', source: 'discovery' },
-            timing: { routing: 'discussion', source: 'discovery' },
-            busy: { routing: 'discussion', source: 'discovery' },
-            away: { routing: 'discussion', source: 'discovery', postponed: true },
-            gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-            dead: { routing: 'discussion', source: 'discovery', handled: true },
+            auth: { source: 'discovery' },
+            timing: { source: 'discovery' },
+            busy: { source: 'discovery' },
+            away: { source: 'discovery', postponed: true },
+            gone: { source: 'discovery', cancelled: true },
           } },
           discussion: { items: {
             auth: { status: 'in-progress' },
@@ -1104,15 +1098,12 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(plan.locks, []);
     });
 
-    it('locks, in refusal order: no such topic, already postponed, cancelled, a dead end, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
+    it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
       const m = manifest();
       const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
       assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — nothing on the map and no discussion item of that name']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
       assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
-      // The roadmap holds what is still to do; a question already answered
-      // reopens before it can wait for a better moment.
-      assert.deepStrictEqual(reasons('dead'), ['"dead" is closed as a dead end — reopen it first']);
       assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
       assert.deepStrictEqual(reasons('busy'), ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic']);
       assert.deepStrictEqual(reasons('auth', project), ['a roadmap item named "auth" (horizon "next") is not this topic\'s — rename or remove it on the roadmap first']);
@@ -1212,14 +1203,13 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeNextAction('decided'), null, 'nothing left to start on it');
     });
 
-    it('the map marker reads cancelled first — over a live item, and over a dead-ended row', () => {
+    it('the map marker reads cancelled first, over a live item', () => {
       createManifest(dir, 'alpha', { phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', cancelled: true }, dead: { routing: 'discussion', source: 'discovery', handled: true, cancelled: true }, fresh: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { auth: { source: 'discovery', cancelled: true }, fresh: { source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
       } });
       const m = loadManifest(dir, 'alpha');
       assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, discussion_state: 'in-progress' });
-      assert.strictEqual(computeTopicLifecycle(m, 'dead').lifecycle, 'cancelled', 'the cancel outranks the dead end');
       assert.strictEqual(computeTopicLifecycle(m, 'fresh').lifecycle, 'fresh', 'no marker, no cancel');
     });
 
@@ -1235,47 +1225,9 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'fresh', tier: '○', current_phase: null, discussion_state: 'unstarted' });
     });
 
-    // Build a manifest where the discovery item carries the `handled` marker,
-    // alongside whatever discussion status is supplied.
-    function loadWithHandled(name, handledValue, phaseStatuses) {
-      const phases = { discovery: { items: { [name]: { routing: 'discussion', handled: handledValue } } } };
-      for (const [phase, status] of Object.entries(phaseStatuses || {})) {
-        phases[phase] = { items: { [name]: { status } } };
-      }
-      createManifest(dir, 'alpha', { phases });
-      return loadManifest(dir, 'alpha');
-    }
-
-    it('handled marker beats decided (same-named discussion completed)', () => {
-      const m = loadWithHandled('umbrella', true, { discussion: 'completed' });
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'umbrella'), { lifecycle: 'handled', tier: '⊙', current_phase: null, discussion_state: 'completed' });
-    });
-
-    it('handled !== true (e.g. false) falls through to the discussion', () => {
-      const m = loadWithHandled('topic', false, { discussion: 'in-progress' });
-      assert.strictEqual(computeTopicLifecycle(m, 'topic').lifecycle, 'discussing');
-    });
-
-    it('reads only the item own field — handled on one topic does not affect another', () => {
-      createManifest(dir, 'alpha', {
-        phases: {
-          discovery: {
-            items: {
-              umbrella: { routing: 'discussion', handled: true },
-              sibling: { routing: 'discussion' },
-            },
-          },
-          discussion: { items: { umbrella: { status: 'completed' }, sibling: { status: 'completed' } } },
-        },
-      });
-      const m = loadManifest(dir, 'alpha');
-      assert.strictEqual(computeTopicLifecycle(m, 'umbrella').lifecycle, 'handled');
-      assert.strictEqual(computeTopicLifecycle(m, 'sibling').lifecycle, 'decided');
-    });
-
     it('a reconcile flag on the discussion raises no rider — the reading is the status alone', () => {
       const m = { work_type: 'epic', phases: {
-        discovery: { items: { fees: { routing: 'discussion' } } },
+        discovery: { items: { fees: {} } },
         discussion: { items: { fees: { status: 'completed', reconcile_needed: true } } },
       } };
       assert.deepStrictEqual(computeTopicLifecycle(m, 'fees'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', discussion_state: 'completed' });
@@ -1289,7 +1241,7 @@ describe('reads + derivations', () => {
     });
 
     it('every closed or concluded lifecycle, and an unknown one, has no next action', () => {
-      for (const lifecycle of ['decided', 'cancelled', 'handled', 'postponed', 'made-up']) {
+      for (const lifecycle of ['decided', 'cancelled', 'postponed', 'made-up']) {
         assert.strictEqual(computeNextAction(lifecycle), null, lifecycle);
       }
     });
@@ -1298,7 +1250,7 @@ describe('reads + derivations', () => {
     it('returns zero counts for an empty items array', () => {
       assert.deepStrictEqual(
         computeMapSummary([]),
-        { total: 0, decided: 0, in_flight: 0, fresh: 0, handled: 0, cancelled: 0, postponed: 0 },
+        { total: 0, decided: 0, in_flight: 0, fresh: 0, cancelled: 0, postponed: 0 },
       );
     });
 
@@ -1310,20 +1262,13 @@ describe('reads + derivations', () => {
         { tier: '○' },
         { tier: '○' },
         { tier: '○' },
-        { tier: '⊙' },
         { tier: '⊘' },
+        { tier: '⊖' },
       ];
       assert.deepStrictEqual(
         computeMapSummary(items),
-        { total: 8, decided: 1, in_flight: 2, fresh: 3, handled: 1, cancelled: 1, postponed: 0 },
+        { total: 8, decided: 1, in_flight: 2, fresh: 3, cancelled: 1, postponed: 1 },
       );
-    });
-
-    it('counts the handled bucket independently of cancelled', () => {
-      const items = [{ tier: '⊙' }, { tier: '⊙' }, { tier: '⊘' }];
-      const r = computeMapSummary(items);
-      assert.strictEqual(r.handled, 2);
-      assert.strictEqual(r.cancelled, 1);
     });
 
     it('ignores items with unrecognised tier glyphs but still counts total', () => {
@@ -1363,22 +1308,6 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeNeedsSequencing(items), false);
     });
 
-    it('returns false when only a handled item is missing order (excluded like cancelled)', () => {
-      const items = [
-        { tier: '◐', order: 1 },
-        { tier: '⊙', order: null },
-      ];
-      assert.strictEqual(computeNeedsSequencing(items), false);
-    });
-
-    it('returns true when a live item is missing order even alongside a handled item', () => {
-      const items = [
-        { tier: '⊙', order: null },
-        { tier: '○', order: null },
-      ];
-      assert.strictEqual(computeNeedsSequencing(items), true);
-    });
-
     it('treats undefined order the same as null (missing)', () => {
       const items = [{ tier: '○' }];
       assert.strictEqual(computeNeedsSequencing(items), true);
@@ -1411,13 +1340,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(sorted(items), ['decided', 'inflight', 'fresh']);
     });
 
-    it('keeps handled and cancelled below decided at the bottom', () => {
+    it('keeps cancelled and postponed below decided at the bottom', () => {
       const items = [
+        { name: 'postponed', tier: '⊖', order: null },
         { name: 'cancelled', tier: '⊘', order: null },
-        { name: 'handled', tier: '⊙', order: null },
         { name: 'decided', tier: '✓', order: null },
       ];
-      assert.deepStrictEqual(sorted(items), ['decided', 'handled', 'cancelled']);
+      assert.deepStrictEqual(sorted(items), ['decided', 'cancelled', 'postponed']);
     });
 
     it('orders by order ascending within the same tier', () => {
@@ -1498,7 +1427,7 @@ describe('reads + derivations', () => {
       const m = {
         name: 'lab', work_type: 'epic',
         phases: {
-          discovery: { items: { timing: { routing: 'discussion', summary: 'Timing' } } },
+          discovery: { items: { timing: { summary: 'Timing' } } },
           discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } },
         },
       };
@@ -1513,7 +1442,7 @@ describe('reads + derivations', () => {
       const m = {
         name: 'pay', work_type: 'epic',
         phases: {
-          discovery: { items: { fees: { routing: 'discussion' }, refunds: { routing: 'discussion' } } },
+          discovery: { items: { fees: {}, refunds: {} } },
           discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
         },
       };
@@ -1544,7 +1473,7 @@ describe('reads + derivations', () => {
       const m = {
         name: 'pay', work_type: 'epic',
         phases: {
-          discovery: { items: { fees: { routing: 'discussion' }, refunds: { routing: 'discussion' } } },
+          discovery: { items: { fees: {}, refunds: {} } },
           discussion: { items: { fees: { status: 'in-progress' }, refunds: { status: 'unstarted' } } },
         },
       };
@@ -1579,7 +1508,7 @@ describe('reads + derivations', () => {
     });
 
     it('CLOSED_LIFECYCLES names the lifecycles that leave the board', () => {
-      assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'handled', 'postponed']);
+      assert.deepStrictEqual(CLOSED_LIFECYCLES, ['cancelled', 'postponed']);
     });
   });
 

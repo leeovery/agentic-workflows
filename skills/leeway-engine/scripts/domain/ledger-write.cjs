@@ -476,7 +476,7 @@ function addressOf(cwd, said, dotpath, write) {
   if (topic !== null && !TOPIC_PHASES.includes(phase)) {
     throw new Error(`${said}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
-  if (topic !== null && !hasItem(manifest, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
+  checkItemHeld(said, { unit, phase, topic }, () => manifest);
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
@@ -494,6 +494,19 @@ function productAddress(said, dotpath, root, phase, topic) {
     throw new Error(`${said}: "${dotpath}" is no place of the product's — what is found of the product as a whole goes at ${PRODUCT}.discovery`);
   }
   return { dotpath, root, unit: PRODUCT, manifest: null, phase, topic };
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, a write on a topic
+ * whose item the unit's manifest does not hold in the phase — as the address
+ * read it, and again under the writer lock, so a topic removed meanwhile
+ * takes nothing. A place at the unit's level names no item, and no manifest
+ * is read for it.
+ * @param {string} said @param {{unit: string, phase: string, topic: string|null}} at
+ * @param {() => Record<string, any>|null} manifestNow the unit's manifest, read when a topic needs it
+ */
+function checkItemHeld(said, { unit, phase, topic }, manifestNow) {
+  if (topic !== null && !hasItem(manifestNow() ?? {}, phase, topic)) throw new Error(`${said}: ${unit} has no topic "${topic}" in ${phase}`);
 }
 
 /**
@@ -547,17 +560,19 @@ function checkDestination(said, at, given) {
     return;
   }
   if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);
-  if (!hasTopic(/** @type {Record<string, any>} */ (at.manifest), to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
   checkDestinationLive(said, at, given, liveness(at.root));
 }
 
 /**
- * Refuse a move to a topic that is not live as `live` reads it (5.8.17).
+ * Refuse a move to a topic the unit's manifest, read now, does not have
+ * (5.3.3) — under the writer lock, one removed since the address was read —
+ * or to one that is not live as `live` reads it (5.8.17).
  * @param {string} said @param {Address} at @param {Map<string, string[]>} given @param {Liveness} live
  */
 function checkDestinationLive(said, at, given, live) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (roadmapItemOf(to) !== null) return;
+  if (!hasTopic(manifestOf(at.root, at.unit) ?? {}, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
   const dead = live(at.unit, to);
   if (dead !== null) throw new Error(`${said}: --to names ${to}, which takes no question — ${dead}`);
 }
@@ -1109,10 +1124,10 @@ function commitEntry(cwd, { at, write }, id, warnings) {
  * the request's raise minted, the write a rerun of one killed past its
  * append, or of one that finished, done as the first run left it — its
  * event, kept ahead of the entry, landed, and the ledger committed —
- * nothing appended again. Else the places the write names read live again,
- * the trust log's event built and kept waiting in the conversation, the
- * entry appended, the event landed in the trust log, and the ledger
- * committed to the state branch. Answers the entry's short id, the commit,
+ * nothing appended again. Else the places the write names read live again
+ * and each topic's item read held, the trust log's event built and kept
+ * waiting in the conversation, the entry appended, the event landed in the
+ * trust log, and the ledger committed to the state branch. Answers the entry's short id, the commit,
  * and the entry the ledger already held, or null.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {{id: string, outcome: {committed: string|null, failed: boolean, held?: true}, held: Record<string, unknown>|null}}
@@ -1128,6 +1143,7 @@ function land(cwd, request, warnings) {
     return { id: short, outcome: commitEntry(cwd, request, id, warnings), held };
   }
   checkPlaceLive(said, at, read.live);
+  checkItemHeld(said, at, () => manifestOf(at.root, at.unit));
   write.checkLive(said, at, given, read.live);
   const fields = eventOf(request, read);
   if (logs !== null) {

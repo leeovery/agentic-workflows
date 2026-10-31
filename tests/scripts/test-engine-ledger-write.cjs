@@ -10,7 +10,9 @@
 // to the full id; every refusal appending nothing and committing nothing;
 // Claude's own close of a question its experiment still measures refused;
 // the writer lock taken by the verb itself, a refusal it needs no ledger for
-// answering while a peer holds it; two processes appending at once; and a
+// answering while a peer holds it; a topic removed while a write waited on
+// the lock taking nothing, and a removal taking the lock before it reads the
+// ledger; two processes appending at once; and a
 // ledger changed outside the engine stopping the next write, showing the
 // line found. What the writes tell the trust log is
 // test-engine-ledger-trust.cjs's.
@@ -37,6 +39,8 @@ const { LEDGER_VERSION, validEvent } = require(path.join(SCRIPTS, 'domain/ledger
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { removeTopic } = require(path.join(SCRIPTS, 'domain/discovery-map.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const {
@@ -382,7 +386,7 @@ describe('refusals', () => {
   });
 
   it('refuses a write on a topic set aside or a unit cancelled, and a move to a topic set aside, by the rule every read decides by (5.8.17)', () => {
-    const row = (/** @type {number} */ order) => ({ order, summary: 'A topic', routing: 'discussion', source: 'discovery' });
+    const row = (/** @type {number} */ order) => ({ order, summary: 'A topic', source: 'discovery' });
     createManifest(dir, UNIT, { work_type: 'epic', phases: { ...WRITE_PHASES, discovery: { items: { 'note-window': row(1), 'space-homing': row(2), 'menu-bar': row(3) } } } });
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const question = ask().id;
@@ -578,6 +582,50 @@ describe('the writer lock and the commit', () => {
 
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'taken', 'taken', 'made']);
     assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed in a topic cancelled while it waited');
+  });
+
+  it('reads again under the lock that the topic a write is made on, and a move\'s destination, is still on the map: a topic removed while the write waited takes nothing', (t) => {
+    const question = ask().id;
+    const lock = statePath(dir, layout.lock);
+    const peer = JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
+    const { 'menu-bar': _removed, ...mapped } = WRITE_PHASES.discovery.items;
+    let taken = 0;
+    // The peer removes menu-bar from the map, as `topic remove` leaves it, and lets go once the write has found the lock held and tried again.
+    const attempts = lockAttempts(t, lock, () => {
+      taken += 1;
+      if (taken < 2) return;
+      createManifest(dir, UNIT, { work_type: 'epic', phases: { ...WRITE_PHASES, discovery: { items: mapped, dismissed: ['menu-bar'] } } });
+      fs.unlinkSync(lock);
+    });
+
+    for (const [args, stdin, refusal] of /** @type {[string[], Record<string, unknown>, string][]} */ ([
+      [['ledger', 'ask', `${UNIT}.discovery.menu-bar`], { ...MADE, text: 'Asked on a topic removed meanwhile?' }, 'ledger ask: fumi has no topic "menu-bar" in discovery'],
+      [['ledger', 'move', NOTE, '--question', question, '--to', 'menu-bar'], MADE, 'ledger move: fumi has no topic "menu-bar" to move the question to'],
+    ])) {
+      createManifest(dir, UNIT, { work_type: 'epic', phases: WRITE_PHASES });
+      fs.writeFileSync(lock, peer);
+      taken = 0;
+      assert.strictEqual(refuses(dir, args, { env: SESSION, stdin: JSON.stringify(stdin) }).error, refusal);
+    }
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'taken', 'taken', 'made']);
+    assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed on a topic removed while it waited');
+  });
+
+  it('a removal takes the lock before it reads the ledger: an entry landed on the topic while it waited refuses it, the topic left on the map', (t) => {
+    const lock = statePath(dir, layout.lock);
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    // The peer lets go and lands an entry on menu-bar the moment the removal finds the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      fs.unlinkSync(lock);
+      appendEntry(statePath(dir), { event: 'asked', unit: UNIT, topic: 'menu-bar', phase: 'discovery', session: SESSION_ID, ...MADE, text: 'Landed first?', part_of: null, relies_on: [], cites: [] }, []);
+    });
+
+    assert.throws(() => removeTopic(dir, UNIT, 'menu-bar'),
+      { message: '"menu-bar" can\'t be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead' });
+
+    assert.deepStrictEqual(attempts, ['taken', 'made', 'made']);
+    assert.deepStrictEqual(Object.keys(JSON.parse(fs.readFileSync(statePath(dir, layout.manifest(UNIT)), 'utf8')).phases.discovery.items), ['note-window', 'space-homing', 'menu-bar']);
   });
 
   it('lands two processes\' appends made at once, under ids that differ and are no sequence, a read made meanwhile meeting whole lines only (5.S2)', async () => {

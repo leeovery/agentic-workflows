@@ -6,7 +6,8 @@
 // prescribes, so we lock in the observable manifest state and the
 // back-compat shape:
 //
-// - No summary / no description supplied → item carries routing + source only.
+// - No summary / no description supplied → item carries its source only, the
+//   routing the reference still passes accepted and dropped by the alias.
 // - Summary only → summary present, description absent.
 // - Both → both present.
 // - Idempotency → if the item already exists, the reference returns early
@@ -67,7 +68,7 @@ function seedEpic(workUnit) {
 
 // Re-creates the CLI call in C. Create Discovery Item. Summary and
 // description are only passed when supplied + non-empty; with neither, the
-// item lands via --backfill (routing + source only).
+// item lands via --backfill (source only).
 function ensureCreate(workUnit, topic, routing, { summary, description } = {}) {
   const args = ['discovery-map', 'add', workUnit, topic, routing, '--source', 'direct-start'];
   if (summary) args.push('--summary', summary);
@@ -82,15 +83,11 @@ describe('ensure-discovery-item: create without summary or description', () => {
   beforeEach(setup);
   afterEach(cleanup);
 
-  it('creates an item with routing + source only (back-compat)', () => {
+  it('creates an item with its source only, the routing dropped', () => {
     seedEpic('payments');
     ensureCreate('payments', 'auth', 'discussion');
 
-    const item = readManifest('payments').phases.discovery.items['auth'];
-    assert.strictEqual(item.routing, 'discussion');
-    assert.strictEqual(item.source, 'direct-start');
-    assert.ok(!('summary' in item), 'summary unexpectedly written');
-    assert.ok(!('description' in item), 'description unexpectedly written');
+    assert.deepStrictEqual(readManifest('payments').phases.discovery.items['auth'], { source: 'direct-start' });
   });
 });
 
@@ -123,8 +120,8 @@ describe('ensure-discovery-item: create with summary and description', () => {
     const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'oauth + sessions');
     assert.strictEqual(item.description, desc);
-    assert.strictEqual(item.routing, 'discussion');
     assert.strictEqual(item.source, 'direct-start');
+    assert.ok(!('routing' in item), 'routing unexpectedly written');
   });
 });
 

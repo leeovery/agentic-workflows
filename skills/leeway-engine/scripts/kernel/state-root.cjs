@@ -222,7 +222,19 @@ function insideState(cwd, given, ...segments) {
   return folder === '.' || rel === folder || rel.startsWith(`${folder}/`);
 }
 
+/**
+ * A scratch file Claude wrote for the engine to consume, absolute — refused,
+ * naming the flag that gave it, anywhere but under the cache: what is
+ * consumed is deleted, so a mis-passed path never reaches a live file.
+ * @param {string} cwd @param {string} given @param {string} flag
+ * @returns {string}
+ */
+function cacheScratch(cwd, given, flag) {
+  if (!insideState(cwd, given, '.cache')) throw new Error(`${flag} must point inside ${statePath(cwd, '.cache')}/ — got "${given}"`);
+  return path.resolve(cwd, given);
+}
+
 module.exports = {
   STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
-  resolvedPath, ignoresCase,
+  cacheScratch, resolvedPath, ignoresCase,
 };

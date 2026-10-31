@@ -70,7 +70,7 @@ function format(result) {
   lines.push(`description: ${result.description === null ? '(none)' : result.description}`);
 
   const s = result.map_summary;
-  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
+  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.cancelled} cancelled, ${s.postponed} postponed`);
 
   lines.push(`discovery_map (${result.discovery_map.length}):`);
   if (result.discovery_map.length === 0) {
@@ -78,7 +78,6 @@ function format(result) {
   } else {
     for (const t of result.discovery_map) {
       let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
-      if (t.routing) line += ` routing=${t.routing}`;
       if (t.source && t.source !== 'discovery') line += ` source=${t.source}`;
       if (t.current_phase) line += ` phase=${t.current_phase}`;
       if (t.mail_waiting) line += ` mail=waiting`;
@@ -144,10 +143,10 @@ function format(result) {
 
 /**
  * Parse and validate the harvest's proposed-topics JSON: a non-empty array of
- * `{name, routing, summary, description}`. Model-authored judgment; shape
- * errors are loud.
+ * `{name, summary, description}`. Model-authored judgment; shape errors are
+ * loud.
  * @param {string} cwd @param {string} file
- * @returns {{name: string, routing: string, summary: string, description: string}[]}
+ * @returns {{name: string, summary: string, description: string}[]}
  */
 function readProposedFile(cwd, file) {
   let raw;
@@ -163,12 +162,12 @@ function readProposedFile(cwd, file) {
     throw new Error(`proposed-topics file is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('proposed-topics file must be a non-empty JSON array of {name, routing, summary, description}');
+    throw new Error('proposed-topics file must be a non-empty JSON array of {name, summary, description}');
   }
   for (const [i, t] of parsed.entries()) {
-    for (const field of ['name', 'routing', 'summary', 'description']) {
+    for (const field of ['name', 'summary', 'description']) {
       if (!t || typeof t[field] !== 'string' || t[field].trim() === '') {
-        throw new Error(`proposed topic ${i} is missing "${field}" (each entry needs name, routing, summary, description)`);
+        throw new Error(`proposed topic ${i} is missing "${field}" (each entry needs name, summary, description)`);
       }
     }
   }
@@ -192,13 +191,13 @@ function mapView(workUnit, ...rest) {
 
   const dataLines = [`work_unit: ${workUnit}`, `mode: ${proposedFile ? 'synthesis' : 'map'}`];
   const s = result.map_summary;
-  dataLines.push(`map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
+  dataLines.push(`map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.cancelled} cancelled, ${s.postponed} postponed`);
 
   let display;
   if (proposedFile) {
     const proposed = readProposedFile(cwd, proposedFile);
     // Per-name flags the flow routes on: an active collision must be resolved
-    // before the gate; a dismissed match needs --force-dismissed at persist;
+    // before the gate; a dismissed match needs the person's re-add at persist;
     // a waiting-roadmap-idea match is the anti-twin check — never created as
     // a fresh topic (the real move is pull-forward, or leave it waiting). A
     // bug or a quick-fix of the name is no twin: it never becomes a topic.
@@ -209,10 +208,9 @@ function mapView(workUnit, ...rest) {
     dataLines.push(`proposed (${proposed.length}):`);
     for (const t of proposed) {
       const flags = [
-        `routing=${t.routing}`,
         `exists_on_map=${result.discovery_map.some((r) => r.name === t.name)}`,
         `matches_dismissed=${result.dismissed.includes(t.name)}`,
-        `legal_name=${!/[./]/.test(t.name)}`,
+        `legal_name=${engine.schema.KEBAB_SLUG_PATTERN.test(t.name)}`,
         `waiting_on_roadmap=${waitingOnRoadmap.has(t.name)}`,
       ];
       dataLines.push(`  ${t.name} ${flags.join(' ')}`);

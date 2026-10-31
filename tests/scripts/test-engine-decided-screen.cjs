@@ -118,7 +118,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       [{ lines: [{ text: 'A rule.', why: 'Why.', widens: NOTE_MAP.shape.answer }, { text: 'Another.', why: 'Why.', widens: NOTE_MAP.shape.answer }], candidates: [] }, `line 2 widens ${NOTE_MAP.shape.answer}, as line 1 does — a decision takes one line`],
       [{ lines: [], candidates: [{ name: 'space-homing', reason: 'R.' }] }, 'the candidates: "space-homing" is already on the map — nothing was added; edit it, or pick a different name'],
       [{ lines: [], candidates: [{ name: 'dock-badge', reason: 'R.' }] }, 'the candidates: "dock-badge" was previously dismissed from this map — nothing was added; the person re-adds it on the map'],
-      [{ lines: [], candidates: [{ name: 'dock.badge', reason: 'R.' }] }, 'the candidates: entry 1 — "dock.badge" is not a legal topic name (dots and slashes break manifest addressing)'],
+      [{ lines: [], candidates: [{ name: 'dock.badge', reason: 'R.' }] }, 'the candidates: "dock.badge" is not a topic name — a lowercase slug of letters, digits and hyphens, since it names the topic\'s folder'],
       [{ lines: [], candidates: [{ name: 'a', reason: 'R.' }, { name: 'a', reason: 'S.' }] }, 'the candidates: "a" appears more than once in the batch'],
       [{ lines: [], withdraws: [{ line: NOTE_MAP.shape.answer, why: 'Why.' }], candidates: [] }, `withdrawal 1 withdraws ${NOTE_MAP.shape.answer}: ${NOTE_MAP.shape.answer} is no line of the product record`],
       [{ lines: [], withdraws: [{ line: elsewhere.id, why: 'Why.' }], candidates: [] }, `withdrawal 1 withdraws ${elsewhere.id}: it widens no decision of note-window standing`],

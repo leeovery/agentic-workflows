@@ -248,7 +248,7 @@ function validateGateMode(segments, value) {
 function validatePhaseStatus(phase, value) {
   const valid = VALID_PHASE_STATUSES[phase];
   if (valid && valid.length === 0) {
-    fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time; create map items with \`engine discovery-map add\``);
+    fail(`Phase "${phase}" items carry no status field — lifecycle is computed at render time; create map items with \`engine topic add\``);
   }
   if (valid && (typeof value !== 'string' || !valid.includes(value))) {
     fail(`Invalid status ${JSON.stringify(value)} for phase "${phase}". Must be one of: ${valid.join(', ')}`);

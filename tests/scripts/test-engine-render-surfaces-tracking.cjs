@@ -623,10 +623,10 @@ describe('render direct-entry-gate', () => {
       phases: {
         discovery: {
           items: {
-            alpha: { routing: 'discussion', source: 'discovery' },
-            gamma: { routing: 'discussion', source: 'discovery' },
-            sigma: { routing: 'discussion', source: 'discovery', cancelled: true },
-            tau: { routing: 'discussion', source: 'discovery', postponed: true },
+            alpha: { source: 'discovery' },
+            gamma: { source: 'discovery' },
+            sigma: { source: 'discovery', cancelled: true },
+            tau: { source: 'discovery', postponed: true },
           },
         },
         discussion: { items: { gamma: { status: 'in-progress' } } },
@@ -634,7 +634,7 @@ describe('render direct-entry-gate', () => {
     });
     writeManifest(dir, 'feat', {
       work_type: 'feature',
-      phases: { discovery: { items: { feat: { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { feat: { source: 'discovery' } } } },
     });
   });
   afterEach(() => { teardown(dir); });
@@ -686,28 +686,23 @@ describe('render direct-entry-gate', () => {
     assert.ok(!out.includes('f/forward'));
   });
 
-  it('a closed topic names its closure — a dead end points at discovery\'s reopen', () => {
+  it('a closed topic names its closure — a cancelled one points at the reactivate', () => {
     writeManifest(dir, 'closed', {
       work_type: 'epic',
       phases: {
-        discovery: { items: {
-          dead: { routing: 'discussion', source: 'discovery', handled: true },
-          gone: { routing: 'discussion', source: 'discovery' },
-        } },
-        discussion: { items: { dead: { status: 'completed' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
+        discovery: { items: { gone: { source: 'discovery' } } },
+        discussion: { items: { gone: { status: 'cancelled', previous_status: 'in-progress' } } },
       },
     });
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'closed.discussion.dead' }),
-      /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*> Reopen it in discovery \(`i\/discovery`\) — a dead-ended topic carries no row\./);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'closed.discussion.gone' }),
-      /it is cancelled and stays on the map as record/);
+      /⚑ "Gone" is already on the map — it is cancelled and stays on the map as record[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./);
   });
 
   it('a decided topic points at the resume — it carries no row of its own', () => {
     writeManifest(dir, 'settled', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { done: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { done: { source: 'discovery' } } },
         discussion: { items: { done: { status: 'completed' } } },
       },
     });

@@ -51,7 +51,7 @@ const { withWorkUnitLock, withProjectLock, readProjectManifest } = require('../k
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
-const { computeTopicLifecycle, itemOf } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -160,7 +160,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
   const as = (key) => (value) => [key, value];
   return [
     ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
-    ...existing([statePath(cwd, unit, 'discovery', 'briefs', `${topic}.md`)]).map(as('brief')),
+    ...existing([statePath(cwd, briefFile(unit, topic))]).map(as('brief')),
     ...(own ? discoveryLogs(cwd, unit) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),

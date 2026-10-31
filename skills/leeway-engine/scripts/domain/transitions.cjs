@@ -33,7 +33,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
-  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -735,7 +735,7 @@ function restoreOrder(item, taken) {
 
 /**
  * Whether a live map row other than `except` holds execution order `n`.
- * Closed rows (cancelled, dead-ended) carry no order and never block.
+ * Closed rows (cancelled, postponed) carry no order and never block.
  * @param {object} manifest @param {string} except @param {number} n
  */
 function liveMapRowHolds(manifest, except, n) {
@@ -1128,16 +1128,11 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
  * The topic's own files, as the roadmap writes a source: state-relative, and
  * only those on disk — the pointers that carry the record's depth to whoever
  * pulls the item back.
- * @param {string} cwd @param {object} manifest @param {string} workUnit @param {string} topic
+ * @param {string} cwd @param {string} workUnit @param {string} topic
  * @returns {string[]}
  */
-function postponedSources(cwd, manifest, workUnit, topic) {
-  const row = itemOf(manifest, 'discovery', topic);
-  const brief = row && typeof row.brief_path === 'string' && row.brief_path.trim() !== '' ? row.brief_path : null;
-  return [
-    ...(brief ? [`${workUnit}/${brief}`] : []),
-    `${workUnit}/topics/${topic}/log.md`,
-  ].filter((rel) => fs.existsSync(statePath(cwd, rel)));
+function postponedSources(cwd, workUnit, topic) {
+  return [briefFile(workUnit, topic), `${topicDir(workUnit, topic)}/log.md`].filter((rel) => fs.existsSync(statePath(cwd, rel)));
 }
 
 /**
@@ -1169,7 +1164,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
 
     const row = itemOf(manifest, 'discovery', topic);
     const summary = row && typeof row.summary === 'string' && row.summary.trim() !== '' ? row.summary : titlecase(topic);
-    const sources = postponedSources(cwd, manifest, workUnit, topic);
+    const sources = postponedSources(cwd, workUnit, topic);
     const postponed = stashItems(plan.items, 'postponed');
     discardGroupings(manifest, plan.discards);
     if (row) {

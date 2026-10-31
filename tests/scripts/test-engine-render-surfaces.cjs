@@ -33,7 +33,7 @@ describe('cancel-gate', () => {
 
   it('a never-started topic: only the map row is marked', () => {
     writeManifest(dir, 'pay', {
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
     });
     const out = renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.data-export' });
     assert.match(out, /MENU: cancel gate/);
@@ -46,7 +46,7 @@ describe('cancel-gate', () => {
   it('a started topic: the items by phase, the open records that end abandoned, the proposed groupings discarded', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { auth: { source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
         experiment: { items: { auth: { status: 'in-progress', experiments: {
           E1: { slug: 'a', status: 'concluded', verdict: 'held' },
@@ -127,8 +127,8 @@ describe('cancel-gate', () => {
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: {
-          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-          away: { routing: 'discussion', source: 'discovery', postponed: true },
+          gone: { source: 'discovery', cancelled: true },
+          away: { source: 'discovery', postponed: true },
         } },
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: {
@@ -186,14 +186,14 @@ describe('postpone-gate', () => {
 
   const LIVE = {
     phases: {
-      discovery: { items: { auth: { routing: 'discussion', source: 'discovery', summary: 'Auth flow' } } },
+      discovery: { items: { auth: { source: 'discovery', summary: 'Auth flow' } } },
       discussion: { items: { auth: { status: 'in-progress' } } },
     },
   };
 
   it('a never-started topic with no roadmap: the row alone, and the map is created with it', () => {
     writeManifest(dir, 'pay', {
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
     });
     const out = renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.data-export', horizon: 'next' });
     assert.match(out, /MENU: postpone gate/);
@@ -237,15 +237,13 @@ describe('postpone-gate', () => {
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: {
-          auth: { routing: 'discussion', source: 'discovery' },
-          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-          away: { routing: 'discussion', source: 'discovery', postponed: true },
-          dead: { routing: 'discussion', source: 'discovery', handled: true },
-          locked: { routing: 'discussion', source: 'discovery' },
-          busy: { routing: 'discussion', source: 'discovery' },
+          auth: { source: 'discovery' },
+          gone: { source: 'discovery', cancelled: true },
+          away: { source: 'discovery', postponed: true },
+          locked: { source: 'discovery' },
+          busy: { source: 'discovery' },
         } },
         discussion: { items: {
-          dead: { status: 'completed' },
           auth: { status: 'in-progress' },
           locked: { status: 'completed' },
           busy: { status: 'in-progress' },
@@ -262,7 +260,6 @@ describe('postpone-gate', () => {
     assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no discussion item of that name/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
-    assert.throws(() => gate('dead'), /render postpone-gate: "dead" is closed as a dead end — reopen it first/);
     assert.throws(() => gate('locked'), /render postpone-gate: postponing "locked" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"/);
     assert.throws(() => gate('busy'), /render postpone-gate: postponing "busy" is refused while an experiment is live \(E2, with E2\.1\) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic/);
     assert.throws(() => gate('auth'), /render postpone-gate: a roadmap item named "auth" \(horizon "mvp"\) is not this topic's — rename or remove it on the roadmap first/);
@@ -300,7 +297,7 @@ describe('topic-receipt — the postpone verb', () => {
     }, null, 2));
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', ...(postponed ? { postponed: true } : {}) } } },
+        discovery: { items: { auth: { source: 'discovery', ...(postponed ? { postponed: true } : {}) } } },
         discussion: { items: { auth: { status: postponed ? 'postponed' : 'in-progress', ...(postponed ? { previous_status: 'in-progress' } : {}) } } },
       },
     });
@@ -366,7 +363,7 @@ describe('topic-receipt — the restore verb', () => {
   it('names the statuses the pull forward returned the unit to, the indexing advisory riding --warn', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' }, fresh: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { auth: { source: 'discovery' }, fresh: { source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
       },
     });
@@ -382,7 +379,7 @@ describe('topic-receipt — the restore verb', () => {
   it('refuses a topic still postponed, a non-Discovery address, and a dead name', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', postponed: true } } },
+        discovery: { items: { auth: { source: 'discovery', postponed: true } } },
         discussion: { items: { auth: { status: 'postponed', previous_status: 'in-progress' } } },
       },
     });
@@ -403,7 +400,7 @@ describe('topic-receipt — the unit addresses', () => {
   it('cancel and reactivate read the unit; a never-started topic restores nothing', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true }, back: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { gone: { source: 'discovery', cancelled: true }, back: { source: 'discovery' } } },
         discussion: { items: { back: { status: 'in-progress' } } },
         specification: { items: { spec: { status: 'cancelled', previous_status: 'completed' }, live: { status: 'completed' } } },
         planning: { items: { live: { status: 'in-progress' } } },
@@ -2704,9 +2701,8 @@ describe('render send-closed-target', () => {
       phases: {
         discovery: {
           items: {
-            'auth-flow': { routing: 'discussion', source: 'discovery', handled: true },
-            'legacy-bits': { routing: 'discussion', source: 'discovery' },
-            live: { routing: 'discussion', source: 'discovery' },
+            'legacy-bits': { source: 'discovery' },
+            live: { source: 'discovery' },
           },
         },
         discussion: { items: { 'legacy-bits': { status: 'cancelled' } } },
@@ -2715,34 +2711,26 @@ describe('render send-closed-target', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the dead-end target byte-exactly — the statement, then the ask over three destinations', () => {
-    assert.strictEqual(renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
+  it('renders the cancelled target byte-exactly — the statement, then the ask over three destinations', () => {
+    assert.strictEqual(renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.legacy-bits' }), [
       "=== MENU: closed target gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      '"auth-flow" is closed as a dead end, so it won\'t pick up messages.',
+      '"legacy-bits" is cancelled, so it won\'t pick up messages.',
       '',
       '**`◆ Where should the message go?`**',
       '',
-      '**`o/open`**      → Reopen it and send the message there — it returns',
-      `${NB(14)}to its name-matched lifecycle and counts as open`,
-      `${NB(14)}again`,
+      '**`o/open`**      → Reactivate it and send the message there — the',
+      `${NB(14)}topic returns to its previous state and counts as`,
+      `${NB(14)}open again`,
       '**`e/elsewhere`** → Pick a different target',
       "**`d/drop`**      → Don't send it; it stays with the current topic",
       '',
     ].join('\n'));
   });
 
-  it('a cancelled target flips both words the lifecycle owns', () => {
-    const out = renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
-    assert.match(out, /"legacy-bits" is cancelled, so it won't pick up messages\./);
-    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and send the message there — the/);
-    assert.match(out, /topic returns to its previous state and counts as\n/);
-    assert.match(out, /open again/);
-  });
-
   it('refuses a live target, an unknown name, and a non-discovery address', () => {
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.live' }),
-      /"live" is "fresh", not closed — the gate serves handled and cancelled targets/);
+      /"live" is "fresh", not cancelled — the gate serves cancelled targets/);
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.ghost' }),
       /no discovery item "ghost" on the map/);
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
@@ -2825,10 +2813,10 @@ describe('render — the adopted phase gates', () => {
   // part of the batch.
   const backfillMap = () => writeManifest(dir, 'pay', {
     phases: { discovery: { items: {
-      'auth-flow': { routing: 'discussion', source: 'discovery', order: 1 },
-      billing: { routing: 'discussion', source: 'discovery', order: 2, summary: 'How invoices are raised and settled' },
-      'legacy-bits': { routing: 'discussion', source: 'discovery', order: 3 },
-      settled: { routing: 'discussion', source: 'discovery', order: 4, summary: 'Whole', description: 'Whole' },
+      'auth-flow': { source: 'discovery', order: 1 },
+      billing: { source: 'discovery', order: 2, summary: 'How invoices are raised and settled' },
+      'legacy-bits': { source: 'discovery', order: 3 },
+      settled: { source: 'discovery', order: 4, summary: 'Whole', description: 'Whole' },
     } } },
   });
   const drafted = (summaries, name = 'summaries.json') => writePayload(dir, `.leeway/.cache/pay/discovery/${name}`, { summaries });
@@ -2836,12 +2824,12 @@ describe('render — the adopted phase gates', () => {
   const PROPOSED_ROWS = [
     'Proposed summaries for 3 topic(s):',
     '',
-    '  1. Auth Flow  (discussion)',
+    '  1. Auth Flow',
     '       How sign-in survives a dropped session and a token refresh',
     '       mid-request',
-    '  2. Billing  (discussion)',
+    '  2. Billing',
     '       How invoices are raised and settled  (already populated)',
-    '  3. Legacy Bits  (discussion)',
+    '  3. Legacy Bits',
     '       (source file missing — please provide)',
   ];
   const DRAFTS = { 'auth-flow': 'How sign-in survives a dropped session and a token refresh mid-request', 'legacy-bits': null };
@@ -2875,15 +2863,15 @@ describe('render — the adopted phase gates', () => {
 
   it('summary-backfill-gate: a populated summary\'s tag drops to its own line where the last line has no room for it', () => {
     writeManifest(dir, 'pay', {
-      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery', summary: 'How invoices are raised, reconciled, and settled each month end' } } } },
+      phases: { discovery: { items: { billing: { source: 'discovery', summary: 'How invoices are raised, reconciled, and settled each month end' } } } },
     });
     assert.ok(backfill('proposed', { file: drafted({}) }).includes([
-      '  1. Billing  (discussion)',
+      '  1. Billing',
       '       How invoices are raised, reconciled, and settled each',
       '       month end  (already populated)',
     ].join('\n')));
     writeManifest(dir, 'pay', {
-      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery', summary: 'How invoices are raised, reconciled, and settled monthly' } } } },
+      phases: { discovery: { items: { billing: { source: 'discovery', summary: 'How invoices are raised, reconciled, and settled monthly' } } } },
     });
     assert.ok(backfill('proposed', { file: drafted({}) }).includes([
       '       How invoices are raised, reconciled, and settled monthly',
@@ -2905,7 +2893,7 @@ describe('render — the adopted phase gates', () => {
   });
 
   it('summary-backfill-gate: a map with nothing to backfill refuses every variant over it', () => {
-    writeManifest(dir, 'pay', { phases: { discovery: { items: { settled: { routing: 'discussion', summary: 'Whole', description: 'Whole' } } } } });
+    writeManifest(dir, 'pay', { phases: { discovery: { items: { settled: { summary: 'Whole', description: 'Whole' } } } } });
     for (const variant of ['batch', 'proposed']) {
       assert.throws(() => backfill(variant, { file: drafted({}) }),
         /"pay" has no discovery item missing a summary or description — nothing to backfill/);

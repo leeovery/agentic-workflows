@@ -18,6 +18,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
@@ -36,20 +37,20 @@ describe('pipeline simulation: epic supersession', () => {
   it('epic: grouping supersession, the spec boundary, the build order, remediation, the gap exit', () => {
     const wu = 'overhaul';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', sessionLog(sim, wu)]);
-    sim.write(`.leeway/${wu}/discovery/briefs/alpha.md`, '# Brief — Alpha\n');
-    sim.write(`.leeway/${wu}/discovery/briefs/beta.md`, '# Brief — Beta\n');
-    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'alpha', routing: 'discussion', summary: 'Alpha summary', brief_path: 'discovery/briefs/alpha.md' },
-      { name: 'beta', routing: 'discussion', summary: 'Beta summary', brief_path: 'discovery/briefs/beta.md' },
-      { name: 'gamma-prime', routing: 'discussion', summary: 'Gamma, sharpened' },
+    /** @param {string} topic @param {string} [text] */
+    const draft = (topic, text = `# Brief — ${topic}\n`) => sim.write(`.leeway/.cache/${wu}/discovery/${topic}-brief.md`, text);
+    sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+      { name: 'alpha', summary: 'Alpha summary', brief: draft('alpha') },
+      { name: 'beta', summary: 'Beta summary', brief: draft('beta') },
+      { name: 'gamma-prime', summary: 'Gamma, sharpened', brief: draft('gamma-prime') },
     ])]);
-    sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2', 'gamma-prime=3']);
+    sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma-prime=3']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
     // The map as its lifecycle leaves it: alpha and beta decided,
     // gamma-prime cancelled, delta a row a message opened.
     for (const topic of ['alpha', 'beta']) discussed(sim, wu, topic);
     sim.run(['topic', 'cancel', wu, 'discovery', 'gamma-prime']);
-    sim.run(['discovery-map', 'add', wu, 'delta', 'discussion', '--summary', 'Delta summary', '--source', 'message:alpha']);
+    sim.run(['topic', 'add', wu, 'delta', '--source', 'message:alpha', '--summary', 'Delta summary', '--brief', draft('delta'), '--re-add']);
     /** @param {string} topic @param {string} text */
     const ask = (topic, text) => sim.run(['ledger', 'ask', `${wu}.discussion.${topic}`], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
@@ -74,7 +75,7 @@ describe('pipeline simulation: epic supersession', () => {
     // each summary it keeps, and no line of it is edited here.
     const summaries = sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaries], { expect: 'content' }),
-      /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta {2}\(discussion\)\n {7}Delta summary {2}\(already populated\)/);
+      /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta\n {7}Delta summary {2}\(already populated\)/);
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'proposed', '--file', summaries], { expect: 'content' }), /Delta summary/);
     const unsourced = sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
@@ -446,7 +447,7 @@ describe('pipeline simulation: epic supersession', () => {
     // with the menu, and a candidate the manifest no longer marks pending
     // never renders at all.
     sim.write('.leeway/.cache/scratch/candidate.json', JSON.stringify({
-      name: 'epsilon', routing: 'discussion', summary: 'Epsilon summary',
+      name: 'epsilon', summary: 'Epsilon summary',
     }));
     assert.match(
       sim.render(['candidate-gate', wu, '--file', '.leeway/.cache/scratch/candidate.json'], { expect: 'content' }),
@@ -455,19 +456,12 @@ describe('pipeline simulation: epic supersession', () => {
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
     sim.refuses(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'later'],
       /Invalid candidate status/);
-    // Row first, brief second: the add is what refuses a duplicate name.
-    sim.run(['discovery-map', 'add', wu, 'epsilon', 'discussion', '--summary', 'Epsilon summary',
-      '--source', 'gap-analysis', '--brief-path', 'discovery/briefs/epsilon.md']);
-    const epsilon = sim.manifest(wu).phases.discovery.items.epsilon;
-    assert.strictEqual(epsilon.source, 'gap-analysis');
-    assert.strictEqual(epsilon.brief_path, 'discovery/briefs/epsilon.md',
-      'an approved gap candidate carries its brief pointer, as a harvested topic does');
-    sim.write(`.leeway/${wu}/discovery/briefs/epsilon.md`, [
-      '# Discovery Brief — Epsilon',
-      '',
-      'Drawn from the discovery-gap analysis, read out of alpha.md, beta.md.',
-      '',
-    ].join('\n'));
+    // An approved gap candidate lands with its brief, as a harvested topic
+    // does.
+    const brief = '# Discovery Brief — Epsilon\n\nDrawn from the discovery-gap analysis, read out of alpha and beta.\n';
+    sim.run(['topic', 'add', wu, 'epsilon', '--summary', 'Epsilon summary', '--source', 'gap-analysis', '--brief', draft('epsilon', brief)]);
+    assert.strictEqual(sim.manifest(wu).phases.discovery.items.epsilon.source, 'gap-analysis');
+    assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/epsilon/brief.md`), 'utf8'), brief);
     sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']).trim(), 'false');
     assert.match(sim.render(['candidate-gate', wu, '--variant', 'announce'], { expect: 'content' }), /Nothing new to review\./);
@@ -509,8 +503,8 @@ describe('pipeline simulation: epic supersession', () => {
     assert.match(gapGate, /`t\/topic`/);
     assert.match(gapGate, /`r\/roadmap`/);
     sim.write('.leeway/.cache/scratch/message-scratch.md', 'Refund window\n\nHow long can a refund be claimed?\n');
-    sim.run(['discovery-map', 'add', wu, 'refund-window', 'discussion',
-      '--summary', 'How long a refund can be claimed', '--source', 'message:unified']);
+    sim.run(['topic', 'add', wu, 'refund-window', '--source', 'message:unified',
+      '--summary', 'How long a refund can be claimed', '--brief', draft('refund-window'), '--re-add']);
     sim.run(['topic', 'send', wu, 'refund-window', '--from', 'alpha', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'refund-window']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items['refund-window'].status, 'unstarted');
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.refund-window.status', 'pending']);

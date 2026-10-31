@@ -1800,7 +1800,7 @@ echo ""
 echo -e "${YELLOW}Test: discovery refuses every status write (empty vocabulary)${NC}"
 setup_fixture
 create_wu incept-status epic "Discovery status"
-run_cli set incept-status.discovery.foo routing discussion >/dev/null 2>&1
+run_cli set incept-status.discovery.foo summary "A topic" >/dev/null 2>&1
 
 for status in in-progress completed cancelled; do
     exit_code=$(run_cli_exit_code set incept-status.discovery.foo status "$status")
@@ -1808,18 +1808,6 @@ for status in in-progress completed cancelled; do
 done
 output=$(run_cli set incept-status.discovery.foo status in-progress 2>&1 || true)
 assert_contains "$output" "carry no status field" "Error explains map items carry no status"
-
-echo ""
-
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: discovery accepts free-form routing field${NC}"
-setup_fixture
-create_wu incept-route epic "Discovery routing"
-run_cli set incept-route.discovery.foo routing discussion >/dev/null 2>&1
-output=$(run_cli_stdout get incept-route.discovery.foo routing)
-
-assert_equals "$output" "discussion" "Routing field stored unchanged"
 
 echo ""
 
@@ -1841,12 +1829,12 @@ echo -e "${YELLOW}Test: get returns full discovery item${NC}"
 setup_fixture
 create_wu incept-get epic "Discovery get"
 run_cli set incept-get.discovery.foo summary "A topic" >/dev/null 2>&1
-run_cli set incept-get.discovery.foo routing discussion >/dev/null 2>&1
+run_cli set incept-get.discovery.foo description "What the topic covers" >/dev/null 2>&1
 output=$(run_cli_stdout get incept-get.discovery.foo)
 
 assert_not_contains "$output" '"status"' "Item JSON carries no status field"
 assert_contains "$output" '"summary": "A topic"' "Item JSON includes summary"
-assert_contains "$output" '"routing": "discussion"' "Item JSON includes routing"
+assert_contains "$output" '"description": "What the topic covers"' "Item JSON includes description"
 
 echo ""
 
@@ -1869,13 +1857,14 @@ echo ""
 echo -e "${YELLOW}Test: wildcard get on discovery phase${NC}"
 setup_fixture
 create_wu incept-wild epic "Discovery wildcard"
-run_cli set incept-wild.discovery.alpha routing discussion >/dev/null 2>&1
-run_cli set incept-wild.discovery.beta routing discussion >/dev/null 2>&1
-output=$(run_cli_stdout get 'incept-wild.discovery.*' routing)
+run_cli set incept-wild.discovery.alpha summary "Alpha" >/dev/null 2>&1
+run_cli set incept-wild.discovery.beta summary "Beta" >/dev/null 2>&1
+output=$(run_cli_stdout get 'incept-wild.discovery.*' summary)
 
 assert_contains "$output" '"topic": "alpha"' "Wildcard returns alpha topic"
 assert_contains "$output" '"topic": "beta"' "Wildcard returns beta topic"
-assert_contains "$output" '"value": "discussion"' "Wildcard returns each topic's routing"
+assert_contains "$output" '"value": "Alpha"' "Wildcard returns alpha's summary"
+assert_contains "$output" '"value": "Beta"' "Wildcard returns beta's summary"
 
 echo ""
 

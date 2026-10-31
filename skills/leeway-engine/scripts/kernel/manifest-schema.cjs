@@ -63,11 +63,6 @@ const VALID_PHASE_STATUSES = {
   review:         ['in-progress', 'completed', 'cancelled'],
 };
 
-// Where a discovery-map item routes when work starts on it. Also the legal
-// `--phase` choices when a topic spawn seeds its first phase item — the
-// routable phases ARE the routing vocabulary.
-const VALID_ROUTINGS = ['discussion'];
-
 // One experiment record in a topic's series
 // (`phases.experiment.items.{topic}.experiments.{id}.status`): the
 // design-before-data lifecycle. `approved` is the freeze — the user-confirmed
@@ -253,7 +248,6 @@ module.exports = {
   WORK_TYPE_PIPELINES,
   DERIVED_PHASES,
   VALID_PHASE_STATUSES,
-  VALID_ROUTINGS,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,
