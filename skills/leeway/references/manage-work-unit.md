@@ -16,9 +16,9 @@ node .claude/skills/leeway/scripts/gateway.cjs manage
 
 The output is one snapshot in three demarcated sections:
 
-- **DATA** — reasoning surface: `unit_count`, the project `baseline` status, and the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: `unit_count` and the `UNITS` table — one line per work unit, `n  work_type  work_unit`, numbering matching the overview. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the menu.
-- **MENU** — the work units as a numbered pick list, then the baseline and back rows. Emit verbatim per its marker.
+- **MENU** — the work units as a numbered pick list, then the back row. Emit verbatim per its marker.
 
 Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
@@ -27,10 +27,6 @@ Emit the TITLE section, then the MENU section, each verbatim per its marker.
 #### If user chose `b/back`
 
 → Return to caller.
-
-#### If user chose `a/baseline`
-
-→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
 
 #### If user chose a number
 

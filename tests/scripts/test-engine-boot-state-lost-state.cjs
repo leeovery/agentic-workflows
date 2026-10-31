@@ -299,7 +299,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
     assert.strictEqual(tip(main, 'main'), code, 'the code side gained nothing: its trace was already there');
-    assert.strictEqual(res.baseline, 'none');
+    assert.strictEqual(res.brownfield_offer, 'none');
     assert.strictEqual(res.baseline_signal.commits_before, res.baseline_signal.commits_total);
     assert.deepStrictEqual(res.baseline_signal.history_before, ['2025-03-01  the app', '2025-03-01  set up']);
     assert.notStrictEqual(res.baseline_signal.workflows_date, null);

@@ -37,7 +37,7 @@ Output sections are one-directional: `DATA` is for reasoning and is never displa
 
 ## Reference
 
-- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `state-merge`, `github-rule`, `github-squash`, `manifest`, `knowledge`, `workunit`, `discovery-map`, `build-order`, `agent`, `discovery-session`, `topic`, `experiment`, `sources`, `presence`, `session`, `conversation`, `layout`, `ledger`, `gate`, `raise`, `verdict`, `brief`, `cut`, `shell`, `checklist`, `task`, `land`, `inbox`, `baseline`, `walkthrough`, `roadmap`, `cache`, `commit`, `code`, `handoff`, `render`), and the guards before a tool call (`layout guard`, `brief guard`, `shell guard`).
+- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `state-merge`, `github-rule`, `github-squash`, `manifest`, `knowledge`, `workunit`, `discovery-map`, `build-order`, `agent`, `discovery-session`, `topic`, `experiment`, `sources`, `presence`, `session`, `conversation`, `layout`, `ledger`, `gate`, `raise`, `verdict`, `brief`, `cut`, `shell`, `checklist`, `task`, `land`, `inbox`, `brownfield`, `walkthrough`, `roadmap`, `cache`, `commit`, `code`, `handoff`, `render`), and the guards before a tool call (`layout guard`, `brief guard`, `shell guard`).
 - **[library-and-gateway.md](references/library-and-gateway.md)** — the `lib.cjs` surface (render kernel, manifest IO, conventions, detail builders, projections) and the gateway contract adapter scripts implement.
 
 ## Tests

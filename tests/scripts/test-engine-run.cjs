@@ -261,7 +261,7 @@ describe('no uninstall in the release (27.2.3)', () => {
 
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]\n\nCommands:\n {2}boot /);
-    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('leeway') && shipped.includes('leeway-baseline-researcher.md'));
+    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('leeway') && shipped.includes('leeway-product-researcher.md'));
     assert.deepStrictEqual([...Object.keys(engine.COMMANDS), res.stderr, ...shipped].filter((name) => /uninstall/i.test(name)), []);
   });
 });

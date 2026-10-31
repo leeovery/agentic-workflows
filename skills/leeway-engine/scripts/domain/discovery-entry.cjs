@@ -45,7 +45,7 @@ const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
 const { runningTranscript } = require('./conversation.cjs');
-const { researchOwed } = require('./baseline.cjs');
+const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */

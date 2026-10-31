@@ -1,63 +1,80 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the project baseline — the one home for reading the project
-// manifest's `baseline` object, and the brownfield offer's remembered
-// answer the reshape's move leaves in its place (`brownfield_offer`: native,
-// skipped or completed), which reads as that status with no areas, so a
-// moved project is never judged or offered again; `accepted` says the
-// baseline's research is owed, which the product's conversation opens on
-// (`researchOwed`). Boot's status field, the
-// start menus' resume/manage rows, and the render surfaces all derive from
-// this state, so
-// the vocabulary and the remaining-count exist exactly once. Two more things
-// live here: the signal boot attaches while nothing is recorded — the
-// project's own account of what came before the workflows, read from every
-// repo in it (kernel/repos) and handed to the one-time judgment as evidence
-// to read rather than a number to threshold — and the verdict write, one
-// state commit.
+// Domain ring: the brownfield offer — start's one-time offer to research a
+// codebase that predates the workflows (8.12.7, 8.12.11). Its answer is the
+// project manifest's `brownfield_offer`: `native`, the project grew up on the
+// workflows; `skipped`, the offer declined; `accepted`, its research owed,
+// which the product's conversation opens on (`researchOwed`, 8.12.13); and
+// `completed`, once that research has landed. Boot's field and the offer's
+// surface read it here, and its one write is here, a confined state commit.
+// So is the signal boot attaches while nothing is recorded: the project's
+// own account of what came before the workflows, read from every repo in it
+// (kernel/repos) and handed to the one-time judgment as evidence to read
+// rather than a number to threshold (8.12.10).
 // ---------------------------------------------------------------------------
 
 const { git, GitError, hasCommits } = require('../kernel/git.cjs');
 const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 
-/** The statuses a project manifest records; `none` is their absence. */
-const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
-/** The two verdicts leeway's judgment can record. */
-const VERDICTS = /** @type {const} */ (['native', 'skipped']);
-/**
- * The brownfield offer's remembered answers, as the reshape's move carries
- * a project's baseline onto `brownfield_offer` (8.12.11, 21.11.2), in its
- * words: each means the offer is made no more.
- */
-const BROWNFIELD_ANSWERS = /** @type {readonly unknown[]} */ (['native', 'skipped', 'completed']);
+/** The offer's answers a project manifest records; `none` is their absence. */
+const ANSWERS = /** @type {const} */ (['native', 'skipped', 'accepted', 'completed']);
+
+/** @typedef {typeof ANSWERS[number]} BrownfieldAnswer */
+/** @typedef {'none' | BrownfieldAnswer} BrownfieldOffer */
 
 /**
- * The brownfield offer's answer while the baseline's research is owed: the
- * offer accepted, its findings not yet landed (8.12.13).
+ * The answer each one follows: the offer is answered once, while nothing is
+ * recorded, and an accepted offer completes once its research has landed.
+ * @type {Record<BrownfieldAnswer, BrownfieldOffer>}
  */
-const RESEARCH_OWED = 'accepted';
+const FOLLOWS = { native: 'none', skipped: 'none', accepted: 'none', completed: 'accepted' };
+
+/** @type {Record<BrownfieldAnswer, string>} */
+const MESSAGES = {
+  native: 'brownfield: the project grew up on the workflows',
+  skipped: 'brownfield: decline the research offer',
+  accepted: 'brownfield: accept the research offer',
+  completed: 'brownfield: the research landed',
+};
 
 /**
- * Whether the baseline's research is owed: the project manifest's offer
- * answered `accepted` (8.12.13).
- * @param {Record<string, any>} project
+ * The offer's answer on a project manifest; `none` for anything else.
+ * @param {unknown} project
+ * @returns {BrownfieldOffer}
  */
-const researchOwed = (project) => project.brownfield_offer === RESEARCH_OWED;
-
-/** @typedef {'none' | typeof RECORDED_STATUSES[number]} BaselineStatus */
-/** @typedef {typeof VERDICTS[number]} BaselineVerdict */
+function answerOf(project) {
+  const answer = isObject(project) ? project.brownfield_offer : undefined;
+  return ANSWERS.find((a) => a === answer) ?? 'none';
+}
 
 /**
- * @typedef {object} BaselineState
- * @property {BaselineStatus} status
- * @property {{name: string, status: string}[]} areas  registration order
- * @property {number} remaining  areas not yet completed (0 unless in-progress)
+ * The offer's answer. A corrupt project manifest reads `none`: corruption
+ * surfaces at the first manifest write, and boot stays usable.
+ * @param {string} cwd
+ * @returns {BrownfieldOffer}
  */
+function brownfieldOffer(cwd) {
+  try {
+    return answerOf(readProjectManifest(cwd));
+  } catch {
+    return 'none';
+  }
+}
+
+/**
+ * Whether the research is owed: the offer accepted, its research not yet
+ * landed (8.12.13).
+ * @param {unknown} project
+ */
+const researchOwed = (project) => answerOf(project) === 'accepted';
+
+// --- the signal -------------------------------------------------------------
 
 /**
  * @typedef {object} BaselineSignal
@@ -69,41 +86,6 @@ const researchOwed = (project) => project.brownfield_offer === RESEARCH_OWED;
  * @property {number} files_at_arrival  project files (outside `.claude/`) in the trees the workflows arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
  * @property {string[]} tree_at_arrival  that tree's top-level shape, named from the project: `dir/ (n)` and root files, largest first, elided past a dozen
  */
-
-/**
- * Read the project baseline state. Anything other than a recorded status —
- * including a missing or corrupt project manifest, or a malformed field
- * shape — reads `none` with no areas: the nothing-recorded state the
- * one-time judgment keys on. Corruption surfaces loudly at the first
- * manifest write, not here — boot and the menus must stay usable.
- * @param {string} cwd
- * @returns {BaselineState}
- */
-function baselineState(cwd) {
-  /** @type {Record<string, any>} */
-  let manifest = {};
-  try {
-    manifest = readProjectManifest(cwd);
-  } catch (_) {
-    return { status: 'none', areas: [], remaining: 0 };
-  }
-  const answer = manifest && manifest.brownfield_offer;
-  if (BROWNFIELD_ANSWERS.includes(answer)) return { status: answer, areas: [], remaining: 0 };
-  const b = manifest && manifest.baseline;
-  const raw = b && typeof b === 'object' && !Array.isArray(b) && typeof b.status === 'string' ? b.status : 'none';
-  if (!RECORDED_STATUSES.includes(/** @type {typeof RECORDED_STATUSES[number]} */ (raw))) {
-    return { status: 'none', areas: [], remaining: 0 };
-  }
-  const status = /** @type {BaselineStatus} */ (raw);
-  const areasObj = b.areas && typeof b.areas === 'object' && !Array.isArray(b.areas) ? b.areas : {};
-  const areas = Object.entries(areasObj)
-    .filter(([, s]) => typeof s === 'string')
-    .map(([name, s]) => ({ name, status: /** @type {string} */ (s) }));
-  const remaining = status === 'in-progress' ? areas.filter((a) => a.status !== 'completed').length : 0;
-  return { status, areas, remaining };
-}
-
-// --- the signal -------------------------------------------------------------
 
 const HISTORY_HEAD = 8;
 const HISTORY_TAIL = 4;
@@ -355,44 +337,34 @@ function baselineSignal(cwd) {
   }
 }
 
-// --- the verdict ------------------------------------------------------------
-
-/** @type {Record<BaselineVerdict, string>} */
-const VERDICT_MESSAGES = {
-  native: 'baseline: the project grew up on the workflows',
-  skipped: 'baseline: decline the assessment offer',
-};
+// --- the answer -------------------------------------------------------------
 
 /**
- * Record leeway's one-time verdict — `native` (the project grew up
- * on the workflows) or `skipped` (the offer was declined) — and commit it
- * confined to the project manifest. Refuses any other value, and refuses
- * once anything is recorded: the judgment happens once.
- * @param {string} cwd @param {string} verdict
- * @returns {{status: BaselineVerdict, committed: string|null, note?: string, warnings?: string[]}}
+ * Record the offer's answer and commit it confined to the project manifest:
+ * `native`, `skipped` or `accepted` while nothing is recorded, `completed`
+ * once the offer was accepted. Refuses any other answer, and any answer out
+ * of that order.
+ * @param {string} cwd @param {string} answer
+ * @returns {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[]}}
  */
-function recordBaselineVerdict(cwd, verdict) {
-  if (!VERDICTS.includes(/** @type {BaselineVerdict} */ (verdict))) {
-    throw new Error(`baseline record: the verdict is one of ${VERDICTS.join(', ')} — got "${verdict}"`);
-  }
-  const status = /** @type {BaselineVerdict} */ (verdict);
-  const current = baselineState(cwd).status;
-  if (current !== 'none') {
-    throw new Error(`baseline record: the baseline is "${current}" — the verdict is recorded once, while nothing is recorded`);
-  }
+function recordBrownfield(cwd, answer) {
+  const recorded = ANSWERS.find((a) => a === answer);
+  if (recorded === undefined) throw new Error(`brownfield record: the answer is one of ${ANSWERS.join(', ')} — got "${answer}"`);
   withProjectLock(cwd, () => {
-    /** @type {Record<string, any>} */
     const manifest = readProjectManifest(cwd);
-    const b = manifest.baseline && typeof manifest.baseline === 'object' && !Array.isArray(manifest.baseline) ? manifest.baseline : {};
-    manifest.baseline = { ...b, status };
-    writeProjectManifestAtomic(cwd, manifest);
+    const current = answerOf(manifest);
+    const follows = FOLLOWS[recorded];
+    if (current !== follows) {
+      throw new Error(`brownfield record: the offer's answer is "${current}" — ${recorded} follows ${follows === 'none' ? 'nothing recorded' : `"${follows}"`}`);
+    }
+    writeProjectManifestAtomic(cwd, { ...manifest, brownfield_offer: recorded });
   });
-  const { committed, warnings } = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, VERDICT_MESSAGES[status]);
-  /** @type {{status: BaselineVerdict, committed: string|null, note?: string, warnings?: string[]}} */
-  const result = { status, committed };
+  const { committed, warnings } = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, MESSAGES[recorded]);
+  /** @type {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[]}} */
+  const result = { answer: recorded, committed };
   noteIfNothingCommitted(result, committed);
   if (warnings.length > 0) result.warnings = warnings;
   return result;
 }
 
-module.exports = { baselineState, baselineSignal, recordBaselineVerdict, researchOwed };
+module.exports = { brownfieldOffer, baselineSignal, recordBrownfield, researchOwed };

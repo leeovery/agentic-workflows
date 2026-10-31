@@ -5,9 +5,10 @@
 // conversation — the start menu's p, the roadmap's p and start's new-work
 // rows, each handing into `discovery none` — and its one log carried on from
 // conversation to conversation, each caught up from the last; the next
-// day's session; the note a compaction carries at either level; and the
-// conversation moving between the product, an epic's discovery and a topic
-// in one session, with no handoff.
+// day's session; the note a compaction carries at either level; the
+// brownfield offer's research, owed from its yes until the findings land;
+// and the conversation moving between the product, an epic's discovery and
+// a topic in one session, with no handoff.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -187,6 +188,34 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', EPIC]), 'discussion', 'licensing'), undefined, 'the topic\'s presence is gone');
     assert.deepStrictEqual(carryOn(sim).position, { name: EPIC, phase: 'discovery', topic: EPIC });
     assert.strictEqual(sim.conversations, conversation);
+  });
+
+  it('code that predates the workflows: the offer accepted, the research owed at each opening of the product\'s conversation until the product researcher\'s findings land, then completed and never owed again (8.S37, 8.S78, 8.12.4, 8.12.13)', () => {
+    assert.strictEqual(sim.run(['boot']).brownfield_offer, 'none', 'the judgment is made');
+    sim.render(['brownfield-offer-gate'], { expect: 'content' });
+    sim.run(['brownfield', 'record', 'accepted']);
+    handoff(sim, '/leeway-discovery none none');
+    inTheProduct(sim);
+    assert.deepStrictEqual(named(sim, 'research owed'), ['yes']);
+
+    // The conversation ends before the research lands. The next start goes
+    // to its menu, and opening the product's conversation from it resumes
+    // the research.
+    sim.run(['boot']);
+    pickRoute(sim, startKeys(sim), 'open_product');
+    inTheProduct(sim);
+    assert.deepStrictEqual(named(sim, 'research owed'), ['yes']);
+
+    sim.run(['brief', 'product-researcher']);
+    const finding = sim.run(['ledger', 'find', 'product.discovery'], null,
+      JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Orders are pushed downstream by a polling dispatcher.', how: 'read app/Dispatcher.php', known: 'read' })).id;
+    sim.run(['brownfield', 'record', 'completed']);
+    assert.deepStrictEqual(sim.run(['ledger', 'product']).discovery.map((/** @type {{id: string}} */ e) => e.id), [finding], 'the findings landed at the product\'s place');
+
+    sim.run(['boot']);
+    startNew(sim, 'none');
+    inTheProduct(sim);
+    assert.deepStrictEqual(named(sim, 'research owed'), ['no'], 'a later session does not run it again');
   });
 
   it('a single-topic unit\'s talk moving up to the product\'s conversation, the only place above it (8.2.12, 24.S20)', () => {

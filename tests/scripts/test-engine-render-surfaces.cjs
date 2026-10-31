@@ -2264,6 +2264,18 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
   });
 
+  it('the brownfield offer: a yes/no gate drawn only while nothing is recorded — any answer refuses it (8.12.11)', () => {
+    const offer = renderSurface(dir, 'brownfield-offer-gate', {});
+    assert.match(offer, /=== MENU: brownfield offer/);
+    assert.match(offer, /\*\*`◆ Run a baseline assessment\?`\*\*/);
+    assert.match(offer, /\*\*`y\/yes`\*\* → Start the assessment now/);
+    assert.match(unwrap(offer), /\*\*`n\/no`\*\*\s+→ Skip — it is not offered again/);
+    for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ work_units: {}, brownfield_offer: answer }));
+      assert.throws(() => renderSurface(dir, 'brownfield-offer-gate', {}), new RegExp(`the offer's answer is "${answer}" — the offer is made once, while nothing is recorded`));
+    }
+  });
+
   it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
     const name = titlecase(path.basename(dir));
     const lost = renderSurface(dir, 'state-lost-gate', {});

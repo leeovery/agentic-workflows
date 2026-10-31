@@ -326,8 +326,8 @@ function carryOn(sim, identity = null) {
 
 // Shared phase walk used by the linear pipelines: specification → planning →
 // implementation (→ review), with the bookkeeping each phase records.
-// Every place labels itself on arrival: a navigation skill, the bridge, the
-// roadmap, and the baseline label the place alone (`arrive`), and every
+// Every place labels itself on arrival: a navigation skill, the bridge and
+// the roadmap label the place alone (`arrive`), and every
 // phase skill's Step 0 records its place before anything else
 // (`handoffEntry`). The sim strips the tmux identity and pins an empty config
 // dir, so the tmux rename is the disabled or no-tmux no-op; what the sim pins

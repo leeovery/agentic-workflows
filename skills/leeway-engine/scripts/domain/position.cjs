@@ -12,11 +12,11 @@
 // labels on or off: a phase's entry (`enter`, or `session label {wu}
 // {phase} {topic}` inside a phase not yet entered through it),
 // `session label {wu}` at a work unit's menu, `session label
-// roadmap|baseline|product` at the project-level places — a place this project lacks is refused before
-// anything is labelled or recorded. Inside implementation, `task start` adds
-// the task in flight and that task's `task complete` takes it off; the
-// tracker's `task start` does the same with the unit as the topic, its
-// `task done` and `task close` taking it off (task-verbs.cjs); a
+// roadmap|product` at the project-level places — a place this project lacks
+// is refused before anything is labelled or recorded. Inside implementation,
+// `task start` adds the task in flight and that task's `task complete` takes
+// it off; the tracker's `task start` does the same with the unit as the
+// topic, its `task done` and `task close` taking it off (task-verbs.cjs); a
 // re-label of the same implementation keeps it, and any other place leaves
 // none. The gate mod's `conversation executor` adds the agent id of the
 // executor it saw dispatched, only while a task is in flight: it rides with

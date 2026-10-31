@@ -75,7 +75,7 @@ function inlineAnswer(skill, args, line) {
     DATA_MARKER,
     'handoff: inline',
     `skill: ${skill}`,
-    ...(args === '' ? [] : [`args: ${args}`]),
+    `args: ${args}`,
     DISPLAY_MARKER,
     line,
     '',
@@ -126,11 +126,6 @@ describe('engine handoff — the composed answer for every target', () => {
   it('the roadmap opens on its home', () => {
     assert.strictEqual(inline(dir, ['leeway-roadmap', 'open']),
       inlineAnswer('leeway-roadmap', 'open', '→ Roadmap'));
-  });
-
-  it('the baseline takes no arguments — the answer carries no args line and the continuation none', () => {
-    assert.strictEqual(inline(dir, ['leeway-baseline']), inlineAnswer('leeway-baseline', '', '→ Baseline'));
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-baseline'])).text, 'Invoke `/leeway-baseline`.');
   });
 
   it('the epic menu names the epic, bare or told what concluded and how', () => {
@@ -187,7 +182,7 @@ describe('engine handoff — the composed answer for every target', () => {
   it('the table holds the targets a move into work lands on — and the skill each phase is entered through', () => {
     assert.deepStrictEqual(Object.keys(PHASE_SKILLS).sort(), [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].sort());
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
-      ['leeway-baseline', 'leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS)].sort());
+      ['leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS)].sort());
   });
 
   it('a conversation opens on leeway or a skill a handoff lands on — and on nothing else', () => {
@@ -346,7 +341,6 @@ describe('engine handoff — refusals', () => {
       [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
       [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
-      [['leeway-baseline', 'extra'], /^Usage: engine handoff leeway-baseline$/],
       [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic> \[<completed-phase> <outcome>\]$/],
       [['leeway-continue-epic', 'fumi', 'discussion'], /^Usage: engine handoff leeway-continue-epic /],
       [['leeway-continue-epic', 'fumi', 'discussion', 'paused', 'extra'], /^Usage: engine handoff leeway-continue-epic /],

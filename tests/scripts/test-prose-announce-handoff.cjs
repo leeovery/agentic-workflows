@@ -104,14 +104,14 @@ describe('prose handoff announcement', () => {
 
   it('gives the engine the announcement it answers `mod` to, and cuts the HANDOFF section from what comes back', () => {
     fs.mkdirSync(path.join(world, '.workflows'));
-    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff leeway-baseline && echo after`));
+    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff leeway-roadmap open && echo after`));
     // The walker's commands run in the developer's shell — bash or zsh.
     const shells = ['bash', 'zsh'].filter((shell) => spawnSync(shell, ['-c', 'true']).status === 0);
     for (const shell of shells) {
       const run = spawnSync(shell, ['-c', out.hookSpecificOutput.updatedInput.command], { encoding: 'utf8' });
       assert.strictEqual(run.status, 0, `${shell}: ${run.stderr}`);
       assert.match(run.stdout, /^handoff: mod$/m);
-      assert.match(run.stdout, /^=== DISPLAY: handoff .*\n→ Baseline$/m);
+      assert.match(run.stdout, /^=== DISPLAY: handoff .*\n→ Roadmap$/m);
       assert.ok(!run.stdout.includes('=== HANDOFF'), `${shell}: the section is cut`);
       assert.ok(!run.stdout.includes('"skill"'), `${shell}: its payload with it`);
       assert.match(run.stdout, /^after$/m, `${shell}: what follows the section stands`);
@@ -127,7 +127,7 @@ describe('prose handoff announcement', () => {
   });
 
   it('takes the stand-in off for the record, and nothing else', () => {
-    const handoff = 'cd x && node engine.cjs handoff leeway-baseline';
+    const handoff = 'cd x && node engine.cjs handoff leeway-roadmap open';
     assert.strictEqual(unannounced(`${ANNOUNCEMENT}cd x && ls`), 'cd x && ls');
     assert.strictEqual(unannounced(announced(handoff)), handoff);
     assert.strictEqual(unannounced('cd x && ls'), 'cd x && ls');

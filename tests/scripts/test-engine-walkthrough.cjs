@@ -122,11 +122,11 @@ describe('engine walkthrough record', () => {
     assert.match(res.committed, /^[0-9a-f]+$/);
   });
 
-  it('the baseline verdict and the walkthrough answer are separate records on one manifest', () => {
-    run(dir, ['baseline', 'record', 'native']);
+  it('the brownfield answer and the walkthrough answer are separate records on one manifest', () => {
+    run(dir, ['brownfield', 'record', 'native']);
     run(dir, ['walkthrough', 'record', 'skipped']);
     const m = projectManifest(dir);
-    assert.deepStrictEqual(m.baseline, { status: 'native' });
+    assert.strictEqual(m.brownfield_offer, 'native');
     assert.deepStrictEqual(m.walkthrough, { status: 'skipped' });
   });
 });

@@ -39,10 +39,6 @@ Emit the TITLE and DISPLAY sections verbatim per their markers, then the signpos
 
 Match the user's input to its `ACTIONS` entry — a command option's letter by `key`, its long form by `word`. Every decision below reads the entry's `action` value, never its label text.
 
-#### If `action` is `open_baseline`
-
-→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-baseline`.
-
 #### If `action` is `open_product`
 
 → Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none none`.

@@ -222,8 +222,8 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
 // command a recovery names — a full `node .claude/skills/…` call, or an
 // `engine render` shorthand — is run over a project repo holding each phase's
 // item at the placeholder address, in the states a gate would be owed over:
-// several live experiments (the record pick), an agent in flight, a baseline
-// mid-assessment, and a roadmap with waiting items.
+// several live experiments (the record pick), an agent in flight, and a
+// roadmap with waiting items.
 describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
   const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
@@ -242,7 +242,6 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   beforeEach(() => {
     dir = initRepo(setupFixture());
     createFile(dir, '.leeway/manifest.json', JSON.stringify({
-      baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } },
       roadmap: {
         horizons: ['mvp', 'v1'],
         items: {
@@ -305,7 +304,6 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
   /** @param {string} dir */
   function projectManifest(dir) {
     createFile(dir, '.leeway/manifest.json', JSON.stringify({
-      baseline: { status: 'in-progress', areas: {} },
       roadmap: { horizons: ['mvp'], items: {
         loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' },
         exports: { horizon: 'mvp', summary: 'data exports', origin: 'harvest', postponed_from: { work_unit: 'live-epic', topic: 'exports' } },

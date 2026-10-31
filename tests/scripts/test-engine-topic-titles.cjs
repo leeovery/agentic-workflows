@@ -331,9 +331,7 @@ describe('every screen names a topic through one helper', () => {
       'projections/transactions.cjs › MAP_LINES › name',
       'render.cjs › candidateGate › p.name',
     ],
-    'a roadmap item, an inbox item or a baseline area': [
-      'projections/baseline.cjs › baselineArea › area',
-      'projections/baseline.cjs › baselineAreaGate › area',
+    'a roadmap item or an inbox item': [
       'projections/roadmap.cjs › roadmapNodes › row.name',
       'projections/roadmap.cjs › roadmapPullSetView › row.name',
       'projections/transactions.cjs › MAP_LINES › c.from_roadmap',

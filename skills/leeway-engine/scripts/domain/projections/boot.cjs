@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: leeway's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
-// offer, the migration confirm, the label opt-in — the stops on a git below
-// the engine's floor and at a directive of the migration not yet done, and
-// the knowledge gate's displays. Pure renderers;
+// offer, the migration confirm, the label opt-in, the brownfield offer — the
+// stops on a git below the engine's floor and at a directive of the
+// migration not yet done, and the knowledge gate's displays. Pure renderers;
 // none reads state (the calling prose branches on the boot response and
 // fetches the gate at its display point, and the render surface reads what
 // a display names).
@@ -189,6 +189,22 @@ function labelGate() {
 }
 
 /**
+ * The one-time offer to research a codebase that predates the workflows.
+ * @returns {string}
+ */
+function brownfieldOfferGate() {
+  const body = menu(
+    '',
+    [
+      cmdOption('y', 'yes', 'Start the assessment now'),
+      cmdOption('n', 'no', 'Skip — it is not offered again'),
+    ],
+    { question: 'Run a baseline assessment?' },
+  );
+  return section('MENU: brownfield offer', MENU_INSTRUCTION, body);
+}
+
+/**
  * A knowledge configuration by name: provider · model, or keyword-only.
  * @param {{provider?: string|null, model?: string|null}} config
  * @returns {string}
@@ -310,4 +326,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, directiveStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

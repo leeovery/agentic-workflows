@@ -373,7 +373,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'bad.name', '--description', 'd'], /must be a kebab-case slug/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'discussion', '--description', 'd'], /conflicts with a phase name/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'project', '--description', 'd'], /is reserved/);
-    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'baseline', '--description', 'd'], /is reserved/);
+    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'product', '--description', 'd'], /is reserved/);
   });
 
   it('refuses a taken cc name — directory on disk, or registration only', () => {

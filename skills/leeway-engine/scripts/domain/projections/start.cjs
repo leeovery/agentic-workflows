@@ -101,6 +101,9 @@ function roadmapRows(roadmap) {
   });
 }
 
+/** The product row's note while the brownfield research is owed. */
+const RESEARCH_OWED = 'research owed';
+
 // The roadmap menu row, rendered only once the layer exists.
 /** @param {StartDetail} detail @returns {StartMenuKey|null} */
 function roadmapMenuRow(detail) {
@@ -110,13 +113,19 @@ function roadmapMenuRow(detail) {
 
 /**
  * The product's conversation's row, always there (18.2.13): its session count
- * and last date once it has sessions. It hands into discovery at no unit.
+ * and last date once it has sessions, and the brownfield research while it is
+ * owed, which the conversation's next opening resumes (8.12.13). It hands
+ * into discovery at no unit.
  * @param {StartDetail} detail @returns {StartMenuKey}
  */
-function productMenuRow({ product: { sessions, last } }) {
+function productMenuRow({ product: { sessions, last }, research_owed: owed }) {
   const head = 'Talk about the product';
   const count = `${sessions} session${sessions === 1 ? '' : 's'}`;
-  const label = sessions === 0 ? head : { head, tail: last === null ? count : `${count}, last on ${dayMonth(last)}` };
+  const tail = sessions === 0 ? null : last === null ? count : `${count}, last on ${dayMonth(last)}`;
+  /** @type {string|LabelParts} */
+  let label = head;
+  if (tail !== null) label = { head, tail, cue: owed ? RESEARCH_OWED : undefined };
+  else if (owed) label = { head, tail: RESEARCH_OWED };
   return { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label };
 }
 
@@ -170,14 +179,6 @@ function startOverview(detail) {
 // Menu
 // ---------------------------------------------------------------------------
 
-// The resume row for an in-progress baseline interview — unfinished
-// assessment reads as unfinished work.
-/** @param {StartDetail} detail @returns {LabelParts} */
-function baselineResumeLabel(detail) {
-  const n = detail.baseline.remaining;
-  return { head: 'Resume the baseline interview', tail: `${n} area${n === 1 ? '' : 's'} remaining` };
-}
-
 // A finalising unit's entry reads `Finalise …` — the continue skill it routes
 // to presents the completion gate. Messages waiting on the unit's topic cue
 // `mail waiting` after the tail, as the epic rows carry it.
@@ -196,8 +197,7 @@ function continueLabel(unit, type) {
  * Section B — the interactive menu. `keys` carries the machine action keys
  * (skills route on these); `rendered` is the dotted-gate markdown block.
  * Numbered continue entries first (overview order and numbering), then the
- * baseline resume row (`a`, in-progress only — completed manages via `m`),
- * the product's conversation (`p`, always), the roadmap once it exists, then
+ * product's conversation (`p`, always), the roadmap once it exists, then
  * the start-new and lifecycle command options (`i` only with a live
  * inbox, `v` only with completed/cancelled work units).
  * @param {StartDetail} detail
@@ -220,11 +220,7 @@ function startMenu(detail) {
   }
 
   /** @type {StartMenuKey[]} */
-  const options = [];
-  if (detail.baseline.status === 'in-progress') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: baselineResumeLabel(detail) });
-  }
-  options.push(productMenuRow(detail));
+  const options = [productMenuRow(detail)];
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);
   options.push(
@@ -281,10 +277,7 @@ function emptyOverview(detail) {
 }
 
 /**
- * The empty-state start menu — a baseline row first when one exists to act
- * on (`a`: resume in-progress, view/expand completed, start a declined one —
- * the empty state has no manage row, so `skipped` rides here; `none` and
- * `native` render nothing), then the product's conversation and the roadmap
+ * The empty-state start menu — the product's conversation and the roadmap
  * once it exists, then the six start-new options with
  * pipeline-shape labels, `i` only with a live inbox, `v` only with closed
  * work units. Same key shape as startMenu, so the ACTIONS table and routing
@@ -294,19 +287,7 @@ function emptyOverview(detail) {
  */
 function emptyMenu(detail) {
   /** @type {StartMenuKey[]} */
-  const options = [];
-  if (detail.baseline.status === 'in-progress') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: baselineResumeLabel(detail) });
-  } else if (detail.baseline.status === 'completed') {
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: 'View or expand the project baseline' });
-  } else if (detail.baseline.status === 'skipped') {
-    // A declined offer stays reachable here — the empty state has no manage
-    // row, and this is the only surface a work-free project renders. `none`
-    // and `native` stay hidden: a project that grew up on the workflows
-    // never sees a baseline row.
-    options.push({ key: 'a', word: 'baseline', action: 'open_baseline', route: '/leeway-baseline', label: 'Start the project baseline assessment' });
-  }
-  options.push(productMenuRow(detail));
+  const options = [productMenuRow(detail)];
   const roadmapRow = roadmapMenuRow(detail);
   if (roadmapRow) options.push(roadmapRow);
   options.push(
@@ -605,27 +586,14 @@ function manageListView(detail) {
 
   const data = [
     `unit_count: ${rows.length}`,
-    `baseline: ${detail.baseline.status}`,
     'UNITS (n  work_type  work_unit):',
     ...rows.map((r) => `  ${r.n}  ${r.work_type}  ${r.work_unit}`),
   ].join('\n');
-
-  // The project baseline manages from here too — it is not a work unit, so
-  // it rides as a command option rather than a numbered row. Label follows
-  // its status; the skill self-routes on the same state.
-  const baselineOption = {
-    'in-progress': 'Resume the baseline interview',
-    completed: 'View or expand the project baseline',
-    skipped: 'Start the project baseline assessment',
-    native: 'Start the project baseline assessment',
-    none: 'Start the project baseline assessment',
-  }[detail.baseline.status];
 
   return {
     data,
     menu: menu('Which work unit?', [
       ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: r.work_type })),
-      cmdOption('a', 'baseline', baselineOption),
       cmdOption('b', 'back', 'Return'),
     ]),
     rows,

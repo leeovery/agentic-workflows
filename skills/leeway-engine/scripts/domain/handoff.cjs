@@ -151,12 +151,6 @@ const TARGETS = {
     check: (cwd, [mode]) => assertOneOf('the mode', mode, ['open']),
     where: () => at('Roadmap'),
   },
-  'leeway-baseline': {
-    usage: '',
-    counts: [0],
-    check: () => {},
-    where: () => at('Baseline'),
-  },
   'leeway-continue-epic': {
     usage: '<epic> [<completed-phase> <outcome>]',
     counts: [1, 3],
@@ -194,7 +188,7 @@ function resolveHandoff(cwd, named, args) {
   }
   const target = TARGETS[skill];
   if (!target.counts.includes(args.length)) {
-    throw new Error(`Usage: engine handoff ${[skill, target.usage].filter(Boolean).join(' ')}`);
+    throw new Error(`Usage: engine handoff ${skill} ${target.usage}`);
   }
   const spanEnd = args.find((arg) => arg.includes('`'));
   if (spanEnd !== undefined) throw new Error(`"${spanEnd}" cannot travel in the continuation — a backtick ends its code span`);
@@ -205,7 +199,7 @@ function resolveHandoff(cwd, named, args) {
   return {
     skill,
     args: composed,
-    text: `Invoke \`/${[skill, composed].filter(Boolean).join(' ')}\`.`,
+    text: `Invoke \`/${skill} ${composed}\`.`,
     line: `→ ${target.where(cwd, args)}`,
   };
 }
@@ -246,8 +240,7 @@ function handoffAnnounced() {
  */
 function handoffSections(handoff) {
   const carried = handoffAnnounced();
-  const data = [`handoff: ${carried ? 'mod' : 'inline'}`, `skill: ${handoff.skill}`];
-  if (handoff.args !== '') data.push(`args: ${handoff.args}`);
+  const data = [`handoff: ${carried ? 'mod' : 'inline'}`, `skill: ${handoff.skill}`, `args: ${handoff.args}`];
   return [
     dataSection(data),
     section('DISPLAY: handoff', CONTINUE_INSTRUCTION, handoff.line),

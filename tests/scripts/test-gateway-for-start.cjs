@@ -568,7 +568,7 @@ describe('leeway sub-view sections', () => {
 
     for (const [args, title, gate, firstRow] of /** @type {[string[], string, string, string][]} */ ([
       [['archived'], 'Archived', 'archived pick', '**`1`**      → Old Idea — *idea, 2026-05-01*'],
-      [['manage'], 'Manage', 'manage pick', '**`1`**          → Auth Flow — *feature*'],
+      [['manage'], 'Manage', 'manage pick', '**`1`**      → Auth Flow — *feature*'],
       [['completed'], 'Completed & Cancelled', 'completed pick', '**`1`**      → Done Feat — *completed after review*'],
     ])) {
       const out = run(args);
@@ -591,54 +591,9 @@ describe('leeway sub-view sections', () => {
     assert.ok(!out.includes('=== MENU'), out);
   });
 
-  it('the view snapshot carries the baseline status in DATA and the resume row while in-progress', () => {
-    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
-
-    const bare = run(['view']);
-    assert.ok(bare.includes('baseline: none'), bare);
-    assert.ok(!bare.includes('open_baseline'), 'no baseline action without an assessment');
-
-    const fs = require('fs');
-    const path = require('path');
-    const p = path.join(dir, '.leeway', 'manifest.json');
-    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
-    fs.writeFileSync(p, JSON.stringify({
-      ...existing,
-      baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched' } },
-    }, null, 2));
-
-    const out = run(['view']);
-    assert.ok(out.includes('baseline: in-progress'), out);
-    assert.ok(out.includes('a  baseline  open_baseline  —  → /leeway-baseline'), out);
-    assert.ok(out.includes(`Resume the baseline interview — *1 area*\n${'\u00a0'.repeat(18)}*remaining*`), out);
-  });
-
-  it('a native verdict hides the baseline row everywhere but manage; a declined offer keeps its empty-state row', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const p = path.join(dir, '.leeway', 'manifest.json');
-    const writeProject = (baseline) => {
-      fs.mkdirSync(path.dirname(p), { recursive: true });
-      fs.writeFileSync(p, JSON.stringify({ work_units: {}, baseline }, null, 2));
-    };
-
-    writeProject({ status: 'native' });
-    const native = run(['view']);
-    assert.ok(native.includes('baseline: native'), native);
-    assert.ok(!native.includes('open_baseline'), 'a project that grew up on the workflows never sees a baseline row');
-
-    writeProject({ status: 'skipped' });
-    const skipped = run(['view']);
-    assert.ok(skipped.includes('a  baseline  open_baseline  —  → /leeway-baseline'), skipped);
-    assert.ok(skipped.includes('Start the project baseline assessment'), skipped);
-
-    // Manage carries the row for every status — the one way in for a native
-    // project that wants the assessment after all.
-    writeProject({ status: 'native' });
-    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
-    const manage = run(['manage']);
-    assert.ok(manage.includes('baseline: native'), manage);
-    assert.ok(manage.includes('Start the project baseline assessment'), manage);
+  it('reads the brownfield research owed from the project manifest, the p row noting it (8.12.13)', () => {
+    createFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
+    assert.match(run(['view']), /^\*\*`p\/product`\*\* +→ Talk about the product — \*research owed\*$/m);
   });
 
   it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {

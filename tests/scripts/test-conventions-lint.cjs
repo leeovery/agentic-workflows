@@ -427,7 +427,7 @@ function checkLinks(files) {
 // ---------------------------------------------------------------------------
 // Check 8 — H1 category rule (scoped to the leeway and leeway-* SKILL.md backbones).
 // Processing backbones (leeway-*-process, plus the engine and the
-// project-level skills — baseline, roadmap, help) open with a title H1;
+// project-level skills — roadmap, help) open with a title H1;
 // every other workflow backbone — leeway, the navigation skills,
 // discovery, the bridge — carries none.
 // ---------------------------------------------------------------------------
@@ -447,7 +447,7 @@ function skillNameOf(file) {
 
 function checkH1Category(files) {
   const out = [];
-  const H1_KNOWN = new Set(['leeway-engine', 'leeway-baseline', 'leeway-roadmap', 'leeway-help']);
+  const H1_KNOWN = new Set(['leeway-engine', 'leeway-roadmap', 'leeway-help']);
   for (const file of files) {
     const name = skillNameOf(file);
     if (!name || !isOurs(name)) continue; // only workflow backbones

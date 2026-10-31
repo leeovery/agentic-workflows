@@ -143,9 +143,9 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 ### Step 0.6: Baseline Judgment
 
-Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
+Branch on the boot response's `brownfield_offer` — the one-time judgment on whether the project carries a codebase that predates the workflows, and the answer to the offer that follows it. A recorded answer never re-judges and never re-offers.
 
-#### If `baseline` is `none`
+#### If `brownfield_offer` is `none`
 
 Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its instructions as written.
 
@@ -153,7 +153,7 @@ Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its 
 
 #### Otherwise
 
-A recorded status — render nothing.
+A recorded answer — render nothing.
 
 → Proceed to **Step 0.7**.
 

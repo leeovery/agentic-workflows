@@ -508,7 +508,6 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, createArgs('feat(auth)', 'epic')).error, /must be a kebab-case slug/);
     assert.match(engineFails(fix, createArgs('discussion', 'epic')).error, /conflicts with a phase name/);
     assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
-    assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('none', 'feature')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('product', 'epic')).error, /is reserved/);
