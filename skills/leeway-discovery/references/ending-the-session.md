@@ -10,7 +10,7 @@ Re-read the log against the conversation and add what is missing. In an epic's d
 
 In the product's conversation, the capabilities the session named that are not on the roadmap yet, and what still stands of the researcher's open questions, are proposed as roadmap items on one screen. Nothing reaches the roadmap without the person's yes; with nothing to propose, there is no screen.
 
-Each item is a kebab-case `name`, a one-line `summary` in the product's terms, and the horizon the person named; for each they gave none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names. Write them to `.leeway/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw them over the roadmap and emit its DISPLAY section verbatim per its marker:
+Each item is a kebab-case `name`, a one-line `summary` in the product's terms, and the horizon the person named; for each they gave none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. Write them to `.leeway/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw them over the roadmap and emit its DISPLAY section verbatim per its marker:
 
 ```bash
 node .claude/skills/leeway-roadmap/scripts/gateway.cjs proposal --file .leeway/.cache/product/discovery/product/roadmap-items.json

@@ -13,21 +13,33 @@
 // is handed off into its discussion, as picking it from the menus does —
 // refused, before anything travels, where the entry would refuse it
 // (topic-standing.cjs).
+//
+// Discovery is told how the conversation was come to: a work type, the
+// person starting a piece of work of that kind; `start`, a piece of work of
+// no kind yet (8.2.9); `none`, the product's conversation itself, or an
+// epic's. New work's seeds are live inbox items and waiting roadmap items,
+// `roadmap:{item}`, which a pull hands in (8.1.8).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
-const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase, topicTitles, itemName } = require('./derivations.cjs');
+const { mailPhase, topicTitles, itemName, roadmapItems, itemJoin } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
+
+/** Discovery's way in for a piece of work of no kind yet. */
+const START = 'start';
+
+/** What opens a seed naming a roadmap item. */
+const ROADMAP_SEED = 'roadmap:';
 
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
@@ -90,13 +102,34 @@ function assertWorkUnit(cwd, name, type) {
 }
 
 /**
- * Live inbox items, comma-joined as discovery splits them — every one on
- * disk, none twice, none holding the quote discovery reads them inside.
+ * Waiting roadmap items, each on the roadmap, joined to no work, and named
+ * once.
+ * @param {string} cwd @param {string[]} names
+ */
+function assertRoadmapSeeds(cwd, names) {
+  const items = roadmapItems(readProjectManifest(cwd));
+  names.forEach((name, at) => {
+    const item = Object.hasOwn(items, name) ? items[name] : undefined;
+    if (item === undefined) throw new Error(`the roadmap has no item "${name}" to seed the work`);
+    const join = itemJoin(item);
+    if (join !== null) throw new Error(`roadmap item "${name}" is joined to work unit "${join.work_unit}" already — only a waiting item seeds new work`);
+    if (names.indexOf(name) < at) throw new Error(`duplicate roadmap seed: "${name}"`);
+  });
+}
+
+/**
+ * New work's seeds, comma-joined as discovery splits them: live inbox items,
+ * every one on disk, and waiting roadmap items, `roadmap:{item}` — none
+ * twice, none holding the quote discovery reads them inside.
  * @param {string} cwd @param {string} seeds
  */
 function assertSeeds(cwd, seeds) {
-  if (seeds.includes('"')) throw new Error(`inbox seeds travel quoted — a path cannot hold a double quote: ${seeds}`);
-  parseInboxPaths(cwd, seeds.split(','), { archived: false });
+  if (seeds.includes('"')) throw new Error(`seeds travel quoted — a seed cannot hold a double quote: ${seeds}`);
+  const all = seeds.split(',');
+  const roadmap = all.filter((seed) => seed.startsWith(ROADMAP_SEED));
+  const inbox = all.filter((seed) => !seed.startsWith(ROADMAP_SEED));
+  if (inbox.length > 0) parseInboxPaths(cwd, inbox, { archived: false });
+  if (roadmap.length > 0) assertRoadmapSeeds(cwd, roadmap.map((seed) => seed.slice(ROADMAP_SEED.length)));
 }
 
 /** A place, and the most specific name in it where there is one. @param {string} place @param {string|null} [name] */
@@ -130,17 +163,17 @@ const TARGETS = {
   // No unit named is the product's conversation, where every start lands; an
   // epic named is its own discovery.
   'leeway-discovery': {
-    usage: `<work-type|${NO_ARGUMENT}> <${NO_ARGUMENT}|epic> [<inbox-paths|${NO_ARGUMENT}>]`,
+    usage: `<work-type|${START}|${NO_ARGUMENT}> <${NO_ARGUMENT}|epic> [<seeds|${NO_ARGUMENT}>]`,
     counts: [2, 3],
     quoted: 2,
     check: (cwd, [type, unit, seeds = NO_ARGUMENT]) => {
-      assertOneOf('the work type', type, [...VALID_WORK_TYPES, NO_ARGUMENT]);
+      assertOneOf('the work type', type, [...VALID_WORK_TYPES, START, NO_ARGUMENT]);
       if (unit === NO_ARGUMENT) {
         if (seeds !== NO_ARGUMENT) assertSeeds(cwd, seeds);
         return;
       }
       assertOneOf('the work type into an existing epic', type, ['epic', NO_ARGUMENT]);
-      if (seeds !== NO_ARGUMENT) throw new Error(`inbox seeds start new work, never an existing epic's discovery — got "${seeds}"`);
+      if (seeds !== NO_ARGUMENT) throw new Error(`seeds start new work, never an existing epic's discovery — got "${seeds}"`);
       assertWorkUnit(cwd, unit, 'epic');
     },
     where: (_cwd, [, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),

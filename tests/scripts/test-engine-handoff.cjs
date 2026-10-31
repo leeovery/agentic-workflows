@@ -15,7 +15,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
 const { output, refuses } = require('./engine-harness.cjs');
-const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS, OPENING_SKILLS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
@@ -82,13 +82,17 @@ function inlineAnswer(skill, args, line) {
   ].join('\n');
 }
 
-/** A project with a feature, an epic, and two live inbox items. */
+/** A project with a feature, an epic, two live inbox items, and a roadmap item waiting beside one the epic took. */
 function seed() {
   const dir = setupFixture();
   createManifest(dir, 'note-window', { work_type: 'feature' });
   createManifest(dir, 'fumi', { work_type: 'epic' });
   createFile(dir, IDEA, '# Dark mode\n');
   createFile(dir, BUG, '# Flaky login\n');
+  const project = readManifest(dir, '.');
+  const item = (summary) => ({ horizon: 'next', summary, kind: 'idea', origin: 'harvest' });
+  project.roadmap = { horizons: ['next'], items: { loyalty: item('Loyalty points'), 'white-label': { ...item('White label'), pulled_to: { work_unit: 'fumi' } } } };
+  writeState(dir, layout.manifest('.'), `${JSON.stringify(project, null, 2)}\n`);
   return dir;
 }
 
@@ -114,6 +118,13 @@ describe('engine handoff — the composed answer for every target', () => {
       `Invoke \`/leeway-discovery none none "${IDEA},${BUG}"\`.`);
     assert.strictEqual(inline(dir, ['leeway-discovery', 'none', 'none', 'none']),
       inlineAnswer('leeway-discovery', 'none none "none"', '→ Discovery'));
+  });
+
+  it('a start with no kind of work yet is told apart from the product\'s conversation (8.2.9), and a pull\'s waiting roadmap items seed new work beside inbox items (8.1.8)', () => {
+    assert.strictEqual(inline(dir, ['leeway-discovery', 'start', 'none', 'none']),
+      inlineAnswer('leeway-discovery', 'start none "none"', '→ Discovery'));
+    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'start', 'none', `roadmap:loyalty,${IDEA}`])).text,
+      `Invoke \`/leeway-discovery start none "roadmap:loyalty,${IDEA}"\`.`);
   });
 
   it('a seed path holding a space survives its quotes', () => {
@@ -337,7 +348,7 @@ describe('engine handoff — refusals', () => {
 
   it('the wrong number of arguments refuses with that target\'s usage', () => {
     const cases = [
-      [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|none> <none\|epic> \[<inbox-paths\|none>\]$/],
+      [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
       [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
       [['leeway-roadmap'], /^Usage: engine handoff leeway-roadmap open$/],
       [['leeway-roadmap', 'open', 'extra'], /^Usage: engine handoff leeway-roadmap open$/],
@@ -351,17 +362,18 @@ describe('engine handoff — refusals', () => {
   });
 
   it('discovery refuses a pre-seed outside the work types, and a work unit that is no epic the project holds', () => {
-    refused(dir, ['leeway-discovery', 'saga', 'none'], /^the work type must be one of epic\|feature\|bugfix\|cross-cutting\|quick-fix\|none — got "saga"$/);
+    refused(dir, ['leeway-discovery', 'saga', 'none'], /^the work type must be one of epic\|feature\|bugfix\|cross-cutting\|quick-fix\|start\|none — got "saga"$/);
     refused(dir, ['leeway-discovery', 'epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['leeway-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
   });
 
   it('discovery into an existing epic refuses a work type that would start new work, and any seeds', () => {
-    for (const type of VALID_WORK_TYPES.filter((t) => t !== 'epic')) {
+    for (const type of [...VALID_WORK_TYPES.filter((t) => t !== 'epic'), 'start']) {
       refused(dir, ['leeway-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
     }
-    refused(dir, ['leeway-discovery', 'epic', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery — got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
-    refused(dir, ['leeway-discovery', 'none', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery/);
+    refused(dir, ['leeway-discovery', 'epic', 'fumi', IDEA], /^seeds start new work, never an existing epic's discovery — got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
+    refused(dir, ['leeway-discovery', 'none', 'fumi', IDEA], /^seeds start new work, never an existing epic's discovery/);
+    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^seeds start new work, never an existing epic's discovery/);
   });
 
   it('discovery refuses seeds that are not live inbox items on disk, named once each', () => {
@@ -372,10 +384,17 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['leeway-discovery', 'feature', 'none', `${IDEA},`], /not a live inbox path/);
   });
 
+  it('discovery refuses a roadmap seed that is no waiting item on the roadmap, or is named twice', () => {
+    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:ghost'], /^the roadmap has no item "ghost" to seed the work$/);
+    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already — only a waiting item seeds new work$/);
+    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:loyalty,roadmap:loyalty'], /^duplicate roadmap seed: "loyalty"$/);
+    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:'], /^the roadmap has no item "" to seed the work$/);
+  });
+
   it('a seed path holding a double quote refuses — it would end the quotes discovery reads it inside', () => {
     const quoted = '.leeway/.inbox/ideas/2026-01-04--a "b".md';
     createFile(dir, quoted, '# Quoted\n');
-    refused(dir, ['leeway-discovery', 'feature', 'none', quoted], /^inbox seeds travel quoted — a path cannot hold a double quote/);
+    refused(dir, ['leeway-discovery', 'feature', 'none', quoted], /^seeds travel quoted — a seed cannot hold a double quote/);
   });
 
   it('the roadmap takes open alone — its genesis and pull carry the live conversation and never hand off', () => {

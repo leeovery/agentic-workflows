@@ -10,9 +10,9 @@ The person talks the product through, and the work takes shape before anything i
 
 ## Arguments
 
-- `$0` — **work_type**: a hint from the way in, `epic`, `feature`, `bugfix` or `quick-fix`, or `none`; `cross-cutting` reads as `none`.
+- `$0` — **way_in**: how the conversation was come to. A work type — `epic`, `feature`, `bugfix` or `quick-fix` — is the person starting a piece of work of that kind; `start`, a piece of work of no kind yet, as `cross-cutting` reads; `none`, the conversation itself, the product's or the epic's.
 - `$1` — **home**: an epic, its own discovery; or `none`, the product's conversation.
-- `$2` — **inbox_seeds**: comma-joined inbox paths the work starts from, or `none`; absent reads `none`.
+- `$2` — **seeds**: comma-joined, what new work starts from — each a live inbox path, or a waiting roadmap item, `roadmap:{item}` — or `none`; absent reads `none`.
 
 `{home}` is where the conversation is working: `$1`, or `product` where `$1` is `none`. A move to another level changes it.
 
@@ -34,13 +34,18 @@ node .claude/skills/leeway-engine/scripts/engine.cjs enter discovery {home}
 
 A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn.
 
-Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; and each inbox seed in `$2`. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; each inbox seed in `$2` in full; and for each `roadmap:{item}` seed, its row in `roadmap state`, the note among its sources in full, and the parts of the logs its other sources point at, and only those. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
 Then open the conversation; never stop in silence once you have read.
 
 ## The Opening
 
-What you say is your own. A return opens with a short account of where the conversation had got to — the threads it was circling, the person's leans, what was left open — and asks where they want to take it. A first session asks them to describe what is on their mind the way it sits in their head, shaped by the hint where there is one, and invites any notes, screenshots or files that frame it. Seeds open on one sketch across them all and a question that pulls on its shape. A conversation a move carried here is going already: carry it on.
+What you say is your own, and the way in decides what it opens on:
+- **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
+- **A work type or seeds**, in the product's conversation, open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
+- **`start`** carries the product's conversation on with no announcement and asks what the person brings: talk about the product carries on from where its sessions had got to, and a piece of work goes to the type call.
+
+A conversation a move carried here is going already: carry it on.
 
 ## The Conversation
 
@@ -48,7 +53,7 @@ A conversation that explores, never one that settles. Follow the person into det
 
 ### The Stance
 
-Two senior engineers throwing an idea around: opinionated, willing to disagree, ready to counter-frame. Engage the shape rather than mirror it — push on the weak point, offer a sharper framing, name a tension and hold it open rather than smooth it over. One thread at a time, each answer shaping the next move; no barrage of questions, no monologue. Push where it matters: the user's flows, who the user is at each point, surfaces and modes, how the parts connect, the edges between them, the surfaces nobody named, and what breaks if a position the person takes is wrong. Before arguing a side you don't hold, load **[devils-advocate.md](../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.
+Two senior engineers throwing an idea around: opinionated, willing to disagree, ready to counter-frame. Engage the shape rather than mirror it — push on the weak point, offer a sharper framing, name a tension and hold it open rather than smooth it over. One thread at a time, each answer shaping the next move; no barrage of questions, no monologue. Push where it matters: the user's flows, who the user is at each point, surfaces and modes, how the parts connect, the edges between them, the surfaces nobody named, and what breaks if a position the person takes is wrong. Whether a door is one-way is set by what depends on the decision — persisted data, an external contract, decisions stacked on it — never by the size of the change: a public command surface is two-way until something depends on it. Before arguing a side you don't hold, load **[devils-advocate.md](../leeway-shared/references/devils-advocate.md)** and follow its instructions as written.
 
 ### Input, Never Decisions
 
@@ -64,9 +69,9 @@ Discovery runs as long as the person wants, in one sitting or over weeks. When t
 
 ### The Product's Conversation
 
-Everything not yet committed to as work is the product's: what the product is, who it serves, where it is going, what the market showed. There is one product and one conversation; two subjects are two parts of it. Capabilities come at roadmap grain, each one thing the person could start on its own, and the talk is about whether and when, not how. Listen for staging — "for launch we just need", "once we have revenue" — in the person's own words; the horizons are theirs. Talk about a piece of work the person leaves before starting it stays here, and the next session opens on it.
+Everything not yet committed to as work is the product's: what the product is, who it serves, where it is going, what the market showed. There is one product and one conversation; two subjects are two parts of it. Capabilities come at roadmap grain, each one thing the person could start on its own. Listen for staging — "for launch we just need", "once we have revenue" — in the person's own words; the horizons are theirs. Talk about a piece of work the person leaves before starting it stays here, and the next session opens on it.
 
-When the talk settles on a piece of work — something to build, fix or change — load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
+Until the type is read, describe the work in plain words — "several connected things", "something broken we're fixing" — never by a type's name. When the talk settles on a piece of work — something to build, fix or change — load **[starting-this-work.md](references/starting-this-work.md)** and follow its instructions as written.
 
 ### An Epic's Discovery
 
@@ -90,6 +95,7 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 - The code read for the product's first conversation → `brief product-researcher`, then the Agent call; its findings in → `brownfield record completed`.
 - A spike, a shared file → `asset spike {home} {slug}`, `asset import {home} '{path}' …`, `render import-reprompt`.
 - The work committed to → `render start-this-work --file`, then `gate`.
+- The waiting roadmap items → `roadmap state`.
 - The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`, `render topic-receipt`.
 - The map approved → `render approve-map {home} --file`, then `gate`; a park's horizon → `render horizon-pick --park {name}`.
 - A message to a topic → `topic send`, `render send-report`.
@@ -117,7 +123,7 @@ In an epic's discovery the person calls for the map, or a session in which you c
 
 ## A Message to a Topic
 
-Something found here bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide. Write it to `.leeway/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
+In an epic's discovery, something found bears on a topic that has started: it reaches the topic as a message, decided there in its frame, never a rewritten brief. One message is one ask: what was found, the reasoning, and what the topic is asked to decide. Write it to `.leeway/.cache/{home}/discovery/{home}/message-{slug}.md`, its first line the title, and send it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic send {home} {topic} --from {home}.discovery --content .leeway/.cache/{home}/discovery/{home}/message-{slug}.md --slug {slug}

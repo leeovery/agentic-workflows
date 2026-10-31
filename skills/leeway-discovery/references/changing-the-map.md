@@ -16,7 +16,7 @@ A change the person asks for in their own words is made as they asked and report
   Several at once go in one `topic add-batch {home} --file {topics.json}`, each entry `{"name", "summary", "brief", "description"?, "from_roadmap"?, "re_add"?}`.
 - **A rename, an edit, a removal, the order** — `topic rename {home} {name} {new}`; `topic edit {home} {name} --summary "{summary}" --description "{description}"`, either or both; `topic remove {home} {name}`; `topic order {home} {topic}={n} …`.
 - **A brief rewritten** — before its topic starts, `topic brief {home} {name} --brief {draft}`; once it has started, what bears on it goes as a message (**A Message to a Topic**).
-- **A postpone** — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names. Then `topic postpone {home} {topic} --horizon "{horizon}"`, and its receipt.
+- **A postpone** — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation. Then `topic postpone {home} {topic} --horizon "{horizon}"`, and its receipt.
 - **A cancel** — fetch the confirm, `render cancel-gate {home}.discovery.{topic}`, emit its MENU verbatim per its marker and follow the answer's `next`; then its receipt, `--inbox {n}` where its `inbox` lists the waiting messages it moved.
 - **A topic reactivated** — `topic reactivate {home} discovery {topic}`, and its receipt.
 - **A roadmap item pulled forward** — `roadmap pull-forward {item} --into {home}`, said in a line.

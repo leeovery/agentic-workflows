@@ -1261,15 +1261,17 @@ function checkGrantsNameTheStateRoot(files) {
 // Check 33 — nothing the workflows ship writes the project's CLAUDE.md
 // (8.9.5, 8.S27). It loads into every session and subagent and is the
 // person's to write: a pointer there to the product record is their line. No
-// prose tells a session to write, add to or change it, and no engine or mod
-// code names it outside a comment.
+// prose sentence tells a session to write, add to or change it — a sentence
+// naming it with a verb of writing, neither negated nor with the person as
+// its writer — and no engine or mod code names it outside a comment.
 // ---------------------------------------------------------------------------
 
-const CLAUDE_MD = String.raw`\x60?CLAUDE\.md\x60?`;
-const WRITES_CLAUDE_MD = [
-  new RegExp(String.raw`\b(writ|append|add|insert|put|record|edit|updat|modif|chang)\w*\b[^.]{0,60}?\b(to|in|into|inside)\s+(the\s+)?(project'?s\s+)?${CLAUDE_MD}`, 'i'),
-  new RegExp(String.raw`\b(writ|edit|updat|modif|chang|overwrit|rewrit)\w*\s+(the\s+)?(project'?s\s+)?${CLAUDE_MD}`, 'i'),
-];
+const WRITE_VERB = /\b(writ(e|es|ing|ten)|wrote|append(s|ed|ing)?|add(s|ed|ing)?|insert(s|ed|ing)?|put(s|ting)?|edit(s|ed|ing)?|updat(e|es|ed|ing)|modif(y|ies|ied|ying)|chang(e|es|ed|ing)|overwrit(e|es|ing|ten)|rewrit(e|es|ing|ten))\b/i;
+const NEGATED = /\b(never|not|no|nothing|nor)\b|n't\b/i;
+const THE_PERSON = /\b(the person|the user)\b/i;
+
+/** Whether a sentence tells a session to write the project's CLAUDE.md. @param {string} sentence */
+const writesClaudeMd = (sentence) => /CLAUDE\.md/.test(sentence) && WRITE_VERB.test(sentence) && !NEGATED.test(sentence) && !THE_PERSON.test(sentence);
 
 /** The shipped code: the engine's, the gateways' and the mods', comments left out. */
 function codeFiles(root = REPO) {
@@ -1293,7 +1295,7 @@ function checkNoClaudeMdWrites(files, code = []) {
   const out = [];
   for (const file of files) {
     readLines(file).forEach((line, i) => {
-      if (WRITES_CLAUDE_MD.some((re) => re.test(line))) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; the workflows never change it' });
+      if (line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; the workflows never change it' });
     });
   }
   for (const file of code) {
@@ -2528,7 +2530,7 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
   });
 });
 
-test('check 33 (no CLAUDE.md writes) — 8.S27: catches prose that writes, adds to or changes the project\'s CLAUDE.md, and code naming it outside a comment; permits prose that reads it or names its path, and a comment', () => {
+test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a session to write, add to or change the project\'s CLAUDE.md, and code naming it outside a comment; permits prose that reads it or names its path, a negated sentence, one whose writer is the person, and a comment', () => {
   withTemp((dir) => {
     const writes = write(dir, 'skills/x/references/w.md', [
       '# W', '',
@@ -2536,14 +2538,21 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches prose that writes, adds 
       'Add a line naming the record into CLAUDE.md.',
       'Update CLAUDE.md with the rule.',
       'Write the rule in the project\'s CLAUDE.md so every session reads it.',
+      'Use the Edit tool on CLAUDE.md to add the rule.',
+      'Nothing is decided here. Then append the pointer to CLAUDE.md.',
       '',
     ].join('\n'));
-    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6]);
+    assert.deepStrictEqual(checkNoClaudeMdWrites([writes]).map((v) => v.line), [3, 4, 5, 6, 7, 8]);
     const reads = write(dir, 'agents/leeway-y.md', [
       'Read `CLAUDE.md` and the project skills before running anything.',
       '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
       'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
       'The product record is not CLAUDE.md, which is the person\'s to write.',
+      'The workflows never write CLAUDE.md.',
+      'Never change CLAUDE.md.',
+      'Recorded in the product record, never in CLAUDE.md.',
+      'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
+      'The project\'s `CLAUDE.md` when one exists at the project root, and its address.',
     ].join('\n'));
     assert.strictEqual(checkNoClaudeMdWrites([reads]).length, 0, `reading it and naming it are clean, got ${report(checkNoClaudeMdWrites([reads]))}`);
     const code = write(dir, 'skills/leeway-engine/scripts/domain/z.cjs', [
