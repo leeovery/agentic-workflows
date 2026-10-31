@@ -48,7 +48,7 @@ const readline = require('readline');
 const { spawn, spawnSync } = require('child_process');
 
 const {
-  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, git, testIdentity, bareRepo, templateFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
+  STATE_DIR_NAME, TEMPLATE_DATE, withEnv, datedAt, GIT_TIMEOUT_MS, git, testIdentity, bareRepo, templateFolder, copyWorld, copyFolder, setupFixture, setupFixtureAt, cleanupFixture,
   statePath, stateRelative, layout, writeState, readState, readManifest, createFile,
 } = require('./discovery-test-utils.cjs');
 const { FROZEN_MS, FROZEN_AT, withFrozenClock } = require('./frozen-clock.cjs');
@@ -57,6 +57,8 @@ const { findStateRoot } = require('../../skills/leeway-engine/scripts/kernel/sta
 const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { versionOf } = require('../../skills/leeway-engine/scripts/domain/git-floor.cjs');
+const { atLeast } = require('../../skills/leeway-engine/scripts/kernel/version.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
@@ -314,6 +316,33 @@ function traced(fn) {
   } finally {
     fs.rmSync(folder, { recursive: true, force: true });
   }
+}
+
+/** The release that brought hooks the config defines by name (`hook.<name>.command`). */
+const CONFIG_HOOKS_FROM = [2, 54, 0];
+
+/**
+ * The control a check that the config's hooks stay off needs: a plain
+ * commit at `dir`, outside the engine, fires the hooks its config defines —
+ * each writing to `fired`, which is cleared after — whether or not one of
+ * them stops it. Answers false where the git running the suite is older
+ * than such hooks, saying in the test's output that a check of them proves
+ * nothing there.
+ * @param {import('node:test').TestContext} t @param {string} dir @param {string} fired
+ * @returns {boolean}
+ */
+function configHooksFire(t, dir, fired) {
+  const answer = git(dir, ['--version']).trim();
+  const version = versionOf(answer);
+  assert.ok(version, `git's version does not read: ${answer}`);
+  if (!atLeast(version, CONFIG_HOOKS_FROM)) {
+    t.diagnostic(`${answer} runs no hook the config defines (${CONFIG_HOOKS_FROM.join('.')} on): that none fires proves nothing of them`);
+    return false;
+  }
+  spawnSync('git', ['commit', '-q', '--allow-empty', '-m', 'the control'], { cwd: dir, timeout: GIT_TIMEOUT_MS });
+  assert.ok(fs.existsSync(fired), 'a plain commit fired none of the hooks the config defines');
+  fs.rmSync(fired);
+  return true;
 }
 
 /**
@@ -868,7 +897,7 @@ module.exports = {
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,
-  git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, childLimits, ledgerEntries, tip, remoteTip,
+  git, stateGit, commitOnState, head, lastMessage, touched, treeSnapshot, traced, configHooksFire, childLimits, ledgerEntries, tip, remoteTip,
   commitCode, commitAll, testIdentity, bareRepo, initRepo, cloneOf, githubOffline, failingPs,
   NO_SPACE, failingTrustAppends,
   setupGitFixture, setupFixtureAt, fixtureFrom, folderFrom, codeProject, twoMachines, addSubmodule, cleanupFixture,

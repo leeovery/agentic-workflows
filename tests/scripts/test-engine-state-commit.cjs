@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
-const { git, bareRepo, layout, createFile, touched, traced, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, bareRepo, layout, createFile, touched, traced, configHooksFire, withEnv, cloneOf, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, elsewhereRepo, snapshot, childStderr } = require('./state-worktree-world.cjs');
 
 const STATE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
@@ -556,16 +556,17 @@ describe('a state commit interrupted between its steps', () => {
 describe('a state commit beside the person\'s repository (4.S18)', () => {
   const HOOKS = ['pre-commit', 'prepare-commit-msg', 'commit-msg', 'post-commit', 'reference-transaction', 'post-checkout', 'pre-push', 'post-index-change'];
 
-  it('runs none of the repository\'s hooks and lands on leeway-state whatever GIT_DIR names', () => {
+  it('runs none of the repository\'s hooks and lands on leeway-state whatever GIT_DIR names', (t) => {
     const { main, root, bare } = codeProject(world(), { remote: true });
     const elsewhere = elsewhereRepo();
     const elsewhereBefore = snapshot(elsewhere);
 
     const fired = path.join(world(), 'hooks-fired');
-    const hookScript = (name) => `#!/bin/sh\necho ${name} >> "${fired}"\nexit 1\n`;
-    for (const hook of HOOKS) fs.writeFileSync(path.join(main, '.git', 'hooks', hook), hookScript(hook), { mode: 0o755 });
     git(main, ['config', 'hook.guard.command', `echo config >> "${fired}"; exit 1`]);
     for (const hook of HOOKS) git(main, ['config', '--add', 'hook.guard.event', hook]);
+    configHooksFire(t, main, fired);
+    const hookScript = (name) => `#!/bin/sh\necho ${name} >> "${fired}"\nexit 1\n`;
+    for (const hook of HOOKS) fs.writeFileSync(path.join(main, '.git', 'hooks', hook), hookScript(hook), { mode: 0o755 });
     const fsmonitor = path.join(world(), 'fsmonitor');
     fs.writeFileSync(fsmonitor, hookScript('fsmonitor'), { mode: 0o755 });
     git(main, ['config', 'core.fsmonitor', fsmonitor]);

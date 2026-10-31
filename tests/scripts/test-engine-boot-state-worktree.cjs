@@ -5,7 +5,8 @@
 // domain/state-worktree.cjs): added again where removed or its folder
 // deleted, locked again where unlocked, refused on a detached HEAD or
 // another branch; and a project folder moved or copied, its state worktree
-// linked where it now is, the copy's made its own.
+// linked where it now is, the copy's made its own — the config's hooks kept
+// off through a boot of a moved project that began on the broken link.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -20,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, tip, statePath, layout, commitOnState } = harness;
+const { git, tip, statePath, layout, commitOnState, configHooksFire } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -100,7 +101,7 @@ function links(main, worktrees) {
 }
 
 describe('a project folder moved or copied', () => {
-  it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again — none of the config\'s hooks firing, though its link was broken when boot first read them', () => {
+  it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again — none of the config\'s hooks firing, though its link was broken when boot first read them', (t) => {
     const { main, root } = setUp();
     createFile(root, layout.projectManifest, '{"kept":true}\n');
     const moved = path.join(world(), 'moved');
@@ -108,10 +109,11 @@ describe('a project folder moved or copied', () => {
     const fired = path.join(world(), 'hooks-fired');
     git(moved, ['config', 'hook.guard.command', `echo "$PWD" >> "${fired}"`]);
     for (const event of CONFIG_HOOK_EVENTS) git(moved, ['config', '--add', 'hook.guard.event', event]);
+    const hooksChecked = configHooksFire(t, moved, fired);
 
     const res = boot(moved);
 
-    assert.ok(!fs.existsSync(fired), `hooks fired: ${fs.existsSync(fired) ? fs.readFileSync(fired, 'utf8') : ''}`);
+    if (hooksChecked) assert.ok(!fs.existsSync(fired), `hooks fired: ${fs.existsSync(fired) ? fs.readFileSync(fired, 'utf8') : ''}`);
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     const movedRoot = statePath(moved);
     assert.deepStrictEqual(placed(movedRoot), IN_PLACE);
