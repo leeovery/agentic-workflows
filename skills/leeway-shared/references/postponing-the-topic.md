@@ -1,20 +1,19 @@
 # Postponing the Topic
 
-*Shared reference. Loaded by the `## Postponing the Topic` section on the research, discussion, investigation, scoping, specification, planning, implementation, and review processing skills, by discovery's map operations, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
+*Shared reference. Loaded by the `## Postponing the Topic` section on the investigation, scoping, specification, planning, implementation, and review processing skills, by discovery's map operations, by the epic menu's postpone sub-view, and by the gap-analysis approval gate.*
 
 ---
 
 The caller provides `work_unit`, `name` — the topic that leaves — and the session's own `phase` and `topic`, the literal `none` where the caller is not a session working a topic (the epic menu and the approval gate name neither; discovery's map operations name the phase alone). Postpone says one thing: we are doing this topic later — it leaves the epic whole, waits on the roadmap under the horizon the user names, and comes back by the pull.
 
-Three neighbours it is not:
+Two neighbours it is not:
 
 - **Cancel.** "Not doing this" — the topic stays on the map as the record that it was raised and declined, and its conclusions leave retrieval for good.
 - **A park.** An idea surfacing mid-conversation goes to the roadmap through the backlogging door. Postpone takes a topic already on the map, with everything under its name.
-- **Research's dead end.** Research that ran and leaves the product nothing to carry forward concludes at its conclude gate: the question was answered, not deferred.
 
 ## A. Resolve the Unit
 
-Postpone is topic-level over the Discovery unit — the map row with its research, discussion, and experiments together. Read the work type:
+Postpone is topic-level over the Discovery unit — the map row with its discussion and experiments together. Read the work type:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
@@ -22,7 +21,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} wo
 
 #### If work type is `epic`
 
-Set `own` — whether `topic` equals `name` and `phase` is `research` or `discussion`: the session is sitting in the unit that leaves.
+Set `own` — whether `topic` equals `name` and `phase` is `discussion`: the session is sitting in the unit that leaves.
 
 → Proceed to **B. The Horizon**.
 
@@ -104,7 +103,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_uni
 
 Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
 
-Either way, run the postpone — one command takes the unit (the map row marked, every live research and discussion item under its name stashed and postponed, any proposed grouping over its discussion discarded, the experiment series left as it stands), removes the postponed artifacts' knowledge-base chunks, births or re-waits the roadmap item under the horizon, and commits both manifests:
+Either way, run the postpone — one command takes the unit (the map row marked, the live discussion item under its name stashed and postponed, any proposed grouping over its discussion discarded, the experiment series left as it stands), births or re-waits the roadmap item under the horizon, and commits both manifests:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic postpone {work_unit} {name} --horizon "{horizon}"

@@ -12,7 +12,7 @@ The caller provides these via context before loading:
 
 - `work_unit` — the epic's work unit name. Always present.
 - `proposed_name` — the topic name the caller derived. Always present.
-- `routing` — the literal `research` or `discussion`. The new topic's initial routing intent.
+- `routing` — the literal `discussion`.
 - `source` — the provenance string for the discovery item (e.g. `message:{origin}`).
 
 After return, the caller reads this from conversation memory:

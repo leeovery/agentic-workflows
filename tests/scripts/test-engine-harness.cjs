@@ -30,17 +30,17 @@ const {
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-own' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 
-/** A feature with one research item, committed. */
+/** A bugfix with one investigation item, committed. */
 function seed(dir, { commit = true } = {}) {
   const wu = statePath(dir, 'pay');
-  fs.mkdirSync(path.join(wu, 'research'), { recursive: true });
+  fs.mkdirSync(path.join(wu, 'investigation'), { recursive: true });
   fs.writeFileSync(path.join(wu, 'manifest.json'), JSON.stringify({
     name: 'pay',
-    work_type: 'feature',
+    work_type: 'bugfix',
     status: 'in-progress',
-    phases: { research: { items: { pay: { status: 'in-progress' } } } },
+    phases: { investigation: { items: { pay: { status: 'in-progress' } } } },
   }, null, 2) + '\n');
-  fs.writeFileSync(path.join(wu, 'research', 'pay.md'), '# Research\n');
+  fs.writeFileSync(path.join(wu, 'investigation', 'pay.md'), '# Investigation\n');
   if (commit) commitAll(dir, 'init');
 }
 
@@ -50,21 +50,21 @@ describe('engine harness — the shapes', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('ok answers the parsed response line of a call that succeeds', () => {
-    assert.deepStrictEqual(ok(dir, ['manifest', 'set', 'pay.research.pay', 'brief_incorporated', 'true']),
-      { ok: true, path: 'pay.research.pay', set: { brief_incorporated: true } });
+    assert.deepStrictEqual(ok(dir, ['manifest', 'set', 'pay.investigation.pay', 'brief_incorporated', 'true']),
+      { ok: true, path: 'pay.investigation.pay', set: { brief_incorporated: true } });
   });
 
   it('ok fails loudly when the engine refuses', () => {
-    assert.throws(() => ok(dir, ['topic', 'complete', 'pay', 'research', 'absent']),
-      /engine topic complete pay research absent failed/);
+    assert.throws(() => ok(dir, ['topic', 'complete', 'pay', 'investigation', 'absent']),
+      /engine topic complete pay investigation absent failed/);
   });
 
   it('okSections answers the response and everything after it', () => {
-    const pure = okSections(dir, ['manifest', 'set', 'pay.research.pay', 'brief_incorporated', 'true']);
+    const pure = okSections(dir, ['manifest', 'set', 'pay.investigation.pay', 'brief_incorporated', 'true']);
     assert.strictEqual(pure.res.ok, true);
     assert.strictEqual(pure.sections, '', 'a transaction answers with pure JSON');
 
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: PEER });
+    ok(dir, ['presence', 'beat', 'pay', 'discussion', 'pay'], { env: PEER });
     const scan = okSections(dir, ['presence', 'scan', 'pay'], { env: OWN });
     assert.strictEqual(scan.res.held_sources, 1);
     assert.match(scan.sections, /Analyses deferred/, 'the sections after the response line');
@@ -76,24 +76,24 @@ describe('engine harness — the shapes', () => {
   });
 
   it('output answers the whole stdout of a call that must succeed', () => {
-    const rendered = output(dir, ['render', 'resume-gate', 'pay.research.pay']);
+    const rendered = output(dir, ['render', 'resume-gate', 'pay.investigation.pay']);
     assert.match(rendered, /^=== /, 'the render surface, sections and all');
-    assert.strictEqual(output(dir, ['manifest', 'get', 'pay.research.pay', 'status']), 'in-progress\n',
+    assert.strictEqual(output(dir, ['manifest', 'get', 'pay.investigation.pay', 'status']), 'in-progress\n',
       'a bare read is its raw stdout, trailing newline included');
   });
 
   it('call answers the three parts and asserts nothing — an expected miss included', () => {
-    assert.deepStrictEqual(call(dir, ['manifest', 'exists', 'pay.research.absent']),
+    assert.deepStrictEqual(call(dir, ['manifest', 'exists', 'pay.investigation.absent']),
       { stdout: 'false\n', stderr: '', code: 0 });
-    const miss = call(dir, ['manifest', 'key-of', 'pay.research', 'items', 'absent']);
+    const miss = call(dir, ['manifest', 'key-of', 'pay.investigation', 'items', 'absent']);
     assert.strictEqual(miss.code, 2);
     assert.match(miss.stderr, /^Error: Value "absent" not found/);
   });
 
   it('the call\'s stdin reaches the engine', () => {
-    ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: OWN });
+    ok(dir, ['presence', 'beat', 'pay', 'investigation', 'pay'], { env: OWN });
     const swept = ok(dir, ['presence', 'cleanup'], { stdin: JSON.stringify({ session_id: 'sess-own' }) });
-    assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'research', topic: 'pay' }]);
+    assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'investigation', topic: 'pay' }]);
   });
 });
 
@@ -134,10 +134,10 @@ describe('engine harness — the git fixture', () => {
   it('is a repo an engine commit lands in — the state on the state branch, none on main', () => {
     seed(dir);
     const head = git(dir, ['rev-parse', 'HEAD']).trim();
-    fs.writeFileSync(statePath(dir, 'pay/research/pay.md'), '# Research\n\nMore.\n');
-    const res = ok(dir, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
+    fs.writeFileSync(statePath(dir, 'pay/investigation/pay.md'), '# Investigation\n\nMore.\n');
+    const res = ok(dir, ['commit', 'pay', '-m', 'investigation(pay): notes', '--topic', 'investigation/pay']);
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'investigation(pay): notes');
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
@@ -198,7 +198,7 @@ describe('engine harness — a world made once and copied', () => {
     assert.strictEqual(made.length, 1);
     for (const copy of copies) {
       assert.strictEqual(stateGit(copy, ['log', '-1', '--pretty=%s']).trim(), 'init');
-      assert.strictEqual(fs.readFileSync(statePath(copy, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+      assert.strictEqual(fs.readFileSync(statePath(copy, 'pay/investigation/pay.md'), 'utf8'), '# Investigation\n');
     }
   });
 
@@ -206,11 +206,11 @@ describe('engine harness — a world made once and copied', () => {
     copies = [world(), world()];
     const [one, two] = copies;
     assert.strictEqual(stateGit(one, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), path.join(one, '.git'));
-    fs.writeFileSync(statePath(one, 'pay/research/pay.md'), '# Research\n\nMore.\n');
-    ok(one, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
+    fs.writeFileSync(statePath(one, 'pay/investigation/pay.md'), '# Investigation\n\nMore.\n');
+    ok(one, ['commit', 'pay', '-m', 'investigation(pay): notes', '--topic', 'investigation/pay']);
     for (const other of [two, made[0]]) {
       assert.strictEqual(stateGit(other, ['log', '-1', '--pretty=%s']).trim(), 'init');
-      assert.strictEqual(fs.readFileSync(statePath(other, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+      assert.strictEqual(fs.readFileSync(statePath(other, 'pay/investigation/pay.md'), 'utf8'), '# Investigation\n');
     }
   });
 
@@ -243,13 +243,13 @@ describe('engine harness — a keyword-only checkout', () => {
 
   it('is one a transaction indexes into: the store is real, and says what it holds', () => {
     harness.keywordOnlyKnowledge(dir);
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    const res = ok(dir, ['topic', 'complete', 'pay', 'investigation', 'pay']);
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(harness.indexedFiles(dir), ['pay/research/pay.md']);
+    assert.deepStrictEqual(harness.indexedFiles(dir), ['pay/investigation/pay.md']);
   });
 
   it('holds nothing where the checkout was never set up — the index a warning, no store built, and a read of what it holds refused', () => {
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    const res = ok(dir, ['topic', 'complete', 'pay', 'investigation', 'pay']);
     assert.match(res.warnings[0], /^knowledge index failed: No knowledge store here/);
     assert.strictEqual(harness.hasStore(dir), false);
     assert.throws(() => harness.indexedFiles(dir), { message: `no knowledge store in ${dir}` });
@@ -257,14 +257,14 @@ describe('engine harness — a keyword-only checkout', () => {
 
   it('is one whose index fails, deterministically, where the store cannot be loaded', () => {
     harness.unreadableKnowledge(dir);
-    const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
+    const res = ok(dir, ['topic', 'complete', 'pay', 'investigation', 'pay']);
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
   });
 
   it('answers a command that waits on the embedding provider through callAsync', async () => {
     harness.keywordOnlyKnowledge(dir);
-    ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
-    const answer = await harness.callAsync(dir, ['knowledge', 'query', 'research']);
+    ok(dir, ['topic', 'complete', 'pay', 'investigation', 'pay']);
+    const answer = await harness.callAsync(dir, ['knowledge', 'query', 'investigation']);
     assert.strictEqual(answer.code, 0);
     assert.match(answer.stdout, /^\[keyword-only mode — configure embedding provider for semantic search\]\n\[1 results\]\n/);
   });

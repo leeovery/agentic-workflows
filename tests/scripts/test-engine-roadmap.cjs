@@ -18,7 +18,6 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { computeNextPhase } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, keywordOnlyKnowledge, indexedFiles } = require('./engine-harness.cjs');
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource } = require('./roadmap-world.cjs');
 
@@ -485,76 +484,6 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   });
 });
 
-describe('engine CLI: roadmap flag — reconcile across the join', () => {
-  let dir;
-  const setup = roadmapWorld((at) => {
-    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
-    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
-    createManifest(at, 'mvp', {
-      work_type: 'epic',
-      status: 'in-progress',
-      phases: {
-        discovery: { items: { ordering: { routing: 'discussion', source: 'roadmap', summary: 's' } } },
-        research: { items: { ordering: { status: 'in-progress' } } },
-        discussion: { items: { ordering: { status: 'completed' } } },
-      },
-    });
-    commitAll(at, 'fixture');
-    runOk(at, ['pull', 'ordering', 'menus', '--into', 'mvp']);
-    runOk(at, ['bind', 'ordering', '--topic', 'ordering']);
-  });
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { cleanup(dir); });
-
-  it('flags the live research, never the discussion, never clobbers', () => {
-    const res = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(res.flagged, [{ phase: 'research', topic: 'ordering' }]);
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: flag ordering — input moved');
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-    assert.strictEqual(manifest.phases.research.items.ordering.reconcile_needed, 'roadmap');
-    assert.strictEqual('reconcile_needed' in manifest.phases.discussion.items.ordering, false, 'a discussion takes no flag');
-
-    // Never clobbered: a second flag finds the existing one and writes nothing.
-    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const again = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(again.flagged, []);
-    assert.strictEqual(again.committed, null);
-    assert.strictEqual(again.note, 'nothing reached "mvp" — the live research of topic "ordering" already carries a flag');
-    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
-  });
-
-  it('a topic with no live research: nothing reached the work, and the note says why', () => {
-    const p = path.join(dir, '.leeway', 'mvp', 'manifest.json');
-    const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
-    manifest.phases.research.items.ordering.status = 'superseded';
-    fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
-    const before = fs.readFileSync(p, 'utf8');
-    const res = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(res.flagged, []);
-    assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'nothing reached "mvp" — topic "ordering" has no live research to flag');
-    assert.strictEqual(fs.readFileSync(p, 'utf8'), before);
-  });
-
-  it('a join with no topic — one riding with an epic, or one into a unit of another type — reaches nothing, and says so', () => {
-    const res = runOk(dir, ['flag', 'menus']);
-    assert.deepStrictEqual(res.flagged, []);
-    assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'nothing reached "mvp" — it has no topic there to flag');
-
-    runOk(dir, ['add', 'login-crash', '--horizon', 'mvp', '--summary', 's', '--kind', 'bug']);
-    createManifest(dir, 'login-crash', { work_type: 'bugfix', status: 'in-progress', phases: {
-      investigation: { items: { 'login-crash': { status: 'in-progress' } } },
-    } });
-    runOk(dir, ['pull', 'login-crash', '--into', 'login-crash']);
-    assert.strictEqual(runOk(dir, ['flag', 'login-crash']).note, 'nothing reached "login-crash" — it has no topic there to flag');
-
-    assert.match(runFail(dir, ['flag', 'ghost']).error, /no roadmap item "ghost"/);
-    runOk(dir, ['add', 'waiting-one', '--horizon', 'v2', '--summary', 's']);
-    assert.match(runFail(dir, ['flag', 'waiting-one']).error, /not joined/);
-  });
-});
-
 describe('engine CLI: roadmap sessions and imports', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture(); });
@@ -823,35 +752,6 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     joinItem(dir, 'ordering', 'never-created');
     assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'x']).error, /no longer exists — the join is orphaned/);
   });
-
-  it('flag lands on the live research alone, the live discussion beside it never flagged', () => {
-    const m = epicManifest();
-    m.phases.discovery.items.ordering = { routing: 'discussion', source: 'roadmap', summary: 's' };
-    m.phases.research = { items: { ordering: { status: 'in-progress' } } };
-    m.phases.discussion = { items: { ordering: { status: 'in-progress' } } };
-    writeEpic(m);
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
-    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
-    const res = runOk(dir, ['flag', 'ordering']);
-    assert.deepStrictEqual(res.flagged, [{ phase: 'research', topic: 'ordering' }]);
-  });
-
-  it('a decided feature, its join bound to its topic, goes on to its specification after a flag', () => {
-    createManifest(dir, 'tally', {
-      work_type: 'feature',
-      status: 'in-progress',
-      phases: {
-        discovery: { items: { tally: { routing: 'discussion', source: 'roadmap', summary: 's' } } },
-        discussion: { items: { tally: { status: 'completed' } } },
-      },
-    });
-    runOk(dir, ['add', 'tallies', '--horizon', 'mvp', '--summary', 's']);
-    runOk(dir, ['pull', 'tallies', '--into', 'tally']);
-    runOk(dir, ['bind', 'tallies', '--topic', 'tally']);
-    assert.strictEqual(runOk(dir, ['flag', 'tallies']).note, 'nothing reached "tally" — topic "tally" has no live research to flag');
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'tally', 'manifest.json'), 'utf8'));
-    assert.strictEqual(computeNextPhase(manifest).next_phase, 'specification');
-  });
 });
 
 describe('engine CLI: the un-pull and the re-aim — remove and absorb move joins, never orphan them', () => {
@@ -890,8 +790,8 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
       status: 'in-progress',
       phases: { discussion: { items: { 'loyalty-feat': { status: 'completed' } } } },
     });
-    fs.mkdirSync(path.join(dir, '.leeway', 'loyalty-feat', 'discussion'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', 'loyalty-feat', 'discussion', 'loyalty-feat.md'), '# Discussion\n');
+    fs.mkdirSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat', 'log.md'), '# Discussion\n');
     commitAll(dir, 'feature fixture');
     runOk(dir, ['pull', 'loyalty', '--into', 'loyalty-feat']);
 

@@ -3,7 +3,7 @@
 // The roadmap as the work's own verbs move it
 // (skills/leeway-engine/scripts/domain/roadmap.cjs), driven through the
 // engine CLI: a topic postponed to the roadmap — its horizon born JIT, its
-// knowledge carried — and pulled back, and a join reverted by the cancel of
+// files the item's sources — and pulled back, and a join reverted by the cancel of
 // its topic or its unit, never by the unit's completion. One landing guard is
 // driven directly instead: a peer taking a name between a postpone's plan and
 // its write is a race no CLI sequence can reach, and the guard is the reason
@@ -21,7 +21,7 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
-const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses } = require('./engine-harness.cjs');
 const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource } = require('./roadmap-world.cjs');
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
@@ -36,12 +36,11 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
           menus: { routing: 'discussion', source: 'discovery', summary: 'Operators maintain', order: 2 },
           loyalty: { routing: 'discussion', source: 'discovery', order: 3 },
         } },
-        research: { items: { ordering: { status: 'completed' } } },
         discussion: { items: { ordering: { status: 'in-progress' }, menus: { status: 'completed' } } },
         specification: { items: { grp: { status: 'proposed', sources: { ordering: { status: 'pending' } } } } },
       },
     });
-    for (const rel of ['discovery/briefs/ordering.md', 'research/ordering.md', 'discussion/ordering.md']) {
+    for (const rel of ['discovery/briefs/ordering.md', 'topics/ordering/log.md']) {
       const abs = path.join(at, '.leeway', 'mvp', rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, '# x\n');
@@ -56,25 +55,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   const epicText = () => fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
 
-  const RESEARCH = '.leeway/mvp/research/ordering.md';
-  const SIBLING = '.leeway/mvp/discussion/menus.md';
-  /**
-   * The topic's completed research indexed into a keyword-only store — the
-   * chunks a postpone takes — beside a sibling topic's discussion, which it
-   * leaves.
-   */
-  const indexResearch = () => {
-    keywordOnlyKnowledge(dir);
-    fs.writeFileSync(path.join(dir, SIBLING), '# Menus\n\nOperators maintain them.\n');
-    output(dir, ['knowledge', 'index', RESEARCH]);
-    output(dir, ['knowledge', 'index', SIBLING]);
-  };
-
   it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     assert.strictEqual(res.status, 'postponed');
     assert.deepStrictEqual(res.postponed, [
-      { phase: 'research', previous_status: 'completed' },
       { phase: 'discussion', previous_status: 'in-progress' },
     ]);
     assert.deepStrictEqual(res.discarded, ['grp']);
@@ -88,13 +72,13 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
         kind: 'idea',
         origin: 'postpone:mvp',
         postponed_from: { work_unit: 'mvp', topic: 'ordering' },
-        sources: ['mvp/discovery/briefs/ordering.md', 'mvp/research/ordering.md', 'mvp/discussion/ordering.md'],
+        sources: ['mvp/discovery/briefs/ordering.md', 'mvp/topics/ordering/log.md'],
       } },
     });
     const m = epic();
     assert.deepStrictEqual(m.phases.discovery.items.ordering,
       { routing: 'discussion', source: 'discovery', summary: 'Customers order', brief_path: 'discovery/briefs/ordering.md', postponed: true, previous_order: 1 });
-    assert.strictEqual(m.phases.research.items.ordering.status, 'postponed');
+    assert.strictEqual(m.phases.discussion.items.ordering.status, 'postponed');
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
     assert.strictEqual(m.phases.specification.items.grp, undefined, 'the proposed grouping is discarded, never stashed');
 
@@ -160,21 +144,18 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('an illegal horizon refuses at the gate and at the verb, and the epic never moves', () => {
-    indexResearch();
     const before = epicText();
     assert.throws(() => output(dir, ['render', 'postpone-gate', 'mvp.discovery.ordering', '--horizon', 'v2.1']));
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
       /"v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
     assert.strictEqual(epicText(), before, 'the hold is never written');
-    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)], 'and no chunk is removed for a topic that stayed');
   });
 
-  it('a refusal at the landing leaves the epic manifest unsaved and its chunks in place', () => {
+  it('a refusal at the landing leaves the epic manifest unsaved', () => {
     // The roadmap side lands inside the work-unit lock, before the epic is
     // saved: a malformed node refuses there, with the hold written in memory
     // alone. Seeded here because the race it stands in for — a peer taking
     // the name in the window — no CLI sequence can reach.
-    indexResearch();
     const project = readProject(dir);
     project.roadmap = { horizons: {}, items: {} };
     fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(project, null, 2));
@@ -182,7 +163,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
       /roadmap\.horizons is malformed/);
     assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
-    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)]);
   });
 
   it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
@@ -213,7 +193,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     for (const args of [
       ['topic', 'start', 'mvp', 'discussion', 'ordering'],
       ['topic', 'complete', 'mvp', 'discussion', 'ordering'],
-      ['topic', 'reopen', 'mvp', 'discussion', 'ordering'],
       ['topic', 'supersede', 'mvp', 'discussion', 'ordering', '--by', 'menus'],
     ]) {
       engineFails(args, /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);
@@ -239,15 +218,15 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined);
     assert.strictEqual(m.phases.discovery.items.ordering.cancelled, true);
     assert.strictEqual(m.phases.discovery.items.ordering.previous_order, 1, 'the stashed order survives for the reactivate');
-    assert.strictEqual(m.phases.research.items.ordering.status, 'cancelled');
-    assert.strictEqual(m.phases.research.items.ordering.previous_status, 'completed');
+    assert.strictEqual(m.phases.discussion.items.ordering.status, 'cancelled');
+    assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
     assert.strictEqual(readProject(dir).roadmap.items.ordering, undefined);
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove ordering — ordering cancelled in mvp');
     const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('manifest.json') && staged.includes('mvp/manifest.json'), 'both manifests ride one commit');
     // And the reactivate is then the way back, as for any cancelled unit.
     assert.deepStrictEqual(ok(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']).restored,
-      [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
+      [{ phase: 'discussion', status: 'in-progress' }]);
   });
 
   it('roadmap remove of a re-waited item brought from the inbox declines its note and cancels the epic\'s row, one commit over both manifests and the note', () => {
@@ -269,7 +248,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
     assert.strictEqual(fs.existsSync(path.join(dir, roadmapNote)), false);
     assert.ok(fs.existsSync(path.join(dir, archived)), 'the note is declined to the inbox archive');
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/mvp/research/ordering.md')), 'the topic\'s own files are its epic\'s, never archived');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/mvp/topics/ordering/log.md')), 'the topic\'s own files are its epic\'s, never archived');
     assert.strictEqual(epic().phases.discovery.items.ordering.cancelled, true);
     assert.strictEqual(readProject(dir).roadmap.items['guest-ordering'], undefined);
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove guest-ordering — ordering cancelled in mvp');
@@ -283,7 +262,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     // The epic's row came back by some other hand; the item still names it.
     const m = epic();
     delete m.phases.discovery.items.ordering.postponed;
-    m.phases.research.items.ordering.status = 'completed';
     m.phases.discussion.items.ordering.status = 'in-progress';
     fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
     const before = epicText();
@@ -301,20 +279,17 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /"ordering" was postponed from work unit "mvp", which no longer exists — the join is orphaned/);
   });
 
-  it('pull-forward back into the same epic restores the unit, re-indexes its completed artifacts, and drops postponed_from', () => {
-    indexResearch();
+  it('pull-forward back into the same epic restores the unit and drops postponed_from', () => {
     ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING)], 'the postpone removes the topic\'s chunks, and only those');
     const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
     assert.strictEqual(res.op, 'pull-forward');
     assert.strictEqual(res.state, 'in-flight');
-    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)], 'the return re-indexes the completed artifact');
+    assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     const m = epic();
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined, 'the marker is gone');
     assert.strictEqual(m.phases.discovery.items.ordering.order, 1, 'the map order returns');
-    assert.strictEqual(m.phases.research.items.ordering.status, 'completed');
-    assert.strictEqual('previous_status' in m.phases.research.items.ordering, false);
+    assert.strictEqual(m.phases.discussion.items.ordering.status, 'in-progress');
+    assert.strictEqual('previous_status' in m.phases.discussion.items.ordering, false);
     const item = readProject(dir).roadmap.items.ordering;
     assert.deepStrictEqual(item.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
     assert.strictEqual('postponed_from' in item, false, 'the item is in flight again — a later postpone re-sets it');
@@ -322,28 +297,17 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.ok(staged.includes('manifest.json') && staged.includes('mvp/manifest.json'));
   });
 
-  it('a return whose re-index fails still lands, carrying the failure as a warning', () => {
-    ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    unreadableKnowledge(dir);
-    const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
-    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
-    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the state write stands; the index is derived');
-  });
-
   it('the re-wait merges into the sources the item already carries — never a duplicate', () => {
     writeSource(dir, '.roadmap/sessions/session-001.md');
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
-      '--source', '.roadmap/sessions/session-001.md', '--source', 'mvp/research/ordering.md']);
+      '--source', '.roadmap/sessions/session-001.md', '--source', 'mvp/topics/ordering/log.md']);
     runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
     runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
       '.roadmap/sessions/session-001.md',
-      'mvp/research/ordering.md',
+      'mvp/topics/ordering/log.md',
       'mvp/discovery/briefs/ordering.md',
-      'mvp/discussion/ordering.md',
     ]);
   });
 

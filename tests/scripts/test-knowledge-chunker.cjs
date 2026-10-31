@@ -22,6 +22,12 @@ function loadConfig(phase) {
   );
 }
 
+// The own-chunk mechanics on a shipped heading split: the Discussion Map and
+// the Summary each a chunk of their own.
+function ownChunkConfig() {
+  return { ...loadConfig('investigation'), special_sections: { 'Discussion Map': 'own-chunk', Summary: 'own-chunk' } };
+}
+
 /** The markdown's body, past its opening frontmatter, as the chunker reads it. */
 function bodyOf(markdown) {
   const { lines, bodyStart } = sourceLines(markdown);
@@ -386,8 +392,8 @@ describe('knowledge chunker', () => {
 // ---------------------------------------------------------------------------
 
 describe('knowledge chunker — character budget', () => {
-  const discussion = loadConfig('discussion');
-  const research = loadConfig('research');
+  const ownChunk = ownChunkConfig();
+  const heading = loadConfig('investigation');
 
   // A paragraph of `size` characters of words on one line, tagged so order
   // and survival can be checked.
@@ -413,7 +419,7 @@ describe('knowledge chunker — character budget', () => {
   it('splits an over-budget own-chunk Summary into paragraph groups, packed up to the budget', () => {
     const paras = Array.from({ length: 40 }, (_, i) => paragraph('summary-' + i, 1500));
     const src = ['# Topic', '', 'Intro.', '', '## Context', '', 'Some context.', '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
-    const chunks = chunk(src, discussion);
+    const chunks = chunk(src, ownChunk);
     const summary = chunks.filter((c) => c.content.includes('summary-'));
     assert.ok(summary.length >= 4, 'expected the Summary split into several groups');
     assert.ok(summary[0].content.startsWith('## Summary'), 'the first group carries the heading');
@@ -425,7 +431,7 @@ describe('knowledge chunker — character budget', () => {
     const paras = Array.from({ length: 5 }, (_, i) => paragraph('summary-' + i, 1500));
     const context = Array.from({ length: 60 }, (_, i) => 'context line ' + i).join('\n');
     const src = ['## Context', '', context, '', '## Summary', '', paras.join('\n\n'), ''].join('\n');
-    const chunks = chunk(src, discussion);
+    const chunks = chunk(src, ownChunk);
     const summary = chunks.filter((c) => c.content.startsWith('## Summary'));
     assert.strictEqual(summary.length, 1);
     assert.match(summary[0].content, /summary-4/);
@@ -459,7 +465,7 @@ describe('knowledge chunker — character budget', () => {
       block('s3', 3),
       '',
     ].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     const openers = chunks.map((c) => c.content.split('\n')[0]);
     assert.deepStrictEqual(openers, ['## Deep', '### Level 3', '#### Level 4', '##### Level 5a', '##### Level 5b', '### Sibling 3']);
     assertFaithful(chunks, src);
@@ -468,7 +474,7 @@ describe('knowledge chunker — character budget', () => {
   it('packs one giant paragraph by lines', () => {
     const lines = Array.from({ length: 600 }, (_, i) => 'line ' + i + ' ' + 'z'.repeat(80));
     const src = ['## Wall', lines.join('\n'), ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3);
     assert.ok(chunks[0].content.startsWith('## Wall'));
     assertFaithful(chunks, src);
@@ -477,7 +483,7 @@ describe('knowledge chunker — character budget', () => {
   it('splits a fenced block only when the fence alone exceeds the budget', () => {
     const code = Array.from({ length: 900 }, (_, i) => '  statement(' + i + ');' + ' '.repeat(2) + '// ' + 'c'.repeat(20)).join('\n');
     const src = ['## Code', '', 'Before the fence.', '', '```js', code, '```', '', 'After the fence.', ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3, 'the over-budget fence is split');
     assertFaithful(chunks, src);
   });
@@ -488,7 +494,7 @@ describe('knowledge chunker — character budget', () => {
     const before = Array.from({ length: 10 }, (_, i) => paragraph('before-' + i, 1200)).join('\n\n');
     const after = Array.from({ length: 10 }, (_, i) => paragraph('after-' + i, 1200)).join('\n\n');
     const src = ['## Mixed', '', before, '', fence, '', after, ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     const holding = chunks.filter((c) => c.content.includes('fenced '));
     assert.strictEqual(holding.length, 1, 'the fence lands whole in one chunk');
     assert.ok(holding[0].content.includes(fence));
@@ -499,29 +505,29 @@ describe('knowledge chunker — character budget', () => {
     const giant = Array.from({ length: 5000 }, (_, i) => 'word' + i).join(' ');
     assert.ok(giant.length > MAX_CHUNK_CHARS * 2);
     const src = ['## One Line', '', giant, ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 3);
     assertFaithful(chunks, src);
   });
 
   it('slices a ~200k-char unbroken run verbatim, every character kept', () => {
     const src = ['## Blob', '', 'Before blob.', '', 'a'.repeat(200000), '', 'After blob.', ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= Math.ceil(200000 / MAX_CHUNK_CHARS));
     assertFaithful(chunks, src);
   });
 
   it('splits a file under keep_whole_below lines when it is over the budget', () => {
     const src = Array.from({ length: 10 }, (_, i) => paragraph('short-file-' + i, 5000)).join('\n\n');
-    assert.ok(src.split('\n').length < research.keep_whole_below);
-    const chunks = chunk(src, research);
+    assert.ok(src.split('\n').length < heading.keep_whole_below);
+    const chunks = chunk(src, heading);
     assert.ok(chunks.length >= 4);
     assertFaithful(chunks, src);
   });
 
   it('keeps a file under keep_whole_below lines and under the budget as one chunk', () => {
     const src = ['## A', 'body a', '', '## B', 'body b'].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.strictEqual(chunks.length, 1);
     assert.strictEqual(chunks[0].content, src);
   });
@@ -529,22 +535,22 @@ describe('knowledge chunker — character budget', () => {
   it('drops the heading-only piece a split leaves behind', () => {
     const block = (tag) => Array.from({ length: 12 }, (_, i) => paragraph(tag + '-' + i, 1000)).join('\n\n');
     const src = ['## Parent', '', '### Child A', '', block('a'), '', '### Child B', '', block('b'), ''].join('\n');
-    const chunks = chunk(src, research);
+    const chunks = chunk(src, heading);
     assert.deepStrictEqual(chunks.map((c) => c.content.split('\n')[0]), ['### Child A', '### Child B']);
     assert.ok(chunks.every((c) => !c.content.includes('## Parent')), 'the parent heading is dropped');
     assertFaithful(chunks, src);
   });
 
   it('holds the budget and the verbatim slice across every real fixture', () => {
-    for (const [fixture, phase] of [
-      ['discussion-fixture.md', 'discussion'],
-      ['spec-folio-fixture.md', 'specification'],
-      ['spec-deep-nested-fixture.md', 'specification'],
-      ['specification-fixture.md', 'specification'],
-      ['research-oversized-h3-fixture.md', 'research'],
+    for (const [fixture, config] of [
+      ['discussion-fixture.md', ownChunkConfig()],
+      ['spec-folio-fixture.md', loadConfig('specification')],
+      ['spec-deep-nested-fixture.md', loadConfig('specification')],
+      ['specification-fixture.md', loadConfig('specification')],
+      ['research-oversized-h3-fixture.md', loadConfig('investigation')],
     ]) {
       const src = loadFixture(fixture);
-      const chunks = chunk(src, loadConfig(phase));
+      const chunks = chunk(src, config);
       for (const c of chunks) {
         assert.ok(c.content.length <= MAX_CHUNK_CHARS, fixture);
         assert.ok(bodyOf(src).includes(c.content), fixture);
@@ -583,12 +589,27 @@ describe('phase chunking configs', () => {
     });
   }
 
-  it('discussion.json declares Discussion Map and Summary as own-chunk', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'discussion.json'), 'utf8')
-    );
-    assert.strictEqual(cfg.special_sections['Discussion Map'], 'own-chunk');
-    assert.strictEqual(cfg.special_sections['Summary'], 'own-chunk');
+  it('indexes a topic\'s record, and neither the research nor the discussion log', () => {
+    assert.ok(phases.includes('record'));
+    for (const phase of ['research', 'discussion']) {
+      assert.ok(!phases.includes(phase), phase);
+      assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
+    }
+  });
+
+  it('cuts a short record copy at every question and finding, where another phase keeps it whole', () => {
+    const copy = [
+      '# fumi / note-window', '',
+      '## Is a note a window?', '', 'Asked by Claude.', '', 'A floating panel.', '',
+      '## Does a panel take focus?', '', 'Not decided yet.', '',
+      '## Finding: Panels float above every Space.', '', 'Panels float above every Space.', '',
+    ].join('\n');
+    assert.deepStrictEqual(chunk(copy, loadConfig('record')).map((c) => c.headings), [
+      ['fumi / note-window', 'Is a note a window?'],
+      ['fumi / note-window', 'Does a panel take focus?'],
+      ['fumi / note-window', 'Finding: Panels float above every Space.'],
+    ]);
+    assert.strictEqual(chunk(copy, loadConfig('investigation')).length, 1);
   });
 
   it('specification.json declares Corrigenda as own-chunk — the only config that does', () => {
@@ -596,7 +617,7 @@ describe('phase chunking configs', () => {
       fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
     );
     assert.deepStrictEqual(cfg.special_sections, { Corrigenda: 'own-chunk' });
-    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'analysis', 'seeds', 'discovery']) {
+    for (const phase of ['investigation', 'imports', 'analysis', 'seeds', 'discovery']) {
       const other = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
@@ -604,8 +625,8 @@ describe('phase chunking configs', () => {
     }
   });
 
-  it('non-discussion, non-specification configs have empty special_sections', () => {
-    for (const phase of ['research', 'investigation', 'imports', 'analysis']) {
+  it('non-specification configs have empty special_sections', () => {
+    for (const phase of ['investigation', 'imports', 'analysis']) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );
@@ -651,7 +672,7 @@ describe('phase chunking configs', () => {
     assert.ok(big.some((c) => c.content.includes('claim 399')));
   });
 
-  it('imports.json declares low confidence (matches research tier)', () => {
+  it('imports.json declares low confidence', () => {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(chunkingDir, 'imports.json'), 'utf8')
     );
@@ -780,7 +801,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a research fixture into expected sections', () => {
     const src = loadFixture('research-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     // cc-tool-plan.md has 12 H2 sections plus an H1+intro chunk.
@@ -815,7 +836,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a discussion fixture with Discussion Map and Summary as own-chunks', () => {
     const src = loadFixture('discussion-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = ownChunkConfig();
     const chunks = chunk(src, cfg);
 
     // application-architecture.md: Context, Discussion Map, App Structure,
@@ -842,7 +863,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('handles discussion without Discussion Map gracefully', () => {
     const src = loadFixture('discussion-no-map-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = ownChunkConfig();
     const chunks = chunk(src, cfg);
 
     // Chunker must not crash or produce weird output when the configured
@@ -914,7 +935,7 @@ describe('knowledge chunker — real fixtures', () => {
     // The single H2 runs to ~250 lines but well under the character budget,
     // so its three H3 observations stay together.
     const src = loadFixture('research-single-section-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     const section = chunks.filter((c) => /^## /.test(c.content.split('\n')[0]));
@@ -974,7 +995,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns no-headings fixture as single chunk', () => {
     const src = loadFixture('artifact-no-headings-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -985,20 +1006,19 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('ensures each chunks content is a verbatim substring of the source (all fixtures)', () => {
     const cases = [
-      ['research-fixture.md', 'research'],
-      ['discussion-fixture.md', 'discussion'],
-      ['discussion-no-map-fixture.md', 'discussion'],
-      ['investigation-fixture.md', 'investigation'],
-      ['specification-fixture.md', 'specification'],
-      ['research-single-section-fixture.md', 'research'],
-      ['spec-minimal-fixture.md', 'specification'],
-      ['artifact-with-codeblocks-fixture.md', 'specification'],
-      ['artifact-no-headings-fixture.md', 'research'],
+      ['research-fixture.md', loadConfig('investigation')],
+      ['discussion-fixture.md', ownChunkConfig()],
+      ['discussion-no-map-fixture.md', ownChunkConfig()],
+      ['investigation-fixture.md', loadConfig('investigation')],
+      ['specification-fixture.md', loadConfig('specification')],
+      ['research-single-section-fixture.md', loadConfig('investigation')],
+      ['spec-minimal-fixture.md', loadConfig('specification')],
+      ['artifact-with-codeblocks-fixture.md', loadConfig('specification')],
+      ['artifact-no-headings-fixture.md', loadConfig('investigation')],
     ];
-    for (const [fixture, phase] of cases) {
+    for (const [fixture, config] of cases) {
       const src = loadFixture(fixture);
-      const cfg = loadConfig(phase);
-      const chunks = chunk(src, cfg);
+      const chunks = chunk(src, config);
       assertVerbatim(chunks, src);
     }
   });
@@ -1055,7 +1075,7 @@ describe('knowledge chunker — real fixtures', () => {
     // tick v1 research exploration.md has an H3 "Session 1" under "Open
     // Questions to Explore" that runs to ~310 lines.
     const src = loadFixture('research-oversized-h3-fixture.md');
-    const cfg = loadConfig('research');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 2);
@@ -1069,7 +1089,7 @@ describe('knowledge chunker — real fixtures', () => {
     // the chunker copes with discussion variants that don't match the
     // design doc's canonical discussion shape.
     const src = loadFixture('discussion-q-style-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = ownChunkConfig();
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 8);
@@ -1107,7 +1127,7 @@ describe('knowledge chunker — real fixtures', () => {
     // Discussion Map must be extracted from its parent even though the
     // split level is 2.
     const src = loadFixture('sub-level-special-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = ownChunkConfig();
     const chunks = chunk(src, cfg);
 
     const mapChunk = chunks.find((c) =>
@@ -1142,7 +1162,7 @@ describe('knowledge chunker — real fixtures', () => {
     // action wins and no sub-carving happens. The real discussion fixture
     // already covers this — re-assert here to make the rule explicit.
     const src = loadFixture('discussion-fixture.md');
-    const cfg = loadConfig('discussion');
+    const cfg = ownChunkConfig();
     const chunks = chunk(src, cfg);
 
     // Only one Discussion Map chunk (the H2), not a carved-out H3 version.

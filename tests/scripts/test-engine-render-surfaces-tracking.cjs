@@ -32,18 +32,16 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
     writeManifest(dir, 'ledger', {
       work_type: 'feature',
       phases: {
-        research: { items: { ledger: { status: 'unstarted' } } },
-        discussion: { items: { ledger: { status: 'in-progress' } } },
+        discussion: { items: { ledger: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
     });
     assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'ledger', phase: 'discussion' }),
-      `${HEADER}\nDiscussion paused for "Ledger" — awaiting research on the topic (parked — not yet started).\n`);
+      `${HEADER}\nDiscussion paused for "Ledger" — awaiting experiment evidence (E1).\n`);
   });
 
-  it('an epic names each paused conversation with its waits — research first, then the evidence', () => {
+  it('an epic names each paused conversation with its waits', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        research: { items: { billing: { status: 'in-progress' }, auth: { status: 'completed' } } },
         discussion: {
           items: {
             billing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] },
@@ -54,7 +52,7 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
       },
     });
     assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'discussion' }),
-      `${HEADER}\nDiscussion paused for "Pay" — "Billing" awaits research on the topic (in flight) and experiment evidence (E1, E2); "Auth" awaits experiment evidence (E1).\n`,
+      `${HEADER}\nDiscussion paused for "Pay" — "Billing" awaits experiment evidence (E1, E2); "Auth" awaits experiment evidence (E1).\n`,
       'only in-progress holders are paused conversations — a completed item\'s stale field is never a wait');
   });
 
@@ -62,7 +60,6 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
     writeManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         discussion: { items: { pay: { status: 'in-progress' } } },
       },
     });
@@ -155,7 +152,6 @@ describe('epic-soft-gate', () => {
   function orderedEpic() {
     writeManifest(dir, 'pay', {
       phases: {
-        research: { items: { alpha: { status: 'in-progress' }, beta: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'in-progress' }, billing: { status: 'completed' } } },
         specification: {
           items: {
@@ -255,9 +251,9 @@ describe('epic-soft-gate', () => {
     assert.match(out, /re-analyse if you revisit later/);
   });
 
-  it('a discussion entry carries no gate — research in flight elsewhere is no concern of it', () => {
+  it('a discussion entry carries no gate', () => {
     orderedEpic();
-    for (const action of ['start_discussion', 'start_discussion_after_research', 'continue_discussion']) {
+    for (const action of ['start_discussion', 'continue_discussion']) {
       assert.strictEqual(renderSurface(dir, 'epic-soft-gate', { dotpath: 'pay', action, topic: 'auth' }), '', action);
     }
   });
@@ -627,21 +623,18 @@ describe('render direct-entry-gate', () => {
       phases: {
         discovery: {
           items: {
-            alpha: { routing: 'research', source: 'discovery' },
-            beta: { routing: 'discussion', source: 'discovery' },
+            alpha: { routing: 'discussion', source: 'discovery' },
             gamma: { routing: 'discussion', source: 'discovery' },
-            delta: { routing: 'research', source: 'discovery' },
             sigma: { routing: 'discussion', source: 'discovery', cancelled: true },
             tau: { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
-        research: { items: { gamma: { status: 'unstarted' }, delta: { status: 'in-progress' } } },
         discussion: { items: { gamma: { status: 'in-progress' } } },
       },
     });
     writeManifest(dir, 'feat', {
       work_type: 'feature',
-      phases: { discovery: { items: { feat: { routing: 'research', source: 'discovery' } } } },
+      phases: { discovery: { items: { feat: { routing: 'discussion', source: 'discovery' } } } },
     });
   });
   afterEach(() => { teardown(dir); });
@@ -650,29 +643,19 @@ describe('render direct-entry-gate', () => {
     const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.alpha' });
     assert.strictEqual(out, [
       '=== DISPLAY: direct entry gate (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ "Alpha" is already on the map — it is routed to research and nothing has started',
+      '⚑ "Alpha" is already on the map — nothing has started on it',
       '',
       '=== DISPLAY: direct entry guidance (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '> Its row on the menu names the next step.',
       '',
     ].join('\n'));
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.beta' }), /routed to discussion and nothing has started/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.delta' }), /research is in flight on it/);
-    // Outstanding research names itself at either door — its row is the topic's own.
-    const parked = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.gamma' });
-    assert.match(parked, /⚑ "Gamma" is already on the map — research is parked on it \(mail waiting\)/);
-    assert.match(parked, /> Its research row is the way in\./);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.delta' }), /research is in flight on it[\s\S]*Its research row is the way in/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
   });
 
   it('a marker-only cancelled row points at the reactivate — it carries no menu row to return to', () => {
-    for (const phase of ['discussion', 'research']) {
-      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.sigma` });
-      assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./, phase);
-      assert.ok(!out.includes('names the next step'), phase);
-    }
+    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.sigma' });
+    assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/);
+    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./);
+    assert.ok(!out.includes('names the next step'));
   });
 
   /** The project's roadmap, holding tau's item — `pulled_to` another epic when `taken`. */
@@ -690,102 +673,61 @@ describe('render direct-entry-gate', () => {
 
   it('a postponed row points at the pull forward while its roadmap item waits — it carries no menu row either', () => {
     writeRoadmap(false);
-    for (const phase of ['discussion', 'research']) {
-      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
-      assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Pull it forward from the menu \(`f\/forward`\) — a postponed topic carries no row\./, phase);
-      assert.ok(!out.includes('names the next step'), phase);
-    }
+    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.tau' });
+    assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/);
+    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Pull it forward from the menu \(`f\/forward`\) — a postponed topic carries no row\./);
+    assert.ok(!out.includes('names the next step'));
   });
 
   it('a postponed row whose roadmap item another epic took names no way back — the menu has no pull-forward row for it', () => {
     writeRoadmap(true);
-    for (const phase of ['discussion', 'research']) {
-      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\./, phase);
-      assert.ok(!out.includes('f/forward'), phase);
-    }
+    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.tau' });
+    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\./);
+    assert.ok(!out.includes('f/forward'));
   });
 
-  it('a fresh discussion-routed topic with a parked stub names the research first at either door', () => {
-    writeManifest(dir, 'stub', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { eta: { routing: 'discussion', source: 'discovery' } } },
-        research: { items: { eta: { status: 'unstarted' } } },
-      },
-    });
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.discussion.eta' }), /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.research.eta' }), /research is parked on it \(mail waiting\)/);
-  });
-
-  it('a closed topic names its closure at either door, research reopened beneath it notwithstanding — a dead end points at discovery\'s reopen', () => {
+  it('a closed topic names its closure — a dead end points at discovery\'s reopen', () => {
     writeManifest(dir, 'closed', {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          dead: { routing: 'research', source: 'discovery', handled: true },
-          gone: { routing: 'research', source: 'discovery' },
+          dead: { routing: 'discussion', source: 'discovery', handled: true },
+          gone: { routing: 'discussion', source: 'discovery' },
         } },
-        research: { items: { dead: { status: 'in-progress' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
         discussion: { items: { dead: { status: 'completed' }, gone: { status: 'cancelled', previous_status: 'in-progress' } } },
       },
     });
-    for (const phase of ['discussion', 'research']) {
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.dead` }),
-        /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*> Reopen it in discovery \(`i\/discovery`\) — a dead-ended topic carries no row\./, phase);
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.gone` }),
-        /it is cancelled and stays on the map as record/);
-    }
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'closed.discussion.dead' }),
+      /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*> Reopen it in discovery \(`i\/discovery`\) — a dead-ended topic carries no row\./);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'closed.discussion.gone' }),
+      /it is cancelled and stays on the map as record/);
   });
 
-  it('a decided topic points at the resume — it carries no row of its own; research parked beneath it names its research row instead', () => {
+  it('a decided topic points at the resume — it carries no row of its own', () => {
     writeManifest(dir, 'settled', {
       work_type: 'epic',
       phases: {
-        discovery: { items: {
-          done: { routing: 'discussion', source: 'discovery' },
-          forwarded: { routing: 'discussion', source: 'discovery' },
-        } },
-        research: { items: { forwarded: { status: 'unstarted' } } },
-        discussion: { items: { done: { status: 'completed' }, forwarded: { status: 'completed' } } },
+        discovery: { items: { done: { routing: 'discussion', source: 'discovery' } } },
+        discussion: { items: { done: { status: 'completed' } } },
       },
     });
-    for (const phase of ['discussion', 'research']) {
-      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.done` });
-      assert.match(out, /⚑ "Done" is already on the map — discussion has concluded/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(`c\/completed`\) — a decided topic carries no row\./, phase);
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.forwarded` }),
-        /research is parked on it \(mail waiting\)[\s\S]*> Its research row is the way in\./, phase);
-    }
+    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'settled.discussion.done' });
+    assert.match(out, /⚑ "Done" is already on the map — discussion has concluded/);
+    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(`c\/completed`\) — a decided topic carries no row\./);
   });
 
-  it('a topic whose row is on the menu points at that row — fresh, discussing, and ready for discussion alike', () => {
-    writeManifest(dir, 'live', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: {
-          talking: { routing: 'discussion', source: 'discovery' },
-          researched: { routing: 'research', source: 'discovery' },
-        } },
-        research: { items: { researched: { status: 'completed' } } },
-        discussion: { items: { talking: { status: 'in-progress' } } },
-      },
-    });
-    for (const phase of ['discussion', 'research']) {
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.beta` }),
-        /it is routed to discussion and nothing has started[\s\S]*> Its row on the menu names the next step\./, phase);
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `live.${phase}.talking` }),
-        /discussion is in flight on it[\s\S]*> Its row on the menu names the next step\./, phase);
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `live.${phase}.researched` }),
-        /research has completed and discussion is queued[\s\S]*> Its row on the menu names the next step\./, phase);
-    }
+  it('a topic whose row is on the menu points at that row — fresh and discussing alike', () => {
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.alpha' }),
+      /nothing has started on it[\s\S]*> Its row on the menu names the next step\./);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }),
+      /discussion is in flight on it[\s\S]*> Its row on the menu names the next step\./);
   });
 
-  it('empty for a new name, for a feature, and refuses a phase outside research|discussion', () => {
+  it('empty for a new name and for a feature, and refuses any phase but discussion', () => {
     assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.omega' }), '');
-    assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.omega' }), '');
     assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'feat.discussion.feat' }), '');
-    assert.throws(() => renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.planning.alpha' }), /phase must be research or discussion/);
+    for (const phase of ['research', 'planning']) {
+      assert.throws(() => renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.alpha` }), new RegExp(`phase must be discussion, got "${phase}"`));
+    }
   });
 });

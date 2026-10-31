@@ -27,8 +27,7 @@
 // started, `licence` under way with agents a process now gone dispatched,
 // `sync` decided, `export` promoted, `removal` cancelled, `widgets` postponed
 // with its roadmap item waiting, `reports` postponed with its item gone to
-// another epic, `dead-end` closed as one, `importer` routed to research — and
-// a spike; a feature, `quick-sync`, with discovery's log and a seed; a
+// another epic, `dead-end` closed as one — and a spike; a feature, `quick-sync`, with discovery's log and a seed; a
 // feature with its spec; a bugfix; and a cancelled and a completed unit. Each
 // test's conversation has its own system config, and its own Claude Code
 // config holding its transcript.
@@ -47,7 +46,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { entrySections } = require('../../skills/leeway-engine/scripts/domain/projections/enter.cjs');
-const { enterThrough } = require('../../skills/leeway-engine/scripts/domain/enter.cjs');
+const { ENTRIES, enterThrough } = require('../../skills/leeway-engine/scripts/domain/enter.cjs');
 
 const EPIC = 'fumi';
 const FEATURE = 'quick-sync';
@@ -82,7 +81,7 @@ const world = fixtureFrom('engine-enter-', (dir) => {
         items: {
           onboarding: row(1), licence: row(2), sync: row(3), export: row(4),
           removal: row(5, { cancelled: true }), widgets: row(6, { postponed: true }), reports: row(7, { postponed: true }),
-          'dead-end': row(8, { handled: true }), importer: row(9, { routing: 'research' }),
+          'dead-end': row(8, { handled: true }),
         },
       },
       discussion: {
@@ -218,8 +217,10 @@ describe('what cannot be entered is refused, naming the way on, and nothing is w
   });
 
   it('a start the topic\'s own rules refuse leaves no position and no presence behind', () => {
-    refused(['discussion', EPIC, 'importer']);
-    assert.strictEqual(presence(EPIC, 'importer'), null, 'no presence beat');
+    const refusing = { discussion: { ...ENTRIES.discussion, start: () => { throw new Error('the start refuses'); } } };
+    assert.throws(() => withEnv(env(), () => enterThrough(refusing, dir, ['discussion', EPIC, 'onboarding'])), { message: 'the start refuses' });
+    assert.strictEqual(position(), null, 'no position');
+    assert.strictEqual(presence(EPIC, 'onboarding'), null, 'no presence beat');
   });
 });
 

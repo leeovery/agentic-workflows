@@ -77,7 +77,6 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        research: { items: { auth: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: { auth: { status: 'completed' } } },
         planning: { items: { auth: { status: 'in-progress' } } },
@@ -86,13 +85,12 @@ describe('leeway-continue-linear discovery', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
         specification: { items: { caching: { status: 'in-progress' } } },
       },
     });
-    assert.deepStrictEqual(activeWorkUnit(dir, 'auth').unit.completed_phases, ['research', 'discussion', 'specification']);
-    assert.deepStrictEqual(activeWorkUnit(dir, 'caching').unit.completed_phases, ['research', 'discussion']);
+    assert.deepStrictEqual(activeWorkUnit(dir, 'auth').unit.completed_phases, ['discussion', 'specification']);
+    assert.deepStrictEqual(activeWorkUnit(dir, 'caching').unit.completed_phases, ['discussion']);
   });
 
   describe('edge cases', () => {
@@ -110,11 +108,11 @@ describe('leeway-continue-linear discovery', () => {
       }
     });
 
-    it('counts only the type\'s own pipeline — research is no bugfix phase, discussion no quick-fix phase', () => {
+    it('counts only the type\'s own pipeline — discussion is no bugfix phase, nor a quick-fix one', () => {
       createManifest(dir, 'crash', {
         work_type: 'bugfix',
         phases: {
-          research: { items: { crash: { status: 'completed' } } },
+          discussion: { items: { crash: { status: 'completed' } } },
           investigation: { items: { crash: { status: 'in-progress' } } },
         },
       });
@@ -176,7 +174,8 @@ describe('leeway-continue-linear view', () => {
       work_type: 'feature',
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'in-progress' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+        planning: { items: { auth: { status: 'in-progress' } } },
       },
       seeds: [{ path: 'seeds/2026-03-18-auth.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' }],
     });
@@ -184,20 +183,20 @@ describe('leeway-continue-linear view', () => {
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'work_unit: auth',
       'work_type: feature',
-      'next_phase: specification',
-      'phase_label: specification (in-progress)',
+      'next_phase: planning',
+      'phase_label: planning (in-progress)',
       'finalising: false',
-      'completed_phases: discussion',
+      'completed_phases: discussion, specification',
       'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth  → /leeway-specification-process feature auth',
+      '  y  yes  continue  auth  → /leeway-planning-process feature auth',
       '  r  revisit  revisit  auth  → (internal)',
       '  b  back  back  auth  → (internal)',
-      '  1  —  revisit_phase  auth  → /leeway-discussion-process feature auth',
+      '  1  —  revisit_phase  auth  → /leeway-specification-process feature auth',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
       '# **`■ Auth`**',
@@ -208,15 +207,16 @@ describe('leeway-continue-linear view', () => {
       '',
       'PIPELINE (feature)',
       '  ├─ ✓ Discussion       [completed]',
-      '  └─ ◐ Specification    [in-progress]',
+      '  ├─ ✓ Specification    [completed]',
+      '  └─ ◐ Planning         [in-progress]',
       '',
       '=== MENU: work unit menu (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
-      'Continuing "Auth" — *specification (in-progress)*.',
+      'Continuing "Auth" — *planning (in-progress)*.',
       '',
       '**`◆ Proceed?`**',
       '',
-      '**`y/yes`**     → Proceed to specification',
+      '**`y/yes`**     → Proceed to planning',
       '**`r/revisit`** → Revisit an earlier phase',
       '**`b/back`**    → Return to the start menu',
       '',
@@ -239,7 +239,6 @@ describe('leeway-continue-linear view', () => {
     for (const [name, type, done, next] of [
       ['crash', 'bugfix', 'investigation', 'specification'],
       ['typo', 'quick-fix', 'scoping', 'implementation'],
-      ['logging', 'cross-cutting', 'discussion', 'specification'],
     ]) {
       createManifest(dir, name, { work_type: type, phases: { [done]: { items: { [name]: { status: 'completed' } } } } });
       const out = view(dir, name);
@@ -248,6 +247,13 @@ describe('leeway-continue-linear view', () => {
       assert.ok(out.includes(`  1  —  revisit_phase  ${name}  → /leeway-${done}-process ${type} ${name}\n`), out);
       assert.ok(out.includes('**`b/back`**    → Return to the start menu'), out);
     }
+    // A decided discussion is no revisit — it reopens by a message — so the
+    // cross-cutting concern behind one hands straight on.
+    createManifest(dir, 'logging', { work_type: 'cross-cutting', phases: { discussion: { items: { logging: { status: 'completed' } } } } });
+    const out = view(dir, 'logging');
+    assert.ok(out.includes('work_type: cross-cutting\n'), out);
+    assert.ok(out.includes('  y  yes  continue  logging  → /leeway-specification-process cross-cutting logging\n'), out);
+    assert.doesNotMatch(out, /revisit_phase|^=== MENU/m, out);
   });
 
   it('a finalising unit gates on finalise beside the revisit and the way back', () => {

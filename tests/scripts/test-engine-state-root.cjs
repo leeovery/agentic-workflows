@@ -138,7 +138,7 @@ describe('statePath and stateSpec', () => {
   it('stateSpec joins segments with `/` as given; no segments is `.`', () => {
     assert.strictEqual(stateSpec(), '.');
     assert.strictEqual(stateSpec('pay', 'manifest.json'), 'pay/manifest.json');
-    assert.strictEqual(stateSpec('pay/research'), 'pay/research');
+    assert.strictEqual(stateSpec('pay/investigation'), 'pay/investigation');
   });
 });
 
@@ -149,8 +149,8 @@ describe('stateRelative', () => {
   });
 
   it('reads a relative path from the folder it is given in', () => {
-    assert.strictEqual(stateRelative(dir, '.leeway/pay/research/pay.md'), 'pay/research/pay.md');
-    assert.strictEqual(stateRelative(root, 'pay/research/pay.md'), 'pay/research/pay.md');
+    assert.strictEqual(stateRelative(dir, '.leeway/pay/investigation/pay.md'), 'pay/investigation/pay.md');
+    assert.strictEqual(stateRelative(root, 'pay/investigation/pay.md'), 'pay/investigation/pay.md');
   });
 
   it('names a path not yet written, the part that exists resolved', () => {

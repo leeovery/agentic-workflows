@@ -46,8 +46,7 @@ describe('cancel-gate', () => {
   it('a started topic: the items by phase, the open records that end abandoned, the proposed groupings discarded', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'research', source: 'discovery' } } },
-        research: { items: { auth: { status: 'completed' } } },
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress', awaiting_experiments: ['E2'] } } },
         experiment: { items: { auth: { status: 'in-progress', experiments: {
           E1: { slug: 'a', status: 'concluded', verdict: 'held' },
@@ -62,7 +61,7 @@ describe('cancel-gate', () => {
       },
     });
     const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
-    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[completed\] and discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E2, with E2\.1\) ends abandoned on the register\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\./);
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E2, with E2\.1\) ends abandoned on the register\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\./);
     assert.ok(!out.includes('Dead'), 'a cancelled specification is neither a lock nor a discard');
   });
 
@@ -79,10 +78,10 @@ describe('cancel-gate', () => {
     assert.match(unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' })), /1 open experiment \(E1\.1\) ends abandoned on the register\./);
   });
 
-  it('refuses a unit with nothing to cancel — an off-map topic whose only item is superseded, a specification carrying no status', () => {
+  it('refuses a unit with nothing to cancel — an off-map topic whose only item is promoted, a specification carrying no status', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        research: { items: { legacy: { status: 'superseded', superseded_by: 'other' } } },
+        discussion: { items: { legacy: { status: 'promoted', promoted_to: 'other' } } },
         specification: { items: { blank: { sources: {} } } },
       },
     });
@@ -95,12 +94,12 @@ describe('cancel-gate', () => {
   it('a single item, a single open record: singular wording, no discard clause', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        research: { items: { auth: { status: 'unstarted' } } },
+        discussion: { items: { auth: { status: 'unstarted' } } },
         experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
       },
     });
     const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
-    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[unstarted\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its discussion \[unstarted\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
     assert.ok(!out.includes('discarded'), out);
   });
 
@@ -159,7 +158,7 @@ describe('cancel-gate', () => {
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.away' }),
       /"away" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.ghost' }),
-      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+      /no topic "ghost" — nothing on the map and no discussion item of that name/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.shipped' }),
       /"shipped" is locked — implementation has started, so the menu never offers it/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.grp' }),
@@ -187,8 +186,7 @@ describe('postpone-gate', () => {
 
   const LIVE = {
     phases: {
-      discovery: { items: { auth: { routing: 'research', source: 'discovery', summary: 'Auth flow' } } },
-      research: { items: { auth: { status: 'completed' } } },
+      discovery: { items: { auth: { routing: 'discussion', source: 'discovery', summary: 'Auth flow' } } },
       discussion: { items: { auth: { status: 'in-progress' } } },
     },
   };
@@ -219,7 +217,7 @@ describe('postpone-gate', () => {
       },
     });
     const out = unwrap(renderSurface(dir, 'postpone-gate', { dotpath: 'pay.discovery.auth', horizon: 'v2' }));
-    assert.match(out, /Postponing \*\*Auth\*\* marks its research \[completed\] and discussion \[in-progress\] postponed — its record stays on disk and comes back with the pull\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\. It waits on the roadmap under "v2" \(new\), until it is pulled into work\./);
+    assert.match(out, /Postponing \*\*Auth\*\* marks its discussion \[in-progress\] postponed — its record stays on disk and comes back with the pull\. The proposed groupings \*\*Grp\*\* and \*\*Other\*\* are discarded — the next grouping analysis rebuilds from the new world\. It waits on the roadmap under "v2" \(new\), until it is pulled into work\./);
     assert.ok(!out.includes('The roadmap is created with it.'), 'the map exists — only its horizon is new');
   });
 
@@ -239,15 +237,15 @@ describe('postpone-gate', () => {
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: {
-          auth: { routing: 'research', source: 'discovery' },
+          auth: { routing: 'discussion', source: 'discovery' },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
-          dead: { routing: 'research', source: 'discovery', handled: true },
+          dead: { routing: 'discussion', source: 'discovery', handled: true },
           locked: { routing: 'discussion', source: 'discovery' },
           busy: { routing: 'discussion', source: 'discovery' },
         } },
-        research: { items: { dead: { status: 'completed' } } },
         discussion: { items: {
+          dead: { status: 'completed' },
           auth: { status: 'in-progress' },
           locked: { status: 'completed' },
           busy: { status: 'in-progress' },
@@ -261,7 +259,7 @@ describe('postpone-gate', () => {
       },
     });
     const gate = (topic) => renderSurface(dir, 'postpone-gate', { dotpath: `pay.discovery.${topic}`, horizon: 'mvp' });
-    assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+    assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no discussion item of that name/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
     assert.throws(() => gate('dead'), /render postpone-gate: "dead" is closed as a dead end — reopen it first/);
@@ -323,7 +321,7 @@ describe('topic-receipt — the postpone verb', () => {
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'postpone' }),
       /--verb postpone addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'postpone' }),
-      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+      /no topic "ghost" — nothing on the map and no discussion item of that name/);
   });
 });
 
@@ -368,13 +366,12 @@ describe('topic-receipt — the restore verb', () => {
   it('names the statuses the pull forward returned the unit to, the indexing advisory riding --warn', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' }, fresh: { routing: 'research', source: 'discovery' } } },
-        research: { items: { auth: { status: 'completed' } } },
+        discovery: { items: { auth: { routing: 'discussion', source: 'discovery' }, fresh: { routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
       },
     });
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore' }),
-      /Pulled "Auth" forward\. Restored research \[completed\] · discussion \[in-progress\]\.\n/);
+      /Pulled "Auth" forward\. Restored discussion \[in-progress\]\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore', warn: '1' }),
       /⚑ Knowledge indexing warning[\s\S]*Pulled "Auth" forward\./);
     // A topic that never started comes back with nothing to name.
@@ -394,7 +391,7 @@ describe('topic-receipt — the restore verb', () => {
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'restore' }),
       /--verb restore addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'restore' }),
-      /no topic "ghost" — nothing on the map and no research or discussion item of that name/);
+      /no topic "ghost" — nothing on the map and no discussion item of that name/);
   });
 });
 
@@ -407,7 +404,6 @@ describe('topic-receipt — the unit addresses', () => {
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: { gone: { routing: 'discussion', source: 'discovery', cancelled: true }, back: { routing: 'discussion', source: 'discovery' } } },
-        research: { items: { back: { status: 'completed' } } },
         discussion: { items: { back: { status: 'in-progress' } } },
         specification: { items: { spec: { status: 'cancelled', previous_status: 'completed' }, live: { status: 'completed' } } },
         planning: { items: { live: { status: 'in-progress' } } },
@@ -415,25 +411,25 @@ describe('topic-receipt — the unit addresses', () => {
     });
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.gone', verb: 'cancel' }), /Cancelled "Gone"\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'reactivate' }),
-      /Reactivated "Back"\. Restored research \[completed\] · discussion \[in-progress\]\.\n/);
+      /Reactivated "Back"\. Restored discussion \[in-progress\]\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'cancel', warn: '1' }),
       /⚑ Knowledge removal warning[\s\S]*Cancelled "Spec"\.\n/);
     assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.live', verb: 'reactivate' }),
       /Reactivated "Live"\. Restored specification \[completed\] · planning \[in-progress\]\.\n/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'cancel' }), /"back" is not cancelled — the cancel has not run/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.spec', verb: 'reactivate' }), /"spec" is still cancelled — the reactivate has not run/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'reactivate' }),
-      /--verb reactivate addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.back', verb: 'reactivate' }),
+      /--verb reactivate addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.ghost', verb: 'cancel' }), /no specification item "ghost"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, supersede, cancel, reactivate, postpone, or restore/);
   });
 
   it('complete keeps its phase-item address', () => {
-    writeManifest(dir, 'pay', { phases: { research: { items: { back: { status: 'completed' } } } } });
-    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'complete' }), '');
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.back', verb: 'complete', warn: '1' }), /Knowledge indexing warning/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.research.ghost', verb: 'complete' }), /no research item "ghost"/);
+    writeManifest(dir, 'pay', { phases: { investigation: { items: { back: { status: 'completed' } } } } });
+    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.back', verb: 'complete' }), '');
+    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.back', verb: 'complete', warn: '1' }), /Knowledge indexing warning/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.investigation.ghost', verb: 'complete' }), /no investigation item "ghost"/);
   });
 });
 
@@ -829,49 +825,20 @@ describe('render finding-batch', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
-    writeManifest(dir, 'pay', { phases: { discussion: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } } } });
+    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
   });
   afterEach(() => teardown(dir));
 
-  it('renders the apply lane — fixed intro, unglyphed worklist rows, y/Ask menu', () => {
-    const file = writePayload(dir, 'a.json', {
-      lane: 'apply',
-      items: [
-        { title: 'Self-containment is holed by `excluded`', detail: 'Restate the invariant as ownership, not transport.' },
-        { title: 'A retracted rationale survives unmarked', detail: 'Superseded when copy-only won; mark it superseded.' },
-      ],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-    assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
-      "The fix follows from what's already decided. Nothing here is a choice.",
-      '',
-      '1\\. Self-containment is holed by \\`excluded\\`',
-      `${NB(5)}↳ Restate the invariant as ownership, not transport.`,
-      '2\\. A retracted rationale survives unmarked',
-      `${NB(5)}↳ Superseded when copy-only won; mark it superseded.`,
-      '',
-      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Apply them?`**',
-      '',
-      '**`y/yes`** → Apply all 2, then move on',
-      "**Ask**   → Tell me a number to expand, or one you don't think is",
-      `${NB(8)}settled`,
-      '',
-    ].join('\n'));
-  });
+  /** The screen over `payload` at the specification. @param {string} name @param {object} payload */
+  const batch = (name, payload) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: writePayload(dir, name, payload) });
 
-  it('renders the settled lane — the call intro, the a/auto row above the prompts', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 's.json', {
-      lane: 'settled',
+  it('renders the specification\'s settled calls — the call intro, the a/auto row above the prompts', () => {
+    const out = batch('s.json', {
       items: [
         { title: 'A repeated field name resolves to its last occurrence', detail: 'The sweep table leans this way; first-wins also fits the record.' },
         { title: 'An empty bare value writes a newline', detail: 'The output contract leans this way; zero bytes also fits the record.' },
       ],
     });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file });
     assert.strictEqual(out, [
       '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
       "Each of these is a call I've made, with what it rests on named beside it.",
@@ -897,215 +864,46 @@ describe('render finding-batch', () => {
     ].join('\n'));
   });
 
-  it('a settled screen under auto lands as a display — no menu, nothing overridden', () => {
+  it('under auto lands as a display — no menu, nothing overridden', () => {
     writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } } } });
-    const two = writePayload(dir, 'auto.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: two });
+    const out = batch('auto.json', { items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
     assert.ok(out.startsWith('=== DISPLAY: finding batch auto-approved (emit verbatim as markdown (not a code block) — the user set this gate to auto: do not stop; continue as the workflow instructs) ===\n'));
     assert.ok(out.includes("Each of these is a call I've made"), 'the screen still shows what landed');
     assert.ok(out.endsWith('\nDocumenting all 2 [auto].\n'), 'the line is true when it is emitted — the landings follow it');
-    assert.ok(!out.includes('MENU'), 'the lane that carries the flip never stops once it is set');
+    assert.ok(!out.includes('MENU'), 'the screen that carries the flip never stops once it is set');
     assert.ok(!out.includes('Auto is on'), 'a screen that does not stop overrides nothing');
-    const one = writePayload(dir, 'auto1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: one })
-      .endsWith('\nDocumenting it [auto].\n'), 'the singular reads singular');
+    assert.ok(batch('auto1.json', { items: [{ title: 'A', detail: 'a.' }] }).endsWith('\nDocumenting it [auto].\n'), 'the singular reads singular');
   });
 
-  it('the other lanes are scans a user is present for — auto never lands one', () => {
-    // The gate mode is the findings walk's, and the planning walk holds one:
-    // its call lane is `decide`, which has no flip of its own to answer.
-    writeManifest(dir, 'pay', {
-      phases: {
-        planning: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
-        specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'auto' } } },
-      },
-    });
-    for (const [dotpath, lane, items] of [
-      ['pay.planning.checkout', 'decide', [{ title: 'A', detail: 'a.' }]],
-      ['pay.planning.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
-      ['pay.planning.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
-      ['pay.specification.checkout', 'apply', [{ title: 'A', detail: 'a.' }]],
-      ['pay.specification.checkout', 'route', [{ title: 'A', target: 't', detail: 'a.' }]],
-    ]) {
-      const file = writePayload(dir, `scan-${dotpath}-${lane}.json`, { lane, items });
-      const out = renderSurface(dir, 'finding-batch', { dotpath, file });
-      assert.ok(out.includes('=== MENU: finding batch'), `${dotpath} ${lane}: the screen still asks`);
-      assert.ok(!out.includes('auto-approved'), `${dotpath} ${lane}: no lane but settled has an auto form`);
-      assert.ok(!out.includes('Auto is on'), `${dotpath} ${lane}: a scan overrides nothing`);
-    }
-  });
-
-  it("the call lane is the address's: settled at the specification, decide at the planning, none at the discussion", () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress' } } }, planning: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    const settled = writePayload(dir, 'cl1.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    const decide = writePayload(dir, 'cl2.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: settled }),
-      /lane "settled" is not served at the planning phase — its call lane is "decide"/,
-    );
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: decide }),
-      /lane "decide" is not served at the specification phase — its call lane is "settled"/,
-    );
-    for (const file of [settled, decide]) {
-      assert.throws(
-        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file }),
-        /render finding-batch: a discussion flushes no calls — each goes through raise, and Claude's own show on the map since the person last looked$/,
-      );
-    }
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file: settled }).includes('`◆ Document it?`'));
-    assert.ok(renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: decide }).includes('`◆ Document it?`'));
-  });
-
-  it('only the settled lane offers the flip — the other lanes have no gate to set', () => {
-    for (const lane of ['apply', 'decide', 'route']) {
-      const file = writePayload(dir, `na-${lane}.json`, { lane, items: [{ title: 'A', target: 't', detail: 'a.' }] });
-      assert.ok(!renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }).includes('`a/auto`'), lane);
-    }
-  });
-
-  it('renders the decide lane — call intro, y/Discuss/Ask menu', () => {
-    const file = writePayload(dir, 'd.json', {
-      lane: 'decide',
-      items: [
-        { title: 'The drain signal carries intent', detail: 'All three exit routes sent one signal; determined by the exit table.' },
-        { title: 'Unrecognised socket peer stamps `via: cli`', detail: 'A script you wired up is the same class as the CLI; determined by the enum.' },
-      ],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
-    assert.strictEqual(out, [
-      '=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===',
-      "Each of these is a call I've made, with what it rests on named beside it.",
-      '',
-      '1\\. The drain signal carries intent',
-      `${NB(5)}↳ All three exit routes sent one signal; determined by the`,
-      `${NB(7)}exit table.`,
-      '2\\. Unrecognised socket peer stamps \\`via: cli\\`',
-      `${NB(5)}↳ A script you wired up is the same class as the CLI;`,
-      `${NB(7)}determined by the enum.`,
-      '',
-      "=== MENU: finding batch (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Document them?`**',
-      '',
-      '**`y/yes`**   → Document all 2 and move on',
-      "**Discuss** → Say discuss and a number — I'll raise it after the rest",
-      `${NB(10)}land`,
-      '**Ask**     → Tell me a number to expand',
-      '',
-    ].join('\n'));
-  });
-
-  it('a remainder count rides the confirm; singleton screens read singular', () => {
-    const two = writePayload(dir, 'rem.json', {
-      lane: 'decide',
-      remaining: 7,
-      items: [
-        { title: 'A', detail: 'a.' },
-        { title: 'B', detail: 'b.' },
-      ],
-    });
-    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: two });
+  it('a remainder count rides the confirm; a singleton screen reads singular', () => {
+    const plural = batch('rem.json', { remaining: 7, items: [{ title: 'A', detail: 'a.' }, { title: 'B', detail: 'b.' }] });
     assert.match(plural, /`◆ Document them\?`/);
     assert.match(plural, /→ Document all 2 and move on \(7 more after this\)$/m);
-    const one = writePayload(dir, 'one.json', { lane: 'decide', items: [{ title: 'A', detail: 'a.' }] });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: one });
-    assert.match(out, /`◆ Document it\?`/);
-    assert.match(out, /→ Document it and move on$/m);
-    assert.match(out, /^This one is a call I've made/m);
-    const applyOne = writePayload(dir, 'ap1.json', { lane: 'apply', items: [{ title: 'A', detail: 'a.' }] });
-    const applied = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: applyOne });
-    assert.match(applied, /`◆ Apply it\?`/);
-    assert.match(applied, /→ Apply it, then move on$/m);
-    const routeOne = writePayload(dir, 'ro1.json', { lane: 'route', items: [{ title: 'A', target: 't', detail: 'a.' }] });
-    const routed = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: routeOne });
-    assert.match(routed, /`◆ Send it\?`/);
-    assert.match(routed, /→ Send it$/m);
-    const bad = writePayload(dir, 'badrem.json', { lane: 'decide', remaining: -1, items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: bad }),
-      /"remaining" must be a non-negative integer/,
-    );
+    const one = batch('one.json', { items: [{ title: 'A', detail: 'a.' }] });
+    assert.match(one, /`◆ Document it\?`/);
+    assert.match(one, /→ Document it and move on$/m);
+    assert.match(one, /^This one is a call I've made/m);
+    assert.throws(() => batch('badrem.json', { remaining: -1, items: [{ title: 'A', detail: 'a.' }] }), /"remaining" must be a non-negative integer/);
   });
 
-  it('caps a screen at five items across every lane', () => {
+  it('caps a screen at five items', () => {
     const items = Array.from({ length: 6 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    for (const lane of ['apply', 'decide']) {
-      const file = writePayload(dir, `cap-${lane}.json`, { lane, items });
-      assert.throws(
-        () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file }),
-        /a screen holds at most 5 items \(6 given\)/,
-      );
-    }
-    const routeItems = items.map((it) => ({ ...it, target: 'storage' }));
-    const rfile = writePayload(dir, 'cap-route.json', { lane: 'route', items: routeItems });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file: rfile }),
-      /a screen holds at most 5 items/,
-    );
+    assert.throws(() => batch('cap.json', { items }), /a screen holds at most 5 items \(6 given\)/);
   });
 
-  it('renders the route lane — destination in the tag slot, send wording, no label line', () => {
-    const file = writePayload(dir, 'r.json', {
-      lane: 'route',
-      items: [{ title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' }],
-    });
-    const out = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
-    assert.match(out, /^1\\\. Spec readiness rests on window\\_state `\[→ storage-and-sync\]`$/m);
-    assert.match(out, /\*\*`y\/yes`\*\* → Send it$/m);
-    assert.match(out, /one that should stay here/);
-    assert.ok(out.includes(`${DOTS}\n**\`◆ Send it?\`**\n\n**\`y/yes\`**`), 'a label-less menu opens on its question');
-    const two = writePayload(dir, 'r2.json', {
-      lane: 'route',
-      items: [
-        { title: 'Spec readiness rests on window_state', target: 'storage-and-sync', detail: 'Their subtopic owns the claim.' },
-        { title: 'Retry budget belongs to the sync loop', target: 'storage-and-sync', detail: 'Their loop owns the budget.' },
-      ],
-    });
-    const plural = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: two });
-    assert.ok(plural.includes(`${DOTS}\n**\`◆ Send them?\`**\n\n**\`y/yes\`**`), 'the plural asks for the set');
-    assert.match(plural, /\*\*`y\/yes`\*\* → Send all 2$/m);
-  });
-
-  it("--first opens the drain's first screen on its lane's marker, the menu unchanged", () => {
-    for (const [lane, marker, item] of [
-      ['apply', 'No Decision Needed', { title: 'A', detail: 'a.' }],
-      ['decide', 'Decided From the Record', { title: 'A', detail: 'a.' }],
-      ['route', 'Belongs Elsewhere', { title: 'A', target: 't', detail: 'a.' }],
-    ]) {
-      const file = writePayload(dir, `first-${lane}.json`, { lane, items: [item] });
-      const later = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file });
-      const opening = renderSurface(dir, 'finding-batch', { dotpath: 'pay.planning.checkout', file, first: '1' });
-      const [display, menuPart] = opening.split(/(?==== MENU: finding batch)/);
-      assert.ok(display.startsWith(`=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===\n**\`▪ ${marker}\`**\n\n`),
-        `${lane}: the marker heads the section it names, a blank line before the worklist`);
-      assert.strictEqual(display.replace(`**\`▪ ${marker}\`**\n\n`, ''), later.split(/(?==== MENU: finding batch)/)[0],
-        `${lane}: the worklist beneath it is the screen's own`);
-      assert.ok(later.endsWith(menuPart), `${lane}: the menu is the same either way`);
-      assert.ok(!later.includes('▪'), `${lane}: a later screen or a re-render carries no marker`);
+  it('serves the specification alone: every other door walks its calls through render finding', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'elsewhere.json', { items: [{ title: 'A', detail: 'a.' }] });
+    for (const phase of ['planning', 'discussion']) {
+      assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: `pay.${phase}.checkout`, file }),
+        new RegExp(`^Error: render finding-batch: only a specification batches its review's calls — ${phase} walks each through render finding$`));
     }
   });
 
-  it('refuses --first on the settled lane — the specification batch heads nothing', () => {
-    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
-    const file = writePayload(dir, 'first-settled.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
-    assert.throws(
-      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file, first: '1' }),
-      /--first opens a drain on its lane's marker, and lane "settled" carries none/,
-    );
-  });
-
-  it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
-    const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    // `ask` is the walked lane's name — the plausible producer mistake is
-    // sending it to the batch surface, which has no walked screen.
-    assert.throws(() => bad('l.json', { lane: 'ask', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, settled, decide, route/);
-    // An inherited property name is not a lane — the lookup is own-keys only.
-    assert.throws(() => bad('proto.json', { lane: 'constructor', items: [{ title: 't', detail: 'd' }] }), /"lane" must be one of apply, settled, decide, route/);
-    assert.throws(() => bad('e.json', { lane: 'apply', items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
-    assert.throws(() => bad('m.json', { lane: 'apply', items: [{ title: 't' }] }), /item 1 is missing "detail"/);
-    assert.throws(() => bad('t.json', { lane: 'route', items: [{ title: 't', detail: 'd' }] }), /item 1 is missing "target"/);
-    assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
+  it('validates loudly — empty items, a missing field, no payload', () => {
+    assert.throws(() => batch('e.json', { items: [] }), /"items" must be a non-empty array of \{title, detail\}/);
+    assert.throws(() => batch('m.json', { items: [{ title: 't' }] }), /item 1 is missing "detail"/);
+    assert.throws(() => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout' }), /--file <payload\.json> is required/);
   });
 });
 
@@ -1124,31 +922,31 @@ describe('render mailbox surfaces', () => {
   }
 
   it('mail-announce derives the count with verb agreement, refusing an empty mailbox', () => {
-    assert.throws(() => renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing to announce/);
+    assert.throws(() => renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' }), /mailbox is empty — nothing to announce/);
     writeMailbox('measurement', { '001-a.md': 'x' });
-    const one = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
+    const one = renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' });
     assert.ok(one.startsWith('=== DISPLAY: mail announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
     assert.ok(one.includes('1 message from another topic waits'), one);
     writeMailbox('measurement', { '002-b.md': 'y' });
-    const two = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
+    const two = renderSurface(dir, 'mail-announce', { dotpath: 'wu.investigation.measurement' });
     assert.ok(two.includes('2 messages from other topics wait'), two);
   });
 
   it('mail-offer renders the agenda in mailbox order and the yes/later menu', () => {
     writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
-      { file: '001-metrics.md', title: 'Offline metrics', origin: 'ranking', from_phase: 'discussion', from_date: '2026-08-01' },
+      { file: '002-tracking.md', title: 'Expansion tracking', from: 'From Synonyms · 2 Aug' },
+      { file: '001-metrics.md', title: 'Offline metrics', from: 'From Ranking · 1 Aug' },
     ] });
-    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file });
+    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
     assert.ok(out.startsWith([
       '=== DISPLAY: mail agenda (emit verbatim as markdown (not a code block)) ===',
       '**Mailbox** — 2 messages',
       '',
       '○ 1. Offline metrics',
-      `${NB(7)}↳ From ranking · discussion · 2026-08-01`,
+      `${NB(7)}↳ From Ranking · 1 Aug`,
       '○ 2. Expansion tracking',
-      `${NB(7)}↳ From synonyms · discussion · 2026-08-02`,
+      `${NB(7)}↳ From Synonyms · 2 Aug`,
     ].join('\n')), out);
     assert.ok(out.includes("=== MENU: mail offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
@@ -1159,15 +957,15 @@ describe('render mailbox surfaces', () => {
   it('mail-offer wraps a sentence-length title under itself, with the note beneath', () => {
     writeMailbox('measurement', { '001-metrics.md': 'a' });
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', origin: 'note-model', from_phase: 'discussion', from_date: '2026-07-30' },
+      { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', from: 'From Note Model · 30 Jul' },
     ] });
-    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file });
+    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file });
     assert.ok(out.includes([
       '**Mailbox** — 1 message',
       '',
       '○ 1. A preset binding persists until broken — three revisions to',
       `${NB(5)}the positioning model`,
-      `${NB(7)}↳ From note-model · discussion · 2026-07-30`,
+      `${NB(7)}↳ From Note Model · 30 Jul`,
     ].join('\n')), out);
     // No agenda row may overflow the width the display was sized to —
     // engine-wrapped even as markdown, so a soft-wrap never restarts a
@@ -1178,34 +976,33 @@ describe('render mailbox surfaces', () => {
 
   it('mail-offer refuses an empty mailbox, a short payload, and a payload naming a file the mailbox lacks', () => {
     const file = writePayload(dir, 'offer.json', { items: [
-      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
     ] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /mailbox is empty — nothing to offer/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /mailbox is empty — nothing to offer/);
     writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /payload items must cover the mailbox exactly/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file }), /payload items must cover the mailbox exactly/);
     const wrong = writePayload(dir, 'wrong.json', { items: [
-      { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
-      { file: '999-ghost.md', title: 'G', origin: 'o', from_phase: 'discussion', from_date: 'd' },
+      { file: '001-metrics.md', title: 'T', from: 'From O · 1 Aug' },
+      { file: '999-ghost.md', title: 'G', from: 'From O · 1 Aug' },
     ] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file: wrong }), /payload items must cover the mailbox exactly/);
-    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T', origin: 'o', from_date: 'd' }] });
-    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: wrong }), /payload items must cover the mailbox exactly/);
+    const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T' }] });
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.investigation.measurement', file: missing }), /item 1 is missing "from"/);
   });
 
-  it('mail-block derives the count and the phase word, refusing an empty mailbox', () => {
-    assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing blocks conclusion/);
+  it('mail-block derives the count, refusing an empty mailbox', () => {
+    assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' }), /mailbox is empty — nothing blocks conclusion/);
     writeMailbox('measurement', { '001-a.md': 'x' });
-    const out = renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' });
+    const out = renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' });
     assert.ok(out.startsWith([
       '=== DISPLAY: mail block (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ Mailbox not empty — 1 message awaiting discussion',
+      '⚑ Mailbox not empty — 1 message awaiting investigation',
       '',
       '=== DISPLAY: mail block guidance (emit verbatim as markdown (not a code block)) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
     writeMailbox('measurement', { '002-b.md': 'y' });
-    const rout = renderSurface(dir, 'mail-block', { dotpath: 'wu.research.measurement' });
-    assert.ok(rout.includes('2 messages awaiting exploration'), rout);
+    assert.ok(renderSurface(dir, 'mail-block', { dotpath: 'wu.investigation.measurement' }).includes('2 messages awaiting investigation'));
   });
 });
 
@@ -1464,14 +1261,14 @@ describe('pipeline continuation surfaces', () => {
     const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'experiment' });
     assert.ok(note.includes('Experiment session complete for "Pay".'), note);
     assert.ok(!note.includes('Experiment completed'), 'never claims the phase completed');
+  });
 
+  it('next-phase-gate: an experiment hands on without asking — nothing before the next phase is revisitable', () => {
     writeManifest(dir, 'lab', {
       work_type: 'feature',
-      phases: { research: { items: { lab: { status: 'completed' } } } },
+      phases: { discussion: { items: { lab: { status: 'completed' } } } },
     });
-    const gate = renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'discussion' });
-    assert.ok(gate.includes('Experiment session complete for "Lab".'), gate);
-    assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to discussion/);
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'specification' }), '');
   });
 
   it('epic-all-done-gate and phase-completed carry their statements', () => {
@@ -1497,7 +1294,7 @@ describe('pipeline continuation surfaces', () => {
 
   it('next-phase-gate: refuses a phase outside the type\'s pipeline — a typo, done, or review on a type that has none', () => {
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'implementation', next: 'reveiw' }),
-      /unknown --next "reveiw" for a feature \(pipeline: research, experiment, discussion, specification, planning, implementation, review\)/);
+      /unknown --next "reveiw" for a feature \(pipeline: experiment, discussion, specification, planning, implementation, review\)/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'review', next: 'done' }), /unknown --next "done" for a feature/);
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'pay', prev: 'banana', next: 'review' }), /unknown --prev "banana" for a feature/);
     // Cross-cutting ends at specification: a review hop is a relay slip, and
@@ -1507,11 +1304,10 @@ describe('pipeline continuation surfaces', () => {
       phases: { discussion: { items: { xc: { status: 'completed' } } } },
     });
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'review' }),
-      /unknown --next "review" for a cross-cutting \(pipeline: research, experiment, discussion, specification\)/);
-    const hop = renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' });
-    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
-    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.ok(!hop.includes('d/done'), hop);
+      /unknown --next "review" for a cross-cutting \(pipeline: experiment, discussion, specification\)/);
+    // The hop it has asks nothing: no skip, and a decided discussion is no
+    // revisit — it reopens by a message.
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' }), '');
   });
 
   it('next-phase-gate: several live reconcile flags join into one cue', () => {
@@ -1537,11 +1333,11 @@ describe('render phase-note', () => {
   afterEach(() => teardown(dir));
 
   it('renders the one-liner with the phase noun by default and an override when given', () => {
-    assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow', verb: 'Resuming' }),
-      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nResuming research: Auth Flow\n');
+    assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Resuming' }),
+      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nResuming investigation: Auth Flow\n');
     assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.planning.auth-flow', verb: 'Reopening', noun: 'plan' })
       .includes('Reopening plan: Auth Flow'));
-    assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.research.auth-flow' }), /--verb is required/);
+    assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow' }), /--verb is required/);
   });
 });
 
@@ -1552,18 +1348,6 @@ describe('render step-opening', () => {
 
   const MARKER = '=== DISPLAY: step opening (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
   const opening = (name, signpost) => [MARKER, `**\`□ ${name}\`**`, '', `> ${signpost}`, ''].join('\n');
-
-  it('session: the research and discussion sessions open fresh, or picked back up where --resumed', () => {
-    writeManifest(dir, 'pay', {});
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'session' }), opening('Research Session',
-      "Starting the research session. This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage."));
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'session', resumed: '1' }), opening('Research Session',
-      "Picking the research back up where it left off. This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage."));
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.discussion.auth', step: 'session' }), opening('Discussion Session',
-      "Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go."));
-    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.discussion.auth', step: 'session', resumed: '1' }), opening('Discussion Session',
-      "Picking the discussion back up where the map leaves it. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go."));
-  });
 
   it('conclude: a cross-cutting specification closes the pipeline, every other hands over to planning — read from the work type', () => {
     writeManifest(dir, 'pay', {});
@@ -1599,11 +1383,11 @@ describe('render step-opening', () => {
 
   it('refuses a missing or unknown step, and a step outside its phase', () => {
     writeManifest(dir, 'pay', {});
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth' }),
-      /--step must be one of session, conclude, consolidation, do-now, got ""/);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'wrap' }), /got "wrap"/);
-    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.planning.auth', step: 'session' }),
-      /the session step opens in research or discussion, got phase "planning"/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.specification.auth' }),
+      /--step must be one of conclude, consolidation, do-now, got ""/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.specification.auth', step: 'session' }), /got "session"/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.planning.auth', step: 'conclude' }),
+      /the conclude step opens in specification, got phase "planning"/);
   });
 });
 
@@ -1953,32 +1737,6 @@ describe('render entry-gate', () => {
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are not concluded: a, b/);
   });
 
-  it('discussion: outstanding research holds the entry shut, every work type — landed, absent, or closed research clears it', () => {
-    const feature = (research) => manifestWith({
-      ...(research ? { research: { items: { pay: research } } } : {}),
-      discussion: { items: { pay: { status: 'in-progress' } } },
-    }, 'feature');
-    feature({ status: 'in-progress' });
-    const out = renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' });
-    assert.match(out, /DISPLAY: entry blocker/);
-    assert.match(out, /⚑ Entry blocked — this discussion awaits research on "Pay" \(in flight\)/);
-    assert.match(out, /DISPLAY: blocker guidance[\s\S]*> Continue the work unit — the research is its next step\./);
-    feature({ status: 'unstarted' });
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), /awaits research on "Pay" \(parked — not yet started\)/);
-    for (const research of [undefined, { status: 'completed' }, { status: 'cancelled', previous_status: 'in-progress' }, { status: 'superseded', superseded_by: 'other' }]) {
-      feature(research);
-      assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), '', JSON.stringify(research));
-    }
-    // An epic's guidance names its menu; the discussion item need not exist yet, and a concluded one is held the same way.
-    manifestWith({ research: { items: { auth: { status: 'unstarted' } } } }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }),
-      /awaits research on "Auth" \(parked — not yet started\)[\s\S]*> Return to the epic menu — its research row is the way in\./);
-    manifestWith({ research: { items: { auth: { status: 'in-progress' } } }, discussion: { items: { auth: { status: 'completed', reconcile_needed: 'research' } } } }, 'epic');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), /awaits research on "Auth" \(in flight\)/);
-    manifestWith({ research: { items: { other: { status: 'in-progress' } } }, discussion: { items: { auth: { status: 'in-progress' } } } }, 'epic');
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }), '', 'another topic\'s research holds nothing');
-  });
-
   it('an unsupported phase is a loud error', () => {
     manifestWith({});
     assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.research.auth' }), /no prerequisite rules for phase "research"/);
@@ -2018,85 +1776,24 @@ describe('render entry-gate --own', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), '');
   });
 
-  it('is loud outside research, discussion and specification', () => {
+  it('is loud outside specification', () => {
     writeManifest(dir, 'pay', { work_type: 'feature', phases: {} });
-    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth', own: '1' }),
-      /--own is only supported for research, discussion and specification, got "planning"/);
-  });
-
-  /** An epic whose auth topic holds a research and a discussion item, both at `status`. */
-  function topicWith(status) {
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
-      research: { items: { auth: { status } } },
-      discussion: { items: { auth: { status } } },
-    } });
-  }
-
-  /** The project's roadmap, holding auth's postponed item — `pulled_to` another epic when `taken`. */
-  function writeRoadmap(taken) {
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
-      work_units: {},
-      roadmap: { horizons: ['next'], items: {
-        auth: {
-          horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'auth' },
-          ...(taken ? { pulled_to: { work_unit: 'other', topic: 'auth' } } : {}),
-        },
-      } },
-    }, null, 2));
-  }
-
-  it('a cancelled research, discussion or specification item renders the cancelled terminal byte-exactly, naming the reactivate', () => {
-    const phases = ['research', 'discussion', 'specification'];
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: Object.fromEntries(
-      phases.map((phase) => [phase, { items: { auth: { status: 'cancelled' } } }])) });
-    for (const phase of phases) {
-      assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), [
-        '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
-        '⚑ "Auth" is cancelled',
-        '',
-        '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
-        '> Reactivate it from the epic menu (`e/reactivate`).',
-        '',
-      ].join('\n'), phase);
+    for (const phase of ['planning', 'discussion']) {
+      assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }),
+        new RegExp(`--own is only supported for specification, got "${phase}"`));
     }
   });
 
-  it('a postponed one names the pull forward while its roadmap item waits, and no way back once another epic took it', () => {
-    topicWith('postponed');
-    writeRoadmap(false);
-    for (const phase of ['research', 'discussion']) {
-      assert.match(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }),
-        /⚑ "Auth" is postponed to the roadmap\n\n=== DISPLAY: blocker guidance [^\n]*===\n> Pull it forward from the epic menu \(`f\/forward`\)\.\n$/, phase);
-    }
-    writeRoadmap(true);
-    for (const phase of ['research', 'discussion']) {
-      const out = renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' });
-      assert.match(out, /> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\.\n$/, phase);
-      assert.ok(!out.includes('f/forward'), phase);
-    }
-  });
-
-  it('a promoted discussion renders the promoted terminal byte-exactly, naming the unit it moved to', () => {
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { auth: { status: 'promoted', promoted_to: 'auth-platform' } } } } });
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth', own: '1' }), [
+  it('a cancelled specification renders the cancelled terminal byte-exactly, naming the reactivate', () => {
+    specWith({ status: 'cancelled' });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), [
       '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ "Auth" was promoted to the cross-cutting work unit "auth-platform"',
+      '⚑ "Auth" is cancelled',
       '',
       '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
-      '> Continue it from that work unit.',
+      '> Reactivate it from the epic menu (`e/reactivate`).',
       '',
     ].join('\n'));
-  });
-
-  it('is clear for a research or discussion item that is live, unstarted, or absent', () => {
-    for (const status of ['in-progress', 'completed', 'unstarted']) {
-      topicWith(status);
-      for (const phase of ['research', 'discussion']) {
-        assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), '', `${phase} ${status}`);
-      }
-    }
-    writeManifest(dir, 'pay', { work_type: 'epic', phases: {} });
-    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.research.auth', own: '1' }), '');
   });
 
   it('a promoted item missing its target degrades to an empty quoted name, never "undefined"', () => {
@@ -2942,28 +2639,9 @@ describe('render opener', () => {
     });
   });
 
-  describe('discussion — a fresh discussion\'s core-problem question', () => {
-    it('names the topic from the address', () => {
-      writeManifest(dir, 'pay', { phases: { discussion: { items: { 'retry-policy': { status: 'in-progress' } } } } });
-      assert.strictEqual(opener({ variant: 'discussion', dotpath: 'pay.discussion.retry-policy' }), [
-        STOP_MARKER,
-        'New discussion: retry-policy',
-        '',
-        "What's the core problem or decision we need to work through?",
-        '',
-      ].join('\n'));
-    });
-
-    it('refuses an address in another phase', () => {
-      writeManifest(dir, 'pay', {});
-      assert.throws(() => opener({ variant: 'discussion', dotpath: 'pay.research.retry-policy' }),
-        /render opener: --variant discussion takes <work_unit>\.discussion\.<topic>, got phase "research"/);
-    });
-  });
-
   it('refuses an unknown variant', () => {
-    assert.throws(() => opener({ variant: 'roadmap' }), /render opener: --variant must be one of inbox, seeded, discussion, got "roadmap"/);
-    assert.throws(() => opener({}), /--variant must be one of inbox, seeded, discussion, got ""/);
+    assert.throws(() => opener({ variant: 'roadmap' }), /render opener: --variant must be one of inbox, seeded, got "roadmap"/);
+    assert.throws(() => opener({}), /--variant must be one of inbox, seeded, got ""/);
   });
 });
 
@@ -3010,7 +2688,7 @@ describe('render import-reprompt', () => {
 
   it('takes no address — the work unit a refused landing was aimed at may not exist yet', () => {
     const file = writePayload(dir, 'one.json', { missing: ['notes/ghost.md'] });
-    assert.ok(renderSurface(dir, 'import-reprompt', { file, dotpath: 'no-such-unit.research.nope' })
+    assert.ok(renderSurface(dir, 'import-reprompt', { file, dotpath: 'no-such-unit.discussion.nope' })
       .includes('  • notes/ghost.md'));
   });
 
@@ -3033,8 +2711,8 @@ describe('render send-closed-target', () => {
         discovery: {
           items: {
             'auth-flow': { routing: 'discussion', source: 'discovery', handled: true },
-            'legacy-bits': { routing: 'research', source: 'discovery' },
-            live: { routing: 'research', source: 'discovery' },
+            'legacy-bits': { routing: 'discussion', source: 'discovery' },
+            live: { routing: 'discussion', source: 'discovery' },
           },
         },
         discussion: { items: { 'legacy-bits': { status: 'cancelled' } } },
@@ -3075,123 +2753,6 @@ describe('render send-closed-target', () => {
       /no discovery item "ghost" on the map/);
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
       /address must be <work_unit>\.discovery\.<target>, got phase "discussion"/);
-  });
-});
-
-describe('render deep-dive-offer / in-flight-agents-gate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', {
-      phases: {
-        research: { items: { checkout: { status: 'in-progress' } } },
-        discussion: { items: { checkout: { status: 'in-progress' } } },
-      },
-    });
-  });
-  afterEach(() => teardown(dir));
-
-  it('deep-dive-offer renders the statement then the ask byte-exactly — the question takes the glyph', () => {
-    const file = writePayload(dir, 'd.json', { thread: 'How does the competitor rank a query it has never seen?' });
-    assert.strictEqual(renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file }), [
-      "=== MENU: deep dive offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'A thread worth digging: How does the competitor rank a query it has never seen?',
-      '',
-      '**`◆ Send a deep dive after it while we keep going?`**',
-      '',
-      '**`y/yes`** → Dispatch a deep-dive agent',
-      "**`n/no`**  → Skip, we'll cover it in conversation",
-      '',
-    ].join('\n'));
-  });
-
-  it('in-flight-agents-gate renders the wait/proceed pair byte-exactly — the statement, then the ask', () => {
-    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '2' }), [
-      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'There are still 2 background agents working.',
-      '',
-      '**`◆ Wait, or conclude now?`**',
-      '',
-      '**`w/wait`**    → Wait for results before concluding',
-      '**`p/proceed`** → Conclude now (results will persist in cache for',
-      `${NB(12)}reference)`,
-      '',
-    ].join('\n'));
-  });
-
-  it('a lone agent takes the singular — the count never reads "1 agents"', () => {
-    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '1' }), [
-      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'There is still 1 background agent working.',
-      '',
-      '**`◆ Wait, or conclude now?`**',
-      '',
-      '**`w/wait`**    → Wait for results before concluding',
-      '**`p/proceed`** → Conclude now (results will persist in cache for',
-      `${NB(12)}reference)`,
-      '',
-    ].join('\n'));
-  });
-
-  it('the in-flight gate serves discussion too — both phases dispatch and both conclude', () => {
-    const out = renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' });
-    assert.match(out, /There are still 2 background agents working\./);
-    assert.match(out, /\*\*`w\/wait`\*\*/);
-  });
-
-  it('a pause words the ask and both rows for the pause — the statement and the keys are the conclusion\'s', () => {
-    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '1', pause: '1' }), [
-      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'There is still 1 background agent working.',
-      '',
-      '**`◆ Wait, or pause now?`**',
-      '',
-      '**`w/wait`**    → Wait for results before pausing',
-      '**`p/proceed`** → Pause now (results will persist in cache for the next',
-      `${NB(12)}session)`,
-      '',
-    ].join('\n'));
-    assert.match(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '3', pause: '1' }),
-      /There are still 3 background agents working\.\n\n\*\*`◆ Wait, or pause now\?`\*\*/);
-  });
-
-  it('perspective-offer renders the tension statement then the ask byte-exactly — discussion only', () => {
-    const file = writePayload(dir, 'p.json', { tension: 'Ship Now ↔ Strategic Timing' });
-    assert.strictEqual(renderSurface(dir, 'perspective-offer', { dotpath: 'pay.discussion.checkout', file }), [
-      "=== MENU: perspective offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      'This decision sits on a Ship Now ↔ Strategic Timing tension.',
-      '',
-      '**`◆ Want to explore both lenses?`**',
-      '',
-      '**`y/yes`** → Spin up perspective agents arguing each lens',
-      '**`n/no`**  → Continue without perspectives',
-      '',
-    ].join('\n'));
-    assert.throws(() => renderSurface(dir, 'perspective-offer', { dotpath: 'pay.research.checkout', file }),
-      /render perspective-offer: address must be <work_unit>\.discussion\.<topic>, got phase "research"/);
-    assert.throws(() => renderSurface(dir, 'perspective-offer', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
-    assert.throws(() => renderSurface(dir, 'perspective-offer', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, 'q.json', {}) }),
-      /"tension" must be a non-empty string/);
-  });
-
-  it('both validate their own input; the deep dive stays research-only, the gate stays on the pair', () => {
-    const file = writePayload(dir, 'd.json', { thread: 'x' });
-    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.discussion.checkout', file }),
-      /render deep-dive-offer: address must be <work_unit>\.research\.<topic>, got phase "discussion"/);
-    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout' }), /--file <payload\.json> is required/);
-    assert.throws(() => renderSurface(dir, 'deep-dive-offer', { dotpath: 'pay.research.checkout', file: writePayload(dir, 'e.json', {}) }),
-      /"thread" must be a non-empty string/);
-    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.planning.checkout', count: '2' }),
-      /render in-flight-agents-gate: address must be <work_unit>\.research\|discussion\.<topic>, got phase "planning"/);
-    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout' }),
-      /--count must be a positive integer, got "undefined"/);
-    assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '0' }),
-      /--count must be a positive integer, got "0"/);
   });
 });
 
@@ -3270,7 +2831,7 @@ describe('render — the adopted phase gates', () => {
   // part of the batch.
   const backfillMap = () => writeManifest(dir, 'pay', {
     phases: { discovery: { items: {
-      'auth-flow': { routing: 'research', source: 'discovery', order: 1 },
+      'auth-flow': { routing: 'discussion', source: 'discovery', order: 1 },
       billing: { routing: 'discussion', source: 'discovery', order: 2, summary: 'How invoices are raised and settled' },
       'legacy-bits': { routing: 'discussion', source: 'discovery', order: 3 },
       settled: { routing: 'discussion', source: 'discovery', order: 4, summary: 'Whole', description: 'Whole' },
@@ -3281,7 +2842,7 @@ describe('render — the adopted phase gates', () => {
   const PROPOSED_ROWS = [
     'Proposed summaries for 3 topic(s):',
     '',
-    '  1. Auth Flow  (research)',
+    '  1. Auth Flow  (discussion)',
     '       How sign-in survives a dropped session and a token refresh',
     '       mid-request',
     '  2. Billing  (discussion)',
@@ -3940,54 +3501,12 @@ describe('render — the adopted phase gates', () => {
 
   it('analysis-proceed-gate: says first that the analysis is outdated where the discussions moved since it ran, and only then', () => {
     writeManifest(dir, 'moved', { phases: { discussion: { analysis_cache: { checksum: 'from-before', generated: '2026-01-01' }, items: { auth: { status: 'completed' } } } } });
-    writePayload(dir, '.leeway/moved/discussion/auth.md', '# Auth\n');
+    writePayload(dir, '.leeway/.knowledge/records/moved/auth.md', '# Auth\n');
     assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'moved' }),
       /\n> Analysis outdated — discussions have changed since the last grouping analysis\. Your discussions will be analyzed for natural groupings/);
     writeManifest(dir, 'never', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
-    writePayload(dir, '.leeway/never/discussion/auth.md', '# Auth\n');
+    writePayload(dir, '.leeway/.knowledge/records/never/auth.md', '# Auth\n');
     assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'never' }), /\n> Your discussions will be analyzed/,
       'no analysis yet is not an outdated one');
-  });
-});
-
-describe('render first-phase-gate', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'support-email', { work_type: 'quick-fix' });
-  });
-  afterEach(() => teardown(dir));
-
-  it('first-phase-gate carries the read as a statement above its question and the two routes', () => {
-    writeManifest(dir, 'support-email', { work_type: 'feature' });
-    const file = writePayload(dir, 'read.json', { read: "The concern is an open unknown — I'd start with research." });
-    assert.strictEqual(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }), [
-      "=== MENU: first phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      "The concern is an open unknown — I'd start with research.",
-      '',
-      '**`◆ Which phase first?`**',
-      '',
-      '**`r/research`**   → Explore feasibility and options first, no',
-      `${NB(15)}decisions yet`,
-      '**`d/discussion`** → Ready to discuss and make decisions',
-      '',
-    ].join('\n'));
-  });
-
-  it('first-phase-gate refuses a fixed-first-phase type, a missing payload, and a read that is not one line', () => {
-    const file = writePayload(dir, 'read.json', { read: 'The shape is clear.' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }),
-      /a quick-fix has a fixed first phase — the choice belongs to feature and cross-cutting work/);
-    writeManifest(dir, 'support-email', { work_type: 'cross-cutting' });
-    assert.ok(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }).includes('The shape is clear.'));
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email' }),
-      /--file <payload\.json> is required/);
-    const blank = writePayload(dir, 'blank.json', { read: '' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: blank }),
-      /"read" must be a non-empty string/);
-    const split = writePayload(dir, 'split.json', { read: 'The shape is clear.\nI would discuss it.' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: split }),
-      /"read" must be a single line — it becomes the menu's statement label/);
   });
 });

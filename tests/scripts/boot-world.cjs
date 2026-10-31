@@ -6,7 +6,7 @@
 // `setupProject`); the library's stub engine, whose migration runner
 // STUB_MIGRATE_MODE and its siblings drive (`stubbed`), and the repo's real
 // scripts (`real`); the hooks boot installs, as settings read;
-// a knowledge base that reads ready, a completed discussion to index, and
+// a knowledge base that reads ready, a completed investigation to index, and
 // the vector fill's launches recorded; and the session-hook helpers over a
 // describe's own fixture (`hookHelpers`).
 
@@ -95,17 +95,17 @@ function readyKnowledge(project, settings = {}) {
 }
 
 /**
- * A feature with one completed discussion holding `body` — something for
+ * A feature with one completed investigation holding `body` — something for
  * boot's index to take in.
  * @param {string} project @param {string} body
  */
-function completedDiscussion(project, body) {
+function completedInvestigation(project, body) {
   writeState(project, layout.projectManifest, JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
   writeState(project, layout.manifest('payments'), JSON.stringify({
     name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
-    phases: { discussion: { items: { payments: { status: 'completed' } } } },
+    phases: { investigation: { items: { payments: { status: 'completed' } } } },
   }, null, 2) + '\n');
-  writeState(project, layout.doc('payments', 'discussion', 'payments'), body);
+  writeState(project, layout.doc('payments', 'investigation', 'payments'), body);
 }
 
 /** A git-repo project carrying the settings every booted project has. */
@@ -157,5 +157,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
+  hookHelpers, FLAG, LABELS_ON, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedInvestigation, bootProject, runEngine, runEngineFails,
 };

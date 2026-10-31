@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
-const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, handoff, literal } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, carryOn, arrive, menuEntry, handoffEntry, enterEntry, handoff, discussed, literal } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: workunit', () => {
   let sim;
@@ -33,8 +33,7 @@ describe('pipeline simulation: workunit', () => {
     const wu = 'flip';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Lifecycle', '--session-log-file', log]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    discussed(sim, wu, wu);
 
     sim.run(['workunit', 'complete', wu, '-m', 'workflow(flip): done']);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
@@ -61,8 +60,8 @@ describe('pipeline simulation: workunit', () => {
     const wu = 'bigger';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', log]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion\n');
+    enterEntry(sim, wu, 'discussion', wu);
+    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
     sim.run(['workunit', 'pivot', wu]);
@@ -70,8 +69,9 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['pivot-continuation', wu], { expect: 'content' }),
       /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
 
-    // The pivoted epic's map and phases still derive; the topic completes.
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    // The pivoted epic's map and phases still derive; the topic is decided
+    // as any epic topic is, and the yes hands back to the epic menu.
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu, 'discussion', 'completed'] });
   });
 
   it('absorption: a feature folds into an epic as a new topic and disappears', () => {
@@ -79,23 +79,9 @@ describe('pipeline simulation: workunit', () => {
     const feat = 'stray';
     sim.run(['workunit', 'create', epic, 'epic', '--description', 'The umbrella', '--session-log-file', sessionLog(sim, epic)]);
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
-    // Research ran first and left a register — the absorb carries it whole.
-    sim.run(['topic', 'start', feat, 'research', feat]);
-    sim.write(`.leeway/${feat}/research/${feat}.md`, '# Research — Stray\n');
-    sim.run(['research-threads', 'add', feat, feat, 'reach', '--question', 'How far does stray reach?', '--origin', 'seed']);
-    sim.run(['research-threads', 'set', feat, feat, 'reach', 'parked', '--note', 'not this year']);
-    sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
-    sim.run(['topic', 'complete', feat, 'research', feat]);
-    sim.run(['topic', 'start', feat, 'discussion', feat]);
-    sim.write(`.leeway/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
-    // The Discussion Map the feature built travels with it.
-    sim.run(['discussion-map', 'add', feat, feat, 'cutover']);
-    sim.run(['discussion-map', 'add', feat, feat, 'rollback', '--parent', 'cutover']);
-    sim.run(['discussion-map', 'set', feat, feat, 'cutover=exploring', 'rollback=decided']);
+    enterEntry(sim, feat, 'discussion', feat);
+    sim.write(`.leeway/${feat}/topics/${feat}/log.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
-    // A standing do-not-report call on this topic's material.
-    sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
-      'the migration path is settled and out of scope']);
     // An experiment travelling with the topic returns with 29.15, which
     // carries the feature's ledger entries through the absorb (5.8.18).
     // A peer sends a message to the topic — it waits in the topic's
@@ -122,17 +108,8 @@ describe('pipeline simulation: workunit', () => {
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');
-    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].dismissed_grounds,
-      ['the migration path is settled and out of scope'],
-      'dismissed grounds follow the material — the absorbed topic never re-raises what was turned down');
-    assert.deepStrictEqual(m.phases.research.items['stray-topic'].threads,
-      { reach: { question: 'How far does stray reach?', status: 'parked', origin: 'seed', parent: null, note: 'not this year' } },
-      'the thread register follows the material to its new name');
-    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].subtopics,
-      { cutover: { status: 'exploring', parent: null }, rollback: { status: 'decided', parent: 'cutover' } },
-      'the Discussion Map follows the material to its new name');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'discussion', 'stray-topic.md')),
-      'discussion file moved into the epic');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'log.md')),
+      'the discussion\'s log moved into the epic');
 
     assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),
       /Stray Topic/, 'absorb receipt renders from the epic post-state');
@@ -140,34 +117,24 @@ describe('pipeline simulation: workunit', () => {
       /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
   });
 
-  it('reference imports: a research session lands files, absorb re-homes them over a collision, promote carries the linked one', () => {
+  it('reference imports: a discussion lands files, absorb re-homes them over a collision, promote carries what the spec links and the discussion attached', () => {
     const feat = 'ledger';
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'Ledger', '--session-log-file', sessionLog(sim, feat)]);
 
-    // The research session lands what the user shared mid-session — a binary
-    // and a markdown source — stamped with its own origin, and links them.
+    // The discussion lands what the user shared mid-session — a binary and a
+    // markdown source — stamped with its own origin, and its log links them.
     menuEntry(sim, feat);
-    handoffEntry(sim, feat, 'research', feat);
-    sim.run(['topic', 'start', feat, 'research', feat]);
+    enterEntry(sim, feat, 'discussion', feat);
     sim.write('shared/Dockset 05.PNG', 'png bytes\n');
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');
-    const landed = sim.run(['workunit', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt', '--from', `research/${feat}`]);
+    const landed = sim.run(['workunit', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt', '--from', `discussion/${feat}`]);
     assert.deepStrictEqual(landed.imports, [
-      { path: path.join(sim.dir, `.leeway/${feat}/imports/dockset-05.png`), origin: `research/${feat}` },
-      { path: path.join(sim.dir, `.leeway/${feat}/imports/onboarding.md`), origin: `research/${feat}` },
+      { path: path.join(sim.dir, `.leeway/${feat}/imports/dockset-05.png`), origin: `discussion/${feat}` },
+      { path: path.join(sim.dir, `.leeway/${feat}/imports/onboarding.md`), origin: `discussion/${feat}` },
     ]);
-    sim.write(`.leeway/${feat}/research/${feat}.md`,
-      `# Research — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
-    sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
-    sim.run(['topic', 'complete', feat, 'research', feat]);
-    sim.run(['commit', feat, '-m', `research(${feat}): complete`, '--topic', `research/${feat}`]);
-
-    handoffEntry(sim, feat, 'discussion', feat);
-    sim.run(['topic', 'start', feat, 'discussion', feat]);
-    sim.write(`.leeway/${feat}/discussion/${feat}.md`,
-      `# Discussion — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
+    sim.write(`.leeway/${feat}/topics/${feat}/log.md`,
+      `# Discussion — ${feat}\n\n![the fifth onboarding screen](../../imports/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
-    sim.run(['topic', 'complete', feat, 'discussion', feat]);
 
     // The epic already holds a file of the same name from its own opener.
     const epic = 'platform';
@@ -187,21 +154,23 @@ describe('pipeline simulation: workunit', () => {
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic]);
     assert.deepStrictEqual(absorbed.renamed_imports, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
-    assert.match(read(`.leeway/${epic}/discussion/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
-    assert.match(read(`.leeway/${epic}/research/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
+    assert.match(read(`.leeway/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/imports\/dockset-05-2\.png/);
     assert.deepStrictEqual(sim.manifest(epic).imports.map((e) => [e.path, e.origin]), [
       ['imports/dockset-05.png', 'discovery'],
-      ['imports/dockset-05-2.png', `research/${topic}`],
-      ['imports/onboarding.md', `research/${topic}`],
+      ['imports/dockset-05-2.png', `discussion/${topic}`],
+      ['imports/onboarding.md', `discussion/${topic}`],
     ]);
     const renamedArg = absorbed.renamed_imports.map((r) => `${r.from}:${r.to}`).join(',');
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'research,imports',
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'imports',
       '--renamed', renamedArg], { expect: 'content' }),
     /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
 
-    // The spec links the material it rests on; promotion carries that import
-    // into the cross-cutting unit and leaves the rest of the epic's behind.
+    // The topic is decided in the epic; its spec links the material it rests
+    // on, and promotion carries into the cross-cutting unit what the spec
+    // links and what its moved discussion attached, leaving the epic's own
+    // behind.
     menuEntry(sim, epic);
+    discussed(sim, epic, topic);
     handoffEntry(sim, epic, 'specification', topic);
     sim.run(['topic', 'start', epic, 'specification', topic]);
     sim.run(['manifest', 'set', `${epic}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
@@ -212,9 +181,10 @@ describe('pipeline simulation: workunit', () => {
 
     const promoted = sim.run(['workunit', 'promote', epic, topic, '--to', 'onboarding-cc', '--description', 'Onboarding, project-wide']);
     assert.deepStrictEqual(promoted.imports, [
-      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png'), origin: `research/${topic}` },
+      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png'), origin: `discussion/${topic}` },
+      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/onboarding.md'), origin: `discussion/${topic}` },
     ]);
-    assert.deepStrictEqual(sim.manifest('onboarding-cc').imports.map((e) => e.path), ['imports/dockset-05-2.png']);
+    assert.deepStrictEqual(sim.manifest('onboarding-cc').imports.map((e) => e.path), ['imports/dockset-05-2.png', 'imports/onboarding.md']);
     assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png')));
     // A copy, not a move — the epic keeps every file and entry it had.
     assert.strictEqual(sim.manifest(epic).imports.length, 3);
@@ -224,7 +194,7 @@ describe('pipeline simulation: workunit', () => {
   it('guards hold mid-pipeline: shadow fields, empty segments, a name already taken, bad statuses', () => {
     const wu = 'guarded';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Guard rails', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['topic', 'start', wu, 'discussion', wu]);
+    enterEntry(sim, wu, 'discussion', wu);
 
     sim.refuses(['manifest', 'set', wu, 'specification.foo', 'bar'], /is a phase/);
     sim.refuses(['manifest', 'set', `${wu}.`, 'field', 'x'], /empty segments/);
@@ -270,40 +240,6 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /--model does not belong to the retry variant/);
-    assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
-    assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
-    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove', '--theme', 'caching'], { expect: 'content' }), /> Removing "caching" drops its drafted content[\s\S]*Remove the theme\?[\s\S]*Remove the theme and drop its content/);
-    sim.refuses(['render', 'legacy-split-gate', '--variant', 'remove'], /--theme is required with --variant remove/);
-    sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
-    sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
-    // The split's three displays over their payloads: the candidate list at
-    // the sanity gate, the drafted plan with its cache paths, the validator's
-    // refusals — each variant's fields validated, the file itself required.
-    const splitDisplay = (variant, payload) => sim.render(
-      ['legacy-split-display', '--variant', variant, '--file', sim.write(`.leeway/.cache/scratch/legacy-split-${variant}.json`, payload)],
-      { expect: 'content' },
-    );
-    assert.match(splitDisplay('candidates', { source: 'auth', themes: [{ kebab_name: 'auth', summary: 'Login and sessions' }] }),
-      /Candidate themes for auth\.md:[\s\S]*1\\\. auth[\s\S]*↳ Login and sessions/);
-    // The cache path wraps at the display's width: joined, it reads whole.
-    assert.match(splitDisplay('plan', { source: 'auth', work_unit: wu, themes: [{ kebab_name: 'auth', summary: 'Login and sessions', paragraph_count: 3, content_preview: 'The auth flow' }] }).replace(/\n {6}/g, ''),
-      new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache:${literal(path.join(sim.dir, `.leeway/.cache/${wu}/legacy-split/auth/auth.md`))}[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
-    assert.match(splitDisplay('errors', { source: 'auth', errors: ["theme 'auth' has empty summary"] }),
-      /Validation failed for auth:[\s\S]*• theme 'auth' has empty summary/);
-    assert.match(splitDisplay('apply', { source: 'auth', result: { ok: true, applied: { themes: 2 }, kb_warnings: ['knowledge remove failed'] } }),
-      /Applied auth: 2 new file\(s\)\.[\s\S]*> - knowledge remove failed/);
-    assert.match(splitDisplay('apply', { source: 'auth', result: { ok: false, stage: 'git_commit', error: 'hook failed', recovery_hint: 'commit by hand' } }),
-      /Apply failed for auth at stage "git_commit":\n {2}hook failed\n\nRecovery: commit by hand/);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.leeway/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.leeway/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
-    // The split's conclusion is the session's tallies, rendered under its
-    // step marker — the aborted apply leading whatever else happened.
-    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '1', '--abandoned', '0', '--errored', '1'], { expect: 'content' }),
-      /□ Legacy Split Complete[\s\S]*> 1 source file\(s\) aborted mid-apply; 1 decomposed; 0 skipped\./);
-    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '0', '--abandoned', '0', '--errored', '0'], { expect: 'content' }),
-      /> No legacy source files needed decomposition\./);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'complete', '--applied', '1'], /--abandoned must be a non-negative integer/);
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.
@@ -398,7 +334,7 @@ describe('pipeline simulation: workunit', () => {
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
     assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
 
-    // After every refusal the unit still derives and completes normally.
-    sim.run(['topic', 'complete', wu, 'discussion', wu]);
+    // After every refusal the unit still derives and is decided normally.
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
   });
 });

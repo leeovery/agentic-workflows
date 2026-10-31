@@ -32,7 +32,6 @@ Then read the user's most recent message. Extract one or more operations. Recogn
 | *"edit description of X to Y"*, *"reword X's description"* | Edit description  | name, new description  |
 | *"remove X"*, *"drop X"*, *"delete X"*                     | Remove            | name                   |
 | *"rename X to Y"*                                          | Rename            | old name, new name     |
-| *"change routing of X to discussion"*                      | Change routing    | name, new routing      |
 | *"close X as a dead end"*, *"X is a dead end"*, *"mark X handled"* | Close as dead end | name                   |
 | *"reopen X"*, *"unhandle X"*                               | Reopen            | name                   |
 | *"postpone X"*, *"push X back to the roadmap"*, *"X is v2"*  | Postpone          | name, horizon if named |
@@ -42,7 +41,7 @@ If the message is ambiguous (e.g. *"fix X"*, *"that one looks wrong"*), ask one 
 **Group operations** for safety-by-destructiveness:
 
 - **Additive group** — a contiguous run of Edit summary operations *or* a contiguous run of Edit description operations. Each group batches into one STOP gate, one commit, one session-log entry.
-- **Destructive group** — a single Remove, Rename, Change routing, or Postpone operation. Each is its own group of one with its own STOP gate and commit; Postpone's STOP is the postpone confirm itself, not `map-op-gate`.
+- **Destructive group** — a single Remove, Rename, or Postpone operation. Each is its own group of one with its own STOP gate and commit; Postpone's STOP is the postpone confirm itself, not `map-op-gate`.
 - **Marker group** — a single Close as dead end or Reopen operation. Non-destructive (it sets or clears a display/convergence marker only), but still its own group of one with its own STOP gate and commit.
 
 Walk the groups in user order. For mixed batches, each destructive op is its own group; contiguous additive ops in between batch.
@@ -53,11 +52,11 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 Apply per-operation validation **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — where a topic stands decides which single-item ops it takes, and each op's gate reads that itself: a Remove, Rename, Change routing, Close as dead end, or Reopen that its topic's lifecycle refuses is answered with the rejection in place of its confirm (see **E**–**J**). Edits ride any lifecycle. Remove is for mistakes and duplicates — a never-started topic that should not be on the map; not doing a topic, started or not, is the epic menu's `a/cancel`, which keeps the row and can be reversed, and not doing it *yet* is Postpone.
+**Lifecycle gates** — where a topic stands decides which single-item ops it takes, and each op's gate reads that itself: a Remove, Rename, Close as dead end, or Reopen that its topic's lifecycle refuses is answered with the rejection in place of its confirm (see **E**–**I**). Edits ride any lifecycle. Remove is for mistakes and duplicates — a never-started topic that should not be on the map; not doing a topic, started or not, is the epic menu's `a/cancel`, which keeps the row and can be reversed, and not doing it *yet* is Postpone.
 
 Postpone takes no pre-check at all: its gate is the postpone confirm, which refuses a cancelled, postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
 
-A gate's confirm does not guarantee a Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including an `unstarted` stub holding messages (dump cue `mail=waiting`). Surface the engine's refusal as the rejection.
+A gate's confirm does not guarantee a Remove or Rename will succeed — a discussion item on record refuses engine-side, including an `unstarted` stub holding messages (dump cue `mail=waiting`). Surface the engine's refusal as the rejection.
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
 
@@ -74,7 +73,7 @@ Branch on `result`:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-That name is already on the map. Pick a different name or use edit-summary / change-routing on the existing item.
+That name is already on the map. Pick a different name or use edit-summary on the existing item.
 ```
 
 → On return, proceed to **C. Apply**.
@@ -95,29 +94,25 @@ Walk the validated operation groups in user order. For the next pending group:
 
 → Proceed to **F. Rename**.
 
-#### If the group is a Change routing operation
-
-→ Proceed to **G. Change Routing**.
-
 #### If the group is one or more Edit description operations
 
-→ Proceed to **H. Edit Description**.
+→ Proceed to **G. Edit Description**.
 
 #### If the group is a Close as dead end operation
 
-→ Proceed to **I. Close as Dead End**.
+→ Proceed to **H. Close as Dead End**.
 
 #### If the group is a Reopen operation
 
-→ Proceed to **J. Reopen**.
+→ Proceed to **I. Reopen**.
 
 #### If the group is a Postpone operation
 
-→ Proceed to **L. Postpone**.
+→ Proceed to **K. Postpone**.
 
 #### Otherwise (no groups remain)
 
-→ Proceed to **K. Done**.
+→ Proceed to **J. Done**.
 
 ## D. Edit Summary
 
@@ -258,53 +253,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "disc
 
 → Return to **C. Apply** for the next group.
 
-## G. Change Routing
-
-Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…", "from": "{old routing}", "to": "{new routing}"}`), then render the gate:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reroute --file .workflows/.cache/{work_unit}/discovery/map-op.json
-```
-
-Emit the call's sections, each verbatim per its marker.
-
-#### If the call answered with `DISPLAY: map operation refused`
-
-The topic's lifecycle refuses the routing change. No manifest writes, no session-log entry, no commit.
-
-→ Return to **C. Apply** for the next group.
-
-#### If the call answered with the gate
-
-**STOP.** Wait for user response.
-
-**If `no`:**
-
-Skip this operation. No manifest writes, no session-log entry, no commit.
-
-→ Return to **C. Apply** for the next group.
-
-**If `yes`:**
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|discussion}
-```
-
-Append an Edits entry to the session log. If the log doesn't exist yet, create it first from [template.md](template.md). If **Edits** currently reads `(none)`, replace it with the bullet:
-
-```markdown
-- Changed routing: {name} → {new routing} — {short reason}
-```
-
-Per-item commit:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): re-route {name} to {new routing}" --discovery
-```
-
-→ Return to **C. Apply** for the next group.
-
-## H. Edit Description
+## G. Edit Description
 
 One gate covers the whole batch. Description may span paragraphs — carry a truncated preview (about 140 characters with `…`) in the payload so the STOP gate stays readable; the full description is written verbatim on confirm.
 
@@ -347,7 +296,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "disc
 
 → Return to **C. Apply** for the next group.
 
-## I. Close as Dead End
+## H. Close as Dead End
 
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
@@ -395,7 +344,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "disc
 
 → Return to **C. Apply** for the next group.
 
-## J. Reopen
+## I. Reopen
 
 Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with the Write tool (`{"name": "…"}`), then render the gate:
 
@@ -441,13 +390,13 @@ node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "disc
 
 → Return to **C. Apply** for the next group.
 
-## K. Done
+## J. Done
 
 All operation groups have been processed.
 
 → Return to caller.
 
-## L. Postpone
+## K. Postpone
 
 The horizon, the confirm, the transaction, and the receipt are the shared door's. It returns having sent the topic to the roadmap, or having left it where it is.
 

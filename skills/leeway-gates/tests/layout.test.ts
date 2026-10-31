@@ -285,7 +285,7 @@ describe('layout', () => {
 
   test('a row draws its head, its tail and its recommendation in one line, the recommendation bold in the accent colour', () => {
     const gate = gateOf({
-      options: [optionOf({ key: 'y', word: 'yes', tail: 'research', recommended: true })],
+      options: [optionOf({ key: 'y', word: 'yes', tail: 'planning', recommended: true })],
     })
     const [line] = rowsOf(linesOf(gate, 72))
 
@@ -293,7 +293,7 @@ describe('layout', () => {
 
     expect(line?.runs.slice(0, 3)).toEqual([
       { text: 'Continue "Auth"' },
-      { text: ' — research', dim: true, italic: true },
+      { text: ' — planning', dim: true, italic: true },
       { text: ' (recommended)', bold: true, accent: true },
     ])
   })

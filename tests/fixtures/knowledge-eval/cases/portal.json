@@ -85,12 +85,6 @@
         "framing": 1
       },
       {
-        "source": "resume-sessions-after-reboot/research/resume-sessions-after-reboot.md",
-        "anchor": "`$TMUX_PANE` is an environment variable set automatically by tmux in every process",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "agent-first-portal/imports/portal-control-plane-plan.md",
         "anchor": "**All parsing is Go, behind an `Adapter` interface**, one package per agent, so",
         "grade": "primary",
@@ -436,12 +430,6 @@
         "framing": 1
       },
       {
-        "source": "restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
-        "anchor": "**Inside tmux:** take the current session's clients, **NULL-filter to local host clients**",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "remote-trigger-spawns-on-local-terminal/seeds/2026-07-15-remote-trigger-spawns-on-local-terminal.md",
         "anchor": "Mechanism as observed in conversation (not yet validated): inside-tmux detection",
         "grade": "supporting",
@@ -558,12 +546,6 @@
         "framing": 0
       },
       {
-        "source": "restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
-        "anchor": "**Location + format:** `~/.config/portal/terminals.json` — Portal's JSON-store convention",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "custom-terminal-docs-and-clickable-see-docs/specification/custom-terminal-docs-and-clickable-see-docs/specification.md",
         "anchor": "banner's `see docs` hint into a clickable OSC 8 hyperlink pointing at that page. The",
         "grade": "primary",
@@ -598,12 +580,6 @@
         "anchor": "no `terminals.json` recipe needs an env slot",
         "grade": "supporting",
         "framing": 0
-      },
-      {
-        "source": "restore-host-terminal-windows/discussion/restore-host-terminal-windows.md",
-        "anchor": "Precedence: **config override → native adapter → unsupported**.",
-        "grade": "supporting",
-        "framing": 0
       }
     ]
   },
@@ -631,12 +607,6 @@
       {
         "source": "theming-system/specification/theming-system/specification.md",
         "anchor": "**Token values load from theme files, not Go code.** A theme is a flat `key = value` file.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Flat `key = value` with `#` comments.** Lee:",
         "grade": "primary",
         "framing": 0
       },
@@ -671,12 +641,6 @@
         "framing": 1
       },
       {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "The user floated the opposite extreme — name **every element** with its own theme",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "theming-system/specification/theming-system/specification.md",
         "anchor": "Move the cursor. **The app re-themes live behind the panel. Nothing is written.**",
         "grade": "primary",
@@ -707,12 +671,6 @@
         "framing": 3
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Drop-in** (user themes directory): must be **valid only** — all 19 tokens",
-        "grade": "supporting",
-        "framing": 3
-      },
-      {
         "source": "theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
         "anchor": "**Validation against the contrast floor.** The redesign establishes a WCAG-AA",
         "grade": "supporting",
@@ -731,32 +689,8 @@
         "framing": 4
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Consolidate to one border token.** `border.footer` is dropped; the footer rule",
-        "grade": "primary",
-        "framing": 4
-      },
-      {
         "source": "theming-system/seeds/2026-06-21-border-token-role-names.md",
         "anchor": "The goal is **not** to rename them to their current usage",
-        "grade": "supporting",
-        "framing": 4
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "and `separator` is defined *intrinsically* — \"low-contrast dividers, separators, and",
-        "grade": "supporting",
-        "framing": 4
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "So **wanting auto-detection does not commit Portal to the paired model.** That is",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "the two border tokens' **intrinsic roles actually are** (the identical light hex is",
         "grade": "supporting",
         "framing": 4
       },
@@ -839,20 +773,8 @@
     },
     "relevant": [
       {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "**Flip avoidance (also resolves F7):** the reply is async, so **gate the first real",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
         "anchor": "**Flip avoidance.** The reply is async, so **gate the first real paint on",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "**DECISION:** Portal **owns a mode-matched canonical canvas** — detect light/dark,",
         "grade": "primary",
         "framing": 0
       },
@@ -869,34 +791,10 @@
         "framing": 1
       },
       {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "**Contrast re-verification — DECIDED (rule here; computation is a spec task):** the",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "Every candidate direction must clear a hard contrast gate **before taste is",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
         "anchor": "**Contrast re-verification (the canvas pass).** Every foreground token, every per-element tint/band",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "**Its own topic/initiative — user-overridable themes.** Loading an external",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "escape hatch is **deferred to the user-theme system** (§2.8/§16),",
-        "grade": "supporting",
-        "framing": 2
       },
       {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
@@ -919,12 +817,6 @@
       {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
         "anchor": "This is the one documented carve-out to the single owned-canvas render path (§1)",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "**Canvas ownership REVERSED (2026-06-18) — supersedes insights 1, 2 & 4.**",
         "grade": "supporting",
         "framing": 0
       }
@@ -1070,7 +962,6 @@
     "terms": [
       "closed subsystem prefix taxonomy 15 components"
     ],
-    "options": {},
     "relevant": [
       {
         "source": "portal-observability-layer/specification/portal-observability-layer/specification.md",
@@ -1085,18 +976,6 @@
         "framing": 0
       },
       {
-        "source": "portal-observability-layer/discussion/portal-observability-layer.md",
-        "anchor": "**Closed component value space** (15 total — 12 original + 2 added by State-mutation audit trail",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "portal-observability-layer/discussion/portal-observability-layer.md",
-        "anchor": "Taxonomy final: 15 components; closed attr space",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "portal-observability-layer/specification/portal-observability-layer/specification.md",
         "anchor": "A closed subsystem-prefix taxonomy (18 components), a closed attr-key vocabulary",
         "grade": "supporting",
@@ -1105,12 +984,6 @@
       {
         "source": "theming-system/specification/theming-system/specification.md",
         "anchor": "**This feature adds a `theme` component via spec amendment**",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Decision: add a `theme` component** via spec amendment.",
         "grade": "supporting",
         "framing": 0
       },
@@ -1187,18 +1060,6 @@
         "framing": 0
       },
       {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "must validate user colours against the floor — tractable for ~20 tokens, not",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "`AdaptiveColor` makes a **binary** light/dark choice from terminal-bg detection;",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
         "anchor": "the gate selects between whole palettes, not between two variants of one",
         "grade": "supporting",
@@ -1249,32 +1110,14 @@
         "framing": 0
       },
       {
-        "source": "cli-verb-surface-redesign/discussion/cli-verb-surface-redesign.md",
-        "anchor": "**Decision: fold `--detect`'s job into `doctor`.**",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "theming-system/specification/theming-system/specification.md",
         "anchor": "**Theme lines are advisory and do NOT drive the exit code — this amends doctor's contract.**",
         "grade": "supporting",
         "framing": 0
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "Doctor's contract is a scriptable exit code, 0 iff all checks pass, and because",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
         "anchor": "Doctor's status vocabulary is five members, not two:",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Decision:** Portal-health checks keep their existing pass/fail markers;",
         "grade": "supporting",
         "framing": 0
       }
@@ -1348,34 +1191,16 @@
         "framing": 1
       },
       {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "Config resolution already exists (`cmd/config.go` `configFilePath`, per-file env",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "restore-host-terminal-windows/specification/restore-host-terminal-windows/specification.md",
         "anchor": "`~/.config/portal/terminals.json` — Portal's JSON-store convention (like `projects.json` / `hooks.json`)",
         "grade": "supporting",
         "framing": 1
       },
       {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "Build the redesign **token-based** (in scope) so it's theme-ready;",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "config-dir-wrong-path-macos/specification/config-dir-wrong-path-macos/specification.md",
         "anchor": "Env var overrides (`PORTAL_PROJECTS_FILE`, `PORTAL_ALIASES_FILE`, `PORTAL_HOOKS_FILE`) are user-facing features",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Normative note on the token count.** The vocabulary is **19 tokens**.",
-        "grade": "supporting",
-        "framing": 0
       }
     ]
   },
@@ -1529,12 +1354,6 @@
         "framing": 0
       },
       {
-        "source": "open-with-forced-filter/discussion/open-with-forced-filter.md",
-        "anchor": "The bare-positional resolution chain is **not** altered by this feature.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "open-with-forced-filter/specification/open-with-forced-filter/specification.md",
         "anchor": "**Unchanged.** Its ordering, its domains, and the sibling `cli-verb-surface-redesign` specification's Axiom 2",
         "grade": "primary",
@@ -1571,12 +1390,6 @@
         "framing": 1
       },
       {
-        "source": "open-with-forced-filter/discussion/open-with-forced-filter.md",
-        "anchor": "**Session naming stays exactly as it is.** `{project}-{nanoid}` is unchanged, and",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "open-with-forced-filter/specification/open-with-forced-filter/specification.md",
         "anchor": "**Unchanged.** `{project}-{nanoid}` stays exactly as it is",
         "grade": "primary",
@@ -1589,28 +1402,10 @@
         "framing": 2
       },
       {
-        "source": "session-scrollback-preview/research/session-scrollback-preview.md",
-        "anchor": "so users can disambiguate similarly-named sessions (especially Claude/team-up sessions in the same project",
-        "grade": "supporting",
-        "framing": 2
-      },
-      {
         "source": "open-with-forced-filter/specification/open-with-forced-filter/specification.md",
         "anchor": "a single-segment leading-`/` argument is session-search text and never enters it at all.",
         "grade": "supporting",
         "framing": 0
-      },
-      {
-        "source": "open-with-forced-filter/discussion/open-with-forced-filter.md",
-        "anchor": "`portal open -f/--filter <text>` skips resolution and opens the picker",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "open-with-forced-filter/discussion/open-with-forced-filter.md",
-        "anchor": "A leading `/` declares session-search intent, and the term is forced as filter",
-        "grade": "primary",
-        "framing": 1
       }
     ]
   },
@@ -1653,12 +1448,6 @@
         "framing": 0
       },
       {
-        "source": "resume-sessions-after-reboot/discussion/resume-sessions-after-reboot.md",
-        "anchor": "**Lazy execution, triggered during Portal's connection flow.**",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "built-in-session-resurrection/specification/built-in-session-resurrection/specification.md",
         "anchor": "Resume hooks fire **only** from inside the hydrate helper's exec chain, at the end of successful hydration.",
         "grade": "primary",
@@ -1683,12 +1472,6 @@
         "framing": 2
       },
       {
-        "source": "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
-        "anchor": "**The panel is drawn by Portal into the pane's own alternate screen, by a program that stays there",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
         "anchor": "is where this one lives, as the key **`resume_mode`**, holding `eager` or `lazy`.",
         "grade": "primary",
@@ -1701,28 +1484,10 @@
         "framing": 3
       },
       {
-        "source": "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
-        "anchor": "**An install-wide default, with a three-state per-hook override.**",
-        "grade": "primary",
-        "framing": 3
-      },
-      {
         "source": "lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
         "anchor": "The feature ships on rather than waiting to be discovered.",
         "grade": "supporting",
         "framing": 3
-      },
-      {
-        "source": "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
-        "anchor": "The firing is unconditional in the hydrate helper's exec chain: once scrollback replay finishes,",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "lazy-resume-on-attach/discussion/lazy-resume-on-attach.md",
-        "anchor": "**No trigger.** The panel is drawn once, at restore, by the machinery that already runs for every pane.",
-        "grade": "supporting",
-        "framing": 2
       },
       {
         "source": "lazy-resume-on-attach/specification/lazy-resume-on-attach/specification.md",
@@ -1915,12 +1680,6 @@
         "framing": 1
       },
       {
-        "source": "resume-sessions-after-reboot/research/resume-sessions-after-reboot.md",
-        "anchor": "`$TMUX_PANE` is an environment variable set automatically by tmux in every process",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
         "source": "agent-first-portal/imports/portal-control-plane-plan.md",
         "anchor": "**All parsing is Go, behind an `Adapter` interface**, one package per agent, so",
         "grade": "primary",
@@ -2095,12 +1854,6 @@
         "framing": 0
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Flat `key = value` with `#` comments.** Lee:",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "spectrum-tui-design/specification/spectrum-tui-design/specification.md",
         "anchor": "**The user-overridable theme system is delivered.** A theme is a flat `key = value` file with `#` comments",
         "grade": "primary",
@@ -2128,12 +1881,6 @@
         "source": "theming-system/specification/theming-system/specification.md",
         "anchor": "**A theme is one palette**, not a light/dark pair. `Token` collapses from `{Name, Light, Dark}` to `{Name, Value}`",
         "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "spectrum-tui-design/discussion/spectrum-tui-design.md",
-        "anchor": "The user floated the opposite extreme — name **every element** with its own theme",
-        "grade": "supporting",
         "framing": 1
       },
       {
@@ -2167,12 +1914,6 @@
         "framing": 3
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Drop-in** (user themes directory): must be **valid only** — all 19 tokens",
-        "grade": "supporting",
-        "framing": 3
-      },
-      {
         "source": "theming-system/seeds/2026-06-17-user-overridable-theme-system.md",
         "anchor": "**Validation against the contrast floor.** The redesign establishes a WCAG-AA",
         "grade": "supporting",
@@ -2191,32 +1932,8 @@
         "framing": 4
       },
       {
-        "source": "theming-system/discussion/theming-system.md",
-        "anchor": "**Consolidate to one border token.** `border.footer` is dropped; the footer rule",
-        "grade": "primary",
-        "framing": 4
-      },
-      {
         "source": "theming-system/seeds/2026-06-21-border-token-role-names.md",
         "anchor": "The goal is **not** to rename them to their current usage",
-        "grade": "supporting",
-        "framing": 4
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "and `separator` is defined *intrinsically* — \"low-contrast dividers, separators, and",
-        "grade": "supporting",
-        "framing": 4
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "So **wanting auto-detection does not commit Portal to the paired model.** That is",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "theming-system/research/theming-system.md",
-        "anchor": "the two border tokens' **intrinsic roles actually are** (the identical light hex is",
         "grade": "supporting",
         "framing": 4
       },
@@ -2271,7 +1988,6 @@
       "scroll wheel scrolling the session list and clicking between the Sessions and Projects pages",
       "enabling Bubble Tea mouse events alongside the keyboard keymap"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -2282,7 +1998,6 @@
       "copy the selected session name or project path to the system clipboard from the picker",
       "yank keybinding that writes to the clipboard with OSC 52 or pbcopy"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -2294,7 +2009,6 @@
       "configurable session expiry, reaping old sessions nobody has attached to recently",
       "warning the user before an idle session is closed automatically"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -2305,7 +2019,6 @@
       "lock a tmux session with a password when stepping away from the terminal",
       "lock-session and lock-after-time screen lock for Portal sessions"
     ],
-    "options": {},
     "relevant": []
   }
 ]

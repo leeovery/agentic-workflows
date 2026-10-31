@@ -30,7 +30,7 @@ const KIND_CONFIG = {
     phase: 'discovery',
     field: 'gap_analysis_cache',
     filesField: 'input_files',
-    emptyError: 'nothing to stamp: no completed research or discussion files',
+    emptyError: 'nothing to stamp: no decided discussion records',
   },
 };
 

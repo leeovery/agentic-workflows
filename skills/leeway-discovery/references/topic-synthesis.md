@@ -22,7 +22,7 @@ Cross-reference all three. The Exploration section is durable; conversation memo
 
 Read out the **distinct surfaces** the exploration named — the parts of the product that have their own user interaction, own decision space, own boundary. These are the candidates for topic-ness; they're not topics yet.
 
-A surface is something like *menu-management*, *kitchen-printers*, *operator-analytics*. It has a clear name, a clear edge, and would warrant its own future research or discussion.
+A surface is something like *menu-management*, *kitchen-printers*, *operator-analytics*. It has a clear name, a clear edge, and would warrant its own future discussion.
 
 If the exploration touched on a surface only in passing and didn't develop it, note it but don't force it into a topic. Let it surface in a later session if it grows.
 
@@ -32,9 +32,9 @@ If the exploration touched on a surface only in passing and didn't develop it, n
 
 → Load **[topic-granularity.md](../../leeway-shared/references/topic-granularity.md)** and follow its instructions as written.
 
-Apply the independence test and anti-patterns. Two surfaces that share a domain, data model, user journey, or decision space should merge into one topic. One surface that has independent stakeholders or genuinely separate concerns can split — but resist splitting one product surface into its implementation concerns. The map item is the unit of *future research or discussion*, not the unit of *implementation*.
+Apply the independence test and anti-patterns. Two surfaces that share a domain, data model, user journey, or decision space should merge into one topic. One surface that has independent stakeholders or genuinely separate concerns can split — but resist splitting one product surface into its implementation concerns. The map item is the unit of *future discussion*, not the unit of *implementation*.
 
-For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future discussion or research, not as a new sibling.
+For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future discussion, not as a new sibling.
 
 **A bug or a quick-fix the epic started with is never a topic.** Pulled with it from the roadmap or seeded with it from the inbox, it is material for the topics it bears on — fold its ground into them, never propose it as a topic of its own.
 
@@ -50,29 +50,27 @@ Everything the harvest surfaced stages beyond this epic — nothing routes; the 
 
 Every candidate folded into an existing map item, or the exploration surfaced none — there is no proposal to render and nothing to confirm. Tell the user briefly (the exploration itself is captured in the session log). Synthesis outcome: `confirmed`, with an **empty working list** — Step 12 confirm-and-persist finalises and closes the session without new topics.
 
-→ Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written — with the empty working list, its pass covers the existing map topics this session's exploration materially deepened: their briefs regenerate and in-flight downstream work gets `reconcile_needed`.
+→ Load **[brief-synthesis.md](brief-synthesis.md)** and follow its instructions as written — with the empty working list, its pass covers the existing map topics this session's exploration materially deepened: their briefs regenerate.
 
 → Return to caller.
 
 #### Otherwise
 
-→ Proceed to **D. Infer Routing**.
+→ Proceed to **D. Routing**.
 
-## D. Infer Routing
+## D. Routing
 
-→ Load **[routing-inference.md](routing-inference.md)** and follow its instructions as written.
+Every topic routes to `discussion`.
 
-For each topic in the synthesised set, propose `research` or `discussion` based on cues from how the user framed it during exploration. The proposal is tentative — the user can flip it at the confirmation gate in **E**.
-
-→ On return, proceed to **E. Render Proposal**.
+→ Proceed to **E. Render Proposal**.
 
 ## E. Render Proposal
 
-Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); descriptions are two or three sentences drawn from the exploration — what the topic covers and why it surfaced, a point the user left open never worded as settled; routing is the value inferred in **D**:
+Write the proposed set to `.workflows/.cache/{work_unit}/discovery/proposed-topics.json` — a JSON array in synthesised order, one object per topic. Names are kebab-case; summaries are the one-liners drawn from the exploration, worded product-first (the capability or behaviour at stake, not the mechanism); descriptions are two or three sentences drawn from the exploration — what the topic covers and why it surfaced, a point the user left open never worded as settled; routing is `discussion`:
 
 ```json
 [
-  {"name": "{topic}", "routing": "{research|discussion}", "summary": "{one-line summary}", "description": "{two or three sentences}"}
+  {"name": "{topic}", "routing": "discussion", "summary": "{one-line summary}", "description": "{two or three sentences}"}
 ]
 ```
 
@@ -132,7 +130,6 @@ Apply the named adjustments to the working set:
 - **Split** *"X is really two things — A and B"* — replace the topic with two
 - **Merge** *"X and Y are one"* — combine into one topic; propose a unifying name
 - **Rename** *"X should be called Z"* — swap the name
-- **Re-route** *"Y should be research"* — flip routing
 - **Edit summary or description** *"Y's summary should be ..."* — replace the summary line or the description
 - **Re-sort** *"X is this epic after all"* / *"actually Y can wait — v2"* — move between the working list and the park set (a parked item gains its horizon, an unparked one its routing)
 - **Drop** *"Forget Z entirely"* — remove from set (note: this means Claude misread the exploration; reflect on what was overweighted)

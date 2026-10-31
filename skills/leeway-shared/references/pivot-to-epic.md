@@ -1,10 +1,10 @@
 # Pivot to Epic
 
-*Shared reference. Loaded by `leeway` (manage menu), `leeway-research-process`, and `leeway-discussion-process` (off-topic pivot) to convert a single-topic feature into an epic.*
+*Shared reference. Loaded by `leeway` (manage menu) and `leeway-discussion-process` (a point another topic would own) to convert a single-topic feature into an epic.*
 
 ---
 
-One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — routing reflects whether the feature did research; `summary`/`description` are left unset for `summary-backfill.md` to fill on the next `/leeway-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
+One engine transaction converts the feature: flips `work_type: epic` in the work-unit manifest and the project manifest's registration, registers the feature's single topic (topic name = work unit name) on the discovery map — `summary`/`description` left unset for `summary-backfill.md` to fill on the next `/leeway-continue-epic` entry — re-indexes the unit so chunk metadata carries the new work_type, and commits both manifests.
 
 ## Parameters
 

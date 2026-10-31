@@ -508,7 +508,7 @@ function heldItemAt(manifest, segments) {
 /**
  * The refusal every write onto a held item makes, naming the way out: the
  * reactivate for a cancelled item, addressed by the unit that frees it —
- * `discovery` for a research or discussion item, `specification` for a
+ * `discovery` for a discussion item, `specification` for a
  * specification or plan; a phase outside the two stages names the verb
  * alone — the roadmap for a postponed one, whose way back is the pull, and
  * for a promoted one the transitions' own refusal, naming the unit it moved
@@ -890,35 +890,11 @@ function cmdResolve(cwd, args, out) {
   }
 
   // Validate that the work unit exists by reading its manifest.
-  const manifest = readManifest(cwd, workUnit);
+  readManifest(cwd, workUnit);
   const wuDir = path.join(stateRoot(cwd), workUnit);
 
-  if (phase === 'research') {
-    if (topic) {
-      // 3-segment: specific research item.
-      out(path.join(wuDir, 'research', topic + '.md') + '\n');
-    } else {
-      // 2-segment: iterate phases.research.items from the manifest.
-      const items = manifest.phases && manifest.phases.research && manifest.phases.research.items;
-      if (!items || typeof items !== 'object') {
-        // No research items tracked — output nothing, exit 0.
-        return;
-      }
-      for (const itemName of Object.keys(items)) {
-        out(path.join(wuDir, 'research', itemName + '.md') + '\n');
-      }
-    }
-    return;
-  }
-
-  // For non-research phases, topic is required (3 segments).
   if (!topic) {
     fail(`resolve for ${phase} requires 3 segments: <work_unit>.${phase}.<topic>`);
-  }
-
-  if (phase === 'discussion') {
-    out(path.join(wuDir, 'discussion', topic + '.md') + '\n');
-    return;
   }
 
   if (phase === 'investigation') {

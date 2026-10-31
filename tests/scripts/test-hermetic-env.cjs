@@ -45,10 +45,10 @@ function offenders(dir) {
 /** A project whose state holds one indexable document. */
 function setupProject() {
   const dir = setupGitFixture('hermetic-');
-  fs.mkdirSync(statePath(dir, 'auth', 'discussion'), { recursive: true });
+  fs.mkdirSync(statePath(dir, 'auth', 'investigation'), { recursive: true });
   fs.writeFileSync(statePath(dir, 'auth', 'manifest.json'),
     JSON.stringify({ name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} }));
-  fs.writeFileSync(statePath(dir, 'auth', 'discussion', 'auth.md'),
+  fs.writeFileSync(statePath(dir, 'auth', 'investigation', 'auth.md'),
     '# Auth\n\nToken refresh is decided here.\n');
   return dir;
 }
@@ -66,7 +66,7 @@ function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
     const env = configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir };
-    const res = engine.run(['knowledge', 'index', statePath(project, 'auth', 'discussion', 'auth.md')], { cwd: project, env });
+    const res = engine.run(['knowledge', 'index', statePath(project, 'auth', 'investigation', 'auth.md')], { cwd: project, env });
     const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {

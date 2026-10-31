@@ -330,7 +330,7 @@ function recipeHash(caseId) {
 // Only an exact match skips, and only a byte-identical rebuild records: a
 // cache that is cold, stale, half-written or deleted costs a rebuild and
 // nothing else.
-const HASH_CACHE_DIR = path.join(cases.PROSE_DIR, '.cache', 'hashes');
+const HASH_CACHE_DIR = path.join(cases.CACHE_DIR, 'hashes');
 
 function hashCacheFile(caseId, which) {
   return path.join(HASH_CACHE_DIR, `${caseId}.${which}`);

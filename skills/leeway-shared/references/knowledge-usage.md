@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; by `reading-the-mailbox.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
+*Shared reference. Loaded by the investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; by `reading-the-mailbox.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
 
 ---
 
@@ -36,18 +36,18 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source file's last change as this copy of the project saw it (on a fresh clone, the clone day), closing on `| reopened` where its topic is in progress again — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. Results come best first, except that one topic's records answering the same term run in its order — the specification, then the discussion or investigation it was built from, then the research before that. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source file's last change as this copy of the project saw it (on a fresh clone, the clone day), closing on `| reopened` where its topic is in progress again — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. Results come best first, except that one topic's records answering the same term run in its order — the specification, then the investigation it was built from. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
 Excerpts land in context; read further only when a result looks load-bearing — its source file at the result's line range, or, where the path is bare, around the passage its excerpt comes from. Most queries return a couple of mildly relevant results and one directly relevant — read that one, and skim the rest from their excerpts alone.
 
 Confidence is intrinsic to the source phase — how much weight to give the content, never whether to use it:
 
 - `high` — specification: a decision validated and written down. Trust the *what*; verify the *why* against the source when it matters.
+- `high` — record: a topic's ledger record, what was asked and what stands decided on each question. Trust the decision; a replaced answer is history the record keeps beside it.
 - `medium` — investigation: diagnostic work tied to specific symptoms. Trust the diagnosis; check the symptom is still current.
-- `low-medium` — discussion: the journey to its decisions, its false paths and reversals kept on purpose. A decision's current form is the entry directly under its Decision heading; what lies beneath it is earlier history or a later addition. When an excerpt's headings put it anywhere else — an older dated entry, `Initial`, Journey, Options Considered — and the decision matters, read that top entry in the source file before relying on the excerpt.
-- `low` — research, imports, seeds, analysis, discovery, roadmap, baseline: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
+- `low` — imports, seeds, analysis, discovery, roadmap, baseline: exploration, reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
 
-Low confidence is not low value. A research result that rejected an approach stops the next work unit re-exploring the same dead end; a discussion result showing a corrected assumption explains *why* the spec says what it says. Weigh them, never filter them out.
+Low confidence is not low value. A discovery log that rejected an approach stops the next work unit re-exploring the same dead end. Weigh them, never filter them out.
 
 A `reopened` result is its topic's last concluded position, now being revisited — it may change.
 
@@ -109,10 +109,9 @@ Leave the artifact alone — no correction is owed. Its phase decays in the know
 
 ## F. Phase-specific notes
 
-- **Research** — query at the start of the phase (via the contextual query step) and throughout. Early phases have the highest chance of overlapping with prior work — research is often where the same ground gets explored twice if we don't check.
 - **Discussion** — query at the start and throughout. Decisions being made now often echo or contradict decisions made elsewhere. Check before committing to a direction.
 - **Investigation** — query at the start (after initial symptoms are gathered) and throughout. Symptoms and root causes may have been seen before — a matching prior investigation can save hours.
-- **Specification** — **do not query while authoring the spec.** The spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the document away from its own source material. Exception: the epic menu's grouping analysis, before any specification starts, runs one advisory `--phase discussion` query per grouping to surface candidate tension lines (sibling discussions that changed something a grouping depends on) — that is intake, not authoring, and never injects content into the spec body.
+- **Specification** — **do not query while authoring the spec.** The spec turns discussion decisions into a golden document. Cross-cutting concerns merge at planning time via an explicit cross-cutting query, not during spec authoring. Querying mid-spec pulls the document away from its own source material. Exception: the epic menu's grouping analysis, before any specification starts, runs one advisory `--phase record` query per grouping to surface candidate tension lines (sibling discussions that changed something a grouping depends on) — that is intake, not authoring, and never injects content into the spec body.
 - **Scoping** — query throughout. Quick-fix scoping benefits from knowing if the issue was discussed or investigated elsewhere — a "mechanical change" often has a history.
 - **Planning** — **do not query during planning.** The spec is the golden document; planning operates on the spec alone. A spec gap that surfaces during planning is classified and landed through the planning flow (`resolve-spec-gap.md`) — never filled with a KB query. Cross-cutting context is handled at the plan's initialization via the explicit `--work-type cross-cutting` query (existing mechanism, not discretionary).
 - **Implementation** — code is the source of truth for *what* exists during implementation. Read the code; don't query the KB for it. The KB is useful only for the *why* behind an existing pattern or decision (e.g., "why does this use UUID v7?" — the rationale lives in spec/discussion, not the code). Rare in practice. Never use it to fill spec gaps — those are blockers.

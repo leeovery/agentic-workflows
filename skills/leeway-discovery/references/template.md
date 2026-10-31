@@ -65,7 +65,6 @@ applied. Format:}
 - Renamed: {old} → {new} — {short reason}
 - Edited summary: {name} — {short note}
 - Edited description: {name} — {short note}
-- Changed routing: {name} → {new routing} — {short reason}
 - Closed as dead end: {name} — {short reason}
 - Reopened: {name} — {short reason}
 - Imported: {filename}
@@ -74,12 +73,12 @@ applied. Format:}
 
 ### {topic-name}
 
-- Routing: {research|discussion}
+- Routing: discussion
 - Why: {one-line rationale — what cue drove the routing}
 
 ### {topic-name}
 
-- Routing: {research|discussion}
+- Routing: discussion
 - Why: ...
 
 ## Conclusion

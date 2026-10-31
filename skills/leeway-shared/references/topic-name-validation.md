@@ -1,6 +1,6 @@
 # Topic Name Validation
 
-*Shared reference. Loaded by `leeway-discovery`, `leeway-research-process`, `leeway-discussion-process`, and any flow that proposes a new topic name for the discovery map.*
+*Shared reference. Loaded by `leeway-discovery` and any flow that proposes a new topic name for the discovery map.*
 
 ---
 

@@ -229,10 +229,10 @@ const CORE = {
     discussion: {
       analysis_cache: { checksum: 'abc', generated: '2026-01-03' },
       items: {
-        alpha: { status: 'completed', subtopics: { frames: { status: 'decided' }, monitors: { status: 'deferred' } } },
+        alpha: { status: 'completed', reconcile_needed: 'roadmap', subtopics: { frames: { status: 'decided' }, monitors: { status: 'deferred' } } },
         beta: { status: 'unstarted', reconcile_needed: 'research' },
         gamma: { status: 'promoted', promoted_to: 'shared' },
-        delta: { status: 'cancelled' },
+        delta: { status: 'cancelled', reconcile_needed: 'experiment' },
       },
     },
     experiment: {
@@ -246,7 +246,7 @@ const CORE = {
       items: {
         search: {
           status: 'in-progress', order: 1, review_cycle: 2, review_baseline_words: 1200, tracking: { 'review-input-tracking-c1.md': 'open' },
-          sources: { alpha: { status: 'incorporated' } },
+          reconcile_needed: 'discussion', sources: { alpha: { status: 'incorporated' } },
         },
         old: { status: 'cancelled', previous_order: 2, sources: {} },
       },
@@ -746,7 +746,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
           },
           discussion: {
             items: {
-              alpha: { status: 'completed', reconcile_needed: 'experiment' },
+              alpha: { status: 'completed' },
               beta: { status: 'unstarted' },
               gamma: { status: 'promoted', promoted_to: 'shared' },
               delta: { status: 'cancelled' },
@@ -757,10 +757,18 @@ describe('migration 078: the move into the layout in .leeway/', () => {
             },
           },
           experiment: { items: { alpha: CORE.phases.experiment.items.alpha } },
-          specification: { items: { search: { status: 'in-progress', sources: { alpha: { status: 'incorporated' } } }, old: { status: 'cancelled', sources: {} } } },
+          specification: { items: { search: { status: 'in-progress', reconcile_needed: 'discussion', sources: { alpha: { status: 'incorporated' } } }, old: { status: 'cancelled', sources: {} } } },
         },
       });
       assert.strictEqual(read('core/manifest.json'), json(manifestOf('core')), 'in the engine\'s serialisation');
+    });
+
+    it('drops every discussion\'s reconcile flag, whatever it holds, carries none from research, and keeps a later phase\'s', () => {
+      assert.deepStrictEqual(
+        Object.entries(manifestOf('core').phases.discussion.items).filter(([, item]) => 'reconcile_needed' in item).map(([topic]) => topic),
+        [],
+      );
+      assert.strictEqual(manifestOf('core').phases.specification.items.search.reconcile_needed, 'discussion');
     });
   });
 

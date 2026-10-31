@@ -13,7 +13,7 @@
 const { signpost, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { heldStatement } = require('./enter.cjs');
-const { OUTSTANDING_RESEARCH_STATUSES, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES } = require('../derivations.cjs');
+const { CONVERSATION_ACTIONS } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
@@ -64,7 +64,7 @@ const BUILD_PHASES = EPIC_PIPELINE.slice(EPIC_PIPELINE.indexOf('specification'))
 // pipeline in order by this labelling, so the dividers can never hold a phase
 // the pipeline lacks.
 const STAGE_OF = {
-  research: 'DISCOVERY', experiment: 'DISCOVERY', discussion: 'DISCOVERY',
+  experiment: 'DISCOVERY', discussion: 'DISCOVERY',
   specification: 'DEFINITION', planning: 'DEFINITION',
   implementation: 'DELIVERY', review: 'DELIVERY',
 };
@@ -117,7 +117,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.mail_waiting ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -207,7 +207,6 @@ function mapStatusSuffix(detail) {
   const parts = [];
   if (s.decided) parts.push(`${s.decided} decided`);
   if (s.in_flight) parts.push(`${s.in_flight} in flight`);
-  if (s.ready) parts.push(`${s.ready} ready`);
   if (s.fresh) parts.push(`${s.fresh} fresh`);
   if (s.handled) parts.push(`${s.handled} dead-ended`);
   if (s.cancelled) parts.push(`${s.cancelled} cancelled`);
@@ -276,9 +275,9 @@ function heldAgesIn(presence, phases) {
 }
 
 /**
- * Held map topics. The map is the research-and-discussion tree, so only
- * those phases' holds cue a row — a planning or code session on the same
- * topic shows on its own menu row, never as this row's age.
+ * Held map topics. The map is the discussion tree, so only that phase's
+ * holds cue a row — a planning or code session on the same topic shows on
+ * its own menu row, never as this row's age.
  * @param {PresenceRow[]|undefined} presence @returns {Map<string, number>}
  */
 function heldTopicAges(presence) {
@@ -384,7 +383,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
   if (!hasMap && phaseNames.length === 0) {
     return ''
       + 'No work started yet.\n\n'
-      + flaggedCallout('Run discovery to shape the topic map — research and discussion start from there.')
+      + flaggedCallout('Run discovery to shape the topic map — discussion starts from there.')
       + '\n';
   }
 
@@ -404,7 +403,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (material) block += material + '\n\n';
     const callouts = arrivalCallouts(newArrivals);
     if (callouts.length > 0) block += callouts.join('\n') + '\n\n';
-    block += treeHeader(`RESEARCH & DISCUSSION (${drawn.length} topic${drawn.length === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
+    block += treeHeader(`DISCUSSION (${drawn.length} topic${drawn.length === 1 ? '' : 's'}${mapStatusSuffix(detail)})`) + '\n';
     // Every row postponed leaves the tree with nothing to draw — the map's
     // own empty word, with the line below naming where the topics went.
     block += drawn.length > 0 ? renderTree(mapNodes(drawn, heldAges), { width: TREE_WIDTH, gap: true }) : '  (empty)\n';
@@ -460,11 +459,6 @@ const CUE_RECONCILE =
   + '                              this item last moved; the item\'s entry\n'
   + '                              flow reconciles it';
 
-const CUE_DISCUSSION_BLOCKED =
-  '    blocked (discussion)    — its research is still outstanding;\n'
-  + '                              land it and the item returns to\n'
-  + '                              the menu';
-
 const CUE_BLOCKED =
   '    blocked (specification) — a source discussion is back\n'
   + '                              in-progress; re-conclude it and the\n'
@@ -508,12 +502,10 @@ function epicKey(detail) {
   const anyBlocked = (detail.phases.planning || [])
     .some((p) => Array.isArray(p.deps_blocking) && p.deps_blocking.length > 0);
   // The cue legend mirrors the display: with a map only build phases render
-  // item rows — but map rows themselves cue via the reconcile_pending rider;
-  // without a map every phase renders.
+  // item rows; without a map every phase renders.
   const cuePhases = hasMap ? BUILD_PHASES : Object.keys(detail.phases);
   const anyFlagged = cuePhases.some((p) => (detail.phases[p] || [])
-    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined))
-    || detail.discovery_map.some((r) => r.reconcile_pending === true);
+    .some((i) => i.status === 'completed' && i.reconcile_needed !== undefined));
   // The cue follows the rendered tag, not the field: a held item whose tag
   // reads `input moved` earns the reconcile cue, not this one.
   const blockedAny = (/** @type {string} */ phase) => cuePhases.includes(phase)
@@ -522,7 +514,6 @@ function epicKey(detail) {
   if (!hasMap || BUILD_PHASES.some((p) => (detail.phases[p] || []).length > 0)) blocks.push(KEY_STATUS);
   const cueLines = [];
   if (anyFlagged) cueLines.push(CUE_RECONCILE);
-  if (blockedAny('discussion')) cueLines.push(CUE_DISCUSSION_BLOCKED);
   if (blockedAny('specification')) cueLines.push(CUE_BLOCKED);
   const planCauses = [blockedAny('planning'), anyBlocked];
   if (planCauses.some(Boolean)) cueLines.push(cuePlanBlocked(planCauses));
@@ -544,23 +535,13 @@ function topicRoute(action, workUnit, topic) {
 // The mail cue rides every row shape: the bare start rows carry it as
 // their tail; a row that already has a tail carries it as the tail's cue,
 // the way continueLabel cues `input moved`.
-/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [mailWaiting] @returns {LabelParts} */
-function discoveryEntryLabel(action, name, researchState, mailWaiting) {
+/** @param {string} action @param {string} name @param {boolean} [mailWaiting] @returns {LabelParts} */
+function discoveryEntryLabel(action, name, mailWaiting) {
   const t = titlecase(name);
   const cue = mailWaiting ? 'mail waiting' : undefined;
-  switch (action) {
-    case 'start_research': return { head: `Start research for "${t}"`, tail: cue };
-    case 'start_discussion': return { head: `Start discussion for "${t}"`, tail: cue };
-    case 'continue_research': return { head: `Continue "${t}"`, tail: 'research', cue };
-    case 'continue_discussion': return { head: `Continue "${t}"`, tail: 'discussion', cue };
-    // start_discussion_after_research — superseded research is named as such,
-    // never as completed (same rule as discoveryLifecycleLabel).
-    default: return {
-      head: `Start discussion for "${t}"`,
-      tail: researchState === 'superseded' ? 'research superseded' : 'research completed',
-      cue,
-    };
-  }
+  return action === 'continue_discussion'
+    ? { head: `Continue "${t}"`, tail: 'discussion', cue }
+    : { head: `Start discussion for "${t}"`, tail: cue };
 }
 
 /** @param {string} phase @param {PhaseEntry} item @returns {LabelParts} */
@@ -594,23 +575,8 @@ function discoveryEntry(workUnit, row, action) {
     action,
     topic: row.name,
     route: topicRoute(action, workUnit, row.name),
-    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, row.mail_waiting),
+    label: discoveryEntryLabel(action, row.name, row.mail_waiting),
   };
-}
-
-// Research parked beneath a decided topic — an `unstarted` stub under a
-// concluded discussion — gets its own row: the topic's own action is null,
-// and the research is the reconcile's first step. Every other live
-// lifecycle already leads with the research as the row's own action
-// (research reopened under a decided discussion reads `researching`), and a
-// closed one carries nothing.
-
-/** @param {string} workUnit @param {MapRow} row @returns {MenuKey|null} */
-function researchEntry(workUnit, row) {
-  if (CLOSED_LIFECYCLES.includes(row.lifecycle)) return null;
-  if (!OUTSTANDING_RESEARCH_STATUSES.includes(row.research_state ?? '')) return null;
-  if (row.next_action && CONVERSATION_ACTIONS.research.includes(row.next_action)) return null;
-  return discoveryEntry(workUnit, row, row.research_state === 'unstarted' ? 'start_research' : 'continue_research');
 }
 
 /**
@@ -642,21 +608,6 @@ function experimentEntries(workUnit, detail) {
 /** @param {string} phase @param {PhaseEntry} item @param {PresenceRow[]} held */
 function rowStands(phase, item, held) {
   return item.blocked_by === undefined || heldRow(held, phase, item.name) !== undefined;
-}
-
-/**
- * The map's face of the held-row rule. A discussion held shut for its
- * outstanding research has no row of its own — the research row is the way
- * in — unless a live session sits in it, when its continue row follows the
- * research row, struck through, and the menu agrees with the map row's
- * `in session` cue.
- * @param {string} workUnit @param {EpicDetail} detail @param {MapRow} row @param {PresenceRow[]} held @returns {MenuKey|null}
- */
-function heldDiscussionEntry(workUnit, detail, row, held) {
-  const item = (detail.phases.discussion || []).find((i) => i.name === row.name);
-  if (!item || item.status !== 'in-progress' || item.blocked_by === undefined) return null;
-  if (heldRow(held, 'discussion', item.name) === undefined) return null;
-  return { ...discoveryEntry(workUnit, row, 'continue_discussion'), blocked_by: item.blocked_by };
 }
 
 /** Continue entries for one phase's in-progress items. @param {string} workUnit @param {EpicDetail} detail @param {string} phase @param {PresenceRow[]} held @returns {MenuKey[]} */
@@ -745,10 +696,6 @@ function commandOptions(workUnit, detail, hasMap) {
     key: 'd', word: 'discuss', action: 'new_discussion', topic: null, route: null,
     label: hasMap ? 'Start a discussion on a new topic' : 'Start new discussion',
   });
-  opts.push({
-    key: 'r', word: 'research', action: 'new_research', topic: null, route: null,
-    label: hasMap ? 'Start research on a new topic' : 'Start new research',
-  });
   if (hasMap && !detail.active_session) opts.push(discoveryOpt);
   if (detail.completed.some((i) => i.blocked_by === undefined)) {
     opts.push({ key: 'c', word: 'completed', action: 'resume_completed', topic: null, route: null, label: 'Resume a completed topic' });
@@ -815,18 +762,11 @@ function pickRecommendation(detail, numbered, options, hasMap) {
 
   if (hasMap) {
     // Top of the actionable map — the first discovery entry mirrors the
-    // first map row with a non-null next_action, or a decided row's research
-    // entry ahead of it. Decided rows lead the map but carry no action of
-    // their own, so the actionable order is → then ◐ then ○. A topic another
-    // session holds open is never the recommendation.
-    const discoveryActions = ['start_research', 'start_discussion', 'continue_research', 'continue_discussion', 'start_discussion_after_research'];
-    const discovery = numbered.find((e) => discoveryActions.includes(e.action) && !e.in_session) || null;
+    // first map row with a non-null next_action. Decided rows lead the map
+    // but carry no action of their own, so the actionable order is ◐ then ○.
+    // A topic another session holds open is never the recommendation.
+    const discovery = numbered.find((e) => CONVERSATION_ACTIONS.discussion.includes(e.action) && !e.in_session) || null;
     if (detail.convergence_state === 'in-progress') return discovery;
-    // settled — a settled map's one discovery row is research outstanding
-    // beneath a decided topic, and it leads: the first step of a reconcile
-    // (the flagged discussion it feeds sources a spec), where a build start
-    // elsewhere on the map would propagate known-stale input one hop removed.
-    if (discovery) return discovery;
     // Then the first build-phase next_phase_ready entry in pipeline order.
     // An input-moved entry is never the recommendation: recommending a start
     // that propagates known-stale input contradicts its own cue — the
@@ -930,15 +870,9 @@ function menuEntries(workUnit, detail, opts) {
 
   if (hasMap) {
     // Discovery topics — one entry per map row with a non-null next_action
-    // (✓/⊙/⊘ rows have none), in map order; a decided row carries its
-    // research entry instead when research is outstanding beneath it, and a
-    // held discussion its struck row beneath the research it awaits.
+    // (✓/⊙/⊘ rows have none), in map order.
     for (const row of detail.discovery_map) {
-      const research = researchEntry(workUnit, row);
-      if (research) numbered.push(research);
       if (row.next_action) numbered.push(discoveryEntry(workUnit, row, row.next_action));
-      const heldDiscussion = heldDiscussionEntry(workUnit, detail, row, held);
-      if (heldDiscussion) numbered.push(heldDiscussion);
     }
     // Build-phase entries by pipeline position — continues, then gated starts.
     for (const phase of BUILD_PHASES) {
@@ -1026,9 +960,8 @@ function epicMenu(workUnit, detail, opts = {}) {
 /** @param {string} phase @param {string} topic @param {string[]|undefined} by */
 function entryHoldClause(phase, topic, by) {
   if (by === undefined) return '';
-  const what = phase === 'discussion' ? `research on "${titlecase(topic)}" is outstanding`
-    : phase === 'planning' ? `the specification for "${titlecase(topic)}" is unsettled`
-      : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
+  const what = phase === 'planning' ? `the specification for "${titlecase(topic)}" is unsettled`
+    : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
   return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
 }
 
@@ -1207,7 +1140,7 @@ const UNIT_GROUP = { discovery: 'Topics', specification: 'Specifications' };
 // The phases whose holds cue a unit's row — the laboratory counted with its
 // topic, the plan with its specification.
 /** @type {Record<UnitStage, string[]>} */
-const UNIT_PRESENCE_PHASES = { discovery: ['research', 'discussion', 'experiment'], specification: ['specification', 'planning'] };
+const UNIT_PRESENCE_PHASES = { discovery: ['discussion', 'experiment'], specification: ['specification', 'planning'] };
 
 /**
  * One unit sub-view row: the title with its tag and tail, the in-session cue

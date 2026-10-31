@@ -32,12 +32,8 @@ function epicManifest(overrides = {}) {
     phases: {
       discussion: {
         items: {
-          'cache-invalidation': {
-            status: 'completed',
-            subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
-            dismissed_grounds: ['a CDN purge is out of scope'],
-          },
-          'ttl-policy': { status: 'completed', reconcile_needed: 'research' },
+          'cache-invalidation': { status: 'completed', date: '2026-06-20' },
+          'ttl-policy': { status: 'completed' },
           'fee-model': { status: 'completed' },
         },
       },
@@ -69,9 +65,9 @@ function setupFixture({ epic = epicManifest() } = {}) {
     work_units: { payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
   writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/discussion/cache-invalidation.md', '# Cache Invalidation\n');
-  writeFile(project, '.leeway/payments/discussion/ttl-policy.md', '# TTL Policy\n');
-  writeFile(project, '.leeway/payments/discussion/fee-model.md', '# Fee Model\n');
+  writeFile(project, '.leeway/payments/topics/cache-invalidation/log.md', '# Cache Invalidation\n');
+  writeFile(project, '.leeway/payments/topics/ttl-policy/log.md', '# TTL Policy\n');
+  writeFile(project, '.leeway/payments/topics/fee-model/log.md', '# Fee Model\n');
   writeFile(project, '.leeway/payments/specification/caching-strategy/specification.md', '# Caching Spec\n');
   writeFile(project, '.leeway/payments/specification/caching-strategy/review-input-tracking-c1.md', 'status: complete\n');
   writeFile(project, '.leeway/payments/specification/old-spec/specification.md', '# Old Spec\n');
@@ -143,12 +139,7 @@ describe('engine workunit promote — happy path', () => {
 
   it('moves the spec and source discussions, completes the cc unit, marks promoted, commits all three pathspecs once', () => {
     fix = setupFixture();
-    indexFiles(fix, [
-      'payments/discussion/cache-invalidation.md',
-      'payments/discussion/ttl-policy.md',
-      'payments/discussion/fee-model.md',
-      'payments/specification/caching-strategy/specification.md',
-    ]);
+    indexFiles(fix, ['payments/specification/caching-strategy/specification.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']);
     const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
@@ -161,8 +152,8 @@ describe('engine workunit promote — happy path', () => {
       cc_work_unit: 'caching',
       cc_status: 'completed',
       discussions: [
-        { name: 'cache-invalidation', path: inUnit(fix, 'discussion/cache-invalidation.md') },
-        { name: 'ttl-policy', path: inUnit(fix, 'discussion/ttl-policy.md') },
+        { name: 'cache-invalidation', path: inUnit(fix, 'topics/cache-invalidation/log.md') },
+        { name: 'ttl-policy', path: inUnit(fix, 'topics/ttl-policy/log.md') },
       ],
       specification: { path: inUnit(fix, 'specification/caching/specification.md') },
       imports: [],
@@ -186,24 +177,22 @@ describe('engine workunit promote — happy path', () => {
     ].join('\\n')));
 
     // The spec directory moved whole — tracking file included — and the
-    // source discussions landed at their cc identities; the epic keeps
+    // source discussions' logs landed at their cc identities; the epic keeps
     // everything else.
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/specification/caching/specification.md'), 'utf8'), '# Caching Spec\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/specification/caching/review-input-tracking-c1.md'), 'utf8'), 'status: complete\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/topics/cache-invalidation/log.md'), 'utf8'), '# Cache Invalidation\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/topics/ttl-policy/log.md'), 'utf8'), '# TTL Policy\n');
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/specification/caching-strategy')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/cache-invalidation.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/ttl-policy.md')));
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/fee-model.md'), 'utf8'), '# Fee Model\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/topics/cache-invalidation/log.md')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/topics/ttl-policy/log.md')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/fee-model/log.md'), 'utf8'), '# Fee Model\n');
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/specification/old-spec/specification.md'), 'utf8'), '# Old Spec\n');
 
     // The cc manifest is the canonical document, already completed, with
     // origin provenance; each moved discussion's item travels whole under its
-    // own name — its Discussion Map and dismissed grounds with it, never its
-    // reconcile flag, whose upstream stays in the epic — reading completed,
-    // and stays the spec item's source at its row's status; topic = work unit
-    // name for the spec item.
+    // own name, reading completed, and stays the spec item's source at its
+    // row's status; topic = work unit name for the spec item.
     assert.deepStrictEqual(readManifest(fix, 'caching'), {
       name: 'caching',
       work_type: 'cross-cutting',
@@ -216,11 +205,7 @@ describe('engine workunit promote — happy path', () => {
       phases: {
         discussion: {
           items: {
-            'cache-invalidation': {
-              status: 'completed',
-              subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
-              dismissed_grounds: ['a CDN purge is out of scope'],
-            },
+            'cache-invalidation': { status: 'completed', date: '2026-06-20' },
             'ttl-policy': { status: 'completed' },
           },
         },
@@ -251,13 +236,8 @@ describe('engine workunit promote — happy path', () => {
     });
     assert.deepStrictEqual(m.phases.specification.items['old-spec'], { status: 'superseded', superseded_by: 'caching-strategy' });
     assert.deepStrictEqual(m.phases.discussion.items, {
-      'cache-invalidation': {
-        status: 'promoted',
-        subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
-        dismissed_grounds: ['a CDN purge is out of scope'],
-        promoted_to: 'caching',
-      },
-      'ttl-policy': { status: 'promoted', reconcile_needed: 'research', promoted_to: 'caching' },
+      'cache-invalidation': { status: 'promoted', date: '2026-06-20', promoted_to: 'caching' },
+      'ttl-policy': { status: 'promoted', promoted_to: 'caching' },
       'fee-model': { status: 'completed' },
     });
 
@@ -279,36 +259,25 @@ describe('engine workunit promote — happy path', () => {
     assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
-    // KB: moved artifacts indexed at their cc identities, the epic's old
-    // chunks of each removed — the unmoved discussion's stay.
-    assert.deepStrictEqual(indexedFiles(fix.project), [
-      'caching/discussion/cache-invalidation.md',
-      'caching/discussion/ttl-policy.md',
-      'caching/specification/caching/specification.md',
-      'payments/discussion/fee-model.md',
-    ]);
+    // KB: the moved spec indexed at its cc identity, the epic's old chunks
+    // removed; a log is never indexed, moved or not.
+    assert.deepStrictEqual(indexedFiles(fix.project), ['caching/specification/caching/specification.md']);
   });
 
   it('spec without sources: only the spec moves — no discussion phase in the cc unit', () => {
     const epic = epicManifest();
     delete epic.phases.specification.items['caching-strategy'].sources;
     fix = setupFixture({ epic });
-    indexFiles(fix, [
-      'payments/discussion/cache-invalidation.md',
-      'payments/specification/caching-strategy/specification.md',
-    ]);
+    indexFiles(fix, ['payments/specification/caching-strategy/specification.md']);
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.discussions, []);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/discussion')));
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/topics')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/cache-invalidation/log.md'), 'utf8'), '# Cache Invalidation\n');
     assert.deepStrictEqual(readManifest(fix, 'caching').phases, {
       specification: { items: { caching: { status: 'completed', date: today() } } },
     });
-    assert.deepStrictEqual(indexedFiles(fix.project), [
-      'caching/specification/caching/specification.md',
-      'payments/discussion/cache-invalidation.md',
-    ]);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['caching/specification/caching/specification.md']);
   });
 
   it('a source without a discussion file is not a discussion — skipped, never refused', () => {
@@ -319,8 +288,8 @@ describe('engine workunit promote — happy path', () => {
     };
     fix = setupFixture({ epic });
     const res = engine(fix, PROMOTE);
-    assert.deepStrictEqual(res.discussions, [{ name: 'cache-invalidation', path: inUnit(fix, 'discussion/cache-invalidation.md') }]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
+    assert.deepStrictEqual(res.discussions, [{ name: 'cache-invalidation', path: inUnit(fix, 'topics/cache-invalidation/log.md') }]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/topics/ttl-policy/log.md'), 'utf8'), '# TTL Policy\n');
     // Only what moved is recorded as moved: the cc spec's sources are the
     // moved discussion alone, and the epic's other discussions read as before.
     assert.deepStrictEqual(readManifest(fix, 'caching').phases.specification.items.caching.sources,
@@ -338,9 +307,9 @@ describe('engine workunit promote — happy path', () => {
     unreadableKnowledge(fix.project);
     const res = engine(fix, PROMOTE);
 
-    assert.strictEqual(res.warnings.length, 6, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /^knowledge index \(discussion\/cache-invalidation\) failed: loadStore: corrupted store file at /);
-    assert.match(res.warnings[5], /^knowledge remove \(specification\/caching-strategy\) failed: loadStore: corrupted store file at /);
+    assert.strictEqual(res.warnings.length, 2, res.warnings.join('\n'));
+    assert.match(res.warnings[0], /^knowledge index \(specification\/caching\) failed: loadStore: corrupted store file at /);
+    assert.match(res.warnings[1], /^knowledge remove \(specification\/caching-strategy\) failed: loadStore: corrupted store file at /);
     assert.strictEqual(res.committed, shortHead(fix));
     assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
     assert.strictEqual(readManifest(fix, 'payments').phases.specification.items['caching-strategy'].status, 'promoted');
@@ -402,7 +371,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
   it('refuses illegal cc names — dots/slashes, phase names, reserved names', () => {
     fix = setupFixture();
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'bad.name', '--description', 'd'], /must be a kebab-case slug/);
-    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'research', '--description', 'd'], /conflicts with a phase name/);
+    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'discussion', '--description', 'd'], /conflicts with a phase name/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'project', '--description', 'd'], /is reserved/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'baseline', '--description', 'd'], /is reserved/);
   });
@@ -475,10 +444,10 @@ describe('engine workunit promote — the import carry', () => {
     // of this document — the carry must read the relative hop, not the word.
     writeFile(fix.project, '.leeway/payments/specification/caching-strategy/specification.md',
       '# Caching Spec\n\n![the sketch](../../imports/spec-linked.md)\n\nThe loader reads src/imports/other.png at boot.\n');
-    writeFile(fix.project, '.leeway/payments/discussion/cache-invalidation.md',
-      '# Cache Invalidation\n\n![the diagram](../imports/diagram.png)\n');
-    writeFile(fix.project, '.leeway/payments/discussion/fee-model.md',
-      '# Fee Model\n\n![fees](../imports/fee-only.md)\n');
+    writeFile(fix.project, '.leeway/payments/topics/cache-invalidation/log.md',
+      '# Cache Invalidation\n\n![the diagram](../../imports/diagram.png)\n');
+    writeFile(fix.project, '.leeway/payments/topics/fee-model/log.md',
+      '# Fee Model\n\n![fees](../../imports/fee-only.md)\n');
     commitAll(fix.project, 'imports');
   }
 
@@ -608,17 +577,17 @@ describe('engine workunit promote — roadmap sources follow the material', () =
   it("a moved source discussion's source follows it, beside one promote leaves — a join stays where it was", () => {
     setupRoadmap({ warming: {
       horizon: 'v1', summary: 'cache warming', origin: 'harvest',
-      sources: ['.roadmap/sessions/session-001.md', 'payments/discussion/cache-invalidation.md', 'payments/discussion/fee-model.md'],
+      sources: ['.roadmap/sessions/session-001.md', 'payments/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'],
       pulled_to: { work_unit: 'payments', topic: 'cache-invalidation' },
     } });
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
-      { item: 'warming', from: 'payments/discussion/cache-invalidation.md', to: 'caching/discussion/cache-invalidation.md' },
+      { item: 'warming', from: 'payments/topics/cache-invalidation/log.md', to: 'caching/topics/cache-invalidation/log.md' },
     ]);
     const item = readProject().roadmap.items.warming;
     assert.deepStrictEqual(item.sources,
-      ['.roadmap/sessions/session-001.md', 'caching/discussion/cache-invalidation.md', 'payments/discussion/fee-model.md'], 'order kept');
+      ['.roadmap/sessions/session-001.md', 'caching/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'], 'order kept');
     assert.deepStrictEqual(item.pulled_to, { work_unit: 'payments', topic: 'cache-invalidation' },
       'the epic and its map row stay, so the join still names the unit delivering the item');
     assertSourcesOnDisk();
@@ -628,7 +597,7 @@ describe('engine workunit promote — roadmap sources follow the material', () =
     const epic = epicManifest();
     epic.imports = [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z', origin: 'discussion/cache-invalidation' }];
     setupRoadmap({ other: { horizon: 'v1', summary: 'other', origin: 'harvest', sources: [
-      'payments/discussion/fee-model.md',
+      'payments/topics/fee-model/log.md',
       'payments/imports/notes.md',
       'payments/specification/caching-strategy-v2/specification.md',
       'payments/specification/old-spec/specification.md',

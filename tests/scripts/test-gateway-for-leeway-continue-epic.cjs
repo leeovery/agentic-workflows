@@ -180,7 +180,6 @@ describe('leeway-continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          research: { items: { 'market-analysis': { status: 'completed' } } },
           discussion: { items: { auth: { status: 'completed' } } },
           specification: { items: { auth: { status: 'completed' } } },
           planning: { items: { auth: { status: 'completed' } } },
@@ -198,7 +197,6 @@ describe('leeway-continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          research: { items: { 'market-analysis': { status: 'in-progress' } } },
           discussion: { items: { auth: { status: 'in-progress' } } },
         },
       });
@@ -260,12 +258,12 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              'pristine': { routing: 'research', source: 'discovery', summary: 'Brand-new topic with summary', description: 'Already grounded' },
-              'migrated-no-summary': { routing: 'research', source: 'migration-seeded' },
+              'pristine': { routing: 'discussion', source: 'discovery', summary: 'Brand-new topic with summary', description: 'Already grounded' },
+              'migrated-no-summary': { routing: 'discussion', source: 'migration-seeded' },
               'migrated-summary-no-description': { routing: 'discussion', source: 'migration-seeded', summary: 'Backfilled before Phase 14' },
               'migrated-fully-populated': { routing: 'discussion', source: 'migration-seeded', summary: 'Both populated', description: 'Backfilled after Phase 14' },
-              'migrated-then-resurfaced': { routing: 'discussion', source: 'migration-seeded,research-analysis' },
-              'analysis-only': { routing: 'discussion', source: 'research-analysis', summary: 'From analysis', description: 'analysis paragraphs' },
+              'migrated-then-resurfaced': { routing: 'discussion', source: 'migration-seeded,gap-analysis' },
+              'analysis-only': { routing: 'discussion', source: 'gap-analysis', summary: 'From analysis', description: 'analysis paragraphs' },
               'absorbed-no-fields': { routing: 'discussion' },
             },
           },
@@ -292,12 +290,12 @@ describe('leeway-continue-epic discovery', () => {
       assert.strictEqual(byName['migrated-fully-populated'].summary_present, true);
       assert.strictEqual(byName['migrated-fully-populated'].description_present, true);
 
-      assert.strictEqual(byName['migrated-then-resurfaced'].source, 'migration-seeded,research-analysis');
+      assert.strictEqual(byName['migrated-then-resurfaced'].source, 'migration-seeded,gap-analysis');
       assert.strictEqual(byName['migrated-then-resurfaced'].summary, null);
       assert.strictEqual(byName['migrated-then-resurfaced'].summary_present, false);
       assert.strictEqual(byName['migrated-then-resurfaced'].description_present, false);
 
-      assert.strictEqual(byName['analysis-only'].source, 'research-analysis');
+      assert.strictEqual(byName['analysis-only'].source, 'gap-analysis');
       assert.strictEqual(byName['analysis-only'].summary_present, true);
       assert.strictEqual(byName['analysis-only'].description_present, true);
 
@@ -775,7 +773,7 @@ describe('leeway-continue-epic discovery', () => {
     it('discovery_map empty for non-epic work types', () => {
       createManifest(dir, 'auth', {
         work_type: 'feature',
-        phases: { discovery: { items: { 'topic-a': { routing: 'research', source: 'discovery' } } } },
+        phases: { discovery: { items: { 'topic-a': { routing: 'discussion', source: 'discovery' } } } },
       });
       assert.strictEqual(discover(dir, 'auth'), null);
     });
@@ -786,7 +784,7 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              'kitchen-hardware': { routing: 'research', source: 'discovery' },
+              'kitchen-hardware': { routing: 'discussion', source: 'discovery' },
               'tenant-onboarding': { routing: 'discussion', source: 'discovery' },
             },
           },
@@ -801,29 +799,22 @@ describe('leeway-continue-epic discovery', () => {
       assert.strictEqual(d.convergence_state, 'in-progress');
     });
 
-    it('tier ordering: ✓ → ◐ ○ ⊘ with alphabetical within tier', () => {
+    it('tier ordering: ✓ ◐ ○ ⊘ with alphabetical within tier', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
           discovery: {
             items: {
-              'zeta-fresh': { routing: 'research', source: 'discovery' },
+              'zeta-fresh': { routing: 'discussion', source: 'discovery' },
               'alpha-fresh': { routing: 'discussion', source: 'discovery' },
-              'ready-topic': { routing: 'research', source: 'discovery' },
-              'in-flight': { routing: 'research', source: 'discovery' },
+              'in-flight': { routing: 'discussion', source: 'discovery' },
               'decided-topic': { routing: 'discussion', source: 'discovery' },
-              'cancelled-topic': { routing: 'research', source: 'discovery' },
-            },
-          },
-          research: {
-            items: {
-              'ready-topic': { status: 'completed' },
-              'in-flight': { status: 'in-progress' },
-              'cancelled-topic': { status: 'cancelled' },
+              'cancelled-topic': { routing: 'discussion', source: 'discovery' },
             },
           },
           discussion: {
             items: {
+              'in-flight': { status: 'in-progress' },
               'decided-topic': { status: 'completed' },
               'cancelled-topic': { status: 'cancelled' },
             },
@@ -833,25 +824,11 @@ describe('leeway-continue-epic discovery', () => {
       const tiers = discover(dir, 'v1').discovery_map.map(t => `${t.tier} ${t.name}`);
       assert.deepStrictEqual(tiers, [
         '✓ decided-topic',
-        '→ ready-topic',
         '◐ in-flight',
         '○ alpha-fresh',
         '○ zeta-fresh',
         '⊘ cancelled-topic',
       ]);
-    });
-
-    it('lifecycle: routing=research no phase items → fresh', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
-        },
-      });
-      const t = discover(dir, 'v1').discovery_map[0];
-      assert.strictEqual(t.lifecycle, 'fresh');
-      assert.strictEqual(t.tier, '○');
-      assert.strictEqual(t.next_action, 'start_research');
     });
 
     it('lifecycle: routing=discussion no phase items → fresh, next=start_discussion', () => {
@@ -864,35 +841,6 @@ describe('leeway-continue-epic discovery', () => {
       const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'fresh');
       assert.strictEqual(t.next_action, 'start_discussion');
-    });
-
-    it('lifecycle: research in-progress → researching, ◐, continue_research', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
-          research: { items: { topic: { status: 'in-progress' } } },
-        },
-      });
-      const t = discover(dir, 'v1').discovery_map[0];
-      assert.strictEqual(t.lifecycle, 'researching');
-      assert.strictEqual(t.tier, '◐');
-      assert.strictEqual(t.next_action, 'continue_research');
-      assert.strictEqual(t.current_phase, 'research');
-    });
-
-    it('lifecycle: research completed, no discussion → ready_for_discussion, →', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
-          research: { items: { topic: { status: 'completed' } } },
-        },
-      });
-      const t = discover(dir, 'v1').discovery_map[0];
-      assert.strictEqual(t.lifecycle, 'ready_for_discussion');
-      assert.strictEqual(t.tier, '→');
-      assert.strictEqual(t.next_action, 'start_discussion_after_research');
     });
 
     it('lifecycle: discussion in-progress → discussing, ◐, continue_discussion', () => {
@@ -910,23 +858,6 @@ describe('leeway-continue-epic discovery', () => {
       assert.strictEqual(t.current_phase, 'discussion');
     });
 
-    it('lifecycle: discussion in-progress over outstanding research → discussing, ◐, the research action', () => {
-      for (const [status, action] of [['in-progress', 'continue_research'], ['unstarted', 'start_research']]) {
-        createManifest(dir, 'v1', {
-          work_type: 'epic',
-          phases: {
-            discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } },
-            research: { items: { topic: { status } } },
-            discussion: { items: { topic: { status: 'in-progress' } } },
-          },
-        });
-        const t = discover(dir, 'v1').discovery_map[0];
-        assert.strictEqual(t.lifecycle, 'discussing');
-        assert.strictEqual(t.next_action, action, status);
-        assert.deepStrictEqual(t.waits, [{ kind: 'research', status }]);
-      }
-    });
-
     it('lifecycle: discussion completed → decided, ✓, no next_action', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
@@ -941,25 +872,11 @@ describe('leeway-continue-epic discovery', () => {
       assert.strictEqual(t.next_action, null);
     });
 
-    it('lifecycle: research cancelled, no discussion → cancelled (all attempted phases cancelled)', () => {
+    it('lifecycle: discussion cancelled → cancelled, ⊘', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
-          research: { items: { topic: { status: 'cancelled' } } },
-        },
-      });
-      const t = discover(dir, 'v1').discovery_map[0];
-      assert.strictEqual(t.lifecycle, 'cancelled');
-      assert.strictEqual(t.tier, '⊘');
-    });
-
-    it('lifecycle: research cancelled AND discussion cancelled → cancelled, ⊘', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
-          research: { items: { topic: { status: 'cancelled' } } },
+          discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } },
           discussion: { items: { topic: { status: 'cancelled' } } },
         },
       });
@@ -998,10 +915,9 @@ describe('leeway-continue-epic discovery', () => {
           discovery: {
             items: {
               a: { routing: 'discussion', source: 'discovery' },
-              b: { routing: 'research', source: 'discovery' },
+              b: { routing: 'discussion', source: 'discovery' },
             },
           },
-          research: { items: { b: { status: 'cancelled' } } },
           discussion: {
             items: {
               a: { status: 'completed' },
@@ -1021,7 +937,7 @@ describe('leeway-continue-epic discovery', () => {
           discovery: {
             items: {
               a: { routing: 'discussion', source: 'discovery' },
-              b: { routing: 'research', source: 'discovery' },
+              b: { routing: 'discussion', source: 'discovery' },
             },
           },
           discussion: { items: { a: { status: 'completed' } } },
@@ -1035,8 +951,8 @@ describe('leeway-continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discovery: { items: { umbrella: { routing: 'research', source: 'discovery', handled: true } } },
-          research: { items: { umbrella: { status: 'completed' } } },
+          discovery: { items: { umbrella: { routing: 'discussion', source: 'discovery', handled: true } } },
+          discussion: { items: { umbrella: { status: 'completed' } } },
         },
       });
       const t = discover(dir, 'v1').discovery_map[0];
@@ -1051,11 +967,11 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              umbrella: { routing: 'research', source: 'discovery', handled: true },
+              umbrella: { routing: 'discussion', source: 'discovery', handled: true },
               decided: { routing: 'discussion', source: 'discovery' },
             },
           },
-          research: { items: { umbrella: { status: 'completed' } } },
+          discussion: { items: { umbrella: { status: 'completed' } } },
           discussion: { items: { decided: { status: 'completed' } } },
         },
       });
@@ -1070,11 +986,11 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              umbrella: { routing: 'research', source: 'discovery', handled: true, order: null },
+              umbrella: { routing: 'discussion', source: 'discovery', handled: true, order: null },
               live: { routing: 'discussion', source: 'discovery', order: 1 },
             },
           },
-          research: { items: { umbrella: { status: 'completed' } } },
+          discussion: { items: { umbrella: { status: 'completed' } } },
           discussion: { items: { live: { status: 'in-progress' } } },
         },
       });
@@ -1086,19 +1002,10 @@ describe('leeway-continue-epic discovery', () => {
     it('source provenance: discovery → null', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
-        phases: { discovery: { items: { topic: { routing: 'research', source: 'discovery' } } } },
+        phases: { discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } } },
       });
       const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, null);
-    });
-
-    it('source provenance: research-split:{parent} → from {parent}', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: { discovery: { items: { topic: { routing: 'research', source: 'research-split:kitchen-hardware' } } } },
-      });
-      const t = discover(dir, 'v1').discovery_map[0];
-      assert.strictEqual(t.source_provenance, 'from kitchen-hardware');
     });
 
     it('source provenance: gap-analysis → from gap-analysis', () => {
@@ -1113,7 +1020,7 @@ describe('leeway-continue-epic discovery', () => {
     it('source provenance: direct-start → from direct-start', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
-        phases: { discovery: { items: { topic: { routing: 'research', source: 'direct-start' } } } },
+        phases: { discovery: { items: { topic: { routing: 'discussion', source: 'direct-start' } } } },
       });
       const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, 'from direct-start');
@@ -1125,22 +1032,15 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              ready: { routing: 'research', source: 'discovery' },
-              flight: { routing: 'research', source: 'discovery' },
+              flight: { routing: 'discussion', source: 'discovery' },
               done: { routing: 'discussion', source: 'discovery' },
               fresh1: { routing: 'discussion', source: 'discovery' },
-              cancelled: { routing: 'research', source: 'discovery' },
-            },
-          },
-          research: {
-            items: {
-              ready: { status: 'completed' },
-              flight: { status: 'in-progress' },
-              cancelled: { status: 'cancelled' },
+              cancelled: { routing: 'discussion', source: 'discovery' },
             },
           },
           discussion: {
             items: {
+              flight: { status: 'in-progress' },
               done: { status: 'completed' },
               cancelled: { status: 'cancelled' },
             },
@@ -1148,8 +1048,7 @@ describe('leeway-continue-epic discovery', () => {
         },
       });
       const s = discover(dir, 'v1').map_summary;
-      assert.strictEqual(s.total, 5);
-      assert.strictEqual(s.ready, 1);
+      assert.strictEqual(s.total, 4);
       assert.strictEqual(s.in_flight, 1);
       assert.strictEqual(s.decided, 1);
       assert.strictEqual(s.fresh, 1);
@@ -1160,7 +1059,7 @@ describe('leeway-continue-epic discovery', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
+          discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } },
           discussion: { items: { topic: { status: 'in-progress' } } },
         },
       });
@@ -1175,7 +1074,7 @@ describe('leeway-continue-epic discovery', () => {
         phases: {
           discovery: {
             items: {
-              alpha: { routing: 'research', source: 'discovery' },
+              alpha: { routing: 'discussion', source: 'discovery' },
               beta: { routing: 'discussion', source: 'discovery' },
             },
           },
@@ -1379,11 +1278,11 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
       phases: {
         discovery: {
           items: {
-            'auth-flow': { status: 'in-progress', routing: 'research', source: 'discovery', summary: 'OAuth vs sessions', description: 'Longer context.', order: 1 },
+            'auth-flow': { status: 'in-progress', routing: 'discussion', source: 'discovery', summary: 'OAuth vs sessions', description: 'Longer context.', order: 1 },
             'billing': { status: 'in-progress', routing: 'discussion', source: 'gap-analysis' },
           },
         },
-        research: { items: { 'auth-flow': { status: 'in-progress' } } },
+        discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
     });
     const out = formatScoped('v1', discover(dir, 'v1'));
@@ -1395,7 +1294,7 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
       'needs_sequencing: true',
       'build_order_needs_sequencing: false',
       'discovery_map (2):',
-      '  - ◐ auth-flow [researching] routing=research summary=present description=present — OAuth vs sessions',
+      '  - ◐ auth-flow [discussing] routing=discussion summary=present description=present — OAuth vs sessions',
       '  - ○ billing [fresh] routing=discussion summary=absent description=absent',
       '',
     ].join('\n'));
@@ -1455,10 +1354,10 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
   it('rows omit the summary tail when the field is absent', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { a: { status: 'in-progress', routing: 'research', source: 'discovery' } } } },
+      phases: { discovery: { items: { a: { status: 'in-progress', routing: 'discussion', source: 'discovery' } } } },
     });
     const out = formatScoped('v1', discover(dir, 'v1'));
-    assert.ok(out.includes('  - ○ a [fresh] routing=research summary=absent description=absent\n'));
+    assert.ok(out.includes('  - ○ a [fresh] routing=discussion summary=absent description=absent\n'));
     assert.ok(!out.includes(' — '));
   });
 
@@ -1475,17 +1374,16 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
     assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent mail=waiting\n'), out);
   });
 
-  it('a waiting discussion carries the awaiting= cue, every kind in the derivation\'s order', () => {
+  it('a waiting discussion carries the awaiting= cue', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discovery: { items: { billing: { routing: 'discussion', source: 'discovery' } } },
-        research: { items: { billing: { status: 'in-progress' } } },
         discussion: { items: { billing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
     });
     const out = formatScoped('v1', discover(dir, 'v1'));
-    assert.ok(out.includes('  - ◐ billing [discussing] routing=discussion summary=absent description=absent awaiting=research,E1\n'), out);
+    assert.ok(out.includes('  - ◐ billing [discussing] routing=discussion summary=absent description=absent awaiting=E1\n'), out);
   });
 
   it('rows show routing=none for a legacy item with no routing', () => {
@@ -1542,8 +1440,7 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
-          discussion: { items: { auth: { status: 'completed' } } },
-          research: { items: { auth: { status: 'unstarted' } } },
+          discussion: { items: { auth: { status: 'completed' }, billing: { status: 'unstarted' } } },
           specification: {
             items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
           },
@@ -1553,19 +1450,6 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
         },
       });
       assert.ok(formatScoped('v1', discover(dir, 'v1')).includes('all_done: false'));
-    });
-
-    it('reconcile_pending lists a live discussion the research hop flagged, not only completed items', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: {
-          discovery: { items: { auth: { routing: 'discussion', source: 'discovery' } } },
-          research: { items: { auth: { status: 'unstarted' } } },
-          discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
-        },
-      });
-      const out = formatScoped('v1', discover(dir, 'v1'));
-      assert.ok(out.includes('reconcile_pending: discussion/auth (research)'), out);
     });
 
     it('false when every review item is cancelled — vacuous completion never counts', () => {
@@ -1665,7 +1549,7 @@ describe('leeway-continue-epic formatScoped (state dump)', () => {
           discovery: {
             items: {
               auth: { status: 'in-progress', routing: 'discussion', source: 'discovery', summary: 's', description: 'd', order: 1 },
-              'open-thread': { status: 'in-progress', routing: 'research', source: 'discovery', summary: 's', description: 'd', order: 2 },
+              'open-thread': { status: 'in-progress', routing: 'discussion', source: 'discovery', summary: 's', description: 'd', order: 2 },
             },
           },
           discussion: { items: { auth: { status: 'completed' } } },
@@ -1872,7 +1756,7 @@ describe('leeway-continue-epic CLI dispatch', () => {
     const gateText = gate.stdout.replace(/\n\u00a0+/g, ' ');
     assert.ok(gateText.includes('"Auth" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion auth`.'), gateText);
     assert.ok(gateText.indexOf('`b/back`') < gateText.indexOf('`y/yes`'), 'back leads the family\'s options');
-    const unheld = run(['in-session-gate', 'v1', 'r']);
+    const unheld = run(['in-session-gate', 'v1', 'd']);
     assert.ok(unheld.stdout.includes('is not held by another session'), unheld.stdout);
 
     // A dead owner reads free: same record, unheld pid identity.
@@ -1880,40 +1764,6 @@ describe('leeway-continue-epic CLI dispatch', () => {
     const freed = run(['view', 'v1']);
     assert.ok(freed.stdout.includes('sessions_in_progress: (none)'), freed.stdout);
     assert.ok(!freed.stdout.includes('in session'), freed.stdout);
-  });
-
-  it('a discussion held for its research keeps its struck row beneath the research row while a session sits in it, and its gate names the research', () => {
-    const fs = require('fs');
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { auth: { routing: 'discussion', source: 'discovery', order: 1 } } },
-        research: { items: { auth: { status: 'in-progress' } } },
-        discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
-      },
-    });
-    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
-    const past = new Date(Date.now() - 240 * 1000);
-    fs.utimesSync(p, past, past);
-
-    const res = run(['view', 'v1']);
-    assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /leeway-research-process epic v1 auth  (recommended)'), res.stdout);
-    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /leeway-discussion-process epic v1 auth  (in session: last active 4m ago)'), res.stdout);
-    assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
-    const gate = run(['in-session-gate', 'v1', '2']);
-    assert.strictEqual(gate.status, 0, gate.stderr);
-    assert.ok(gate.stdout.replace(/\n +/g, ' ').includes(
-      'Its entry is also held shut — research on "Auth" is outstanding — so proceeding meets that gate next.'), gate.stdout);
-
-    // The same heartbeat with a dead owner: the row goes, and the topic is
-    // its research row alone again.
-    fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: 'Thu Jan  1 00:00:00 1970', session_id: 'peer' }) + '\n');
-    const freed = run(['view', 'v1']);
-    assert.ok(!freed.stdout.includes('continue_discussion'), freed.stdout);
-    assert.ok(freed.stdout.includes('  1  —  continue_research  auth'), freed.stdout);
   });
 
   it('a code session anywhere in the project marks this epic\'s code entries', () => {
@@ -2277,7 +2127,7 @@ describe('leeway-continue-epic specification discovery', () => {
         discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
       },
     });
-    createFile(dir, '.leeway/mvp/discussion/away.md', '# Discussion: Away\n');
+    createFile(dir, '.leeway/.knowledge/records/mvp/away.md', '# Discussion: Away\n');
     const r = specificationDiscovery(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a topic that left for the roadmap must not read as one still in progress');
@@ -2301,21 +2151,21 @@ describe('leeway-continue-epic specification discovery', () => {
         } },
       },
     });
-    createFile(dir, '.leeway/mvp/discussion/away.md', '# Discussion: Away\n');
-    createFile(dir, '.leeway/mvp/discussion/billing.md', '# Discussion: Billing\n');
+    createFile(dir, '.leeway/.knowledge/records/mvp/away.md', '# Discussion: Away\n');
+    createFile(dir, '.leeway/.knowledge/records/mvp/billing.md', '# Discussion: Billing\n');
     const r = specificationDiscovery(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 1);
     assert.strictEqual(r.current_state.completed_count, 1);
     assert.deepStrictEqual(r.discussions.map((d) => d.name), ['billing']);
   });
 
-  it('reads the grouping analysis cache against the discussion files: none, valid, stale', () => {
+  it('reads the grouping analysis cache against the decided discussions\' records: none, valid, stale', () => {
     const crypto = require('crypto');
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
-    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth');
+    createFile(dir, '.leeway/.knowledge/records/v1/auth.md', '# Auth');
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'none');
 
     createManifest(dir, 'v1', {
@@ -2329,11 +2179,11 @@ describe('leeway-continue-epic specification discovery', () => {
     });
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'valid');
 
-    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth updated');
+    createFile(dir, '.leeway/.knowledge/records/v1/auth.md', '# Auth updated');
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'stale');
   });
 
-  it('a cache over no discussion files reads stale', () => {
+  it('a cache over no decided discussion records reads stale', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -2346,13 +2196,13 @@ describe('leeway-continue-epic specification discovery', () => {
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'stale');
   });
 
-  it('computes the discussions checksum, and null with no discussion files', () => {
+  it('computes the discussions checksum, and null with no decided discussion records', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.discussions_checksum, null);
-    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth discussion');
+    createFile(dir, '.leeway/.knowledge/records/v1/auth.md', '# Auth discussion');
     assert.ok(specificationDiscovery(dir, 'v1').current_state.discussions_checksum);
   });
 

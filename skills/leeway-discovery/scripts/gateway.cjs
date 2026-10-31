@@ -79,7 +79,7 @@ function format(result) {
   lines.push(`description: ${result.description === null ? '(none)' : result.description}`);
 
   const s = result.map_summary;
-  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
+  lines.push(`map_summary: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
 
   lines.push(`discovery_map (${result.discovery_map.length}):`);
   if (result.discovery_map.length === 0) {
@@ -201,7 +201,7 @@ function mapView(workUnit, ...rest) {
 
   const dataLines = [`work_unit: ${workUnit}`, `mode: ${proposedFile ? 'synthesis' : 'map'}`];
   const s = result.map_summary;
-  dataLines.push(`map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.ready} ready, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
+  dataLines.push(`map: ${s.total} topics — ${s.decided} decided, ${s.in_flight} in-flight, ${s.fresh} fresh, ${s.handled} handled, ${s.cancelled} cancelled, ${s.postponed} postponed`);
 
   let display;
   if (proposedFile) {

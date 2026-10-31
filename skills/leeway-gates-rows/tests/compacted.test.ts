@@ -29,9 +29,9 @@ const NOTE = [
 const PLACE = 'fumi › discussion › management-window'
 
 /** An earlier note of the same conversation, at another place. */
-const EARLIER = 'The conversation was just compacted. This conversation is working in the research of "management-window" in the epic "fumi".'
+const EARLIER = 'The conversation was just compacted. This conversation is working in the experiment of "management-window" in the epic "fumi".'
 
-const EARLIER_PLACE = 'fumi › research › management-window'
+const EARLIER_PLACE = 'fumi › experiment › management-window'
 
 /** What Claude Code draws for a row the plugin leaves alone. */
 const OWN = 'drawn by Claude Code'

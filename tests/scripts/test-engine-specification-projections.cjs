@@ -121,8 +121,8 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v1/discussion/a.md', '# A');
-    createFile(dir, '.leeway/v1/discussion/b.md', '# B');
+    createFile(dir, '.leeway/.knowledge/records/v1/a.md', '# A');
+    createFile(dir, '.leeway/.knowledge/records/v1/b.md', '# B');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'analyze');
     assert.strictEqual(d.cache_status, 'valid');
@@ -157,8 +157,8 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v2/discussion/a.md', '# A');
-    createFile(dir, '.leeway/v2/discussion/b.md', '# B');
+    createFile(dir, '.leeway/.knowledge/records/v2/a.md', '# A');
+    createFile(dir, '.leeway/.knowledge/records/v2/b.md', '# B');
     assert.strictEqual(detailOf(dir, 'v2').scenario, 'blocked-discussions-open');
 
     createManifest(dir, 'v3', {
@@ -563,7 +563,7 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v1/discussion/data-model.md', '# Data');
+    createFile(dir, '.leeway/.knowledge/records/v1/data-model.md', '# Data');
     createFile(dir, '.leeway/v1/specification/auth-spec/specification.md', '# Auth');
     createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
@@ -1196,8 +1196,8 @@ describe('specification menu: the epic gateway\'s spec verbs', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v1/discussion/a.md', '# A');
-    createFile(dir, '.leeway/v1/discussion/b.md', '# B');
+    createFile(dir, '.leeway/.knowledge/records/v1/a.md', '# A');
+    createFile(dir, '.leeway/.knowledge/records/v1/b.md', '# B');
     const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: analyze'));
     assert.ok(out.includes('cache_status: valid'));

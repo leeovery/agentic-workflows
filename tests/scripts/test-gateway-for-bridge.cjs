@@ -41,10 +41,19 @@ describe('leeway-bridge discovery', () => {
       work_type: 'feature',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
-    createFile(dir, '.leeway/auth/discussion/auth.md', '# Discussion');
+    createFile(dir, '.leeway/auth/topics/auth/log.md', '# Discussion');
     const r = discover(dir, 'auth');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, false);
+  });
+
+  it('finds an experiment by a record in a topic\'s own folder, and none in the old phase folder', () => {
+    createManifest(dir, 'pay', { work_type: 'feature', phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
+    createFile(dir, '.leeway/pay/topics/pay/log.md', '# Pay');
+    createFile(dir, '.leeway/pay/experiment/pay/E1-window/problem.md', '# Problem');
+    assert.strictEqual(discover(dir, 'pay').phases.experiment.exists, false);
+    createFile(dir, '.leeway/pay/topics/pay/experiments/E1-window/problem.md', '# Problem');
+    assert.strictEqual(discover(dir, 'pay').phases.experiment.exists, true);
   });
 
   it('returns done for completed pipeline', () => {
@@ -78,24 +87,10 @@ describe('leeway-bridge discovery', () => {
     assert.deepStrictEqual(r.reconcile_pending, ['review/moved (implementation)']);
   });
 
-  it('a discussion paused on its research routes the bridge to the research — parked or in flight', () => {
-    for (const status of ['unstarted', 'in-progress']) {
-      createManifest(dir, 'ledger', {
-        work_type: 'feature',
-        phases: {
-          research: { items: { ledger: { status } } },
-          discussion: { items: { ledger: { status: 'in-progress' } } },
-        },
-      });
-      assert.strictEqual(discover(dir, 'ledger').next_phase, 'research', `research ${status}`);
-    }
-  });
-
   it('a conversation paused on experiment evidence routes the bridge to the experiment', () => {
     createManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'window', status: 'conceived' } } } } },
         discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
@@ -137,7 +132,7 @@ describe('leeway-bridge discovery', () => {
         review: { items: { full: { status: 'completed' } } },
       },
     });
-    createFile(dir, '.leeway/full/discussion/full.md', '');
+    createFile(dir, '.leeway/full/topics/full/log.md', '');
     createFile(dir, '.leeway/full/specification/full/specification.md', '');
     const r = discover(dir, 'full');
     assert.strictEqual(r.phases.discussion.exists, true);
@@ -190,17 +185,6 @@ describe('leeway-bridge discovery', () => {
     assert.strictEqual(r.status, 'in-progress');
   });
 
-  it('detects research file existence', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { research: { items: { exploration: { status: 'in-progress' } } } },
-    });
-    createFile(dir, '.leeway/v1/research/notes.md', '# Notes');
-    const r = discover(dir, 'v1');
-    assert.strictEqual(r.phases.research.exists, true);
-    assert.strictEqual(r.phases.research.status, 'in-progress');
-  });
-
   it('detects investigation file existence', () => {
     createManifest(dir, 'crash', {
       work_type: 'bugfix',
@@ -210,15 +194,6 @@ describe('leeway-bridge discovery', () => {
     const r = discover(dir, 'crash');
     assert.strictEqual(r.phases.investigation.exists, true);
     assert.strictEqual(r.phases.investigation.status, 'in-progress');
-  });
-
-  it('reports false for missing research files', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: { research: { items: { exploration: { status: 'in-progress' } } } },
-    });
-    const r = discover(dir, 'v1');
-    assert.strictEqual(r.phases.research.exists, false);
   });
 
   it('ignores flat phase status (returns null)', () => {
@@ -235,7 +210,7 @@ describe('leeway-bridge discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: {
+        discussion: {
           items: {
             'exploration': { status: 'completed' },
             'architecture': { status: 'in-progress' },
@@ -243,10 +218,10 @@ describe('leeway-bridge discovery', () => {
         },
       },
     });
-    createFile(dir, '.leeway/v1/research/exploration.md', '# Exploration');
+    createFile(dir, '.leeway/v1/topics/exploration/log.md', '# Exploration');
     const r = discover(dir, 'v1');
     assert.strictEqual(r.epic_detail, undefined);
-    assert.strictEqual(r.phases.research.exists, true);
+    assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.work_type, 'epic');
   });
 });
@@ -280,7 +255,6 @@ describe('leeway-bridge format', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
       phases: {
-        research: { items: { auth: { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: { auth: { status: 'completed' } } },
         planning: { items: { auth: { status: 'in-progress' } } },
@@ -290,11 +264,11 @@ describe('leeway-bridge format', () => {
     assert.strictEqual(out, [
       '=== auth (feature) ===',
       'next_phase: planning',
-      'completed_phases: research, discussion, specification',
+      'completed_phases: discussion, specification',
       'reconcile_pending: (none)',
-      'revisitable_phases: research, discussion, specification',
+      'revisitable_phases: specification',
       'next_route: /leeway-planning-process feature auth',
-      'revisit_routes: /leeway-research-process feature auth, /leeway-discussion-process feature auth, /leeway-specification-process feature auth',
+      'revisit_routes: /leeway-specification-process feature auth',
       '',
     ].join('\n'));
   });
@@ -443,15 +417,15 @@ describe('leeway-bridge format', () => {
       'next_phase: specification',
       'completed_phases: discussion, specification',
       'reconcile_pending: specification/fees (discussion)',
-      'revisitable_phases: discussion/fee-rules, discussion/fee-display',
+      'revisitable_phases: (none)',
       'next_route: /leeway-specification-process cross-cutting fees',
-      'revisit_routes: /leeway-discussion-process cross-cutting fees fee-rules, /leeway-discussion-process cross-cutting fees fee-display',
+      'revisit_routes: (none)',
       '',
     ].join('\n'));
-    // The menu its numbers count, row for row.
-    const menu = renderSurface(dir, 'revisit-phases', { dotpath: 'fees' });
-    assert.match(menu, /\*\*`1`\*\* +→ Discussion "Fee Rules" — \*completed\*\n\*\*`2`\*\* +→ Discussion "Fee Display" — \*completed\*\n/, menu);
-    assert.match(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), /`r\/revisit`/);
+    // A decided discussion reopens by a message, never a revisit: no menu
+    // numbers one, and the hop asks nothing.
+    assert.throws(() => renderSurface(dir, 'revisit-phases', { dotpath: 'fees' }), /"fees" has no completed earlier phase to revisit/);
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), '');
   });
 
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {

@@ -101,7 +101,7 @@ describe('outline — locate', () => {
   });
 
   it('finds every chunk the chunker cuts from a file, at the lines holding its text', () => {
-    const config = JSON.parse(fs.readFileSync(path.join(CHUNKING, 'discussion.json'), 'utf8'));
+    const config = JSON.parse(fs.readFileSync(path.join(CHUNKING, 'investigation.json'), 'utf8'));
     const sections = Array.from({ length: 30 }, (_, n) => [`## Section ${n}`, '', `Body of section ${n}.`, '']);
     const markdown = ['---', 'topic: auth', '---', '', ...DOCUMENT, '', ...sections.flat()].join('\r\n');
     const lines = markdown.split('\r\n');

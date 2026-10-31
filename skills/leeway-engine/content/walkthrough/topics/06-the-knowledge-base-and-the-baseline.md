@@ -2,12 +2,12 @@
 
 The knowledge base is the system's memory. As each piece of thinking work finishes, its document is added to a searchable store inside the project, and later sessions can find it by meaning rather than by matching words. What comes back is the actual sentence someone reasoned their way to, with a note of which piece of work, which phase and when.
 
-It remembers the thinking: research, discussions, investigations and specifications, along with the early material a piece of work started from and the product roadmap's own sessions. It never indexes plans, code or review reports, because those describe how the work got done rather than what was learned or decided, and indexing them would bury every search in task numbers. Each remembered piece carries a confidence: a specification is high, an investigation medium, a discussion lower, research lowest. Low confidence is not low value; a research note that killed a bad approach is exactly what stops the next person exploring the same dead end.
+It remembers the thinking: what each topic's conversation settled, investigations and specifications, along with the early material a piece of work started from and the product roadmap's own sessions. It never indexes plans, code or review reports, because those describe how the work got done rather than what was learned or decided, and indexing them would bury every search in task numbers. Each remembered piece carries a confidence: a specification and what a topic settled are high, an investigation medium, the material work started from low. Low confidence is not low value; a note that killed a bad approach is exactly what stops the next person exploring the same dead end.
 
 You rarely go looking for it. During the thinking-heavy phases the system checks the memory on your behalf, at the start and whenever the conversation brushes ground that might have been covered before, and folds in the one or two things that bear on what you're doing. You can also just ask: "have we discussed this?", "what did we decide about X?" Older material fades as the project moves on, measured by how much later work has landed rather than by the calendar, and specifications never fade at all.
 
 ```
-   remembered    research · discussions · investigations ·
+   remembered    what topics settled · investigations ·
                  specifications · the notes work started from
    never kept    plans · code · review reports
    fades         as later work lands, never by the calendar

@@ -233,7 +233,7 @@ describe('engine workunit create — a name already taken refuses', () => {
       status: 'in-progress',
       created: '2026-01-01',
       description: 'Original description',
-      phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
+      phases: { discovery: { items: { 'auth-flow': { routing: 'discussion' } } } },
     }, null, 2) + '\n');
     commitAll(fix.project, 'existing unit');
     return {
@@ -506,7 +506,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, createArgs('../escape', 'epic')).error, /must be a kebab-case slug/);
     assert.match(engineFails(fix, createArgs('Pay Flow', 'epic')).error, /must be a kebab-case slug/);
     assert.match(engineFails(fix, createArgs('feat(auth)', 'epic')).error, /must be a kebab-case slug/);
-    assert.match(engineFails(fix, createArgs('research', 'epic')).error, /conflicts with a phase name/);
+    assert.match(engineFails(fix, createArgs('discussion', 'epic')).error, /conflicts with a phase name/);
     assert.match(engineFails(fix, createArgs('project', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);

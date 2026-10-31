@@ -21,7 +21,7 @@ const { keywordOnlyCause } = require('./embedder.cjs');
 const { fillShortfall } = require('./vectors.cjs');
 const { progressElapsed, resolveDecayWeights, resolveStability } = require('./decay.cjs');
 const { withPassages } = require('./passages.cjs');
-const { identityKey, unitsByName } = require('./artifacts.cjs');
+const { RECORD_PHASE, identityKey, unitsByName } = require('./artifacts.cjs');
 const { headingPath } = require('../../kernel/knowledge/outline.cjs');
 const { itemOf, phaseData, sourceRows } = require('../derivations.cjs');
 
@@ -257,16 +257,16 @@ function reopenedTest(workUnits) {
   };
 }
 
-// A record's stage in its topic: research explores, a discussion or an
-// investigation decides, and a specification settles what was decided.
+// A record's stage in its topic: a discussion's record or an investigation
+// decides, and a specification settles what was decided.
 /** @type {Record<string, number>} */
-const TOPIC_STAGES = { research: 1, discussion: 2, investigation: 2, specification: 3 };
+const TOPIC_STAGES = { [RECORD_PHASE]: 1, investigation: 1, specification: 2 };
 
 /**
  * Each record's topic and its stage in it, read from the manifests: a
- * specification heads every discussion and investigation its sources name,
- * and research joins the discussion of its name. A specification cancelled,
- * superseded, promoted or postponed heads nothing.
+ * specification heads the record of every discussion its sources name, and
+ * every investigation. A specification cancelled, superseded, promoted or
+ * postponed heads nothing.
  * @param {Array<Record<string, any>>} workUnits
  * @returns {(result: Record<string, any>) => import('../../kernel/knowledge/ranking.cjs').TopicPlace|null}
  */
@@ -286,17 +286,11 @@ function topicPlaces(workUnits) {
       const topic = identityKey(unit.name, 'specification', name);
       join(unit.name, 'specification', name, topic);
       for (const [source] of sourceRows(item.sources)) {
-        for (const phase of ['discussion', 'investigation']) {
-          if (itemOf(unit, phase, source)) join(unit.name, phase, source, topic);
-        }
+        if (itemOf(unit, 'discussion', source)) join(unit.name, RECORD_PHASE, source, topic);
+        if (itemOf(unit, 'investigation', source)) join(unit.name, 'investigation', source, topic);
       }
     }
-    for (const phase of ['discussion', 'investigation']) {
-      for (const [name] of items(phase)) join(unit.name, phase, name, identityKey(unit.name, phase, name));
-    }
-    for (const [name] of items('research')) {
-      join(unit.name, 'research', name, topics.get(identityKey(unit.name, 'discussion', name)) || identityKey(unit.name, 'research', name));
-    }
+    for (const [name] of items('investigation')) join(unit.name, 'investigation', name, identityKey(unit.name, 'investigation', name));
   }
   return (result) => {
     const topic = topics.get(identityKey(result.work_unit, result.phase, result.topic));

@@ -194,7 +194,7 @@ describe('the gate shown (3.S6)', () => {
   it('a command that fails records nothing — the gate it composed before it failed was never shown, and the gate shown stands to be answered', () => {
     render(['migration-gate']);
     const before = shown();
-    refuses(dir, ['render', 'legacy-split-gate', '--variant', 'remove'], { env: conversation() });
+    refuses(dir, ['render', 'cancel-gate', 'ghost.discovery.none'], { env: conversation() });
 
     assert.deepStrictEqual(shown(), before);
     assert.strictEqual(answer(['migration gate', '--pick', 'y']).picked, 'y');

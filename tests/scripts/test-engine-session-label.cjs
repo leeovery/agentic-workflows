@@ -392,8 +392,8 @@ describe('engine session label', () => {
     // is itself a label — whose own record still holds the true name.
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
-    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-older' });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
     const res = engine(['session', 'label', 'pay', 'planning', 'alpha']);
     assert.strictEqual(res.name, 'proj-abc · pay · planning · alpha');
@@ -484,8 +484,8 @@ describe('engine session label — the position record', () => {
   it('a no-op label records the position all the same — disabled, outside tmux, a tmux error, a failed rename', () => {
     optIn();
     engine(['session', 'label-config', 'false']);
-    engine(['session', 'label', 'pay', 'research', 'alpha']);
-    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'research', topic: 'alpha' }, 'disabled');
+    engine(['session', 'label', 'pay', 'experiment', 'alpha']);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'experiment', topic: 'alpha' }, 'disabled');
     optIn();
     for (const [phase, opts] of [['discussion', { noTmux: true }], ['specification', { fail: true }], ['planning', { failRename: true }]]) {
       engine(['session', 'label', 'pay', phase, 'alpha'], opts);
@@ -969,8 +969,8 @@ describe('engine session cleanup', () => {
   it('restores a polluted stash to the chain-resolved true original', () => {
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-1' });
-    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-1' });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
     const res = engine(['session', 'cleanup', 'sess-1']);
     assert.strictEqual(res.restored, true);
@@ -983,13 +983,13 @@ describe('engine session cleanup', () => {
     // sess-2 wears the compounded name and still runs; sess-1's link record
     // holds the only path to the true original — its sweep must not drop it.
     writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-1' });
-    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
-    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
+    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-2', pid: process.pid, pid_start: ownStartTime() });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
     const res = engine(['session', 'cleanup', 'sess-1']);
     assert.strictEqual(res.restored, false);
     assert.strictEqual(stashRecords().length, 2, 'the link survives for sess-2\'s recomposition');
-    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · research · beta');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · experiment · beta');
   });
 
   it('restores an ownerless stash for whichever session sweeps', () => {
@@ -1068,8 +1068,8 @@ describe('engine session repair', () => {
   it('repairs a multi-hop compounded name through the chain', () => {
     optIn();
     writeStash('old-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-older' });
-    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
+    writeStash('old-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-older' });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
     const res = engine(['session', 'repair']);
     assert.deepStrictEqual(res, { ok: true, repaired: true });
@@ -1153,15 +1153,15 @@ describe('engine session repair', () => {
     // repair defers).
     writeStash('orphan', { tmux_id: '$4', original: 'gone-proj', applied: 'gone-proj · shop · planning', session_id: 'sess-gone' });
     writeStash('link-7', { tmux_id: '$7', original: 'proj-abc', applied: 'proj-abc · pay · discussion · alpha', session_id: 'sess-old' });
-    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · research · beta', session_id: 'sess-2', ...peerIdentity() });
-    setTmuxName('proj-abc · pay · discussion · alpha · pay · research · beta');
+    writeStash('head-9', { tmux_id: '$9', original: 'proj-abc · pay · discussion · alpha', applied: 'proj-abc · pay · discussion · alpha · pay · experiment · beta', session_id: 'sess-2', ...peerIdentity() });
+    setTmuxName('proj-abc · pay · discussion · alpha · pay · experiment · beta');
     setTmuxId('$9');
     const res = engine(['session', 'repair']);
     assert.deepStrictEqual(res, { ok: true, repaired: false });
     const records = stashRecords();
     assert.strictEqual(records.length, 2, 'orphan pruned, live head and its link kept');
     assert.ok(records.every((r) => r.original !== 'gone-proj'));
-    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · research · beta');
+    assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha · pay · experiment · beta');
   });
 
   it('keeps a dead-owner record when the server cannot be listed', () => {

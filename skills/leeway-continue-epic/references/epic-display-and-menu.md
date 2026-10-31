@@ -93,12 +93,6 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 → On return, proceed to **C. Route Selection**.
 
-#### If `action` is `new_research`
-
-→ Load **[new-topic.md](new-topic.md)** with phase = `research`.
-
-→ On return, proceed to **C. Route Selection**.
-
 #### If `action` is `analyze_discussions`
 
 → Load **[specification-display-and-menu.md](specification-display-and-menu.md)** and follow its instructions as written.
@@ -161,7 +155,7 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/leeway-{phase}-process epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/leeway-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. The `new_discussion`, `new_research` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
+Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/leeway-{phase}-process epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/leeway-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/leeway-discussion-process epic {work_unit} {topic}`) and its `topic`. The `new_discussion` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
 
 #### If `route` enters the specification
 
@@ -221,7 +215,7 @@ Store the selected entry's `phase`, `topic`, and `route`.
 
 ## E. Cancel Topic
 
-Render the cancellable-topics list and pick menu — one row per unit, a topic (its research, discussion, and experiments together) or a specification (with its plan). Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
+Render the cancellable-topics list and pick menu — one row per unit, a topic (its discussion and experiments together) or a specification (with its plan). Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
 
 ```bash
 node .claude/skills/leeway-continue-epic/scripts/gateway.cjs cancel-menu {work_unit}
@@ -257,7 +251,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render cancel-gate {work_un
 
 **If user chose `yes`:**
 
-Run the cancel transaction — one command cancels the unit (a topic: the map row marked, every research and discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
+Run the cancel transaction — one command cancels the unit (a topic: the map row marked, the discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic cancel {work_unit} {phase} {topic}
@@ -357,7 +351,7 @@ Store the selected entry's `topic` (the plan) and the `(dep: …)` value on its 
 
 ## H. Postpone Topic
 
-Render the postponable-topics list and pick menu — one row per Discovery unit, the topic with its research, discussion, and experiments together. Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
+Render the postponable-topics list and pick menu — one row per Discovery unit, the topic with its discussion and experiments together. Every unit is listed: a locked one carries its reason and no key, a unit a live session holds carries its in-session age (a cue, not a lock); when every row is locked the menu opens on a statement over `b/back` alone:
 
 ```bash
 node .claude/skills/leeway-continue-epic/scripts/gateway.cjs postpone-menu {work_unit}

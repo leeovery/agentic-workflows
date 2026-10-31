@@ -6,12 +6,11 @@
 
 The caller provides `work_unit`, `topic`, and `phase` (the session's own). The user has said to cancel, or the conversation has agreed the topic is not worth pursuing. Cancel says one thing: we are not doing this topic.
 
-Four neighbours it is not:
+Three neighbours it is not:
 
 - **Postpone.** "Doing this later" — the topic leaves whole for the roadmap and comes back by the pull; that is the postponing door.
 - **A done-signal.** The work reached its end and the record stands — that is the phase's own conclusion.
 - **A sign-off that leaves the topic open.** Nothing is called off; commit what the session has written and end the turn.
-- **Research's dead end.** Research that ran and leaves the product nothing to carry forward under its own name concludes at its conclude gate as a dead end, and the topic stays on the map as the record that the question was answered.
 
 ## A. Resolve the Unit
 
@@ -21,9 +20,9 @@ Cancel is topic-level, per stage — never one phase item. Read the work type:
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-#### If work type is `epic` and `phase` is `research` or `discussion`
+#### If work type is `epic` and `phase` is `discussion`
 
-The unit is the Discovery stage's — the map row with its research, discussion, and experiments together. Set stage = `discovery`, name = `{topic}`.
+The unit is the Discovery stage's — the map row with its discussion and experiments together. Set stage = `discovery`, name = `{topic}`.
 
 → Proceed to **B. Confirm**.
 
@@ -91,7 +90,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs agent incorporate {work_uni
 
 Rows in any other status stay as they are, and a scan holding no `in_flight` row needs none of this.
 
-Run the cancel — one command takes the unit (a topic: the map row marked, every research and discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
+Run the cancel — one command takes the unit (a topic: the map row marked, the discussion item under its name stashed and cancelled, every open experiment record abandoned with the cancellation as its reason, any proposed grouping over its discussion discarded; a specification: the specification and its plan), stashes the execution order, removes the cancelled artifacts' knowledge-base chunks, and commits:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic cancel {work_unit} {stage} {name}

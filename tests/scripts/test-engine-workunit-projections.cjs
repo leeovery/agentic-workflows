@@ -76,7 +76,6 @@ describe('workunit projections: status display', () => {
     // phase already alive, so the row reads ◐ [in-progress], never → [ready].
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
         discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
@@ -85,7 +84,6 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(unit.phase_label, 'experiment (awaiting evidence)');
     assert.strictEqual(workUnitStatus('feature', unit), [
       'PIPELINE (feature)',
-      '  ├─ ✓ Research      [completed]',
       '  ├─ ◐ Experiment    [in-progress]',
       '  └─ ◐ Discussion    [in-progress]',
       '',
@@ -95,7 +93,6 @@ describe('workunit projections: status display', () => {
   it('feature: the continue row routes the waiting unit into the laboratory', () => {
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } },
         discussion: { items: { pay: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       },
@@ -106,20 +103,31 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(keys[0].label, 'Proceed to experiment');
   });
 
-  it('feature: the experiment phase is never a revisit candidate', () => {
+  it('feature: neither the experiment phase nor the decided discussion is a revisit candidate', () => {
     createManifest(dir, 'pay', {
       phases: {
-        research: { items: { pay: { status: 'completed' } } },
         experiment: { items: { pay: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },
-        discussion: { items: { pay: { status: 'in-progress' } } },
+        discussion: { items: { pay: { status: 'completed' } } },
+        specification: { items: { pay: { status: 'completed' } } },
+        planning: { items: { pay: { status: 'in-progress' } } },
       },
     });
-    const unit = unitOf(dir, 'feature', 'pay');
-    const { keys } = workUnitMenu('feature', unit);
-    assert.ok(keys.some((k) => k.action === 'revisit_phase' && k.phase === 'research'),
-      'the completed research is revisitable');
-    assert.ok(!keys.some((k) => k.action === 'revisit_phase' && k.phase === 'experiment'),
-      'a concluded verdict stands — a new spawn is what reopens the series');
+    const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
+    assert.deepStrictEqual(keys.filter((k) => k.action === 'revisit_phase').map((k) => k.phase), ['specification'],
+      'a concluded verdict stands — a new spawn reopens the series — and a decided discussion reopens by a message');
+  });
+
+  it('feature: a decided discussion alone behind the next phase offers no revisit — a lone continue, no menu', () => {
+    createManifest(dir, 'pay', {
+      phases: {
+        discussion: { items: { pay: { status: 'completed' } } },
+        specification: { items: { pay: { status: 'in-progress' } } },
+      },
+    });
+    const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
+    assert.strictEqual(menu.rendered, '');
+    assert.deepStrictEqual(menu.keys.map((k) => [k.key, k.action, k.route]),
+      [['y', 'continue', '/leeway-specification-process feature pay']]);
   });
 
   it('feature: a flagged completed phase carries the cue, the ⚑ line, and takes next_phase', () => {
@@ -200,17 +208,15 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('cross-cutting: two completed phases and a ready terminal phase', () => {
+  it('cross-cutting: a completed discussion and a ready terminal phase', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
       },
     });
     assert.strictEqual(workUnitStatus('cross-cutting', unitOf(dir, 'cross-cutting', 'caching')), [
       'PIPELINE (cross-cutting)',
-      '  ├─ ✓ Research         [completed]',
       '  ├─ ✓ Discussion       [completed]',
       '  └─ → Specification    [ready]',
       '',
@@ -235,10 +241,9 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('feature: a reopened discussion with messages waiting cues the pipeline row, the proceed gate, and DATA', () => {
+  it('feature: a reopened discussion with messages waiting cues the pipeline row and DATA', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
-        research: { items: { 'auth-flow': { status: 'completed' } } },
         discussion: { items: { 'auth-flow': { status: 'in-progress' } } },
         specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
       },
@@ -248,9 +253,7 @@ describe('workunit projections: status display', () => {
     assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · mail waiting\]/);
     assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
-    const menu = workUnitMenu('feature', unit);
-    assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · mail waiting.'), menu.rendered);
-    assert.ok(workUnitData('feature', unit, menu).includes('\nmail_waiting: discussion\n'));
+    assert.ok(workUnitData('feature', unit, workUnitMenu('feature', unit)).includes('\nmail_waiting: discussion\n'));
     // The drain retires it.
     fs.rmSync(path.join(dir, '.leeway/auth-flow/topics/auth-flow/mail/001-retry-semantics.md'));
     const drained = unitOf(dir, 'feature', 'auth-flow');
@@ -316,27 +319,28 @@ describe('workunit projections: menu', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
-        specification: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
     });
     const menu = workUnitMenu('feature', unitOf(dir, 'feature', 'auth-flow'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
-      'Continuing "Auth Flow" — *specification (in-progress)*.',
+      'Continuing "Auth Flow" — *planning (in-progress)*.',
       '',
       '**`◆ Proceed?`**',
       '',
-      '**`y/yes`**     → Proceed to specification',
+      '**`y/yes`**     → Proceed to planning',
       '**`r/revisit`** → Revisit an earlier phase',
       '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
       [
-        ['y', 'continue', 'auth-flow', null, '/leeway-specification-process feature auth-flow'],
+        ['y', 'continue', 'auth-flow', null, '/leeway-planning-process feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
         ['b', 'back', 'auth-flow', null, null],
-        ['1', 'revisit_phase', 'auth-flow', 'discussion', '/leeway-discussion-process feature auth-flow'],
+        ['1', 'revisit_phase', 'auth-flow', 'specification', '/leeway-specification-process feature auth-flow'],
       ]
     );
   });
@@ -421,7 +425,7 @@ describe('workunit projections: menu', () => {
     );
   });
 
-  it('feature: finalising unit gates on finalise, with every completed phase revisitable', () => {
+  it('feature: finalising unit gates on finalise, with every completed phase but the decided discussion revisitable', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
@@ -448,11 +452,10 @@ describe('workunit projections: menu', () => {
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'discussion', '/leeway-discussion-process feature auth-flow'],
-        ['2', 'revisit_phase', 'specification', '/leeway-specification-process feature auth-flow'],
-        ['3', 'revisit_phase', 'planning', '/leeway-planning-process feature auth-flow'],
-        ['4', 'revisit_phase', 'implementation', '/leeway-implementation-process feature auth-flow'],
-        ['5', 'revisit_phase', 'review', '/leeway-review-process feature auth-flow'],
+        ['1', 'revisit_phase', 'specification', '/leeway-specification-process feature auth-flow'],
+        ['2', 'revisit_phase', 'planning', '/leeway-planning-process feature auth-flow'],
+        ['3', 'revisit_phase', 'implementation', '/leeway-implementation-process feature auth-flow'],
+        ['4', 'revisit_phase', 'review', '/leeway-review-process feature auth-flow'],
       ]
     );
   });
@@ -478,33 +481,33 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
   });
 
-  it('cross-cutting: numbers one revisit_phase entry per completed phase in pipeline order', () => {
+  it('cross-cutting: the decided discussion is no revisit — ready for specification, a lone continue; finalising, the specification alone', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { caching: { status: 'completed' } } },
         discussion: { items: { caching: { status: 'completed' } } },
       },
     });
-    const menu = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
-    assert.strictEqual(menu.rendered, [
-      '· · · · · · · · · · · ·',
-      'Continuing "Caching" — *ready for specification*.',
-      '',
-      '**`◆ Proceed?`**',
-      '',
-      '**`y/yes`**     → Proceed to specification',
-      '**`r/revisit`** → Revisit an earlier phase',
-      '**`b/back`**    → Return to the start menu',
-    ].join('\n'));
+    const ready = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
+    assert.strictEqual(ready.rendered, '');
+    assert.deepStrictEqual(ready.keys.map((k) => [k.key, k.action, k.route]),
+      [['y', 'continue', '/leeway-specification-process cross-cutting caching']]);
+
+    createManifest(dir, 'caching', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { caching: { status: 'completed' } } },
+        specification: { items: { caching: { status: 'completed' } } },
+      },
+    });
+    const finalising = workUnitMenu('cross-cutting', unitOf(dir, 'cross-cutting', 'caching'));
     assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
+      finalising.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/leeway-specification-process cross-cutting caching'],
+        ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
         ['b', 'back', null, null],
-        ['1', 'revisit_phase', 'research', '/leeway-research-process cross-cutting caching'],
-        ['2', 'revisit_phase', 'discussion', '/leeway-discussion-process cross-cutting caching'],
+        ['1', 'revisit_phase', 'specification', '/leeway-specification-process cross-cutting caching'],
       ]
     );
   });
@@ -533,7 +536,7 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     return unitOf(dir, 'cross-cutting', 'fees');
   }
 
-  it('offers one revisit entry per moved discussion, each route naming it, the specification by the unit alone', () => {
+  it('offers no revisit into a moved discussion — the specification alone, by the unit', () => {
     const menu = workUnitMenu('cross-cutting', promoted());
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
@@ -541,25 +544,9 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
         ['y', 'finalise', 'fees', null, null],
         ['r', 'revisit', 'fees', null, null],
         ['b', 'back', 'fees', null, null],
-        ['1', 'revisit_phase', 'fee-rules', 'discussion', '/leeway-discussion-process cross-cutting fees fee-rules'],
-        ['2', 'revisit_phase', 'fee-display', 'discussion', '/leeway-discussion-process cross-cutting fees fee-display'],
-        ['3', 'revisit_phase', 'fees', 'specification', '/leeway-specification-process cross-cutting fees'],
+        ['1', 'revisit_phase', 'fees', 'specification', '/leeway-specification-process cross-cutting fees'],
       ]
     );
-  });
-
-  it('names each moved discussion on its revisit row', () => {
-    assert.strictEqual(revisitPhasesSection(promoted().revisit), [
-      "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      '· · · · · · · · · · · ·',
-      '**`◆ Which phase would you like to revisit?`**',
-      '',
-      '**`1`**      → Discussion "Fee Rules" — *completed*',
-      '**`2`**      → Discussion "Fee Display" — *completed*',
-      '**`3`**      → Specification — *completed*',
-      '**`b/back`** → Return to the previous menu',
-      '',
-    ].join('\n'));
   });
 
   it('continues into the moved discussion in flight, by name', () => {
@@ -578,40 +565,14 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.match(workUnitMenu('cross-cutting', unit).rendered, /· mail waiting\./);
   });
 
-  it('continues into a parked stub by name where nothing is in flight in the phase', () => {
-    createManifest(dir, 'fees', {
-      work_type: 'cross-cutting',
-      phases: {
-        research: { items: { 'fee-rules': { status: 'unstarted' } } },
-        discussion: { items: { 'fee-rules': { status: 'in-progress' }, 'fee-display': { status: 'completed' } } },
-        specification: { items: { fees: { status: 'completed', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } } },
-      },
-    });
-    const parked = unitOf(dir, 'cross-cutting', 'fees');
-    assert.strictEqual(parked.phase_label, 'research (parked — feeds the discussion)');
-    assert.strictEqual(parked.next_topic, 'fee-rules');
-    assert.strictEqual(workUnitMenu('cross-cutting', parked).keys[0].route, '/leeway-research-process cross-cutting fees fee-rules');
-  });
-
-  it('continues into the item whose input moved by name where nothing is in flight or parked', () => {
-    const unit = promoted({ discussion: { 'fee-display': { status: 'completed', reconcile_needed: 'research' } } });
-    assert.strictEqual(unit.phase_label, 'discussion (input moved — reconcile)');
-    assert.strictEqual(unit.next_topic, 'fee-display');
-    const [cont] = workUnitMenu('cross-cutting', unit).keys;
-    assert.deepStrictEqual([cont.topic, cont.route], ['fee-display', '/leeway-discussion-process cross-cutting fees fee-display'],
-      'the continue row names the item its route names');
-  });
-
   it('continues into the specification\'s reconcile once the discussion concludes again — by the unit alone', () => {
     const unit = promoted({ specification: { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } });
     assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
     assert.strictEqual(unit.next_topic, null);
     const menu = workUnitMenu('cross-cutting', unit);
     assert.strictEqual(menu.keys[0].route, '/leeway-specification-process cross-cutting fees');
-    assert.deepStrictEqual(menu.keys.filter((k) => k.action === 'revisit_phase').map((k) => k.route), [
-      '/leeway-discussion-process cross-cutting fees fee-rules',
-      '/leeway-discussion-process cross-cutting fees fee-display',
-    ]);
+    assert.deepStrictEqual(menu.keys.filter((k) => k.action === 'revisit_phase'), [],
+      'the discussions decided and the specification next, nothing is behind it to revisit');
   });
 
   it('routes a promoted unit whose one discussion carries its name exactly as any unit', () => {
@@ -623,9 +584,8 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
       },
     });
     const unit = unitOf(dir, 'cross-cutting', 'naming');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['specification']);
     assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.filter((k) => k.route).map((k) => k.route), [
-      '/leeway-discussion-process cross-cutting naming',
       '/leeway-specification-process cross-cutting naming',
     ]);
   });
@@ -640,7 +600,8 @@ describe('workunit projections: data body', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
-        specification: { items: { 'auth-flow': { status: 'in-progress' } } },
+        specification: { items: { 'auth-flow': { status: 'completed' } } },
+        planning: { items: { 'auth-flow': { status: 'in-progress' } } },
       },
       seeds: [{ path: 'seeds/2026-03-18-login-timeout.md', source: 'inbox:bug' }],
     });
@@ -649,20 +610,20 @@ describe('workunit projections: data body', () => {
     assert.strictEqual(workUnitData('feature', unit, menu), [
       'work_unit: auth-flow',
       'work_type: feature',
-      'next_phase: specification',
-      'phase_label: specification (in-progress)',
+      'next_phase: planning',
+      'phase_label: planning (in-progress)',
       'finalising: false',
-      'completed_phases: discussion',
+      'completed_phases: discussion, specification',
       'reconcile_pending: (none)',
       'mail_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth-flow  → /leeway-specification-process feature auth-flow',
+      '  y  yes  continue  auth-flow  → /leeway-planning-process feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
       '  b  back  back  auth-flow  → (internal)',
-      '  1  —  revisit_phase  auth-flow  → /leeway-discussion-process feature auth-flow',
+      '  1  —  revisit_phase  auth-flow  → /leeway-specification-process feature auth-flow',
     ].join('\n'));
   });
 
@@ -737,17 +698,17 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['specification']);
   });
 
   it('pins the labelled section byte-for-byte', () => {
-    assert.strictEqual(revisitPhasesSection([{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]), [
+    assert.strictEqual(revisitPhasesSection(['specification', 'planning']), [
       "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
       '',
-      '**`1`**      → Discussion — *completed*',
-      '**`2`**      → Specification — *completed*',
+      '**`1`**      → Specification — *completed*',
+      '**`2`**      → Planning — *completed*',
       '**`b/back`** → Return to the previous menu',
       '',
     ].join('\n'));
@@ -770,6 +731,6 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'quick-fix', 'hotfix');
-    assert.deepStrictEqual(unit.revisit, [{ phase: 'scoping', topic: null }, { phase: 'implementation', topic: null }]);
+    assert.deepStrictEqual(unit.revisit, ['scoping', 'implementation']);
   });
 });

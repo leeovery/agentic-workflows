@@ -16,30 +16,28 @@ const { computeAnalysisCacheStatus, collectAnalysisInputs } = require('../../ski
 // a fresh stamp `valid` — and judge it `stale` again as soon as any input
 // file's content changes.
 
-/** An epic with completed research and discussion items plus their files. */
+/** A decided discussion's record copy, state-relative. @param {string} topic */
+const record = (topic) => `.leeway/.knowledge/records/payments/${topic}.md`;
+
+/** An epic with decided and live discussions, each decided one's record copy on disk. */
 function seedEpic(dir) {
   createManifest(dir, 'payments', {
     work_type: 'epic',
     phases: {
-      research: {
-        items: {
-          'kitchen-hardware': { status: 'completed' },
-          'menu-admin': { status: 'completed' },
-          'in-flight': { status: 'in-progress' },
-        },
-      },
       discussion: {
         items: {
           'auth-flow': { status: 'completed' },
+          'kitchen-hardware': { status: 'completed' },
+          'menu-admin': { status: 'completed' },
           'zebra-topic': { status: 'in-progress' },
         },
       },
     },
   });
-  createFile(dir, '.leeway/payments/research/kitchen-hardware.md', '# Kitchen Hardware\n');
-  createFile(dir, '.leeway/payments/research/menu-admin.md', '# Menu Admin\n');
-  createFile(dir, '.leeway/payments/research/in-flight.md', '# In Flight\n');
-  createFile(dir, '.leeway/payments/discussion/auth-flow.md', '# Auth Flow\n');
+  createFile(dir, record('auth-flow'), '# Auth Flow\n');
+  createFile(dir, record('kitchen-hardware'), '# Kitchen Hardware\n');
+  createFile(dir, record('menu-admin'), '# Menu Admin\n');
+  createFile(dir, '.leeway/payments/topics/zebra-topic/log.md', '# Zebra — the conversation, never an input\n');
 }
 
 function readManifest(dir) {
@@ -55,7 +53,7 @@ describe('engine cache stamp: gap-analysis', () => {
   beforeEach(() => { dir = setupFixture(); seedEpic(dir); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('stamps completed research + discussion files under phases.discovery — read side judges valid', () => {
+  it('stamps the decided discussions\' record copies under phases.discovery — read side judges valid', () => {
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
 
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
@@ -72,20 +70,20 @@ describe('engine cache stamp: gap-analysis', () => {
 
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
     // The stamp writes its own manifest home only — no other phase is touched.
-    assert.strictEqual(readManifest(dir).phases.research.analysis_cache, undefined);
+    assert.strictEqual(readManifest(dir).phases.discussion.analysis_cache, undefined);
   });
 
   it('a changed input makes the stamp stale; restamping makes it valid again', () => {
     engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
-    createFile(dir, '.leeway/payments/research/menu-admin.md', '# Menu Admin — revised\n');
+    createFile(dir, record('menu-admin'), '# Menu Admin — revised\n');
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
 
     engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 
-  it('a completed item whose file is missing on disk is excluded, matching the read side', () => {
-    fs.rmSync(path.join(dir, '.leeway/payments/research/menu-admin.md'));
+  it('a decided discussion whose record copy is missing on disk is excluded, matching the read side', () => {
+    fs.rmSync(path.join(dir, record('menu-admin')));
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     assert.strictEqual(res.files, 2);
     assert.deepStrictEqual(readManifest(dir).phases.discovery.gap_analysis_cache.input_files,
@@ -98,7 +96,7 @@ describe('engine cache stamp: gap-analysis', () => {
     const m = readManifest(dir);
     m.phases.discussion.items['zebra-topic'].status = 'completed';
     fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2));
-    createFile(dir, '.leeway/payments/discussion/zebra-topic.md', '# Zebra\n');
+    createFile(dir, record('zebra-topic'), '# Zebra\n');
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
   });
 
@@ -111,12 +109,12 @@ describe('engine cache stamp: gap-analysis', () => {
 
   it('indexes discovery-gap-analysis.md into the store beside what it already holds', () => {
     keywordOnlyKnowledge(dir);
-    output(dir, ['knowledge', 'index', '.leeway/payments/discussion/auth-flow.md']);
+    output(dir, ['knowledge', 'index', record('auth-flow')]);
     createFile(dir, '.leeway/payments/.state/discovery-gap-analysis.md', '# Gap analysis\n\nThe gaps found.\n');
     assert.deepStrictEqual(engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).warnings, []);
     assert.deepStrictEqual(indexedFiles(dir), [
+      '.knowledge/records/payments/auth-flow.md',
       'payments/.state/discovery-gap-analysis.md',
-      'payments/discussion/auth-flow.md',
     ]);
   });
 
@@ -152,12 +150,13 @@ describe('engine cache stamp: validation', () => {
   it('rejects a stamp with no qualifying inputs, manifest untouched', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
-      phases: { research: { items: { topic: { status: 'in-progress' } } } },
+      phases: { discussion: { items: { topic: { status: 'completed' } } } },
     });
+    createFile(dir, '.leeway/payments/topics/topic/log.md', '# A log is never an input\n');
     const before = fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8');
     assert.match(
       engineFails(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).error,
-      /nothing to stamp: no completed research or discussion files/);
+      /nothing to stamp: no decided discussion records/);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'), before);
   });
 });

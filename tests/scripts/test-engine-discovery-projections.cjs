@@ -27,25 +27,19 @@ function richFixture(dir) {
     phases: {
       discovery: {
         items: {
-          'kitchen-hardware': { routing: 'research', source: 'discovery', summary: 'printers and tills' },
-          'menu-management': { routing: 'research', source: 'discovery', summary: 'menus' },
+          'kitchen-hardware': { routing: 'discussion', source: 'discovery', summary: 'printers and tills' },
+          'menu-management': { routing: 'discussion', source: 'discovery', summary: 'menus', postponed: true },
           'ordering-flow': { routing: 'discussion', source: 'discovery', summary: 'order lifecycle' },
           'loyalty': { source: 'discovery', summary: 'points and rewards' },
-          'operator-analytics': { routing: 'research', source: 'discovery', summary: 'dashboards' },
-          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
-          'legacy-import': { routing: 'research', source: 'discovery' },
+          'operator-analytics': { routing: 'discussion', source: 'discovery', summary: 'dashboards' },
+          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
+          'legacy-import': { routing: 'discussion', source: 'discovery' },
         },
         dismissed: ['old-idea'],
       },
-      research: {
-        items: {
-          'kitchen-hardware': { status: 'completed' },
-          'menu-management': { status: 'in-progress' },
-          'legacy-import': { status: 'cancelled' },
-        },
-      },
       discussion: {
         items: {
+          'kitchen-hardware': { status: 'in-progress' },
           'ordering-flow': { status: 'completed' },
           'legacy-import': { status: 'cancelled' },
         },
@@ -68,28 +62,28 @@ describe('discoveryMapView', () => {
   it('renders the header, the tier breakdown, and one state-noted row per topic in tier order', () => {
     richFixture(dir);
     assert.strictEqual(discoveryMapView('payments', mapOf(dir, 'payments')), [
-      'Discovery Map (7 topics — 1 decided · 1 in flight · 1 ready · 2',
-      'fresh · 1 dead-ended · 1 cancelled)',
+      'Discovery Map (7 topics — 1 decided · 1 in flight · 2 fresh · 1',
+      'dead-ended · 1 cancelled · 1 postponed)',
       '  ├─ ✓ Ordering Flow',
       '  │     ↳ Decided',
       '  │',
-      '  ├─ → Kitchen Hardware',
-      '  │     ↳ Research complete · ready for discussion',
-      '  │',
-      '  ├─ ◐ Menu Management',
-      '  │     ↳ Researching',
+      '  ├─ ◐ Kitchen Hardware',
+      '  │     ↳ Discussing',
       '  │',
       '  ├─ ○ Loyalty',
       '  │     ↳ Fresh',
       '  │',
       '  ├─ ○ Operator Analytics',
-      '  │     ↳ Fresh · routed to research',
+      '  │     ↳ Fresh · routed to discussion',
       '  │',
       '  ├─ ⊙ Dead Lead',
       '  │     ↳ Dead end',
       '  │',
-      '  └─ ⊘ Legacy Import',
-      '        ↳ Cancelled',
+      '  ├─ ⊘ Legacy Import',
+      '  │     ↳ Cancelled',
+      '  │',
+      '  └─ ⊖ Menu Management',
+      '        ↳ Postponed',
       '',
     ].join('\n'));
   });
@@ -100,7 +94,7 @@ describe('discoveryMapView', () => {
       phases: {
         discovery: {
           items: {
-            'alpha': { routing: 'research', source: 'discovery' },
+            'alpha': { source: 'discovery' },
             'beta': { routing: 'discussion', source: 'discovery' },
           },
         },
@@ -109,7 +103,7 @@ describe('discoveryMapView', () => {
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
       'Discovery Map (2 topics)',
       '  ├─ ○ Alpha',
-      '  │     ↳ Fresh · routed to research',
+      '  │     ↳ Fresh',
       '  │',
       '  └─ ○ Beta',
       '        ↳ Fresh · routed to discussion',
@@ -143,34 +137,25 @@ describe('discoveryMapView', () => {
     ].join('\n'));
   });
 
-  it('tags derive from the actual research state — superseded named, dead end stated plainly', () => {
+  it('states a dead end plainly, whatever the discussion behind it', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discovery: {
           items: {
-            'dead-lead': { routing: 'research', source: 'discovery', handled: true },
-            'no-research': { routing: 'discussion', source: 'discovery', handled: true },
-            'superseded-lead': { routing: 'research', source: 'discovery' },
+            'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
+            'never-discussed': { routing: 'discussion', source: 'discovery', handled: true },
           },
         },
-        research: {
-          items: {
-            'dead-lead': { status: 'completed' },
-            'superseded-lead': { status: 'superseded' },
-          },
-        },
+        discussion: { items: { 'dead-lead': { status: 'completed' } } },
       },
     });
     assert.strictEqual(discoveryMapView('v1', mapOf(dir, 'v1')), [
-      'Discovery Map (3 topics — 1 ready · 2 dead-ended)',
-      '  ├─ → Superseded Lead',
-      '  │     ↳ Research superseded · ready for discussion',
-      '  │',
+      'Discovery Map (2 topics)',
       '  ├─ ⊙ Dead Lead',
       '  │     ↳ Dead end',
       '  │',
-      '  └─ ⊙ No Research',
+      '  └─ ⊙ Never Discussed',
       '        ↳ Dead end',
       '',
     ].join('\n'));
@@ -191,7 +176,7 @@ describe('discoverySynthesisView', () => {
     },
     {
       name: 'operator-analytics',
-      routing: 'research',
+      routing: 'discussion',
       summary: 'Daily service dashboards for shift leads — covers order throughput, voids, and prep-time drift with per-branch comparison',
       description: 'Shift leads read these after service; what can be measured cheaply is still unknown.',
     },
@@ -204,12 +189,11 @@ describe('discoverySynthesisView', () => {
       phases: {
         discovery: {
           items: {
-            'payments-core': { routing: 'research', source: 'discovery' },
+            'payments-core': { routing: 'discussion', source: 'discovery' },
             'onboarding-flow': { routing: 'discussion', source: 'discovery' },
           },
         },
-        research: { items: { 'payments-core': { status: 'in-progress' } } },
-        discussion: { items: { 'onboarding-flow': { status: 'completed' } } },
+        discussion: { items: { 'payments-core': { status: 'in-progress' }, 'onboarding-flow': { status: 'completed' } } },
       },
     });
     assert.strictEqual(discoverySynthesisView('payments', mapOf(dir, 'payments'), PROPOSED), [
@@ -232,7 +216,7 @@ describe('discoverySynthesisView', () => {
       '  │',
       '  │     Shift leads read these after service; what can be',
       '  │     measured cheaply is still unknown.',
-      '  │     ↳ Routed to research',
+      '  │     ↳ Routed to discussion',
       '  │',
       '  └─ ○ Loyalty',
       '        Points and rewards',
@@ -245,7 +229,7 @@ describe('discoverySynthesisView', () => {
       '  │     ↳ Decided',
       '  │',
       '  └─ ◐ Payments Core',
-      '        ↳ Researching',
+      '        ↳ Discussing',
       '',
       '3 topics. Summaries and descriptions come from the exploration;',
       'routing is my read of where each one goes next.',
@@ -299,8 +283,8 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.ok(res.stdout.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!res.stdout.includes('=== MENU'));
     assert.match(res.stdout, /mode: map\n/);
-    assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 1 ready, 2 fresh, 1 handled, 1 cancelled, 0 postponed/);
-    assert.ok(res.stdout.includes('  ├─ → Kitchen Hardware\n  │     ↳ Research complete · ready for discussion'));
+    assert.match(res.stdout, /map: 7 topics — 1 decided, 1 in-flight, 2 fresh, 1 handled, 1 cancelled, 1 postponed/);
+    assert.ok(res.stdout.includes('  ├─ ◐ Kitchen Hardware\n  │     ↳ Discussing'));
   });
 
   it('--proposed-file renders the synthesis view and flags each proposed name in DATA', () => {
@@ -320,9 +304,9 @@ describe('gateway.cjs adapter: map-view', () => {
     }, null, 2));
     createFile(dir, 'proposed.json', JSON.stringify([
       { name: 'kitchen-printers', routing: 'discussion', summary: 'Print routing by station', description: 'd' },
-      { name: 'menu-management', routing: 'research', summary: 'collides with an active item', description: 'd' },
-      { name: 'old-idea', routing: 'research', summary: 'previously dismissed', description: 'd' },
-      { name: 'bad.name', routing: 'research', summary: 'dots break addressing', description: 'd' },
+      { name: 'menu-management', routing: 'discussion', summary: 'collides with an active item', description: 'd' },
+      { name: 'old-idea', routing: 'discussion', summary: 'previously dismissed', description: 'd' },
+      { name: 'bad.name', routing: 'discussion', summary: 'dots break addressing', description: 'd' },
       { name: 'receipt-crash', routing: 'discussion', summary: 'shares a waiting bug\'s name', description: 'd' },
     ]));
     const res = run(['map-view', 'payments', '--proposed-file', 'proposed.json']);
@@ -331,9 +315,9 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.match(res.stdout, /proposed \(5\):/);
     assert.match(res.stdout, /receipt-crash routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
     assert.match(res.stdout, /kitchen-printers routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=true/);
-    assert.match(res.stdout, /menu-management routing=research exists_on_map=true matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
-    assert.match(res.stdout, /old-idea routing=research exists_on_map=false matches_dismissed=true legal_name=true waiting_on_roadmap=false/);
-    assert.match(res.stdout, /bad\.name routing=research exists_on_map=false matches_dismissed=false legal_name=false waiting_on_roadmap=false/);
+    assert.match(res.stdout, /menu-management routing=discussion exists_on_map=true matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
+    assert.match(res.stdout, /old-idea routing=discussion exists_on_map=false matches_dismissed=true legal_name=true waiting_on_roadmap=false/);
+    assert.match(res.stdout, /bad\.name routing=discussion exists_on_map=false matches_dismissed=false legal_name=false waiting_on_roadmap=false/);
     assert.ok(res.stdout.includes('\nSynthesised Discovery Map — Payments'));
     assert.ok(res.stdout.includes('\nNew this session (5)\n'));
     assert.ok(res.stdout.includes('\nAlready on the map (7)\n'));
@@ -355,12 +339,12 @@ describe('gateway.cjs adapter: map-view', () => {
     assert.strictEqual(empty.status, 1);
     assert.match(empty.stderr, /non-empty JSON array/);
 
-    createFile(dir, 'shape.json', JSON.stringify([{ name: 'x', routing: 'research' }]));
+    createFile(dir, 'shape.json', JSON.stringify([{ name: 'x', routing: 'discussion' }]));
     const shape = run(['map-view', 'payments', '--proposed-file', 'shape.json']);
     assert.strictEqual(shape.status, 1);
     assert.match(shape.stderr, /missing "summary"/);
 
-    createFile(dir, 'undescribed.json', JSON.stringify([{ name: 'x', routing: 'research', summary: 's', description: '  ' }]));
+    createFile(dir, 'undescribed.json', JSON.stringify([{ name: 'x', routing: 'discussion', summary: 's', description: '  ' }]));
     const undescribed = run(['map-view', 'payments', '--proposed-file', 'undescribed.json']);
     assert.strictEqual(undescribed.status, 1);
     assert.match(undescribed.stderr, /missing "description"/);

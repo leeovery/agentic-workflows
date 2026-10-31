@@ -54,7 +54,7 @@ beforeEach(() => {
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-position-contract-config-'));
   for (const [rel, content] of [
     ['.leeway/pay/manifest.json', JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} })],
-    ['.leeway/pay/discussion/ledger.md', '# ledger\n'],
+    ['.leeway/pay/topics/ledger/log.md', '# ledger\n'],
     ['.claude/skills/leeway-discussion-process/SKILL.md', '# discussion\n'],
   ]) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });

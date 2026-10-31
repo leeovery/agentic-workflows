@@ -4,28 +4,14 @@
 
 ---
 
-The `d` and `r` doors start a topic the map does not hold yet: the topic is named and lands on the map before the handoff carries it. The caller provides `phase` — `discussion` or `research`.
+The `d` door starts a topic the map does not hold yet: the topic is named and lands on the map before the handoff carries it. The caller provides `phase` — `discussion`.
 
 ## A. Ask for the Name
-
-#### If `phase` is `discussion`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 What topic would you like to discuss? Name it, or `back` to return to the menu.
-```
-
-**STOP.** Wait for user response.
-
-→ Proceed to **B. Check the Name**.
-
-#### If `phase` is `research`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-What topic would you like to research? Name it, or `back` to return to the menu.
 ```
 
 **STOP.** Wait for user response.

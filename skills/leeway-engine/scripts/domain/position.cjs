@@ -364,7 +364,6 @@ function workAt(cwd, position, manifest) {
       const log = statePath(cwd, topicLog(name, topic));
       return { skill, documents: [log], calls: [recordCall(name, topic)], log };
     }
-    case 'research':
     case 'investigation':
     case 'specification':
       return { skill, documents: [statePath(cwd, INDEXED_ARTIFACTS[phase](name, topic))] };

@@ -41,9 +41,8 @@
 // `leeway` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap, the baseline. Nothing else is a legitimate opening — help, the
-// linear continue menu, the bridge and the legacy research split are only
-// ever opened in place, mid-session, and a reference is never entered
-// directly. A case about help enters at leeway and picks the start
+// linear continue menu and the bridge are only ever opened in place,
+// mid-session, and a reference is never entered directly. A case about help enters at leeway and picks the start
 // menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
@@ -69,7 +68,12 @@ const { OPENING_SKILLS } = require('../../../skills/leeway-engine/scripts/domain
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
-const CASES_DIR = path.join(PROSE_DIR, 'cases');
+// The folder holding the cases and the harness's local cache: tests/prose,
+// unless LEEWAY_PROSE_ROOT names another — a suite's own temp folder, so its
+// scratch cases never land in the repository.
+const CASES_ROOT = process.env.LEEWAY_PROSE_ROOT || PROSE_DIR;
+const CASES_DIR = path.join(CASES_ROOT, 'cases');
+const CACHE_DIR = path.join(CASES_ROOT, '.cache');
 const STUBS_DIR = path.join(PROSE_DIR, 'stubs');
 
 const FILES = {
@@ -190,8 +194,8 @@ function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
   if (!OPENING_SKILLS.includes(entry)) {
     return [`entry "${entry}" is not somewhere a session starts — use a skill a conversation opens on `
-      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu, the bridge and the legacy `
-      + 'research split are only ever opened in place, mid-session, and a reference never directly'];
+      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu and the bridge `
+      + 'are only ever opened in place, mid-session, and a reference never directly'];
   }
   return [];
 }
@@ -269,7 +273,7 @@ function selectCases(all, changedPaths) {
 }
 
 module.exports = {
-  ROOT, PROSE_DIR, CASES_DIR, STUBS_DIR, FILES, SNAPSHOTS,
+  ROOT, PROSE_DIR, CASES_DIR, CACHE_DIR, STUBS_DIR, FILES, SNAPSHOTS,
   listCaseIds, loadCase, loadAllCases, requireState, listStubs, readStub,
   validateCorpus, entryErrors, selectCases,
 };

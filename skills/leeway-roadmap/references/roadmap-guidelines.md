@@ -23,7 +23,7 @@ Listen for now/next/later throughout — staging language is this altitude's sha
 Items joined to work units are windows, not material:
 
 - A thread about a **waiting** item is this session's business — explore, re-sort, edit freely.
-- A thread about a **pulled, in-flight** item belongs to its work unit. When the session materially deepens its ground, record the exploration in the log and flag the join so the epic re-examines (`engine roadmap flag {name}`). A flag that reaches nothing answers `committed: null` with a note saying so — relay the note as it stands; the thought stays in this session's log. Never treat the roadmap as the place to redirect in-flight work — re-bucketing or removing a pulled item is refused engine-side, and the refusal names the item's way back to waiting: relay it.
+- A thread about a **pulled, in-flight** item belongs to its work unit. When the session materially deepens its ground, record the exploration in the log; the thought stays there. Never treat the roadmap as the place to redirect in-flight work — re-bucketing or removing a pulled item is refused engine-side, and the refusal names the item's way back to waiting: relay it.
 - **An idea's add fetches the add gate first** — a direct add, or an inbox idea groomed on ([session-loop.md](session-loop.md) **B**). A bug or a quick-fix is always a plain add: pull-forward takes ideas alone. Fetch the gate over the horizon the idea is going to:
 
   ```bash
@@ -33,7 +33,7 @@ Items joined to work units are windows, not material:
   Empty output means no member of the horizon is in an epic underway: land the idea there, with no stop. Otherwise reason from its DATA, emit its MENU section verbatim per its marker, and **STOP.** Wait for user response.
 
   Route the answer. Each arm lands the idea the way it came — a direct add through `roadmap add`, a groomed idea through `roadmap add-batch` with its note, so the note moves with it and never stays in the inbox:
-  - **Into the delivery** (`d/delivery`) — the item is delivery scope now: land it in the horizon, then `roadmap pull-forward {name} --into {unit} --routing {research|discussion, per the thread's need}`, `{unit}` from the DATA's `work_units` (when it names several, the user names which — ask when the answer does not). Record both under **Edits**.
+  - **Into the delivery** (`d/delivery`) — the item is delivery scope now: land it in the horizon, then `roadmap pull-forward {name} --into {unit} --routing discussion`, `{unit}` from the DATA's `work_units` (when it names several, the user names which — ask when the answer does not). Record both under **Edits**.
   - **On the roadmap, waiting** (`w/waiting`) — land it in the horizon.
   - **Another horizon** (`h/horizon`) — the user names it (ask when the answer does not); the add there fetches this gate over that horizon.
   - **Ask** — answer it from what each row commits, as its route above states, naming both: the delivery row puts the item in that work unit's scope now, beside what it already holds; the others leave it on the roadmap for a later pull. How the work unit orders its own work is not the question the gate asks. Then talk it through. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back — render the gate again, emit its MENU section verbatim per its marker, and **STOP.** Wait for user response.

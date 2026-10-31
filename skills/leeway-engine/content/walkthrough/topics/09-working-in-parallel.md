@@ -1,6 +1,6 @@
 # Working in parallel
 
-You can have more than one session open on the same project, and for the thinking phases that is a perfectly good way to work: one session in a discussion on one topic while another researches a second. The system keeps them aware of each other without locking anyone out.
+You can have more than one session open on the same project, and for the thinking phases that is a perfectly good way to work: one session in a discussion on one topic while another runs an experiment on a second. The system keeps them aware of each other without locking anyone out.
 
 Each session in a phase leaves a heartbeat on the topic it is working. An epic's dashboard reads those heartbeats and marks a topic another session holds as *in session*, with how long ago it was last active, and strikes its row through so you don't pick it by accident. You still can; entering a held topic asks you to confirm first, and nothing prevents it. Background analyses the system runs on an epic wait while a source topic is held, so nothing is analysed out from under a live conversation. When a session ends, its heartbeats go with it.
 

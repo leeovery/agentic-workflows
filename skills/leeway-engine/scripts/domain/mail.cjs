@@ -8,8 +8,10 @@
 // waiting mail heads it (10.4.2): `From {sender} · {16 Oct}`. Three verbs:
 // - `topic send <unit> <topic> --from <sender> --content <file> --slug
 //   <kebab>` lands a message, the scratch it was written to consumed. The
-//   sender is a name, never text: a topic of the unit, `{unit}.{topic}` for
-//   another unit's topic, or an experiment of the unit — `E{n}` of the
+//   sender is a name, never text: a topic of the unit or an item of one of
+//   its phases — a specification grouping its topics under a name of its own
+//   sends as that name — `{unit}.{topic}` for another unit's, or an
+//   experiment of the unit — `E{n}` of the
 //   target topic's series, `{topic}/E{n}` of another topic's, where the
 //   person moved its question (9.1.11). It takes the next number under the
 //   writer lock, so a send racing another takes the one after it, and parks
@@ -18,8 +20,8 @@
 //   close it holds voided (checklist.cjs), so the next decided needs a
 //   fresh close and the gate's yes. A postponed topic is
 //   left as it stands, the message waiting in its mailbox for its return
-//   (10.1.8), and while it waits the topic is never fresh enough to remove,
-//   rename or reroute (discovery-map.cjs). A message to a cancelled topic,
+//   (10.1.8), and while it waits the topic is never fresh enough to remove
+//   or rename (discovery-map.cjs). A message to a cancelled topic,
 //   or a cancelled unit's, goes to the inbox as an idea instead, its first
 //   line the title, the line saying who sent it kept under it (10.1.6,
 //   10.1.8). Any other target the entry would refuse is refused, by the
@@ -96,16 +98,22 @@ function experimentSender(manifest, topic, from) {
   return series === topic ? `Experiment ${id}` : `Experiment ${id}, on ${titlecase(series)}`;
 }
 
+/** Whether the unit holds `name` as a topic or as an item of one of its phases. @param {Record<string, any>} manifest @param {string} name */
+function holdsSender(manifest, name) {
+  return holdsTopic(manifest, name)
+    || Object.entries(manifest.phases ?? {}).some(([phase, entry]) => phase !== 'discovery' && Object.hasOwn(entry?.items ?? {}, name));
+}
+
 /**
- * How the waiting mail titles a topic sender: a topic of the unit, or
- * `{unit}.{topic}` of another; null where `from` names no topic held.
+ * How the waiting mail titles a topic sender: a topic or a phase's item of
+ * the unit, or `{unit}.{name}` of another; null where `from` names none held.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} from
  * @returns {string|null}
  */
 function topicSender(cwd, manifest, from) {
   const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
   const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
-  if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsTopic(sender, held)) return null;
+  if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsSender(sender, held)) return null;
   return unit === manifest.name || held === unit ? titlecase(held) : `${titlecase(held)}, on ${titlecase(unit)}`;
 }
 
@@ -117,7 +125,7 @@ function topicSender(cwd, manifest, from) {
 function senderTitle(cwd, manifest, topic, from) {
   const title = experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
   if (title === null) {
-    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name}, {unit}.{topic} for another unit's topic, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
+    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name} or an item of one of its phases, {unit}.{topic} for another unit's, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
   }
   return title;
 }

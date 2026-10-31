@@ -121,10 +121,10 @@ describe('knowledge store — chunks', () => {
     const db = storeOf(
       ['s', 'shared', { phase: 'specification' }],
       ['d', 'shared', { phase: 'discussion' }],
-      ['r', 'shared', { phase: 'research' }],
+      ['r', 'shared', { phase: 'investigation' }],
     );
     assert.strictEqual(store.countByFilter(db, { phase: { in: ['specification', 'discussion'] } }), 2);
-    assert.strictEqual(store.removeByFilter(db, { phase: { eq: 'research' } }), 1);
+    assert.strictEqual(store.removeByFilter(db, { phase: { eq: 'investigation' } }), 1);
     assert.deepStrictEqual(store.allChunks(db).map((c) => c.id), ['s', 'd']);
     assert.throws(() => store.countByFilter(db, {}), /where clause is required/);
   });
@@ -289,14 +289,14 @@ describe('knowledge store — keyword search', () => {
   it('a filter selects chunks and never changes how one scores', () => {
     const db = storeOf(
       ['disc', 'alpha beta', { phase: 'discussion' }],
-      ['res', 'alpha gamma delta', { phase: 'research' }],
-      ['other', 'zeta', { phase: 'research' }],
+      ['res', 'alpha gamma delta', { phase: 'investigation' }],
+      ['other', 'zeta', { phase: 'investigation' }],
     );
     const unfiltered = scores(store.searchKeyword(db, { term: 'alpha' }));
     const filtered = store.searchKeyword(db, { term: 'alpha', where: { phase: { eq: 'discussion' } } });
     assert.deepStrictEqual(filtered.map((h) => h.id), ['disc']);
     assert.strictEqual(filtered[0].score, unfiltered.disc);
-    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha', where: { phase: { in: ['research'] }, topic: { eq: 'auth-flow' } } }).map((h) => h.id), ['res']);
+    assert.deepStrictEqual(store.searchKeyword(db, { term: 'alpha', where: { phase: { in: ['investigation'] }, topic: { eq: 'auth-flow' } } }).map((h) => h.id), ['res']);
   });
 
   it('scores the store as it stands after a removal', () => {
