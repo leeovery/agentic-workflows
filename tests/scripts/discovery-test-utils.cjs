@@ -262,8 +262,12 @@ const layout = Object.freeze({
   spec: (unit, topic) => `${unit}/specification/${topic}/specification.md`,
   /** @param {string} unit @param {string} topic */
   plan: (unit, topic) => `${unit}/planning/${topic}/planning.md`,
-  /** A discovery session's log. @param {string} unit @param {string} number zero-padded */
-  session: (unit, number) => `${unit}/discovery/sessions/session-${number}.md`,
+  /** A unit's discovery session log. @param {string} unit @param {string} number zero-padded */
+  session: (unit, number) => `${unit}/discovery/session-${number}.md`,
+  /** The product's conversation's session log. @param {string} number zero-padded */
+  productSession: (number) => `.product/sessions/session-${number}.md`,
+  /** A spike's folder, the product's or a unit's, or a path in it. @param {string} owner `.product`, or a unit @param {string} spike `NNN-{slug}` @param {...string} segments */
+  spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
   /** @param {string} unit @param {string} topic */
   brief: (unit, topic) => `${unit}/discovery/briefs/${topic}.md`,
   /** A file the person shared. @param {string} unit @param {...string} segments */

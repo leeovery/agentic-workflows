@@ -120,15 +120,6 @@ describe('engine knowledge index — the bulk index', () => {
     assert.deepStrictEqual(storedChunks(root).map((c) => c.topic), ['reopened-t']);
   });
 
-  it('keeps a baseline doc\'s chunks, which no registry names, until the doc is deleted', async () => {
-    feature('auth');
-    write('.baseline/overview.md');
-    await knowledge('index');
-    assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 2 unchanged.\n');
-    fs.rmSync(at('.baseline/overview.md'));
-    assert.strictEqual((await knowledge('index')).stdout, removed('.baseline/overview.md', 'source deleted') + '0 new, 0 changed, 1 removed, 1 unchanged.\n');
-  });
-
   it('--work-unit confines the index and its removals to that unit, its sibling left as it was', async () => {
     for (const name of ['alpha', 'beta']) feature(name);
     assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed('alpha/investigation/alpha.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');

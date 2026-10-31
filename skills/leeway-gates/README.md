@@ -176,8 +176,8 @@ person's own settings: the mod never touches either there.
 In a session that announced, in a conversation the engine has marked, on the
 terminal app and the Desktop app, the spinner keeps Claude Code's animation
 and ellipsis, its word the phase the conversation works in — `Discussing`,
-`Specifying`, `Implementing task 2.3`, `Shaping` in discovery, `Roadmapping`,
-`Assessing` at the baseline — from the position the engine keeps in the
+`Specifying`, `Implementing task 2.3`, `Shaping` in discovery and the
+product's conversation, `Roadmapping`, `Assessing` at the baseline — from the position the engine keeps in the
 conversation's folder (`position.json`). The drawing alone changes, never what
 Claude reads. The mod reads the position once for each conversation the
 spinner draws in, and again after each engine call that moves it (`enter`,

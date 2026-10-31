@@ -16,7 +16,7 @@ const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { readProjectManifest } = require('../../kernel/manifest-io.cjs');
 const { ENGINE_COMMAND, ExitSignal, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
-const { RESERVED_IDENTITIES, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
+const { discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
 const { loadSettings, newStoreEmbedder, metadataMissing } = require('./embedder.cjs');
 const { artifactAt, indexArtifact } = require('./indexing.cjs');
 const { launchFillIfAwaiting, fill } = require('./vectors.cjs');
@@ -280,7 +280,7 @@ function removeDescription({ workUnit, phase, topic }) {
  * A work unit's chunks removed — narrowed by phase and topic. A name the
  * registry does not hold is refused, so a typo never reads as a clean
  * no-op — unless the store still holds its chunks, which makes it an orphan
- * cleanup. The project-level identities are never registered.
+ * cleanup.
  * @param {Call} call @param {Request} request
  */
 function runRemove(call, { root, options }) {
@@ -289,8 +289,7 @@ function runRemove(call, { root, options }) {
   const scope = { workUnit: options.workUnit, phase: options.phase, topic: options.topic };
 
   let desc = removeDescription(options);
-  const registered = RESERVED_IDENTITIES.has(options.workUnit)
-    || Object.hasOwn(readProjectManifest(root).work_units || {}, options.workUnit);
+  const registered = Object.hasOwn(readProjectManifest(root).work_units || {}, options.workUnit);
   if (!registered) {
     const stranded = countChunks(root, scope);
     if (stranded === 0) {

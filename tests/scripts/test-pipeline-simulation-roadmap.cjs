@@ -105,28 +105,28 @@ describe('pipeline simulation: roadmap', () => {
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
-    // The genesis conversation: a product-road session opens before any item
-    // or work unit exists, its cadence commit is --roadmap, and imports land
-    // at the product altitude. The roadmap is reached from the start menu,
+    // The genesis conversation: the product's conversation opens before any
+    // item or work unit exists, its cadence commit is --roadmap, and imports
+    // land in the product's assets. The roadmap is reached from the start menu,
     // whose boot repairs the label and marks the conversation; the skill
     // labels the terminal `roadmap` before its mode dispatch, every mode.
     sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const roadmapDraft = sim.write('.leeway/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
-    sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
+    sim.run(['discovery-session', 'open', 'product', '--session-log-file', roadmapDraft]);
     const session = carryOn(sim);
     assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/leeway-roadmap/SKILL.md'));
-    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.leeway/.roadmap/sessions/session-001.md')],
+    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.leeway/.product/sessions/session-001.md')],
       'the roadmap carries on from its open session\'s log');
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
-    sim.run(['roadmap', 'import', bridgeDoc]);
+    assert.deepStrictEqual(sim.run(['asset', 'import', 'product', bridgeDoc]).imports, ['.product/assets/app-idea.md']);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
 
     // Born lazily: the first park creates the node and its horizon — no
     // genesis ceremony, no prior state.
     sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1',
       '--summary', 'repeat-customer rewards', '--origin', 'park:mvp',
-      '--source', '.roadmap/sessions/session-001.md']);
+      '--source', '.product/sessions/session-001.md']);
 
     // The harvest's batch form: one transaction, horizons JIT in entry order.
     const items = sim.write('.leeway/.cache/roadmap-items.json', [
@@ -153,14 +153,13 @@ describe('pipeline simulation: roadmap', () => {
     assert.deepStrictEqual(state.horizons, ['mvp', 'next', 'v1', 'someday']);
     sim.run(['roadmap', 'horizon', 'remove', 'next']);
 
-    // The harvest closes the session: marker cleared, log indexed, one
+    // The harvest closes the session: marker cleared, nothing indexed, one
     // commit covering the session's dirt.
-    const closed = sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: session 001 — horizons sorted']);
+    const closed = sim.run(['discovery-session', 'close', 'product', '-m', 'roadmap: session 001 — horizons sorted']);
     assert.strictEqual(closed.session, '001');
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.active_session, null);
     assert.strictEqual(state.next_session_number, 2);
-    assert.deepStrictEqual(state.imports, [{ path: path.join(sim.dir, '.leeway/.roadmap/imports/app-idea.md'), origin: 'roadmap' }]);
 
     // The pull is the commitment point: the join flips the derived state,
     // and the remainder is named at the moment of choice.
@@ -269,18 +268,20 @@ describe('pipeline simulation: roadmap', () => {
     // The view renders the shipped row from the join, after the completion.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
-    // The reserved identity holds: no work unit may take the layer's name.
+    // The reserved identities hold: no work unit may take the layer's name,
+    // or the product's.
     const draft = sim.write('.leeway/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
+    sim.refuses(['workunit', 'create', 'product', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
   });
 
   it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
     sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const genesis = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
-    sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
+    sim.run(['discovery-session', 'open', 'product', '--session-log-file', genesis]);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
-    sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: close session 001']);
+    sim.run(['discovery-session', 'close', 'product', '-m', 'roadmap: close session 001']);
     // The start menu's roadmap row hands off to the home, which labels itself.
     assert.strictEqual(pickRoute(sim, startKeys(sim), 'open_roadmap').args, 'open');
     arrive(sim, 'roadmap');
@@ -291,11 +292,11 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);
     // The wrong order is impossible: an add naming the log before its open refuses.
     sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
-      '--source', '.roadmap/sessions/session-002.md'], new RegExp(`source "\\.roadmap\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
+      '--source', '.product/sessions/session-002.md'], new RegExp(`source "\\.product\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
     const draft = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
-    const opened = sim.run(['roadmap', 'session', 'open', '--session-log-file', draft]);
+    const opened = sim.run(['discovery-session', 'open', 'product', '--session-log-file', draft]);
     assert.strictEqual(opened.session, '002');
-    const source = `.roadmap/sessions/session-${opened.session}.md`;
+    const source = `.product/sessions/session-${opened.session}.md`;
     sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
       '--source', `.leeway/${source}`], /drop the leading "\.leeway\/"/);
     sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--source', source]);
@@ -307,7 +308,7 @@ describe('pipeline simulation: roadmap', () => {
     // the log the self-committing add left behind.
     fs.appendFileSync(path.join(sim.dir, '.leeway', source), '- Added: gift-cards → mvp — placed by the user\n');
     sim.run(['commit', '--roadmap', '-m', `roadmap: add gift-cards — session-${opened.session}`]);
-    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.roadmap', 'manifest.json']), '',
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product', 'manifest.json']), '',
       'the log and the marker are committed');
   });
 

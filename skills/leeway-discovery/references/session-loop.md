@@ -48,7 +48,7 @@ What do you want to dig into first?
 
 #### If a resume was selected at Step 6
 
-The session is picked up from disk — the user chose `continue` at resume detection. A continuing epic whose map has items is **not** this branch — prior session logs alone don't make a resume; fall through to the populated-map branch, which reads them via continuity-load after the map anchor. The active session log on disk is the working state — the highest-numbered `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, whose number is `session_number`. Read it to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
+The session is picked up from disk — the user chose `continue` at resume detection. A continuing epic whose map has items is **not** this branch — prior session logs alone don't make a resume; fall through to the populated-map branch, which reads them via continuity-load after the map anchor. The active session log on disk is the working state — the highest-numbered `.workflows/{work_unit}/discovery/session-NNN.md`, whose number is `session_number`. Read it to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
 Brief across the prior sessions, then ask where to pick up:
 
@@ -137,7 +137,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
    - **Something staged beyond this epic — the park valve.** The user places a surfaced capability, bug or fix beyond this epic (*"that's a v2 thing"*, *"fix that after launch"*), or confirms your proposed placement — placement decides the home, whatever the kind. When no log is installed yet, conjure it **before the park** ([template.md](template.md) → *Lazy creation and finalisation*), so the `--source` names the log the open allocated (`session_number` set from its response). Park it on the roadmap — born at the first park; the verb validates and self-commits — capture-weight, never shaping:
 
      ```bash
-     node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {idea|bug|quick-fix} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
+     node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add {name} --kind {idea|bug|quick-fix} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/session-{session_number}.md
      ```
 
      Record it under **Edits** (`Parked: {name} → {horizon}`), commit, and continue:

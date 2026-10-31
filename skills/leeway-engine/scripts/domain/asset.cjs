@@ -2,17 +2,25 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: spikes and assets (9.10, 6.1.11) — `asset spike`, a spike's
-// folder, and `asset add|status|lift`, the links from the ledger's entries
+// folder, `asset import`, the files the person shares, and
+// `asset add|status|lift`, the links from the ledger's entries
 // to the files that inform them. The verb never moves a file: Claude writes
 // it where it lives, and the verb records where that is.
 //
-// - A spike (9.10.10, 4.11.13): `spike <unit> <slug>` numbers the unit's
-//   next spike in the order spikes start, one past the highest of its
-//   `spikes/NNN-{slug}/`, makes its folder and its twin at the same path
-//   under the gitignored cache, where its dependencies, builds and run
-//   output go, and answers both. Nothing is committed: the folder holds
-//   nothing yet. A slug one of the unit's spikes has already is refused, so
-//   a spike carried on is never started twice.
+// - A spike (9.10.10, 4.11.12, 4.11.13): `spike <unit|product> <slug>`
+//   numbers the unit's next spike, or the product's, in the order spikes
+//   start, one past the highest of its `spikes/NNN-{slug}/`, makes its
+//   folder and its twin at the same path under the gitignored cache, where
+//   its dependencies, builds and run output go, and answers both. Nothing is
+//   committed: the folder holds nothing yet. A slug one of its spikes has
+//   already is refused, so a spike carried on is never started twice.
+// - An import (9.10.5, 9.10.11): `import <unit|product> <path>…` copies the
+//   files the person shared into the unit's `assets/`, or the product's,
+//   each named by the landing's filename rules (import-landing.cjs), and
+//   answers each one's path from the state root, for the log or an entry to
+//   link. Nothing is committed: a file enters the state with what links it.
+//   A path naming no file refuses the call, naming every such path
+//   (`missing_imports`), as does a call whose every file the rules skip.
 // - A link is the ledger's `asset` event (ledger-events.cjs): an entry, a
 //   file's path from the state root, and the status the link gives the
 //   file, the lift it records, or both.
@@ -43,8 +51,8 @@
 //   links name (ledger.cjs): the file enters the state with its first link
 //   (9.10.4), and its edits land with every ledger commit after. A lift
 //   after the file moved into the product commits no removal of it. A file
-//   no entry links stays untracked (9.S38): two clones can start the same
-//   spike number for spikes nothing links yet.
+//   no entry and no log links (log-links.cjs) stays untracked (9.S38): two
+//   clones can start the same spike number for spikes nothing links yet.
 // - A link belongs to its entry: a replacement carries none forward, so a
 //   file the replaced entry linked is linked from the new one through `add`.
 //   A link to a question is tagged at the topic the question was written
@@ -61,7 +69,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { KEBAB_SLUG, KEBAB_SLUG_PATTERN, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { KEBAB_SLUG, KEBAB_SLUG_PATTERN, PRODUCT, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
@@ -74,30 +82,27 @@ const { ledgerMessage, staleness } = require('./ledger-write.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
-const { layoutPlace } = require('./layout.cjs');
+const { PRODUCT_DIR, SPIKE_HOMES, assetHome } = require('./layout.cjs');
+const { planImports, copyImports, assertLandableSources } = require('./import-landing.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
 /** @typedef {(place: EntryPlace) => Record<string, any>} EntryAt */
 
-/** The layout's places a linked file sits below (4.11.5, 4.11.12). */
-const HOMES = Object.freeze(['{unit}/assets', '{unit}/spikes/{NNN}-{slug}', '.product/assets', '.product/spikes/{NNN}-{slug}']);
-
-/** The homes whose files are a spike's, reference unless said (9.10.6). */
-const SPIKE_HOMES = Object.freeze(['{unit}/spikes/{NNN}-{slug}', '.product/spikes/{NNN}-{slug}']);
-
 /** A spike's folder name, its number and its slug. */
 const SPIKE_FOLDER = new RegExp(`^([0-9]{3,})-(${KEBAB_SLUG})$`);
 
 /**
- * A verb's argv: its positionals as its usage shows them, and each flag it
- * takes, by name, whether it must be given.
- * @typedef {{args: string[], flags: Record<string, boolean>}} Takes
+ * A verb's argv: its positionals as its usage shows them, the last one
+ * repeated where `more` says so, and each flag it takes, by name, whether it
+ * must be given.
+ * @typedef {{args: string[], more?: true, flags: Record<string, boolean>}} Takes
  */
 
 /** @type {Readonly<Record<string, Takes>>} */
 const VERBS = Object.freeze({
-  spike: { args: ['<work-unit>', '<slug>'], flags: {} },
+  spike: { args: [`<work-unit|${PRODUCT}>`, '<slug>'], flags: {} },
+  import: { args: [`<work-unit|${PRODUCT}>`, '<path>'], more: true, flags: {} },
   add: { args: ['<work-unit>', '<path>'], flags: { entry: true, status: false } },
   status: { args: ['<work-unit>', '<path>', `<${ASSET_STATUSES.join('|')}>`], flags: { entry: false } },
   lift: { args: ['<work-unit>', '<path>'], flags: { into: true, entry: true } },
@@ -108,9 +113,9 @@ const SHOWN = Object.freeze({ entry: '<id>', status: `<${ASSET_STATUSES.join('|'
 
 /** @param {string} verb */
 function verbUsage(verb) {
-  const { args, flags } = VERBS[verb];
+  const { args, more, flags } = VERBS[verb];
   const shown = Object.entries(flags).map(([flag, required]) => (required ? `--${flag} ${SHOWN[flag]}` : `[--${flag} ${SHOWN[flag]}]`));
-  return ['asset', verb, ...args, ...shown].join(' ');
+  return ['asset', verb, ...args, ...(more ? ['…'] : []), ...shown].join(' ');
 }
 
 const ASSET_USAGE = Object.keys(VERBS).map(verbUsage).join('\n');
@@ -124,7 +129,7 @@ const ASSET_USAGE = Object.keys(VERBS).map(verbUsage).join('\n');
  */
 function readArgs(verb, argv) {
   const usage = `Usage: engine ${verbUsage(verb)}`;
-  const { args, flags: takes } = VERBS[verb];
+  const { args, more, flags: takes } = VERBS[verb];
   /** @type {string[]} */
   const positional = [];
   /** @type {Record<string, string>} */
@@ -140,46 +145,58 @@ function readArgs(verb, argv) {
     flags[flag] = value;
     i += 1;
   }
-  if (positional.length !== args.length || Object.entries(takes).some(([flag, required]) => required && !Object.hasOwn(flags, flag))) throw new Error(usage);
+  if (positional.length < args.length || (!more && positional.length > args.length) || Object.entries(takes).some(([flag, required]) => required && !Object.hasOwn(flags, flag))) throw new Error(usage);
   return { positional, flags };
 }
 
 /**
- * The state root, `unit` checked: a unit the project has, and for a spike,
- * live (5.8.17).
- * @param {string} cwd @param {string} said @param {string} unit @param {{live?: boolean}} [opts]
+ * The state root, `unit` checked: a unit the project has, and where `takes`
+ * names what the call adds to it, live (5.8.17).
+ * @param {string} cwd @param {string} said @param {string} unit @param {{takes?: string}} [opts]
  * @returns {string}
  */
-function unitRoot(cwd, said, unit, { live = false } = {}) {
+function unitRoot(cwd, said, unit, { takes } = {}) {
   const root = stateRoot(cwd);
   if (workUnitNameRefusal(unit) !== null || manifestOf(root, unit) === null) throw new Error(`${said}: there is no work unit "${unit}"`);
-  const dead = live ? liveness(root)(unit, null) : null;
-  if (dead !== null) throw new Error(`${said}: ${unit} takes no spike — ${dead}`);
+  const dead = takes === undefined ? null : liveness(root)(unit, null);
+  if (dead !== null) throw new Error(`${said}: ${unit} takes no ${takes} — ${dead}`);
   return root;
 }
 
-/** The unit's spikes' folder names, in the order they started. @param {string} root @param {string} unit @returns {string[]} */
-function spikesOf(root, unit) {
-  const dir = path.join(root, unit, 'spikes');
+/**
+ * The state root, and the folder from it that a spike or an import lands
+ * in: the product's, or a live unit's.
+ * @param {string} cwd @param {string} said @param {string} name a unit, or `product` @param {string} takes what the call adds
+ * @returns {{root: string, owner: string}}
+ */
+function ownerOf(cwd, said, name, takes) {
+  if (name === PRODUCT) return { root: stateRoot(cwd), owner: PRODUCT_DIR };
+  return { root: unitRoot(cwd, said, name, { takes }), owner: name };
+}
+
+/** The spikes' folder names in `owner`, in the order they started. @param {string} root @param {string} owner @returns {string[]} */
+function spikesOf(root, owner) {
+  const dir = path.join(root, owner, 'spikes');
   return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => SPIKE_FOLDER.test(name)).sort() : [];
 }
 
 /**
- * `asset spike`: the unit's next spike, its folder and its twin under the
- * cache made, under the writer lock so two starts never take one number.
+ * `asset spike`: the unit's next spike, or the product's, its folder and its
+ * twin under the cache made, under the writer lock so two starts never take
+ * one number.
  * @param {string} cwd @param {string[]} positional
  */
-function startSpike(cwd, [unit, slug]) {
+function startSpike(cwd, [name, slug]) {
   const said = 'asset spike';
   if (!KEBAB_SLUG_PATTERN.test(slug)) throw new Error(`${said}: "${slug}" is no slug — lowercase letters and digits, joined by single hyphens`);
-  const root = unitRoot(cwd, said, unit, { live: true });
+  const { root, owner } = ownerOf(cwd, said, name, 'spike');
   return withStateLock(root, () => {
-    const spikes = spikesOf(root, unit);
-    const same = spikes.find((name) => /** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(name))[2] === slug);
-    if (same !== undefined) throw new Error(`${said}: ${unit} has a spike "${slug}" already, spikes/${same} — carry on in it, or name the new one apart`);
-    const number = Math.max(0, ...spikes.map((name) => Number(/** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(name))[1]))) + 1;
+    const spikes = spikesOf(root, owner);
+    const same = spikes.find((folder) => /** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(folder))[2] === slug);
+    if (same !== undefined) throw new Error(`${said}: ${name} has a spike "${slug}" already, spikes/${same} — carry on in it, or name the new one apart`);
+    const number = Math.max(0, ...spikes.map((folder) => Number(/** @type {RegExpExecArray} */ (SPIKE_FOLDER.exec(folder))[1]))) + 1;
     const spike = `${String(number).padStart(3, '0')}-${slug}`;
-    const rel = `${unit}/spikes/${spike}`;
+    const rel = `${owner}/spikes/${spike}`;
     const folder = path.join(root, rel);
     const cache = path.join(root, '.cache', rel);
     fs.mkdirSync(folder, { recursive: true });
@@ -189,26 +206,33 @@ function startSpike(cwd, [unit, slug]) {
 }
 
 /**
+ * `asset import`: the files at `paths` copied into the unit's assets, or the
+ * product's, under the writer lock so two imports never take one name.
+ * @param {string} cwd @param {string[]} positional
+ */
+function importFiles(cwd, [name, ...paths]) {
+  const said = 'asset import';
+  const { root, owner } = ownerOf(cwd, said, name, 'file');
+  assertLandableSources(cwd, paths);
+  const dir = path.join(root, owner, 'assets');
+  return withStateLock(root, () => {
+    const { planned, skipped } = planImports(paths, dir);
+    if (planned.length === 0) throw new Error(`${said}: nothing to land — the filename rules skip every file given (${skipped.join(', ')})`);
+    copyImports(cwd, dir, planned);
+    return { imports: planned.map(({ dest }) => `${owner}/assets/${dest}`), skipped_imports: skipped };
+  });
+}
+
+/**
  * The home a linked path sits below, or is — a spike's folder itself — or
- * null: one of `HOMES`, a unit's being `unit`'s own.
+ * null: one of the layout's asset homes, a unit's being `unit`'s own.
  * @param {string} unit @param {string} rel
  * @returns {string|null}
  */
 function homeOf(unit, rel) {
-  const home = layoutPlace(rel)?.path ?? spikeFolder(rel);
-  if (home === null || !HOMES.includes(home)) return null;
+  const home = assetHome(rel);
+  if (home === null) return null;
   return home.startsWith('{unit}/') && rel.split('/')[0] !== unit ? null : home;
-}
-
-/**
- * The spike home `rel` is the folder of, or null.
- * @param {string} rel
- * @returns {string|null}
- */
-function spikeFolder(rel) {
-  const [owner, spikes, name, ...below] = rel.split('/');
-  if (spikes !== 'spikes' || below.length > 0 || !SPIKE_FOLDER.test(name ?? '')) return null;
-  return owner === '.product' ? '.product/spikes/{NNN}-{slug}' : '{unit}/spikes/{NNN}-{slug}';
 }
 
 /**
@@ -483,10 +507,10 @@ function linking(said, reading, unit, rel, prefix) {
 }
 
 /** What each verb does with its argv read. @type {Readonly<Record<string, (cwd: string, positional: string[], flags: Record<string, string>) => Record<string, unknown>>>} */
-const RUNS = Object.freeze({ spike: startSpike, add: addAsset, status: changeStatus, lift: liftAsset });
+const RUNS = Object.freeze({ spike: startSpike, import: importFiles, add: addAsset, status: changeStatus, lift: liftAsset });
 
 /**
- * `asset <spike|add|status|lift>`: the verb's argv read, then run.
+ * `asset <spike|import|add|status|lift>`: the verb's argv read, then run.
  * @param {string} cwd @param {string} verb @param {string[]} argv
  * @returns {Record<string, unknown>}
  */

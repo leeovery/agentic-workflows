@@ -203,22 +203,26 @@ const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 // consumer (transitions, derivations, the roadmap's cross-join flag).
 const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 
+// The product as a whole: its conversation, the project-level discovery
+// place (8.2.7), its logs in `.product/sessions/` and its session marker on
+// the project manifest; and the unit the ledger's place for the product is
+// tagged with (8.12.9).
+const PRODUCT = 'product';
+
 // The project-level places with no work unit, named by identity alone:
-// `baseline` is the knowledge base's pseudo-identity for the project-level
-// baseline docs (`.baseline/` in the state); `roadmap` is the product-roadmap
-// layer's identity (the project manifest's `roadmap` node and the
-// project-level sessions under `.roadmap/`).
-const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
+// `baseline` is the baseline's place; `roadmap` is the product-roadmap
+// layer's (the project manifest's `roadmap` node); `product` the product's
+// conversation.
+const PROJECT_IDENTITIES = ['baseline', 'roadmap', PRODUCT];
 
 // The literal a skill takes in an argument's place where it has nothing to
 // name there — no work type, no work unit, no inbox seeds.
 const NO_ARGUMENT = 'none';
 
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest, the project identities are places of their own, the
-// placeholder must never name a unit, and `product` tags the ledger's place
-// for the product as a whole.
-const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT, 'product'];
+// project manifest, the project identities are places of their own, and the
+// placeholder must never name a unit.
+const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
 
 /**
  * Why a name can't be a work unit's, or null when it can: a unit's name is a
@@ -269,6 +273,7 @@ module.exports = {
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,
+  PRODUCT,
   PROJECT_IDENTITIES,
   NO_ARGUMENT,
   RESERVED_WORK_UNIT_NAMES,

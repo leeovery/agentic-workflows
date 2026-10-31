@@ -1,7 +1,9 @@
 'use strict';
 
 // Pins the bulk-discovery artifact SET on a rich fixture: discoverArtifacts()
-// yields exactly the completed artifacts below, every path state-relative.
+// yields exactly the completed artifacts below, every path state-relative —
+// and never a log, discovery's or the product's, nor a file the product's
+// conversation keeps (8.14.7, 9.2.2).
 
 require('./hermetic-env.cjs');
 
@@ -36,11 +38,12 @@ function buildFixture(root) {
 
   // Epic: multi-topic phases (mixed statuses), each discussion's log beside
   // its record copy, imports (with dup + bad shapes), seeds (with an
-  // escape), analysis caches, discovery sessions.
+  // escape), analysis caches, discovery's logs, the open one among them.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
     phases: {
+      discovery: { active_session: '002' },
       discussion: { items: {
         ledger: { status: 'completed' },
         refunds: { status: 'completed' },
@@ -80,12 +83,10 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
-  writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-001.md'), '# S1\n');
-  writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'session-002.md'), '# S2\n');
-  writeFile(path.join(wf, 'payments', 'discovery', 'sessions', 'notes.md'), '# not a session\n');
+  writeFile(path.join(wf, 'payments', 'discovery', 'session-001.md'), '# S1 — a log, never indexed\n');
+  writeFile(path.join(wf, 'payments', 'discovery', 'session-002.md'), '# S2 — a log, never indexed\n');
 
-  // Feature: single topic; discovery sessions on disk must NOT be indexed
-  // (session discovery is epic-only).
+  // Feature: single topic, its first discovery log never indexed.
   proj.work_units['auth-flow'] = { work_type: 'feature' };
   writeJson(path.join(wf, 'auth-flow', 'manifest.json'), {
     name: 'auth-flow', work_type: 'feature', status: 'in-progress', created: '2026-01-02',
@@ -99,7 +100,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
   writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S\n');
   writeFile(path.join(wf, 'auth-flow', 'imports', 'prior-art.md'), '# PA\n');
-  writeFile(path.join(wf, 'auth-flow', 'discovery', 'sessions', 'session-001.md'), '# skip\n');
+  writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
   // Bugfix: investigation flat file.
   proj.work_units['login-timeout'] = { work_type: 'bugfix' };
@@ -127,23 +128,14 @@ function buildFixture(root) {
   });
   // (no investigation/phantom.md written)
 
-  // Project baseline — flat {topic}.md docs only; session state and dotted
-  // names excluded.
-  writeFile(path.join(wf, '.baseline', 'overview.md'), '# Overview\n');
-  writeFile(path.join(wf, '.baseline', 'glossary.md'), '# Glossary\n');
-  writeFile(path.join(wf, '.baseline', '.state', 'agenda.md'), '# session state — not indexable\n');
-  writeFile(path.join(wf, '.baseline', 'dotted.name.md'), '# dotted topic → excluded\n');
-  writeFile(path.join(wf, '.baseline', 'notes.txt'), 'not markdown\n');
+  // The product's conversation: its logs, the open one among them, and the
+  // files it keeps — none indexed.
+  writeFile(path.join(wf, '.product', 'sessions', 'session-001.md'), '# genesis — a log, never indexed\n');
+  writeFile(path.join(wf, '.product', 'sessions', 'session-002.md'), '# catch-up — a log, never indexed\n');
+  writeFile(path.join(wf, '.product', 'assets', 'app-idea.md'), '# the Claude-app bridge doc\n');
+  writeFile(path.join(wf, '.product', 'spikes', '001-pricing', 'notes.md'), '# a spike\n');
 
-  // Product roadmap — session logs and imports; anything else excluded.
-  writeFile(path.join(wf, '.roadmap', 'sessions', 'session-001.md'), '# genesis\n');
-  writeFile(path.join(wf, '.roadmap', 'sessions', 'session-002.md'), '# catch-up\n');
-  writeFile(path.join(wf, '.roadmap', 'sessions', 'notes.txt'), 'not a session\n');
-  writeFile(path.join(wf, '.roadmap', 'imports', 'app-idea.md'), '# the Claude-app bridge doc\n');
-  writeFile(path.join(wf, '.roadmap', 'imports', 'dotted.name.md'), '# dotted → excluded\n');
-  writeFile(path.join(wf, '.roadmap', 'imports', 'diagram.png'), 'binary-ish\n');
-
-  writeJson(path.join(wf, 'manifest.json'), proj);
+  writeJson(path.join(wf, 'manifest.json'), { ...proj, product_session: '002' });
 }
 
 // Golden set — its paths state-relative, sorted by JSON string.
@@ -151,22 +143,15 @@ const EXPECTED = [
   { workUnit: 'auth-flow', phase: 'imports', topic: 'prior-art', file: 'auth-flow/imports/prior-art.md' },
   { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
   { workUnit: 'auth-flow', phase: 'specification', topic: 'auth-flow', file: 'auth-flow/specification/auth-flow/specification.md' },
-  { workUnit: 'baseline', phase: 'baseline', topic: 'glossary', file: '.baseline/glossary.md' },
-  { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.baseline/overview.md' },
   { workUnit: 'login-timeout', phase: 'investigation', topic: 'login-timeout', file: 'login-timeout/investigation/login-timeout.md' },
   { workUnit: 'login-timeout', phase: 'seeds', topic: 'bug-report', file: 'login-timeout/seeds/bug-report.md' },
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
-  { workUnit: 'payments', phase: 'discovery', topic: 'session-001', file: 'payments/discovery/sessions/session-001.md' },
-  { workUnit: 'payments', phase: 'discovery', topic: 'session-002', file: 'payments/discovery/sessions/session-002.md' },
   { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes', file: 'payments/imports/oauth-notes.md' },
   { workUnit: 'payments', phase: 'record', topic: '.unit', file: '.knowledge/records/payments.md' },
   { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
   { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
   { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: 'payments/seeds/original-idea.md' },
   { workUnit: 'payments', phase: 'specification', topic: 'ledger', file: 'payments/specification/ledger/specification.md' },
-  { workUnit: 'roadmap', phase: 'imports', topic: 'app-idea', file: '.roadmap/imports/app-idea.md' },
-  { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-001', file: '.roadmap/sessions/session-001.md' },
-  { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-002', file: '.roadmap/sessions/session-002.md' },
 ];
 
 function normalise(items) {
@@ -189,6 +174,11 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.deepStrictEqual(normalise(discover(root)), EXPECTED);
   });
 
+  it('8.14.7: discovers no log — a unit\'s discovery sessions or the product\'s, closed or open — and nothing the product\'s conversation keeps', () => {
+    const files = normalise(discover(root)).map((it) => it.file);
+    assert.deepStrictEqual(files.filter((f) => f.includes('/discovery/') || f.startsWith('.product/')), []);
+  });
+
   it('discovers each discussion by its record copy and never by its log', () => {
     const files = normalise(discover(root)).map((it) => it.file);
     assert.deepStrictEqual(files.filter((f) => f.startsWith('.knowledge/records/')), [
@@ -201,92 +191,11 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
   it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {
     const files = normalise(discover(root)).map((it) => it.file);
     assert.ok(!files.includes('payments/imports/dockset-05.jpeg'));
-    assert.ok(!files.includes('.roadmap/imports/diagram.png'));
   });
 
   it('yields the identical set over the manifests however they were read', () => {
     const workUnits = JSON.parse(output(root, ['manifest', 'list']));
-    assert.deepStrictEqual(normalise(discoverArtifacts(statePath(root), { workUnits, registry: null, roadmapSession: null })), EXPECTED);
-  });
-});
-
-describe('knowledge bulk discovery — live session logs', () => {
-  // A live session's log is indexed when the session closes, never while it
-  // is being written: the epic's `phases.discovery.active_session` and the
-  // project's `roadmap.active_session` name the live one.
-  let root;
-
-  before(() => {
-    root = setupFixture('kb-discover-live-');
-    const wf = statePath(root);
-    writeJson(path.join(wf, 'manifest.json'), {
-      work_units: { payments: { work_type: 'epic' } },
-      roadmap: { active_session: '002' },
-    });
-    writeJson(path.join(wf, 'payments', 'manifest.json'), {
-      name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
-      phases: { discovery: { active_session: '002' } },
-    });
-    for (const dir of [path.join(wf, 'payments', 'discovery', 'sessions'), path.join(wf, '.roadmap', 'sessions')]) {
-      writeFile(path.join(dir, 'session-001.md'), '# closed\n');
-      writeFile(path.join(dir, 'session-002.md'), '# live\n');
-    }
-  });
-
-  after(() => cleanupFixture(root));
-
-  it("leaves the epic's live discovery session log undiscovered", () => {
-    const sessions = normalise(discover(root)).filter((it) => it.phase === 'discovery').map((it) => it.topic);
-    assert.deepStrictEqual(sessions, ['session-001']);
-  });
-
-  it("leaves the roadmap's live session log undiscovered", () => {
-    const sessions = normalise(discover(root)).filter((it) => it.phase === 'roadmap').map((it) => it.topic);
-    assert.deepStrictEqual(sessions, ['session-001']);
-  });
-});
-
-describe('knowledge bulk discovery — baseline without work units', () => {
-  // The brownfield install moment: baseline docs exist before the first work
-  // unit. Discovery must yield them with no project manifest and no registry
-  // to walk.
-  let root;
-
-  before(() => {
-    root = setupFixture('kb-discover-baseline-');
-    writeFile(statePath(root, '.baseline', 'overview.md'), '# Overview\n');
-    writeFile(statePath(root, '.baseline', '.state', 'dossier-core.md'), '# session state\n');
-  });
-
-  after(() => cleanupFixture(root));
-
-  it('discovers the baseline docs alone', () => {
-    assert.deepStrictEqual(normalise(discover(root)), [
-      { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.baseline/overview.md' },
-    ]);
-  });
-});
-
-describe('deriveIdentity: the roadmap carve-out', () => {
-  it('derives session and import identities under the reserved pseudo work-unit', () => {
-    assert.deepStrictEqual(deriveIdentity('.roadmap/sessions/session-001.md'),
-      { workUnit: 'roadmap', phase: 'roadmap', topic: 'session-001' });
-    assert.deepStrictEqual(deriveIdentity('.roadmap/imports/app-idea.md'),
-      { workUnit: 'roadmap', phase: 'imports', topic: 'app-idea' });
-  });
-
-  it('refuses unexpected structure and dotted import names loudly', () => {
-    assert.throws(() => deriveIdentity('.roadmap/notes.md'),
-      (err) => err instanceof UserError && /Unexpected roadmap path structure/.test(err.message));
-    assert.throws(() => deriveIdentity('.roadmap/sessions/nested/session-001.md'),
-      (err) => err instanceof UserError && /Unexpected roadmap path structure/.test(err.message));
-    assert.throws(() => deriveIdentity('.roadmap/imports/.hidden.md'),
-      (err) => err instanceof UserError && /Invalid topic name/.test(err.message));
-  });
-
-  it('never captures a lookalike directory — .roadmapX is an ordinary bad path', () => {
-    assert.throws(() => deriveIdentity('.roadmapX/sessions/session-001.md'),
-      (err) => err instanceof UserError && !/roadmap path structure/.test(err.message));
+    assert.deepStrictEqual(normalise(discoverArtifacts(statePath(root), { workUnits, registry: null })), EXPECTED);
   });
 });
 
@@ -295,18 +204,14 @@ describe('deriveIdentity: non-markdown imports', () => {
   const refusedBy = (pattern) => (err) => err instanceof UserError && pattern.test(err.message);
 
   it('refuses a binary import by name, with the policy as the reason', () => {
-    for (const p of ['payments/imports/diagram.png', '.roadmap/imports/diagram.png']) {
-      assert.throws(() => deriveIdentity(p), refusedBy(POLICY));
-      assert.throws(() => deriveIdentity(p), refusedBy(new RegExp(p.replace(/[.]/g, '\\.'))));
-    }
+    assert.throws(() => deriveIdentity('payments/imports/diagram.png'), refusedBy(POLICY));
+    assert.throws(() => deriveIdentity('payments/imports/diagram.png'), refusedBy(/payments\/imports\/diagram\.png/));
   });
 
   it('leaves a structurally wrong path on the structure message', () => {
     const cases = [
       ['payments/imports/sub/diagram.png', /Unexpected imports path structure/],
       ['payments/imports/.hidden.png', /Unexpected imports path structure/],
-      ['.roadmap/imports/sub/diagram.png', /Unexpected roadmap path structure/],
-      ['.roadmap/imports/.hidden.png', /Unexpected roadmap path structure/],
     ];
     for (const [p, structure] of cases) {
       assert.throws(() => deriveIdentity(p), refusedBy(structure));

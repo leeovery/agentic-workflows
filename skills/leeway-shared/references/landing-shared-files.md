@@ -95,7 +95,7 @@ The document carries it at its next write: an inline link by relative path under
 ![The competitor's permissions screen, third onboarding step](../imports/competitor-permissions.png)
 ```
 
-`../imports/{name}` from a phase document at `{phase}/{topic}.md`; `../../imports/{name}` from a discovery session log at `discovery/sessions/`, where the link sits in the exploration that discusses the file — the caller's **Edits** line records the landing, not the link. The prose around the link is the searchable record and the link is what a later reader opens — the file's content is never transcribed into the document.
+`../imports/{name}` from a phase document at `{phase}/{topic}.md`; `../imports/{name}` from a discovery session log at `discovery/`, where the link sits in the exploration that discusses the file — the caller's **Edits** line records the landing, not the link. The prose around the link is the searchable record and the link is what a later reader opens — the file's content is never transcribed into the document.
 
 Once landed and committed — the response's `committed` names the sha — the landing adds no commit of its own to the phase's cadence.
 

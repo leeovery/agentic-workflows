@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, keywordOnlyKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const { git, stateGit, commitAll, cleanupFixture: cleanup, ok } = require('./engine-harness.cjs');
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource } = require('./roadmap-world.cjs');
 
 /** A temp-dir git repo with an empty project manifest committed. */
@@ -38,8 +38,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
   it('JIT-births the node and the horizon, writes the item, self-commits scoped', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
-    writeSource(dir, '.roadmap/sessions/session-001.md');
-    const res = runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards', '--origin', 'park:mvp', '--source', '.roadmap/sessions/session-001.md']);
+    writeSource(dir, '.product/sessions/session-001.md');
+    const res = runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards', '--origin', 'park:mvp', '--source', '.product/sessions/session-001.md']);
     assert.strictEqual(res.op, 'add');
     assert.strictEqual(res.state, 'waiting');
     assert.strictEqual(res.horizon_created, true);
@@ -56,7 +56,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
       summary: 'repeat-customer rewards',
       kind: 'idea',
       origin: 'park:mvp',
-      sources: ['.roadmap/sessions/session-001.md'],
+      sources: ['.product/sessions/session-001.md'],
     });
   });
 
@@ -105,8 +105,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--origin', 'park:']).error, /unknown origin/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '/abs/path.md']).error, /never absolute/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '../escape.md']).error, /never absolute or traversing/);
-    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.leeway/.roadmap/sessions/session-001.md']).error,
-      /relative to the state, so drop the leading "\.leeway\/" \("\.roadmap\/sessions\/session-001\.md"\)/);
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.leeway/.product/sessions/session-001.md']).error,
+      /relative to the state, so drop the leading "\.leeway\/" \("\.product\/sessions\/session-001\.md"\)/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'bad.h', '--summary', 's']).error, /not a legal horizon name/);
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -117,21 +117,21 @@ describe('engine CLI: roadmap add / add-batch', () => {
     const before = projectManifestText(dir);
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
 
-    assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-002.md']).error,
-      `source ".roadmap/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
-      + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
+    assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.product/sessions/session-002.md']).error,
+      `source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
+      + 'open a session log\'s session first (discovery-session open product, or the session\'s own open)');
 
-    writeSource(dir, '.roadmap/sessions/session-001.md');
+    writeSource(dir, '.product/sessions/session-001.md');
     const several = runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's',
-      '--source', 'mvp/discussion/ordering.md', '--source', '.roadmap/sessions/session-001.md', '--source', '.roadmap/sessions/session-002.md']).error;
-    assert.ok(several.startsWith(`sources "mvp/discussion/ordering.md", ".roadmap/sessions/session-002.md" do not exist under ${dir}/.leeway/ — `), several);
+      '--source', 'mvp/discussion/ordering.md', '--source', '.product/sessions/session-001.md', '--source', '.product/sessions/session-002.md']).error;
+    assert.ok(several.startsWith(`sources "mvp/discussion/ordering.md", ".product/sessions/session-002.md" do not exist under ${dir}/.leeway/ — `), several);
     assert.ok(!several.includes('session-001'), 'a source on disk is never named');
 
     assert.strictEqual(projectManifestText(dir), before);
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
 
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-001.md']);
-    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.sources, ['.roadmap/sessions/session-001.md']);
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.product/sessions/session-001.md']);
+    assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.sources, ['.product/sessions/session-001.md']);
   });
 
   it('takes a folder on disk as a source — a discussion parks a question with its topic\'s folder (9.5.4)', () => {
@@ -149,11 +149,11 @@ describe('engine CLI: roadmap add / add-batch', () => {
   });
 
   it('add-batch lands the whole set under one commit, JIT horizons in entry order', () => {
-    writeSource(dir, '.roadmap/sessions/session-001.md');
+    writeSource(dir, '.product/sessions/session-001.md');
     const payload = [
       { name: 'ordering', horizon: 'mvp', summary: 'customers order from a menu' },
       { name: 'menus', horizon: 'mvp', summary: 'operators maintain the menu' },
-      { name: 'loyalty', horizon: 'v1', summary: 'rewards', kind: 'bug', origin: 'harvest', sources: ['.roadmap/sessions/session-001.md'] },
+      { name: 'loyalty', horizon: 'v1', summary: 'rewards', kind: 'bug', origin: 'harvest', sources: ['.product/sessions/session-001.md'] },
     ];
     fs.writeFileSync(path.join(dir, 'items.json'), JSON.stringify(payload));
     const res = runOk(dir, ['add-batch', '--file', 'items.json']);
@@ -198,21 +198,21 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.match(runFail(dir, ['add-batch', '--file', 'kind.json']).error, /entry 2 — unknown kind "epic"/);
 
     fs.writeFileSync(path.join(dir, 'prefixed.json'), JSON.stringify([
-      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-001.md'] },
-      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.leeway/.roadmap/sessions/session-001.md'] },
+      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.product/sessions/session-001.md'] },
+      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.leeway/.product/sessions/session-001.md'] },
     ]));
     assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.leeway\/"/);
 
     // One entry's source not yet on disk refuses the whole batch, the path named once.
-    writeSource(dir, '.roadmap/sessions/session-001.md');
+    writeSource(dir, '.product/sessions/session-001.md');
     fs.writeFileSync(path.join(dir, 'unopened.json'), JSON.stringify([
-      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-001.md'] },
-      { name: 'early', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-002.md'] },
-      { name: 'later', horizon: 'v1', summary: 's', sources: ['.roadmap/sessions/session-002.md'] },
+      { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.product/sessions/session-001.md'] },
+      { name: 'early', horizon: 'mvp', summary: 's', sources: ['.product/sessions/session-002.md'] },
+      { name: 'later', horizon: 'v1', summary: 's', sources: ['.product/sessions/session-002.md'] },
     ]));
     assert.strictEqual(runFail(dir, ['add-batch', '--file', 'unopened.json']).error,
-      `add-batch: source ".roadmap/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
-      + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
+      `add-batch: source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
+      + 'open a session log\'s session first (discovery-session open product, or the session\'s own open)');
 
     assert.strictEqual(projectManifestText(dir), before);
   });
@@ -484,131 +484,6 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   });
 });
 
-describe('engine CLI: roadmap sessions and imports', () => {
-  let dir;
-  beforeEach(() => { dir = setupGitFixture(); });
-  afterEach(() => { cleanup(dir); });
-
-  function draft(name, content) {
-    fs.writeFileSync(path.join(dir, name), content);
-    return name;
-  }
-
-  it('open installs the draft as session-001, resolves {NNN}, sets the marker, JIT-births the node — no commit', () => {
-    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    const res = runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Roadmap Session {NNN}\n')]);
-    assert.strictEqual(res.session, '001');
-    assert.strictEqual(
-      fs.readFileSync(path.join(dir, '.leeway', '.roadmap', 'sessions', 'session-001.md'), 'utf8'),
-      '# Roadmap Session 001\n',
-      'the template-literal {NNN} resolves to the allocated number at install');
-    assert.strictEqual(res.path, path.join(dir, '.leeway/.roadmap/sessions/session-001.md'));
-    assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), false, 'draft consumed (moved)');
-    assert.strictEqual(readProject(dir).roadmap.active_session, '001');
-    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head, 'open never commits — the session is live');
-
-    assert.match(runFail(dir, ['session', 'open', '--session-log-file', draft('d2.md', 'x')]).error, /already open/);
-    const state = runOk(dir, ['state']);
-    assert.strictEqual(state.active_session, '001');
-    assert.deepStrictEqual(state.session_logs, [{ number: 1, path: path.join(dir, '.leeway/.roadmap/sessions/session-001.md') }]);
-    assert.strictEqual(state.next_session_number, 2);
-  });
-
-  it('open refuses a missing or empty draft, everything pristine', () => {
-    assert.match(runFail(dir, ['session', 'open', '--session-log-file', 'ghost.md']).error, /draft not found/);
-    assert.match(runFail(dir, ['session', 'open', '--session-log-file', draft('empty.md', '  \n')]).error, /draft is empty/);
-    assert.strictEqual(fs.existsSync(path.join(dir, 'empty.md')), true, 'refusal leaves the draft in place');
-  });
-
-  it('close clears the marker, indexes, and commits the roadmap dir + project manifest', () => {
-    runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n\nExploration.\n')]);
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
-    const res = runOk(dir, ['session', 'close', '-m', 'roadmap: session 001 — genesis']);
-    assert.strictEqual(res.session, '001');
-    assert.strictEqual('active_session' in readProject(dir).roadmap, false);
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: session 001 — genesis');
-    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.roadmap/sessions/session-001.md'), 'session log staged');
-    assert.match(runFail(dir, ['session', 'close', '-m', 'again']).error, /no active roadmap session/);
-
-    // The next open allocates from disk: session-002.
-    const again = runOk(dir, ['session', 'open', '--session-log-file', draft('d2.md', '# Session 2\n')]);
-    assert.strictEqual(again.session, '002');
-  });
-
-  it('import lands files with the shared discipline: normalise, dedupe, stamp the origin, one commit', () => {
-    fs.writeFileSync(path.join(dir, 'My App Idea.md'), '# The idea\n');
-    fs.writeFileSync(path.join(dir, 'my-app-idea.md'), '# A colliding name\n');
-    const res = runOk(dir, ['import', 'My App Idea.md', 'my-app-idea.md']);
-    assert.deepStrictEqual(res.imports, [
-      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea.md'), origin: 'roadmap' },
-      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea-2.md'), origin: 'roadmap' },
-    ]);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'my-app-idea.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'my-app-idea-2.md')));
-    const entries = readProject(dir).roadmap.imports;
-    assert.strictEqual(entries.length, 2);
-    assert.strictEqual(entries[0].path, 'imports/my-app-idea.md');
-    assert.ok(entries[0].imported_at, 'entries carry a timestamp');
-    assert.deepStrictEqual(entries.map((e) => e.origin), ['roadmap', 'roadmap'],
-      'the product altitude is its own origin');
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: import 2 files');
-    const state = runOk(dir, ['state']);
-    assert.deepStrictEqual(state.imports, [
-      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea.md'), origin: 'roadmap' },
-      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea-2.md'), origin: 'roadmap' },
-    ]);
-  });
-
-  it('a binary lands tracked and unindexed, its extension kept and lowercased', () => {
-    // Set up keyword-only, so the markdown landing indexes cleanly and any
-    // warning could only be the binary's.
-    keywordOnlyKnowledge(dir);
-    fs.writeFileSync(path.join(dir, 'Board Sketch.PNG'), 'png bytes\n');
-    fs.writeFileSync(path.join(dir, 'notes.md'), '# notes\n');
-    const res = runOk(dir, ['import', 'Board Sketch.PNG', 'notes.md']);
-    assert.deepStrictEqual(res.imports, [
-      { path: path.join(dir, '.leeway/.roadmap/imports/board-sketch.png'), origin: 'roadmap' },
-      { path: path.join(dir, '.leeway/.roadmap/imports/notes.md'), origin: 'roadmap' },
-    ]);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'board-sketch.png')));
-    const mode = fs.statSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
-    assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
-    // No index was attempted for the binary: indexing refuses a `.png` by
-    // name, and the refusal would come back as a warning.
-    assert.strictEqual('warnings' in res, false, JSON.stringify(res));
-    assert.deepStrictEqual(indexedFiles(dir), ['.roadmap/imports/notes.md']);
-  });
-
-  it('import fails whole with missing_imports so the flow can re-prompt', () => {
-    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
-    const res = runFail(dir, ['import', 'real.md', 'ghost.md']);
-    assert.deepStrictEqual(res.missing_imports, ['ghost.md']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'nothing landed');
-  });
-
-  it('a directory among the paths refuses before any copy — no half-landed batch', () => {
-    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
-    fs.mkdirSync(path.join(dir, 'album'), { recursive: true });
-    const res = runFail(dir, ['import', 'real.md', 'album']);
-    assert.match(res.error, /import path\(s\) not found, not a file, or unreadable: album/);
-    assert.deepStrictEqual(res.missing_imports, ['album']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'nothing landed');
-  });
-
-  it('commit --roadmap sweeps the roadmap dir + project manifest, nothing else', () => {
-    runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n')]);
-    fs.appendFileSync(path.join(dir, '.leeway', '.roadmap', 'sessions', 'session-001.md'), '\nMore exploration.\n');
-    fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
-    const res = ok(dir, ['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
-    assert.ok(res.committed);
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: exploration notes — session-001');
-    assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
-    const clean = ok(dir, ['commit', '--roadmap', '-m', 'nothing']);
-    assert.strictEqual(clean.committed, null);
-  });
-});
-
 describe('engine CLI: roadmap state — lifecycle by join', () => {
   let dir;
   beforeEach(() => { dir = setupGitFixture(); });
@@ -684,15 +559,23 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
     assert.strictEqual(res.items.find((i) => i.name === 'crooked').state, 'waiting', 'a malformed join reads as no join');
   });
 
-  it('refuses mutations loudly over a malformed horizons node — add, session open, and import alike', () => {
+  it('refuses a mutation loudly over a malformed horizons node', () => {
     fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's']).error, /horizons is malformed/);
-    fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
-    assert.match(runFail(dir, ['session', 'open', '--session-log-file', 'draft.md']).error, /horizons is malformed/);
-    assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), true, 'the refused open leaves the draft in place');
-    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
-    assert.match(runFail(dir, ['import', 'ref.md']).error, /horizons is malformed/);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'the refused import copies nothing');
+  });
+
+  it('reads the product\'s conversation\'s sessions: its marker on the project manifest, its logs and next number from .product/sessions — a log alone giving a roadmap that exists, holding nothing', () => {
+    const logs = ['session-001.md', 'session-003.md'].map((name) => path.join(dir, '.leeway', '.product', 'sessions', name));
+    for (const log of logs) writeSource(dir, path.relative(path.join(dir, '.leeway'), log));
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ product_session: '003' }, null, 2));
+    const sessions = ({ exists, items, active_session, session_logs, next_session_number }) => ({ exists, items: items.map((i) => i.name), active_session, session_logs, next_session_number });
+    const expected = { exists: true, active_session: '003', session_logs: [{ number: 1, path: logs[0] }, { number: 3, path: logs[1] }], next_session_number: 4 };
+    assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: [] });
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
+    assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: ['loyalty'] });
+    for (const log of logs) fs.rmSync(log);
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({}, null, 2));
+    assert.strictEqual(runOk(dir, ['state']).exists, false, 'no log and no node is no roadmap');
   });
 });
 
@@ -801,47 +684,5 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
     const state = runOk(dir, ['state']);
     assert.strictEqual(state.items.find((i) => i.name === 'loyalty').state, 'in-flight');
     assert.strictEqual(state.items.find((i) => i.name === 'loyalty').work_unit, 'mvp');
-  });
-});
-
-describe('engine CLI: import edge discipline and the commit scope', () => {
-  let dir;
-  beforeEach(() => { dir = setupGitFixture(); });
-  afterEach(() => { cleanup(dir); });
-
-  it('skips dotfile-normalising sources and reports them; an all-skipped call refuses', () => {
-    fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
-    fs.writeFileSync(path.join(dir, '.hidden'), 'x');
-    const res = runOk(dir, ['import', 'real.md', '.hidden']);
-    assert.deepStrictEqual(res.imports, [{ path: path.join(dir, '.leeway/.roadmap/imports/real.md'), origin: 'roadmap' }]);
-    assert.deepStrictEqual(res.skipped_imports, ['.hidden']);
-
-    const fail = runFail(dir, ['import', '.hidden']);
-    assert.match(fail.error, /nothing to land/);
-    assert.strictEqual(readProject(dir).roadmap.imports.length, 1, 'the refused call recorded nothing');
-  });
-
-  it('a malformed imports node refuses before any file is copied', () => {
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ roadmap: { horizons: [], items: {}, imports: 'corrupt' } }, null, 2));
-    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
-    assert.match(runFail(dir, ['import', 'ref.md']).error, /imports is malformed/);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'no orphan copy landed');
-  });
-
-  it('close and import commit the roadmap and the project manifest — never the store', () => {
-    keywordOnlyKnowledge(dir);
-    fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
-    runOk(dir, ['session', 'open', '--session-log-file', 'draft.md']);
-    runOk(dir, ['session', 'close', '-m', 'roadmap: session 001']);
-    assert.deepStrictEqual(indexedFiles(dir), ['.roadmap/sessions/session-001.md']);
-    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.roadmap/sessions/session-001.md'), 'the close commits its log');
-    assert.ok(!staged.some((f) => f.startsWith('.knowledge/')), 'and never the store its indexing touched');
-
-    fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
-    runOk(dir, ['import', 'ref.md']);
-    const staged2 = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged2.includes('.roadmap/imports/ref.md'), 'the import commits its landing');
-    assert.ok(!staged2.some((f) => f.startsWith('.knowledge/')), 'and never the store');
   });
 });

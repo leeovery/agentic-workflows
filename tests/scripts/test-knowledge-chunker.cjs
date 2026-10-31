@@ -589,9 +589,9 @@ describe('phase chunking configs', () => {
     });
   }
 
-  it('indexes a topic\'s record, and neither the research nor the discussion log', () => {
+  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline (8.14.7, 9.2.2)', () => {
     assert.ok(phases.includes('record'));
-    for (const phase of ['research', 'discussion']) {
+    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline']) {
       assert.ok(!phases.includes(phase), phase);
       assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
     }
@@ -617,7 +617,7 @@ describe('phase chunking configs', () => {
       fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
     );
     assert.deepStrictEqual(cfg.special_sections, { Corrigenda: 'own-chunk' });
-    for (const phase of ['investigation', 'imports', 'analysis', 'seeds', 'discovery']) {
+    for (const phase of ['investigation', 'imports', 'analysis', 'seeds']) {
       const other = JSON.parse(
         fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
       );

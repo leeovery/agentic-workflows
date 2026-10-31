@@ -278,7 +278,7 @@ class Sim {
 
 /** Session-log helper — workunit create and discovery-session open need one. */
 function sessionLog(sim, wu, n = 1) {
-  return sim.write(`.leeway/${wu}/discovery/sessions/session-00${n}.md`,
+  return sim.write(`.leeway/.cache/${wu}/discovery/session-00${n}.md`,
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
 }
 

@@ -90,7 +90,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 - `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, baseline
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
-- `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, `discovery/briefs/{topic}.md` — discovery session logs, an epic's topic briefs
+- `.workflows/{work_unit}/discovery/session-NNN.md`, `discovery/briefs/{topic}.md` — discovery session logs, an epic's topic briefs
 - `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
 - `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/specification/{topic}/specification.md`
@@ -103,7 +103,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/.state/` — the migrations ledger, `environment-setup.md`
 - `.workflows/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch and presence; `.cache/.session-labels/` the tmux label store
 - `.workflows/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
-- `.workflows/.roadmap/` — roadmap sessions, imports, and notes
+- `.workflows/.roadmap/` — the roadmap's notes
+- `.workflows/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `assets/` the files shared, `spikes/{NNN}-{slug}/` its spikes
 - `.workflows/.baseline/{area}.md` — the brownfield assessment
 - `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `~/.config/leeway/` (or `LEEWAY_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state

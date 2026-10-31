@@ -1,8 +1,8 @@
 'use strict';
 
 // `engine knowledge remove`, `compact` and `rebuild` through the door: what
-// a removal takes by unit, phase and topic, its dry run, the project-level
-// identities, a name the registry does not hold, its refusals and its
+// a removal takes by unit, phase and topic, its dry run, a name the
+// registry does not hold, its refusals and its
 // failure; what compact prunes, its dry run and its off switch; and the
 // rebuild's confirmation, its refusals, its backup and its restore. Verb
 // layer: the door in process (knowledge-harness), over the project world
@@ -49,8 +49,8 @@ describe('engine knowledge remove, compact and rebuild', () => {
       knowledgeUnit(root, 'mixed', 'epic');
       knowledgeUnit(root, 'kept', 'feature');
       await indexed('mixed/investigation/mixed.md', 'mixed/specification/mixed/specification.md', 'mixed/imports/seed.md',
-        'mixed/seeds/origin.md', 'mixed/.state/discovery-gap-analysis.md', 'mixed/discovery/sessions/session-001.md', 'kept/investigation/kept.md');
-      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'mixed'), { code: 0, stdout: 'Removed 6 chunks for mixed (all phases)\n', stderr: '' });
+        'mixed/seeds/origin.md', 'mixed/.state/discovery-gap-analysis.md', 'kept/investigation/kept.md');
+      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'mixed'), { code: 0, stdout: 'Removed 5 chunks for mixed (all phases)\n', stderr: '' });
       assert.deepStrictEqual(identities(), ['kept/investigation/kept']);
     });
 
@@ -69,13 +69,6 @@ describe('engine knowledge remove, compact and rebuild', () => {
       await indexed('preview/investigation/preview.md');
       assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'preview', '--dry-run'), { code: 0, stdout: 'Would remove 1 chunks for preview (all phases)\n', stderr: '' });
       assert.deepStrictEqual(identities(), ['preview/investigation/preview']);
-    });
-
-    it('takes a project-level identity no registry names — the roadmap, the baseline — never as an orphan', async () => {
-      await indexed('.roadmap/sessions/session-001.md', '.baseline/overview.md');
-      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'roadmap'), { code: 0, stdout: 'Removed 1 chunks for roadmap (all phases)\n', stderr: '' });
-      assert.deepStrictEqual(await knowledge('remove', '--work-unit', 'baseline'), { code: 0, stdout: 'Removed 1 chunks for baseline (all phases)\n', stderr: '' });
-      assert.deepStrictEqual(identities(), []);
     });
 
     it('refuses a name the registry does not hold and the store holds nothing of, where a registered unit\'s empty match removes 0', async () => {
@@ -230,13 +223,12 @@ describe('engine knowledge remove, compact and rebuild', () => {
       assert.deepStrictEqual(backups(), []);
     });
 
-    it('puts the previous store back, byte for byte, when the manifest cannot be read mid-rebuild', async () => {
-      await indexed('.baseline/overview.md');
+    it('puts the previous store back, byte for byte, when the rebuilt store cannot be written', async () => {
       const before = fs.readFileSync(knowledgeAt(root).store);
-      fs.writeFileSync(at('manifest.json'), '{ not json');
+      fs.mkdirSync(`${knowledgeAt(root).store}.tmp`);
       const answer = await rebuild('rebuild\n');
       assert.strictEqual(answer.code, 1);
-      assert.match(answer.stderr, /^Rebuild failed; restored previous index from backup\.$/m);
+      assert.ok(answer.stderr.startsWith(`${PROMPT}Rebuild failed; restored previous index from backup.\n`), answer.stderr);
       assert.ok(fs.readFileSync(knowledgeAt(root).store).equals(before));
       assert.deepStrictEqual(backups(), []);
     });

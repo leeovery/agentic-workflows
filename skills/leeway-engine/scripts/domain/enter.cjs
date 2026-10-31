@@ -43,6 +43,7 @@ const { computeTopicLifecycle, itemOf } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { sessionLogs } = require('./discovery-session.cjs');
 const { arriveAt } = require('./session-label.cjs');
 const { beatQuietly, peerHold } = require('./presence.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
@@ -86,6 +87,12 @@ function filesIn(dir) {
   }
 }
 
+/** A unit's discovery session logs, in order, as absolute paths. @param {string} cwd @param {string} unit */
+function discoveryLogs(cwd, unit) {
+  const dir = statePath(cwd, unit, 'discovery');
+  return sessionLogs(dir).map(({ file }) => path.join(dir, file));
+}
+
 /** The paths that exist. @param {string[]} paths absolute */
 const existing = (paths) => paths.filter((p) => fs.existsSync(p));
 
@@ -124,7 +131,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
   return [
     ...waitingMessages(cwd, unit, topic).map(({ path: message }) => as('mail')(message)),
     ...existing([statePath(cwd, unit, 'discovery', 'briefs', `${topic}.md`)]).map(as('brief')),
-    ...(own ? filesIn(statePath(cwd, unit, 'discovery', 'sessions')) : []).map(as('discovery log')),
+    ...(own ? discoveryLogs(cwd, unit) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
     as('product')(`\`${productCall(unit, topic)}\``),

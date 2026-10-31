@@ -617,8 +617,8 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   /** The fixture plus a roadmap holding `items`, and the files their sources name outside the feature. */
   function setupRoadmap(items, { feature } = {}) {
     fix = setupFixture(feature ? { feature } : {});
-    writeFile(fix.project, '.leeway/auth-flow/discovery/sessions/session-001.md', '# Discovery\n');
-    writeFile(fix.project, '.leeway/.roadmap/sessions/session-001.md', '# Roadmap session\n');
+    writeFile(fix.project, '.leeway/auth-flow/discovery/session-001.md', '# Discovery\n');
+    writeFile(fix.project, '.leeway/.product/sessions/session-001.md', '# Roadmap session\n');
     const project = readProject();
     project.roadmap = { horizons: ['v1'], items };
     writeFile(fix.project, '.leeway/manifest.json', JSON.stringify(project, null, 2) + '\n');
@@ -700,27 +700,27 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
 
   it('a source nothing moved goes with the feature — the sources field too, once empty', () => {
     setupRoadmap({
-      lone: { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discovery/sessions/session-001.md'] },
+      lone: { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discovery/session-001.md'] },
       mixed: { horizon: 'v1', summary: 'mixed', kind: 'idea', origin: 'harvest', sources: [
-        'auth-flow/discovery/sessions/session-001.md',
-        '.roadmap/sessions/session-001.md',
+        'auth-flow/discovery/session-001.md',
+        '.product/sessions/session-001.md',
         'auth-flow/topics/auth-flow/log.md',
       ] },
     });
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual(res.roadmap_sources_dropped, [
-      { item: 'lone', source: 'auth-flow/discovery/sessions/session-001.md' },
-      { item: 'mixed', source: 'auth-flow/discovery/sessions/session-001.md' },
+      { item: 'lone', source: 'auth-flow/discovery/session-001.md' },
+      { item: 'mixed', source: 'auth-flow/discovery/session-001.md' },
     ]);
     const items = readProject().roadmap.items;
     assert.deepStrictEqual(items.lone, { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow' });
-    assert.deepStrictEqual(items.mixed.sources, ['.roadmap/sessions/session-001.md', 'payments/topics/auth/log.md']);
+    assert.deepStrictEqual(items.mixed.sources, ['.product/sessions/session-001.md', 'payments/topics/auth/log.md']);
     assertSourcesOnDisk();
   });
 
   it("a source outside the feature is untouched — a sibling unit sharing the name's prefix included", () => {
-    const outside = ['.roadmap/sessions/session-001.md', 'payments/imports/roadmap.md', 'auth-flow-v2/discussion/auth-flow-v2.md'];
+    const outside = ['.product/sessions/session-001.md', 'payments/imports/roadmap.md', 'auth-flow-v2/discussion/auth-flow-v2.md'];
     setupRoadmap({ other: { horizon: 'v1', summary: 'other', kind: 'idea', origin: 'harvest', sources: outside } });
     const before = readProject().roadmap;
     const res = engine(fix, ABSORB);

@@ -47,7 +47,7 @@ describe('pipeline simulation: epic map', () => {
     const shaping = carryOn(sim);
     assert.deepStrictEqual(shaping.position, { name: wu, phase: 'discovery', topic: wu });
     assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/leeway-discovery/SKILL.md'));
-    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/sessions/session-001.md`)]);
+    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/session-001.md`)]);
     assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
     // Harvest: three topics in one batch, briefs pointed.

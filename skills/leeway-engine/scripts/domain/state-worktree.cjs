@@ -55,7 +55,9 @@
 //   place for — one a shell wrote, past the layout hook — refuses the
 //   commit, naming it, with nothing committed (6.2.5); a file gone is never
 //   refused, as removing one is the way on. Every changed log of the
-//   layout's rides along with what the verb gives (6.3.2). The files the
+//   layout's rides along with what the verb gives (6.3.2), and with it the
+//   files in a spike or the assets that it links, as additions and edits
+//   alone (log-links.cjs, 9.10.11). The files the
 //   person's tools leave beside the state's — an operating system's folder
 //   metadata, an editor's swap files, backups and locks — are neither
 //   refused nor committed. A merge's landing is no verb's commit, and is
@@ -78,6 +80,7 @@ const { GitError, literally } = require('../kernel/git.cjs');
 const { STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
 const { WRITER_LOCK, jsonText, writeTextAtomic, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { folding, layoutPlace } = require('./layout.cjs');
+const { logLinks } = require('./log-links.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { landingRecorded, finishLanding } = require('./state-merge-landing.cjs');
@@ -911,7 +914,8 @@ function push(git, timeoutMs) {
  * commit yet — the commit is held, once the layout holds every file: the
  * writes stay as they are, for the migration's commit to take (21.9.3).
  * Of `kept`, what is on disk is taken as additions and edits alone, never a
- * removal: a ledger commit's files its asset links name (ledger.cjs).
+ * removal: a ledger commit's files its asset links name (ledger.cjs); and so
+ * is what each changed log links in a spike or the assets (log-links.cjs).
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
@@ -940,8 +944,9 @@ function commitHere(root, paths, message, { contents = {}, kept = [] } = {}) {
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
   const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
-  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keptSpecs);
-  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keptSpecs])] };
+  const keeps = [...keptSpecs, ...logLinks(root, logs)];
+  const commit = commitPaths(worktree, recorded ? headAt(worktree.git) : worktree.at, [...specs, ...logs], message, given, keeps);
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', [...taken, ...logs, ...keeps])] };
 }
 
 /**

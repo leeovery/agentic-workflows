@@ -2,7 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // Spikes and assets (leeway-engine/scripts/domain/asset.cjs): `engine asset
-// spike`, a spike's numbered folder and its twin under the cache, and
+// spike`, a spike's numbered folder and its twin under the cache, a unit's
+// or the product's; `engine asset import`, the files the person shares
+// landed in its assets/ by the filename rules; and
 // `engine asset add|status|lift`, each appending the ledger's asset event
 // from an entry to a file — its first link giving its status, a later one
 // changing it or recording a lift into the project — tagged as the entry is
@@ -150,6 +152,78 @@ describe('a spike (9.10.10, 4.11.13)', () => {
     assert.match(refused(['spike', 'mint', 'frame']), /^asset spike: mint takes no spike — .*cancelled/);
     assert.deepStrictEqual(spikes(), before);
     assert.strictEqual(fs.existsSync(statePath(dir, 'mint', 'spikes')), false);
+  });
+});
+
+describe('the product\'s spike (4.11.13, 4.S26)', () => {
+  it('4.S26: numbers the product\'s spikes under .product/spikes/, each folder\'s twin at the same path under the cache, nothing committed; a slug one of them has refused', () => {
+    const before = head(dir);
+
+    const pricing = asset(['spike', 'product', 'pricing']);
+    const naming = asset(['spike', 'product', 'naming']);
+
+    assert.deepStrictEqual([pricing, naming], [
+      { ok: true, spike: '001-pricing', path: '.product/spikes/001-pricing', folder: statePath(dir, '.product', 'spikes', '001-pricing'), cache: statePath(dir, '.cache', '.product', 'spikes', '001-pricing') },
+      { ok: true, spike: '002-naming', path: '.product/spikes/002-naming', folder: statePath(dir, '.product', 'spikes', '002-naming'), cache: statePath(dir, '.cache', '.product', 'spikes', '002-naming') },
+    ]);
+    for (const { folder, cache } of [pricing, naming]) assert.ok(fs.statSync(folder).isDirectory() && fs.statSync(cache).isDirectory(), `${folder} or ${cache} is not made`);
+    assert.strictEqual(head(dir), before);
+    assert.strictEqual(refused(['spike', 'product', 'pricing']), 'asset spike: product has a spike "pricing" already, spikes/001-pricing — carry on in it, or name the new one apart');
+  });
+});
+
+describe('an import (9.10.5, 9.10.11)', () => {
+  const shared = useTempFolder('asset-shared-');
+
+  /** A file the person shares, outside the project: its path. @param {string} name @param {number} [mode] */
+  function sharing(name, mode = 0o644) {
+    const file = path.join(shared(), name);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${name}\n`);
+    fs.chmodSync(file, mode);
+    return file;
+  }
+
+  it('lands each file in the unit\'s assets/ by the filename rules — named plain, deduped against the folder and the call, prose as markdown and any other extension kept at a readable mode — answering each path from the state root, nothing committed', () => {
+    const before = head(dir);
+    const sources = [sharing('Note Mock.PNG', 0o600), sharing('Flow Notes.txt'), sharing('flow-notes.md')];
+
+    const res = asset(['import', UNIT, ...sources]);
+
+    const landed = [`${UNIT}/assets/note-mock-2.png`, `${UNIT}/assets/flow-notes.md`, `${UNIT}/assets/flow-notes-2.md`];
+    assert.deepStrictEqual(res, { ok: true, imports: landed, skipped_imports: [] });
+    assert.deepStrictEqual(landed.map((rel) => fs.readFileSync(statePath(dir, rel), 'utf8')), ['Note Mock.PNG\n', 'Flow Notes.txt\n', 'flow-notes.md\n']);
+    assert.strictEqual(fs.statSync(statePath(dir, landed[0])).mode & 0o777, 0o644);
+    assert.strictEqual(fs.readFileSync(statePath(dir, MOCK), 'utf8'), 'a mock the person shared\n');
+    assert.strictEqual(head(dir), before);
+  });
+
+  it('lands the product\'s in .product/assets/, a dotfile skipped and named', () => {
+    const hidden = sharing('.env');
+
+    const res = asset(['import', 'product', sharing('Market Notes.md'), hidden]);
+
+    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/market-notes.md'], skipped_imports: [hidden] });
+    assert.ok(fs.existsSync(statePath(dir, '.product', 'assets', 'market-notes.md')));
+  });
+
+  it('refuses the whole call over a path naming no file or a folder, naming each, and a call whose every file the rules skip — landing nothing', () => {
+    const real = sharing('real.md');
+    const ghost = path.join(shared(), 'ghost.md');
+    const album = path.dirname(sharing('album/one.png'));
+
+    const missing = refusedPristine(dir, ['asset', 'import', 'product', real, ghost, album], { env: SESSION });
+    assert.deepStrictEqual(missing, { ok: false, error: `import path(s) not found, not a file, or unreadable: ${ghost}, ${album}`, missing_imports: [ghost, album] });
+    const hidden = sharing('.DS_Store');
+    assert.strictEqual(refused(['import', UNIT, hidden]), `asset import: nothing to land — the filename rules skip every file given (${hidden})`);
+  });
+
+  it('refuses a unit the project lacks and a unit set aside', () => {
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    const real = sharing('real.md');
+
+    assert.strictEqual(refused(['import', 'dock', real]), 'asset import: there is no work unit "dock"');
+    assert.match(refused(['import', 'mint', real]), /^asset import: mint takes no file — .*cancelled/);
   });
 });
 
@@ -456,13 +530,15 @@ describe('the writer lock', () => {
 
 describe('the verb\'s argv', () => {
   it('refuses a verb it lacks, a flag it does not take or given twice, a missing flag it needs, and positionals of another count, each with its usage', () => {
-    const usage = 'Usage: engine asset <spike|add|status|lift> …\nasset spike <work-unit> <slug>\nasset add <work-unit> <path> --entry <id> [--status <canonical|reference>]\n'
+    const usage = 'Usage: engine asset <spike|import|add|status|lift> …\nasset spike <work-unit|product> <slug>\nasset import <work-unit|product> <path> …\n'
+      + 'asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]\n'
       + 'asset status <work-unit> <path> <canonical|reference> [--entry <id>]\nasset lift <work-unit> <path> --into <path-in-project> --entry <id>';
     assert.strictEqual(refused(['move', UNIT, MOCK]), usage);
     assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--into', LIFTED]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');
     assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--entry', made.active]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');
     assert.strictEqual(refused(['lift', UNIT, FRAME, '--into', LIFTED]), 'Usage: engine asset lift <work-unit> <path> --into <path-in-project> --entry <id>');
     assert.strictEqual(refused(['status', UNIT, MOCK]), 'Usage: engine asset status <work-unit> <path> <canonical|reference> [--entry <id>]');
-    assert.strictEqual(refused(['spike', UNIT]), 'Usage: engine asset spike <work-unit> <slug>');
+    assert.strictEqual(refused(['spike', UNIT]), 'Usage: engine asset spike <work-unit|product> <slug>');
+    assert.strictEqual(refused(['import', UNIT]), 'Usage: engine asset import <work-unit|product> <path> …');
   });
 });

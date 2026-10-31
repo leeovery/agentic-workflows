@@ -12,7 +12,7 @@ The product layer above the work unit. Hold the product-altitude conversation, k
 
 ## Workflow Context
 
-The roadmap is project-level and outside the pipeline — no work unit, no phases. Sessions record at `.workflows/.roadmap/sessions/`, the map lives on the project manifest (`roadmap`: ordered horizons + items), and item lifecycle is computed by joining `pulled_to` against the work unit it became — waiting is the absence of a join. Work units are born here at the **pull** — the commitment point — already fenced to the pulled items; the pipeline itself is untouched.
+The roadmap is project-level and outside the pipeline — no work unit, no phases. Sessions record at `.workflows/.product/sessions/`, the map lives on the project manifest (`roadmap`: ordered horizons + items), and item lifecycle is computed by joining `pulled_to` against the work unit it became — waiting is the absence of a join. Work units are born here at the **pull** — the commitment point — already fenced to the pulled items; the pipeline itself is untouched.
 
 Three invocation modes, dispatched at Step 1:
 
@@ -35,7 +35,7 @@ Load **[framework.md](../leeway-shared/references/framework.md)** and follow its
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
-2. **Read the state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state` and reason from its response: an `active_session` means a session is live — read its log (`.workflows/.roadmap/sessions/session-{active_session}.md`) in full to recover the exploration; no marker means the session had not started or already closed.
+2. **Read the state.** Run `node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state` and reason from its response: an `active_session` means a session is live — read its log (`.workflows/.product/sessions/session-{active_session}.md`) in full to recover the exploration; no marker means the session had not started or already closed.
 3. **Check git state.** Run `git status` and `git log --oneline -10`. Commit messages reveal what has been completed.
 4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
 
@@ -94,7 +94,7 @@ The shaping conversation before this point was ephemeral — persist it now:
 1. **Land any imports held from shaping.** If the user shared file paths during the shaping conversation (`import_paths`), land them all in one call. Single-quote every path — a screenshot's filename carries spaces and capitals, and unquoted each word becomes its own positional — write a `~` path out in full, since the quotes stop the shell expanding it, and write a single quote inside a path as `'\''`:
 
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs roadmap import '{path}' ['{path}' …]
+   node .claude/skills/leeway-engine/scripts/engine.cjs asset import product '{path}' ['{path}' …]
    ```
 
    **If the response is `ok: false` with `missing_imports`:** nothing landed — one bad path refuses the whole batch. Write the payload to `.workflows/.cache/roadmap/import-reprompt.json` with the Write tool (`{"missing": ["{path}", …]}` — the response's `missing_imports`, in its order), then render the re-prompt and emit its DISPLAY and MENU sections verbatim per their markers:
@@ -120,7 +120,7 @@ The shaping conversation before this point was ephemeral — persist it now:
    **Otherwise:** draft the log at `.workflows/.cache/roadmap/session-draft.md` per [session-template.md](references/session-template.md), backfilling **Exploration** with that same strong-summary. Then:
 
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md
+   node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session open product --session-log-file .workflows/.cache/roadmap/session-draft.md
    node .claude/skills/leeway-engine/scripts/engine.cjs commit --roadmap -m "roadmap: open session {session}"
    ```
 

@@ -102,7 +102,7 @@ describe('engine workunit create — happy path', () => {
       imports: [{ path: landed(fix, 'imports/my-design-doc.md') }],
       seeds: [{ path: landed(fix, 'seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' }],
       skipped_imports: [],
-      session_log: landed(fix, 'discovery/sessions/session-001.md'),
+      session_log: landed(fix, 'discovery/session-001.md'),
       committed: shortHead(fix),
       warnings: [],
     });
@@ -132,7 +132,7 @@ describe('engine workunit create — happy path', () => {
 
     // The session log is installed verbatim — engine never edits prose.
     assert.strictEqual(
-      fs.readFileSync(path.join(fix.project, '.leeway/payments/discovery/sessions/session-001.md'), 'utf8'),
+      fs.readFileSync(path.join(fix.project, '.leeway/payments/discovery/session-001.md'), 'utf8'),
       SESSION_LOG);
 
     // Import copied (source untouched), seed moved out of the inbox.
@@ -174,7 +174,7 @@ describe('engine workunit create — happy path', () => {
       const m = readManifest(fix, wu);
       assert.strictEqual(m.work_type, workType);
       assert.deepStrictEqual(m.phases, {});
-      assert.ok(fs.existsSync(path.join(fix.project, `.leeway/${wu}/discovery/sessions/session-001.md`)));
+      assert.ok(fs.existsSync(path.join(fix.project, `.leeway/${wu}/discovery/session-001.md`)));
       assert.strictEqual(lastMessage(fix), `discovery(${wu}): create work unit (${workType})`);
     }
   });

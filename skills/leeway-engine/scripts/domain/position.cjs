@@ -11,8 +11,8 @@
 // Every place records itself on arrival, through the calls that label it,
 // labels on or off: a phase's entry (`enter`, or `session label {wu}
 // {phase} {topic}` inside a phase not yet entered through it),
-// `session label {wu}` at a work unit's menu, `session label roadmap|baseline`
-// at the project-level places — a place this project lacks is refused before
+// `session label {wu}` at a work unit's menu, `session label
+// roadmap|baseline|product` at the project-level places — a place this project lacks is refused before
 // anything is labelled or recorded. Inside implementation, `task start` adds
 // the task in flight and that task's `task complete` takes it off; the
 // tracker's `task start` does the same with the unit as the topic, its
@@ -35,15 +35,15 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
+const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
-const { latestSessionLog } = require('./discovery-session.cjs');
-const { ROADMAP_DIR } = require('./roadmap.cjs');
+const { latestSessionLog, productSession } = require('./discovery-session.cjs');
+const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
@@ -61,7 +61,9 @@ const PLACE_SEPARATOR = ' › ';
 // recorded on its map row, whatever each item reads.
 const MAP_PHASES = [...UNIT_PHASES.discovery, 'experiment'];
 
-const [, ROADMAP_IDENTITY] = PROJECT_IDENTITIES;
+// The project places whose work keeps the product's session log: the
+// product's conversation, and the roadmap, whose skill runs it too.
+const SESSION_PLACES = [PRODUCT, 'roadmap'];
 
 /**
  * @typedef {object} Position
@@ -247,12 +249,16 @@ function dropPosition(sessionId) {
 // ---------------------------------------------------------------------------
 
 /**
- * The skill that runs the work at a place — a phase's own, discovery's, or a
- * project place's; null at a work unit's menu.
+ * The skill that runs the work at a place — a phase's own, discovery's,
+ * which the product's conversation is too, or a project place's; null at a
+ * work unit's menu.
  * @param {string} name @param {string} [phase] @returns {string|null}
  */
 function skillAt(name, phase) {
-  if (phase === undefined) return PROJECT_IDENTITIES.includes(name) ? `leeway-${name}` : null;
+  if (phase === undefined) {
+    if (!PROJECT_IDENTITIES.includes(name)) return null;
+    return name === PRODUCT ? 'leeway-discovery' : `leeway-${name}`;
+  }
   return phase === 'discovery' ? 'leeway-discovery' : phaseSkill(phase);
 }
 
@@ -326,14 +332,14 @@ function experimentFiles(cwd, workUnit, topic, manifest) {
 }
 
 /**
- * The log of the roadmap's open session — the one its node on the project
- * manifest marks open; none where no session is open.
+ * The log of the product's open session — the one the project manifest
+ * marks open; none where no session is open.
  * @param {string} cwd @returns {string[]}
  */
-function roadmapSessionLog(cwd) {
-  const roadmap = loadProjectManifest(cwd)?.[ROADMAP_IDENTITY];
-  const active = isObject(roadmap) ? roadmap.active_session : undefined;
-  return typeof active === 'string' ? sessionLog(statePath(cwd, ROADMAP_DIR, 'sessions'), active) : [];
+function productSessionLog(cwd) {
+  const project = loadProjectManifest(cwd);
+  const active = isObject(project) ? productSession(project) : null;
+  return active === null ? [] : sessionLog(statePath(cwd, PRODUCT_SESSIONS), active);
 }
 
 /**
@@ -352,14 +358,14 @@ function workAt(cwd, position, manifest) {
   const { name, phase } = position;
   const skill = skillAt(name, phase);
   if (skill === null) return { skill: null, documents: [] };
-  if (phase === undefined) return { skill, documents: name === ROADMAP_IDENTITY ? roadmapSessionLog(cwd) : [] };
+  if (phase === undefined) return { skill, documents: SESSION_PLACES.includes(name) ? productSessionLog(cwd) : [] };
   if (manifest === null) return { skill: null, documents: [] };
   const wu = statePath(cwd, name);
   const topic = /** @type {string} */ (position.topic);
   const plan = path.join(wu, 'planning', topic);
   switch (phase) {
     case 'discovery':
-      return { skill, documents: sessionLog(path.join(wu, 'discovery', 'sessions'), phaseData(manifest, 'discovery').active_session) };
+      return { skill, documents: sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session) };
     case 'discussion': {
       const log = statePath(cwd, topicLog(name, topic));
       return { skill, documents: [log], calls: [recordCall(name, topic)], log };

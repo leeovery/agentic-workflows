@@ -22,7 +22,6 @@ function writeRoadmap(dir, roadmap) {
 
 const MAP = {
   horizons: ['mvp', 'v1'],
-  active_session: '002',
   imports: [{ path: 'imports/app-idea.md', imported_at: '2026-08-01T00:00:00Z' }],
   items: {
     ordering: { horizon: 'mvp', summary: 'customers order', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
@@ -43,8 +42,10 @@ describe('leeway-roadmap gateway: view', () => {
   it('emits DATA + TITLE + DISPLAY + MENU with the state tables and action keys', () => {
     writeRoadmap(dir, MAP);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
-    createFile(dir, '.leeway/.roadmap/sessions/session-001.md', '# Roadmap Session 001\n');
-    createFile(dir, '.leeway/.roadmap/sessions/session-002.md', '# Roadmap Session 002\n');
+    const manifest = path.join(dir, '.leeway', 'manifest.json');
+    fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, 'utf8')), product_session: '002' }, null, 2));
+    createFile(dir, '.leeway/.product/sessions/session-001.md', '# Product Session 001\n');
+    createFile(dir, '.leeway/.product/sessions/session-002.md', '# Product Session 002\n');
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
     assert.match(res.stdout, /=== DATA /);

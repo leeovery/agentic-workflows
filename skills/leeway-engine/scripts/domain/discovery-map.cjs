@@ -217,7 +217,7 @@ function sequenceMap(cwd, workUnit, orders) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, discoveryScope(workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
+  const outcome = commitStateTail(cwd, discoveryScope(cwd, workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (warnings.length > 0) result.warnings = warnings;

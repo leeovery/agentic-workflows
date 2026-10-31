@@ -20,17 +20,8 @@ const { stateRoot } = engine.state;
 const { computeAnalysisCacheStatus, buildDiscoveryMap } = engine.derivations;
 
 function listSessionLogs(cwd, workUnit) {
-  const dir = path.join(stateRoot(cwd), workUnit, 'discovery', 'sessions');
-  let files;
-  try {
-    files = fs.readdirSync(dir).filter(f => /^session-\d+\.md$/.test(f)).sort();
-  } catch {
-    return [];
-  }
-  return files.map(filename => ({
-    number: parseInt(filename.match(/^session-(\d+)\.md$/)[1], 10),
-    path: path.join(dir, filename),
-  }));
+  const dir = path.join(stateRoot(cwd), workUnit, 'discovery');
+  return engine.session.sessionLogs(dir).map(({ number, file }) => ({ number, path: path.join(dir, file) }));
 }
 
 function discover(cwd, workUnit) {
@@ -45,7 +36,7 @@ function discover(cwd, workUnit) {
     : null;
   const stateDir = stateRoot(cwd);
   const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest, stateDir);
-  const nextSessionNumber = engine.session.nextSessionNumber(path.join(stateDir, workUnit, 'discovery', 'sessions'));
+  const nextSessionNumber = engine.session.nextSessionNumber(path.join(stateDir, workUnit, 'discovery'));
   const analysisCaches = {
     gap_analysis: computeAnalysisCacheStatus(manifest, stateDir, 'gap-analysis'),
   };

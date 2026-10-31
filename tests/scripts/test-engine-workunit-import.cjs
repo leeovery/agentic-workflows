@@ -351,7 +351,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
   it("refuses roadmap — the product layer's origin is not a work unit's", () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', 'roadmap']).error,
-      /is not a work-unit import origin .*roadmap is the product layer's own — engine roadmap import/);
+      /is not a work-unit import origin .*roadmap is the product layer's own — engine asset import product/);
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
   });

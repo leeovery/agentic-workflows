@@ -299,6 +299,7 @@ describe('the spinner', () => {
       [{ name: 'pay', phase: 'review', topic: 'ledger' }, 'Reviewing'],
       [{ name: 'roadmap' }, 'Roadmapping'],
       [{ name: 'baseline' }, 'Assessing'],
+      [{ name: 'product' }, 'Shaping'],
       [{ name: 'pay', phase: 'deploying', topic: 'ledger' }, 'Sauteing'],
     ]
 

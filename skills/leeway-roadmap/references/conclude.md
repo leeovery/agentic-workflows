@@ -22,10 +22,10 @@ Nothing to close.
 
 #### Otherwise
 
-Replace the log's `(none)` Conclusion with the finalisation line ([session-template.md](session-template.md) names the forms), then close — one transaction: marker cleared, log indexed into the knowledge base, everything committed:
+Replace the log's `(none)` Conclusion with the finalisation line ([session-template.md](session-template.md) names the forms), then close — one transaction: marker cleared, everything committed:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs roadmap session close -m "roadmap: close session {session_number}"
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session close product -m "roadmap: close session {session_number}"
 ```
 
 If the response carries `warnings`, fetch the advisory and emit its section verbatim per its marker:

@@ -539,7 +539,7 @@ describe('engine workunit promote — roadmap sources follow the material', () =
     fix = setupFixture(epic ? { epic } : {});
     writeFile(fix.project, '.leeway/payments/imports/notes.md', '# Notes\n');
     writeFile(fix.project, '.leeway/payments/specification/caching-strategy-v2/specification.md', '# Next caching spec\n');
-    writeFile(fix.project, '.leeway/.roadmap/sessions/session-001.md', '# Roadmap session\n');
+    writeFile(fix.project, '.leeway/.product/sessions/session-001.md', '# Roadmap session\n');
     const project = readProject();
     project.roadmap = { horizons: ['v1'], items };
     writeFile(fix.project, '.leeway/manifest.json', JSON.stringify(project, null, 2) + '\n');
@@ -577,7 +577,7 @@ describe('engine workunit promote — roadmap sources follow the material', () =
   it("a moved source discussion's source follows it, beside one promote leaves — a join stays where it was", () => {
     setupRoadmap({ warming: {
       horizon: 'v1', summary: 'cache warming', origin: 'harvest',
-      sources: ['.roadmap/sessions/session-001.md', 'payments/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'],
+      sources: ['.product/sessions/session-001.md', 'payments/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'],
       pulled_to: { work_unit: 'payments', topic: 'cache-invalidation' },
     } });
     const res = engine(fix, PROMOTE);
@@ -587,7 +587,7 @@ describe('engine workunit promote — roadmap sources follow the material', () =
     ]);
     const item = readProject().roadmap.items.warming;
     assert.deepStrictEqual(item.sources,
-      ['.roadmap/sessions/session-001.md', 'caching/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'], 'order kept');
+      ['.product/sessions/session-001.md', 'caching/topics/cache-invalidation/log.md', 'payments/topics/fee-model/log.md'], 'order kept');
     assert.deepStrictEqual(item.pulled_to, { work_unit: 'payments', topic: 'cache-invalidation' },
       'the epic and its map row stay, so the join still names the unit delivering the item');
     assertSourcesOnDisk();

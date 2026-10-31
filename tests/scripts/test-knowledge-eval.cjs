@@ -23,32 +23,34 @@ const { setupFixtureAt, statePath } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = 'fumi/discovery/sessions/session-001.md';
-const ANCHOR = 'put the orphaned note on Space 1';
+const SOURCE = 'cache-schema-versioning/investigation/cache-schema-versioning.md';
+const ANCHOR = 'Deterministic failure — not intermittent';
+const OTHER = 'same-second-tasks-sort-by-id/investigation/same-second-tasks-sort-by-id.md';
+const OTHER_ANCHOR = 'the batch shares a second';
 
-/** A sound fumi case, with `overrides` laid over it. */
-function fumiCase(overrides = {}) {
+/** A sound tick case, with `overrides` laid over it. */
+function tickCase(overrides = {}) {
   return {
     id: 'probe',
-    project: 'fumi',
+    project: 'tick',
     origin: 'written',
     asked: '2026-09-15',
-    need: 'whether history is searchable',
-    terms: ['version history search'],
+    need: 'why every cache query fails',
+    terms: ['stale cache schema'],
     options: {},
     relevant: [{ source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 }],
     ...overrides,
   };
 }
 
-/** A sound negative asked in tick, with `overrides` laid over it. */
+/** A sound negative asked in fumi, with `overrides` laid over it. */
 function negativeCase(overrides = {}) {
-  return fumiCase({ origin: 'negative', from: 'tick', relevant: [], ...overrides });
+  return tickCase({ origin: 'negative', from: 'fumi', relevant: [], ...overrides });
 }
 
 /** A sound near-miss negative, with `overrides` laid over it. */
 function nearMissCase(overrides = {}) {
-  return fumiCase({ origin: 'near-miss', relevant: [], ...overrides });
+  return tickCase({ origin: 'near-miss', relevant: [], ...overrides });
 }
 
 describe('knowledge eval — keyword mode', () => {
@@ -58,45 +60,45 @@ describe('knowledge eval — keyword mode', () => {
 
   it('validation names every broken case, option and judgment', () => {
     const problems = knowledgeEval.validateCases([
-      fumiCase(),
-      fumiCase(),
+      tickCase(),
+      tickCase(),
       negativeCase({ id: 'sound-negative', options: { limit: 3 } }),
       nearMissCase({ id: 'sound-near-miss', options: { limit: 3 } }),
-      fumiCase({ id: 'bad-shape', origin: 'found', asked: '2026-02-30', extra: true }),
-      negativeCase({ id: 'negative-from-itself', from: 'fumi' }),
-      fumiCase({ id: 'no-terms', terms: [] }),
-      fumiCase({
+      tickCase({ id: 'bad-shape', origin: 'found', asked: '2026-02-30', extra: true }),
+      negativeCase({ id: 'negative-from-itself', from: 'tick' }),
+      tickCase({ id: 'no-terms', terms: [] }),
+      tickCase({
         id: 'bad-options',
         options: { boosts: [{ field: 'bogus', value: 'x' }, { field: 'phase', value: null }], limit: 0, filter: 'x', phase: '' },
       }),
-      fumiCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
+      tickCase({ id: 'boosts-not-a-list', options: { boosts: 'work-unit' } }),
       negativeCase({ id: 'negative-filtered', options: { 'work-type': 'epic' } }),
-      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'discovery' } }),
-      fumiCase({
+      nearMissCase({ id: 'near-miss-filtered', options: { phase: 'investigation' } }),
+      tickCase({
         id: 'names-absent',
-        options: { 'work-unit': 'fumi, nowhere', boosts: [{ field: 'phase', value: 'specification' }, { field: 'topic', value: 'session-001' }] },
+        options: { 'work-unit': 'cache-schema-versioning, nowhere', boosts: [{ field: 'phase', value: 'analysis' }, { field: 'topic', value: 'same-second-tasks-sort-by-id' }] },
       }),
-      negativeCase({ id: 'negative-judged', relevant: fumiCase().relevant }),
-      nearMissCase({ id: 'near-miss-judged', relevant: fumiCase().relevant }),
-      fumiCase({ id: 'relevant-not-a-list', relevant: {} }),
-      fumiCase({
+      negativeCase({ id: 'negative-judged', relevant: tickCase().relevant }),
+      nearMissCase({ id: 'near-miss-judged', relevant: tickCase().relevant }),
+      tickCase({ id: 'relevant-not-a-list', relevant: {} }),
+      tickCase({
         id: 'bad-judgments',
         relevant: [
-          { source: 'fumi/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
+          { source: 'cache-schema-versioning/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
           { source: SOURCE, anchor: 'not a phrase in the file', grade: 'supporting', framing: 3 },
           { source: SOURCE, anchor: ANCHOR, grade: 'key', framing: 0 },
-          { source: SOURCE, anchor: 'Chromium', grade: 'supporting', framing: 0 },
+          { source: SOURCE, anchor: 'SQLite', grade: 'supporting', framing: 0 },
           { source: SOURCE, anchor: ANCHOR, grade: 'supporting', framing: 0 },
         ],
       }),
-      fumiCase({ id: 'no-primary', relevant: [{ ...fumiCase().relevant[0], grade: 'supporting' }] }),
-      fumiCase({
+      tickCase({ id: 'no-primary', relevant: [{ ...tickCase().relevant[0], grade: 'supporting' }] }),
+      tickCase({
         id: 'primary-filtered-out',
-        options: { topic: 'gap-analysis' },
+        options: { topic: 'same-second-tasks-sort-by-id' },
         relevant: [
           { source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 },
-          { source: SOURCE, anchor: 'Spaceman (open source, v1.23.5)', grade: 'supporting', framing: 0 },
-          { source: 'fumi/.state/discovery-gap-analysis.md', anchor: '## Themes checked and not staged', grade: 'primary', framing: 0 },
+          { source: SOURCE, anchor: 'stale cache.db', grade: 'supporting', framing: 0 },
+          { source: OTHER, anchor: OTHER_ANCHOR, grade: 'primary', framing: 0 },
         ],
       }),
     ]);
@@ -116,16 +118,16 @@ describe('knowledge eval — keyword mode', () => {
       'boosts-not-a-list: boosts must be a list',
       'negative-filtered: a negative case carries no hard filter',
       'near-miss-filtered: a negative case carries no hard filter',
-      'names-absent: no work-unit "nowhere" in the fumi fixture',
-      'names-absent: no phase "specification" in the fumi fixture',
+      'names-absent: no work-unit "nowhere" in the tick fixture',
+      'names-absent: no phase "analysis" in the tick fixture',
       'negative-judged: a negative case judges nothing relevant',
       'near-miss-judged: a negative case judges nothing relevant',
       'relevant-not-a-list: relevant must be a list',
-      'bad-judgments: relevant[0]: fumi/nowhere.md is not in the fumi fixture',
+      'bad-judgments: relevant[0]: cache-schema-versioning/nowhere.md is not in the tick fixture',
       'bad-judgments: relevant[1]: framing must index a term',
       `bad-judgments: relevant[1]: the anchor is not in ${SOURCE}`,
       'bad-judgments: relevant[2]: grade must be one of primary, supporting',
-      `bad-judgments: relevant[3]: the anchor occurs 4 times in ${SOURCE}`,
+      `bad-judgments: relevant[3]: the anchor occurs 5 times in ${SOURCE}`,
       'bad-judgments: relevant[4]: judges a passage already judged',
       'no-primary: no primary judgment',
       'primary-filtered-out: relevant[0]: a primary passage outside the hard filters is unreachable',
@@ -134,15 +136,15 @@ describe('knowledge eval — keyword mode', () => {
 
   it('a judgment no chunk of the built store carries is named', () => {
     const chunks = [
-      { source_file: SOURCE, content: `Before. ${ANCHOR} — the leftmost Space. After.` },
-      { source_file: 'fumi/.state/discovery-gap-analysis.md', content: 'Put the orphaned note on Space 1, restated.' },
+      { source_file: SOURCE, content: `Before. ${ANCHOR} — on every query. After.` },
+      { source_file: OTHER, content: 'A deterministic failure, never intermittent, restated.' },
     ];
-    const split = { source: SOURCE, anchor: 'the leftmost Space — the one it boots into', grade: 'primary', framing: 0 };
-    const elsewhere = { source: 'fumi/.state/discovery-gap-analysis.md', anchor: ANCHOR, grade: 'supporting', framing: 0 };
-    const cases = [fumiCase(), fumiCase({ id: 'unmatched', relevant: [...fumiCase().relevant, split, elsewhere] }), negativeCase()];
+    const split = { source: SOURCE, anchor: 'on every query — and the next', grade: 'primary', framing: 0 };
+    const elsewhere = { source: OTHER, anchor: ANCHOR, grade: 'supporting', framing: 0 };
+    const cases = [tickCase(), tickCase({ id: 'unmatched', relevant: [...tickCase().relevant, split, elsewhere] }), negativeCase()];
     assert.deepStrictEqual(knowledgeEval.unmatchedJudgments(cases, chunks), [
       `unmatched: relevant[1]: no indexed chunk of ${SOURCE} carries the anchor`,
-      'unmatched: relevant[2]: no indexed chunk of fumi/.state/discovery-gap-analysis.md carries the anchor',
+      `unmatched: relevant[2]: no indexed chunk of ${OTHER} carries the anchor`,
     ]);
   });
 

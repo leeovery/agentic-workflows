@@ -14,7 +14,7 @@ The carrier discovery left has two halves — read both. First the manifest `des
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
-Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`.
+Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/session-001.md`.
 
 → Load **[seed-context.md](../../leeway-shared/references/seed-context.md)** and follow its instructions as written.
 

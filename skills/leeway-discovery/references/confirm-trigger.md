@@ -22,13 +22,13 @@ Write the log content to the staging path `.workflows/.cache/{work_unit}/discove
 
 For each listed `{filename}`, derive the landed name the way the engine will: split the source basename at its last dot, lowercase the stem, collapse whitespace/punctuation runs to `-` and trim any leading or trailing `-`; a markdown-ish extension (`.md`, `.markdown`, `.txt`, `.text`) or none lands `.md`, any other extension is kept, lowercased (an inbox basename just collapses its `--` separator). A source whose basename leads with a dot lands nothing whatever follows the dot, and so does one whose stem normalises away to nothing — both come back under `skipped_imports`, so neither gets a line.
 
-This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and not KB-indexed at creation; for epics, `engine discovery-session close` indexes it under the `discovery` phase at session close.
+This session log is the durable carrier: for single-phase types it (plus the manifest `description`) is what the first phase reads; for epic it seeds the topic synthesis. It is installed verbatim by the engine and never KB-indexed.
 
 → Proceed to **C. Create the Work Unit**.
 
 ## C. Create the Work Unit
 
-One engine transaction persists everything: the manifest, imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/sessions/session-001.md`, the epic `active_session` marker, and the scoped commit.
+One engine transaction persists everything: the manifest, imports copied into `imports/`, inbox seeds moved into `seeds/` (both manifest-tracked; knowledge-base-indexed where the landing is markdown), the staged session log installed as `discovery/session-001.md`, the epic `active_session` marker, and the scoped commit.
 
 Pass one `--import` per `import_paths` entry and one `--seed` per `inbox_seeds` entry; omit either flag when its list is empty. A shared path is single-quoted — an image's filename carries spaces, and unquoted each word becomes its own positional — a `~` path is written out in full, since the quotes stop the shell expanding it, and a single quote inside a path is written `'\''`. `{description}` is the one-line intent compiled from the user's framing during shaping — single-quote it if it contains `[]`, `{}`, `~`, or backticks.
 

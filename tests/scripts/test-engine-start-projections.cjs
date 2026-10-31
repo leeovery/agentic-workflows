@@ -773,6 +773,16 @@ describe('start projections: roadmap rows', () => {
     fs.writeFileSync(p, JSON.stringify({ ...existing, roadmap }, null, 2));
   }
 
+  /** The product's session `n` open: its log on disk and its marker on the project manifest. */
+  function openProductSession(dir2, n) {
+    const fs = require('fs');
+    const path = require('path');
+    createFile(dir2, `.leeway/.product/sessions/session-${n}.md`, `# Product session ${n}\n`);
+    const p = path.join(dir2, '.leeway', 'manifest.json');
+    const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
+    fs.writeFileSync(p, JSON.stringify({ ...existing, product_session: n }, null, 2));
+  }
+
   const MAP = {
     horizons: ['mvp', 'v1', 'someday'],
     items: {
@@ -804,7 +814,7 @@ describe('start projections: roadmap rows', () => {
     const keys = m.keys.map((k) => k.key);
     assert.ok(keys.indexOf('r') < keys.indexOf('s'), 'the roadmap row precedes the start options');
 
-    writeProjectRoadmap(dir, { ...MAP, active_session: '002' });
+    openProductSession(dir, '002');
     const resumed = startMenu(startDetail(dir)).keys.find((k) => k.action === 'open_roadmap');
     assert.strictEqual(drawLabel(resumed.label), 'Resume the product session — *roadmap, in progress*');
   });
@@ -839,8 +849,8 @@ describe('start projections: roadmap rows', () => {
     assert.ok(menu.keys.some((k) => k.action === 'open_roadmap'));
   });
 
-  it('the mid-genesis state — open session, zero items — never contradicts its own resume row', () => {
-    writeProjectRoadmap(dir, { horizons: [], items: {}, active_session: '001' });
+  it('the mid-genesis state — open session, no roadmap yet — never contradicts its own resume row', () => {
+    openProductSession(dir, '001');
     const detail = startDetail(dir);
     const overview = emptyOverview(detail);
     assert.match(overview, /^No work in flight\.\n\nA product session is open — resume it from the menu\.\n/);

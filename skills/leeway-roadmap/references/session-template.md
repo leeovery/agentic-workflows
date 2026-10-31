@@ -4,7 +4,7 @@
 
 ---
 
-Structure for `.workflows/.roadmap/sessions/session-{NNN}.md` — the engine allocates `NNN` at open (first = `001`).
+Structure for `.workflows/.product/sessions/session-{NNN}.md` — the engine allocates `NNN` at open (first = `001`).
 
 One template, all sessions. Sections that don't apply this session write `(none)` rather than disappearing — the empty section is a positive signal it was considered, not missed.
 
@@ -21,7 +21,7 @@ Date: {YYYY-MM-DD}
 
 ## Imports (as of session)
 
-- imports/{filename}
+- [{filename}](../assets/{filename})
 - ...
 
 ## Map State at Start
@@ -46,7 +46,7 @@ and rejected paths with why, the threads left open. Not verbatim.}
 - Horizon {added|renamed|reordered|merged|split|removed}: {detail}
 - Groomed: {inbox slug} → {name} [{kind:[idea|bug|quick-fix]}] ({horizon})
 - Flagged: {name} — {short reason}
-- Imported: {filename}
+- Imported: [{filename}](../assets/{filename})
 
 ## Items Sorted
 
@@ -70,12 +70,12 @@ and rejected paths with why, the threads left open. Not verbatim.}
 On the `open` path the log is **not created at session start** — it is conjured on the first state change: an Exploration pause, or an op recorded under **Edits**, conjured before the op runs. Genesis creates it at Step 2, Exploration backfilled. To create it, draft the complete log at `.workflows/.cache/roadmap/session-draft.md` (header, **Imports**, **Map State at Start**, the Exploration so far; other sections `(none)` — an op's **Edits** entry lands after the op runs), then open:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs roadmap session open --session-log-file .workflows/.cache/roadmap/session-draft.md
+node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session open product --session-log-file .workflows/.cache/roadmap/session-draft.md
 ```
 
-The engine allocates the number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log, and sets `roadmap.active_session`. The response's `session` is authoritative — set `session_number` from it. Later writes edit the installed file directly; commit with `engine commit --roadmap`. Browse-and-bail produces no file.
+The engine allocates the number, resolves any literal `{NNN}` in the draft to it (leave the header as the template writes it), installs the log, and sets the product's session marker. The response's `session` is authoritative — set `session_number` from it. Later writes edit the installed file directly; commit with `engine commit --roadmap`. Browse-and-bail produces no file.
 
-The `(none)` Conclusion plus the `roadmap.active_session` marker is the resume signal. At finalisation (conclude), replace it with one of:
+The `(none)` Conclusion plus the product's session marker (`roadmap state`'s `active_session`) is the resume signal. At finalisation (conclude), replace it with one of:
 
 - `{N} item(s) sorted{ and M edit(s) applied | (empty if no edits)}. Roadmap now has {T} items across {H} horizons.`
 - `{M} edit(s) applied. Roadmap has {T} items.`

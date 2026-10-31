@@ -71,10 +71,9 @@ Apply the changes to the doc, restate the summary, then re-fetch and emit the ga
 
 ## C. Land
 
-Index the doc, mark the area, and commit. A failed `index` never blocks — note it to the user in one line (the next start retries it) and continue; the doc and commit still land:
+Mark the area, and commit:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs knowledge index .workflows/.baseline/{area}.md
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest set project.baseline.areas.{area} completed
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "baseline({area}): document the {area} baseline"
 ```

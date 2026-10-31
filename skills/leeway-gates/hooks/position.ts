@@ -28,6 +28,7 @@ const PHASE_WORDS: ReadonlyMap<string, string> = new Map([
 const PLACE_WORDS: ReadonlyMap<string, string> = new Map([
   ['roadmap', 'Roadmapping'],
   ['baseline', 'Assessing'],
+  ['product', 'Shaping'],
 ])
 
 const isPosition = (value: unknown): value is Position =>
