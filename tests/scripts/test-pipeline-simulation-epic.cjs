@@ -4,7 +4,8 @@
 // The pipeline simulation's epic scenarios: the epic started and its map
 // approved at discovery's gates; a topic's discussion, with a
 // message raised and answered through the topic's one mailbox; the d door
-// naming the new topic; an arrival that backfills; and the last review
+// into the epic's discovery, where a new topic lands; an arrival that
+// backfills; and the last review
 // handing off to the menu. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
 // test-pipeline-simulation-backwards.cjs.
@@ -26,7 +27,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
+  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -67,12 +68,11 @@ describe('pipeline simulation: epic', () => {
     const wu = 'orbit';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Orbit', '--session-log-file', log]);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'alpha', summary: 'Alpha summary' },
       { name: 'beta', summary: 'Beta summary' },
     ]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
-    sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2']);
+    sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2']);
     const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.topic === topic).map((k) => [k.action, drawLabel(k.label)]);
 
@@ -135,62 +135,57 @@ describe('pipeline simulation: epic', () => {
     decideTopic(sim, wu, 'alpha');
   });
 
-  it('epic: the d door names the new topic and lands its map row before the handoff carries it — a name on the map puts the menu back', () => {
+  it('epic: the d door hands into the epic\'s discovery, where the new topic lands with its brief and its own start row carries it', () => {
     const wu = 'lumen';
     mappedEpic(sim, wu, ['alpha']);
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
 
-    // The door is the menu's own flow: a row with no route, never handed to
-    // the soft gate, and the handoff refuses an epic's discussion without a
-    // topic.
-    const doors = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.filter((k) => k.action.startsWith('new_'));
-    assert.deepStrictEqual(doors.map((k) => [k.key, k.action, k.route]), [['d', 'new_discussion', null]]);
-    sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'new_discussion'], /unknown --action "new_discussion"/);
+    // The door is a route into the epic's discovery, never handed to the
+    // soft gate; the handoff still refuses an epic's discussion without a topic.
+    const door = `/leeway-discovery none ${wu}`;
+    assert.strictEqual(epicPick(sim, wu, 'new_topic').text, `Invoke \`${door}\`.`);
+    sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'new_topic'], /unknown --action "new_topic"/);
     sim.refuses(['handoff', '/leeway-discussion-process', 'epic', wu], /^an epic enters discussion at a topic/);
+    sim.handOver();
+    sim.run(['enter', 'discovery', wu]);
+    assert.match(sim.render(['discovery-map', wu], { expect: 'content' }), /^ {2}- alpha \[fresh\] — alpha$/m);
 
     // A name already on the map is refused before anything lands.
     const before = JSON.stringify(sim.manifest(wu));
-    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /Its row on the menu names the next step\./);
+    sim.refuses(['topic', 'add', wu, 'alpha', '--summary', 'Again', '--brief', briefDraft(sim, wu, 'alpha')], /"alpha" is already on the map/);
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), before, 'a refused name writes nothing');
 
-    // A new name passes, lands on the map started fresh, and hands off with the
-    // topic — the route its own start row builds — whose entry starts it.
+    // A new name lands fresh with its brief, and its own start row hands off
+    // to the discussion, whose entry starts it.
     const topic = 'omega';
-    sim.render(['direct-entry-gate', `${wu}.discussion.${topic}`], { expect: 'empty' });
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`]), '');
-    sim.run(['discovery-map', 'add', wu, topic, 'discussion', '--source', 'direct-start',
-      '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--force-dismissed']);
+    sim.run(['topic', 'add', wu, topic, '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--brief', briefDraft(sim, wu, topic)]);
+    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/${topic}/brief.md`)), 'the brief is the topic\'s');
     const route = `/leeway-discussion-process epic ${wu} ${topic}`;
-    assert.strictEqual(handoff(sim, route).args, `epic ${wu} ${topic}`);
     assert.strictEqual(epicPick(sim, wu, 'start_discussion', topic).text, `Invoke \`${route}\`.`);
-    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`, 'source']), 'direct-start');
     menuEntry(sim, wu);
     assert.strictEqual(enterEntry(sim, wu, 'discussion', topic).started, true);
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
-    // The d door names a topic with nothing to draft its summary from
-    // (ensure-discovery-item C): the row lands with no summary or description
-    // for the next epic entry to draft, and a discussion sends it a message.
-    // The conclusion's arrival meets it at Step 2, the
-    // backfill commits, and backfill-checks C hands the menu off with the
-    // arguments it arrived with — the fresh menu recovers nothing and leads
-    // with the banner.
+    // A feature pivoted to an epic lands its one topic with nothing to draft
+    // its summary from: the row has no summary or description for the next
+    // epic entry to draft, and a discussion sends it a message. The
+    // conclusion's arrival meets it at Step 2, the backfill commits, and
+    // backfill-checks C hands the menu off with the arguments it arrived
+    // with — the fresh menu recovers nothing and leads with the banner.
     const wu = 'sends';
-    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Sends', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
-      [{ name: 'alpha', summary: 'Alpha', description: 'What alpha settles.' }])]);
-    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Sends', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['workunit', 'pivot', wu]);
+    mapTopics(sim, wu, [{ name: 'alpha', summary: 'Alpha', description: 'What alpha settles.' }]);
     const toRecover = () => EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu))
       .split('\n').filter((line) => /summary=absent|description=absent/.test(line));
 
     menuEntry(sim, wu);
     enterEntry(sim, wu, 'discussion', 'alpha');
     sim.write(`.leeway/${wu}/topics/alpha/log.md`, '# Discussion — Alpha\n');
-    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'direct-start', '--backfill', '--force-dismissed']);
     const message = sim.write('.leeway/.cache/scratch/message.md', 'Off-topic\n\nDetails.\n');
-    sim.run(['topic', 'send', wu, 'beta', '--from', 'alpha', '--content', message, '--slug', 'off-topic']);
+    sim.run(['topic', 'send', wu, wu, '--from', 'alpha', '--content', message, '--slug', 'off-topic']);
     const at = `${wu}.discussion.alpha`;
     const person = { by: 'person', who_moved_whom: 'none' };
     const scope = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'What does alpha settle?' })).id;
@@ -199,16 +194,16 @@ describe('pipeline simulation: epic', () => {
 
     handoff(sim, `/leeway-continue-epic ${wu} discussion completed`);
     arrive(sim, wu);
-    assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), ['beta']);
+    assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), [wu]);
     // The stub has no file to draft from: the batch, then the unsourced gate,
     // whose provide row lands the person's summary.
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file',
-      sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: { beta: null } })], { expect: 'content' }),
-    /1\. Beta\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
+      sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: { [wu]: null } })], { expect: 'content' }),
+    /1\. Sends\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
     sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file',
-      sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
+      sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: [wu] })], { expect: 'content' });
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/backfill-ops.json`,
-      [{ op: 'set', path: `${wu}.discovery.beta`, fields: { summary: 'Beta', description: 'What beta settles.' } }])]);
+      [{ op: 'set', path: `${wu}.discovery.${wu}`, fields: { summary: 'Sends', description: 'What sends settles.' } }])]);
     sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery summary field(s)`, '--discovery']);
 
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Sends"\./);

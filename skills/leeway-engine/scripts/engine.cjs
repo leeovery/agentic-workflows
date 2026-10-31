@@ -43,7 +43,7 @@ const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
+const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
@@ -224,7 +224,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map <sequence|add|add-batch|edit|remove|rename> …   (the topic verbs' alias, until discovery is rewritten)
   discovery-session open  <work-unit|product> --session-log-file <path>
   discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
@@ -349,9 +348,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render mail-offer       <wu.phase.topic> --file <payload.json>
   render mail-block       <wu.phase.topic>
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
-  render dismissed-topics <wu>
   render send-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (investigation|implementation|planning)
   render experiment-register <wu.experiment.topic>
@@ -390,7 +387,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render step-opening      <wu.phase.topic> --step conclude|consolidation|do-now
   render format-version-check --file <payload.json>
   render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
-  render direct-entry-gate <wu.discussion.topic>     (empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
@@ -433,10 +429,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render inbox-roadmap-gate --file <entries.json>
   render roadmap-harvest-gate
   render roadmap-parks-gate
-  render roadmap-shape-gate
-  render shape-gate
-  render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json>
-  render synthesis-gate
   render query-failure-gate --file <payload.json>
   render brownfield-offer-gate
   render walkthrough-offer [--menu-only]
@@ -675,15 +667,6 @@ function runWorkunit(call, argv) {
 // and answers its JSON and then its one-line report (8.8.7). An unquoted
 // payload would spill into positionals and silently truncate the text, so
 // every positional count is strict.
-//
-// `discovery-map` is their alias, which today's discovery skill and the
-// simulations still call until discovery's rewrite moves them onto `topic`:
-// `sequence` is `order`; `add` takes its old routing argument and drops it,
-// lands no brief, and takes `--force-dismissed` for `--re-add`, as a batch
-// entry takes `force_dismissed`; its `--backfill` lands the topic with no
-// summary and no commit. A brief pointer is refused: a topic's brief has one
-// place, written by `topic add` and `topic brief`. The alias answers its JSON
-// alone.
 // ---------------------------------------------------------------------------
 
 /** @param {keyof typeof MAP_USAGE} verb */
@@ -745,52 +728,6 @@ const MAP_VERBS = {
     return rewriteBrief(cwd, positional[0], positional[1], opts.brief);
   },
 };
-
-const BRIEF_POINTER = 'a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add';
-
-/** The alias's `add`: a topic landed without its brief. @param {string} cwd @param {string[]} argv */
-function aliasAdd(cwd, argv) {
-  const { opts, flags, positional } = parseArgs(argv, ['force-dismissed', 'backfill']);
-  if (opts['brief-path'] !== undefined) throw new Error(`discovery-map add: --brief-path is refused — ${BRIEF_POINTER}`);
-  const backfill = flags.has('backfill');
-  if (![2, 3].includes(positional.length) || (opts.summary === undefined && !backfill) || (backfill && opts['from-roadmap'] !== undefined)) {
-    throw new Error('Usage: engine discovery-map add <work-unit> <name> [<routing>] (--summary <text> [--description <text>] [--from-roadmap <item>] | --backfill) [--source <tag>] [--force-dismissed]');
-  }
-  const [unit, name] = positional;
-  const fields = { summary: opts.summary, description: opts.description, source: opts.source, reAdd: flags.has('force-dismissed') };
-  return backfill ? addItem(cwd, unit, name, { ...fields, backfill }) : addTopic(cwd, unit, name, { ...fields, fromRoadmap: opts['from-roadmap'], requireBrief: false });
-}
-
-/** The alias's `add-batch`: topics landed without their briefs. @param {string} cwd @param {string[]} argv */
-function aliasAddBatch(cwd, argv) {
-  const { opts, positional } = parseArgs(argv);
-  if (positional.length !== 1 || opts.file === undefined) throw new Error('Usage: engine discovery-map add-batch <work-unit> --file <topics.json>');
-  const parsed = batchFile(cwd, opts.file, 'discovery-map add-batch');
-  const entries = Array.isArray(parsed) ? parsed.map((entry) => {
-    if (!entry || typeof entry !== 'object') return entry;
-    if (entry.brief_path !== undefined) throw new Error(`discovery-map add-batch: "${entry.name}"'s brief_path is refused — ${BRIEF_POINTER}`);
-    const { routing, force_dismissed: reAdd, ...rest } = entry;
-    return reAdd === undefined ? rest : { ...rest, re_add: reAdd };
-  }) : parsed;
-  return addTopics(cwd, positional[0], entries, { requireBrief: false });
-}
-
-/** The alias's verbs that are the map verbs under their old names. */
-const ALIASED = Object.freeze({ sequence: 'order', edit: 'edit', remove: 'remove', rename: 'rename' });
-
-/** @param {Call} call @param {string[]} argv */
-function runDiscoveryMap(call, argv) {
-  const [command, ...rest] = argv;
-  try {
-    if (command === 'add') respond(call, aliasAdd(call.cwd, rest));
-    else if (command === 'add-batch') respond(call, aliasAddBatch(call.cwd, rest));
-    else if (Object.hasOwn(ALIASED, command)) respond(call, MAP_VERBS[ALIASED[/** @type {keyof typeof ALIASED} */ (command)]](call.cwd, rest));
-    else throw new Error('Usage: engine discovery-map <sequence|add|add-batch|edit|remove|rename> …');
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
 
 /**
  * Parse `{topic}={order}` pairs shared by the two sequencing verbs. Callers
@@ -2444,7 +2381,6 @@ const COMMANDS = Object.freeze({
   asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
-  'discovery-map': runDiscoveryMap,
   'build-order': runBuildOrder,
   'discovery-session': runDiscoverySession,
   topic: runTopic,

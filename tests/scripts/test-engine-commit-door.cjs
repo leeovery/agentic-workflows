@@ -1794,7 +1794,7 @@ describe('commit door: transaction-tail degrade', () => {
     assert.match(sequenced.note, /engine commit payments --state -m/,
       'build-order writes the manifest alone — the work unit\'s state scope covers it');
 
-    const mapped = ok(dir, ['discovery-map', 'sequence', 'payments', 'topic-a=1']);
+    const mapped = ok(dir, ['topic', 'order', 'payments', 'topic-a=1']);
     assert.match(mapped.note, /engine commit payments --discovery -m/, 'the map lives in the discovery scope');
 
     const closed = ok(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): close']);

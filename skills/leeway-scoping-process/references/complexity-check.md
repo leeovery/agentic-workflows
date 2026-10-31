@@ -53,9 +53,9 @@ Commit both manifests:
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to feature"
 ```
 
-Set `next_phase` = `discussion`.
+Set `next_phase` = `discussion` and `work_type` = `feature`.
 
-→ Proceed to **C. Bridge**.
+→ Proceed to **C. Hand Off**.
 
 #### If `bugfix`
 
@@ -72,13 +72,13 @@ Commit both manifests:
 node .claude/skills/leeway-engine/scripts/engine.cjs commit --workflows -m "workflow({work_unit}): promote quick-fix to bugfix"
 ```
 
-Set `next_phase` = `investigation`.
+Set `next_phase` = `investigation` and `work_type` = `bugfix`.
 
-→ Proceed to **C. Bridge**.
+→ Proceed to **C. Hand Off**.
 
-## C. Bridge
+## C. Hand Off
 
-The promoted work unit re-enters the pipeline the way discovery hands off single-phase work — the destination is supplied, not derived from state.
+The promoted work unit enters its first phase.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -86,4 +86,4 @@ The promoted work unit re-enters the pipeline the way discovery hands off single
 > Work type updated — handing the work to its first phase.
 ```
 
-Invoke `/leeway-bridge {work_unit} discovery {next_phase}` via the Skill tool.
+→ Load **[handing-off.md](../../leeway-shared/references/handing-off.md)** with route = `/leeway-{next_phase}-process {work_type} {work_unit}`.

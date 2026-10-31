@@ -34,7 +34,7 @@ Then invoke the pipeline bridge as a pause:
 > Paused on the specification — the plan concludes once the specification has settled and the plan is reconciled against it.
 ```
 
-Invoke `/leeway-bridge {work_unit} planning none paused`.
+Invoke `/leeway-bridge {work_unit} planning paused`.
 
 **If `keep`:**
 

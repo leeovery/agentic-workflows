@@ -27,7 +27,6 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
-const DISCOVERY_GATEWAY = require(path.join(ROOT, 'skills/leeway-discovery/scripts/gateway.cjs'));
 const {
   epicMenu, epicDashboard,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
@@ -67,10 +66,9 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/beta/brief.md`), 'utf8'), '# Brief — beta\n\nLeans toward a nightly run.\n');
     sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma=3']);
 
-    // The menu row is the way into a mapped topic: the d door's gate refuses
-    // a name on the map and passes one not on it.
-    sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' });
-    sim.render(['direct-entry-gate', `${wu}.discussion.omega`], { expect: 'empty' });
+    // The map as discovery reads it: each topic in its order.
+    assert.match(sim.render(['discovery-map', wu], { expect: 'content' }),
+      /^topics \(3\):\n {2}1 alpha \[fresh\] — alpha summary\n {2}2 beta \[fresh\] — beta summary\n {2}3 gamma \[fresh\] — gamma summary$/m);
 
     // The map's verbs, each at the person's word with its one-line report: an
     // edit, a brief rewritten before its topic starts, and an unstarted
@@ -86,9 +84,8 @@ describe('pipeline simulation: epic map', () => {
     // row hands the epic back to discovery.
     assert.strictEqual(epicPick(sim, wu, 'continue_discovery').line, `→ Discovery · ${wu}`);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
-    // The discovery hand-off lands on the epic menu — the bridge's discovery
-    // continuation into leeway-continue-epic, no banner — which labels the
-    // work unit alone on arrival.
+    // The session's end hands off to the epic menu, no banner, which labels
+    // the work unit alone on arrival.
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
 
@@ -355,13 +352,13 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
     // Beta renamed once decided goes by the new name, its key kept: a message
     // the person aims at that name finds beta's row on the map's reader by
-    // the name it goes by, as sending-a-message reads it. Landing on a decided
+    // the name it goes by, as sending-a-message reads it from the map's DATA.
+    // Landing on a decided
     // discussion reopens it to receive the entry: the question the message
     // raised is answered, and the topic is decided again.
     sim.run(['topic', 'rename', wu, 'beta', 'retry-rules']);
     assert.match(sim.sections, /^Renamed "Beta" to "Retry Rules"\.$/m);
-    const rows = DISCOVERY_GATEWAY.format(DISCOVERY_GATEWAY.discover(sim.dir, wu)).split('\n');
-    const [, target] = /** @type {RegExpExecArray} */ (/^ {2}- \S+ (\S+) \[\w+\] goes_by=retry-rules /.exec(/** @type {string} */ (rows.find((line) => line.includes(' goes_by=retry-rules ')))));
+    const [, target] = /** @type {RegExpExecArray} */ (/^ {2}\S+ (\S+) \[\w+\] goes_by=retry-rules /m.exec(sim.render(['discovery-map', wu], { expect: 'content' })));
     assert.strictEqual(target, 'beta');
     const reopened = send(sim, wu, target, 'alpha', 'retry-policy');
     assert.strictEqual(reopened.reopened, true);
@@ -376,9 +373,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.previous_status, 'unstarted');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'delta']);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
-    // The d door refuses delta like any mapped name. The ledger names it now,
-    // so it leaves the map only by its cancel.
-    sim.render(['direct-entry-gate', `${wu}.discussion.delta`], { expect: 'content' });
+    // The ledger names delta now, so it leaves the map only by its cancel.
     sim.refuses(['topic', 'remove', wu, 'delta'], /^"delta" can't be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead$/);
 
     // Epsilon: a topic a message names that the map lacks, landed with a

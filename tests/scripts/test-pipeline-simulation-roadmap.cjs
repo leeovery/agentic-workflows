@@ -2,10 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's roadmap scenarios: the inbox onto the roadmap;
-// just-in-time birth, harvest, horizons and lifecycle by join; an open
-// session's first edit conjuring its log; backlogging from a live
+// just-in-time birth, harvest, horizons and lifecycle by join; something put
+// aside in the product's conversation; backlogging from a live
 // implementation item; a unit's cancel or absorb re-aiming its joins; an
-// epic pulled with an idea and a bug; and quick-fixes pulled alone.
+// epic pulled with an idea and a bug; and quick-fixes pulled alone. Every
+// pull hands its items to discovery as seeds, and start this work creates
+// the unit and joins them (8.1.8, 18.8.3).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -24,15 +26,27 @@ const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, carryOn, arrive, handoffEntry, enterEntry, discussed, bridgeTo, pickRoute, startKeys, walkToLiveImplementation, literal,
+  Sim, sessionLog, carryOn, arrive, handoff, handoffEntry, enterEntry, discussed, pickRoute, startKeys, walkToLiveImplementation, literal,
+  shapedInTheProduct, briefDraft, startThisWork, approveTheMap, pullFromRoadmap,
 } = require('./pipeline-world.cjs');
+
+/**
+ * Work started from the roadmap: the pull hands the items to discovery, and
+ * start this work, over the product's talk that shaped it, creates the unit
+ * and joins them. Answers what the yes ran.
+ * @param {Sim} sim @param {string[]} items @param {{type: string, name: string, description: string, reason: string, brief?: string}} given
+ */
+function startFromRoadmap(sim, items, given) {
+  pullFromRoadmap(sim, items);
+  return startThisWork(sim, { ...given, shaped_by: [shapedInTheProduct(sim, given.name)], roadmap: items });
+}
 
 describe('pipeline simulation: roadmap', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone is a bugfix, an idea and a bug a feature, a removed item\'s note is declined', () => {
+  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone pre-seeds a bugfix, an idea and a bug start with no hint and become a feature, a removed item\'s note is declined', () => {
     const inbox = {
       idea: sim.write('.leeway/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
       timeout: sim.write('.leeway/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
@@ -77,18 +91,25 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['workunit', 'create', 'reports', 'epic', '--description', 'Reporting', '--session-log-file', sessionLog(sim, 'reports')]);
     sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports'], /pull-forward takes ideas only; start it with the pull/);
 
-    // A bug pulled alone is a bugfix — its note stays on the roadmap, read as a source.
-    sim.run(['workunit', 'create', 'export-timeout', 'bugfix', '--description', 'Large exports time out',
-      '--session-log-file', sessionLog(sim, 'export-timeout')]);
-    const bugPull = sim.run(['roadmap', 'pull', 'export-timeout', '--into', 'export-timeout']);
-    assert.deepStrictEqual(bugPull.remainder, { next: 3 });
+    // A bug pulled alone pre-seeds a bugfix — its note stays on the roadmap,
+    // read as a source.
+    assert.strictEqual(pullFromRoadmap(sim, ['export-timeout']).text, 'Invoke `/leeway-discovery bugfix none "roadmap:export-timeout"`.');
+    const bugfix = startThisWork(sim, {
+      type: 'bugfix', name: 'export-timeout', description: 'Large exports time out', reason: 'Exports worked and now fail.',
+      shaped_by: [shapedInTheProduct(sim, 'export-timeout')], roadmap: ['export-timeout'], brief: briefDraft(sim, 'product', 'export-timeout'),
+    });
+    assert.deepStrictEqual(bugfix.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', 'export-timeout'] });
     assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
     assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.roadmap/notes/bugs/2026-02-02--export-timeout.md')));
 
-    // An idea and a bug pulled together are a feature — the bug rides along.
-    sim.run(['workunit', 'create', 'saved-views', 'feature', '--description', 'Saved views, and the blank chart they expose',
-      '--session-log-file', sessionLog(sim, 'saved-views')]);
-    sim.run(['roadmap', 'pull', 'saved-views', 'blank-chart', '--into', 'saved-views']);
+    // An idea and a bug start with no hint — the shape is discovery's to
+    // find — and become a feature, the bug riding along.
+    assert.strictEqual(pullFromRoadmap(sim, ['saved-views', 'blank-chart']).text,
+      'Invoke `/leeway-discovery start none "roadmap:saved-views,roadmap:blank-chart"`.');
+    startThisWork(sim, {
+      type: 'feature', name: 'saved-views', description: 'Saved views, and the blank chart they expose', reason: 'One capability; the bug rides along.',
+      shaped_by: [shapedInTheProduct(sim, 'saved-views')], roadmap: ['saved-views', 'blank-chart'], brief: briefDraft(sim, 'product', 'saved-views'),
+    });
     state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.work_unit]),
       [['saved-views', 'saved-views'], ['export-timeout', 'export-timeout'], ['blank-chart', 'saved-views']]);
@@ -105,22 +126,13 @@ describe('pipeline simulation: roadmap', () => {
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
-    // The genesis conversation: the product's conversation opens before any
-    // item or work unit exists, its cadence commit is --roadmap, and imports
-    // land in the product's assets. The roadmap is reached from the start menu,
-    // whose boot repairs the label and marks the conversation; the skill
-    // labels the terminal `roadmap` before its mode dispatch, every mode.
-    sim.run(['session', 'repair']);
-    arrive(sim, 'roadmap');
-    const roadmapDraft = sim.write('.leeway/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
-    sim.run(['discovery-session', 'open', 'product', '--session-log-file', roadmapDraft]);
-    const session = carryOn(sim);
-    assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/leeway-roadmap/SKILL.md'));
-    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.leeway/.product/sessions/session-001.md')],
-      'the roadmap carries on from its open session\'s log');
+    // The product's conversation opens before any item or work unit exists,
+    // and a file the person shares lands in the product's assets.
+    pickRoute(sim, startKeys(sim), 'open_product');
+    sim.handOver();
+    sim.run(['enter', 'discovery', 'product']);
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
     assert.deepStrictEqual(sim.run(['asset', 'import', 'product', bridgeDoc]).imports, ['.product/assets/app-idea.md']);
-    sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
 
     // Born lazily: the first park creates the node and its horizon — no
     // genesis ceremony, no prior state.
@@ -155,18 +167,16 @@ describe('pipeline simulation: roadmap', () => {
 
     // The harvest closes the session: marker cleared, nothing indexed, one
     // commit covering the session's dirt.
-    const closed = sim.run(['discovery-session', 'close', 'product', '-m', 'roadmap: session 001 — horizons sorted']);
+    const closed = sim.run(['discovery-session', 'close', 'product', '-m', 'discovery(product): end the session']);
     assert.strictEqual(closed.session, '001');
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.active_session, null);
     assert.strictEqual(state.next_session_number, 2);
 
-    // The pull is the commitment point: the join flips the derived state,
-    // and the remainder is named at the moment of choice.
-    const log = sessionLog(sim, 'mvp');
-    sim.run(['workunit', 'create', 'mvp', 'epic', '--description', 'The MVP slice', '--session-log-file', log]);
-    const pulled = sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
-    assert.deepStrictEqual(pulled.remainder, { mvp: 1 }, 'the remainder names what stays waiting');
+    // The pull is the commitment point: start this work joins the item, and
+    // the join flips the derived state.
+    const started = startFromRoadmap(sim, ['ordering'], { type: 'epic', name: 'mvp', description: 'The MVP slice', reason: 'Its parts each need decisions.' });
+    sim.run(started.next.argv);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'ordering').state, 'in-flight');
 
@@ -183,9 +193,14 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(joined.horizon, 'launch');
     assert.strictEqual(joined.state, 'in-flight');
 
-    // The epic harvest binds the item to the topic it crystallised as.
-    sim.run(['discovery-map', 'add', 'mvp', 'guest-ordering', 'discussion', '--summary', 'guests order', '--source', 'roadmap']);
-    sim.run(['roadmap', 'bind', 'guest-ordering', '--topic', 'guest-ordering']);
+    // The map's yes lands the topic the item crystallised as and binds the
+    // item to it, and parks on the roadmap what the shaping put beyond the epic.
+    approveTheMap(sim, 'mvp', {
+      topics: [{ name: 'guest-ordering', summary: 'guests order', brief: briefDraft(sim, 'mvp', 'guest-ordering') }],
+      parks: [{ name: 'table-booking', summary: 'diners book a table', horizon: 'v1', sources: ['mvp/discovery/session-001.md'] }],
+      binds: [{ item: 'guest-ordering', topic: 'guest-ordering' }],
+    });
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'table-booking').origin, 'park:mvp');
 
     // Pull-forward: a waiting item joins the in-flight epic as a map topic
     // in one composed transaction.
@@ -207,11 +222,8 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting',
       'reactivation never silently re-joins');
 
-    // The discovery session's show-dismissed door over a map nothing has
-    // left: the display alone, no menu to stop at.
-    const noneDismissed = sim.render(['dismissed-topics', 'mvp'], { expect: 'content' });
-    assert.match(noneDismissed, /Dismissed Topics\n\n {2}\(none\)/);
-    assert.doesNotMatch(noneDismissed, /MENU/);
+    // The map as discovery reads it, nothing struck from it yet.
+    assert.match(sim.render(['discovery-map', 'mvp'], { expect: 'content' }), /^dismissed \(0\):\n {2}\(none\)$/m);
 
     // The un-pull for a never-started topic: removing the fresh map topic
     // hands the item back — and the dismissed name then needs the user's
@@ -226,10 +238,8 @@ describe('pipeline simulation: roadmap', () => {
     sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp'], /previously dismissed/);
     sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--force-dismissed']);
     sim.run(['topic', 'remove', 'mvp', 'reporting']);
-    // The same door reads the list the re-add is refused against, and offers
-    // the re-add over it.
-    assert.match(sim.render(['dismissed-topics', 'mvp'], { expect: 'content' }),
-      /• reporting[\s\S]*MENU: dismissed topics/);
+    // The map names what was struck, which the re-add is refused against.
+    assert.match(sim.render(['discovery-map', 'mvp'], { expect: 'content' }), /Struck from the map \(1\)\n {2}· Reporting/);
 
     // The render surfaces hold over the live state: the map view and the
     // add-to-joined-horizon gate, whose DATA names the unit its delivery row
@@ -242,9 +252,6 @@ describe('pipeline simulation: roadmap', () => {
     // The static gate menus render like every menu — engine-served.
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
     assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);
-    assert.match(sim.render(['roadmap-shape-gate'], { expect: 'content' }), /MENU: roadmap shape gate/);
-    assert.match(sim.render(['shape-gate'], { expect: 'content' }), /MENU: shape gate/);
-    assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
     // A failed query's error output rides the failure gate's payload,
     // verbatim, written to the roadmap session's own cache.
     const queryFailure = sim.write('.leeway/.cache/roadmap/query-failure.json',
@@ -264,7 +271,7 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'guest-ordering').state, 'shipped');
-    assert.deepStrictEqual(state.totals, { items: 4, waiting: 3, in_flight: 0, shipped: 1, orphaned: 0 });
+    assert.deepStrictEqual(state.totals, { items: 5, waiting: 4, in_flight: 0, shipped: 1, orphaned: 0 });
     // The view renders the shipped row from the join, after the completion.
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
@@ -275,41 +282,21 @@ describe('pipeline simulation: roadmap', () => {
     sim.refuses(['workunit', 'create', 'product', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
   });
 
-  it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
-    sim.run(['session', 'repair']);
-    arrive(sim, 'roadmap');
-    const genesis = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
-    sim.run(['discovery-session', 'open', 'product', '--session-log-file', genesis]);
-    sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
-    sim.run(['discovery-session', 'close', 'product', '-m', 'roadmap: close session 001']);
-    // The start menu's roadmap row hands off to the home, which labels itself.
-    assert.strictEqual(pickRoute(sim, startKeys(sim), 'open_roadmap').args, 'open');
-    arrive(sim, 'roadmap');
-
-    // A roadmap session over no open log: nothing is predicted. The
-    // user places an item themselves — a direct add, an op recorded under
-    // Edits — so the log opens first and the open's response numbers it.
-    assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);
-    // The wrong order is impossible: an add naming the log before its open refuses.
-    sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
-      '--source', '.product/sessions/session-002.md'], new RegExp(`source "\\.product\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
-    const draft = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
-    const opened = sim.run(['discovery-session', 'open', 'product', '--session-log-file', draft]);
-    assert.strictEqual(opened.session, '002');
-    const source = `.product/sessions/session-${opened.session}.md`;
-    sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
-      '--source', `.leeway/${source}`], /drop the leading "\.leeway\/"/);
-    sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--source', source]);
+  it('roadmap: something put aside in the product\'s conversation goes on the roadmap at once, its source the open log', () => {
+    pickRoute(sim, startKeys(sim), 'open_product');
+    sim.handOver();
+    sim.run(['enter', 'discovery', 'product']);
+    const source = '.product/sessions/session-001.md';
+    // No roadmap yet: the pick has no horizon to offer, so the person names one.
+    sim.refuses(['render', 'horizon-pick', '--park', 'gift-cards'], /the roadmap holds no horizons/);
+    const add = ['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--origin', 'park:product'];
+    sim.refuses([...add, '--source', '.product/sessions/session-002.md'],
+      new RegExp(`source "\\.product\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
+    sim.refuses([...add, '--source', `.leeway/${source}`], /drop the leading "\.leeway\/"/);
+    sim.run([...add, '--source', source]);
     const item = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'gift-cards');
-    assert.strictEqual(item.origin, 'harvest', 'a direct add takes the engine\'s default origin');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', item.sources[0])), 'the source resolves under .leeway/ to the open log');
-
-    // The Edits entry lands in the installed log; the cadence commit takes
-    // the log the self-committing add left behind.
-    fs.appendFileSync(path.join(sim.dir, '.leeway', source), '- Added: gift-cards → mvp — placed by the user\n');
-    sim.run(['commit', '--roadmap', '-m', `roadmap: add gift-cards — session-${opened.session}`]);
-    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product', 'manifest.json']), '',
-      'the log and the marker are committed');
+    assert.deepStrictEqual([item.origin, item.sources], ['park:product', [source]]);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', 'manifest.json']), '', 'the add committed itself');
   });
 
   it('backlogging: the ambiguity gate, the horizon pick, and the park confirm from a live implementation item', () => {
@@ -374,25 +361,24 @@ describe('pipeline simulation: roadmap', () => {
   it('roadmap: work-unit cancel reverts every join into the unit', () => {
     sim.run(['roadmap', 'add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
     sim.run(['roadmap', 'add', 'menus', '--horizon', 'mvp', '--summary', 's']);
-    const log = sessionLog(sim, 'mvp');
-    sim.run(['workunit', 'create', 'mvp', 'epic', '--description', 'MVP', '--session-log-file', log]);
-    sim.run(['roadmap', 'pull', 'ordering', 'menus', '--into', 'mvp']);
+    startFromRoadmap(sim, ['ordering', 'menus'], { type: 'epic', name: 'mvp', description: 'MVP', reason: 'Its parts each need decisions.' });
     const res = sim.run(['workunit', 'cancel', 'mvp']);
     assert.deepStrictEqual([...res.roadmap_reverted].sort(), ['menus', 'ordering']);
     const state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.totals, { items: 2, waiting: 2, in_flight: 0, shipped: 0, orphaned: 0 });
-    // Pulling into the cancelled unit refuses; reactivation reopens the road.
-    sim.refuses(['roadmap', 'pull', 'ordering', '--into', 'mvp'], /active work only/);
+    // Pulling forward into the cancelled unit refuses; reactivation reopens the road.
+    sim.refuses(['roadmap', 'pull-forward', 'ordering', '--into', 'mvp'], /cancelled/);
     sim.run(['workunit', 'reactivate', 'mvp']);
-    sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
+    sim.run(['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
   });
 
   it('roadmap: absorb re-aims a feature\'s joins at the epic — its idea at the topic, its bug riding with the unit — never an orphan, and its sources follow the files', () => {
     sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards']);
     sim.run(['roadmap', 'add', 'points-lost', '--horizon', 'v1', '--summary', 'points vanish on a refund', '--kind', 'bug']);
-    const flog = sessionLog(sim, 'loyalty-feat');
-    sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty, and the points a refund loses', '--session-log-file', flog]);
-    sim.run(['roadmap', 'pull', 'loyalty', 'points-lost', '--into', 'loyalty-feat']);
+    startFromRoadmap(sim, ['loyalty', 'points-lost'], {
+      type: 'feature', name: 'loyalty-feat', description: 'Loyalty, and the points a refund loses', reason: 'One capability; the bug rides along.',
+      brief: briefDraft(sim, 'product', 'loyalty-feat'),
+    });
     enterEntry(sim, 'loyalty-feat', 'discussion', 'loyalty-feat');
     sim.write('.leeway/loyalty-feat/topics/loyalty-feat/log.md', '# Loyalty discussion\n');
     // The feature discussion parks a tangent for later, its source the
@@ -436,27 +422,22 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['roadmap', 'add', 'guest-checkout', '--horizon', 'launch', '--summary', 'guests buy without an account']);
     sim.run(['roadmap', 'add', 'cart-drops-items', '--horizon', 'launch', '--summary', 'the cart drops items on a refresh', '--kind', 'bug']);
 
-    // The pull: the shape confirmed, the unit created over its backfilled
-    // first session, the items joined, the roadmap shown with the joins.
-    sim.render(['roadmap-shape-gate'], { expect: 'content' });
-    const backfill = sim.write('.leeway/.cache/launch/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
-    sim.run(['workunit', 'create', 'launch', 'epic', '--description', 'Guest checkout, and the cart bug it exposes', '--session-log-file', backfill]);
-    assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'guest-checkout', 'cart-drops-items', '--into', 'launch']).remainder, { launch: 0 });
+    // The pull: discovery takes both as seeds, and start this work creates
+    // the epic with both joined, the roadmap showing the joins.
+    const started = startFromRoadmap(sim, ['guest-checkout', 'cart-drops-items'], {
+      type: 'epic', name: 'launch', description: 'Guest checkout, and the cart bug it exposes', reason: 'Its parts each need decisions; the bug rides along.',
+    });
+    sim.run(started.next.argv);
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Cart Drops Items\n.*↳ Bug · in flight: launch/);
 
-    // The epic's discovery carries the conversation on, and its harvest
-    // lands the idea as a topic — the bug is material for it, never a topic.
-    assert.strictEqual(sim.run(['session', 'label', 'launch', 'discovery', 'launch']).labelled, false);
-    sim.run(['discovery-map', 'add-batch', 'launch', '--file', sim.write('.leeway/.cache/launch/discovery/topics.json', [
-      { name: 'guest-checkout', summary: 'Guests buy without an account' },
-    ])]);
-    // The binds: every idea joined to the unit with no topic. The bug, joined
-    // the same way, is never one of them — and the verb refuses it.
+    // The epic's map lands the idea as a topic, bound to it — the bug is
+    // material for it, never a topic, and never bound.
     const unbound = sim.run(['roadmap', 'state']).items.filter((i) => i.work_unit === 'launch' && i.topic === undefined);
     assert.deepStrictEqual(unbound.map((i) => [i.name, i.kind]), [['guest-checkout', 'idea'], ['cart-drops-items', 'bug']]);
-    sim.run(['roadmap', 'bind', 'guest-checkout', '--topic', 'guest-checkout']);
-    sim.refuses(['roadmap', 'bind', 'cart-drops-items', '--topic', 'guest-checkout'], /only an idea binds to a topic/);
-    sim.run(['discovery-session', 'close', 'launch', '-m', 'discovery(launch): shape the map']);
+    const topics = [{ name: 'guest-checkout', summary: 'Guests buy without an account', brief: briefDraft(sim, 'launch', 'guest-checkout') }];
+    sim.refuses(['render', 'approve-map', 'launch', '--file', sim.write('.leeway/.cache/scratch/approve-bug.json',
+      { topics, binds: [{ item: 'cart-drops-items', topic: 'guest-checkout' }] })], /"cart-drops-items" is a bug — it rides with/);
+    approveTheMap(sim, 'launch', { topics, binds: [{ item: 'guest-checkout', topic: 'guest-checkout' }] });
 
     let state = sim.run(['roadmap', 'state']);
     const row = (/** @type {string} */ name) => state.items.find((i) => i.name === name);
@@ -473,23 +454,22 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(row('cart-drops-items').state, 'waiting');
   });
 
-  it('roadmap: quick-fixes pulled alone start a quick-fix, which the bridge hands to its scoping', () => {
+  it('roadmap: quick-fixes pulled alone pre-seed a quick-fix, which start this work hands to its scoping', () => {
     sim.run(['roadmap', 'add', 'footer-typo', '--horizon', 'polish', '--summary', 'the footer misspells the product', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
 
-    sim.render(['roadmap-shape-gate'], { expect: 'content' });
-    const backfill = sim.write('.leeway/.cache/footer-fixes/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
-    sim.run(['workunit', 'create', 'footer-fixes', 'quick-fix', '--description', 'The footer\'s copy fixes', '--session-log-file', backfill]);
-    assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'footer-typo', 'stale-copyright', '--into', 'footer-fixes']).remainder,
-      { polish: 1 }, 'the idea stays waiting');
-    sim.render(['roadmap-view'], { expect: 'content' });
+    assert.strictEqual(pullFromRoadmap(sim, ['footer-typo', 'stale-copyright']).text,
+      'Invoke `/leeway-discovery quick-fix none "roadmap:footer-typo,roadmap:stale-copyright"`.');
+    const started = startThisWork(sim, {
+      type: 'quick-fix', name: 'footer-fixes', description: 'The footer\'s copy fixes', reason: 'Two known, mechanical changes.',
+      shaped_by: [shapedInTheProduct(sim, 'footer-fixes')], roadmap: ['footer-typo', 'stale-copyright'],
+    });
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-scoping-process', args: ['quick-fix', 'footer-fixes'] });
     assert.strictEqual(sim.manifest('footer-fixes').work_type, 'quick-fix');
-
-    // The bridge, invoked in place, labels the unit and hands it to scoping.
-    arrive(sim, 'footer-fixes');
-    bridgeTo(sim, 'footer-fixes', 'scoping');
+    handoff(sim, '/leeway-scoping-process quick-fix footer-fixes');
     handoffEntry(sim, 'footer-fixes', 'scoping', 'footer-fixes');
+    assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'dark-mode').state, 'waiting', 'the idea stays waiting');
     const state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.kind, i.work_unit]),
       [['footer-typo', 'quick-fix', 'footer-fixes'], ['stale-copyright', 'quick-fix', 'footer-fixes']]);

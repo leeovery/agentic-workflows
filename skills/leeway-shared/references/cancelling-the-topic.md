@@ -110,7 +110,7 @@ Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried)
 node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.{stage}.{name} --verb cancel [--warn] [--inbox {n}]
 ```
 
-Invoke `/leeway-bridge {work_unit} {phase} none cancelled`.
+Invoke `/leeway-bridge {work_unit} {phase} cancelled`.
 
 ## D. Cancel the Work Unit
 

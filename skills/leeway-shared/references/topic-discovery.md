@@ -25,7 +25,7 @@ The caller provides these via context before loading:
 Run discovery for the work unit:
 
 ```bash
-node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
+node .claude/skills/leeway-continue-epic/scripts/gateway.cjs {work_unit}
 ```
 
 Parse the `analysis_caches` line from the output (`gap_analysis=<status>`): `valid` | `stale` | `absent`.
@@ -88,24 +88,16 @@ No dispatch.
 
 ## C. Sweep
 
-The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file, manifest stamps, and the brief each approved candidate landed. Check for leavings:
+The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file and manifest stamps; each approved topic's add committed itself with its brief. Check for leavings:
 
 ```bash
-git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/discovery/briefs .workflows/{work_unit}/manifest.json
+git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/manifest.json
 ```
 
 #### If the tree is dirty
 
-No single scope carries both the bookkeeping and the briefs, so each takes its own confined commit:
-
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
-```
-
-Run the second only when the gate approved a candidate — `new_arrivals.gap_analysis` holds a name — so a peer discovery session's half-written briefs are never swept up:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --discovery -m "discovery({work_unit}): analysis run briefs"
 ```
 
 → Proceed to **D. Return**.

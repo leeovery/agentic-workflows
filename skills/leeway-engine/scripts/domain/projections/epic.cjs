@@ -692,7 +692,7 @@ function commandOptions(workUnit, detail, hasMap) {
   }
   if (!hasMap) opts.push(discoveryOpt);
   opts.push({
-    key: 'd', word: 'discuss', action: 'new_discussion', topic: null, route: null,
+    key: 'd', word: 'discuss', action: 'new_topic', topic: null, route: `/leeway-discovery none ${workUnit}`,
     label: hasMap ? 'Start a discussion on a new topic' : 'Start new discussion',
   });
   if (hasMap && !detail.active_session) opts.push(discoveryOpt);

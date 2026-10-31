@@ -28,7 +28,7 @@ const {
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, handoff, bridgeTo, arriveAtEpicMenu, waitAgents, startKeys, decideTopic, askedOn, send,
+  Sim, mapTopics, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, handoff, bridgeTo, arriveAtEpicMenu, waitAgents, startKeys, decideTopic, askedOn, send,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -48,11 +48,10 @@ describe('pipeline simulation: experiments', () => {
   it('epic experiments: spawn, the walk to verdict, splits, releases, series continuation', () => {
     const wu = 'lab';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Measured decisions', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'timing', summary: 'Timing behaviour' },
       { name: 'layout', summary: 'Layout rules' },
     ]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     for (const topic of ['timing', 'layout']) {
       menuEntry(sim, wu);

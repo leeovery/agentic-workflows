@@ -495,7 +495,6 @@ describe('gate payload — every gateway verb', () => {
       'in-session-gate': [gated('in-session-gate', 'v1', '1')],
       fallback: [ungated('v1')],
     },
-    'leeway-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
     'leeway-bridge': { index: [refused()], fallback: [ungated('checkout')] },
     'leeway-roadmap': {
       view: [gated('view')],

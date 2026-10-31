@@ -19,7 +19,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { DOTS, CONTINUE_CLAUSE, bulletRow } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const { renderSurface, unwrap, setup, teardown, writeManifest } = require('./render-surfaces-world.cjs');
+const { renderSurface, unwrap, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {
   let dir;
@@ -614,115 +614,111 @@ describe('render spec-confirm-gate', () => {
   });
 });
 
-describe('render direct-entry-gate', () => {
+describe('render candidate-gate', () => {
   let dir;
-  beforeEach(() => {
-    dir = setup();
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  function staged(gateMode, status = 'pending') {
     writeManifest(dir, 'pay', {
-      work_type: 'epic',
       phases: {
         discovery: {
-          items: {
-            alpha: { source: 'discovery' },
-            gamma: { source: 'discovery' },
-            sigma: { source: 'discovery', cancelled: true },
-            tau: { source: 'discovery', postponed: true },
+          items: {},
+          analysis_staging: {
+            'discovery-gap-analysis': {
+              gate_mode: gateMode,
+              candidates: { 'signal-freshness-contract': { status } },
+            },
           },
         },
-        discussion: { items: { gamma: { status: 'in-progress' } } },
       },
     });
-    writeManifest(dir, 'feat', {
-      work_type: 'feature',
-      phases: { discovery: { items: { feat: { source: 'discovery' } } } },
-    });
-  });
-  afterEach(() => { teardown(dir); });
+  }
 
-  it('a name already on the map answers the red pair naming where the topic stands and its way in — never terminal', () => {
-    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.alpha' });
-    assert.strictEqual(out, [
-      '=== DISPLAY: direct entry gate (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ "Alpha" is already on the map — nothing has started on it',
+  const payload = {
+    name: 'signal-freshness-contract',
+    summary: 'What freshness the ranking signals must guarantee downstream',
+  };
+  const render = (obj = payload, name = 'c.json') => renderSurface(dir, 'candidate-gate', {
+    dotpath: 'pay', file: writePayload(dir, name, obj),
+  });
+
+  it('renders the gated candidate byte-exactly — display then the five-way gate', () => {
+    staged('gated');
+    assert.strictEqual(render(), [
+      '=== DISPLAY: candidate (emit verbatim as a text code block (```text fence)) ===',
+      'Signal Freshness Contract',
+      '  What freshness the ranking signals must guarantee downstream',
+      '  surfaced by gap analysis',
       '',
-      '=== DISPLAY: direct entry guidance (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
-      '> Its row on the menu names the next step.',
+      "=== MENU: candidate gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Add this topic to the map?`**',
+      '',
+      '**`y/yes`**      → Approve — the topic joins the map and its phase can',
+      `${NB(13)}start from the epic menu`,
+      '**`a/auto`**     → Approve this and all remaining candidates',
+      `${NB(13)}automatically`,
+      '**`s/skip`**     → Skip and dismiss — the analysis never re-proposes',
+      `${NB(13)}this name`,
+      '**`p/postpone`** → Postpone — the topic joins the map with its brief',
+      `${NB(13)}and waits on the roadmap under a horizon you name`,
+      '**Comment**    → Tell me what to change (summary or description)',
       '',
     ].join('\n'));
   });
 
-  it('a marker-only cancelled row points at the reactivate — it carries no menu row to return to', () => {
-    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.sigma' });
-    assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/);
-    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./);
-    assert.ok(!out.includes('names the next step'));
+  it('an auto gate mode renders the approval line and no menu — the branch is the surface\'s', () => {
+    staged('auto');
+    const out = render();
+    assert.match(out, /=== DISPLAY: candidate \(/);
+    assert.match(out, /=== DISPLAY: candidate approved \(emit verbatim as a text code block \(```text fence\) after recording the approval — /);
+    assert.match(out, /Signal Freshness Contract — approved \[auto\]\./);
+    assert.ok(!out.includes('MENU:'), 'auto never stops');
   });
 
-  /** The project's roadmap, holding tau's item — `pulled_to` another epic when `taken`. */
-  function writeRoadmap(taken) {
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
-      work_units: {},
-      roadmap: { horizons: ['next'], items: {
-        tau: {
-          horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'tau' },
-          ...(taken ? { pulled_to: { work_unit: 'other', topic: 'tau' } } : {}),
-        },
-      } },
-    }, null, 2));
-  }
+  it('validates loudly — staging present, candidate pending, payload fields, gate mode', () => {
+    staged('gated');
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay' }), /--file <payload\.json> is required/);
+    assert.throws(() => render({ ...payload, name: 'nope' }, 'n.json'), /"nope" is not a pending candidate — a stale payload never renders/);
+    assert.throws(() => render({ name: 'signal-freshness-contract' }, 's.json'), /"summary" must be a non-empty string/);
 
-  it('a postponed row points at the pull forward while its roadmap item waits — it carries no menu row either', () => {
-    writeRoadmap(false);
-    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.tau' });
-    assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/);
-    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Pull it forward from the menu \(`f\/forward`\) — a postponed topic carries no row\./);
-    assert.ok(!out.includes('names the next step'));
+    staged('gated', 'approved');
+    assert.throws(() => render(), /is not a pending candidate/);
+
+    staged('sometimes');
+    assert.throws(() => render(), /gate_mode must be "gated" or "auto", got "sometimes"/);
+
+    writeManifest(dir, 'bare', { phases: { discovery: { items: {} } } });
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'bare', file: writePayload(dir, 'b.json', payload) }),
+      /no staged gap-analysis candidates for "bare"/);
   });
 
-  it('a postponed row whose roadmap item another epic took names no way back — the menu has no pull-forward row for it', () => {
-    writeRoadmap(true);
-    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.tau' });
-    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\./);
-    assert.ok(!out.includes('f/forward'));
-  });
+  const ANNOUNCED = '=== DISPLAY: candidates announced (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+  const announce = () => renderSurface(dir, 'candidate-gate', { dotpath: 'pay', variant: 'announce' });
 
-  it('a closed topic names its closure — a cancelled one points at the reactivate', () => {
-    writeManifest(dir, 'closed', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { gone: { source: 'discovery' } } },
-        discussion: { items: { gone: { status: 'cancelled', previous_status: 'in-progress' } } },
-      },
+  it('announce: counts the candidates the staging subtree marks pending — the decided ones never count', () => {
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { analysis_staging: { 'discovery-gap-analysis': {
+        gate_mode: 'gated',
+        candidates: { a: { status: 'pending' }, b: { status: 'approved' }, c: { status: 'pending' }, d: { status: 'skipped' } },
+      } } } },
     });
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'closed.discussion.gone' }),
-      /⚑ "Gone" is already on the map — it is cancelled and stays on the map as record[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./);
+    assert.strictEqual(announce(), `${ANNOUNCED}\nGap analysis surfaced 2 candidate topic(s).\n`);
   });
 
-  it('a decided topic points at the resume — it carries no row of its own', () => {
-    writeManifest(dir, 'settled', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { done: { source: 'discovery' } } },
-        discussion: { items: { done: { status: 'completed' } } },
-      },
-    });
-    const out = renderSurface(dir, 'direct-entry-gate', { dotpath: 'settled.discussion.done' });
-    assert.match(out, /⚑ "Done" is already on the map — discussion has concluded/);
-    assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(`c\/completed`\) — a decided topic carries no row\./);
+  it('announce: nothing new to review where none wait pending, or the analysis staged nothing', () => {
+    staged('gated', 'approved');
+    assert.strictEqual(announce(), `${ANNOUNCED}\nNothing new to review.\n`);
+    writeManifest(dir, 'pay', { phases: { discovery: { items: {} } } });
+    assert.strictEqual(announce(), `${ANNOUNCED}\nNothing new to review.\n`);
   });
 
-  it('a topic whose row is on the menu points at that row — fresh and discussing alike', () => {
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.alpha' }),
-      /nothing has started on it[\s\S]*> Its row on the menu names the next step\./);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }),
-      /discussion is in flight on it[\s\S]*> Its row on the menu names the next step\./);
-  });
-
-  it('empty for a new name and for a feature, and refuses any phase but discussion', () => {
-    assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.omega' }), '');
-    assert.strictEqual(renderSurface(dir, 'direct-entry-gate', { dotpath: 'feat.discussion.feat' }), '');
-    for (const phase of ['research', 'planning']) {
-      assert.throws(() => renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.alpha` }), new RegExp(`phase must be discussion, got "${phase}"`));
-    }
+  it('announce: refuses an unknown variant, a non-bare address and an unknown unit', () => {
+    staged('gated');
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay', variant: 'count' }),
+      /--variant takes "announce" alone — the per-candidate gate takes none, got "count"/);
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay.discovery.x', variant: 'announce' }), /address must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'ghost', variant: 'announce' }), /work unit "ghost" not found/);
   });
 });

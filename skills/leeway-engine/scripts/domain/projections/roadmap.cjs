@@ -294,14 +294,6 @@ function roadmapParksGate() {
   ], { question: 'Park these on the roadmap?' });
 }
 
-/** The pull's shape confirm — the work's shape, the framing. */
-function roadmapShapeGate() {
-  return menu('', [
-    cmdOption('y', 'yes', 'Create it and carry on into it'),
-    promptOption('Adjust', 'Tell me what to change (the shape, the description)'),
-  ], { question: 'Shape it this way?' });
-}
-
 /** The view's chrome heading — project-level, no unit. */
 function roadmapTitle() { return 'Roadmap'; }
 
@@ -313,6 +305,5 @@ module.exports = {
   roadmapAddGate,
   roadmapHarvestGate,
   roadmapParksGate,
-  roadmapShapeGate,
   roadmapHomeMenu,
 };

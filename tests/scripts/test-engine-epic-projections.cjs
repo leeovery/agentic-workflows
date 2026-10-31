@@ -596,7 +596,7 @@ describe('epic projections: menu', () => {
         ['1', 'start_specification', 'billing-grouping', '/leeway-specification-process epic quiz-competition-v1 billing-grouping'],
         ['2', 'continue_specification', 'auth-spec', '/leeway-specification-process epic quiz-competition-v1 auth-spec'],
         ['s', 'analyze_discussions', null, null],
-        ['d', 'new_discussion', null, null],
+        ['d', 'new_topic', null, '/leeway-discovery none quiz-competition-v1'],
         ['i', 'continue_discovery', null, '/leeway-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],

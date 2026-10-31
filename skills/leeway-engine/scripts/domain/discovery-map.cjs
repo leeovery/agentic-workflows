@@ -443,26 +443,22 @@ const flagTakeIn = (twin) => `--from-roadmap ${twin}`;
 
 /**
  * How a batch lands: the words its refusals open on, how its checks name an
- * entry's field and take a roadmap item in, each topic's source, whether
- * every topic needs its brief, and how a name struck from the map is asked
- * back.
- * @typedef {{said: string, fieldName?: FieldName, takeIn?: TakeIn, source?: string, requireBrief?: boolean, reAddHint?: string}} LandOpts
+ * entry's field and take a roadmap item in, each topic's source, and how a name
+ * struck from the map is asked back.
+ * @typedef {{said: string, fieldName?: FieldName, takeIn?: TakeIn, source?: string, reAddHint?: string}} LandOpts
  */
 
-/** A brief's draft as read, or null for an entry that has none. @typedef {{scratch: string, content: string}|null} Draft */
+/** A brief's draft as read. @typedef {{scratch: string, content: string}} Draft */
 
 /**
  * The batch's shape and each entry's draft, checked before the map is read.
  * @param {string} cwd @param {BatchEntry[]} entries @param {LandOpts} opts
  * @returns {Draft[]}
  */
-function batchDrafts(cwd, entries, { said, fieldName = batchField, requireBrief = true }) {
+function batchDrafts(cwd, entries, { said, fieldName = batchField }) {
   checkBatchEntries(entries, said, fieldName);
   return entries.map((e, i) => {
-    if (e.brief === undefined) {
-      if (requireBrief) throw new Error(`${said}: a topic lands with its brief — ${fieldName(i, e, 'brief')} names its draft`);
-      return null;
-    }
+    if (e.brief === undefined) throw new Error(`${said}: a topic lands with its brief — ${fieldName(i, e, 'brief')} names its draft`);
     return draftIn(cwd, e.brief, `${said}: ${fieldName(i, e, 'brief')}`);
   });
 }
@@ -506,10 +502,7 @@ function placeTopics(cwd, workUnit, manifest, entries, { said, takeIn = entryTak
  * @returns {string[]}
  */
 function installBriefs(cwd, workUnit, entries, drafts) {
-  return entries.flatMap((e, i) => {
-    const draft = drafts[i];
-    return draft === null ? [] : [installBrief(cwd, workUnit, e.name, draft)];
-  });
+  return entries.map((e, i) => installBrief(cwd, workUnit, e.name, drafts[i]));
 }
 
 /**
@@ -547,10 +540,10 @@ function landTopics(cwd, workUnit, entries, opts) {
  * struck from the map added back at the person's ask (8.10.11), and
  * committed.
  * @param {string} cwd @param {string} workUnit @param {string} name
- * @param {{summary?: string, description?: string, brief?: string, fromRoadmap?: string, reAdd?: boolean, source?: string, requireBrief?: boolean}} [fields]
+ * @param {{summary?: string, description?: string, brief?: string, fromRoadmap?: string, reAdd?: boolean, source?: string}} [fields]
  * @returns {MapChange}
  */
-function addTopic(cwd, workUnit, name, { summary, description, brief, fromRoadmap, reAdd = false, source, requireBrief = true } = {}) {
+function addTopic(cwd, workUnit, name, { summary, description, brief, fromRoadmap, reAdd = false, source } = {}) {
   /** @type {BatchEntry} */
   const entry = {
     name,
@@ -561,12 +554,12 @@ function addTopic(cwd, workUnit, name, { summary, description, brief, fromRoadma
     re_add: reAdd,
   };
   const { manifest, readded, priors, briefs, paths, warnings } = landTopics(cwd, workUnit, [entry],
-    { said: 'topic add', fieldName: flagField, takeIn: flagTakeIn, source, requireBrief, reAddHint: 'add it back only at the person\'s ask — pass --re-add' });
+    { said: 'topic add', fieldName: flagField, takeIn: flagTakeIn, source, reAddHint: 'add it back only at the person\'s ask — pass --re-add' });
   const item = mapItem(manifest, name);
   /** @type {MapChange} */
   const result = { work_unit: workUnit, op: 'add', name, title: topicTitle(manifest, name), source: item.source, summary: item.summary, lifecycle: computeTopicLifecycle(manifest, name).lifecycle, map_total: mapTotal(manifest) };
   if (description !== undefined) result.description = description;
-  if (briefs.length > 0) result.brief = statePath(cwd, briefs[0]);
+  result.brief = statePath(cwd, briefs[0]);
   if (fromRoadmap !== undefined) result.from_roadmap = fromRoadmap;
   if (priors[name] !== undefined) result.prior = priors[name];
   if (readded.length > 0) result.re_added = true;
@@ -577,11 +570,11 @@ function addTopic(cwd, workUnit, name, { summary, description, brief, fromRoadma
  * `topic add-batch`: several topics landed as `topic add` lands one, in one
  * transaction — a failing entry means nothing was added.
  * @param {string} cwd @param {string} workUnit @param {BatchEntry[]} entries
- * @param {{source?: string, requireBrief?: boolean}} [opts]
+ * @param {{source?: string}} [opts]
  * @returns {MapChange}
  */
-function addTopics(cwd, workUnit, entries, { source, requireBrief = true } = {}) {
-  const { manifest, readded, paths, warnings } = landTopics(cwd, workUnit, entries, { said: 'topic add-batch', source, requireBrief });
+function addTopics(cwd, workUnit, entries, { source } = {}) {
+  const { manifest, readded, paths, warnings } = landTopics(cwd, workUnit, entries, { said: 'topic add-batch', source });
   /** @type {MapChange} */
   const result = {
     work_unit: workUnit,
@@ -872,7 +865,7 @@ function setPrior(cwd, workUnit, name, prior) {
 }
 
 module.exports = {
-  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, removeRefusal, topicNameRefusal,
+  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
   addBatchTo, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
 };

@@ -10,9 +10,8 @@
 // the roadmap item a topic takes in, and gives back at its removal (8.1.6,
 // 18.8.20); a started topic renamed by its title, which names it wherever a
 // verb names it (8.8.17); a removal's waiting mail sent to the inbox
-// (8.8.16); a removal or a rename racing the writes on its topic, a finding
-// it waited behind and a start that waited behind a removal; and `discovery-map`, the verbs'
-// alias until discovery's rewrite, its dead-end verbs gone (8.6.6). A ledger
+// (8.8.16); and a removal or a rename racing the writes on its topic, a
+// finding it waited behind and a start that waited behind a removal. A ledger
 // write that waited behind a removal is test-engine-ledger-write.cjs's; a
 // send to a removed topic, test-engine-topic-mail.cjs's; how a renamed topic's
 // screens name it, test-engine-topic-titles.cjs's.
@@ -494,53 +493,5 @@ describe('topic brief (8.7.6)', () => {
     assert.strictEqual(refusedPristine(dir, ['topic', 'brief', UNIT, 'cancelled-topic', '--brief', scratch]).error,
       'topic brief: "cancelled-topic" takes no brief — it is cancelled and stays on the map as record');
     assert.strictEqual(fs.existsSync(scratch), true);
-  });
-});
-
-describe('discovery-map, the alias', () => {
-  it('adds a topic without its brief, its routing dropped and --force-dismissed the re-add, answering its JSON alone; a brief pointer is refused', () => {
-    const { res, sections } = okSections(dir, ['discovery-map', 'add', UNIT, 'dismissed-name', 'discussion', '--summary', 'Back', '--source', 'gap-analysis', '--force-dismissed']);
-
-    assert.deepStrictEqual([res.re_added, sections], [true, '']);
-    assert.deepStrictEqual(items()['dismissed-name'], { source: 'gap-analysis', summary: 'Back' });
-    assert.strictEqual(refusedPristine(dir, ['discovery-map', 'add', UNIT, 'other', 'discussion', '--summary', 'S', '--brief-path', 'discovery/briefs/other.md']).error,
-      'discovery-map add: --brief-path is refused — a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add');
-  });
-
-  it('takes a waiting roadmap idea in under --from-roadmap, as topic add does (8.1.6)', () => {
-    const res = ok(dir, ['discovery-map', 'add', UNIT, 'loyalty', 'discussion', '--summary', 'Points', '--source', 'direct-start', '--from-roadmap', 'loyalty']);
-
-    assert.deepStrictEqual([res.from_roadmap, items().loyalty.source], ['loyalty', 'direct-start,roadmap:loyalty']);
-    assert.deepStrictEqual(roadmapItem('loyalty').pulled_to, { work_unit: UNIT, topic: 'loyalty' });
-  });
-
-  it('lands a topic with no summary under --backfill, uncommitted, as it always has', () => {
-    const before = head(statePath(dir));
-
-    const res = ok(dir, ['discovery-map', 'add', UNIT, 'offline-sync', 'discussion', '--source', 'direct-start', '--backfill']);
-
-    assert.deepStrictEqual(res, { ok: true, work_unit: UNIT, name: 'offline-sync', op: 'add', source: 'direct-start', lifecycle: 'fresh', map_total: 7 });
-    assert.deepStrictEqual([items()['offline-sync'], head(statePath(dir))], [{ source: 'direct-start' }, before]);
-  });
-
-  it('adds a batch without briefs, each entry\'s routing dropped and force_dismissed the re-add; a brief_path is refused', () => {
-    const file = (/** @type {unknown} */ entries) => writeState(dir, layout.cache(UNIT, 'discovery', 'topics.json'), JSON.stringify(entries));
-
-    const res = ok(dir, ['discovery-map', 'add-batch', UNIT, '--file', file([{ name: 'dismissed-name', routing: 'discussion', summary: 'Back', force_dismissed: true }])]);
-
-    assert.deepStrictEqual(res.readded, ['dismissed-name']);
-    assert.deepStrictEqual(items()['dismissed-name'], { source: 'discovery', summary: 'Back' });
-    assert.strictEqual(refusedPristine(dir, ['discovery-map', 'add-batch', UNIT, '--file', file([{ name: 'other', summary: 'S', brief_path: 'discovery/briefs/other.md' }])]).error,
-      'discovery-map add-batch: "other"\'s brief_path is refused — a topic\'s brief has one place, topics/{topic}/brief.md, installed from a draft by engine topic add');
-  });
-
-  it('is the map verbs under their old names, and holds no dead end: handle and unhandle are gone (8.S13)', () => {
-    assert.deepStrictEqual(ok(dir, ['discovery-map', 'sequence', UNIT, 'fresh-topic=2']).ordered, { 'fresh-topic': 2 });
-    assert.strictEqual(ok(dir, ['discovery-map', 'edit', UNIT, 'fresh-topic', '--summary', 'S']).summary, 'S');
-    assert.strictEqual(ok(dir, ['discovery-map', 'rename', UNIT, 'fresh-topic', 'offline-mode']).name, 'offline-mode');
-    assert.strictEqual(ok(dir, ['discovery-map', 'remove', UNIT, 'offline-mode']).op, 'remove');
-    for (const verb of ['handle', 'unhandle']) {
-      assert.strictEqual(refusedPristine(dir, ['discovery-map', verb, UNIT, 'decided-topic']).error, 'Usage: engine discovery-map <sequence|add|add-batch|edit|remove|rename> …');
-    }
   });
 });

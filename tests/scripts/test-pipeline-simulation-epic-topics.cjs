@@ -23,7 +23,7 @@ const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
 const { epicMenu, epicCancelMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
-  Sim, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn, enterEntry, decideTopic, discussed,
+  Sim, mapTopics, sessionLog, sendArgv, mappedEpic, presenceRow, arriveAtEpicMenu, askedOn, enterEntry, decideTopic, discussed,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic-topics', () => {
@@ -34,14 +34,13 @@ describe('pipeline simulation: epic-topics', () => {
   it('epic topic cancel: one unit per stage, a later stage locking the earlier, waits released before the holders close', () => {
     const wu = 'cuts';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
+    mapTopics(sim, wu, [
       { name: 'export', summary: 'Data export' },
       { name: 'auth', summary: 'Auth flow' },
       { name: 'billing', summary: 'Billing' },
       { name: 'roles', summary: 'Roles' },
     ]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
-    sim.run(['discovery-map', 'sequence', wu, 'export=1', 'auth=2', 'billing=3', 'roles=4']);
+    sim.run(['topic', 'order', wu, 'export=1', 'auth=2', 'billing=3', 'roles=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const pickable = () => epicCancelMenu(detail()).keys.filter((k) => k.action === 'cancel').map((k) => `${k.phase}/${k.topic}`);
