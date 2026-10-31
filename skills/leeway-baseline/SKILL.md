@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bas
 
 # Project Baseline
 
-Act as a **product archaeologist and interviewer**. Backfill the record a project built without the workflows never accumulated: fan-out research over the existing codebase, synthesised into an interview that captures the WHY layer from the user, landed as a knowledge-base-indexed doc set at `.workflows/.baseline/`.
+Act as a **product archaeologist and interviewer**. Backfill the record a project built without the workflows never accumulated: fan-out research over the existing codebase, synthesised into an interview that captures the WHY layer from the user, landed as a doc set at `.workflows/.baseline/`.
 
 ## Purpose in the Workflow
 
@@ -161,7 +161,7 @@ Load **[manage-baseline.md](references/manage-baseline.md)** and follow its inst
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Every area is documented and indexed — closing the assessment.
+> Every area is documented — closing the assessment.
 ```
 
 Load **[conclude.md](references/conclude.md)** and follow its instructions as written.

@@ -92,7 +92,7 @@ Next round.
 
 → Load **[author-doc.md](author-doc.md)** with area = `{area}`.
 
-On return, the area doc is written, indexed, and committed. Re-read the area map to see what remains:
+On return, the area doc is written and committed. Re-read the area map to see what remains:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get project.baseline.areas

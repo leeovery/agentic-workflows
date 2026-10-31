@@ -8,8 +8,9 @@ Structure for `.workflows/.product/sessions/session-{NNN}.md` — the engine all
 
 One template, all sessions. Sections that don't apply this session write `(none)` rather than disappearing — the empty section is a positive signal it was considered, not missed.
 
-- **Exploration** is **narrative** — a prose record of the conversation, written across the session at natural pauses (genesis backfills the shaping conversation at open). The durable record: read by later sessions' continuity, by the epic entry a pull points at, and indexed into the knowledge base at close.
-- **Edits** is **structured** — a deterministic record of roadmap operations applied during the session (each engine op self-commits; the entry mirrors it).
+- **Exploration** is **narrative** — a prose record of the conversation, written across the session at natural pauses (genesis backfills the shaping conversation at open). The durable record: read by later sessions' continuity and by the epic entry a pull points at.
+- **Edits** is **structured** — a deterministic record of roadmap operations applied during the session (each map op self-commits; the entry mirrors it).
+- **Imports** and an **Edits** `Imported:` entry link each shared file by the name it landed under — `{name}`, the last segment of a path `asset import product` answered, never the name the user's file had. The landing commits nothing: the log's link is what takes the file into the next commit.
 - **Items Sorted** is filled at the harvest, from analysing the exploration as a whole.
 
 ## Template
@@ -21,7 +22,7 @@ Date: {YYYY-MM-DD}
 
 ## Imports (as of session)
 
-- [{filename}](../assets/{filename})
+- [{name}](../assets/{name})
 - ...
 
 ## Map State at Start
@@ -46,7 +47,7 @@ and rejected paths with why, the threads left open. Not verbatim.}
 - Horizon {added|renamed|reordered|merged|split|removed}: {detail}
 - Groomed: {inbox slug} → {name} [{kind:[idea|bug|quick-fix]}] ({horizon})
 - Flagged: {name} — {short reason}
-- Imported: [{filename}](../assets/{filename})
+- Imported: [{name}](../assets/{name})
 
 ## Items Sorted
 

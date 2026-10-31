@@ -4,7 +4,7 @@
 
 ---
 
-Weave the area's dossier and interview record into `.workflows/.baseline/{area}.md`, get the user's skim, then index and commit it.
+Weave the area's dossier and interview record into `.workflows/.baseline/{area}.md`, get the user's skim, then commit it.
 
 ## A. Weave
 

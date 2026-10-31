@@ -27,7 +27,7 @@ const { section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKD
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
@@ -5278,12 +5278,6 @@ function pivotContinuation(cwd, args) {
   return pivotContinuationMenu(workUnit);
 }
 
-/** @param {string} cwd @param {{dotpath: string, warn?: string}} args @returns {string} */
-function sessionReceiptSurface(cwd, args) {
-  resolveWorkUnit(cwd, args.dotpath, 'session-receipt');
-  return sessionReceipt({ warn: args.warn === '1' });
-}
-
 // ---------------------------------------------------------------------------
 // Manage-flow gates — scoped selections the manage sub-flows fetch at their
 // own gate, computed fresh from the same detail the manage snapshot reads.
@@ -5622,11 +5616,6 @@ function parkGate(cwd, args) {
     cmdOption('n', 'no', 'Leave it — nothing is recorded'),
     promptOption('Comment', 'Tell me what to change (name, kind, horizon, or summary)'),
   ], { question: 'Park it on the roadmap?' }));
-}
-
-/** @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
-function roadmapSessionReceiptSurface(_cwd, args) {
-  return sessionReceipt({ warn: args.warn === '1' });
 }
 
 // The static roadmap gate menus — no state to resolve; served as surfaces
@@ -6209,7 +6198,6 @@ const SURFACES = {
   'promote-receipt': promoteReceiptSurface,
   'import-reprompt': importRepromptSurface,
   'pivot-continuation': pivotContinuation,
-  'session-receipt': sessionReceiptSurface,
   'absorb-target': absorbTarget,
   'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
@@ -6226,7 +6214,6 @@ const SURFACES = {
   'horizon-pick': horizonPick,
   'park-gate': parkGate,
   'inbox-roadmap-gate': inboxRoadmapGate,
-  'roadmap-session-receipt': roadmapSessionReceiptSurface,
   'roadmap-harvest-gate': roadmapHarvestGateSurface,
   'roadmap-parks-gate': roadmapParksGateSurface,
   'roadmap-shape-gate': roadmapShapeGateSurface,

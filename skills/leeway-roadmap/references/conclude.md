@@ -28,11 +28,7 @@ Replace the log's `(none)` Conclusion with the finalisation line ([session-templ
 node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session close product -m "roadmap: close session {session_number}"
 ```
 
-If the response carries `warnings`, fetch the advisory and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render roadmap-session-receipt --warn
-```
+If the response carries `warnings`, tell the user each one in a line, as the engine words it — the session is closed either way.
 
 > *Output the next fenced block as markdown (not a code block):*
 

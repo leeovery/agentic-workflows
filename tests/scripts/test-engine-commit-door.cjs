@@ -231,6 +231,19 @@ describe('engine commit --discovery: a unit\'s discovery scope', () => {
     assert.deepStrictEqual(statusLines(dir).sort(), [` M ${layout.doc('payments', 'investigation', 'topic-b')}`, `?? ${layout.mailbox('payments', 'topic-a')}/`].sort(), 'peer dirt and the mail untouched');
   });
 
+  it('commits a brief removed and a topic folder removed whole, leaving the state clean', () => {
+    writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
+    writeState(dir, layout.topic('payments', 'topic-b', 'brief.md'), '# Brief — topic B\n');
+    commitAll(dir, 'two briefs');
+    fs.unlinkSync(statePath(dir, layout.topic('payments', 'topic-a', 'brief.md')));
+    fs.rmSync(statePath(dir, layout.topic('payments', 'topic-b')), { recursive: true });
+
+    ok(dir, ['commit', 'payments', '--discovery', '-m', 'discovery(payments): two topics gone']);
+
+    assert.deepStrictEqual(headFiles(dir).sort(), [layout.topic('payments', 'topic-a', 'brief.md'), layout.topic('payments', 'topic-b', 'brief.md')].sort());
+    assert.deepStrictEqual(statusLines(dir), []);
+  });
+
   it('reports nothing to commit on a work unit with no discovery content', () => {
     const clean = ok(dir, ['commit', 'payments', '--discovery', '-m', 'noop']);
     assert.strictEqual(clean.committed, null);
@@ -243,35 +256,37 @@ describe('engine commit --discovery: a unit\'s discovery scope', () => {
   });
 });
 
+// The product's session log and the project manifest written, beside every
+// file `commit --product` leaves out: a unit's brief, the inbox, the
+// roadmap's notes, and a shared file no log links (9.S38).
+const productWorld = fixtureFrom('engine-commit-product-', (dir) => {
+  twoTopics(dir);
+  writeState(dir, layout.productSession('001'), '# Product session 001\n');
+  writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
+  writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
+  writeState(dir, layout.inbox('ideas', '2026-10-30--dark-mode.md'), '# Dark mode\n');
+  writeState(dir, '.roadmap/notes/ideas/2026-10-30--loyalty.md', '# Loyalty\n');
+  writeState(dir, '.product/assets/market.md', '# Market\n');
+});
+
 describe('engine commit --product: the product\'s conversation\'s scope', () => {
-  let dir;
-  beforeEach(() => { dir = setupTwoTopicFixture(); });
-  afterEach(() => { cleanupFixture(dir); });
+  it('commits the product\'s session logs and the project manifest, and --roadmap the same — never a unit\'s files, the inbox, the roadmap\'s notes or an unlinked shared file; beside a work unit or another scope it is refused', () => {
+    const dir = productWorld();
+    try {
+      assert.match(refuses(dir, ['commit', 'payments', '--product', '-m', 'x']).error, /Usage/);
+      assert.match(refuses(dir, ['commit', '--product', '--inbox', '-m', 'x']).error, /Usage/);
+      const untracked = ['?? .inbox/', '?? .product/assets/', '?? .roadmap/', '?? payments/topics/'];
 
-  /** Every scope `commit --product` leaves out, and the product's own, written. */
-  function written() {
-    writeState(dir, layout.productSession('001'), '# Product session 001\n');
-    writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
-    writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
-    writeState(dir, layout.inbox('ideas', '2026-10-30--dark-mode.md'), '# Dark mode\n');
-  }
+      ok(dir, ['commit', '--product', '-m', 'product: session 001']);
+      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);
 
-  it('commits the product\'s session logs and the project manifest — never a unit\'s files or the inbox', () => {
-    written();
-    ok(dir, ['commit', '--product', '-m', 'product: session 001']);
-    assert.deepStrictEqual(headFiles(dir).sort(), [layout.productSession('001'), layout.projectManifest].sort());
-    assert.deepStrictEqual(statusLines(dir).sort(), ['?? .inbox/', '?? payments/topics/'].sort());
-  });
-
-  it('takes --roadmap as the same scope', () => {
-    written();
-    ok(dir, ['commit', '--roadmap', '-m', 'roadmap: session 001']);
-    assert.deepStrictEqual(headFiles(dir).sort(), [layout.productSession('001'), layout.projectManifest].sort());
-  });
-
-  it('refuses --product beside a work unit or another scope', () => {
-    assert.match(refuses(dir, ['commit', 'payments', '--product', '-m', 'x']).error, /Usage/);
-    assert.match(refuses(dir, ['commit', '--product', '--inbox', '-m', 'x']).error, /Usage/);
+      writeState(dir, layout.productSession('001'), '# Product session 001\n\nMore.\n');
+      writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n`);
+      ok(dir, ['commit', '--roadmap', '-m', 'roadmap: session 001']);
+      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);
+    } finally {
+      cleanupFixture(dir);
+    }
   });
 });
 

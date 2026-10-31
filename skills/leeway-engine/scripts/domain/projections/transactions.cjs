@@ -284,16 +284,4 @@ function inboxDeleteReceipt(title) {
   return confirmation(`Deleted "${title}".`);
 }
 
-/**
- * Session close (discovery and roadmap alike) — the indexing advisory; the
- * session is closed and committed either way. Empty without `--warn`.
- * @param {{warn?: boolean}} [opts]
- * @returns {string}
- */
-function sessionReceipt({ warn = false } = {}) {
-  return warn
-    ? warningBlock('Knowledge indexing warning', 'The session is closed. The next start retries the indexing.', CONTINUE_INSTRUCTION)
-    : '';
-}
-
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxRestoreReceipt, inboxDeleteReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, inboxRestoreReceipt, inboxDeleteReceipt };

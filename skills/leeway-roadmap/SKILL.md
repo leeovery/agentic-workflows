@@ -109,15 +109,17 @@ The shaping conversation before this point was ephemeral — persist it now:
 
    **If the answer is `skip`:** the refused paths land nothing. Run the landing again over the paths the refusal did not name, or carry on to the session when it named them all.
 
+   Hold the paths the landing answered (`imports`) as `landed_imports` — the log links each one, which is what takes it into the state.
+
 2. **Open the session.** Read the state first:
 
    ```bash
    node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
    ```
 
-   **If `active_session` is set** (a product session was left open): the shaping folds into it — read its log in full, append a strong-summary of the shaping conversation so far to **Exploration** (the product intent, the capabilities named, any staging language heard — prose, not transcript), commit (`engine commit --roadmap -m "roadmap: genesis continuation — session {active_session}"`), and set `session_number` from `active_session`.
+   **If `active_session` is set** (a product session was left open): the shaping folds into it — read its log in full, append a strong-summary of the shaping conversation so far to **Exploration** (the product intent, the capabilities named, any staging language heard — prose, not transcript) and an `Imported:` entry under **Edits** for each of `landed_imports` ([session-template.md](references/session-template.md)), commit (`engine commit --roadmap -m "roadmap: genesis continuation — session {active_session}"`), and set `session_number` from `active_session`.
 
-   **Otherwise:** draft the log at `.workflows/.cache/roadmap/session-draft.md` per [session-template.md](references/session-template.md), backfilling **Exploration** with that same strong-summary. Then:
+   **Otherwise:** draft the log at `.workflows/.cache/roadmap/session-draft.md` per [session-template.md](references/session-template.md), backfilling **Exploration** with that same strong-summary and listing each of `landed_imports` under **Imports**. Then:
 
    ```bash
    node .claude/skills/leeway-engine/scripts/engine.cjs discovery-session open product --session-log-file .workflows/.cache/roadmap/session-draft.md

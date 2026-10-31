@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, gitPath, tryGit, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
+const { git, gitPath, tryGit, literally, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
@@ -52,21 +52,26 @@ const WORKTREE_INCLUDE = '.worktreeinclude';
  */
 const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
+/** A topic's brief, state-relative. */
+const BRIEF = /^[^/]+\/topics\/[^/]+\/brief\.md$/;
+
 /**
  * The discovery scope — what a unit's discovery writes: its `discovery/`
- * folder, where its session logs are, each topic's brief on disk, and the
- * work-unit manifest (the map lives there), state-relative. Shared by
- * `commit --discovery` and the discovery transaction tails so the session's
- * every commit slices the same paths; a topic's mail and a peer session's
- * documents stay out.
+ * folder, where its session logs are, each topic's brief on disk or
+ * committed and since removed, and the work-unit manifest (the map lives
+ * there), state-relative. Shared by `commit --discovery` and the discovery
+ * transaction tails so the session's every commit slices the same paths; a
+ * topic's mail and a peer session's documents stay out.
  * @param {string} cwd @param {string} workUnit
  * @returns {string[]}
  */
 function discoveryScope(cwd, workUnit) {
   const root = stateRoot(cwd);
   const topics = path.join(root, workUnit, 'topics');
-  const briefs = fs.existsSync(topics) ? fs.readdirSync(topics).map((topic) => `${workUnit}/topics/${topic}/brief.md`) : [];
-  return [`${workUnit}/discovery`, ...briefs.filter((brief) => fs.existsSync(path.join(root, brief))), `${workUnit}/manifest.json`];
+  const onDisk = fs.existsSync(topics) ? fs.readdirSync(topics).map((topic) => `${workUnit}/topics/${topic}/brief.md`) : [];
+  const committed = (tryGit(root, ['ls-tree', '-r', '-z', '--name-only', 'HEAD', '--', ...literally([`${workUnit}/topics`])]) ?? '').split('\0');
+  const briefs = new Set([...onDisk.filter((brief) => fs.existsSync(path.join(root, brief))), ...committed.filter((file) => BRIEF.test(file))]);
+  return [`${workUnit}/discovery`, ...briefs, `${workUnit}/manifest.json`];
 }
 
 /**

@@ -2195,12 +2195,6 @@ describe('roadmap surfaces', () => {
     assert.throws(() => renderSurface(dir, 'park-gate', { name: '  ', horizon: 'v1', summary: 's' }),
       /render park-gate: --name is required/);
   });
-
-  it('roadmap-session-receipt: empty without --warn, the advisory with it', () => {
-    assert.strictEqual(renderSurface(dir, 'roadmap-session-receipt', {}), '');
-    const out = renderSurface(dir, 'roadmap-session-receipt', { warn: '1' });
-    assert.match(out, /Knowledge indexing warning/);
-  });
 });
 
 describe('the boot and knowledge gate surfaces', () => {

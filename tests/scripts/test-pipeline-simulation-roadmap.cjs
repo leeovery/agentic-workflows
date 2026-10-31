@@ -238,7 +238,6 @@ describe('pipeline simulation: roadmap', () => {
     assert.match(addGate, /^=== DATA [^\n]*\nwork_units: mvp\n\n=== MENU: roadmap add gate[\s\S]*\*\*`d\/delivery`\*\*/);
     // An Ask sets the gate aside; once the person is ready it renders again.
     assert.strictEqual(sim.render(['roadmap-add-gate', '--horizon', 'launch'], { expect: 'content' }), addGate);
-    sim.render(['roadmap-session-receipt'], { expect: 'empty' });
     // The static gate menus render like every menu — engine-served.
     assert.match(sim.render(['roadmap-harvest-gate'], { expect: 'content' }), /MENU: roadmap harvest gate/);
     assert.match(sim.render(['roadmap-parks-gate'], { expect: 'content' }), /MENU: roadmap parks gate/);

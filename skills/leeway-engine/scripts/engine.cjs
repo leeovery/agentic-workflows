@@ -408,7 +408,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--imports <N>] [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render pivot-continuation <wu>
-  render session-receipt   <wu> [--warn]
   render absorb-target     <feature>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
@@ -425,7 +424,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render horizon-pick
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
   render inbox-roadmap-gate --file <entries.json>
-  render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
   render roadmap-shape-gate
