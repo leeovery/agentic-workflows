@@ -34,9 +34,13 @@ function recordCall(unit, topic) {
   return ledgerView('record', unit, topic);
 }
 
-/** The call that reads the product record. */
-function productCall() {
-  return `${ENGINE_COMMAND} ledger product`;
+/**
+ * The call that reads the product record, and what discovery found of the
+ * product, of the unit and of the topic.
+ * @param {string} unit @param {string} topic
+ */
+function productCall(unit, topic) {
+  return `${ENGINE_COMMAND} ledger product ${unit} ${topic}`;
 }
 
 /**

@@ -6,8 +6,9 @@
 // write, and after a lifecycle change that sets a topic or unit aside or
 // brings it back, the copies in the gitignored `.knowledge/` are rendered
 // against the ledger — each record holding a current entry, a topic's or a
-// unit's own level's, its current answers only, and the product record's
-// file — and the knowledge base indexes the records, never the product
+// unit's own level's but never the product's place, its current answers
+// only, and the product record's file — and the knowledge base indexes the
+// records, never the product
 // record's file nor the ledger. Each entry says who made it — a decision who
 // decided it — a finding how and when it is known, and every entry what it
 // cites and the files linked from it, never a file's words. A replaced answer leaves the copy and the
@@ -259,6 +260,24 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.match(/** @type {string} */ (copy('.knowledge/records/mint.md')), /^# mint, at the unit's level\n\n## Does the spec cover a second display\?\n\nAsked by Claude\. Entry \w+\.\n\nNot decided yet\.\n$/);
     assert.match(/** @type {string} */ (copy(MINT_COPY)), /^# mint \/ mint\n\n## Does Mint float its notes\?\n/);
     assert.deepStrictEqual(identities(), ['mint/record/.unit', 'mint/record/mint']);
+  });
+
+  it('gives the product\'s place no copy and no chunks — its findings reach a topic through the opening alone — and a record resting on one shows it from the product (9.3.12)', () => {
+    const finding = write('find', 'product.discovery', [], { ...MADE, text: 'Sessions are signed JWTs.', how: 'read Auth/Session.swift', known: 'read' }).id;
+    decide(NOTE, ask(NOTE, 'How long does a session last?'), 'A week.', ['--relies-on', finding]);
+
+    assert.strictEqual(copy('.knowledge/records/product.md'), null);
+    assert.ok(copy(NOTE_COPY)?.endsWith([
+      '## From the product: Sessions are signed JWTs.',
+      '',
+      'Sessions are signed JWTs.',
+      '',
+      'How it is known: read, read Auth/Session.swift',
+      '',
+      `Found by Claude on ${writtenOn(finding)}, in the product. Entry ${finding}.`,
+      '',
+    ].join('\n')), copy(NOTE_COPY) ?? 'no copy');
+    assert.deepStrictEqual(identities(), ['fumi/record/note-window']);
   });
 
   it('heads a decision answering a question elsewhere with the question in the wording that stands, though the wording it names is set aside (5.3.13, 5.8.17)', () => {

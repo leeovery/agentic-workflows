@@ -14,7 +14,7 @@
 // record's file is for a CLAUDE.md line to point at.
 // ---------------------------------------------------------------------------
 
-const { entryKind, decidedBy } = require('../ledger-events.cjs');
+const { PRODUCT, entryKind, decidedBy } = require('../ledger-events.cjs');
 
 /** @typedef {import('../ledger-fold.cjs').Standing} Standing */
 
@@ -61,6 +61,7 @@ function heading(text) {
 
 /** @param {Standing} standing */
 function placeName({ unit, topic }) {
+  if (unit === PRODUCT) return 'the product';
   return topic === null ? `${unit}, at the unit's level` : `${unit} / ${topic}`;
 }
 

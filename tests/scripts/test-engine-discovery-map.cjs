@@ -622,9 +622,10 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('remove and rename refuse a fresh topic the ledger names — an entry written on it, or a question moved to it — writing nothing', () => {
-      const ledger = (verb, flags, content) => harness.ok(dir, ['ledger', verb, 'payments.discovery.fresh-topic', ...flags], { env: SESSION, stdin: JSON.stringify(content) });
-      const question = ledger('ask', [], { ...MADE, text: 'Does checkout work offline?' }).id;
-      ledger('move', ['--question', question, '--to', 'rich-fresh'], MADE);
+      const ledger = (verb, at, flags, content) => harness.ok(dir, ['ledger', verb, `payments.${at}`, ...flags], { env: SESSION, stdin: JSON.stringify(content) });
+      ledger('find', 'discovery.fresh-topic', [], { ...MADE, text: 'Checkout has no offline path.', how: 'read Checkout.swift', known: 'read' });
+      const question = ledger('ask', 'discussion.discussing-topic', [], { ...MADE, text: 'Does checkout work offline?' }).id;
+      ledger('move', 'discussion.discussing-topic', ['--question', question, '--to', 'rich-fresh'], MADE);
       const before = JSON.stringify(readManifest(dir));
 
       for (const [topic, verb, args] of [

@@ -2,8 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's ledger scenario: an epic's questions, findings
-// and decisions written through the ledger verbs, each committing the
-// ledger alone on the state branch.
+// and decisions written through the ledger verbs, and a finding the product
+// researcher lands at the product's place, each committing the ledger alone
+// on the state branch.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -84,6 +85,11 @@ describe('pipeline simulation: ledger', () => {
     const unit = sim.run(['ledger', 'record', wu]);
     assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
+
+    // The product researcher lands what it read of the code at the product's
+    // place, which no unit holds, and a topic opening reads it there.
+    const researched = ledger(['find', 'product.discovery'], { ...made, text: 'Notes are kept in Core Data.', how: 'read Store/Notes.swift', known: 'read' });
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'product', wu, 'note-window']).discovery), [researched]);
 
     // Claude's calls since the person last looked: a look moves the mark in
     // the cache, and commits nothing.

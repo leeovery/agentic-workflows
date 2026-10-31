@@ -52,7 +52,7 @@ describe('pipeline simulation: feature', () => {
     // entered through `enter`, which starts it; the conversation reads the
     // product record before it opens.
     enterEntry(sim, wu, 'discussion', wu);
-    sim.run(['ledger', 'product']);
+    sim.run(['ledger', 'product', wu, wu]);
     // The person answers their question, and the topic closes at the decided
     // screen: its yes lands Claude's product-record line, completes the topic
     // and hands it to the specification.

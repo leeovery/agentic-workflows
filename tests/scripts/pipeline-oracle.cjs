@@ -43,7 +43,7 @@ const {
 const knowledgeStore = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/store.cjs'));
 const chunker = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/leeway-engine/content/knowledge/chunking/record.json'), 'utf8'));
-const { LEDGER, ROADMAP } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
+const { LEDGER, ROADMAP, PRODUCT } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-events.cjs'));
 const { isId } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/ledger-ids.cjs'));
 const START_GATEWAY = require(path.join(ROOT, 'skills/leeway/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
@@ -261,7 +261,9 @@ function auditState(dir, label) {
 // The ledger's projections, held to properties the events and the manifests
 // settle whatever the fold does inside, both read here directly: a unit is
 // live while its manifest is there and not cancelled, a topic while its map
-// row is neither cancelled nor postponed; an event is in a live place while
+// row is neither cancelled nor postponed, and the product's place, which no
+// unit holds, always — what it shows is `ledger product`'s, under discovery,
+// never a record's, and it has no copy; an event is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
 // question to a topic in a live place took it to; a move to the roadmap
@@ -321,6 +323,7 @@ function auditLedger(dir, ctx) {
   const manifests = new Map();
   /** @param {string} unit @param {string|null} topic */
   const placeLive = (unit, topic) => {
+    if (unit === PRODUCT) return topic === null;
     if (!manifests.has(unit)) {
       const file = path.join(root, unit, 'manifest.json');
       manifests.set(unit, fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
@@ -417,7 +420,7 @@ function auditLedger(dir, ctx) {
     assert.strictEqual(res.code, 0, ctx(`ledger ${args.join(' ')} does not read: ${res.stderr}`));
     return JSON.parse(res.stdout);
   };
-  const units = [...new Set(events.flatMap((e) => [e.unit, standing(e.id).unit]))];
+  const units = [...new Set(events.flatMap((e) => [e.unit, standing(e.id).unit]))].filter((unit) => unit !== PRODUCT);
   const topics = [...new Set(events.flatMap((e) => [[e.unit, e.topic], [standing(e.id).unit, standing(e.id).topic], ...(e.event === 'moved' && toTopic(e) ? [[e.unit, e.to]] : [])])
     .filter(([, topic]) => topic !== null).map((pair) => pair.join('\0')))].map((key) => key.split('\0'));
   /** @type {Map<string, Record<string, any>>} */
@@ -425,9 +428,11 @@ function auditLedger(dir, ctx) {
   const maps = new Map(topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['map', unit, topic])]));
   /** @param {Record<string, any>} record @returns {Record<string, any>[]} */
   const main = (record) => [...record.questions, ...record.findings, ...record.decisions];
+  const product = ledger(['product']);
   /** @type {Map<string, string[]>} */
   const shownAt = new Map();
   for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
+  for (const e of product.discovery) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), `${PRODUCT}\0`]);
   const shown = (/** @type {string} */ id) => shownAt.has(id);
 
   /** Where `id` leads while not shown: a question's wording, the next on its line; its live replacements, or, with none, the entries its live merges went into. @param {string} id */
@@ -584,7 +589,6 @@ function auditLedger(dir, ctx) {
       ctx(`${place}'s map does not show each shown answer placed on it that answers no shown question as a row of its own (5.8.19)`));
   }
 
-  const product = ledger(['product']);
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
 
@@ -684,13 +688,13 @@ function ledgerAuditsOf(dir) {
 
 // The ledger's copies in the knowledge directory, held to the records: a
 // copy for each place a shown entry is placed in — its unit's own level, or
-// a topic — and for no other; each naming every entry shown there and no entry
-// that is not shown, so no replaced answer is in one; the product record's
-// file naming the shown entries marked product-wide alone; no words of an
-// entry that is not shown — a question's wording, an answer's text, its why
-// — in any copy or the product record's file, but where a shown entry says
-// them too; and the store indexing the records' copies, never the product
-// record's file.
+// a topic, never the product's place — and for no other; each naming every
+// entry shown there and no entry that is not shown, so no replaced answer is
+// in one; the product record's file naming the shown entries marked
+// product-wide alone; no words of an entry that is not shown — a question's
+// wording, an answer's text, its why — in any copy or the product record's
+// file, but where a shown entry says them too; and the store indexing the
+// records' copies, never the product record's file.
 /**
  * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
  * @param {(id: string) => {unit: string, topic: string|null}[]} placed
@@ -700,7 +704,7 @@ function auditCopies(root, events, shownAt, placed, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
   for (const id of shownAt.keys()) {
-    for (const { unit, topic } of placed(id)) {
+    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT)) {
       const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
       expected.set(file, [...(expected.get(file) ?? []), id]);
     }

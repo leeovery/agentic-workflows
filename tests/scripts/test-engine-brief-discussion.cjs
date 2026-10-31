@@ -9,18 +9,20 @@
 // on its first line, its record saying whose it is; its slots filled from
 // the ledger's reads and the topic's agent store, never the conversation
 // (9.8.13, 13.11.1, 26.1.5): the topic's record and the product record as
-// their read verbs answer them, the log's path, each other live topic's
-// record and none of a topic set aside (5.8.17, 5.S40), the open question by
-// any wording — its dispatch bound to it, and a synthesis briefed on its
-// pair's — a dive's kind and a read's file, whether a gap review has run
-// since the topic's last decision (9.9.6), the dispatch's report, a
-// perspective's lens and a synthesis's perspectives verbatim. The plain
-// search, `engine brief plain-search`, is briefed from the conversation's
-// last knowledge query alone (22.6.10). Every refusal stores no brief. The
-// templates carry no tie-break, no cap, and no model or effort; each role's
-// agent is a definition fixing Opus at medium (26.4.1), the perspective's
-// naming the engine's polarity pairs, the deep dive's its kinds, the
-// closing-pass reader's its product lane.
+// their read verbs answer them — the product record for the topic, drawn
+// where what discovery found is all it holds (9.3.12) — the log's path,
+// each other live topic's record and none of a topic set aside (5.8.17,
+// 5.S40), the open question by any wording — its dispatch bound to it, and
+// a synthesis briefed on its pair's — a dive's kind and a read's file,
+// whether a gap review has run since the topic's last decision (9.9.6), the
+// dispatch's report, a perspective's lens and a synthesis's perspectives
+// verbatim. The plain search, `engine brief plain-search`, is briefed from
+// the conversation's last knowledge query alone (22.6.10). Every refusal
+// stores no brief. The templates carry no tie-break, no cap, and no model
+// or effort, which each role's agent's definition fixes (its roster is
+// test-engine-brief.cjs's); the perspective's definition names the engine's
+// polarity pairs, the deep dive's its kinds, the closing-pass reader's its
+// product lane.
 //
 // Layer: verb. World: an epic with three topics under discussion, written
 // once through the ledger's verbs — on the note window a decision replaced,
@@ -39,7 +41,7 @@ const { ok, callAsync, refusedPristine, statePath, layout, writeState, cleanupFi
 const { UNIT, MADE, NOTE, SPACE, MENU, row, writtenWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
-const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { DIVE_KINDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const { POLARITY_PAIRS } = require(path.join(SCRIPTS, 'domain/lenses.cjs'));
@@ -158,7 +160,7 @@ describe('9.S40: the deep dive\'s brief (9.1.5)', () => {
       question: `${WORLD.made.open}: ${OPEN_TEXT}`,
       'dive-kind': 'survey',
       'topic-record': readJson(['record', UNIT, TOPIC]),
-      'product-record': readJson(['product']),
+      'product-record': readJson(['product', UNIT, TOPIC]),
       'report-to': `\`${dive.file}\``,
     })}`);
     assert.ok(section(brief, 'This topic\'s record').includes('"text": "A window."'), 'the replaced answer is folded beneath the answer that replaced it (9.2.5)');
@@ -172,6 +174,18 @@ describe('9.S40: the deep dive\'s brief (9.1.5)', () => {
     const { brief } = issued(diveArgs(dive.id, '--kind', 'survey'));
 
     assert.strictEqual(section(brief, 'Your question'), `${reworded}: Which Space opens a new note?`);
+  });
+
+  it('9.3.12: the product record drawn for the topic holds what discovery found where the record holds nothing else — of the product as a whole, and of the topic', () => {
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+    const read = write('find', 'product.discovery', [], { ...MADE, text: 'Notes are kept in Core Data.', how: 'read Store/Notes.swift', known: 'read' }).id;
+    const spiked = write('find', `${UNIT}.discovery.${TOPIC}`, [], { ...MADE, text: 'A panel can float over full-screen apps.', how: 'spiked a panel', known: 'spike' }).id;
+    const dive = dispatch('deep-dive');
+
+    const slot = section(issued(diveArgs(dive.id, '--kind', 'survey')).brief, 'The product record');
+
+    const { findings, decisions, discovery } = JSON.parse(slot.slice('```json\n'.length, -'\n```'.length));
+    assert.deepStrictEqual([findings, decisions, discovery.map((/** @type {{id: string}} */ e) => e.id)], [[], [], [read, spiked]]);
   });
 
   it('a read names the file it reads, by its path, and no other kind names one; a kind that is none, or none given, refused', () => {
@@ -257,7 +271,7 @@ describe('the discussion reviewer\'s brief (9.8.13)', () => {
       'topic-record': readJson(['record', UNIT, TOPIC]),
       'topic-log': `\`${statePath(dir, LOG)}\``,
       'other-records': `## menu-bar\n\n${readJson(['record', UNIT, 'menu-bar'])}\n\n## space-homing\n\n${readJson(['record', UNIT, 'space-homing'])}`,
-      'product-record': readJson(['product']),
+      'product-record': readJson(['product', UNIT, TOPIC]),
       'report-to': `\`${review.file}\``,
     })}`);
   });
@@ -400,15 +414,6 @@ describe('the refusals, no brief stored', () => {
 });
 
 describe('discussion\'s agents and templates (26.1, 26.5)', () => {
-  it('each role is dispatched as a named agent whose definition is on the roster, fixing Opus at medium', () => {
-    for (const role of DISCUSSION_ROLES) {
-      const { agent } = ROLES[role];
-      const definition = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
-      const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(definition)?.[1] ?? '';
-      assert.deepStrictEqual([/^name: (.*)$/m.exec(frontmatter)?.[1], /^model: (.*)$/m.exec(frontmatter)?.[1], /^effort: (.*)$/m.exec(frontmatter)?.[1]], [agent, 'opus', 'medium'], role);
-    }
-  });
-
   it('no template names a model or an effort — the definitions hold them', () => {
     for (const role of DISCUSSION_ROLES) assert.doesNotMatch(template(role), /\bmodel\b|\beffort\b|\bopus\b/i, role);
   });

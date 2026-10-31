@@ -230,8 +230,9 @@ describe('tags (5.2.3)', () => {
 
     write('ask', 'mend.investigation.mend', [], content);
     assert.deepStrictEqual([entries().at(-1).unit, entries().at(-1).phase, entries().at(-1).topic], ['mend', 'investigation', 'mend']);
-    write('ask', `${UNIT}.discovery.menu-bar`, [], content);
-    write('ask', `${UNIT}.discovery`, [], content);
+    const found = { ...MADE, text: 'Notes sync through iCloud.', how: 'read Sync.swift', known: 'read' };
+    write('find', `${UNIT}.discovery.menu-bar`, [], found);
+    write('find', `${UNIT}.discovery`, [], found);
     assert.deepStrictEqual(entries().slice(-2).map((e) => [e.phase, e.topic]), [['discovery', 'menu-bar'], ['discovery', null]]);
   });
 

@@ -28,7 +28,7 @@ const dir = useDecidedWorld();
 const { close, payload, staged, answer, run, reverse } = decidedHelpers(dir);
 const { entries, full } = ledgerHelpers(dir);
 
-describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
+describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
   it('stages the lines and the candidates in the cache, nothing on the ledger or the map, then lands each line as the person\'s product-wide decision, the candidates not struck on the map, the topic decided, and the epic\'s menu next', () => {
     close();
     const before = entries().length;
@@ -58,7 +58,9 @@ describe('the decided gate\'s yes (8.S25, 9.7.3)', () => {
     ]);
     assert.deepStrictEqual([lines[1].answers, lines[3].answers], [lines[0].id, lines[2].id], 'each line answers its own question, at the unit\'s level');
     assert.deepStrictEqual(ok(dir(), ['ledger', 'map', UNIT, 'note-window']).questions, map, 'the topic\'s map is as it was: a line answers none of its questions');
-    assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['Sync stays off until you turn it on.', 'First run shows the product before it asks.']);
+    const product = ok(dir(), ['ledger', 'product']);
+    assert.deepStrictEqual([product.findings, product.decisions.map((/** @type {{text: string}} */ d) => d.text), product.discovery], [[], ['Sync stays off until you turn it on.', 'First run shows the product before it asks.'], []],
+      '8.S28: with no product conversation, the product record holds the lines the yes landed and nothing else');
     const manifest = readManifest(dir(), UNIT);
     assert.deepStrictEqual(manifest.phases.discovery.items['removing-fumi'], { routing: 'discussion', source: 'topic:note-window', summary: 'Nothing decides what removing Fumi takes back.' });
     assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
