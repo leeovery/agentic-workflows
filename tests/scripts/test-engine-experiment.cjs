@@ -12,7 +12,9 @@
 // (9.1.11), the topic's cancel, and the field surface's guards.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
-// library, the work unit's manifest written there.
+// library, the work unit's manifest written there, built once and copied:
+// the lab, its spawning discussion's map holding the questions spawns
+// measure; and the lab with nothing asked, for the map's own tests.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -24,7 +26,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock } = harness;
+const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, fixtureFrom } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-exp-');
 
@@ -85,9 +87,24 @@ function asked(dir, text) {
   return engine(dir, ['ledger', 'ask', 'lab.discussion.timing'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text }) }).id;
 }
 
-/** Spawn E{next} from the named phase, measuring a question asked for it. */
+/** The questions the lab world asks on timing's map, by short id: as many as one test spawns. @type {string[]} */
+let measurable = [];
+
+/** The lab, built once: its manifest committed, and the questions spawns measure asked. */
+const labWorld = fixtureFrom('engine-exp-', (dir) => {
+  setup(dir);
+  measurable = ['Where does a new window open?', 'How big is a new window?', 'Which window stacks on top?', 'Which monitor takes it?'].map((text) => asked(dir, text));
+});
+
+/** The lab with nothing asked, built once. */
+const plainWorld = fixtureFrom('engine-exp-plain-', setup);
+
+/** Spawn E{next} from the named phase, measuring the lab's first question no experiment measures yet. */
 function spawn(dir, from, slug) {
-  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug), '--question', asked(dir, `What does ${slug} settle?`)]);
+  const items = readManifest(dir, 'lab').phases.experiment?.items ?? {};
+  const taken = Object.values(items).flatMap((item) => Object.values(item.experiments ?? {}).map((record) => record.question));
+  const question = measurable.find((short) => !taken.some((full) => full?.startsWith(short)));
+  return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug), '--question', question]);
 }
 
 /** Walk an id to `status` through the legal steps. */
@@ -102,7 +119,7 @@ function walkTo(dir, id, status) {
 
 describe('engine experiment create — the spawn', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); setup(dir); });
+  beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('conceives E1, opens the item, installs the problem statement, and locks the spawning discussion', () => {
@@ -200,8 +217,7 @@ describe('engine experiment create — the spawn', () => {
 describe('engine experiment advance / approve — design before data', () => {
   let dir;
   beforeEach(() => {
-    dir = setupGitFixture();
-    setup(dir);
+    dir = labWorld();
     spawn(dir, 'discussion', 'window-placement');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -249,8 +265,7 @@ describe('engine experiment advance / approve — design before data', () => {
 describe('engine experiment conclude / abandon — the release edges', () => {
   let dir;
   beforeEach(() => {
-    dir = setupGitFixture();
-    setup(dir);
+    dir = labWorld();
     spawn(dir, 'discussion', 'window-placement');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -333,8 +348,7 @@ describe('engine experiment conclude / abandon — the release edges', () => {
 describe('splits — sub-experiments under a running parent', () => {
   let dir;
   beforeEach(() => {
-    dir = setupGitFixture();
-    setup(dir);
+    dir = labWorld();
     spawn(dir, 'discussion', 'window-placement');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -397,7 +411,7 @@ describe('splits — sub-experiments under a running parent', () => {
 
 describe('the question on the map an experiment measures (9.1.11)', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); setup(dir); });
+  beforeEach(() => { dir = plainWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
   /** A ledger write at timing's discussion: its short id. @param {string} verb @param {string[]} flags @param {Record<string, unknown>} content */
@@ -552,7 +566,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
 
 describe('the experiment item is derived bookkeeping — no hand lifecycle', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); setup(dir); });
+  beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('topic start / complete / reopen refuse the experiment phase', () => {
@@ -571,8 +585,7 @@ describe('the experiment item is derived bookkeeping — no hand lifecycle', () 
 describe('epic topic cancel takes the series with its topic', () => {
   let dir;
   beforeEach(() => {
-    dir = setupGitFixture();
-    setup(dir);
+    dir = labWorld();
     spawn(dir, 'discussion', 'first');
     spawn(dir, 'discussion', 'second');
   });
@@ -712,8 +725,7 @@ describe('the staleness hop walks to the nearest downstream consumer', () => {
 describe('the field surface guards the series exactly as the verbs write it', () => {
   let dir;
   beforeEach(() => {
-    dir = setupGitFixture();
-    setup(dir);
+    dir = labWorld();
     spawn(dir, 'discussion', 'window-placement');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -787,7 +799,7 @@ describe('the field surface guards the series exactly as the verbs write it', ()
 
 describe('presence rides the experiment verbs mechanically', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); setup(dir); });
+  beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
   const presenceFile = (phase) => path.join(dir, '.leeway/.cache/lab', phase, 'timing/presence');
