@@ -1,7 +1,7 @@
 ---
 name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
+allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .leeway/*/.state), Bash(rm .leeway/*/.state/discussion-consolidation-analysis.md)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.
@@ -67,23 +67,15 @@ Record where this session is working — the call also labels the tmux session w
 node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit}
 ```
 
-Run the legacy research-split detector:
+Read `discovery_map` from the most recent discovery output and filter for rows where `summary=absent` or `description=absent`. Store the filtered list as `items_to_recover`.
 
-```bash
-node .claude/skills/leeway-legacy-research-split/scripts/detect.cjs {work_unit}
-```
-
-Parse `qualifying_sources` from the JSON output.
-
-Then read `discovery_map` from the most recent discovery output and filter for rows where `summary=absent` or `description=absent`. Store the filtered list as `items_to_recover`.
-
-#### If `qualifying_sources` is empty and `items_to_recover` is empty
+#### If `items_to_recover` is empty
 
 → Proceed to **Step 3**.
 
 #### Otherwise
 
-Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`, completed_phase = `{completed_phase}`, outcome = `{outcome}`.
+Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`, completed_phase = `{completed_phase}`, outcome = `{outcome}`.
 
 backfill-checks is terminal when recovery work landed — it commits and hands the epic menu off to start afresh, carrying the arguments it arrived with. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
 

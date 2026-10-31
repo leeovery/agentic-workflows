@@ -334,16 +334,16 @@ describe('runInitialIndexStep', () => {
   let state;
   let held;
 
-  /** A keyword-only state whose one discussion is completed, holding `body`. @param {string} body */
-  function discussionProject(body) {
+  /** A keyword-only state whose one investigation is completed, holding `body`. @param {string} body */
+  function investigationProject(body) {
     const wf = state;
-    fs.mkdirSync(path.join(wf, 'auth', 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(wf, 'auth', 'investigation'), { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: { auth: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(wf, 'auth', 'manifest.json'), JSON.stringify({
       name: 'auth', work_type: 'feature', status: 'in-progress',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+      phases: { investigation: { items: { auth: { status: 'completed' } } } },
     }));
-    fs.writeFileSync(path.join(wf, 'auth', 'discussion', 'auth.md'), body);
+    fs.writeFileSync(path.join(wf, 'auth', 'investigation', 'auth.md'), body);
     fs.mkdirSync(path.join(wf, '.knowledge'), { recursive: true });
     fs.writeFileSync(path.join(wf, '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
   }
@@ -360,22 +360,22 @@ describe('runInitialIndexStep', () => {
   const initialIndex = () => setup.runInitialIndexStep(held.call, state, knowledgeFiles(state));
 
   it('a clean initial index says nothing on stderr', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
+    investigationProject('# Auth\n\nTokens rotate.\n');
     await initialIndex();
     assert.strictEqual(held.output.stderr, '');
     assert.match(held.output.stdout, /^1 new, 0 changed, 0 removed, 0 unchanged\.$/m);
   });
 
   it('artifacts that failed to index are counted, and setup still succeeds', async () => {
-    discussionProject('');
+    investigationProject('');
     await initialIndex();
-    const failed = `Failed to index ${path.join(state, 'auth/discussion/auth.md')}: No chunks produced`;
+    const failed = `Failed to index ${path.join(state, 'auth/investigation/auth.md')}: No chunks produced`;
     assert.ok(held.output.stderr.split('\n').some((line) => line.startsWith(failed)), held.output.stderr);
     assert.ok(held.output.stderr.endsWith('\n1 artifact(s) failed to index — the next start retries them.\n'));
   });
 
   it('chunks awaiting vectors are counted, and setup still succeeds', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
+    investigationProject('# Auth\n\nTokens rotate.\n');
     const files = knowledgeFiles(state);
     const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
     store.saveStore(store.createStore(), files.store);
@@ -386,7 +386,7 @@ describe('runInitialIndexStep', () => {
   });
 
   it('an initial index that throws is reported, and setup still succeeds', async () => {
-    discussionProject('# Auth\n\nTokens rotate.\n');
+    investigationProject('# Auth\n\nTokens rotate.\n');
     fs.writeFileSync(path.join(state, 'manifest.json'), '{ not json');
     await initialIndex();
     assert.match(held.output.stderr, /Initial indexing hit an error: manifest read failed: /);

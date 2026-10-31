@@ -119,7 +119,12 @@ describe('pipeline simulation: bugfix', () => {
     const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
     assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
+    sim.run(['ledger', 'decide', `${wu}.investigation.${wu}`, '--answers', gapQuestion.id], null,
+      JSON.stringify({ by: 'person', who_moved_whom: 'none', text: 'Retry twice, then fail.', why: 'The spec needs a bound.' }));
     sim.run(['topic', 'answered', wu, wu, '001-retry-semantics', '--entry', gapQuestion.id]);
+    const record = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
+    assert.deepStrictEqual(record.decisions.filter((d) => d.answers === gapQuestion.id).map((d) => d.text), ['Retry twice, then fail.'],
+      'the question the message raised stands decided on the topic\'s record');
     assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the answered mailbox retires the cue');
     assert.strictEqual(bugfixUnit().mail_phases, undefined);

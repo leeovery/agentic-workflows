@@ -8,7 +8,7 @@
 // miss); mutations (set/push/pull/delete) answer with the engine's one-line
 // JSON response and fail as {ok:false} stderr exit 1. Then the batched set
 // under the writer lock, `apply`, the two set grammars, and the guards on
-// the vocabulary, the phases tree, storage_paths and dismissed_grounds.
+// the vocabulary, the phases tree and storage_paths.
 // The shell suite (test-engine-manifest.sh) drives much of the same surface
 // through the CLI; where the two overlap, this file is the home.
 //
@@ -120,16 +120,18 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
   });
 
   it('resolve: artifact paths for indexed phases; missing work unit is exit 2', () => {
-    writeWorkUnit(dir, 'auth', 'feature');
+    writeWorkUnit(dir, 'auth', 'bugfix');
     assert.strictEqual(
-      runOk(dir, ['resolve', 'auth.discussion.auth']),
-      path.join(dir, '.leeway/auth/discussion/auth.md') + '\n'
+      runOk(dir, ['resolve', 'auth.investigation.auth']),
+      path.join(dir, '.leeway/auth/investigation/auth.md') + '\n'
     );
-    const miss = run(dir, ['resolve', 'ghost.discussion.foo']);
+    const miss = run(dir, ['resolve', 'ghost.investigation.foo']);
     assert.strictEqual(miss.code, 2);
-    const planning = run(dir, ['resolve', 'auth.planning.auth']);
-    assert.strictEqual(planning.code, 1);
-    assert.match(planning.stderr, /not indexed/);
+    for (const phase of ['planning', 'discussion']) {
+      const unindexed = run(dir, ['resolve', `auth.${phase}.auth`]);
+      assert.strictEqual(unindexed.code, 1);
+      assert.match(unindexed.stderr, /not indexed/);
+    }
   });
 
   it('read errors keep the CLI convention: Error: line on stderr, never JSON', () => {
@@ -467,7 +469,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a cancelled item takes no delete either — the whole item, a field of it, and an apply delete op refuse, the manifest byte-unchanged', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
-    m.phases.research = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
+    m.phases.discussion = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
     const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
@@ -476,9 +478,9 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'previous_order']).error, refusal);
     assert.match(runFails(dir, ['delete', 'payments.specification.dropped', 'sources.beta']).error, refusal);
     // The address names the unit that frees the item — discovery for a
-    // research or discussion item.
-    assert.match(runFails(dir, ['delete', 'payments.research', 'items.shelved']).error,
-      /research item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
+    // discussion item.
+    assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.shelved']).error,
+      /discussion item "shelved" is cancelled — reactivate it instead \(engine topic reactivate payments discovery shelved\)/);
     assert.match(runFails(dir, ['apply', 'payments', '--file', payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },
       { op: 'delete', path: 'payments.specification', field: 'items.dropped' },
@@ -670,17 +672,16 @@ describe('work-unit-level fields never shadow the phases tree', () => {
     assert.match(batch.error, /"discussion" is a phase/);
     const m = readWorkUnit(dir, 'pay');
     assert.strictEqual(m.specification, undefined);
-    assert.strictEqual(m.discussion, undefined);
     assert.strictEqual(m.description, 'Fixture', 'refused batch persisted nothing');
   });
 
   it('push and pull refuse a phase-name-headed field; apply routes set ops through the same guard', () => {
     assert.match(runFails(dir, ['push', 'pay', 'review.list', 'x']).error, /"review" is a phase/);
-    assert.match(runFails(dir, ['pull', 'pay', 'research.foo', 'x']).error, /"research" is a phase/);
+    assert.match(runFails(dir, ['pull', 'pay', 'discussion.foo', 'x']).error, /"discussion" is a phase/);
     const f = path.join(dir, 'ops.json');
-    fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'research.foo': 1 } }]));
-    assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"research" is a phase/);
-    assert.strictEqual(readWorkUnit(dir, 'pay').research, undefined, 'nothing persisted');
+    fs.writeFileSync(f, JSON.stringify([{ op: 'set', path: 'pay', fields: { 'discussion.foo': 1 } }]));
+    assert.match(runFails(dir, ['apply', 'pay', '--file', f]).error, /"discussion" is a phase/);
+    assert.strictEqual(readWorkUnit(dir, 'pay').discussion, undefined, 'nothing persisted');
   });
 
   it('reads and delete stay free so a stray tree can be inspected and repaired', () => {
@@ -745,47 +746,5 @@ describe('storage_paths is guarded at write time — set and apply', () => {
     const item = readWorkUnit(dir, 'pay').phases.planning.items.pay;
     assert.strictEqual(item.sources.alpha, undefined, 'later delete wins over earlier set');
     assert.strictEqual(item.sources.beta.status, 'pending');
-  });
-});
-
-// The findings walk's dismissal exit: a free-text ground pushed onto the
-// phase item, read back by every later review dispatch, pulled off on
-// request. Untyped, so no guard stands between the walk and the write —
-// this pins that the plain push/pull/get route carries it at topic level.
-describe('dismissed_grounds — the per-topic do-not-report list', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupFixture('dismissed-grounds-');
-    writeWorkUnit(dir, 'overhaul', 'epic', {
-      phases: { research: { items: { alpha: { status: 'in-progress' } } } },
-    });
-  });
-  afterEach(() => cleanupFixture(dir));
-
-  const cost = 'Cost modelling for the vendor tier';
-  const region = 'Multi-region failover';
-
-  it('pushes at topic level, reads back, and pulls off on request', () => {
-    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']), '',
-      'absent until the first dismissal — the dispatch treats empty output as none');
-
-    assert.deepStrictEqual(runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]),
-      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', pushed: cost, length: 1 });
-    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', region]);
-    assert.deepStrictEqual(readWorkUnit(dir, 'overhaul').phases.research.items.alpha.dismissed_grounds,
-      [cost, region]);
-
-    assert.deepStrictEqual(runJson(dir, ['pull', 'overhaul.research.alpha', 'dismissed_grounds', region]),
-      { ok: true, path: 'overhaul.research.alpha', field: 'dismissed_grounds', removed: true, length: 1 });
-    assert.strictEqual(runOk(dir, ['get', 'overhaul.research.alpha', 'dismissed_grounds']),
-      JSON.stringify([cost], null, 2) + '\n');
-  });
-
-  it('is per-topic — a sibling topic keeps its own list', () => {
-    runJson(dir, ['set', 'overhaul.research.beta', 'status', 'in-progress']);
-    runJson(dir, ['push', 'overhaul.research.alpha', 'dismissed_grounds', cost]);
-    const items = readWorkUnit(dir, 'overhaul').phases.research.items;
-    assert.deepStrictEqual(items.alpha.dismissed_grounds, [cost]);
-    assert.strictEqual(items.beta.dismissed_grounds, undefined);
   });
 });

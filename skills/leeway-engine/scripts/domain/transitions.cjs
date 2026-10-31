@@ -30,8 +30,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
-  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
-  OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
+  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
@@ -161,26 +160,6 @@ function phaseItem(manifest, phase, topic) {
  * @property {string[]} warnings non-blocking failures (knowledge-base index)
  */
 
-// Research feeds discussion: while the same-named research is outstanding —
-// in flight, or parked as a stub — the discussion is held shut at its birth
-// (absent or parked) and at its reopen, for every work type; the menu's
-// research row is the way in. A discussion already in session resumes: the
-// entry gate is its door, and the conclusion refusal (completeTopic's waits)
-// is the backstop for research a peer session parks beneath it mid-session.
-
-/**
- * @param {object} manifest @param {string} phase @param {string} topic
- * @param {'start'|'reopen'} verb  the refused move
- */
-function assertResearchLanded(manifest, phase, topic, verb) {
-  if (phase !== 'discussion') return;
-  const status = outstandingResearch(manifest, topic);
-  if (!status) return;
-  throw new Error(
-    `discussion can't ${verb} on "${topic}" — ${outstandingResearchPhrase(status)}; research feeds discussion, so it lands first — the menu names the way in`,
-  );
-}
-
 // A plan is built from a settled record: while the same-named specification
 // is unsettled — not concluded, its input moved, or a source row no longer
 // incorporated — the plan is held shut at its birth and its reopen, for
@@ -201,12 +180,10 @@ function assertSpecSettled(manifest, phase, topic, verb) {
   );
 }
 
-// The map decides which of research/discussion a topic can be born into —
-// the same join the epic menu renders its rows from, so the engine is never
-// the permissive path around it. The gate is on birth alone: an in-progress
-// item resumes regardless (the map already shows that phase live), and
-// outstanding research always starts — research feeds discussion, so it is
-// the way in first.
+// The map decides whether a topic's discussion can be born — the same join
+// the epic menu renders its rows from, so the engine is never the permissive
+// path around it. The gate is on birth alone: an in-progress item resumes
+// regardless (the map already shows that phase live).
 
 /**
  * @param {object} manifest @param {string} phase @param {string} topic
@@ -217,14 +194,12 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
   const allowed = CONVERSATION_ACTIONS[/** @type {keyof typeof CONVERSATION_ACTIONS} */ (phase)];
   if (!allowed) return;
   if (existing && existing.status === 'in-progress') return;
-  if (phase === 'research' && existing && OUTSTANDING_RESEARCH_STATUSES.includes(existing.status ?? '')) return;
-  const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
-  if (!item) return;
-  const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
-  const next = computeNextAction(item.routing, lifecycle, research_state);
+  if (!phaseItems(manifest, 'discovery').some((i) => i.name === topic)) return;
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  const next = computeNextAction(lifecycle);
   if (next && allowed.includes(next)) return;
   throw new Error(
-    `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle, research_state, item.routing)}; the epic menu names its next step`,
+    `${phase} can't start on "${topic}" — ${lifecyclePhrase(lifecycle)}; the epic menu names its next step`,
   );
 }
 
@@ -264,10 +239,7 @@ function startTopic(cwd, workUnit, phase, topic) {
     } else if (existing && existing.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, existing));
     }
-    if (!existing || existing.status === 'unstarted') {
-      assertResearchLanded(manifest, phase, topic, 'start');
-      assertSpecSettled(manifest, phase, topic, 'start');
-    }
+    if (!existing || existing.status === 'unstarted') assertSpecSettled(manifest, phase, topic, 'start');
     assertMapAllowsStart(manifest, phase, topic, existing);
 
     let created = false;
@@ -315,14 +287,8 @@ function assertLegalTopicName(topic) {
  * a flag must land where a phase's start can clear it, and the series item
  * has none.
  * A `completed` item takes the flag (value = the upstream phase name,
- * consumed and cleared by the reconcile advisory — where the phase starts,
- * or inside a research/discussion session at its next check; an existing flag
- * is never clobbered) — and on the hop out of research so does an
- * in-progress discussion: research feeds discussion, and a discussion in
- * flight is the one that could otherwise conclude over research still to
- * land (the wait derivation holds its conclusion shut while it is
- * outstanding; once landed, the flag holds it until the session reads it).
- * Terminal items never take one. An `incorporated` source row on any non-terminal
+ * consumed and cleared by the reconcile advisory where the phase starts; an
+ * existing flag is never clobbered). Terminal items never take one. An `incorporated` source row on any non-terminal
  * spec item flips to `stale` regardless of the item's flag state — the
  * persistent record that the extraction predates the revision, cleared only
  * by the spec's own reconciliation.
@@ -343,9 +309,8 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
     const items = ph && typeof ph === 'object' ? ph.items : undefined;
     return items && typeof items === 'object' ? items : undefined;
   };
-  const takesFlag = phase === 'research' ? ['in-progress', 'completed'] : ['completed'];
   const flag = (p, name, item) => {
-    if (item && typeof item === 'object' && takesFlag.includes(item.status) && item.reconcile_needed === undefined) {
+    if (item && typeof item === 'object' && item.status === 'completed' && item.reconcile_needed === undefined) {
       item.reconcile_needed = phase;
       result.flagged.push({ phase: p, topic: name });
     }
@@ -372,9 +337,8 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
   const at = pipeline.indexOf(phase);
   // One hop to the next pipeline phase — walking past a derived slot
   // unconditionally: a reconcile flag must land where a phase's start can
-  // clear it, and a derived item has no start of its own. So a research reopen
-  // flags the discussion whatever the series between them holds, and the
-  // hop still ends at the first real phase — never past it.
+  // clear it, and a derived item has no start of its own, so the hop ends at
+  // the first real phase — never past it.
   for (let i = at + 1; at !== -1 && i < pipeline.length; i++) {
     const next = pipeline[i];
     if (DERIVED_PHASES.includes(next)) continue;
@@ -386,7 +350,7 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
 
 /**
  * @typedef {object} WaitRelease
- * @property {string} phase       the holder — the spawning research or discussion
+ * @property {string} phase       the holder — the spawning discussion
  * @property {string[]} released
  * @property {string[]} remaining
  */
@@ -458,16 +422,6 @@ function parkMessageItem(items, phase, topic) {
   return { status: before, created: false, status_before: before, dirty: false };
 }
 
-// The reconcile values a conversation must read in session before it
-// concludes — its upstream landed beneath it: the topic's research landed
-// (`research`, set by the hop out of research). The brief flag (`true`) and
-// the roadmap flag stay entry-time advisories, and every other phase's flag
-// is the phase start's alone.
-/** @type {Record<string, string>} */
-const LANDED_UPSTREAM = {
-  research: 'the topic\'s research landed beneath this conversation',
-};
-
 /**
  * The completion refusal's clauses — one per wait kind present, in the
  * derivation's order.
@@ -476,9 +430,6 @@ const LANDED_UPSTREAM = {
  */
 function waitClauses(blocking) {
   const clauses = [];
-  if (blocking.some((w) => w.kind === 'research')) {
-    clauses.push('awaits research on the topic — conclude the research to release the wait');
-  }
   const spec = blocking.find((w) => w.kind === 'specification');
   if (spec) {
     clauses.push(`awaits its specification (${specUnsettledPhrase(spec)}) — settle the specification to release the wait`);
@@ -494,11 +445,9 @@ function waitClauses(blocking) {
  * Complete a phase item: set `status: completed` and, when the phase's
  * artifact is knowledge-base indexed, index it (warn-don't-block). The item
  * must exist; a cancelled item must go through reactivate first; an item
- * holding a live wait — evidence it awaits, a discussion's outstanding
- * research, a plan's unsettled specification — refuses naming every wait;
- * a discussion carrying a landed-upstream flag
- * (`reconcile_needed: research`) refuses until the session reads
- * what landed and clears it. No git commit.
+ * holding a live wait — evidence it awaits, a plan's unsettled
+ * specification — refuses naming every wait. A discussion never completes
+ * here: it closes at its decided gate. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -508,6 +457,9 @@ function waitClauses(blocking) {
 function completeTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'completed');
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — each experiment concludes or is abandoned (experiment conclude/abandon), and the item closes itself when the last record ends');
+  if (phase === 'discussion') {
+    throw new Error('a discussion closes at its decided gate — `checklist close decided`, then `render decided` and the yes, which runs `decided yes`');
+  }
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -534,19 +486,10 @@ function completeTopic(cwd, workUnit, phase, topic) {
       }
     }
     // A wait holds the conclusion shut engine-side — the phase raised a
-    // question it needs answered, or stands on research still to land.
+    // question it needs answered, or stands on a record still unsettled.
     const blocking = waits(manifest, phase, topic);
     if (blocking.length > 0) {
       throw new Error(`${phase} "${topic}" ${waitClauses(blocking).join('; and ')}`);
-    }
-    // A landed upstream the conversation has not read holds it shut too —
-    // the flag is cleared by the session's own read (the reconcile
-    // advisory), never by the completion.
-    const landed = phase === 'discussion' && typeof item.reconcile_needed === 'string'
-      ? LANDED_UPSTREAM[item.reconcile_needed]
-      : undefined;
-    if (landed) {
-      throw new Error(`${phase} "${topic}" carries reconcile_needed: ${item.reconcile_needed} — ${landed}; read what landed into the session and clear the flag before concluding`);
     }
     item.status = 'completed';
 
@@ -595,6 +538,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
 function reopenTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
+  if (phase === 'discussion') {
+    throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+  }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -610,7 +556,6 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     if (item.status !== 'completed') {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
     }
-    assertResearchLanded(manifest, phase, topic, 'reopen');
     assertSpecSettled(manifest, phase, topic, 'reopen');
     item.status = 'in-progress';
     const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
@@ -710,14 +655,8 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'proposed') {
       throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
     }
-    if (item.status === 'unstarted') {
-      throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic to drain them first`);
-    }
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
-    }
-    if (item.status === 'postponed') {
-      throw new Error(postponedRefusal(phase, topic));
     }
     if (item.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, item));
@@ -725,9 +664,6 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     const items = manifest.phases[phase].items;
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
-    }
-    if (items[by].status === 'unstarted') {
-      throw new Error(`${phase} item "${by}" is unstarted — a stub holding messages cannot absorb other topics; start it first`);
     }
     item.status = 'superseded';
     item.superseded_by = by;
@@ -744,8 +680,8 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
 
 // ---------------------------------------------------------------------------
 // cancel / reactivate — topic-level, one unit per stage. The Discovery unit
-// is the map row with everything under its name: research, discussion, and
-// the experiment series. The Definition unit is the specification with its
+// is the map row with everything under its name: its discussion and the
+// experiment series. The Definition unit is the specification with its
 // plan. A later stage locks the earlier — a started specification holds its
 // source topics, code under a specification's name holds the specification
 // — and a cancel never rolls through a stage boundary: the refusal names
@@ -766,7 +702,7 @@ const UNIT_STAGES = Object.keys(UNIT_PHASES);
  */
 function assertUnitStage(verb, phase) {
   if (!UNIT_STAGES.includes(phase)) {
-    throw new Error(`${verb} is topic-level per stage — discovery (the map row with its research, discussion, and experiments) or specification (with its planning)`);
+    throw new Error(`${verb} is topic-level per stage — discovery (the map row with its discussion and experiments) or specification (with its planning)`);
   }
   return /** @type {'discovery'|'specification'} */ (phase);
 }
@@ -926,7 +862,7 @@ function indexRestored(cwd, workUnit, topic, restored, warnings) {
 /** @param {object} manifest @param {string} topic */
 function assertDiscoveryUnit(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+    throw new Error(`no topic "${topic}" — nothing on the map and no discussion item of that name`);
   }
 }
 
@@ -1200,8 +1136,7 @@ function postponedSources(cwd, manifest, workUnit, topic) {
   const brief = row && typeof row.brief_path === 'string' && row.brief_path.trim() !== '' ? row.brief_path : null;
   return [
     ...(brief ? [`${workUnit}/${brief}`] : []),
-    `${workUnit}/research/${topic}.md`,
-    `${workUnit}/discussion/${topic}.md`,
+    `${workUnit}/topics/${topic}/log.md`,
   ].filter((rel) => fs.existsSync(statePath(cwd, rel)));
 }
 

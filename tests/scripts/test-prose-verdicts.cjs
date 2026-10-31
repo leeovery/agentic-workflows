@@ -8,61 +8,57 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, afterEach } = require('node:test');
+const { describe, it, afterEach, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+// The harness is pointed at a temp folder before it loads, and the runner
+// inherits it, so the store's real entries are never touched and nothing
+// lands in the repository. Each test starts from an empty store.
+const PROSE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-verdicts-'));
+process.env.LEEWAY_PROSE_ROOT = PROSE_ROOT;
+after(() => fs.rmSync(PROSE_ROOT, { recursive: true, force: true }));
+
 const verdicts = require('../prose/lib/verdicts.cjs');
 
-// Ids no case can carry — `_`-prefixed directories under cases/ are never
-// cases — so the store's real entries are never touched. The sweep takes a
-// failed run's scraps too, so one red run never reddens the next.
-const SCRATCH = '_scratch-verdict-';
-const scratch = (name) => `${SCRATCH}${name}`;
-
-afterEach(() => {
-  if (!fs.existsSync(verdicts.VERDICTS_DIR)) return;
-  for (const f of fs.readdirSync(verdicts.VERDICTS_DIR)) {
-    if (f.startsWith(SCRATCH)) fs.rmSync(path.join(verdicts.VERDICTS_DIR, f), { force: true });
-  }
-});
+afterEach(() => fs.rmSync(verdicts.VERDICTS_DIR, { recursive: true, force: true }));
 
 const PASS = 'CASE: x\nVERDICT: PASS\n';
 const FAIL = 'CASE: x\nVERDICT: FAIL\n';
 
 describe('the verdict store', () => {
   it('reads back what was recorded, byte for byte', () => {
-    const id = scratch('read-back');
+    const id = 'read-back';
     verdicts.recordVerdict(id, PASS);
     assert.strictEqual(verdicts.readVerdict(id), PASS);
   });
 
   it('keeps only the latest verdict a case recorded', () => {
-    const id = scratch('overwrite');
+    const id = 'overwrite';
     verdicts.recordVerdict(id, 'placeholder\n');
     verdicts.recordVerdict(id, FAIL);
     assert.strictEqual(verdicts.readVerdict(id), FAIL);
   });
 
   it('clears each named case, and clearing a case with none is no error', () => {
-    const a = scratch('clear-a');
-    const b = scratch('clear-b');
-    const kept = scratch('clear-kept');
+    const a = 'clear-a';
+    const b = 'clear-b';
+    const kept = 'clear-kept';
     verdicts.recordVerdict(a, PASS);
     verdicts.recordVerdict(b, FAIL);
     verdicts.recordVerdict(kept, PASS);
-    verdicts.clearVerdicts([a, b, scratch('clear-never')]);
+    verdicts.clearVerdicts([a, b, 'clear-never']);
     assert.strictEqual(verdicts.readVerdict(a), null);
     assert.strictEqual(verdicts.readVerdict(b), null);
     assert.strictEqual(verdicts.readVerdict(kept), PASS, 'a case not named keeps its verdict');
   });
 
   it('reports each case in the order named, under its own marker, and says so where none is recorded', () => {
-    const later = scratch('zz-recorded');
-    const missing = scratch('aa-missing');
+    const later = 'zz-recorded';
+    const missing = 'aa-missing';
     verdicts.recordVerdict(later, PASS);
     assert.strictEqual(verdicts.reportVerdicts([later, missing]),
       `=== ${later} ===\nCASE: x\nVERDICT: PASS\n\n`
@@ -70,7 +66,7 @@ describe('the verdict store', () => {
   });
 
   it('a write that dies part-way leaves the earlier verdict whole and no scrap beside it', () => {
-    const id = scratch('atomic');
+    const id = 'atomic';
     verdicts.recordVerdict(id, PASS);
     const write = fs.writeFileSync;
     fs.writeFileSync = (file, data, ...rest) => {

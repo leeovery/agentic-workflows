@@ -134,7 +134,7 @@ function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null
  * `experiments` counts top-level records only — a split is worked inside its
  * parent, so a series E1, E1.1, E2 is two experiments.
  * @param {string} feature @param {string} epic @param {string} topic
- * @param {{discussion: string, research?: string, experiments?: number, seeds?: number, imports?: number}} facts
+ * @param {{discussion: string, experiments?: number, seeds?: number, imports?: number}} facts
  * @returns {string}
  */
 function absorbSummary(feature, epic, topic, facts) {
@@ -144,7 +144,6 @@ function absorbSummary(feature, epic, topic, facts) {
     ['Topic:', topic],
     ['Discussion:', `[${facts.discussion}]`],
   ];
-  if (facts.research !== undefined) rows.push(['Research:', `[${facts.research}]`]);
   if (facts.experiments) rows.push(['Experiments:', `${facts.experiments} experiment(s)`]);
   if (facts.seeds) rows.push(['Seed:', `${facts.seeds} file(s) (origin)`]);
   if (facts.imports) rows.push(['Imports:', `${facts.imports} file(s)`]);
@@ -152,7 +151,6 @@ function absorbSummary(feature, epic, topic, facts) {
   const lines = ['Absorb Summary', ''];
   for (const [label, value] of rows) lines.push(`  ${label.padEnd(width)}  ${value}`);
   lines.push('', '  Actions:', '  • Move discussion file to epic');
-  if (facts.research !== undefined) lines.push('  • Move research file to epic');
   if (facts.experiments) lines.push('  • Move experiment series to epic');
   if (facts.seeds) lines.push('  • Move seed file(s) to epic');
   if (facts.imports) lines.push('  • Move import file(s) to epic');
@@ -179,7 +177,6 @@ function absorbReceipt(epic, topic, moved, { warn = false, experiments = 0, rena
     '',
     '  • Discussion: moved',
   ];
-  if (moved.includes('research')) lines.push('  • Research: moved');
   if (experiments > 0) lines.push(`  • Experiments: ${experiments} moved`);
   if (moved.includes('seeds')) lines.push('  • Seed: moved');
   if (moved.includes('imports')) lines.push('  • Imports: moved');

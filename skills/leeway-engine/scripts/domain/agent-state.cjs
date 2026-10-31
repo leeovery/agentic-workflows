@@ -14,8 +14,8 @@
 // IS its completion signal (no skeleton files, no frontmatter).
 //
 // Lifecycle per row: in-flight → pending → acknowledged → incorporated,
-// with `announced` (user told the file exists) and `surfaced[]` (finding
-// ids raised so far) tracked on acknowledged rows. `scan` is the one read
+// with `surfaced[]` (finding ids raised so far) tracked on acknowledged
+// rows. `scan` is the one read
 // the surfacing protocol and conclusion gates need: it promotes finished
 // rows and answers with a decision-ready snapshot. Each row names the
 // Claude process and conversation that dispatched it, as a presence record
@@ -53,11 +53,6 @@ const AGENT_KINDS = [
 ];
 
 const AGENT_STATUSES = ['in-flight', 'pending', 'acknowledged', 'incorporated'];
-
-// Research carries the deep dive alone; a review — the clean-slate read that
-// reports gaps — is discussion's instrument. A row of any other kind in a
-// research store is closed: scan never buckets it and no verb addresses it.
-const RESEARCH_KINDS = ['deep-dive'];
 
 // Review-arming backoff: review n+1 needs min(n, MOVEMENT_CAP) of the
 // topic's moves since the last review or closing pass. The cap keeps late reviews permanently reachable
@@ -101,18 +96,10 @@ function validatePhase(phase) {
   }
 }
 
-/** @param {string} phase @param {string} kind */
-function phaseCarries(phase, kind) {
-  return phase !== 'research' || RESEARCH_KINDS.includes(kind);
-}
-
-/** @param {string} kind @param {string} phase */
-function validateKind(kind, phase) {
+/** @param {string} kind */
+function validateKind(kind) {
   if (!AGENT_KINDS.includes(kind)) {
     throw new Error(`Invalid agent kind "${kind}". Must be one of: ${AGENT_KINDS.join(', ')}`);
-  }
-  if (!phaseCarries(phase, kind)) {
-    throw new Error(`research carries no ${kind} — the deep dive is the phase's instrument (--kind deep-dive)`);
   }
 }
 
@@ -147,23 +134,14 @@ function saveState(cwd, workUnit, phase, topic, state) {
 }
 
 /**
- * The rows a phase's verbs see — a row of a kind the phase does not carry is
- * closed and invisible.
- * @param {string} phase @param {{agents: Record<string, any>}} state
- */
-function phaseRows(phase, state) {
-  return Object.values(state.agents).filter((r) => phaseCarries(phase, r.kind));
-}
-
-/**
  * The row addressed by id, or a loud miss naming what exists.
  * @param {{agents: Record<string, any>}} state
  * @param {string} phase @param {string} topic @param {string} id
  */
 function requireRow(state, phase, topic, id) {
   const row = state.agents[id];
-  if (!row || !phaseCarries(phase, row.kind)) {
-    const siblings = phaseRows(phase, state).map((r) => r.id);
+  if (!row) {
+    const siblings = Object.keys(state.agents);
     const hint = siblings.length ? ` Known agents there: ${siblings.join(', ')}.` : ' No agents dispatched there.';
     throw new Error(`No agent "${id}" for ${phase}/${topic}.${hint}`);
   }
@@ -332,7 +310,7 @@ function gapReviewSince(cwd, workUnit, topic) {
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function agentRows(cwd, workUnit, phase, topic) {
-  return phaseRows(phase, loadState(cwd, workUnit, phase, topic)).map(publicRow);
+  return Object.values(loadState(cwd, workUnit, phase, topic).agents).map(publicRow);
 }
 
 /**
@@ -368,7 +346,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
-  validateKind(kind, phase);
+  validateKind(kind);
   for (const label of labels) {
     if (typeof label !== 'string' || label === '' || /[\/.]/.test(label)) {
       throw new Error(`Invalid label ${JSON.stringify(label)}: a short slash- and dot-free slug`);
@@ -469,7 +447,6 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         set: nnn,
         ...(labels.length ? { label: labels[i] } : {}),
         status: 'in-flight',
-        announced: false,
         findings: [],
         surfaced: [],
         created,
@@ -509,7 +486,6 @@ function publicRow(row) {
     status: row.status,
     set: row.set,
     created: row.created,
-    announced: row.announced,
     findings: row.findings,
     surfaced: row.surfaced,
     remaining: unsurfaced(row),
@@ -540,7 +516,7 @@ function agentsLeft(cwd, workUnit, phase, topic) {
   /** @type {{landed: {id: string, file: string}[], lost: string[]}} */
   const left = { landed: [], lost: [] };
   const untaken = derivationRows(dir)
-    .filter((row) => phaseCarries(phase, row.kind) && (row.status === 'in-flight' || row.status === 'pending'))
+    .filter((row) => row.status === 'in-flight' || row.status === 'pending')
     .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
   for (const row of untaken) {
     const alive = ownerAlive(row, startOf);
@@ -562,7 +538,7 @@ function agentsLeft(cwd, workUnit, phase, topic) {
 function runningAgents(cwd, workUnit, phase, topic) {
   const startOf = startTimeReader();
   return derivationRows(agentDir(cwd, workUnit, phase, topic))
-    .filter((row) => phaseCarries(phase, row.kind) && row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit) && ownerAlive(row, startOf))
+    .filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit) && ownerAlive(row, startOf))
     .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id))
     .map(({ id, kind }) => ({ id, kind }));
 }
@@ -580,7 +556,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
   validateSegment(topic, 'topic');
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
-    const rows = phaseRows(phase, state)
+    const rows = Object.values(state.agents)
       .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
 
     let promoted = false;
@@ -636,27 +612,6 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     }
     row.findings = findings;
     row.status = findings.length === 0 ? 'incorporated' : 'acknowledged';
-    saveState(cwd, workUnit, phase, topic, state);
-    return { work_unit: workUnit, phase, topic, ...publicRow(row) };
-  });
-}
-
-/**
- * Mark the row announced — the user has been told the report exists.
- * @param {string} cwd @param {string} workUnit @param {string} phase
- * @param {string} topic @param {string} id
- */
-function announceAgent(cwd, workUnit, phase, topic, id) {
-  requireWorkUnit(cwd, workUnit);
-  validatePhase(phase);
-  validateSegment(topic, 'topic');
-  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
-    const state = loadState(cwd, workUnit, phase, topic);
-    const row = requireRow(state, phase, topic, id);
-    if (row.status !== 'acknowledged') {
-      throw new Error(`Agent "${id}" is ${row.status} — only an acknowledged row announces`);
-    }
-    row.announced = true;
     saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
   });
@@ -738,7 +693,7 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
 function closeInFlight(cwd, workUnit, phase, topic) {
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
-    const closing = phaseRows(phase, state).filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit));
+    const closing = Object.values(state.agents).filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit));
     for (const row of closing) row.status = 'incorporated';
     if (closing.length > 0) saveState(cwd, workUnit, phase, topic, state);
     return closing.map((row) => row.id);
@@ -780,7 +735,6 @@ module.exports = {
   dispatchAgent,
   scanAgents,
   ackAgent,
-  announceAgent,
   surfaceFinding,
   incorporateAgent,
   closeInFlight,

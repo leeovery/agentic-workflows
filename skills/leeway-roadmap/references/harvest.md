@@ -24,7 +24,7 @@ Read out the **capability-grain chunks** the exploration named — each one thin
 
 Sort the chunks into horizons using the conversation's own staging language, crystallised into named horizons — existing ones where they fit, new ones where the conversation named a stage the map lacks. "Someday" is the conventional tail for real-but-unscheduled. When no staging language emerged, offer **Now / Next / Later** as a suggested default set. Position carries the semantics — order the horizons as the user talks about them.
 
-An item whose ground already sits on the map is not a new item: deepenings of a **waiting** item fold into its summary (an `Edits` entry); a thread that deepened a **pulled** item's ground flags the join instead (`engine roadmap flag {name}` — guidelines **C**).
+An item whose ground already sits on the map is not a new item: deepenings of a **waiting** item fold into its summary (an `Edits` entry); a thread that deepened a **pulled** item's ground stays in the session's log (guidelines **C**).
 
 #### If no new items emerged
 

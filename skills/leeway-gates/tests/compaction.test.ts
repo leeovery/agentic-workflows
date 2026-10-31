@@ -294,7 +294,7 @@ describe('the record of the notes the mod handed up', () => {
   })
 
   test('keeps every note handed up before', async ($, on) => {
-    const earlier = { 'The conversation was just compacted. An earlier note.': 'payments › research › ledger' }
+    const earlier = { 'The conversation was just compacted. An earlier note.': 'payments › experiment › ledger' }
     const calls = world(on, { recorded: JSON.stringify(earlier) })
 
     await $.session.compact(compactionOf())

@@ -30,7 +30,6 @@ function featureManifest(overrides = {}) {
     imports: [{ path: 'imports/notes.md', imported_at: '2026-06-01T09:00:00Z' }],
     seeds: [{ path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-01T09:00:00Z' }],
     phases: {
-      research: { items: { exploration: { status: 'completed' } } },
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
     },
     ...overrides,
@@ -46,8 +45,8 @@ function setupFixture(manifest = featureManifest()) {
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
   writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/research/exploration.md', '# Exploration\n');
-  writeFile(project, '.leeway/auth-flow/discussion/auth-flow.md', '# Discussion\n');
+  writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion — the conversation, never indexed\n');
+  writeFile(project, '.leeway/.knowledge/records/auth-flow/auth-flow.md', '# Auth Flow — the decided record\n');
   writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
   writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
   commitAll(project, 'init');
@@ -68,9 +67,8 @@ const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env })
 
 /** The feature's artifacts the knowledge base holds, state-relative. */
 const UNIT_FILES = [
-  'auth-flow/discussion/auth-flow.md',
+  '.knowledge/records/auth-flow/auth-flow.md',
   'auth-flow/imports/notes.md',
-  'auth-flow/research/exploration.md',
   'auth-flow/seeds/seed.md',
 ];
 
@@ -122,7 +120,6 @@ describe('engine workunit pivot — happy path', () => {
       ok: true,
       work_unit: 'auth-flow',
       work_type: 'epic',
-      routing: 'research',
       committed: shortHead(fix),
       warnings: [],
     });
@@ -143,7 +140,7 @@ describe('engine workunit pivot — happy path', () => {
     // Backfill map item: routing + source only — no summary/description
     // (summary-backfill drafts them), never a status field.
     assert.deepStrictEqual(m.phases.discovery.items, {
-      'auth-flow': { routing: 'research', source: 'discovery' },
+      'auth-flow': { routing: 'discussion', source: 'discovery' },
     });
     // The project-manifest registration flips too; siblings untouched.
     assert.deepStrictEqual(readProjectManifest(fix).work_units, {
@@ -161,23 +158,10 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
-    // re-indexes the unit's artifacts (completed topics, imports, seeds, …),
+    // re-indexes the unit's artifacts (decided records, imports, seeds, …),
     // every chunk now the epic's.
     assert.deepStrictEqual(indexedFiles(fix.project), UNIT_FILES);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['epic']);
-  });
-
-  it('routes to discussion when the feature never did research', () => {
-    const m = featureManifest();
-    delete m.phases.research;
-    fix = setupFixture(m);
-    const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
-
-    assert.strictEqual(res.routing, 'discussion');
-    assert.deepStrictEqual(readManifest(fix, 'auth-flow').phases.discovery.items['auth-flow'], {
-      routing: 'discussion',
-      source: 'discovery',
-    });
   });
 
   it('registers an unregistered legacy unit rather than skipping it', () => {
@@ -224,7 +208,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
 
   it('refuses a re-run: the topic is already on the discovery map', () => {
     const m = featureManifest();
-    m.phases.discovery = { items: { 'auth-flow': { routing: 'research', source: 'discovery' } } };
+    m.phases.discovery = { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } };
     fix = setupFixture(m);
     const before = snapshot(fix);
     assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow']).error, /already on the discovery map/);

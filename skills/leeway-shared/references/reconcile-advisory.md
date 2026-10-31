@@ -1,10 +1,10 @@
 # Reconcile Advisory
 
-*Shared reference. Loaded where a phase starts — by the research, discussion, specification, planning, implementation and review skills — and by the research and discussion sessions at their landed-input checks.*
+*Shared reference. Loaded where a phase starts — by the specification, planning, implementation and review skills.*
 
 ---
 
-Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the caller's phase, entered or in session, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag — the research branch alone holds it while research a peer parked beneath an entry is still outstanding.
+Caller passes `work_type`, `work_unit`, `topic`, and `downstream_phase` — the caller's phase, entered or in session, whose item may carry the flag. The flag's value names what moved upstream and keys the branch below. Every populated branch surfaces a non-blocking advisory (never a STOP gate) and clears the flag.
 
 Read the reconcile flag on the item:
 
@@ -17,101 +17,6 @@ node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.{d
 #### If output is empty (no reconcile pending)
 
 The common case. No output.
-
-→ Return to caller.
-
-#### If output is `research` (the topic's research moved)
-
-Research feeds this work. The topic's research moved after this work began — a message arrived in its mailbox, or it reopened — and what it finds may unseat decisions here. Whether it landed, closed, or was parked again decides what happens here; read its status:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
-```
-
-**If `completed`:**
-
-The research has landed. Surface the advisory, read the topic's research file fresh into context, and clear the flag. What it re-examines is carried into the session as ground to put to the user — decisions here are theirs to revisit, and nothing on the discussion map moves until they do.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ This topic's research moved after this work began. Re-read
-    it — decisions here may need revisiting against what it
-    found. Nothing has been overwritten.
-```
-
-Read `.workflows/{work_unit}/research/{topic}.md` in full, then clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
-
-→ Return to caller.
-
-**If `in-progress` or `unstarted` (a peer session parked research on this topic since this work last read it):**
-
-Leave the flag in place — the entry or session check that finds the research landed clears it — and say so:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ Research on this topic moved again since this work last read
-    it — a peer session parked it. Decisions here may rest on
-    ground it re-examines, and this work cannot conclude until it
-    lands. Nothing has been overwritten.
-```
-
-→ Return to caller.
-
-**Otherwise (`cancelled`, `superseded`, or no research item — the lineage closed with nothing landed):**
-
-Nothing moved beneath this work after all. Surface the one-line advisory, then clear the flag:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ The research that moved beneath this work was closed without
-    landing — nothing here needs revisiting.
-```
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
-
-→ Return to caller.
-
-#### If output is `experiment` (an experiment wait released)
-
-An evidence wait this topic's conversation held has released since this item last moved — an experiment concluded with its verdict, or was abandoned with its reason (a cancel abandons a series' open records the same way, its reason on each row). Surface the advisory, render the register, read what the release left behind, and clear the flag.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ An experiment wait on this topic released. Read what stands
-    on the register before settling anything it touches —
-    experiments measure; conversations decide. Nothing has been
-    overwritten.
-```
-
-Render the series register and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
-```
-
-Read the series — each record's `{id}` and `{slug}` come from this read, never from the rendered register:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
-```
-
-Then read the evidence: every terminal top-level row (`concluded` or `abandoned`, id without a dot — a parent's verdict synthesises its subs, so sub reports are the parent's business) gets its report read in full at `.leeway/{work_unit}/topics/{topic}/experiments/{id}-{slug}/report.md`. Present each verdict as evidence the conversation now weighs — the verdict is the pre-registered rule's mechanical outcome, and the conversation can override it. An abandoned record surfaces its reason from the register — a partial report, or none at all, is what abandonment leaves — and its waiting point reverts to open: the conversation settles it another way or spawns a successor. When a waiting point settles, its awaiting note in the document is updated with a dated entry recording how — an awaiting line never stands in present tense over the settlement that closed it.
-
-Clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
 
 → Return to caller.
 
@@ -156,7 +61,7 @@ Surface the advisory. The `stale` rows themselves stay — the session reconcile
     decisions. Nothing has been overwritten.
 ```
 
-Read each stale source's discussion file (`.workflows/{work_unit}/discussion/{source-name}.md`) in full, then clear the flag:
+Read each stale source's record in full — `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {source-name}` — then clear the flag:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
@@ -235,53 +140,6 @@ The implementation reopened and changed after this review concluded. Surface the
     Review the changed scope — the prior verdict predates it.
     Nothing has been overwritten.
 ```
-
-Clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
-
-→ Return to caller.
-
-#### If output is `roadmap` (the product record deepened beneath this work)
-
-A roadmap session materially deepened this item's ground after the work started. The joined roadmap item's `sources` name the record — read the roadmap state, find the item whose row's `work_unit` and `topic` name this work, and read its most recent source log fresh into context. Then clear the flag.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ The product-level record deepened this ground after the
-    work started. Re-read the roadmap session it points at —
-    decisions here may need revisiting. Nothing has been
-    overwritten.
-```
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs roadmap state
-```
-
-Read the newest log the item's `sources` names (paths are relative to `.workflows/`), then clear the flag:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
-```
-
-→ Return to caller.
-
-#### Otherwise (brief reconcile flagged)
-
-A discovery brief was written or regenerated after this work started. Surface the advisory, re-read the regenerated brief into context, and clear the flag.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ Discovery context changed since this work started.
-    Reconciling against the latest discovery brief —
-    review and update as needed. Nothing has been overwritten.
-```
-
-→ Load **[read-brief-context.md](read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 Clear the flag:
 

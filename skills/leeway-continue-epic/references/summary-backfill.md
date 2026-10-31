@@ -20,20 +20,24 @@ The caller passes:
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery items missing summary or description. Drafting them from the existing research and discussion files for review.
+> Discovery items missing summary or description. Drafting them from each topic's record for review.
 ```
 
 For each item in `items_to_recover`:
 
 - Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
-- If `routing` is `research`: read `.workflows/{work_unit}/research/{item.name}.md`
-- If `routing` is `discussion`: read `.workflows/{work_unit}/discussion/{item.name}.md`
-- If the file is missing or empty (rare — the topic exists in the manifest but the file is gone), record `derived_summary: null` and `derived_description: null` and a note `(source file missing)` for that item
+- Read the topic's record:
 
-For each readable file:
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {item.name}
+  ```
 
-- If `item.needs_summary`, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal. Attach as `item.derived_summary`.
-- If `item.needs_description`, derive a paragraph or two of richer context — what the topic covers, why it surfaced, key dimensions. Use the file's body content (not just headings). Attach as `item.derived_description`.
+- If the record holds nothing, set `derived_summary: null` and `derived_description: null` and a note `(no record)` for that item
+
+For each record that holds entries:
+
+- If `item.needs_summary`, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the record's headings and first entries as the primary signal. Attach as `item.derived_summary`.
+- If `item.needs_description`, derive a paragraph or two of richer context — what the topic covers, why it surfaced, key dimensions. Use the record's entries (not just headings). Attach as `item.derived_description`.
 - If a field is already populated, leave its current value in place and skip derivation for that field.
 
 → Proceed to **B. Batch Review**.
@@ -42,7 +46,7 @@ For each readable file:
 
 Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
-Write the drafted summaries to `.workflows/.cache/{work_unit}/discovery/summaries.json` with the Write tool — one entry per item whose `needs_summary` is true, keyed by its name, its `derived_summary` or `null` where the source file is missing:
+Write the drafted summaries to `.workflows/.cache/{work_unit}/discovery/summaries.json` with the Write tool — one entry per item whose `needs_summary` is true, keyed by its name, its `derived_summary` or `null` where the record holds nothing:
 
 ```json
 {"summaries": {"{item.name}": "{item.derived_summary}"}}
@@ -106,7 +110,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render summary-backfill-gat
 
 ## D. Write and Commit
 
-**If any item's needed field is still null** (source file missing, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever. Write the names to `.workflows/.cache/{work_unit}/discovery/unsourced.json` with the Write tool (`{"names": ["{item.name}", …]}` — every item whose derived field is still null), then render the gate:
+**If any item's needed field is still null** (no record, nothing provided via the edit loop), give it an exit — otherwise it re-triggers this flow on every epic entry forever. Write the names to `.workflows/.cache/{work_unit}/discovery/unsourced.json` with the Write tool (`{"names": ["{item.name}", …]}` — every item whose derived field is still null), then render the gate:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant unsourced --file .workflows/.cache/{work_unit}/discovery/unsourced.json

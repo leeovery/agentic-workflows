@@ -49,7 +49,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
   it('fails a walk that wrote first and called the engine afterwards', () => {
     const rows = [
       wrote('./.workflows/pay/discussion/pay.md'),
-      bash(`${ENGINE} discussion-map set pay pay x decided`),
+      bash(`${ENGINE} ledger ask pay.discussion.pay`),
     ];
     const [result] = invariants.check(rows, declared);
     assert.equal(result.ok, false);
@@ -804,10 +804,6 @@ describe('entry points — where a walk may begin', () => {
   it('rejects any other navigation skill — always invoked by leeway, never cold', () => {
     const [error] = cases.entryErrors('leeway-continue-linear');
     assert.match(error, /not somewhere a session starts/);
-  });
-
-  it('rejects a skill only ever opened in place — the legacy research split, from the epic menu', () => {
-    assert.match(cases.entryErrors('leeway-legacy-research-split')[0], /not somewhere a session starts/);
   });
 
   it('rejects the bridge — always invoked as a phase ends', () => {

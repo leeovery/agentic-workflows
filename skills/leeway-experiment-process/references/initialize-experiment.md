@@ -22,7 +22,7 @@ The freeze has not happened — the design is still being shaped (`conceived`: n
 
 ## B. Read the Spawning Conversation
 
-The provenance names the discussion and topic the question came from. That document is mid-flight — unconcluded and unindexed — so it is read on disk, in full, never queried: `.leeway/{work_unit}/discussion/{topic}.md`.
+The provenance names the discussion and topic the question came from. That conversation is mid-flight — unconcluded and unindexed — so it is read whole, never queried: its record, `node .claude/skills/leeway-engine/scripts/engine.cjs ledger record {work_unit} {topic}`, and its log, `.leeway/{work_unit}/topics/{topic}/log.md`.
 
 Then the linked inputs:
 
@@ -30,9 +30,7 @@ Then the linked inputs:
 
 → Load **[read-brief-context.md](../../leeway-shared/references/read-brief-context.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`.
 
-**If the topic's research is completed** (read `{work_unit}.research.{topic} status` via `engine manifest get`): read `.leeway/{work_unit}/research/{topic}.md` in full — its sightings are the hunches this experiment turns into dependable numbers, never evidence in their own right.
-
-→ Proceed to **C. Route**.
+→ On return, proceed to **C. Route**.
 
 ## C. Route
 

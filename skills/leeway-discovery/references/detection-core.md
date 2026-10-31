@@ -13,7 +13,7 @@ These rules apply only to the work-type decision during shaping (Step 4) — a o
 Two levels, gathered simultaneously, committed in dependency order:
 
 - **Macro / work type** — *what kind of work is this?* (epic / feature / bugfix / quick-fix / cross-cutting — or none: a product-altitude read routes out to the roadmap before any unit exists). Resolved first.
-- **Micro / topic** — topic existence (one coherent thing vs many) and, where the type has it, per-topic routing. For example, you cannot route an epic's topics, or choose research-vs-discussion for a feature or cross-cutting concern, until you know which it is.
+- **Micro / topic** — topic existence (one coherent thing vs many) and, where the type has it, per-topic routing. For example, you cannot route an epic's topics until you know it is one.
 
 **Gather freely; commit in order.** Work-type cues and topic seeds co-emerge in the same breath — never sequence the *conversation* into "first interrogate type, then topics." Only *commitment* is ordered.
 
@@ -73,7 +73,7 @@ You are confident-enough-to-**surface** a tentative read when: multiple convergi
 - *"I'm hearing a few distinct things — this might be more than one feature. Want to pull on that or stay focused?"*
 - *"You mentioned X — that feels separate from what we're shaping. Surface to inbox for later?"*
 
-**The explicit shape question** — when shape questions are exhausted but ambiguity remains, and the next natural question would drop into substance (research / decision / investigation), ask the user directly to disambiguate rather than fishing:
+**The explicit shape question** — when shape questions are exhausted but ambiguity remains, and the next natural question would drop into substance (decision / investigation), ask the user directly to disambiguate rather than fishing:
 - *"This could be fixing something currently broken, or adding something new that doesn't exist yet. Which is closer?"*
 - *"Does this feel like one focused thing, or several connected things?"*
 
@@ -115,7 +115,7 @@ If the user accepts, invoke the matching capture skill (`/leeway-log-idea`, `/le
 
 While you're determining the type, you're shaping the work, not resolving it. Substance — mechanism, feasibility, design decisions, root cause — belongs to the phase the work routes into. If the conversation tunnels into it, anchor and return: note the thread for the right later phase, then keep shaping.
 
-> *"That's the kind of thing we'll get into once this is set up — hold that thread, we'll pick it up in research / discussion / investigation. For now, let's pin down what this is."*
+> *"That's the kind of thing we'll get into once this is set up — hold that thread, we'll pick it up in discussion / investigation. For now, let's pin down what this is."*
 
 This is determination discipline; it doesn't carry past the commit (per the scope note above). It governs every type — and since the single-phase types route straight out once the type is settled, it is the whole of their discovery.
 

@@ -32,7 +32,6 @@ const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 // The skill each phase runs in — the one a handoff into the phase lands on.
 /** @type {Record<string, string>} */
 const PHASE_SKILLS = {
-  research: 'leeway-research-process',
   experiment: 'leeway-experiment-process',
   discussion: 'leeway-discussion-process',
   investigation: 'leeway-investigation-process',
@@ -176,8 +175,8 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-research-process', 'epic', 'fumi', 'payments'])).line,
-      '→ Research · payments');
+    assert.strictEqual(payloadOf(carried(dir, ['leeway-discussion-process', 'epic', 'fumi', 'payments'])).line,
+      '→ Discussion · payments');
   });
 
   it('the skill named as its slash command — a menu\'s stored route as it stands — answers as the bare name does', () => {
@@ -337,7 +336,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {
-    for (const skill of ['leeway-help', 'leeway', 'leeway-bridge', 'leeway-continue-linear', 'leeway-legacy-research-split', 'leeway-log-idea', 'leeway-nonsense']) {
+    for (const skill of ['leeway-help', 'leeway', 'leeway-bridge', 'leeway-continue-linear', 'leeway-research-process', 'leeway-log-idea', 'leeway-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: leeway-discovery, `));
     }
   });
@@ -394,7 +393,7 @@ describe('engine handoff — refusals', () => {
   it('the epic menu refuses a unit that is no epic, a phase outside the epic\'s, and an unknown outcome', () => {
     refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
-    refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|research\|experiment\|discussion\|specification\|planning\|implementation\|review — got "investigation"$/);
+    refused(dir, ['leeway-continue-epic', 'fumi', 'investigation', 'completed'], /^the phase must be one of discovery\|experiment\|discussion\|specification\|planning\|implementation\|review — got "investigation"$/);
     refused(dir, ['leeway-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|paused\|cancelled\|postponed — got "abandoned"$/);
   });
 

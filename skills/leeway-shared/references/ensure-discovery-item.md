@@ -1,6 +1,6 @@
 # Ensure Discovery Item
 
-*Shared reference. Loaded by the epic menu's `d`/`r` doors (`leeway-continue-epic`), `leeway-research-process`, and `leeway-discussion-process`.*
+*Shared reference. Loaded by the epic menu's `d` door (`leeway-continue-epic`).*
 
 ---
 
@@ -15,7 +15,7 @@ The caller provides these via context before loading:
 - `work_type` — the work unit's type. The reference no-ops for any value other than `epic`.
 - `work_unit` — the epic's work unit name. Always present.
 - `topic` — the kebab-case topic name. Always present.
-- `routing` — the literal `research` or `discussion`: the phase the caller starts the topic in.
+- `routing` — the literal `discussion`.
 - `summary` — optional one-line summary. Written only on creation, only when provided and non-empty.
 - `description` — optional paragraph or two of richer context. Written only on creation, only when provided and non-empty.
 

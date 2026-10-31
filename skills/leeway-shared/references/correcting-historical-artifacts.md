@@ -4,7 +4,7 @@
 
 ---
 
-Load this when a **concluded specification** — surfaced by a knowledge query, read directly, or named in a downstream phase's findings — carries a claim you have verified is wrong or has shifted. The specification is the golden record: its knowledge-base chunks stay live at full confidence, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely. No other phase artifact is corrected this way — research, discussion, and investigation feed the spec and decay in the knowledge base; a wrong claim in one is superseded by current work and left to age out.
+Load this when a **concluded specification** — surfaced by a knowledge query, read directly, or named in a downstream phase's findings — carries a claim you have verified is wrong or has shifted. The specification is the golden record: its knowledge-base chunks stay live at full confidence, so a wrong claim left standing is re-served as validated context to every future query — and an edit that skips the re-index leaves the store serving the old content indefinitely. No other phase artifact is corrected this way — discussion and investigation feed the spec and decay in the knowledge base; a wrong claim in one is superseded by current work and left to age out.
 
 Derive the owning work unit and the topic from the specification's path (`.workflows/{owning_work_unit}/specification/{topic}/specification.md`). Whose specification it is, and where this session stands to it, pick the route.
 

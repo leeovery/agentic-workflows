@@ -100,7 +100,7 @@ describe('ensure-discovery-item: create with summary only', () => {
 
   it('writes summary but no description', () => {
     seedEpic('payments');
-    ensureCreate('payments', 'auth', 'research', { summary: 'oauth + sessions' });
+    ensureCreate('payments', 'auth', 'discussion', { summary: 'oauth + sessions' });
 
     const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'oauth + sessions');
@@ -115,7 +115,7 @@ describe('ensure-discovery-item: create with summary and description', () => {
   it('writes both fields verbatim', () => {
     seedEpic('payments');
     const desc = 'Two paragraphs.\n\nSecond paragraph with apostrophe\'s and "quotes".';
-    ensureCreate('payments', 'auth', 'research', {
+    ensureCreate('payments', 'auth', 'discussion', {
       summary: 'oauth + sessions',
       description: desc,
     });
@@ -123,7 +123,7 @@ describe('ensure-discovery-item: create with summary and description', () => {
     const item = readManifest('payments').phases.discovery.items['auth'];
     assert.strictEqual(item.summary, 'oauth + sessions');
     assert.strictEqual(item.description, desc);
-    assert.strictEqual(item.routing, 'research');
+    assert.strictEqual(item.routing, 'discussion');
     assert.strictEqual(item.source, 'direct-start');
   });
 });
@@ -138,7 +138,7 @@ describe('ensure-discovery-item: idempotency on existing item', () => {
   // exists returns true, ensureCreate must NOT run.
   it('returns existence=true and does not overwrite existing summary or description', () => {
     seedEpic('payments');
-    ensureCreate('payments', 'auth', 'research', {
+    ensureCreate('payments', 'auth', 'discussion', {
       summary: 'original summary',
       description: 'original description',
     });

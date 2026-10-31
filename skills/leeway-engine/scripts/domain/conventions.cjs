@@ -104,8 +104,6 @@ function title({ glyph, label, tag: term } = {}) {
 
 // Discovery-tier glyph vocabulary — the single source of the tier symbol set.
 const DISCOVERY_GLYPH = {
-  ready_for_discussion: '→',
-  researching: '◐',
   discussing: '◐',
   decided: '✓',
   fresh: '○',
@@ -121,31 +119,18 @@ function discoveryGlyph(tier) {
 
 // Discovery-map row `[tag]` vocabulary — the lifecycle label each map row
 // carries. One phrasing, every map render (epic dashboard, discovery session
-// map view). `researchState` is the topic's actual research-item status (null
-// when none exists — see computeTopicLifecycle's research_state): superseded
-// research is named as such, never as complete. `mailWaiting` (the map
-// row's mail_waiting) appends a `mail waiting` cue on any lifecycle —
-// messages wait in the topic's mailbox, whatever its items' status, and
-// drain when its session next sits.
-// `reconcilePending` (computeTopicLifecycle's
-// reconcile_pending) appends an `input moved` cue the same way — a phase item
-// beneath the row carries a live reconcile flag its phase's start will clear.
-// `waits` (the map row's live waits, every kind) appends `awaiting research`
-// and `awaiting E1` directly after the lifecycle — a conversation beneath the
-// row is blocked pending research still to land or experiment evidence,
-// released when the research lands or the experiment ends. `promotedTo` (the
-// map row's promoted_to) names the cross-cutting unit a decided topic's
-// discussion moved to with its specification.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [mailWaiting] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState, mailWaiting, reconcilePending, waits, promotedTo) {
+// map view). `mailWaiting` (the map row's mail_waiting) appends a `mail
+// waiting` cue on any lifecycle — messages wait in the topic's mailbox,
+// whatever its items' status, and drain when its session next sits.
+// `waits` (the map row's live waits, every kind) appends `awaiting E1`
+// directly after the lifecycle — a conversation beneath the row is blocked
+// pending experiment evidence, released when the experiment ends.
+// `promotedTo` (the map row's promoted_to) names the cross-cutting unit a
+// decided topic's discussion moved to with its specification.
+/** @param {string} lifecycle @param {string|null} [routing] @param {boolean} [mailWaiting] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
+function discoveryLifecycleLabel(lifecycle, routing, mailWaiting, waits, promotedTo) {
   let label;
   switch (lifecycle) {
-    case 'ready_for_discussion':
-      label = researchState === 'superseded'
-        ? 'research superseded · ready for discussion'
-        : 'research complete · ready for discussion';
-      break;
-    case 'researching': label = 'researching'; break;
     case 'discussing': label = 'discussing'; break;
     case 'decided': label = promotedTo ? `decided · promoted to ${promotedTo}` : 'decided'; break;
     case 'handled': label = 'dead end'; break;
@@ -155,48 +140,16 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, mailWaiting,
   }
   if (Array.isArray(waits)) {
     const ids = waits.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
-    if (waits.some((w) => w.kind === 'research')) label += ' · awaiting research';
     if (ids.length > 0) label += ` · awaiting ${ids.join(', ')}`;
   }
   if (mailWaiting) label += ' · mail waiting';
-  if (reconcilePending) label += ' · input moved';
   return label;
 }
 
 // Worklist glyph vocabulary — walk states on a transient list (the
-// worklist projection's rows). Distinct from its two siblings: a symbol
-// set shared with the discovery tiers, keyed to approval outcomes.
+// worklist projection's rows). A symbol set shared with the discovery
+// tiers, keyed to approval outcomes.
 const WORKLIST_GLYPH = { pending: '○', approved: '✓', skipped: '⊘' };
-
-// Discussion-map glyph vocabulary — subtopic states. Distinct from the
-// discovery tiers: the symbol sets evolve independently.
-const DISCUSSION_GLYPH = {
-  pending: '○',
-  exploring: '◐',
-  converging: '→',
-  decided: '✓',
-  deferred: '⊙',
-};
-
-/** @param {string} state */
-function discussionGlyph(state) {
-  return DISCUSSION_GLYPH[/** @type {keyof typeof DISCUSSION_GLYPH} */ (state)] || '';
-}
-
-// Research-thread glyph vocabulary — register states. The live states take
-// the item-state family's hollow and half forms, a learned thread fills,
-// and `◌` marks a thread parked with its reason.
-const RESEARCH_GLYPH = {
-  open: '○',
-  digging: '◐',
-  learned: '●',
-  parked: '◌',
-};
-
-/** @param {string} state */
-function researchGlyph(state) {
-  return RESEARCH_GLYPH[/** @type {keyof typeof RESEARCH_GLYPH} */ (state)] || '';
-}
 
 // Specification legend vocabulary — the Key block's term descriptions, by
 // category. Projections compose a Key from whichever terms the display shows.
@@ -217,5 +170,5 @@ const SPEC_LEGEND = {
 module.exports = {
   TREE_WIDTH, treeHeader, capitalise, titlecase, tag, derivedFrom, stateNote, title, materialBlock,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
-  discussionGlyph, DISCUSSION_GLYPH, researchGlyph, RESEARCH_GLYPH, WORKLIST_GLYPH, SPEC_LEGEND,
+  WORKLIST_GLYPH, SPEC_LEGEND,
 };

@@ -21,7 +21,6 @@ The specification must be **standalone**. It should contain everything formal pl
 
 Before starting any topic, identify ALL available reference material from prior phases:
 - Discussion documents (from the discussion phase)
-- Research notes (from the research phase)
 - Investigation findings (from the investigation phase, bugfix pipeline)
 - Existing partial specifications
 

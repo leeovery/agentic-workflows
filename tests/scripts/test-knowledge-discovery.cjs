@@ -34,17 +34,13 @@ function buildFixture(root) {
   const wf = statePath(root);
   const proj = { work_units: {} };
 
-  // Epic: multi-topic phases (mixed statuses), imports (with dup + bad shapes),
-  // seeds (with an escape), analysis caches, discovery sessions.
+  // Epic: multi-topic phases (mixed statuses), each discussion's log beside
+  // its record copy, imports (with dup + bad shapes), seeds (with an
+  // escape), analysis caches, discovery sessions.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
     phases: {
-      research: { items: {
-        ledger: { status: 'completed' },
-        fees: { status: 'in-progress' },        // not completed → excluded
-        'fx-rates': { status: 'completed' },
-      } },
       discussion: { items: {
         ledger: { status: 'completed' },
         refunds: { status: 'completed' },
@@ -63,24 +59,24 @@ function buildFixture(root) {
       { path: 'imports/oauth-notes.md' },         // duplicate topic → deduped
       { path: 'imports/bad/nested.md' },          // subdirectory → excluded
       { path: 'imports/.hidden.md' },             // dotfile → excluded
-      { path: 'imports/dockset-05.jpeg', origin: 'research/ledger' }, // binary → tracked, never indexed
+      { path: 'imports/dockset-05.jpeg', origin: 'discussion/ledger' }, // binary → tracked, never indexed
     ],
     seeds: [
       { path: 'seeds/original-idea.md', source: 'inbox:idea' },
       { path: 'seeds/../escape.md' },             // path escape → excluded
     ],
   });
-  writeFile(path.join(wf, 'payments', 'research', 'ledger.md'), '# Ledger\n');
-  writeFile(path.join(wf, 'payments', 'research', 'fx-rates.md'), '# FX\n');
-  writeFile(path.join(wf, 'payments', 'research', 'fees.md'), '# Fees\n');
-  writeFile(path.join(wf, 'payments', 'discussion', 'ledger.md'), '# Ledger\n');
-  writeFile(path.join(wf, 'payments', 'discussion', 'refunds.md'), '# Refunds\n');
+  for (const topic of ['ledger', 'refunds', 'chargebacks']) {
+    writeFile(path.join(wf, 'payments', 'topics', topic, 'log.md'), `# ${topic} — the conversation, never indexed\n`);
+  }
+  writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'ledger.md'), '# Ledger\n');
+  writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'refunds.md'), '# Refunds\n');
+  writeFile(path.join(wf, '.knowledge', 'records', 'payments.md'), '# Payments\n');
   writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec\n');
   writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
   writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth\n');
   writeFile(path.join(wf, 'payments', 'imports', 'dockset-05.jpeg'), 'binary-ish\n');
   writeFile(path.join(wf, 'payments', 'seeds', 'original-idea.md'), '# Idea\n');
-  writeFile(path.join(wf, 'payments', '.state', 'research-analysis.md'), '# retired cache — not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# GA\n');
   writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
   writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
@@ -99,7 +95,8 @@ function buildFixture(root) {
     },
     imports: [{ path: 'imports/prior-art.md' }],
   });
-  writeFile(path.join(wf, 'auth-flow', 'discussion', 'auth-flow.md'), '# D\n');
+  writeFile(path.join(wf, 'auth-flow', 'topics', 'auth-flow', 'log.md'), '# the conversation, never indexed\n');
+  writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
   writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S\n');
   writeFile(path.join(wf, 'auth-flow', 'imports', 'prior-art.md'), '# PA\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'sessions', 'session-001.md'), '# skip\n');
@@ -120,15 +117,15 @@ function buildFixture(root) {
     name: 'old-epic', work_type: 'epic', status: 'cancelled', created: '2025-06-01',
     phases: { discussion: { items: { 'topic-x': { status: 'completed' } } } },
   });
-  writeFile(path.join(wf, 'old-epic', 'discussion', 'topic-x.md'), '# skip (cancelled)\n');
+  writeFile(path.join(wf, '.knowledge', 'records', 'old-epic', 'topic-x.md'), '# skip (cancelled)\n');
 
   // Completed topic whose file is MISSING on disk → excluded by existence check.
   proj.work_units['ghost'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'ghost', 'manifest.json'), {
     name: 'ghost', work_type: 'epic', status: 'in-progress', created: '2026-01-04',
-    phases: { research: { items: { phantom: { status: 'completed' } } } },
+    phases: { investigation: { items: { phantom: { status: 'completed' } } } },
   });
-  // (no research/phantom.md written)
+  // (no investigation/phantom.md written)
 
   // Project baseline — flat {topic}.md docs only; session state and dotted
   // names excluded.
@@ -149,11 +146,10 @@ function buildFixture(root) {
   writeJson(path.join(wf, 'manifest.json'), proj);
 }
 
-// Golden set — captured from the pre-refactor discoverArtifacts(), its paths
-// state-relative, sorted by JSON string.
+// Golden set — its paths state-relative, sorted by JSON string.
 const EXPECTED = [
-  { workUnit: 'auth-flow', phase: 'discussion', topic: 'auth-flow', file: 'auth-flow/discussion/auth-flow.md' },
   { workUnit: 'auth-flow', phase: 'imports', topic: 'prior-art', file: 'auth-flow/imports/prior-art.md' },
+  { workUnit: 'auth-flow', phase: 'record', topic: 'auth-flow', file: '.knowledge/records/auth-flow/auth-flow.md' },
   { workUnit: 'auth-flow', phase: 'specification', topic: 'auth-flow', file: 'auth-flow/specification/auth-flow/specification.md' },
   { workUnit: 'baseline', phase: 'baseline', topic: 'glossary', file: '.baseline/glossary.md' },
   { workUnit: 'baseline', phase: 'baseline', topic: 'overview', file: '.baseline/overview.md' },
@@ -162,11 +158,10 @@ const EXPECTED = [
   { workUnit: 'payments', phase: 'analysis', topic: 'gap-analysis', file: 'payments/.state/discovery-gap-analysis.md' },
   { workUnit: 'payments', phase: 'discovery', topic: 'session-001', file: 'payments/discovery/sessions/session-001.md' },
   { workUnit: 'payments', phase: 'discovery', topic: 'session-002', file: 'payments/discovery/sessions/session-002.md' },
-  { workUnit: 'payments', phase: 'discussion', topic: 'ledger', file: 'payments/discussion/ledger.md' },
-  { workUnit: 'payments', phase: 'discussion', topic: 'refunds', file: 'payments/discussion/refunds.md' },
   { workUnit: 'payments', phase: 'imports', topic: 'oauth-notes', file: 'payments/imports/oauth-notes.md' },
-  { workUnit: 'payments', phase: 'research', topic: 'fx-rates', file: 'payments/research/fx-rates.md' },
-  { workUnit: 'payments', phase: 'research', topic: 'ledger', file: 'payments/research/ledger.md' },
+  { workUnit: 'payments', phase: 'record', topic: '.unit', file: '.knowledge/records/payments.md' },
+  { workUnit: 'payments', phase: 'record', topic: 'ledger', file: '.knowledge/records/payments/ledger.md' },
+  { workUnit: 'payments', phase: 'record', topic: 'refunds', file: '.knowledge/records/payments/refunds.md' },
   { workUnit: 'payments', phase: 'seeds', topic: 'original-idea', file: 'payments/seeds/original-idea.md' },
   { workUnit: 'payments', phase: 'specification', topic: 'ledger', file: 'payments/specification/ledger/specification.md' },
   { workUnit: 'roadmap', phase: 'imports', topic: 'app-idea', file: '.roadmap/imports/app-idea.md' },
@@ -194,9 +189,13 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.deepStrictEqual(normalise(discover(root)), EXPECTED);
   });
 
-  it('leaves the retired research-analysis cache undiscovered', () => {
+  it('discovers each discussion by its record copy and never by its log', () => {
     const files = normalise(discover(root)).map((it) => it.file);
-    assert.ok(!files.includes('payments/.state/research-analysis.md'));
+    assert.deepStrictEqual(files.filter((f) => f.startsWith('.knowledge/records/')), [
+      '.knowledge/records/auth-flow/auth-flow.md', '.knowledge/records/payments.md',
+      '.knowledge/records/payments/ledger.md', '.knowledge/records/payments/refunds.md',
+    ].sort());
+    assert.deepStrictEqual(files.filter((f) => f.includes('/topics/') || f.includes('/discussion/')), []);
   });
 
   it('leaves non-markdown imports undiscovered — manifest-tracked, never indexed', () => {

@@ -42,13 +42,11 @@ function layStubMessages(dir, name, manifest) {
   for (const topic of fs.existsSync(topics) ? fs.readdirSync(topics) : []) {
     fs.rmSync(path.join(mailboxOf(dir, name, topic), STUB_MESSAGE), { force: true });
   }
-  for (const phase of ['research', 'discussion']) {
-    const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
-    for (const [topic, item] of Object.entries(items)) {
-      if (item.status !== 'unstarted') continue;
-      fs.mkdirSync(mailboxOf(dir, name, topic), { recursive: true });
-      fs.writeFileSync(path.join(mailboxOf(dir, name, topic), STUB_MESSAGE), 'Parked\n');
-    }
+  const items = (manifest.phases && manifest.phases.discussion && manifest.phases.discussion.items) || {};
+  for (const [topic, item] of Object.entries(items)) {
+    if (item.status !== 'unstarted') continue;
+    fs.mkdirSync(mailboxOf(dir, name, topic), { recursive: true });
+    fs.writeFileSync(path.join(mailboxOf(dir, name, topic), STUB_MESSAGE), 'Parked\n');
   }
 }
 
@@ -76,11 +74,10 @@ describe('epic projections: dashboard (map branch)', () => {
       phases: {
         discovery: {
           items: {
-            'kitchen-hardware': { routing: 'research', source: 'discovery', order: 1, summary: LONG_TOKEN_SUMMARY },
-            'menu-admin': { routing: 'discussion', source: 'research-split:exploration', order: 2, summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles' },
+            'kitchen-hardware': { routing: 'discussion', source: 'discovery', order: 1, summary: LONG_TOKEN_SUMMARY },
+            'menu-admin': { routing: 'discussion', source: 'message:exploration', order: 2, summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles' },
           },
         },
-        research: { items: { 'kitchen-hardware': { status: 'completed' } } },
         specification: { items: { 'roles-and-permissions': { status: 'completed', sources: { 'menu-admin': { status: 'incorporated' }, 'auth-flow': { status: 'pending' } } } } },
         planning: { items: { 'roles-and-permissions': { status: 'completed', format: 'tick' } } },
         implementation: { items: { 'roles-and-permissions': { status: 'in-progress', current_phase: 2, completed_tasks: ['r-1-1', 'r-1-2', 'r-2-1'] } } },
@@ -97,12 +94,12 @@ describe('epic projections: dashboard (map branch)', () => {
     '',
     '  ⚑ 1 new topic(s) added to the map from gap-analysis.',
     '',
-    'RESEARCH & DISCUSSION (2 topics · 1 ready · 1 fresh)',
-    '  ├─ → Kitchen Hardware',
+    'DISCUSSION (2 topics · 2 fresh)',
+    '  ├─ ○ Kitchen Hardware',
     '  │     Receipt printing, KDS handoff, and the',
     '  │     fastest-cumulative-time-tiebreak-resolution-policy-and-of',
     '  │     fline-sync token that cannot break',
-    '  │     ↳ Research complete · ready for discussion',
+    '  │     ↳ Fresh · routed to discussion',
     '  │',
     '  └─ ○ Menu Admin',
     '        Business-side menu modelling, admin shell (Filament vs',
@@ -141,7 +138,7 @@ describe('epic projections: dashboard (map branch)', () => {
       },
     });
     const out = epicDashboard('pay', detail);
-    assert.match(out, /RESEARCH & DISCUSSION \(2 topics · all decided\)/, out);
+    assert.match(out, /DISCUSSION \(2 topics · all decided\)/, out);
     assert.match(out, /✓ Fees\n  │     Fee rules\n  │     ↳ Decided · promoted to fees-cc\n/, out);
     assert.match(out, /✓ Refunds\n        Refund rules\n        ↳ Decided\n/, out);
 
@@ -180,7 +177,7 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.strictEqual(epicDashboard('pv1', detail), [
       '── DISCOVERY ────────────────────────────────────────────────────',
       '',
-      'RESEARCH & DISCUSSION (1 topic · 1 in flight)',
+      'DISCUSSION (1 topic · 1 in flight)',
       '  └─ ◐ Auth',
       '        Auth flow',
       '        ↳ Discussing',
@@ -212,7 +209,7 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.strictEqual(epicDashboard('pv2', detail), [
       '── DISCOVERY ────────────────────────────────────────────────────',
       '',
-      'RESEARCH & DISCUSSION (0 topics)',
+      'DISCUSSION (0 topics)',
       '  (empty)',
       '',
       '  postponed: Data Export → next',
@@ -242,7 +239,7 @@ describe('epic projections: dashboard (map branch)', () => {
       newArrivals: { gap_analysis: ['menu-admin'] },
     });
     const lines = out.split('\n');
-    const start = lines.findIndex((l) => l.startsWith('  ├─ → Kitchen Hardware'));
+    const start = lines.findIndex((l) => l.startsWith('  ├─ ○ Kitchen Hardware'));
     const end = lines.indexOf('        ↳ From exploration');
     assert.ok(start > 0 && end > start, 'map tree rows present');
     let underLast = false;
@@ -262,16 +259,16 @@ describe('epic projections: dashboard (map branch)', () => {
   it('omits the callout block when no stage-meta applies', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { topic: { routing: 'research', source: 'discovery', order: 1 } } } },
+      phases: { discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } } },
     });
     assert.strictEqual(
       epicDashboard('v1', d),
       [
         '── DISCOVERY ────────────────────────────────────────────────────',
         '',
-        'RESEARCH & DISCUSSION (1 topic · 1 fresh)',
+        'DISCUSSION (1 topic · 1 fresh)',
         '  └─ ○ Topic',
-        '        ↳ Fresh · routed to research',
+        '        ↳ Fresh · routed to discussion',
         '',
       ].join('\n')
     );
@@ -303,20 +300,6 @@ describe('epic projections: dashboard (map branch)', () => {
     const cont = keys.find((k) => k.action === 'continue_planning');
     assert.ok(cont, 'continue_planning entry present');
     assert.strictEqual(drawLabel(cont.label), 'Continue "Other Topic" — *planning [in-progress]* · input moved');
-  });
-
-  it('a flagged decided discussion cues input moved on its map row and the key', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
-        discussion: { items: { fees: { status: 'completed', reconcile_needed: 'research' } } },
-      },
-    });
-    const out = epicDashboard('v1', d);
-    assert.match(out, /✓ Fees\s+↳ Decided · input moved/, out);
-    const key = epicKey(d);
-    assert.ok(key.includes('input moved             — an upstream artifact was revised'), key);
   });
 
   it('the completed-topics picker carries the input-moved cue on flagged rows', () => {
@@ -384,13 +367,13 @@ describe('epic projections: dashboard (map branch)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'research', source: 'message:origin-topic', order: 1 } } },
-        research: { items: { parked: { status: 'unstarted' } } },
+        discovery: { items: { parked: { routing: 'discussion', source: 'message:origin-topic', order: 1 } } },
+        discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
     const out = epicDashboard('v1', d);
-    assert.ok(out.includes('RESEARCH & DISCUSSION (1 topic · 1 fresh)'), out);
-    assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to research · mail waiting/, out);
+    assert.ok(out.includes('DISCUSSION (1 topic · 1 fresh)'), out);
+    assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to discussion · mail waiting/, out);
   });
 });
 
@@ -420,19 +403,6 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
         '',
       ].join('\n')
     );
-  });
-
-  it('research in flight beside completed research leaves the discussion-state recommendation reachable', () => {
-    const d = detailFor(dir, 'auth-overhaul', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { 'market-analysis': { status: 'in-progress' }, 'competitor-scan': { status: 'completed' } } },
-        discussion: { items: { 'auth-flow': { status: 'completed' } } },
-      },
-    });
-    const out = epicDashboard('auth-overhaul', d);
-    assert.ok(!/⚑[^\n]*research/.test(out), out);
-    assert.match(out, /⚑ All discussions are completed\. Specification will analyze and\n\s+group them\./, out);
   });
 
   it('appends the plans-not-ready block after the stages', () => {
@@ -476,8 +446,8 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
       [
         'No work started yet.',
         '',
-        '  ⚑ Run discovery to shape the topic map — research and',
-        '    discussion start from there.',
+        '  ⚑ Run discovery to shape the topic map — discussion starts from',
+        '    there.',
         '',
       ].join('\n')
     );
@@ -507,7 +477,7 @@ describe('epic projections: key', () => {
   it('map with no build items produces no key (the ↳ state lines carry the words)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { topic: { routing: 'research', source: 'discovery', order: 1 } } } },
+      phases: { discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } } },
     });
     assert.strictEqual(epicKey(d), '');
   });
@@ -516,7 +486,7 @@ describe('epic projections: key', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { topic: { routing: 'research', source: 'discovery', order: 1 } } },
+        discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } },
         planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
       },
     });
@@ -607,7 +577,6 @@ describe('epic projections: menu', () => {
       '**`s/spec`**      → Analyze / regroup discussions — *2 discussion(s) not*',
       `${NB(14)}*yet grouped*`,
       '**`d/discuss`**   → Start a discussion on a new topic',
-      '**`r/research`**  → Start research on a new topic',
       '**`i/discovery`** → Continue discovery',
       '**`c/completed`** → Resume a completed topic',
       '**`a/cancel`**    → Cancel a topic',
@@ -628,7 +597,6 @@ describe('epic projections: menu', () => {
         ['2', 'continue_specification', 'auth-spec', '/leeway-specification-process epic quiz-competition-v1 auth-spec'],
         ['s', 'analyze_discussions', null, null],
         ['d', 'new_discussion', null, null],
-        ['r', 'new_research', null, null],
         ['i', 'continue_discovery', null, '/leeway-discovery epic quiz-competition-v1'],
         ['c', 'resume_completed', null, null],
         ['a', 'cancel_topic', null, null],
@@ -651,17 +619,10 @@ describe('epic projections: menu', () => {
       phases: {
         discovery: {
           items: {
-            ready: { routing: 'research', source: 'discovery', order: 1 },
+            ready: { routing: 'discussion', source: 'discovery', order: 1 },
             decided: { routing: 'discussion', source: 'discovery', order: 2 },
-            'dead-lead': { routing: 'research', source: 'discovery', handled: true },
-            dropped: { routing: 'research', source: 'discovery' },
-          },
-        },
-        research: {
-          items: {
-            ready: { status: 'completed' },
-            'dead-lead': { status: 'completed' },
-            dropped: { status: 'cancelled' },
+            'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
+            dropped: { routing: 'discussion', source: 'discovery' },
           },
         },
         discussion: {
@@ -676,10 +637,10 @@ describe('epic projections: menu', () => {
     const numbered = keys.filter((k) => /^\d+$/.test(k.key));
     assert.deepStrictEqual(
       numbered.map((k) => [k.key, k.action, k.topic]),
-      [['1', 'start_discussion_after_research', 'ready']]
+      [['1', 'start_discussion', 'ready']]
     );
     assert.strictEqual(numbered[0].recommended, true);
-    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" — \*research completed\*\n\u00a0+\(recommended\)/.test(rendered));
+    assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" \(recommended\)/.test(rendered), rendered);
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
     assert.ok(!rendered.includes('Dead Lead'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
@@ -689,22 +650,19 @@ describe('epic projections: menu', () => {
     // Same actionable rows either side; the only difference is a decided topic
     // present on the map, which now sorts above them all.
     const actionable = {
-      ready: { routing: 'research', source: 'discovery', order: 1 },
-      inflight: { routing: 'research', source: 'discovery', order: 2 },
-      fresh: { routing: 'discussion', source: 'discovery', order: 3 },
+      inflight: { routing: 'discussion', source: 'discovery', order: 1 },
+      fresh: { routing: 'discussion', source: 'discovery', order: 2 },
     };
-    const research = { ready: { status: 'completed' }, inflight: { status: 'in-progress' } };
 
     const without = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { ...actionable } }, research: { items: { ...research } } },
+      phases: { discovery: { items: { ...actionable } }, discussion: { items: { inflight: { status: 'in-progress' } } } },
     });
     const with_ = detailFor(dir, 'v2', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { ...actionable, settled: { routing: 'discussion', source: 'discovery', order: 4 } } },
-        research: { items: { ...research } },
-        discussion: { items: { settled: { status: 'completed' } } },
+        discovery: { items: { ...actionable, settled: { routing: 'discussion', source: 'discovery', order: 3 } } },
+        discussion: { items: { inflight: { status: 'in-progress' }, settled: { status: 'completed' } } },
       },
     });
 
@@ -716,29 +674,9 @@ describe('epic projections: menu', () => {
       .map((k) => [k.key, k.action, k.topic]);
     assert.deepStrictEqual(numbered(with_, 'v2'), numbered(without, 'v1'));
     assert.deepStrictEqual(numbered(with_, 'v2'), [
-      ['1', 'start_discussion_after_research', 'ready'],
-      ['2', 'continue_research', 'inflight'],
-      ['3', 'start_discussion', 'fresh'],
+      ['1', 'continue_discussion', 'inflight'],
+      ['2', 'start_discussion', 'fresh'],
     ]);
-  });
-
-  it('superseded research renders as superseded in the discussion entry label, never as completed', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: {
-          items: {
-            handoff: { routing: 'research', source: 'discovery', order: 1 },
-          },
-        },
-        research: { items: { handoff: { status: 'superseded', superseded_by: 'split-child' } } },
-      },
-    });
-    const { keys, rendered } = epicMenu('v1', d);
-    const entry = keys.find((k) => k.action === 'start_discussion_after_research');
-    assert.ok(entry, 'superseded research with no discussion still offers the discussion path');
-    assert.strictEqual(drawLabel(entry.label), 'Start discussion for "Handoff" — *research superseded*');
-    assert.ok(!rendered.includes('research completed'), 'superseded research must not be named completed');
   });
 
   it('implementation continue label names the task in flight, not the completed count', () => {
@@ -774,30 +712,15 @@ describe('epic projections: menu', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'research', source: 'message:origin-topic', order: 1 } } },
-        research: { items: { parked: { status: 'unstarted' } } },
-      },
-    });
-    const { keys, rendered } = epicMenu('v1', d);
-    const entry = keys.find((k) => k.topic === 'parked');
-    assert.strictEqual(entry.action, 'start_research');
-    assert.strictEqual(drawLabel(entry.label), 'Start research for "Parked" — *mail waiting*');
-    assert.strictEqual(entry.route, '/leeway-research-process epic v1 parked');
-    assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
-  });
-
-  it('a discussion-routed stub gets the same Start suffix — the symmetric branch', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
         discovery: { items: { parked: { routing: 'discussion', source: 'message:origin-topic', order: 1 } } },
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
-    const { keys } = epicMenu('v1', d);
+    const { keys, rendered } = epicMenu('v1', d);
     const entry = keys.find((k) => k.topic === 'parked');
     assert.strictEqual(entry.action, 'start_discussion');
     assert.strictEqual(drawLabel(entry.label), 'Start discussion for "Parked" — *mail waiting*');
+    assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
   });
 
   it('an open discovery session leads the menu as resume, regardless of map state', () => {
@@ -811,14 +734,13 @@ describe('epic projections: menu', () => {
   it('brand-new epic menu leads with recommended discovery', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);
-    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r', 'b']);
+    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'b']);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
       '**`i/discovery`** → Run discovery — shape the topic map (recommended)',
       '**`d/discuss`**   → Start new discussion',
-      '**`r/research`**  → Start new research',
       '**`b/back`**      → Return to the start menu',
     ].join('\n'));
   });
@@ -875,7 +797,7 @@ describe('epic projections: presence join', () => {
 
   it('an unheld or phase-mismatched presence row marks nothing', () => {
     const dead = { ...heldRow, held: false };
-    const wrongPhase = { phase: 'research', topic: 'topic-a', age_seconds: 10, held: true, session_id: 's2' };
+    const wrongPhase = { phase: 'planning', topic: 'topic-a', age_seconds: 10, held: true, session_id: 's2' };
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [dead, wrongPhase] });
     assert.ok(!keys.some((k) => k.in_session), 'no entry marked');
     assert.strictEqual(keys.find((k) => k.topic === 'topic-a').recommended, true);
@@ -994,20 +916,13 @@ describe('epic projections: presence join', () => {
     assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
   });
 
-  it('the map cue reads research and discussion holds alone — a planning session\'s age never lands on the row', () => {
+  it('the map cue reads discussion holds alone — a planning session\'s age never lands on the row', () => {
     const planning = { phase: 'planning', topic: 'topic-a', age_seconds: 45, held: true, session_id: 's3' };
     const alone = epicDashboard('v1', twoTopicDetail(), { presence: [planning] });
     assert.doesNotMatch(alone, /in session/, `a planning-only hold cues nothing on the map: ${alone}`);
     const both = epicDashboard('v1', twoTopicDetail(), { presence: [planning, { ...heldRow, age_seconds: 259200 }] });
     assert.match(both, /↳ Discussing · in session \(last active 3d ago\)/, both);
     assert.doesNotMatch(both, /45s ago/, both);
-  });
-
-  it('a topic held in two phases cues the freshest session\'s age', () => {
-    const research = { phase: 'research', topic: 'topic-a', age_seconds: 7200, held: true, session_id: 's2' };
-    const out = epicDashboard('v1', twoTopicDetail(), { presence: [research, heldRow] });
-    assert.match(out, /↳ Discussing · in session \(last active 2m ago\)/, out);
-    assert.doesNotMatch(out, /2h ago/, out);
   });
 });
 
@@ -1023,8 +938,7 @@ describe('epic projections: selection sub-views', () => {
     return detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' } } },
-        discussion: { items: { 'auth-flow': { status: 'completed' }, 'session-storage': { status: 'completed' }, 'stale-topic': { status: 'cancelled', previous_status: 'in-progress' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' }, 'kitchen-hardware': { status: 'completed' }, 'menu-admin': { status: 'in-progress' }, 'session-storage': { status: 'completed' }, 'stale-topic': { status: 'cancelled', previous_status: 'in-progress' } } },
         specification: { items: { 'roles-and-permissions': { status: 'completed' }, billing: { status: 'promoted' } } },
         implementation: { items: { 'roles-and-permissions': { status: 'in-progress' } } },
       },
@@ -1035,11 +949,9 @@ describe('epic projections: selection sub-views', () => {
     const view = epicCompletedMenu('quiz-competition-v1', richDetail());
     assert.strictEqual(view.title, 'Completed Topics');
     assert.strictEqual(view.display, [
-      'Research',
-      '  └─ 1. Kitchen Hardware [completed]',
-      '',
       'Discussion',
-      '  ├─ 2. Auth Flow [completed]',
+      '  ├─ 1. Auth Flow [completed]',
+      '  ├─ 2. Kitchen Hardware [completed]',
       '  └─ 3. Session Storage [completed]',
       '',
       'Specification',
@@ -1050,8 +962,8 @@ describe('epic projections: selection sub-views', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
-      '**`1`**      → Resume "Kitchen Hardware" — *research*',
-      '**`2`**      → Resume "Auth Flow" — *discussion*',
+      '**`1`**      → Resume "Auth Flow" — *discussion*',
+      '**`2`**      → Resume "Kitchen Hardware" — *discussion*',
       '**`3`**      → Resume "Session Storage" — *discussion*',
       '**`4`**      → Resume "Roles And Permissions" — *specification*',
       '**`b/back`** → Return to menu',
@@ -1059,8 +971,8 @@ describe('epic projections: selection sub-views', () => {
     assert.deepStrictEqual(
       view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
       [
-        ['1', 'resume', 'kitchen-hardware', 'research', '/leeway-research-process epic quiz-competition-v1 kitchen-hardware'],
-        ['2', 'resume', 'auth-flow', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 auth-flow'],
+        ['1', 'resume', 'auth-flow', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 auth-flow'],
+        ['2', 'resume', 'kitchen-hardware', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 kitchen-hardware'],
         ['3', 'resume', 'session-storage', 'discussion', '/leeway-discussion-process epic quiz-competition-v1 session-storage'],
         ['4', 'resume', 'roles-and-permissions', 'specification', '/leeway-specification-process epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
@@ -1074,9 +986,8 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.display, [
       'Topics',
       '  ├─ 1. Auth Flow [decided]',
-      '  ├─ 2. Kitchen Hardware [research complete · ready for',
-      '        discussion]',
-      '  ├─ 3. Menu Admin [researching]',
+      '  ├─ 2. Kitchen Hardware [decided]',
+      '  ├─ 3. Menu Admin [discussing]',
       '  └─ 4. Session Storage [decided]',
       '',
       'Specifications',
@@ -1089,9 +1000,8 @@ describe('epic projections: selection sub-views', () => {
       '**`◆ Which topic would you like to cancel?`**',
       '',
       '**`1`**      → Cancel "Auth Flow" — *decided*',
-      '**`2`**      → Cancel "Kitchen Hardware" — *research complete · ready*',
-      `${NB(9)}*for discussion*`,
-      '**`3`**      → Cancel "Menu Admin" — *researching*',
+      '**`2`**      → Cancel "Kitchen Hardware" — *decided*',
+      '**`3`**      → Cancel "Menu Admin" — *discussing*',
       '**`4`**      → Cancel "Session Storage" — *decided*',
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1120,13 +1030,12 @@ describe('epic projections: selection sub-views', () => {
       phases: {
         discovery: { items: {
           'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
-          auth: { routing: 'research', source: 'discovery', order: 1 },
+          auth: { routing: 'discussion', source: 'discovery', order: 1 },
           billing: { routing: 'discussion', source: 'discovery', order: 2 },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 4 },
-          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
+          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
         } },
-        research: { items: { auth: { status: 'completed' }, 'dead-lead': { status: 'completed' }, legacy: { status: 'cancelled', previous_status: 'completed' } } },
-        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress', awaiting_experiments: ['E1'] }, legacy: { status: 'cancelled' } } },
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress', awaiting_experiments: ['E1'] }, legacy: { status: 'cancelled', previous_status: 'completed' } } },
         specification: { items: {
           unified: { status: 'in-progress', order: 1, sources: { auth: { status: 'incorporated' } } },
           grp: { status: 'proposed', sources: { billing: { status: 'pending' } } },
@@ -1142,7 +1051,7 @@ describe('epic projections: selection sub-views', () => {
   it('cancel-menu: map order, locked rows keyless with their reason, keys continuous over the pickable rows, a held unit cued', () => {
     const presence = [
       { phase: 'discussion', topic: 'billing', age_seconds: 120, held: true, session_id: 's1' },
-      { phase: 'research', topic: 'billing', age_seconds: 30, held: true, session_id: 's2' },
+      { phase: 'experiment', topic: 'billing', age_seconds: 30, held: true, session_id: 's2' },
       { phase: 'specification', topic: 'unified', age_seconds: 3600, held: true, session_id: 's3' },
       { phase: 'planning', topic: 'shipped', age_seconds: 5, held: true, session_id: 's4' },
       { phase: 'discussion', topic: 'auth', age_seconds: 10, held: false, session_id: 's5' },
@@ -1195,14 +1104,13 @@ describe('epic projections: selection sub-views', () => {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          auth: { routing: 'research', source: 'discovery', order: 1 },
+          auth: { routing: 'discussion', source: 'discovery', order: 1 },
           billing: { routing: 'discussion', source: 'discovery', order: 2 },
           'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
           gone: { routing: 'discussion', source: 'discovery', cancelled: true },
           away: { routing: 'discussion', source: 'discovery', postponed: true },
-          'dead-lead': { routing: 'research', source: 'discovery', handled: true },
+          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
         } },
-        research: { items: { auth: { status: 'completed' }, 'dead-lead': { status: 'completed' } } },
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress' } } },
         specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } } } },
       },
@@ -1284,7 +1192,7 @@ describe('epic projections: selection sub-views', () => {
       discovery: { items: {
         billing: { routing: 'discussion', source: 'discovery', order: 1 },
         away: { routing: 'discussion', source: 'roadmap', postponed: true, previous_order: 2 },
-        'gone-again': { routing: 'research', source: 'discovery', postponed: true },
+        'gone-again': { routing: 'discussion', source: 'discovery', postponed: true },
         taken: { routing: 'discussion', source: 'discovery', postponed: true },
       } },
       discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
@@ -1346,8 +1254,7 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(view.display, [
       'Topics',
       '  ├─ 1. Gone [cancelled] — never started',
-      '  └─ 2. Legacy [cancelled] — research [was completed] ·',
-      '        discussion (never started)',
+      '  └─ 2. Legacy [cancelled] — discussion [was completed]',
       '',
       'Specifications',
       '  └─ 3. Parked [cancelled] — specification [was completed] ·',
@@ -1359,8 +1266,7 @@ describe('epic projections: selection sub-views', () => {
       '**`◆ Which topic would you like to reactivate?`**',
       '',
       '**`1`**      → Reactivate "Gone" — *never started*',
-      '**`2`**      → Reactivate "Legacy" — *research [was completed] ·*',
-      `${NB(9)}*discussion (never started)*`,
+      '**`2`**      → Reactivate "Legacy" — *discussion [was completed]*',
       '**`3`**      → Reactivate "Parked" — *specification [was completed] ·*',
       `${NB(9)}*planning [was in-progress]*`,
       '**`b/back`** → Return to menu',
@@ -1446,19 +1352,19 @@ describe('epic projections: selection sub-views', () => {
     fs.writeFileSync(path.join(mailbox, '001-cost-model.md'), '### cost model\n');
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
-      phases: { research: { items: { 'menu-admin': { status: 'in-progress' } } } },
+      phases: { discussion: { items: { 'menu-admin': { status: 'in-progress' } } } },
     }));
-    assert.ok(view.display.includes('  └─ 1. Menu Admin [researching · mail waiting]'), view.display);
+    assert.ok(view.display.includes('  └─ 1. Menu Admin [discussing · mail waiting]'), view.display);
   });
 
   it('cancel-menu: an unstarted stub is cancellable with the topic, cued as parked', () => {
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { 'parked-topic': { status: 'unstarted' }, 'menu-admin': { status: 'in-progress' } } },
+        discussion: { items: { 'parked-topic': { status: 'unstarted' }, 'menu-admin': { status: 'in-progress' } } },
       },
     }));
-    assert.ok(view.display.includes('  ├─ 1. Menu Admin [researching]'), view.display);
+    assert.ok(view.display.includes('  ├─ 1. Menu Admin [discussing]'), view.display);
     assert.ok(view.display.includes('  └─ 2. Parked Topic [fresh · mail waiting]'), view.display);
     assert.ok(/\*\*`2`\*\* +→ Cancel "Parked Topic" — \*fresh · mail waiting\*/.test(view.rendered), view.rendered);
   });
@@ -1611,12 +1517,12 @@ describe('epic projections: selection sub-views', () => {
   it('reactivate-menu: a missing previous_status reads as never started — the item returns to never-attempted', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { items: { dropped: { status: 'cancelled' } } } },
+      phases: { discussion: { items: { dropped: { status: 'cancelled' } } } },
     });
     const view = epicReactivateMenu(d);
     assert.strictEqual(view.display, [
       'Topics',
-      '  └─ 1. Dropped [cancelled] — research (never started)',
+      '  └─ 1. Dropped [cancelled] — discussion (never started)',
       '',
     ].join('\n'));
   });
@@ -1705,15 +1611,14 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicCancelMenu(d).display, 'Specifications\n  └─ 1. Live [in-progress]\n');
   });
 
-  it('an off-map topic whose only item is superseded is no unit; beside a cancelled sibling it reads cancelled and offers its return', () => {
+  it('an off-map topic whose discussion is cancelled is no cancellable unit; it reads cancelled and offers its return', () => {
     const d = detailFor(dir, 'v8', {
       work_type: 'epic',
       phases: {
-        research: { items: { closed: { status: 'superseded', superseded_by: 'other' }, legacy: { status: 'superseded', superseded_by: 'other' } } },
         discussion: { items: { legacy: { status: 'cancelled', previous_status: 'completed' } } },
       },
     });
-    assert.deepStrictEqual(d.cancellable.map((u) => u.name), [], 'nothing live under either name');
+    assert.deepStrictEqual(d.cancellable.map((u) => u.name), [], 'nothing live under its name');
     assert.deepStrictEqual(d.cancelled, [{ name: 'legacy', stage: 'discovery', restores: [{ phase: 'discussion', previous_status: 'completed' }] }]);
     assert.strictEqual(epicReactivateMenu(d).display, 'Topics\n  └─ 1. Legacy [cancelled] — discussion [was completed]\n');
   });
@@ -1751,8 +1656,7 @@ describe('epic projections: selection sub-views', () => {
     createManifest(dir, 'quiz-competition-v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { 'kitchen-hardware': { status: 'completed' } } },
-        discussion: { items: { 'auth-flow': { status: 'completed' } } },
+        discussion: { items: { 'auth-flow': { status: 'completed' }, 'kitchen-hardware': { status: 'completed' } } },
       },
     });
     const out = execFileSync('node', [ADAPTER, 'completed-menu', 'quiz-competition-v1'], { cwd: dir, encoding: 'utf8' });
@@ -1760,26 +1664,24 @@ describe('epic projections: selection sub-views', () => {
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'work_unit: quiz-competition-v1',
       'ACTIONS (key  word  action  topic  phase  → route):',
-      '  1  —  resume  kitchen-hardware  research  → /leeway-research-process epic quiz-competition-v1 kitchen-hardware',
-      '  2  —  resume  auth-flow  discussion  → /leeway-discussion-process epic quiz-competition-v1 auth-flow',
+      '  1  —  resume  auth-flow  discussion  → /leeway-discussion-process epic quiz-competition-v1 auth-flow',
+      '  2  —  resume  kitchen-hardware  discussion  → /leeway-discussion-process epic quiz-competition-v1 kitchen-hardware',
       '  b  back  back  —  —  → (internal)',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
       '# **`■ Completed Topics`**',
       '',
       '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
-      'Research',
-      '  └─ 1. Kitchen Hardware [completed]',
-      '',
       'Discussion',
-      '  └─ 2. Auth Flow [completed]',
+      '  ├─ 1. Auth Flow [completed]',
+      '  └─ 2. Kitchen Hardware [completed]',
       '',
       '=== MENU: resume pick (emit verbatim as markdown (not a code block)) ===',
       '· · · · · · · · · · · ·',
       '**`◆ Which topic would you like to resume?`**',
       '',
-      '**`1`**      → Resume "Kitchen Hardware" — *research*',
-      '**`2`**      → Resume "Auth Flow" — *discussion*',
+      '**`1`**      → Resume "Auth Flow" — *discussion*',
+      '**`2`**      → Resume "Kitchen Hardware" — *discussion*',
       '**`b/back`** → Return to menu',
       '',
     ].join('\n'));
@@ -1798,11 +1700,10 @@ describe('epic projections: the topic-grain experiment entry', () => {
         discovery: {
           items: {
             timing: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Timing behaviour' },
-            layout: { routing: 'research', source: 'discovery', order: 2, summary: 'Layout rules' },
+            layout: { routing: 'discussion', source: 'discovery', order: 2, summary: 'Layout rules' },
           },
         },
-        research: { items: { layout: { status: 'in-progress' } } },
-        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
+        discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] }, layout: { status: 'in-progress' } } },
         experiment: {
           items: {
             timing: {
@@ -1929,119 +1830,21 @@ describe('epic projections: the topic-grain experiment entry', () => {
   });
 });
 
-describe('epic projections: outstanding research is the topic\'s row — the discussion is held for it', () => {
+describe('epic projections: held entries and the topic\'s cues', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  function billing(research, discussion, { routing = 'discussion', handled } = {}) {
+  function billing(discussion) {
     return detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { billing: { routing, source: 'discovery', order: 1, ...(handled ? { handled: true } : {}) } } },
-        ...(research ? { research: { items: { billing: research } } } : {}),
+        discovery: { items: { billing: { routing: 'discussion', source: 'discovery', order: 1 } } },
         ...(discussion ? { discussion: { items: { billing: discussion } } } : {}),
       },
     });
   }
   const numbered = (d) => epicMenu('v1', d).keys.filter((k) => /^\d+$/.test(k.key)).map((k) => [k.key, k.action, k.topic]);
-
-  it('a discussing topic with research in flight: the topic\'s one row is its research, recommended — the discussion is not offered', () => {
-    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
-    const { keys, rendered } = epicMenu('v1', d);
-    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
-    assert.strictEqual(keys[0].route, '/leeway-research-process epic v1 billing');
-    assert.strictEqual(keys[0].recommended, true, 'the research row is first when its topic is first');
-    assert.strictEqual(rendered, [
-      '· · · · · · · · · · · ·',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`1`**           → Continue "Billing" — *research* (recommended)',
-      '**`d/discuss`**   → Start a discussion on a new topic',
-      '**`r/research`**  → Start research on a new topic',
-      '**`i/discovery`** → Continue discovery',
-      '**`a/cancel`**    → Cancel a topic',
-      '**`p/postpone`**  → Postpone a topic to the roadmap',
-      '**`b/back`**      → Return to the start menu',
-    ].join('\n'));
-    // With a map the discussion phase renders no item rows — the map row
-    // carries the wait, so the key owes no blocked cue.
-    assert.strictEqual(d.phases.discussion[0].blocked_by[0], 'research');
-    assert.ok(!epicKey(d).includes('blocked (discussion)'), epicKey(d));
-  });
-
-  it('a discussing topic with a parked stub: start research with the mail tail is the topic\'s row', () => {
-    const d = billing({ status: 'unstarted' }, { status: 'in-progress' });
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
-    assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Start research for "Billing" — *mail waiting*');
-  });
-
-  it('no map: a discussion whose research is outstanding gets no continue row — the tree tags it blocked and the key explains', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { billing: { status: 'in-progress' } } },
-        discussion: { items: { billing: { status: 'in-progress' }, fees: { status: 'in-progress' } } },
-      },
-    });
-    assert.deepStrictEqual(d.phases.discussion.map((e) => [e.name, e.blocked_by]), [['billing', ['research']], ['fees', undefined]]);
-    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing'], ['2', 'continue_discussion', 'fees']]);
-    const out = epicDashboard('v1', d);
-    assert.match(out, /Billing\s+\[in-progress · blocked\]/, out);
-    assert.match(out, /Fees\s+\[in-progress\]/, out);
-    assert.ok(epicKey(d).includes(
-      '    blocked (discussion)    — its research is still outstanding;\n'
-      + '                              land it and the item returns to\n'
-      + '                              the menu'), epicKey(d));
-    // Landed research releases it: the row returns, the tag and the cue go.
-    const landed = detailFor(dir, 'v2', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { billing: { status: 'completed' } } },
-        discussion: { items: { billing: { status: 'in-progress' } } },
-      },
-    });
-    assert.strictEqual(landed.phases.discussion[0].blocked_by, undefined);
-    assert.deepStrictEqual(numbered(landed).map((r) => r[1]), ['continue_discussion']);
-    assert.match(epicDashboard('v2', landed), /Billing\s+\[in-progress\]/);
-    assert.ok(!epicKey(landed).includes('blocked (discussion)'));
-  });
-
-  it('no map: the key\'s blocked cue follows the rendered tag — a held decided discussion reads input moved, and a flagless one blocked', () => {
-    const held = (discussion) => detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        research: { items: { billing: { status: 'in-progress' } } },
-        discussion: { items: { billing: discussion } },
-      },
-    });
-    const flagged = held({ status: 'completed', reconcile_needed: 'research' });
-    assert.deepStrictEqual(flagged.phases.discussion[0].blocked_by, ['research']);
-    assert.match(epicDashboard('v1', flagged), /Billing\s+\[completed · input moved\]/);
-    assert.ok(!epicKey(flagged).includes('blocked (discussion)'), 'no blocked tag on screen, no blocked cue');
-    assert.ok(epicKey(flagged).includes('input moved'));
-    const bare = held({ status: 'completed' });
-    assert.match(epicDashboard('v1', bare), /Billing\s+\[completed · blocked\]/);
-    assert.ok(epicKey(bare).includes('blocked (discussion)'));
-  });
-
-  it('a held decided discussion is no resume candidate: the completed sub-view withholds it, the c option and the reconcile recommendation follow', () => {
-    // billing decided, its research parked by a landing that flagged it —
-    // the main menu leads with the research row; the completed sub-view
-    // offers nothing (the reopen would be refused), so the c option goes too.
-    const d = billing({ status: 'unstarted' }, { status: 'completed', reconcile_needed: 'research' });
-    assert.deepStrictEqual(d.completed, [{ name: 'billing', phase: 'discussion', reconcile_needed: 'research', blocked_by: ['research'] }]);
-    const picks = (detail) => epicCompletedMenu('v1', detail).keys.filter((k) => /^\d+$/.test(k.key));
-    assert.deepStrictEqual(picks(d), []);
-    const { keys } = epicMenu('v1', d);
-    assert.strictEqual(keys.find((k) => k.action === 'resume_completed'), undefined, 'no c option over a held item alone');
-    assert.strictEqual(keys.find((k) => k.action === 'start_research').recommended, true, 'the research row is the way in');
-    // Landed research releases it: the row and the option return.
-    const landed = billing({ status: 'completed' }, { status: 'completed', reconcile_needed: 'research' });
-    assert.strictEqual(landed.completed[0].blocked_by, undefined);
-    assert.ok(picks(landed).some((k) => k.phase === 'discussion'), 'the discussion resumes again');
-    assert.ok(epicMenu('v1', landed).keys.some((k) => k.action === 'resume_completed'));
-  });
 
   it('a completed specification whose source is back in-progress is withheld from the completed sub-view the same way', () => {
     const d = detailFor(dir, 'v1', {
@@ -2112,77 +1915,15 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.strictEqual(epicMenu('v2', onlyPlan).keys.find((k) => k.action === 'resume_completed'), undefined);
   });
 
-  it('the mail tail speaks for the topic, its one mailbox — whichever row the topic is offered by carries it', () => {
-    // research-routed topic, a parked DISCUSSION stub: the research row carries the tail
-    assert.strictEqual(drawLabel(epicMenu('v1', billing(undefined, { status: 'unstarted' }, { routing: 'research' })).keys[0].label), 'Start research for "Billing" — *mail waiting*');
-    // discussion-routed topic, a parked DISCUSSION stub: its own row carries the tail
-    assert.strictEqual(drawLabel(epicMenu('v1', billing(undefined, { status: 'unstarted' })).keys[0].label), 'Start discussion for "Billing" — *mail waiting*');
+  it('the mail tail speaks for the topic, its one mailbox — a parked stub\'s start row carries it', () => {
+    assert.strictEqual(drawLabel(epicMenu('v1', billing({ status: 'unstarted' })).keys[0].label), 'Start discussion for "Billing" — *mail waiting*');
   });
 
-  it('a decided topic with a parked stub: the research row stands alone', () => {
-    const d = billing({ status: 'unstarted' }, { status: 'completed', reconcile_needed: 'research' });
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
-    assert.strictEqual(epicMenu('v1', d).keys[0].recommended, true);
-  });
-
-  it('a settled map: research outstanding beneath a decided topic leads, ahead of a build start elsewhere', () => {
-    const d = detailFor(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discovery: { items: { billing: { routing: 'discussion', source: 'discovery', order: 1 } } },
-        research: { items: { billing: { status: 'unstarted' } } },
-        discussion: { items: { billing: { status: 'completed', reconcile_needed: 'research' } } },
-        specification: { items: { 'billing-grouping': { status: 'proposed', sources: { billing: { status: 'pending' } } } } },
-      },
-    });
-    assert.strictEqual(d.convergence_state, 'settled');
-    const { keys } = epicMenu('v1', d);
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing'], ['2', 'start_specification', 'billing-grouping']]);
-    assert.strictEqual(keys[0].recommended, true, 'the research row is the reconcile\'s first step');
-    assert.notStrictEqual(keys[1].recommended, true, 'a build start would propagate the stale decision one hop removed');
-  });
-
-  it('a discussion-routed fresh topic with a parked stub: the research is the topic\'s own row, and the discussion returns once it lands', () => {
-    const d = billing({ status: 'unstarted' }, undefined);
-    assert.deepStrictEqual(numbered(d), [['1', 'start_research', 'billing']]);
-    assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Start research for "Billing" — *mail waiting*');
-    assert.deepStrictEqual(numbered(billing({ status: 'completed' }, undefined)), [['1', 'start_discussion_after_research', 'billing']]);
-  });
-
-  it('no second row when the topic\'s own entry is the research', () => {
-    assert.deepStrictEqual(numbered(billing({ status: 'in-progress' }, undefined, { routing: 'research' })), [['1', 'continue_research', 'billing']]);
-    assert.deepStrictEqual(numbered(billing({ status: 'unstarted' }, undefined, { routing: 'research' })), [['1', 'start_research', 'billing']]);
-    // Research reopened beneath a decided discussion reads researching — its own entry is the research row.
-    assert.deepStrictEqual(numbered(billing({ status: 'in-progress' }, { status: 'completed', reconcile_needed: 'research' })), [['1', 'continue_research', 'billing']]);
-  });
-
-  it('landed research carries no row; a closed lifecycle carries nothing', () => {
-    assert.deepStrictEqual(numbered(billing({ status: 'completed' }, { status: 'in-progress' })), [['1', 'continue_discussion', 'billing']]);
-    assert.deepStrictEqual(numbered(billing({ status: 'superseded', superseded_by: 'other' }, { status: 'in-progress' })), [['1', 'continue_discussion', 'billing']]);
-    assert.deepStrictEqual(numbered(billing({ status: 'unstarted' }, { status: 'completed' }, { handled: true })), []);
-    assert.deepStrictEqual(numbered(billing({ status: 'cancelled', previous_status: 'in-progress' }, { status: 'cancelled', previous_status: 'in-progress' })), []);
-  });
-
-  it('a held research session strikes the topic\'s one row — the held discussion is no substitute, and nothing is recommended', () => {
-    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
-    const { keys } = epicMenu('v1', d, {
-      presence: [{ phase: 'research', topic: 'billing', age_seconds: 30, held: true, session_id: 'peer', pid: null }],
-    });
-    assert.strictEqual(keys[0].action, 'continue_research');
-    assert.strictEqual(keys[0].in_session, true);
-    assert.ok(!keys.some((k) => k.action === 'continue_discussion'), 'the discussion stays held');
-    assert.ok(keys.every((k) => k.recommended !== true), 'a struck row is never the recommendation');
-  });
-
-  it('the map row cues the waiting discussion — awaiting research, awaiting E1, or both', () => {
+  it('the map row cues the waiting discussion — awaiting each experiment, and nothing for a flag', () => {
     const cue = (d) => epicDashboard('v1', d).match(/↳ [^\n]*/)[0];
-    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress' })), '↳ Discussing · awaiting research');
-    assert.strictEqual(cue(billing({ status: 'unstarted' }, { status: 'in-progress' })), '↳ Discussing · awaiting research · mail waiting');
-    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting research · awaiting E1');
-    assert.strictEqual(cue(billing({ status: 'completed' }, { status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting E1');
-    assert.strictEqual(cue(billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' })), '↳ Discussing · awaiting research · input moved');
-    assert.strictEqual(cue(billing({ status: 'unstarted' }, { status: 'completed', reconcile_needed: 'research' })), '↳ Decided · mail waiting · input moved',
-      'a completed discussion waits on nothing — its flag carries the outstanding research');
+    assert.strictEqual(cue(billing({ status: 'in-progress' })), '↳ Discussing');
+    assert.strictEqual(cue(billing({ status: 'in-progress', awaiting_experiments: ['E1'] })), '↳ Discussing · awaiting E1');
+    assert.strictEqual(cue(billing({ status: 'completed', reconcile_needed: true })), '↳ Decided', 'a discussion\'s flag raises no cue');
   });
 
   // The cue reads the mailbox, not the status: a landing on a concluded topic
@@ -2199,36 +1940,17 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
 
   it('a reopened discussion with messages waiting: its continue row and map row carry the cue', () => {
     deliver('001-escalation-path.md');
-    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    const d = billing({ status: 'in-progress' });
     assert.deepStrictEqual(numbered(d), [['1', 'continue_discussion', 'billing']]);
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *discussion* · mail waiting');
     assert.strictEqual(cueOf(d), '↳ Discussing · mail waiting');
     assert.strictEqual(d.discovery_map[0].mail_queued, 1);
   });
 
-  it('a reopened research beneath a decided discussion: the research row carries the cue, per phase', () => {
-    deliver('001-cost-model.md');
-    const d = billing({ status: 'in-progress' }, { status: 'completed', reconcile_needed: 'research' });
-    assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
-    assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *research* · mail waiting');
-    assert.strictEqual(cueOf(d), '↳ Researching · mail waiting · input moved');
-    // Beneath a live discussion the research row is the topic's only row, and the cue rides it alone.
-    const both = billing({ status: 'in-progress' }, { status: 'in-progress' });
-    const labels = epicMenu('v1', both).keys.filter((k) => k.topic === 'billing').map((k) => drawLabel(k.label));
-    assert.deepStrictEqual(labels, ['Continue "Billing" — *research* · mail waiting']);
-  });
-
-  it('a parked discussion stub beneath landed research: the after-research start row carries the cue', () => {
-    const d = billing({ status: 'completed' }, { status: 'unstarted' });
-    assert.deepStrictEqual(numbered(d), [['1', 'start_discussion_after_research', 'billing']]);
-    assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Start discussion for "Billing" — *research completed* · mail waiting');
-    assert.strictEqual(cueOf(d), '↳ Research complete · ready for discussion · mail waiting');
-  });
-
   it('the drain retires the cue — an empty mailbox directory is no wait', () => {
     const mailbox = deliver('001-escalation-path.md');
     fs.rmSync(path.join(mailbox, '001-escalation-path.md'));
-    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    const d = billing({ status: 'in-progress' });
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *discussion*');
     assert.strictEqual(cueOf(d), '↳ Discussing');
     assert.strictEqual(d.discovery_map[0].mail_waiting, false);
@@ -2240,90 +1962,6 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   // that is open, and the tree's `in session` cue has a row to agree with.
   const peerIn = (phase, topic, age_seconds) => ({ phase, topic, age_seconds, held: true, session_id: 'peer' });
   const numberedKeys = (keys) => keys.filter((k) => /^\d+$/.test(k.key));
-
-  it('a live session in the held discussion keeps its row — struck, after the research row, never recommended', () => {
-    // Research in flight with messages waiting, the discussion flagged by the
-    // hop and still open in another window.
-    deliver('001-cost-model.md', '002-roles.md');
-    const d = billing({ status: 'in-progress' }, { status: 'in-progress', reconcile_needed: 'research' });
-    const { keys, rendered } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
-    assert.deepStrictEqual(
-      numberedKeys(keys).map((k) => [k.key, k.action, k.topic, k.in_session === true, k.recommended === true]),
-      [
-        ['1', 'continue_research', 'billing', false, true],
-        ['2', 'continue_discussion', 'billing', true, false],
-      ],
-    );
-    assert.deepStrictEqual(keys[1].blocked_by, ['research'], 'the struck row carries what holds its entry shut');
-    assert.strictEqual(keys[1].route, '/leeway-discussion-process epic v1 billing');
-    assert.strictEqual(keys[1].session_age, 240);
-    assert.strictEqual(rendered, [
-      '· · · · · · · · · · · ·',
-      '**`◆ What would you like to do?`**',
-      '',
-      '**`1`**           → Continue "Billing" — *research* · mail waiting',
-      `${NB(14)}(recommended)`,
-      '**`2`**           → ~~Continue "Billing" — *discussion* · mail waiting~~ · in',
-      `${NB(14)}session (last active 4m ago)`,
-      '**`d/discuss`**   → Start a discussion on a new topic',
-      '**`r/research`**  → Start research on a new topic',
-      '**`i/discovery`** → Continue discovery',
-      '**`a/cancel`**    → Cancel a topic',
-      '**`p/postpone`**  → Postpone a topic to the roadmap',
-      '**`b/back`**      → Return to the start menu',
-    ].join('\n'));
-    // The map row cues the same hold the struck row shows.
-    assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),
-      '↳ Discussing · awaiting research · mail waiting · input moved · in session (last active 4m ago)');
-  });
-
-  it('a blocked discussion nobody holds stays rowless — no presence, an empty scan, or a dead heartbeat alike', () => {
-    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
-    const dead = { ...peerIn('discussion', 'billing', 240), held: false };
-    for (const presence of [undefined, [], [dead]]) {
-      assert.deepStrictEqual(numberedKeys(epicMenu('v1', d, { presence }).keys).map((k) => k.action), ['continue_research'],
-        `presence ${JSON.stringify(presence)}`);
-    }
-  });
-
-  it('the in-session gate on a held blocked discussion names the outstanding research, byte-for-byte', () => {
-    const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
-    const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 240)] });
-    assert.strictEqual(epicInSessionGate('v1', keys.find((k) => k.in_session)), [
-      '=== MENU: in-session gate — 2 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
-      '· · · · · · · · · · · ·',
-      '"Billing" is open in another session — last active 4m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Its entry is also held shut — research on "Billing" is outstanding — so proceeding meets that gate next. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion billing`.',
-      '',
-      '**`◆ Proceed anyway?`**',
-      '',
-      '**`b/back`** → Return to menu (recommended)',
-      '**`y/yes`**  → Proceed anyway',
-      '',
-    ].join('\n'));
-  });
-
-  it('no map: a held blocked discussion keeps its continue row in pipeline position, struck, while the tree still tags it blocked', () => {
-    const manifest = {
-      work_type: 'epic',
-      phases: {
-        research: { items: { billing: { status: 'in-progress' } } },
-        discussion: { items: { billing: { status: 'in-progress' }, fees: { status: 'in-progress' } } },
-      },
-    };
-    const unheld = detailFor(dir, 'v1', manifest);
-    assert.deepStrictEqual(numberedKeys(epicMenu('v1', unheld).keys).map((k) => [k.action, k.topic]),
-      [['continue_research', 'billing'], ['continue_discussion', 'fees']], 'nobody holds it: rowless');
-    const held = detailFor(dir, 'v2', manifest);
-    const peer = peerIn('discussion', 'billing', 90);
-    const { keys } = epicMenu('v2', held, { presence: [peer] });
-    assert.deepStrictEqual(
-      numberedKeys(keys).map((k) => [k.key, k.action, k.topic, k.in_session === true]),
-      [['1', 'continue_research', 'billing', false], ['2', 'continue_discussion', 'billing', true], ['3', 'continue_discussion', 'fees', false]],
-    );
-    assert.deepStrictEqual(keys[1].blocked_by, ['research']);
-    assert.match(epicDashboard('v2', held, { presence: [peer] }), /Billing\s+\[in-progress · blocked\]/);
-    assert.ok(epicKey(held).includes('blocked (discussion)'));
-  });
 
   it('the rule is the menu\'s, not the discussion\'s: a held specification whose source is back in-progress keeps its struck row, and the gate names the source', () => {
     const d = detailFor(dir, 'v1', {
@@ -2374,7 +2012,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   });
 
   it('an unblocked held row carries no entry-hold clause — the gate reads as before', () => {
-    const d = billing({ status: 'completed' }, { status: 'in-progress' });
+    const d = billing({ status: 'in-progress' });
     const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 120)] });
     const entry = keys.find((k) => k.in_session);
     assert.strictEqual(entry.blocked_by, undefined);

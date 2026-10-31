@@ -210,9 +210,9 @@ describe('tags (5.2.3)', () => {
     const content = { ...MADE, text: 'Where?' };
     refused('ask', 'mint.discussion.note-window', [], content, /^ledger ask: there is no work unit "mint"$/);
     refused('ask', `${UNIT}.discussion.menu-bar`, [], content, /^ledger ask: fumi has no topic "menu-bar" in discussion$/);
-    refused('ask', `${UNIT}.research.note-window`, [], content, /^ledger ask: fumi has no topic "note-window" in research$/);
+    refused('ask', `${UNIT}.experiment.note-window`, [], content, /^ledger ask: fumi has no topic "note-window" in experiment$/);
     refused('ask', `${UNIT}.discussion.__proto__`, [], content, /^ledger ask: fumi has no topic "__proto__" in discussion$/);
-    refused('ask', `${UNIT}.talk.note-window`, [], content, /^ledger ask: "talk" is no phase — one of discovery, research, /);
+    refused('ask', `${UNIT}.talk.note-window`, [], content, /^ledger ask: "talk" is no phase — one of discovery, experiment, /);
     for (const address of [UNIT, `${UNIT}.discussion.note-window.x`, `${UNIT}..note-window`, `.discussion`]) {
       refused('ask', address, [], content, /names no place to write — <work-unit>\.<phase>\.<topic>, or <work-unit>\.<phase> at the unit's level$/);
     }
@@ -224,7 +224,7 @@ describe('tags (5.2.3)', () => {
 
     for (const address of [`${UNIT}.investigation`, `${UNIT}.investigation.note-window`, `${UNIT}.scoping`]) {
       refused('ask', address, [], content,
-        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, research, experiment, discussion, specification, planning, implementation, review$/);
+        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, experiment, discussion, specification, planning, implementation, review$/);
     }
     refused('ask', 'mend.discussion.mend', [], content, /^ledger ask: mend has no discussion phase — its work type, bugfix, has discovery, investigation, specification, planning, implementation, review$/);
 

@@ -1,6 +1,6 @@
 # Contextual Query
 
-*Shared reference. Loaded by the research, discussion, investigation, and scoping processing skills at phase start.*
+*Shared reference. Loaded by the investigation and scoping processing skills at phase start, and by the discovery and roadmap session loops.*
 
 ---
 

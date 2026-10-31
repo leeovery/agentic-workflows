@@ -34,11 +34,11 @@ describe('engine knowledge index — the bulk index', () => {
   const { knowledge, at } = knowledgeDoor(() => root);
   /** @param {string} rel @param {string} [text] */
   const write = (rel, text = `# ${path.basename(rel)}\n\nWhat ${rel} settled.\n`) => createFile(statePath(root), rel, text);
-  /** A feature whose one discussion is completed and on disk. @param {string} name */
+  /** A feature whose one investigation is completed and on disk. @param {string} name */
   function feature(name) {
     knowledgeUnit(root, name, 'feature');
-    setItems(root, name, { discussion: [name] });
-    write(`${name}/discussion/${name}.md`);
+    setItems(root, name, { investigation: [name] });
+    write(`${name}/investigation/${name}.md`);
   }
   const sha = (/** @type {string} */ rel) => store.contentHash(fs.readFileSync(at(rel), 'utf8'));
   const removed = (/** @type {string} */ rel, /** @type {string} */ why) => `Removed ${at(rel)} — 1 chunks (${why})\n`;
@@ -52,21 +52,21 @@ describe('engine knowledge index — the bulk index', () => {
   afterEach(() => cleanupFixture(root));
 
   it('names each file it indexes, new or changed, then the summary, and skips what is unchanged', async () => {
-    knowledgeUnit(root, 'auth', 'feature');
-    setItems(root, 'auth', { discussion: ['auth'], specification: ['auth'] });
-    write('auth/discussion/auth.md');
+    knowledgeUnit(root, 'auth', 'bugfix');
+    setItems(root, 'auth', { investigation: ['auth'], specification: ['auth'] });
+    write('auth/investigation/auth.md');
     write('auth/specification/auth/specification.md');
     assert.deepStrictEqual(await knowledge('index'), {
       code: 0,
-      stdout: indexed('auth/discussion/auth.md', 'new') + indexed('auth/specification/auth/specification.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n',
+      stdout: indexed('auth/investigation/auth.md', 'new') + indexed('auth/specification/auth/specification.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n',
       stderr: '',
     });
 
-    fs.appendFileSync(at('auth/discussion/auth.md'), 'A line added after indexing.\n');
+    fs.appendFileSync(at('auth/investigation/auth.md'), 'A line added after indexing.\n');
     assert.deepStrictEqual(await knowledge('index'), {
-      code: 0, stdout: indexed('auth/discussion/auth.md', 'changed') + '0 new, 1 changed, 0 removed, 1 unchanged.\n', stderr: '',
+      code: 0, stdout: indexed('auth/investigation/auth.md', 'changed') + '0 new, 1 changed, 0 removed, 1 unchanged.\n', stderr: '',
     });
-    assert.deepStrictEqual([...new Set(storedChunks(root, { phase: 'discussion' }).map((c) => c.source_hash))], [sha('auth/discussion/auth.md')]);
+    assert.deepStrictEqual([...new Set(storedChunks(root, { phase: 'investigation' }).map((c) => c.source_hash))], [sha('auth/investigation/auth.md')]);
   });
 
   it('re-indexes chunks that record no hash of their file once, then leaves them', async () => {
@@ -76,8 +76,8 @@ describe('engine knowledge index — the bulk index', () => {
     for (const chunk of storedChunks(root)) store.insertDocument(hashless, { ...chunk, source_hash: undefined });
     store.saveStore(hashless, knowledgeAt(root).store);
 
-    assert.strictEqual((await knowledge('index')).stdout, indexed('legacy/discussion/legacy.md', 'changed') + '0 new, 1 changed, 0 removed, 0 unchanged.\n');
-    assert.deepStrictEqual(storedChunks(root).map((c) => c.source_hash), [sha('legacy/discussion/legacy.md')]);
+    assert.strictEqual((await knowledge('index')).stdout, indexed('legacy/investigation/legacy.md', 'changed') + '0 new, 1 changed, 0 removed, 0 unchanged.\n');
+    assert.deepStrictEqual(storedChunks(root).map((c) => c.source_hash), [sha('legacy/investigation/legacy.md')]);
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 1 unchanged.\n');
   });
 
@@ -85,11 +85,11 @@ describe('engine knowledge index — the bulk index', () => {
     for (const name of ['dropped', 'orphaned', 'kept']) feature(name);
     await knowledge('index');
     manifestSet(root, 'dropped', 'status', 'cancelled');
-    setRegistry(root, { dropped: { work_type: 'feature' }, kept: { work_type: 'feature' } });
+    setRegistry(root, { dropped: { work_type: 'bugfix' }, kept: { work_type: 'bugfix' } });
 
     assert.deepStrictEqual(await knowledge('index'), {
       code: 0,
-      stdout: removed('dropped/discussion/dropped.md', 'work unit cancelled') + removed('orphaned/discussion/orphaned.md', 'work unit not registered')
+      stdout: removed('dropped/investigation/dropped.md', 'work unit cancelled') + removed('orphaned/investigation/orphaned.md', 'work unit not registered')
         + '0 new, 0 changed, 2 removed, 1 unchanged.\n',
       stderr: '',
     });
@@ -97,29 +97,26 @@ describe('engine knowledge index — the bulk index', () => {
   });
 
   it('removes the chunks of an item retired or gone from the manifest, naming why, and keeps a topic in progress again', async () => {
-    const topics = ['promoted-t', 'cancelled-t', 'postponed-t', 'missing-t', 'reopened-t'];
-    knowledgeUnit(root, 'payments', 'epic');
-    setItems(root, 'payments', { discussion: topics, research: ['superseded-t'], specification: ['promoted-t'] });
-    for (const topic of topics) write(`payments/discussion/${topic}.md`);
-    write('payments/research/superseded-t.md');
-    write('payments/specification/promoted-t/specification.md');
+    const topics = ['cancelled-t', 'missing-t', 'reopened-t'];
+    knowledgeUnit(root, 'payments', 'bugfix');
+    setItems(root, 'payments', { investigation: topics, specification: ['promoted-t', 'superseded-t'] });
+    for (const topic of topics) write(`payments/investigation/${topic}.md`);
+    for (const topic of ['promoted-t', 'superseded-t']) write(`payments/specification/${topic}/specification.md`);
     await knowledge('index');
-    for (const status of ['promoted', 'cancelled', 'postponed']) manifestSet(root, `payments.discussion.${status}-t`, 'status', status);
-    assert.strictEqual(call(root, ['manifest', 'delete', 'payments', 'phases.discussion.items.missing-t']).code, 0);
-    manifestSet(root, 'payments.discussion.reopened-t', 'status', 'in-progress');
-    manifestSet(root, 'payments.research.superseded-t', 'status', 'superseded');
+    manifestSet(root, 'payments.investigation.cancelled-t', 'status', 'cancelled');
+    assert.strictEqual(call(root, ['manifest', 'delete', 'payments', 'phases.investigation.items.missing-t']).code, 0);
+    manifestSet(root, 'payments.investigation.reopened-t', 'status', 'in-progress');
     manifestSet(root, 'payments.specification.promoted-t', 'status', 'promoted');
+    manifestSet(root, 'payments.specification.superseded-t', 'status', 'superseded');
 
     const { stdout } = await knowledge('index');
     assert.deepStrictEqual(stdout.split('\n').filter((line) => line.startsWith('Removed ')).sort(), [
-      removed('payments/discussion/cancelled-t.md', 'discussion cancelled'),
-      removed('payments/discussion/missing-t.md', 'no discussion item'),
-      removed('payments/discussion/postponed-t.md', 'discussion postponed'),
-      removed('payments/discussion/promoted-t.md', 'discussion promoted'),
-      removed('payments/research/superseded-t.md', 'research superseded'),
+      removed('payments/investigation/cancelled-t.md', 'investigation cancelled'),
+      removed('payments/investigation/missing-t.md', 'no investigation item'),
       removed('payments/specification/promoted-t/specification.md', 'specification promoted'),
+      removed('payments/specification/superseded-t/specification.md', 'specification superseded'),
     ].map((line) => line.trimEnd()));
-    assert.match(stdout, /^0 new, 0 changed, 6 removed, 0 unchanged\.$/m);
+    assert.match(stdout, /^0 new, 0 changed, 4 removed, 0 unchanged\.$/m);
     assert.deepStrictEqual(storedChunks(root).map((c) => c.topic), ['reopened-t']);
   });
 
@@ -134,12 +131,12 @@ describe('engine knowledge index — the bulk index', () => {
 
   it('--work-unit confines the index and its removals to that unit, its sibling left as it was', async () => {
     for (const name of ['alpha', 'beta']) feature(name);
-    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed('alpha/discussion/alpha.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
-    assert.match((await knowledge('status')).stdout, new RegExp(`^Unindexed completed artifacts: 1\\n  ${at('beta/discussion/beta.md')}$`, 'm'));
+    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed('alpha/investigation/alpha.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
+    assert.match((await knowledge('status')).stdout, new RegExp(`^Unindexed completed artifacts: 1\\n  ${at('beta/investigation/beta.md')}$`, 'm'));
 
     await knowledge('index');
     for (const name of ['alpha', 'beta']) manifestSet(root, name, 'status', 'cancelled');
-    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, removed('alpha/discussion/alpha.md', 'work unit cancelled') + '0 new, 0 changed, 1 removed, 0 unchanged.\n');
+    assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, removed('alpha/investigation/alpha.md', 'work unit cancelled') + '0 new, 0 changed, 1 removed, 0 unchanged.\n');
     assert.deepStrictEqual([...new Set(storedChunks(root).map((c) => c.work_unit))], ['beta']);
   });
 
@@ -154,14 +151,14 @@ describe('engine knowledge index — the bulk index', () => {
   });
 
   it('attempts every file: one that fails is named on stderr and counted, the rest indexed, and the run exits 1', async () => {
-    knowledgeUnit(root, 'payments', 'epic');
-    setItems(root, 'payments', { discussion: ['empty', 'good'] });
-    write('payments/discussion/empty.md', '\n');
-    write('payments/discussion/good.md');
+    knowledgeUnit(root, 'payments', 'bugfix');
+    setItems(root, 'payments', { investigation: ['empty', 'good'] });
+    write('payments/investigation/empty.md', '\n');
+    write('payments/investigation/good.md');
     const answer = await knowledge('index');
     assert.strictEqual(answer.code, 1);
-    assert.strictEqual(answer.stdout, indexed('payments/discussion/good.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.\n');
-    assert.match(answer.stderr, new RegExp(`^Failed to index ${at('payments/discussion/empty.md').replace(/[.]/g, '\\.')}: No chunks produced from `));
+    assert.strictEqual(answer.stdout, indexed('payments/investigation/good.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.\n');
+    assert.match(answer.stderr, new RegExp(`^Failed to index ${at('payments/investigation/empty.md').replace(/[.]/g, '\\.')}: No chunks produced from `));
   });
 
   it('aborts on a project manifest it cannot read, before anything is removed', async () => {
@@ -191,11 +188,11 @@ describe('engine knowledge index — the bulk index', () => {
 
   it('skips the artifacts compact prunes, which status names, and leaves their chunks to compact', async () => {
     // S0 3 and a 0.95 floor: a unit two completions behind is at R ≈ 0.931,
-    // below it — its discussion pruned, its specification never.
+    // below it — its investigation pruned, its specification never.
     configureKnowledge(root, { provider: null, decay_prune_below: 0.95, decay_base_stability: 3 });
     knowledgeUnit(root, 'buried', 'feature');
-    setItems(root, 'buried', { discussion: ['buried'], specification: ['buried'] });
-    write('buried/discussion/buried.md');
+    setItems(root, 'buried', { investigation: ['buried'], specification: ['buried'] });
+    write('buried/investigation/buried.md');
     write('buried/specification/buried/specification.md');
     completeUnit(root, 'buried', '2024-01-01');
     for (const [name, date] of [['newer1', '2024-06-01'], ['newer2', '2024-12-01']]) {
@@ -205,11 +202,11 @@ describe('engine knowledge index — the bulk index', () => {
 
     assert.strictEqual((await knowledge('index')).stdout, indexed('buried/specification/buried/specification.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
     const status = (await knowledge('status')).stdout;
-    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('buried/discussion/buried.md')}$`, 'm'));
+    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('buried/investigation/buried.md')}$`, 'm'));
     assert.doesNotMatch(status, /Unindexed/);
 
-    await knowledge('index', '.leeway/buried/discussion/buried.md');
-    fs.appendFileSync(at('buried/discussion/buried.md'), 'A late edit.\n');
+    await knowledge('index', '.leeway/buried/investigation/buried.md');
+    fs.appendFileSync(at('buried/investigation/buried.md'), 'A late edit.\n');
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 1 unchanged.\n', 'the pruned chunks are compact\'s, never refreshed or dropped');
     assert.match((await knowledge('compact')).stdout, /^Compacted: removed 1 chunks from 1 work units/);
     assert.strictEqual((await knowledge('index')).stdout, '0 new, 0 changed, 0 removed, 1 unchanged.\n', 'and left pruned after');
@@ -224,10 +221,10 @@ describe('engine knowledge index — the bulk index', () => {
     knowledgeUnit(root, 'frontier', 'feature');
     for (const [name, date] of [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']]) completeUnit(root, name, date);
 
-    assert.deepStrictEqual(await knowledge('index'), { code: 0, stdout: indexed('recent/discussion/recent.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n', stderr: '' });
+    assert.deepStrictEqual(await knowledge('index'), { code: 0, stdout: indexed('recent/investigation/recent.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n', stderr: '' });
     const status = (await knowledge('status')).stdout;
     assert.match(status, new RegExp(`^WARNING: decay_prune_below in ${knowledgeAt(root).config} is ignored: "high" is not false or a number from 0 to 1$`, 'm'));
-    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('buried/discussion/buried.md')}$`, 'm'));
+    assert.match(status, new RegExp(`^Pruned below the decay floor: 1\\n  ${at('buried/investigation/buried.md')}$`, 'm'));
   });
 
   it('builds a missing store under the configured provider, empty where nothing is indexable', async () => {
@@ -249,11 +246,11 @@ describe('engine knowledge index — the bulk index', () => {
     feature('auth');
     knowledgeUnit(root, 'seeded', 'epic', { imports: [{ path: 'imports/seed.md', imported_at: '2026-05-10T10:00:00Z' }] });
     write('seeded/imports/seed.md');
-    const subdirectory = at('auth/discussion');
+    const subdirectory = at('auth/investigation');
     const fromSubdirectory = (/** @type {string[]} */ args) => engineKnowledge(subdirectory, args);
 
     assert.strictEqual((await fromSubdirectory(['index'])).stdout,
-      indexed('auth/discussion/auth.md', 'new') + indexed('seeded/imports/seed.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n');
+      indexed('auth/investigation/auth.md', 'new') + indexed('seeded/imports/seed.md', 'new') + '2 new, 0 changed, 0 removed, 0 unchanged.\n');
     assert.strictEqual((await fromSubdirectory(['index'])).stdout, '0 new, 0 changed, 0 removed, 2 unchanged.\n');
     const status = (await fromSubdirectory(['status'])).stdout;
     assert.match(status, /^Total chunks: 2$/m);
@@ -272,9 +269,9 @@ describe('engine knowledge fill', () => {
   afterEach(() => cleanupFixture(root));
 
   it('gives a keyword-only store the provider configured over it, every chunk its vector, and says nothing', async () => {
-    knowledgeUnit(root, 'auth', 'feature');
-    createFile(statePath(root), 'auth/discussion/auth.md', '# Discussion\n\nToken refresh settled.\n');
-    await engineKnowledge(root, ['index', '.leeway/auth/discussion/auth.md']);
+    knowledgeUnit(root, 'auth', 'bugfix');
+    createFile(statePath(root), 'auth/investigation/auth.md', '# Investigation\n\nToken refresh settled.\n');
+    await engineKnowledge(root, ['index', '.leeway/auth/investigation/auth.md']);
     assert.strictEqual(knowledgeMetadata(root).provider, null);
 
     configureKnowledge(root, STUB);

@@ -6,7 +6,7 @@
 
 Read `{file}`.
 
-**If `artifact` is `research`, `discussion`, or `investigation`**, read the topic's mailbox — `node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {artifact} {topic}`. When `count` is non-zero, the entries are messages other topics sent here — their origin sessions recorded them as sent. Restart preserves the mailbox (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--mail {N}` below. Omit the flag when the count is zero or the artifact has no mailbox.
+**If `artifact` is `investigation`**, read the topic's mailbox — `node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {topic}`. When `count` is non-zero, the entries are messages other topics sent here — their origin sessions recorded them as sent. Restart preserves the mailbox (it is not a restart target), but the count belongs in the gate: set `{N}` = `count` and pass `--mail {N}` below. Omit the flag when the count is zero or the artifact has no mailbox.
 
 Render the gate:
 

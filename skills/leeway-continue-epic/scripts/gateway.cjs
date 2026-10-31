@@ -56,7 +56,7 @@ function discover(cwd, workUnit) {
 
 /** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
 function unstartedStubs(d) {
-  return ['research', 'discussion'].some((phase) => ((d.phases && d.phases[phase]) || []).some((i) => i.status === 'unstarted'));
+  return ((d.phases && d.phases.discussion) || []).some((i) => i.status === 'unstarted');
 }
 
 /**
@@ -129,7 +129,7 @@ function formatScoped(workUnit, d) {
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
     if (t.mail_waiting) line += ` mail=waiting`;
     if (t.waits.length > 0) {
-      line += ` awaiting=${t.waits.map((w) => (w.kind === 'research' ? 'research' : w.id)).join(',')}`;
+      line += ` awaiting=${t.waits.map((w) => w.id).join(',')}`;
     }
     if (t.summary) line += ` — ${t.summary}`;
     lines.push(line);

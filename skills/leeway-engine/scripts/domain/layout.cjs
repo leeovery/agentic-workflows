@@ -119,9 +119,6 @@ const LAYOUT = Object.freeze([
 
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */
 const TODAY = Object.freeze([
-  todays('29.11', 'file', '{unit}/research/{topic}.md'),
-  todays('29.11', 'file', '{unit}/discussion/{topic}.md'),
-  todays('29.11', 'free', '{unit}/experiment/{topic}'),
   todays('29.12', 'file', '{unit}/discovery/sessions/session-{NNN}.md'),
   todays('29.12', 'file', '{unit}/discovery/briefs/{topic}.md'),
   todays('29.12', 'file', '.roadmap/sessions/session-{NNN}.md'),

@@ -196,7 +196,7 @@ describe('pruneTest', () => {
   it('prunes a unit below the floor, non-spec phases only', () => {
     const { floor, prunes } = pruneTest(cfg, units);
     assert.strictEqual(floor, 0.95);
-    for (const phase of ['research', 'discussion', 'investigation', 'imports', 'seeds', 'discovery', 'analysis']) {
+    for (const phase of ['record', 'investigation', 'imports', 'seeds', 'discovery', 'analysis']) {
       assert.strictEqual(prunes('buried', phase), true, phase);
     }
     assert.strictEqual(prunes('buried', 'specification'), false, 'specifications never decay');

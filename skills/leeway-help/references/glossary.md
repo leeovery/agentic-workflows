@@ -20,7 +20,7 @@ _Avoid_: the entry skill, the front door (a walkthrough metaphor, never a label)
 One sitting inside a piece of work. A session stops whenever a decision is the person's, and everything it produces is committed as it goes, so a session can end at any moment and the next one carries on from disk.
 
 **document**:
-What a phase writes into the repository: a research file, a discussion, a specification, a plan, a review report. Documents are read and approved by the person and are what the next phase is built from.
+What a phase writes into the repository: a discussion, a specification, a plan, a review report. Documents are read and approved by the person and are what the next phase is built from.
 _Avoid_: artifact, artefact
 
 **knowledge base**:
@@ -62,20 +62,17 @@ One part of an epic, with its own name, its own routing and its own trip through
 ## The journey
 
 **phase**:
-One step of a piece of work's journey. In order: discovery, research, experiment, discussion, investigation, scoping, specification, planning, implementation, review. Which phases a piece of work visits depends on its kind.
+One step of a piece of work's journey. In order: discovery, experiment, discussion, investigation, scoping, specification, planning, implementation, review. Which phases a piece of work visits depends on its kind.
 
 **stage**:
-One of the three bands the phases group into, and the top-level divisions of an epic's dashboard. Discovery is where you explore and decide (discovery, research, experiment, discussion, investigation). Definition is where you specify and plan (scoping, specification, planning). Delivery is where it is built and verified (implementation, review).
+One of the three bands the phases group into, and the top-level divisions of an epic's dashboard. Discovery is where you explore and decide (discovery, experiment, discussion, investigation). Definition is where you specify and plan (scoping, specification, planning). Delivery is where it is built and verified (implementation, review).
 _Avoid_: the three D's, band (fine as a description of the dashboard)
 
 **discovery**:
 Both the first phase of every piece of work and the name of the first stage. As a phase, its only job is to work out what the work is and how big, shape it, save it, and route it onward; it never solves the problem. When the two meanings could collide, say "the discovery phase" or "the Discovery stage".
 
-**research**:
-The exploring phase: feasibility, the landscape, early ideas. One file per topic. It carries aids, never an audit, and open questions are a fine way to conclude.
-
 **experiment**:
-A controlled measurement, designed before it is run, spawned from research or discussion when a decision is about to rest on a number nobody has measured. It is never entered directly. Its result feeds back into the conversation that asked.
+A controlled measurement, designed before it is run, spawned from a discussion when a decision is about to rest on a number nobody has measured. It is never entered directly. Its result feeds back into the conversation that asked.
 _Avoid_: the laboratory (the docs' image), spike
 
 **discussion**:
@@ -139,7 +136,7 @@ _Avoid_: pull (the docs' word), promote
 ## Epics
 
 **map**:
-An epic's list of topics, each with its routing (research or discussion first) and a lifecycle read from the work that actually exists under its name.
+An epic's list of topics, each with a lifecycle read from the work that actually exists under its name.
 _Avoid_: the discovery map, topic map (fine as a description)
 
 **brief**:
@@ -152,7 +149,7 @@ An epic's view: the three stages as bands, the topics and their state beneath th
 A suggested sequence over an epic's specifications for planning and building. Advisory: stepping ahead of it warns and never blocks.
 
 **dead end**:
-Research that concluded with nothing to carry forward under its own name. The topic stays on the map as the record that it was explored.
+A topic closed with nothing to carry forward under its own name. It stays on the map as the record that it was explored.
 
 ## Everyday
 
@@ -198,9 +195,9 @@ A git repository of its own inside the project's folder that holds code: a clone
 _Avoid_: child repo
 
 **mailbox**:
-Where a discussion, investigation or research receives messages, whatever the kind of work: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot conclude while one waits; the menus show it as *mail waiting*.
+Where a discussion or investigation receives messages, whatever the kind of work: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot conclude while one waits; the menus show it as *mail waiting*.
 _Avoid_: triage queue, queue
 
 **message**:
-Something a session found that belongs to another discussion, investigation or research — a point for another topic of the same epic, or a question a later phase needs decided — sent to its mailbox with everything worked out about it.
+Something a session found that belongs to another discussion or investigation — a point for another topic of the same epic, or a question a later phase needs decided — sent to its mailbox with everything worked out about it.
 _Avoid_: concern, reroute, spawn

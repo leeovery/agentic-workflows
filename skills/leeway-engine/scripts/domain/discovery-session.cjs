@@ -151,7 +151,7 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
  * base (warn-don't-block), and commit the discovery scope (sessions, briefs,
  * manifest) with the caller's message — one call covers
  * whatever the session left dirty. A peer session's topic files are never
- * swept: discovery runs beside live research and discussion sessions.
+ * swept: discovery runs beside live discussion sessions.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {{message: string}} opts  commit message — varies by caller

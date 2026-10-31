@@ -19,58 +19,10 @@
     },
     "relevant": [
       {
-        "source": "v1/discussion/toon-output-format.md",
-        "anchor": "TOON achieves 30-60% token savings over JSON while actually improving parsing accuracy",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/toon-output-format.md",
-        "anchor": "Each section has its own schema header - self-documenting",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/research/exploration.md",
-        "anchor": "**Decision**: Keep JSONL for storage, use TOON as default output format.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "TOON (Token-Oriented Object Notation) is optimized for AI agent consumption",
         "grade": "supporting",
         "framing": 0
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**Named fields, with no wrapping key.** The task's own fields sit at the top level of the document",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "The description section prefixes every line of the description with two spaces and emits no terminator",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**The fidelity bar is byte-identity, and the existing whitespace trimming does not stand in its way.**",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**The description is emitted as one TOON-quoted value.**",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**One field — the bare value.** `tick show tick-a1b2 --field description`:",
-        "grade": "supporting",
-        "framing": 1
       },
       {
         "source": "free-text-round-trip/specification/free-text-round-trip/specification.md",
@@ -91,18 +43,6 @@
         "framing": 1
       },
       {
-        "source": "v1/discussion/cli-command-structure-ux.md",
-        "anchor": "**Option C: Auto-detect TTY** with explicit override flags.",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "v1/discussion/toon-output-format.md",
-        "anchor": "**Option C: Auto-detect TTY** (decided in CLI discussion)",
-        "grade": "supporting",
-        "framing": 2
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "Output format is determined automatically based on whether stdout is a terminal:",
         "grade": "supporting",
@@ -121,31 +61,7 @@
         "framing": 2
       },
       {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**A single-field request ignores `--json`, `--pretty` and `--toon`; a multi-field request honours them.**",
-        "grade": "supporting",
-        "framing": 2
-      },
-      {
         "source": "free-text-round-trip/specification/free-text-round-trip/specification.md",
-        "anchor": "One deliberately awkward task becomes a permanent fixture, round-tripped end to end.",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**Read-side only. No note edit command in this work.**",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "The description becomes one TOON-quoted value, the same rule note text already obeys.",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
         "anchor": "One deliberately awkward task becomes a permanent fixture, round-tripped end to end.",
         "grade": "supporting",
         "framing": 1
@@ -238,12 +154,6 @@
         "framing": 2
       },
       {
-        "source": "v1/research/exploration.md",
-        "anchor": "ORDER BY t.priority ASC, t.created ASC;",
-        "grade": "supporting",
-        "framing": 2
-      },
-      {
         "source": "ready-includes-in-progress/specification/ready-includes-in-progress/specification.md",
         "anchor": "The `ORDER BY` becomes conditional on the ready filter.",
         "grade": "supporting",
@@ -256,21 +166,9 @@
         "framing": 2
       },
       {
-        "source": "v1/discussion/data-schema-design.md",
-        "anchor": "Indexes on `status`, `priority`, `parent` cover common filters",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "`tasks` table mirrors JSONL fields (minus `blocked_by` which is normalized)",
         "grade": "supporting",
-        "framing": 2
-      },
-      {
-        "source": "ready-includes-in-progress/discussion/ready-includes-in-progress.md",
-        "anchor": "**Option 2, `ready`-only.** In the `ready` query, `in_progress` floats to the top as a band",
-        "grade": "primary",
         "framing": 2
       },
       {
@@ -327,26 +225,7 @@
       "ID generation design decision collision concurrent creation",
       "concurrent access file locking two processes writing tasks at once"
     ],
-    "options": {},
     "relevant": [
-      {
-        "source": "v1/research/exploration.md",
-        "anchor": "No merge conflicts - IDs are globally unique without coordination",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "rejecting sequential IDs (`TICK-001`) to avoid merge conflicts",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "Timestamp-based rejected - leaks creation time, adds ordering semantics we don't want.",
-        "grade": "primary",
-        "framing": 0
-      },
       {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "Use `crypto/rand` from Go stdlib (3 random bytes → 6 hex characters)",
@@ -360,40 +239,10 @@
         "framing": 0
       },
       {
-        "source": "v1/research/exploration.md",
-        "anchor": "**Merge conflicts** → Minimized by hash-based IDs. When they occur, Git handles it.",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "**Retry up to 5 times, silent to caller**. On exhaustion, error with actionable message",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "**6 hex characters**. ~16.7M combinations, negligible collision risk at project scale.",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "On collision: retry silently up to 5 times",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "**Atomic rename + file locking.**",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "Corruption issues stem from concurrent access without file locking",
-        "grade": "supporting",
-        "framing": 2
       },
       {
         "source": "v1/specification/tick-core/specification.md",
@@ -418,12 +267,6 @@
         "anchor": "writes are serialised by the exclusive file lock (`store.go` `acquireExclusive`)",
         "grade": "supporting",
         "framing": 2
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "**File locking prevents concurrent access bugs** - Learned from Taskwarrior's pain.",
-        "grade": "supporting",
-        "framing": 2
       }
     ]
   },
@@ -446,34 +289,10 @@
     },
     "relevant": [
       {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "**`tick dependency tree [id]`** — extends the existing dependency subcommand pattern.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "**Diamond dependencies:** Just duplicate.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "**Dependencies only. No parent/child relationships, no parent annotations.**",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "dep-tree-visualization/specification/dep-tree-visualization/specification.md",
         "anchor": "A \"root task\" is a task that blocks other tasks but is not itself blocked by anything",
         "grade": "primary",
         "framing": 0
-      },
-      {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "**Toon:** Flat edge list in standard toon format — `dep_tree[N]{from,to}:` with one edge per line.",
-        "grade": "primary",
-        "framing": 1
       },
       {
         "source": "dep-tree-visualization/specification/dep-tree-visualization/specification.md",
@@ -492,18 +311,6 @@
         "anchor": "the line identifying that task becomes top-level `id`, `title` and `status` fields in the same form",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "**No dependencies in project** (full graph mode): \"No dependencies found.\"",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "free-text-round-trip/discussion/free-text-round-trip.md",
-        "anchor": "**A command in the must-parse table emits its structured form on every branch, the empty one included.**",
-        "grade": "primary",
-        "framing": 2
       },
       {
         "source": "free-text-round-trip/specification/free-text-round-trip/specification.md",
@@ -534,12 +341,6 @@
         "anchor": "**Asymmetric focused view** — if a task has upstream blockers but blocks nothing",
         "grade": "supporting",
         "framing": 2
-      },
-      {
-        "source": "dep-tree-visualization/discussion/dep-tree-visualization.md",
-        "anchor": "Dependencies and parent/child are different relationship types and should not be mixed",
-        "grade": "supporting",
-        "framing": 0
       },
       {
         "source": "dep-tree-visualization/specification/dep-tree-visualization/specification.md",
@@ -580,50 +381,14 @@
     },
     "relevant": [
       {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**True deletion (Option A).** Filter the task from the slice inside `Store.Mutate()`, rewrite JSONL without it.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "v1/specification/task-removal/specification.md",
         "anchor": "This is fundamentally different from `cancel` — cancel marks a task as resolved-but-present",
         "grade": "supporting",
         "framing": 0
       },
       {
-        "source": "v1/discussion/cli-command-structure-ux.md",
-        "anchor": "`tick cancel tick-abc` = not completed (covers: cancelled, rejected, not needed, duplicate, wontfix)",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**Remove ≠ cancel.** Cancel is a reversible status transition; remove is true deletion.",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**Auto-clean (Option B).** Strip the removed task's ID from all `BlockedBy` arrays in the same atomic mutation.",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**Cascade delete (Option A).** Removing a parent recursively removes all descendants.",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
         "source": "v1/specification/task-removal/specification.md",
         "anchor": "**Bulk + cascade interaction:** When multiple IDs are passed and some trigger cascades",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "v1/discussion/data-schema-design.md",
-        "anchor": "**Option 1: Cancelled tasks unblock dependents.**",
         "grade": "supporting",
         "framing": 1
       },
@@ -634,40 +399,16 @@
         "framing": 1
       },
       {
-        "source": "v1/discussion/hierarchy-dependency-model.md",
-        "anchor": "Task remains valid, treated as root-level task (parent reference ignored)",
-        "grade": "supporting",
-        "framing": 1
-      },
-      {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**Default: interactive confirmation prompt.** When run without `--force`:",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "v1/specification/task-removal/specification.md",
         "anchor": "**Prompt destination:** The confirmation prompt (question text) is written to stderr, not stdout.",
         "grade": "primary",
         "framing": 2
       },
       {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "cancel marks a task as resolved-but-present; remove erases it entirely",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "**Orphaned children** (parent reference points to non-existent task):",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "v1/discussion/task-removal.md",
-        "anchor": "**Any status.** No restrictions. The confirmation prompt (or `--force` flag) is the safety gate, not status rules.",
-        "grade": "supporting",
-        "framing": 2
       }
     ]
   },
@@ -690,40 +431,10 @@
     },
     "relevant": [
       {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Yes, auto-cascade upward.** When a child transitions to `in_progress`, walk the ancestor chain",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Unconditional.** No configuration. Two behaviors ship as default:",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "Refined rule 2: **All children terminal → parent goes to `done`, unless all children are `cancelled`",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
         "anchor": "When all children of a parent reach a terminal state (`done` or `cancelled`), the parent automatically transitions:",
         "grade": "supporting",
         "framing": 0
-      },
-      {
-        "source": "v1/research/exploration.md",
-        "anchor": "**Explicit completion** - Parent doesn't auto-complete when children done. Manual `tick done`.",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Persistent tracking:** Add a `transitions` array field to the Task struct. Each entry records `{from, to, at, auto}`.",
-        "grade": "primary",
-        "framing": 1
       },
       {
         "source": "auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
@@ -756,34 +467,10 @@
         "framing": 1
       },
       {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**`StateMachine` struct in `internal/task/`** that consolidates all transition, validation, and cascade rules.",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Confirmed: `StateMachine` struct with queue-based cascade processing.** No external libraries.",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "auto-cascade-parent-status/specification/auto-cascade-parent-status/specification.md",
         "anchor": "A `StateMachine` struct in `internal/task/` consolidates all 11 rules",
         "grade": "supporting",
         "framing": 2
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Child reopened under done parent → parent reopens** (undo auto-done)",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "auto-cascade-parent-status/discussion/auto-cascade-parent-status.md",
-        "anchor": "**Upward completion cascade** — all children terminal → parent done (or cancelled if all cancelled)",
-        "grade": "supporting",
-        "framing": 0
       },
       {
         "source": "rule6-parent-reopen-auto-flag/investigation/rule6-parent-reopen-auto-flag.md",
@@ -820,44 +507,6 @@
       {
         "source": "same-second-tasks-sort-by-id/specification/same-second-tasks-sort-by-id/specification.md",
         "anchor": "No migration is needed. `ensureFresh` checks the version before every query and before every mutation",
-        "grade": "supporting",
-        "framing": 0
-      }
-    ]
-  },
-  {
-    "id": "tick-partial-id-matching",
-    "origin": "written",
-    "need": "The partial task ID matching rules: the minimum prefix length, what happens on ambiguous or zero matches, and which ID inputs accept a prefix.",
-    "terms": [
-      "partial task ID prefix matching minimum length and ambiguous matches"
-    ],
-    "options": {
-      "work-type": "feature",
-      "limit": 5
-    },
-    "relevant": [
-      {
-        "source": "cli-enhancements/discussion/cli-enhancements.md",
-        "anchor": "On ambiguity (2+ matches): return error listing the matching IDs so user can be more specific",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "cli-enhancements/discussion/cli-enhancements.md",
-        "anchor": "Minimum 3 hex chars required for prefix matching",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "cli-enhancements/discussion/cli-enhancements.md",
-        "anchor": "**Yes — everywhere an ID is accepted.** Partial matching applies to `--parent`, `--blocked-by`, `--blocks`",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "cli-enhancements/specification/cli-enhancements/specification.md",
-        "anchor": "Minimum 3 hex chars required for prefix matching (prevents overly broad matches)",
         "grade": "supporting",
         "framing": 0
       }
@@ -963,12 +612,6 @@
         "framing": 2
       },
       {
-        "source": "v1/research/exploration.md",
-        "anchor": "ORDER BY t.priority ASC, t.created ASC;",
-        "grade": "supporting",
-        "framing": 2
-      },
-      {
         "source": "ready-includes-in-progress/specification/ready-includes-in-progress/specification.md",
         "anchor": "The `ORDER BY` becomes conditional on the ready filter.",
         "grade": "supporting",
@@ -981,21 +624,9 @@
         "framing": 2
       },
       {
-        "source": "v1/discussion/data-schema-design.md",
-        "anchor": "Indexes on `status`, `priority`, `parent` cover common filters",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "`tasks` table mirrors JSONL fields (minus `blocked_by` which is normalized)",
         "grade": "supporting",
-        "framing": 2
-      },
-      {
-        "source": "ready-includes-in-progress/discussion/ready-includes-in-progress.md",
-        "anchor": "**Option 2, `ready`-only.** In the `ready` query, `in_progress` floats to the top as a band",
-        "grade": "primary",
         "framing": 2
       },
       {
@@ -1061,24 +692,6 @@
     },
     "relevant": [
       {
-        "source": "v1/research/exploration.md",
-        "anchor": "No merge conflicts - IDs are globally unique without coordination",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "rejecting sequential IDs (`TICK-001`) to avoid merge conflicts",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "Timestamp-based rejected - leaks creation time, adds ordering semantics we don't want.",
-        "grade": "primary",
-        "framing": 0
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "Use `crypto/rand` from Go stdlib (3 random bytes → 6 hex characters)",
         "grade": "supporting",
@@ -1091,40 +704,10 @@
         "framing": 0
       },
       {
-        "source": "v1/research/exploration.md",
-        "anchor": "**Merge conflicts** → Minimized by hash-based IDs. When they occur, Git handles it.",
-        "grade": "supporting",
-        "framing": 0
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "**Retry up to 5 times, silent to caller**. On exhaustion, error with actionable message",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
-        "source": "v1/discussion/id-format-implementation.md",
-        "anchor": "**6 hex characters**. ~16.7M combinations, negligible collision risk at project scale.",
-        "grade": "primary",
-        "framing": 1
-      },
-      {
         "source": "v1/specification/tick-core/specification.md",
         "anchor": "On collision: retry silently up to 5 times",
         "grade": "supporting",
         "framing": 1
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "**Atomic rename + file locking.**",
-        "grade": "primary",
-        "framing": 2
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "Corruption issues stem from concurrent access without file locking",
-        "grade": "supporting",
-        "framing": 2
       },
       {
         "source": "v1/specification/tick-core/specification.md",
@@ -1149,12 +732,6 @@
         "anchor": "writes are serialised by the exclusive file lock (`store.go` `acquireExclusive`)",
         "grade": "supporting",
         "framing": 2
-      },
-      {
-        "source": "v1/discussion/freshness-dual-write.md",
-        "anchor": "**File locking prevents concurrent access bugs** - Learned from Taskwarrior's pain.",
-        "grade": "supporting",
-        "framing": 2
       }
     ]
   },
@@ -1167,7 +744,6 @@
       "the close and options window controls are drawn as plain filled circles rather than glass buttons",
       "decision moving away from .glass button style for the note chrome controls"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -1179,7 +755,6 @@
       "login item registration, launch at login, whether the user opts in",
       "what happens to open fumis after a restart if Fumi does not launch at login"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -1203,7 +778,6 @@
       "due date or deadline field on a task, and flagging tasks that are overdue",
       "recurring tasks that repeat on a schedule, recreated automatically when closed"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -1214,7 +788,6 @@
       "full-text search over task titles, descriptions and notes",
       "tick search command matching a keyword or phrase and how matches are ranked"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -1225,7 +798,6 @@
       "effort estimate or story points recorded on a task",
       "t-shirt size or complexity rating on a task, small medium or large"
     ],
-    "options": {},
     "relevant": []
   },
   {
@@ -1236,7 +808,6 @@
       "secrets or API keys pasted into a task description ending up committed to git in tasks.jsonl",
       "encrypting or redacting sensitive task content before it is stored"
     ],
-    "options": {},
     "relevant": []
   }
 ]

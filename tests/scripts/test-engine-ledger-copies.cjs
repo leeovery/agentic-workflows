@@ -343,8 +343,8 @@ describe('a place set aside (5.8.17)', () => {
     createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' });
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
-    fs.mkdirSync(statePath(dir(), 'mint/discussion'));
-    fs.writeFileSync(statePath(dir(), 'mint/discussion/mint.md'), '# Mint\n');
+    fs.mkdirSync(statePath(dir(), 'mint/topics/mint'), { recursive: true });
+    fs.writeFileSync(statePath(dir(), 'mint/topics/mint/log.md'), '# Mint\n');
 
     ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
@@ -398,6 +398,19 @@ describe('a command run under the writer lock', () => {
 });
 
 describe('the knowledge base\'s reach (22.6.1)', () => {
+  it('indexes a topic\'s record and never its log, at a write and at a full index (9.S43)', async () => {
+    const log = statePath(dir(), UNIT, 'topics/note-window/log.md');
+    fs.mkdirSync(path.dirname(log), { recursive: true });
+    fs.writeFileSync(log, '# note-window\n\n## Session 1\n\nCorduroy marmalade.\n');
+    floatingPanel();
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+
+    const full = await callAsync(dir(), ['knowledge', 'index'], { env: SESSION });
+    assert.strictEqual(full.code, 0, full.stderr);
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+    assert.doesNotMatch((await callAsync(dir(), ['knowledge', 'query', 'corduroy', 'marmalade'])).stdout, /Corduroy/);
+  });
+
   it('finds one unit\'s records from a session in another (22.S20)', async () => {
     floatingPanel();
     createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });

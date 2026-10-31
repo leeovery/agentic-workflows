@@ -95,7 +95,7 @@ Every unresolved `settled` finding lands together, in screens of at most five �
 
 #### Otherwise
 
-Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json` with the Write tool — `{"lane": "settled", "items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per unresolved `settled` finding up to five, `remaining` counting the lane's findings beyond this screen: `title` is the finding's brief title, `detail` one or two sentences carrying the call and what determined it or what leaned.
+Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/finding-batch.json` with the Write tool — `{"items": [{"title": "…", "detail": "…"}], "remaining": N}`, one entry per unresolved `settled` finding up to five, `remaining` counting the lane's findings beyond this screen: `title` is the finding's brief title, `detail` one or two sentences carrying the call and what determined it or what leaned.
 
 → Proceed to **Present the Screen**.
 

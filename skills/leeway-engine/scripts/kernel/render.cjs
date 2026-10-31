@@ -170,12 +170,12 @@ function titleLines(title, head, childPrefix, width, reserve, hang = 0) {
 // one column. It knows nothing about glyphs, statuses, or provenance — the
 // caller composes those (see the domain ring's conventions.cjs).
 //
-//   ├─ ◐ Ai Content Engine        [researching]   ← title + columnised tag
+//   ├─ ◐ Ai Content Engine        [discussing]    ← title + columnised tag
 //   │  │  Summary text wrapped to the budget…      ← body[0], hanging off
 //   │  │  ↳ From exploration                       ← body[1], marker hangs
-//   │  ├─ ✓ Field Order           [decided]        ← child
-//   │  └─ ◐ Truncation Rules      [exploring]
-//   └─ ◐ Menu And Admin           [researching]    ← last sibling drops the │
+//   │  ├─ ✓ Field Order           [yours]          ← child
+//   │  └─ ○ Truncation Rules      [yours]
+//   └─ ◐ Menu And Admin           [discussing]     ← last sibling drops the │
 //         Summary with no children sits unconnected
 //
 // Every sub-line carries the accumulated gutter, so the │ runs unbroken at any

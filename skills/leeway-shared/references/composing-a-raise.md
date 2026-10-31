@@ -1,6 +1,6 @@
 # Composing a Raise
 
-*Shared reference. Loaded by `reading-the-mailbox.md` (the mailbox raise) and discussion's `background-agent-surfacing.md` (the findings walk) at raise composition.*
+*Shared reference. Loaded by `reading-the-mailbox.md` (the mailbox raise) at raise composition.*
 
 ---
 
@@ -32,7 +32,7 @@ Always. Where you stand and the one load-bearing reason that carries it — a cl
 - **One defensible shape** — a decision is owed and re-derivation can't find one to make: say so openly, propose it plainly — a cost worth knowing rides in a clause — and — where the phase decides — offer to lock it in unless the user has something to add; a phase that explores holds it as its lean. Still a presentation, never a demotion: the user sees it whole and can push back before anything lands.
 - **A preferred path among real options** — name your pick and its reason; the alternatives get a clause each naming the kind of cost they carry, and nothing after it — never an option survey. The close points back at the pick's stated reason as what a push-back would have to move — it introduces no new material.
 - **Genuinely open** — the user holds what the document lacks (a point that rests on the user's own knowledge is this by construction): say what you'd need to know and ask for it — the raise's one genuine question lives here.
-- **Needs investigation** — an experiment or a research pass, where the work type carries one, beats either of you guessing; suggesting it is the position. Where the caller carries a **Lanes** declaration naming the walked lane's move, that move closes the raise.
+- **Needs investigation** — an experiment, where the work type carries one, beats either of you guessing; suggesting it is the position. Where the caller carries a **Lanes** declaration naming the walked lane's move, that move closes the raise.
 - **No lean at all** — rare and honest: say so flat and ask for the user's read. Never manufactured; reach it only when re-derivation truly leaves nothing.
 
 The position answers the problem's own question, never its bookkeeping: proposing to park, defer, forward, or record it as open is not a position — deferral is an outcome the user may choose, never one the raise proposes. A made call reopened — a finding pulled from the decide screen, a message landing on decided ground — puts what the call rested on beside what has moved: a pulled finding asks what the derivation missed; a message on decided ground says whether the call still holds.

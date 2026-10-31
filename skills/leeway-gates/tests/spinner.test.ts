@@ -291,7 +291,6 @@ describe('the spinner', () => {
     const { places } = world(on)
     const cases: [Position, string][] = [
       [{ name: 'pay', phase: 'discovery', topic: 'pay' }, 'Shaping'],
-      [{ name: 'pay', phase: 'research', topic: 'ledger' }, 'Researching'],
       [{ name: 'pay', phase: 'experiment', topic: 'ledger' }, 'Experimenting'],
       [{ name: 'pay', phase: 'investigation', topic: 'pay' }, 'Investigating'],
       [{ name: 'pay', phase: 'scoping', topic: 'pay' }, 'Scoping'],

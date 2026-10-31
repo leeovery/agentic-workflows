@@ -42,10 +42,8 @@ const { inFlightTask, runChecks, workMessage } = require('./domain/commit-task.c
 const { taskId } = require('./domain/task-id.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
-const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
-const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
-const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
-const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
+const { VALID_ROUTINGS, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
@@ -79,7 +77,7 @@ const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
-const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
+const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
 const { recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
@@ -212,24 +210,15 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
-  discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]
-  discussion-map set <work-unit> <topic> <subtopic> <state>
-  discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …]
-  research-threads add <work-unit> <topic> <slug> --question <text> --origin <origin> [--parent <slug>]
-  research-threads set <work-unit> <topic> <slug> <state> [--note <text>]
-  research-threads set <work-unit> <topic> <slug>=<state> [<slug>=<state> …]
-  research-threads reframe <work-unit> <topic> <slug> --question <text>
-  research-threads remove <work-unit> <topic> <slug> [--into <slug>]
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-map sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-map add <work-unit> <name> <research|discussion>
+  discovery-map add <work-unit> <name> <discussion>
                 (--summary <text> [--description <text>] [--brief-path <path>] | --backfill)
                 [--source <tag>] [--force-dismissed]
   discovery-map add-batch <work-unit> --file <topics.json>
   discovery-map edit <work-unit> <name> [--summary <text>] [--description <text>]
   discovery-map remove <work-unit> <name>
   discovery-map rename <work-unit> <old> <new>
-  discovery-map reroute <work-unit> <name> <research|discussion>
   discovery-map handle <work-unit> <name>
   discovery-map unhandle <work-unit> <name>
   discovery-session open  <work-unit> --session-log-file <path>
@@ -306,8 +295,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap remove <name>
   roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
-  roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
-  roadmap flag <name>
+  roadmap pull-forward <name> --into <epic> --routing <discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)
   roadmap session open --session-log-file <path>
   roadmap session close -m <message>
   roadmap import <path> [<path> …]
@@ -321,7 +309,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
-  agent announce <work-unit> <phase> <topic> <id>
   agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
@@ -341,13 +328,11 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render plan-progress <wu.planning.topic> --variant construction-complete|concluded
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
-  render finding-announce <wu.phase.topic> --id <agent id> --file <payload.json>
-  render finding-batch    <wu.phase.topic> --file <payload.json> [--first]
+  render finding-batch    <wu.specification.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
   render spec-completion-gate <wu.specification.topic> --variant assessment --file <payload.json> | --variant signoff
-  render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
   render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
@@ -359,17 +344,8 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render mail-announce    <wu.phase.topic>
   render mail-offer       <wu.phase.topic> --file <payload.json>
   render mail-block       <wu.phase.topic>
-  render send-offer       <wu.phase.topic> --file <payload.json>
-  render research-threads <wu.research.topic>
-  render research-conclude-gate <wu.research.topic> [--dead-end]
-  render deep-dive-offer  <wu.research.topic> --file <payload.json>
-  render perspective-offer <wu.discussion.topic> --file <payload.json>
-  render in-flight-agents-gate <wu.research|discussion.topic> --count N [--pause]
-  render review-findings-gate <wu.discussion.topic>
-  render send-candidates  <wu.phase.topic> --file <payload.json>
-  render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
+  render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render dismissed-topics <wu>
   render send-closed-target <wu.discovery.target>
@@ -394,7 +370,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
   render scoping-questions <wu> --open <what,where,why,exclusions>
   render complexity-gate  <wu> --file <payload.json>
-  render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>
   render spec-confirm-gate <wu.specification.topic> [--single|--unify]  (bare: empty unless the start incorporates a specification)
@@ -408,10 +383,10 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
-  render step-opening      <wu.phase.topic> --step session|conclude|consolidation|do-now [--resumed]
+  render step-opening      <wu.phase.topic> --step conclude|consolidation|do-now
   render format-version-check --file <payload.json>
-  render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
-  render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
+  render entry-gate        <wu.phase.topic> [--own]  (planning|implementation|review|specification)
+  render direct-entry-gate <wu.discussion.topic>     (empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
   render next-phase-gate   <wu> --prev <phase> --next <phase>  (empty when continuing is the only way forward)
   render cancel-gate       <wu.discovery|specification.name>
@@ -431,7 +406,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>
-  render absorb-receipt    <epic> --topic <name> [--moved research,seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
+  render absorb-receipt    <epic> --topic <name> [--moved seeds,imports] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render absorb-continuation <epic> --feature <name>
   render promote-receipt   <wu.specification.topic> --to <cc-work-unit> [--imports <N>] [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
@@ -458,7 +433,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render roadmap-parks-gate
   render roadmap-shape-gate
   render shape-gate
-  render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json> | <wu.discussion.topic> --variant discussion
+  render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json>
   render synthesis-gate
   render query-failure-gate --file <payload.json>
   render baseline-progress
@@ -491,11 +466,9 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
-  render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
-  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
   render tree [--width N]            (dev aid; JSON TreeNode array on stdin)`;
@@ -702,115 +675,9 @@ function runWorkunit(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// discussion-map — Discussion Map subtopic writes. add/set are domain
-// transactions (domain/discussion-map.cjs): load → apply → save under the
-// work unit's manifest lock → one decision-ready JSON line, no git commit
-// (the session's commit cadence picks the manifest change up).
-// ---------------------------------------------------------------------------
-
-/** @param {Call} call @param {string[]} argv */
-function runDiscussionMap(call, argv) {
-  const [command, ...rest] = argv;
-  const { opts, positional } = parseArgs(rest);
-  const { cwd } = call;
-
-  try {
-    const [workUnit, topic, subtopic, state] = positional;
-    if (command === 'add') {
-      if (!workUnit || !topic || !subtopic) {
-        throw new Error('Usage: engine discussion-map add <work-unit> <topic> <subtopic> [--parent <subtopic>]');
-      }
-      respond(call, recordSubtopicAdd(cwd, workUnit, topic, subtopic, { parent: opts.parent ?? null }));
-    } else if (command === 'set') {
-      const pairs = positional.slice(2);
-      if (pairs.some((p) => p.includes('='))) {
-        // Uniform batch — every argument a <subtopic>=<state> pair, never
-        // mixed with the positional form (the manifest set grammar).
-        if (!workUnit || !topic || !pairs.length || !pairs.every((p) => /^[^=]+=[^=]+$/.test(p))) {
-          throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic>=<state> [<subtopic>=<state> …] — uniform pairs, never mixed with the positional form`);
-        }
-        respond(call, recordSubtopicStates(cwd, workUnit, topic, pairs.map((p) => {
-          const i = p.indexOf('=');
-          return [p.slice(0, i), p.slice(i + 1)];
-        })));
-      } else {
-        if (!workUnit || !topic || !subtopic || !state) {
-          throw new Error(`Usage: engine discussion-map set <work-unit> <topic> <subtopic> <${SUBTOPIC_STATES.join('|')}> — or a uniform <subtopic>=<state> batch`);
-        }
-        respond(call, recordSubtopicState(cwd, workUnit, topic, subtopic, state));
-      }
-    } else {
-      throw new Error('Usage: engine discussion-map <add|set> …');
-    }
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// research-threads — the thread register's writes. Every verb is a domain
-// transaction (domain/research-threads.cjs): load → apply → save under the
-// work unit's manifest lock → one decision-ready JSON line, no git commit
-// (the session's commit cadence picks the manifest change up).
-// ---------------------------------------------------------------------------
-
-/** @param {Call} call @param {string[]} argv */
-function runResearchThreads(call, argv) {
-  const [command, ...rest] = argv;
-  const { opts, positional } = parseArgs(rest);
-  const { cwd } = call;
-
-  try {
-    const [workUnit, topic, slug, state] = positional;
-    if (command === 'add') {
-      if (!workUnit || !topic || !slug || !opts.question || !opts.origin) {
-        throw new Error('Usage: engine research-threads add <work-unit> <topic> <slug> --question <text> --origin <origin> [--parent <slug>]');
-      }
-      respond(call, recordThreadAdd(cwd, workUnit, topic, slug, { question: opts.question, origin: opts.origin, parent: opts.parent ?? null }));
-    } else if (command === 'set') {
-      const pairs = positional.slice(2);
-      if (pairs.some((p) => p.includes('='))) {
-        // Uniform batch — every argument a <slug>=<state> pair, never mixed
-        // with the positional form (the manifest set grammar); a note names
-        // one parked thread's reason, so it rides the positional form alone.
-        if (!workUnit || !topic || !pairs.length || !pairs.every((p) => /^[^=]+=[^=]+$/.test(p))) {
-          throw new Error('Usage: engine research-threads set <work-unit> <topic> <slug>=<state> [<slug>=<state> …] — uniform pairs, never mixed with the positional form');
-        }
-        if (opts.note !== undefined) {
-          throw new Error('--note is legal with parked alone and takes the positional form: engine research-threads set <work-unit> <topic> <slug> parked --note <text>');
-        }
-        respond(call, recordThreadStates(cwd, workUnit, topic, pairs.map((p) => {
-          const i = p.indexOf('=');
-          return [p.slice(0, i), p.slice(i + 1)];
-        })));
-      } else {
-        if (!workUnit || !topic || !slug || !state) {
-          throw new Error(`Usage: engine research-threads set <work-unit> <topic> <slug> <${VALID_THREAD_STATUSES.join('|')}> [--note <text>] — or a uniform <slug>=<state> batch`);
-        }
-        respond(call, recordThreadState(cwd, workUnit, topic, slug, state, { note: opts.note }));
-      }
-    } else if (command === 'reframe') {
-      if (!workUnit || !topic || !slug || !opts.question) {
-        throw new Error('Usage: engine research-threads reframe <work-unit> <topic> <slug> --question <text>');
-      }
-      respond(call, recordThreadReframe(cwd, workUnit, topic, slug, opts.question));
-    } else if (command === 'remove') {
-      if (!workUnit || !topic || !slug || ('into' in opts && !opts.into)) {
-        throw new Error('Usage: engine research-threads remove <work-unit> <topic> <slug> [--into <slug>] — --into names the survivor');
-      }
-      respond(call, recordThreadRemove(cwd, workUnit, topic, slug, { into: opts.into ?? null }));
-    } else {
-      throw new Error('Usage: engine research-threads <add|set|reframe|remove> …');
-    }
-  } catch (err) {
-    failJson(call, err);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // discovery-map — the Discovery Map's writes. sequence records the suggested
 // execution order as one transaction with its own scoped commit; the per-item
-// map operations (add/edit/remove/rename/reroute/handle/unhandle) write the
+// map operations (add/edit/remove/rename/handle/unhandle) write the
 // manifest with no git commit — the calling session's commit cadence picks
 // the change up. Judgment (what to change) stays with the caller; lifecycle
 // gates are enforced in the domain op.
@@ -877,13 +744,8 @@ function runDiscoveryMap(call, argv) {
         throw new Error('Usage: engine discovery-map rename <work-unit> <old> <new>');
       }
       respond(call, renameItem(cwd, workUnit, positional[1], positional[2]));
-    } else if (command === 'reroute') {
-      if (!workUnit || positional.length !== 3) {
-        throw new Error(`Usage: engine discovery-map reroute <work-unit> <name> <${VALID_ROUTINGS.join('|')}>`);
-      }
-      respond(call, rerouteItem(cwd, workUnit, positional[1], positional[2]));
     } else {
-      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|reroute|handle|unhandle> …');
+      throw new Error('Usage: engine discovery-map <sequence|add|edit|remove|rename|handle|unhandle> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -997,7 +859,7 @@ function runDiscoverySession(call, argv) {
 // index on complete, remove on supersede; reopen syncs nothing —
 // warn-don't-block) with no git commit — the calling session's commit
 // cadence picks the change up. cancel/reactivate act on a stage's unit —
-// `discovery` (the map row with its research, discussion, and experiments)
+// `discovery` (the map row with its discussion and experiments)
 // or `specification` (with its planning) — one transaction per call:
 // manifest write, knowledge-base sync (warn-don't-block), scoped git commit.
 // The JSON response reports what happened — no follow-up read needed.
@@ -1335,7 +1197,7 @@ function runExperiment(call, argv) {
       const result = command === 'conclude'
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
-      (isParentExperimentId(id) ? clearQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
+      (isParentExperimentId(id) ? clearOwnQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
       respond(call, result);
       return;
     }
@@ -1742,18 +1604,15 @@ function runRoadmap(call, argv) {
       // `--routing` belongs to the creating branch: the return of a topic
       // this epic postponed restores the row it already has, routing and all.
       if (positional.length !== 1 || !opts.into) {
-        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <research|discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)');
+        throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> --routing <discussion> [--force-dismissed]   (--routing names nothing on the return of a postponed topic)');
       }
       respond(call, roadmap.pullForwardItem(cwd, positional[0], {
         into: opts.into,
         routing: opts.routing,
         forceDismissed: flags.has('force-dismissed'),
       }));
-    } else if (command === 'flag') {
-      if (positional.length !== 1) throw new Error('Usage: engine roadmap flag <name>');
-      respond(call, roadmap.flagJoined(cwd, positional[0]));
     } else {
-      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull|bind|pull-forward|flag|horizon> …');
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull|bind|pull-forward|horizon> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -1823,12 +1682,11 @@ function runAgent(call, argv) {
       answer(agentState.ackAgent(cwd, workUnit, phase, topic, id, { findings }));
       return;
     }
-    if (command === 'announce' || command === 'incorporate') {
+    if (command === 'incorporate') {
       if (!workUnit || !phase || !topic || !id || positional.length !== 4) {
-        throw new Error(`Usage: engine agent ${command} <work-unit> <phase> <topic> <id>`);
+        throw new Error('Usage: engine agent incorporate <work-unit> <phase> <topic> <id>');
       }
-      const fn = command === 'announce' ? agentState.announceAgent : agentState.incorporateAgent;
-      answer(fn(cwd, workUnit, phase, topic, id));
+      answer(agentState.incorporateAgent(cwd, workUnit, phase, topic, id));
       return;
     }
     if (command === 'surface') {
@@ -1838,7 +1696,7 @@ function runAgent(call, argv) {
       answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
       return;
     }
-    throw new Error('Usage: engine agent <dispatch|scan|ack|announce|surface|incorporate> <work-unit> <phase> <topic> …');
+    throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> …');
   } catch (err) {
     failJson(call, err);
   }
@@ -1989,9 +1847,8 @@ function runStateMerge(call, argv) {
 // phases a topic is talked through carry its mailbox, so a message it
 // answered rides the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
-  research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, t)],
   experiment: (wu, t) => [seriesDir(wu, t)],
-  discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, t)],
+  discussion: (wu, t) => [`${wu}/topics/${t}/log.md`, mailboxDir(wu, t)],
   investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, t)],
   specification: (wu, t) => [`${wu}/specification/${t}`],
   planning: (wu, t) => [`${wu}/planning/${t}`],
@@ -2353,7 +2210,7 @@ function runCommit(call, argv) {
       }
       if (discovery) {
         // --discovery: the discovery session's cadence commit. Discovery runs
-        // beside live research and discussion sessions, so it slices its own
+        // beside live discussion sessions, so it slices its own
         // paths — session logs, briefs, the manifest the map lives in.
         respond(call, stateCommitted(commitStateScoped(cwd, discoveryScope(wu), message)));
         return;
@@ -2493,7 +2350,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed', 'first', 'calls'];
+const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'calls'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2550,8 +2407,6 @@ const COMMANDS = Object.freeze({
   asset: runAsset,
   verdict: runVerdict,
   workunit: runWorkunit,
-  'discussion-map': runDiscussionMap,
-  'research-threads': runResearchThreads,
   'discovery-map': runDiscoveryMap,
   'build-order': runBuildOrder,
   'discovery-session': runDiscoverySession,

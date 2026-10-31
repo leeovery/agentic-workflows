@@ -6,15 +6,20 @@ const { TERMINAL_STATUSES } = require('../../leeway-engine/scripts/kernel/manife
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
 const { stateRoot } = engine.state;
 const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;
+const { seriesDir } = require('../../leeway-engine/scripts/domain/experiment-paths.cjs');
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
+
+/** Whether any of the unit's topics passes `holds`, given the topic's name. @param {string} cwd @param {string} workUnit @param {(topic: string) => boolean} holds */
+function anyTopic(cwd, workUnit, holds) {
+  return listDirs(path.join(stateRoot(cwd), workUnit, 'topics')).some(holds);
+}
 
 function phaseFileExists(cwd, workUnit, phase, manifest) {
   const dir = path.join(stateRoot(cwd), workUnit, phase);
   switch (phase) {
-    case 'research':       return listFiles(dir, '.md').length > 0;
-    case 'experiment':     return listDirs(dir).length > 0;
-    case 'discussion':     return listFiles(dir, '.md').length > 0;
+    case 'experiment':     return anyTopic(cwd, workUnit, (topic) => listDirs(path.join(stateRoot(cwd), seriesDir(workUnit, topic))).length > 0);
+    case 'discussion':     return anyTopic(cwd, workUnit, (topic) => fileExists(path.join(stateRoot(cwd), workUnit, 'topics', topic, 'log.md')));
     case 'investigation':  return listFiles(dir, '.md').length > 0;
     case 'scoping':        return phaseStatus(manifest, phase) !== null;
     case 'specification':  return listDirs(dir).some(d => fileExists(path.join(dir, d, 'specification.md')));
@@ -72,7 +77,7 @@ function discover(cwd, workUnit) {
 // The thin scoped dump: the fields the continuation references branch on —
 // the derived next phase, the completed set (in pipeline order), the revisit
 // candidates (completed phases before next_phase, filtered to the type's
-// pipeline — `phase/item` where the route names an item of the phase), and
+// pipeline), and
 // the route each move is entered by.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
@@ -89,10 +94,10 @@ function format(result) {
 
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
     const { next, revisit } = result.targets || { next: null, revisit: [] };
-    const route = (/** @type {{phase: string, topic: string|null}} */ target) => engine.project.phaseRoute(result.work_type, target.phase, result.work_unit, target.topic);
-    lines.push(`revisitable_phases: ${revisit.map((t) => (t.topic === null ? t.phase : `${t.phase}/${t.topic}`)).join(', ') || '(none)'}`);
-    lines.push(`next_route: ${next ? route(next) : '(none)'}`);
-    lines.push(`revisit_routes: ${revisit.map(route).join(', ') || '(none)'}`);
+    const route = (/** @type {string} */ phase, /** @type {string|null} */ topic = null) => engine.project.phaseRoute(result.work_type, phase, result.work_unit, topic);
+    lines.push(`revisitable_phases: ${revisit.join(', ') || '(none)'}`);
+    lines.push(`next_route: ${next ? route(next.phase, next.topic) : '(none)'}`);
+    lines.push(`revisit_routes: ${revisit.map((/** @type {string} */ phase) => route(phase)).join(', ') || '(none)'}`);
   }
 
   return lines.join('\n') + '\n';

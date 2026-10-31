@@ -41,7 +41,7 @@ const SOURCE = {
   flow: [
     'a piece of work, described in your own words',
     '↓',
-    'DISCOVERY | research · experiment · discussion',
+    'DISCOVERY | discussion · experiment',
     '  → what was explored, what you decided, and why',
     '↓',
     'DEFINITION | specification · planning',
@@ -62,9 +62,8 @@ const SOURCE = {
   ].join('\n'),
   phases: [
     '── DISCOVERY',
-    'research | what is known and what is feasible, per topic',
-    'experiment | a number measured, when a decision rests on one',
     'discussion | the design argued through to conclusions',
+    'experiment | a number measured, when a decision rests on one',
     '',
     '── DEFINITION',
     'specification | the contract everything after it is built from',
@@ -127,7 +126,7 @@ describe('walkthrough diagram layouts', () => {
     assert.strictEqual(flowDiagram(SOURCE.flow, FALLBACK), [
       '   a piece of work, described in your own words',
       '     ↓',
-      '   DISCOVERY     research · experiment · discussion',
+      '   DISCOVERY     discussion · experiment',
       '     → what was explored, what you decided, and why',
       '     ↓',
       '   DEFINITION    specification · planning',
@@ -156,9 +155,8 @@ describe('walkthrough diagram layouts', () => {
   it('table: a band divider fills the width and its rows indent two beneath it', () => {
     assert.strictEqual(tableDiagram(SOURCE.phases, FALLBACK), [
       '── DISCOVERY ────────────────────────────────────────────────────',
-      '  research        what is known and what is feasible, per topic',
-      '  experiment      a number measured, when a decision rests on one',
       '  discussion      the design argued through to conclusions',
+      '  experiment      a number measured, when a decision rests on one',
       '',
       '── DEFINITION ───────────────────────────────────────────────────',
       '  specification   the contract everything after it is built from',
@@ -222,7 +220,7 @@ describe('walkthrough diagram layouts', () => {
       '   beta   three',
     ].join('\n'));
     // Two columns still fit at the floor — the fallback engages on need, never on width alone.
-    assert.match(tableDiagram(SOURCE.phases, MIN), /^ {2}research {8}what is known and what$/m);
+    assert.match(tableDiagram(SOURCE.phases, MIN), /^ {2}discussion {6}the design argued$/m);
   });
 
   it('bars scale with the pane', () => {
@@ -352,8 +350,7 @@ describe('walkthrough sample surfaces', () => {
     assert.strictEqual(out, [
       '── DISCOVERY ────────────────────────────────────────────────────',
       '',
-      'RESEARCH & DISCUSSION (3 topics · 1 decided · 1 in flight · 1',
-      'fresh)',
+      'DISCUSSION (3 topics · 1 decided · 1 in flight · 1 fresh)',
       '  ├─ ✓ Sign In',
       '  │     Accounts, sessions and the sign-in surface.',
       '  │     ↳ Decided',
@@ -364,7 +361,7 @@ describe('walkthrough sample surfaces', () => {
       '  │',
       '  └─ ○ Usage Limits',
       '        What a plan allows, and what happens at the edge.',
-      '        ↳ Fresh · routed to research',
+      '        ↳ Fresh · routed to discussion',
       '',
       '── DEFINITION ───────────────────────────────────────────────────',
       '',
@@ -468,7 +465,7 @@ describe('walkthrough screens', () => {
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "   a piece of work, described in your own words",
       "     ↓",
-      "   DISCOVERY     research · experiment · discussion",
+      "   DISCOVERY     discussion · experiment",
       "     → what was explored, what you decided, and why",
       "     ↓",
       "   DEFINITION    specification · planning",
@@ -628,8 +625,7 @@ describe('walkthrough screens', () => {
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "── DISCOVERY ────────────────────────────────────────────────────",
       "",
-      "RESEARCH & DISCUSSION (3 topics · 1 decided · 1 in flight · 1",
-      "fresh)",
+      "DISCUSSION (3 topics · 1 decided · 1 in flight · 1 fresh)",
       "  ├─ ✓ Sign In",
       "  │     Accounts, sessions and the sign-in surface.",
       "  │     ↳ Decided",
@@ -640,7 +636,7 @@ describe('walkthrough screens', () => {
       "  │",
       "  └─ ○ Usage Limits",
       "        What a plan allows, and what happens at the edge.",
-      "        ↳ Fresh · routed to research",
+      "        ↳ Fresh · routed to discussion",
       "",
       "── DEFINITION ───────────────────────────────────────────────────",
       "",
@@ -676,13 +672,12 @@ describe('walkthrough screens', () => {
       "=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===",
       "Whether it is a topic inside an epic or a feature on its own, a piece of work travels the same phases, and each phase ends by writing a document the next one is built from. That chain is the reason the system can pick up cold: nothing downstream depends on remembering a session, only on reading what it left.",
       "",
-      "Discovery is where the thinking happens. Research surveys the ground when there is ground to survey. A discussion argues the design through to conclusions, guided by a live map of what is settled and what is still open, and if a decision turns out to rest on a number nobody has measured, an experiment is designed, run and reported before the decision is taken. Definition turns those conclusions into a specification, the contract everything after it is built from, and breaks it into a plan of phases and tasks with acceptance criteria. Delivery is where agents take the tasks one at a time, writing the tests before the code, and a review at the end holds the finished work to the specification and says plainly whether the two match.",
+      "Discovery is where the thinking happens. A discussion argues the design through to conclusions, guided by a live map of what is settled and what is still open, and if a decision turns out to rest on a number nobody has measured, an experiment is designed, run and reported before the decision is taken. Definition turns those conclusions into a specification, the contract everything after it is built from, and breaks it into a plan of phases and tasks with acceptance criteria. Delivery is where agents take the tasks one at a time, writing the tests before the code, and a review at the end holds the finished work to the specification and says plainly whether the two match.",
       "",
       "=== DISPLAY: walkthrough diagram (emit verbatim as a text code block (```text fence)) ===",
       "── DISCOVERY ────────────────────────────────────────────────────",
-      "  research        what is known and what is feasible, per topic",
-      "  experiment      a number measured, when a decision rests on one",
       "  discussion      the design argued through to conclusions",
+      "  experiment      a number measured, when a decision rests on one",
       "",
       "── DEFINITION ───────────────────────────────────────────────────",
       "  specification   the contract everything after it is built from",

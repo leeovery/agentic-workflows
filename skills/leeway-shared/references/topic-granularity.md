@@ -1,6 +1,6 @@
 # Topic Granularity
 
-*Shared reference. Loaded by `leeway-discovery/references/topic-synthesis.md`, `leeway-shared/references/discovery-gap-analysis.md`, and `leeway-legacy-research-split/references/dialog.md`.*
+*Shared reference. Loaded by `leeway-discovery/references/topic-synthesis.md`, and `leeway-shared/references/discovery-gap-analysis.md`.*
 
 ---
 

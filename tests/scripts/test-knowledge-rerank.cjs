@@ -43,20 +43,20 @@ describe('retrievability', () => {
 
 describe('rerank — soft down-rank', () => {
   it('multiplies the base score by R (no boosts/confidence)', () => {
-    const out = rerank([{ id: 'a', score: 1.0, phase: 'discussion', progressElapsed: 3 }], [], 3);
+    const out = rerank([{ id: 'a', score: 1.0, phase: 'investigation', progressElapsed: 3 }], [], 3);
     assert.ok(close(out[0].score, 0.9)); // 1.0 * 0.9^(3/3)
   });
 
   it('leaves a frontier chunk (progressElapsed 0) undecayed', () => {
-    const out = rerank([{ id: 'a', score: 0.8, phase: 'discussion', progressElapsed: 0 }], [], 3);
+    const out = rerank([{ id: 'a', score: 0.8, phase: 'investigation', progressElapsed: 0 }], [], 3);
     assert.ok(close(out[0].score, 0.8));
   });
 
   it('sinks a high-similarity but heavily-decayed chunk below a fresh weaker one', () => {
     const out = rerank(
       [
-        { id: 'stale', score: 0.95, phase: 'discussion', progressElapsed: 20 }, // 0.95*~0.495 ≈ 0.47
-        { id: 'fresh', score: 0.80, phase: 'discussion', progressElapsed: 0 },  // 0.80
+        { id: 'stale', score: 0.95, phase: 'investigation', progressElapsed: 20 }, // 0.95*~0.495 ≈ 0.47
+        { id: 'fresh', score: 0.80, phase: 'investigation', progressElapsed: 0 },  // 0.80
       ],
       [],
       3
@@ -67,7 +67,7 @@ describe('rerank — soft down-rank', () => {
 
   it('adds user boosts on top, undimmed by decay', () => {
     const out = rerank(
-      [{ id: 'a', score: 0.5, phase: 'discussion', work_unit: 'x', progressElapsed: 3 }],
+      [{ id: 'a', score: 0.5, phase: 'investigation', work_unit: 'x', progressElapsed: 3 }],
       [{ field: 'work_unit', value: 'x' }],
       3
     );
@@ -76,22 +76,22 @@ describe('rerank — soft down-rank', () => {
   });
 
   it('respects stability — larger S0 means less decay', () => {
-    const tight = rerank([{ id: 'a', score: 1.0, phase: 'discussion', progressElapsed: 10 }], [], 3);
-    const loose = rerank([{ id: 'a', score: 1.0, phase: 'discussion', progressElapsed: 10 }], [], 12);
+    const tight = rerank([{ id: 'a', score: 1.0, phase: 'investigation', progressElapsed: 10 }], [], 3);
+    const loose = rerank([{ id: 'a', score: 1.0, phase: 'investigation', progressElapsed: 10 }], [], 12);
     assert.ok(loose[0].score > tight[0].score);
   });
 
   it('adds the confidence tier, 0.01 per step, undimmed by decay', () => {
-    const tiers = ['high', 'medium', 'low-medium', 'low', 'unknown'].map((confidence) =>
-      rerank([{ id: confidence, score: 0.5, phase: 'discussion', confidence, progressElapsed: 3 }], [], 3)[0].score);
-    const expected = [0.04, 0.03, 0.02, 0.01, 0].map((tier) => 0.5 * 0.9 + tier);
+    const tiers = ['high', 'medium', 'low', 'unknown'].map((confidence) =>
+      rerank([{ id: confidence, score: 0.5, phase: 'investigation', confidence, progressElapsed: 3 }], [], 3)[0].score);
+    const expected = [0.04, 0.03, 0.01, 0].map((tier) => 0.5 * 0.9 + tier);
     tiers.forEach((score, i) => assert.ok(close(score, expected[i])));
   });
 
   it('records the decay, boost and tier each result received beside its scoring', () => {
     const [out] = rerank(
-      [{ id: 'a', score: 0.5, phase: 'discussion', work_unit: 'x', confidence: 'low', progressElapsed: 3, scoring: { kept: 2 } }],
-      [{ field: 'work_unit', value: 'x' }, { field: 'phase', value: 'discussion' }],
+      [{ id: 'a', score: 0.5, phase: 'investigation', work_unit: 'x', confidence: 'low', progressElapsed: 3, scoring: { kept: 2 } }],
+      [{ field: 'work_unit', value: 'x' }, { field: 'phase', value: 'investigation' }],
       3
     );
     assert.strictEqual(out.scoring.kept, 2);
@@ -102,7 +102,7 @@ describe('rerank — soft down-rank', () => {
   });
 
   it('keeps results that score alike in the order they came', () => {
-    const out = rerank(['b', 'a', 'c'].map((id) => ({ id, score: 0.5, phase: 'discussion' })), [], 3);
+    const out = rerank(['b', 'a', 'c'].map((id) => ({ id, score: 0.5, phase: 'investigation' })), [], 3);
     assert.deepStrictEqual(out.map((r) => r.id), ['b', 'a', 'c']);
   });
 

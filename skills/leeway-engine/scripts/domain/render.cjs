@@ -59,14 +59,11 @@ const {
 } = require('./projections/roadmap.cjs');
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
-const { researchThreads } = require('./projections/research-threads.cjs');
-const { registerState } = require('./research-threads.cjs');
-const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { waitGate, phasePaused, owedWaits, owedSources } = require('./projections/wait.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES, VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
-  outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
@@ -804,47 +801,6 @@ function specCompletionGate(cwd, { dotpath, variant, file }) {
     cmdOption('y', 'yes', 'Conclude specification and mark as completed'),
     promptOption('Comment', 'Add context before concluding'),
   ], { question: 'Ready to conclude?' }));
-}
-
-// ---------------------------------------------------------------------------
-// carry-note-gate — research document review's per-note landing consent: the
-// note itself and its judged target ride as the payload, the ask renders
-// here. The statement label carries the reopen warning, so the menu keeps it.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function carryNoteGate(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render carry-note-gate: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'carry-note-gate');
-  if (phase !== 'research') {
-    throw new Error(`render carry-note-gate: address must be <work_unit>.research.<topic>, got phase "${phase}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'carry-note-gate');
-  const note = stringLines(p.note, 'carry-note-gate', 'note');
-  if (note.length === 0) throw new Error('render carry-note-gate: "note" must be non-empty');
-  if (!isFilled(p.target)) throw new Error('render carry-note-gate: "target" must be a non-empty string');
-  if (p.landing_phase !== 'research' && p.landing_phase !== 'discussion') {
-    throw new Error(`render carry-note-gate: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
-  const display = section('DISPLAY: carry note', emitAs('markdown'), [
-    ...note,
-    '',
-    `*Addressed to: ${p.target} — lands in its ${p.landing_phase} mailbox*`,
-  ].join('\n'));
-  const gate = section('MENU: carry note gate', MENU_INSTRUCTION, menu(
-    `This note lands in "${p.target}"'s mailbox; if "${p.target}" is completed, landing reopens it.`,
-    [
-      cmdOption('y', 'yes', 'Land it there; this document keeps a record of the send'),
-      cmdOption('s', 'skip', 'Leave it as prose in this document'),
-      promptOption('Comment', 'Tell me what to change (target, phase, or content)'),
-    ],
-    { question: 'Land it there?' },
-  ));
-  return [display, gate].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -1877,19 +1833,6 @@ function isFilled(v) {
   return typeof v === 'string' && v.trim() !== '';
 }
 
-/**
- * A count flag the session tallied — a non-negative integer, refused by name.
- * @param {string|undefined} value @param {string} surface @param {string} flag
- * @returns {number}
- */
-function countFlag(value, surface, flag) {
-  const n = Number(value);
-  if (!isFilled(value) || !Number.isInteger(n) || n < 0) {
-    throw new Error(`render ${surface}: --${flag} must be a non-negative integer, got "${value ?? ''}"`);
-  }
-  return n;
-}
-
 /** @param {unknown} v @param {string} surface @param {string} field @returns {string[]} */
 function stringLines(v, surface, field) {
   if (!Array.isArray(v) || v.some((l) => typeof l !== 'string')) {
@@ -2094,310 +2037,6 @@ function reviewGate(cwd, args) {
   );
 }
 
-// send-offer — the off-topic send's consent gate. The message's title and,
-// when one home is clear, the resolved target with its judged landing
-// phase are judgment content; the chrome and the options are fixed. Two
-// flags shape what the offer says about the destination: `new_target` — the
-// home is a name the map does not hold yet, so sending creates it — and
-// `grown`, the same creation reached from the other end, where the thread
-// itself outgrew this topic. Grown implies new: a thread that grew into its
-// own topic has nowhere existing to go.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function sendOffer(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render send-offer: --file <payload.json> is required');
-  resolveAddress(cwd, dotpath, 'send-offer');
-  const p = readJsonPayload(cwd, file, 'send-offer');
-  if (!isFilled(p.title)) throw new Error('render send-offer: "title" must be a non-empty string');
-  for (const flag of ['new_target', 'grown']) {
-    if (p[flag] !== undefined && typeof p[flag] !== 'boolean') {
-      throw new Error(`render send-offer: "${flag}" must be true or false`);
-    }
-  }
-  const hasTarget = isFilled(p.target);
-  const hasPhase = isFilled(p.landing_phase);
-  if (hasTarget !== hasPhase) {
-    throw new Error('render send-offer: "target" and "landing_phase" come together — both for a clear home, neither otherwise');
-  }
-  if (hasPhase && !['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render send-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
-  const grown = p.grown === true;
-  if (grown && !hasTarget) {
-    throw new Error('render send-offer: "grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into');
-  }
-  if (p.new_target === true && !hasTarget) {
-    throw new Error('render send-offer: "new_target" needs "target" — there is no new topic without a name');
-  }
-  let label;
-  if (grown) {
-    label = `**${p.title}** has grown into its own topic here.\n`
-      + `Sending it creates **${p.target}** on the map, landing ${p.landing_phase}-side — the material stays in this file and feeds the new topic through the message and the provenance read at its discussion. Append a phase to override (e.g. \`s discussion\`).`;
-  } else if (hasTarget) {
-    label = `**${p.title}** belongs to a different topic, not this one.\n`
-      + `It reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`s discussion\`).`;
-    if (p.new_target === true) label += `\n**${p.target}** isn't on the map yet — sending it creates it.`;
-  } else {
-    label = `**${p.title}** belongs to a different topic, not this one.`;
-  }
-  return section(
-    'MENU: send offer',
-    MENU_INSTRUCTION,
-    menu(label, [
-      cmdOption('s', 'send', 'Send it to the topic it belongs to; it picks it up later'),
-      cmdOption('k', 'keep', 'Keep it here as part of this topic'),
-    ], { question: 'Where should it live?' }),
-  );
-}
-
-// research-threads — the thread register: what the topic set out to learn,
-// rendered at the session's transitions and as the conclusion's hand-off.
-// The register is a lens — nothing gates on a thread's state, so the
-// display is the whole response and carries the continue instruction; an
-// empty register answers empty, so no caller renders a header over nothing.
-
-/** The register block wrapped as its DISPLAY section. @param {string} topic @param {object} manifest @param {string} instruction */
-function researchThreadsSection(topic, manifest, instruction) {
-  return section('DISPLAY: research threads', instruction, researchThreads(topic, manifest));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function researchThreadsSurface(cwd, { dotpath }) {
-  const { topic, manifest } = resolveResearch(cwd, dotpath, 'research-threads');
-  if (registerState(manifest, topic).total === 0) return '';
-  return researchThreadsSection(topic, manifest, CONTINUE_INSTRUCTION);
-}
-
-// research-conclude-gate — the topic-completion consent gate, the register
-// above it whenever the topic holds a thread (open is a fine way to
-// conclude — the register is the hand-off, never a block). The dead-end row
-// renders only when the session's own conclusion is that the topic gives
-// the product nothing to carry forward under its own name — the judgment
-// travels as the --dead-end flag, never derived here.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, 'dead-end'?: string}} args
- * @returns {string}
- */
-function researchConcludeGate(cwd, args) {
-  const { topic, manifest } = resolveResearch(cwd, args.dotpath, 'research-conclude-gate');
-  const options = [
-    cmdOption('y', 'yes', 'Mark this topic as complete, ready for discussion'),
-  ];
-  if (args['dead-end']) {
-    options.push(cmdOption('d', 'dead-end', 'Close it as a dead end — completed and kept as record, no discussion owed; reversible from the map'));
-  }
-  options.push(cmdOption('k', 'keep', "Keep digging, there's more to understand"));
-  const gate = section(
-    'MENU: research conclude gate',
-    MENU_INSTRUCTION,
-    menu('This topic looks ready to conclude.', options, { question: 'Conclude it?' }),
-  );
-  const register = registerState(manifest, topic).total > 0
-    ? researchThreadsSection(topic, manifest, emitAs('text'))
-    : '';
-  return register + gate;
-}
-
-/**
- * Pin a research address, refusing any other phase by name.
- * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
- */
-function resolveResearch(cwd, dotpath, surface) {
-  const resolved = resolveAddress(cwd, dotpath, surface);
-  if (resolved.phase !== 'research') {
-    throw new Error(`render ${surface}: address must be <work_unit>.research.<topic>, got phase "${resolved.phase}"`);
-  }
-  return resolved;
-}
-
-// deep-dive-offer — the orchestrator's dispatch offer over a thread it judged
-// worth investigating independently. The thread's question is the judgment
-// content; the two-line opening and the y/n pair are fixed. The two lines
-// split by role: the statement names what was noticed and stays context, the
-// question beneath it is the ask and takes the decision glyph.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function deepDiveOffer(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render deep-dive-offer: --file <payload.json> is required');
-  resolveResearch(cwd, dotpath, 'deep-dive-offer');
-  const p = readJsonPayload(cwd, file, 'deep-dive-offer');
-  if (!isFilled(p.thread)) {
-    throw new Error('render deep-dive-offer: "thread" must be a non-empty string — the thread\'s question as it opens the offer');
-  }
-  return section('MENU: deep dive offer', MENU_INSTRUCTION, menu(
-    `A thread worth digging: ${p.thread}`,
-    [
-      cmdOption('y', 'yes', 'Dispatch a deep-dive agent'),
-      cmdOption('n', 'no', "Skip, we'll cover it in conversation"),
-    ],
-    { question: 'Send a deep dive after it while we keep going?' },
-  ));
-}
-
-// perspective-offer — the discussion orchestrator's offer to argue a decision
-// from two opposing lenses. The tension description is the judgment content;
-// the statement names the tension and stays context, the question beneath it
-// is the ask and takes the decision glyph.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function perspectiveOffer(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render perspective-offer: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'perspective-offer');
-  if (phase !== 'discussion') {
-    throw new Error(`render perspective-offer: address must be <work_unit>.discussion.<topic>, got phase "${phase}"`);
-  }
-  const p = readJsonPayload(cwd, file, 'perspective-offer');
-  if (!isFilled(p.tension)) {
-    throw new Error('render perspective-offer: "tension" must be a non-empty string — the tension description as it opens the offer');
-  }
-  return section('MENU: perspective offer', MENU_INSTRUCTION, menu(
-    `This decision sits on a ${p.tension} tension.`,
-    [
-      cmdOption('y', 'yes', 'Spin up perspective agents arguing each lens'),
-      cmdOption('n', 'no', 'Continue without perspectives'),
-    ],
-    { question: 'Want to explore both lenses?' },
-  ));
-}
-
-// in-flight-agents-gate — the wait-or-leave gate a session takes when
-// background agents are still running as it leaves. Research and discussion
-// both dispatch, and both leave by concluding or by pausing, so the gate
-// serves the pair; `--pause` words it for the pause. Served to the epic and
-// feature sessions alike: the shape is one gate, and the count is the
-// session's own (this session's dispatches, an earlier session's dead rows
-// already closed), so it rides as a scalar flag rather than being
-// re-derived. The opening line reports what is still running; the ask
-// beneath it is fixed per exit.
-
-const IN_FLIGHT_EXITS = {
-  conclude: {
-    question: 'Wait, or conclude now?',
-    wait: 'Wait for results before concluding',
-    proceed: 'Conclude now (results will persist in cache for reference)',
-  },
-  pause: {
-    question: 'Wait, or pause now?',
-    wait: 'Wait for results before pausing',
-    proceed: 'Pause now (results will persist in cache for the next session)',
-  },
-};
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, count?: string, pause?: string}} args
- * @returns {string}
- */
-function inFlightAgentsGate(cwd, { dotpath, count, pause }) {
-  const { phase } = resolveAddress(cwd, dotpath, 'in-flight-agents-gate');
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
-  }
-  const n = Number(count);
-  if (!Number.isInteger(n) || n < 1) {
-    throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
-  }
-  const exit = IN_FLIGHT_EXITS[pause ? 'pause' : 'conclude'];
-  return section('MENU: in-flight agents gate', MENU_INSTRUCTION, menu(
-    n === 1 ? 'There is still 1 background agent working.' : `There are still ${n} background agents working.`,
-    [
-      cmdOption('w', 'wait', exit.wait),
-      cmdOption('p', 'proceed', exit.proceed),
-    ],
-    { question: exit.question },
-  ));
-}
-
-// review-findings-gate — the discussion conclusion's drain offer over a
-// review report whose findings are still to be walked. The count is the
-// row's own (`remaining` on the acknowledged review row), so the surface
-// reads the agent store and refuses any state the calling prose never
-// renders it from. The report may be a background pass or the closing pass
-// — the wording claims neither.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function reviewFindingsGate(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'review-findings-gate');
-  if (phase !== 'discussion') {
-    throw new Error(`render review-findings-gate: address must be <wu>.discussion.<topic> — the discussion close is the flow that runs this gate; got phase "${phase}"`);
-  }
-  const row = latestReview(cwd, workUnit, topic);
-  if (!row) {
-    throw new Error('render review-findings-gate: no review has been dispatched on this topic — the gate follows an acknowledged report');
-  }
-  if (row.status !== 'acknowledged') {
-    throw new Error(`render review-findings-gate: the latest review row "${row.id}" is ${row.status} — the gate follows an acknowledged report with findings still to walk`);
-  }
-  const n = row.remaining.length;
-  return section('MENU: review findings gate', MENU_INSTRUCTION, menu(
-    `The review left ${n} finding${n === 1 ? '' : 's'} still to walk.`,
-    [
-      cmdOption('y', 'yes', 'Work through them now'),
-      cmdOption('s', 'skip', 'Acknowledge and conclude the topic'),
-    ],
-    { question: 'Walk them now?' },
-  ));
-}
-
-// off-topic-offer — the single-topic counterpart of send-offer: with no
-// sibling topic to send it to, the thought is logged, pivoted into an epic,
-// or noted in place. The pivot row exists only for a feature — the one type
-// that can become an epic — and is derived from the manifest, never asked
-// for and never carried in the payload.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string, variant?: string}} args
- * @returns {string}
- */
-function offTopicOffer(cwd, { dotpath, file, variant }) {
-  if (!file) throw new Error('render off-topic-offer: --file <payload.json> is required');
-  if (variant !== undefined && variant !== 'discussion') {
-    throw new Error('render off-topic-offer: --variant takes "discussion" (omit it for the research shape)');
-  }
-  const { manifest } = resolveAddress(cwd, dotpath, 'off-topic-offer');
-  const p = readJsonPayload(cwd, file, 'off-topic-offer');
-  if (!isFilled(p.title)) throw new Error('render off-topic-offer: "title" must be a non-empty string');
-  const discussion = variant === 'discussion';
-  const options = [cmdOption('l', 'log', 'Capture it as an idea in the inbox for later')];
-  // The roadmap park is discussion's valve — research has no roadmap route.
-  if (discussion) {
-    options.push(cmdOption('r', 'roadmap', 'Put it on the product roadmap for a later release'));
-  }
-  if (manifest.work_type === 'feature') {
-    options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold it as its own topic'));
-  }
-  options.push(cmdOption('i', 'ignore', discussion ? 'Note it in the Summary and move on' : 'Note it in the research file and move on'));
-  return section(
-    'MENU: off-topic offer',
-    MENU_INSTRUCTION,
-    menu(`**${p.title}** is beyond this topic's scope.`, options, { question: 'Where should it go?' }),
-  );
-}
-
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
@@ -2416,49 +2055,6 @@ function backlogGate(cwd, { dotpath, file }) {
     ],
     { question: 'Where should it wait?' },
   ));
-}
-
-// send-candidates — the ambiguous send's selection gate. The plausible
-// homes and the judged landing phase are judgment content; the numbering,
-// the new-topic option, and the override grammar are fixed. A candidate's
-// state reaches the user in the map's own words: the raw lifecycle token is
-// manifest vocabulary, so it goes through the same label every map render
-// uses rather than being echoed at a reader.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function sendCandidates(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render send-candidates: --file <payload.json> is required');
-  resolveAddress(cwd, dotpath, 'send-candidates');
-  const p = readJsonPayload(cwd, file, 'send-candidates');
-  if (!isFilled(p.title)) throw new Error('render send-candidates: "title" must be a non-empty string');
-  if (!['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render send-candidates: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
-  }
-  if (!Array.isArray(p.candidates) || p.candidates.length === 0) {
-    throw new Error('render send-candidates: "candidates" must be a non-empty array of {name, lifecycle}');
-  }
-  const options = p.candidates.map((c, i) => {
-    for (const field of ['name', 'lifecycle']) {
-      if (!isFilled(c[field])) throw new Error(`render send-candidates: candidate ${i + 1} is missing "${field}"`);
-    }
-    if (!Object.hasOwn(DISCOVERY_GLYPH, c.lifecycle)) {
-      throw new Error(`render send-candidates: candidate ${i + 1} carries unknown lifecycle "${c.lifecycle}" (expected ${Object.keys(DISCOVERY_GLYPH).join('/')})`);
-    }
-    return cmdOption(String(i + 1), null, `${c.name} [${discoveryLifecycleLabel(c.lifecycle, c.routing, c.research_state)}]`);
-  });
-  options.push(cmdOption('n', 'new', 'Create a new topic for it'));
-  const recommendation = p.landing_phase === 'research'
-    ? 'It reads as an open question — I\'d land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).'
-    : 'It reads as a decision to make — I\'d land it discussion-side. Reply with an option, appending a phase to override (e.g. `1 research`).';
-  return section(
-    'MENU: send candidates',
-    MENU_INSTRUCTION,
-    menu(`**${p.title}** belongs to a different topic, not this one. ${recommendation}`, options, { question: 'Where should it land?' }),
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -2486,7 +2082,6 @@ const MAP_OP_QUESTIONS = {
   'edit-description': 'Apply?',
   remove: 'Confirm removal?',
   rename: 'Confirm rename?',
-  reroute: 'Confirm routing change?',
   close: 'Confirm close as dead end?',
   reopen: 'Confirm reopen?',
 };
@@ -2514,14 +2109,6 @@ function mapOpRows(p, field) {
     }
     return { name: row.name, value: row[field] };
   });
-}
-
-/** @param {string} value @param {string} field @returns {string} */
-function mapOpRouting(value, field) {
-  if (!['research', 'discussion'].includes(value)) {
-    throw new Error(`render map-op-gate: "${field}" must be "research" or "discussion", got "${value}"`);
-  }
-  return value;
 }
 
 /**
@@ -2556,17 +2143,6 @@ function mapOpBody(op, p) {
       ...indentedBody([
         'Lifecycle: fresh — no work has started, no files exist under this name. Manifest mutation only.',
       ]),
-    ];
-  }
-  if (op === 'reroute') {
-    const name = mapOpName(p, 'name');
-    const from = mapOpRouting(p.from, 'from');
-    const to = mapOpRouting(p.to, 'to');
-    if (from === to) throw new Error('render map-op-gate: "from" and "to" name the same routing — nothing to confirm');
-    return [
-      `Change routing of "${name}": ${from} → ${to}.`,
-      '',
-      ...indentedBody(['Lifecycle: fresh — no work has started, so the routing hint is mutable.']),
     ];
   }
   if (op === 'close') {
@@ -2606,11 +2182,11 @@ function assertOnMap(manifest, name) {
   if (!items[name]) throw new Error(`render map-op-gate: no discovery item "${name}" on the map`);
 }
 
-// A destructive op — remove, rename, re-route — lands on a fresh topic
+// A destructive op — remove, rename — lands on a fresh topic
 // alone. Its refusal names where the topic stands and the way to what the
 // user is after: the way back for a closed lifecycle, the cancel or the
 // postpone for live work.
-const DESTRUCTIVE_VERBS = { remove: 'removed', rename: 'renamed', reroute: 're-routed' };
+const DESTRUCTIVE_VERBS = { remove: 'removed', rename: 'renamed' };
 /** @type {Record<string, (name: string) => string>} */
 const DESTRUCTIVE_RECOVERY = {
   handled: (name) => `Say "reopen ${name}" to make it actionable again.`,
@@ -2633,14 +2209,14 @@ function mapOpRefusal(cwd, manifest, op, name) {
     const phrase = markerRefusal(cwd, manifest, op, name);
     return phrase && `"${name}" can't be ${MARKER_VERBS[op]} — ${phrase}.`;
   }
-  const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
   const verb = DESTRUCTIVE_VERBS[/** @type {keyof typeof DESTRUCTIVE_VERBS} */ (op)];
   if (lifecycle === 'fresh') {
     const held = freshRefusal(cwd, manifest, name);
     return held && `"${name}" can't be ${verb} from the map — ${held}.`;
   }
   const recovery = Object.hasOwn(DESTRUCTIVE_RECOVERY, lifecycle) ? DESTRUCTIVE_RECOVERY[lifecycle](name) : STOP_WORK_RECOVERY;
-  return `"${name}" can't be ${verb} from the map — ${lifecyclePhrase(lifecycle, research_state)}. ${recovery}`;
+  return `"${name}" can't be ${verb} from the map — ${lifecyclePhrase(lifecycle)}. ${recovery}`;
 }
 
 /**
@@ -2709,8 +2285,8 @@ function candidateGate(cwd, { dotpath, file, variant }) {
   }
   const p = readJsonPayload(cwd, file, 'candidate-gate');
   if (!isFilled(p.name)) throw new Error('render candidate-gate: "name" must be a non-empty string');
-  if (!['research', 'discussion'].includes(p.routing)) {
-    throw new Error(`render candidate-gate: "routing" must be "research" or "discussion", got "${p.routing}"`);
+  if (!VALID_ROUTINGS.includes(p.routing)) {
+    throw new Error(`render candidate-gate: "routing" must be one of ${VALID_ROUTINGS.join(', ')}, got "${p.routing}"`);
   }
   if (!isFilled(p.summary)) throw new Error('render candidate-gate: "summary" must be a non-empty string');
   const row = (staging.candidates || {})[p.name];
@@ -2821,9 +2397,7 @@ function sendClosedTarget(cwd, { dotpath }) {
 // shape is identical (a question, a yes, one arm beside it — keep going
 // where the phase can take more, ask where it has hit its end and the
 // only way is forward), and only each phase's own wording differs, so it
-// lives in one table rather than three copies of the same frame. Research's
-// conclude gate is its own surface — it carries a conditional dead-end row
-// no other phase has.
+// lives in one table rather than three copies of the same frame.
 const CONCLUDE_GATES = {
   investigation: {
     question: 'Investigation complete. Ready to conclude?',
@@ -3023,7 +2597,7 @@ function waitGateSurface(cwd, { dotpath }) {
     throw new Error(`render wait-gate: no ${phase} item "${topic}" — nothing to hold shut`);
   }
   const blocking = waits(manifest, phase, topic);
-  return blocking.length === 0 ? '' : waitGate(topic, blocking, manifest.work_type === 'epic');
+  return blocking.length === 0 ? '' : waitGate(blocking, manifest.work_type === 'epic');
 }
 
 // summary-backfill-gate — the epic's provenance recovery. The topics it
@@ -3769,13 +3343,11 @@ function scopingQuestions(cwd, { dotpath, open }) {
   ].join('\n'));
 }
 
-// complexity-gate / first-phase-gate — the two stops of scoping's complexity
+// complexity-gate — the stop of scoping's complexity
 // check. Which criteria the change fails is the session's read, so the
 // concerns ride a payload, while the type is state: an offer to promote a
 // unit that is not a quick-fix, or one already promoted, is a gate over
-// nothing. The second is the onward route a promotion opens — research or
-// discussion, offered only to the types that have the choice, the read that
-// leans one way the session's own and a statement above the fixed ask.
+// nothing.
 
 /**
  * @param {string} cwd
@@ -3806,32 +3378,6 @@ function complexityGate(cwd, { dotpath, file }) {
       cmdOption('b', 'bugfix', 'Promote to bugfix (investigation pipeline)'),
     ])),
   ].join('\n');
-}
-
-const FIRST_PHASE_TYPES = ['feature', 'cross-cutting'];
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function firstPhaseGate(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render first-phase-gate: --file <payload.json> is required');
-  const { manifest } = resolveWorkUnit(cwd, dotpath, 'first-phase-gate');
-  if (!FIRST_PHASE_TYPES.includes(String(manifest.work_type))) {
-    throw new Error(`render first-phase-gate: a ${manifest.work_type} has a fixed first phase — the choice belongs to ${FIRST_PHASE_TYPES.join(' and ')} work`);
-  }
-  const { read } = readJsonPayload(cwd, file, 'first-phase-gate');
-  if (!isFilled(read)) {
-    throw new Error('render first-phase-gate: "read" must be a non-empty string — the choice opens on which phase leans, and why');
-  }
-  if (/\n/.test(read)) {
-    throw new Error('render first-phase-gate: "read" must be a single line — it becomes the menu\'s statement label');
-  }
-  return section('MENU: first phase gate', MENU_INSTRUCTION, menu(read, [
-    cmdOption('r', 'research', 'Explore feasibility and options first, no decisions yet'),
-    cmdOption('d', 'discussion', 'Ready to discuss and make decisions'),
-  ], { question: 'Which phase first?' }));
 }
 
 // correction-gate — the consent stop before editing another work unit's
@@ -3946,186 +3492,76 @@ function specConfirmGate(cwd, { dotpath, single, unify }) {
   ].join('\n');
 }
 
-// finding-announce — the surfacing protocol's opt-in gate: a background
-// agent's return announced as a count and a lane shape, never a preview.
-// The agent's kind and its finding count are the acknowledged row's own,
-// read off the agent store; the payload carries only the lane-split clause.
-// A row not yet read, or one the user has already opted into, never renders.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, id?: string, file?: string}} args
- * @returns {string}
- */
-function findingAnnounce(cwd, { dotpath, id, file }) {
-  if (!isFilled(id)) throw new Error('render finding-announce: --id <agent id> is required');
-  if (!file) throw new Error('render finding-announce: --file <payload.json> is required');
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'finding-announce');
-  const row = agentRows(cwd, workUnit, phase, topic).find((r) => r.id === id);
-  if (!row) throw new Error(`render finding-announce: no agent "${id}" for ${phase}/${topic}`);
-  if (row.status !== 'acknowledged' || row.surfaced.length > 0) {
-    throw new Error(`render finding-announce: "${id}" is ${row.status}${row.surfaced.length > 0 ? ' with findings already surfaced' : ''} — the announce follows the first read, before any finding surfaces`);
-  }
-  const p = readJsonPayload(cwd, file, 'finding-announce');
-  if (!isFilled(p.shape)) throw new Error('render finding-announce: "shape" must be a non-empty string — the lane split in one clause');
-  return section(
-    'MENU: finding announce',
-    emitAs('markdown'),
-    menu(`Background ${row.kind} returned — ${row.findings.length} finding(s): ${p.shape}.`, [
-      cmdOption('y', 'yes', 'Start on them'),
-      cmdOption('l', 'later', "Keep pulling on the current thread, I'll raise them at the next pause"),
-    ], { question: 'Work through them now?' }),
-  );
-}
-
-// finding-batch — a surfacing lane whose findings need at most a scan from
-// the user: the `apply` batch (corrections determined by decisions already
-// made), the call batch (`settled` at the specification, `decide` at every
-// other door but the discussion — calls the session made, presented for a
-// scan before they land), and the `route` batch (findings owned by a sibling topic). The lane
-// fixes the chrome; the payload carries only judgment content, so the screen
-// is one call and the prose holds no template. A screen holds at most
-// BATCH_MAX items — a larger lane renders over successive screens, each
-// approved on its own.
+// finding-batch — the specification's settled calls, the calls its review
+// has made, presented for a scan before they land; every other door walks
+// its calls one at a time through `render finding`. The payload carries only
+// judgment content, so the screen is one call and the prose holds no
+// template. A screen holds at most BATCH_MAX items — a longer batch renders
+// over successive screens, each approved on its own.
 //
-// A drain's first screen opens on its lane's marker — whether a screen is the
-// first is the session's to know, so it travels as `--first`. The settled
-// batch heads nothing: the specification's walk names no lanes.
-//
-// The settled lane at the specification is the one screen a gate mode
-// reaches: it carries the row that sets the mode, and under auto it renders
-// as a display of what is landing, with no menu — a scan the user opted out
-// of is a screen with nothing on it to do. Every other lane is a scan for a
-// user who is present, and renders its gated screen whatever the mode says.
+// It is the one screen a gate mode reaches: it carries the row that sets the
+// mode, and under auto it renders as a display of what is landing, with no
+// menu — a scan the user opted out of is a screen with nothing on it to do.
 
 const BATCH_MAX = 5;
 
-/** A confirm's remainder tail — how many of the lane wait beyond this screen. @param {number} more */
+/** A confirm's remainder tail — how many wait beyond this screen. @param {number} more */
 const moreTail = (more) => (more > 0 ? ` (${more} more after this)` : '');
 
-// The call screen — one presentation under the name each door uses. The
-// `auto` member rides the specification's name alone: its walk is the one
-// with a gate mode this screen can flip, so its lane is the only one with an
-// unstopped form.
-/** @type {{intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss: string, ask: string, fields: string[]}} */
-const CALL_LANE = {
-  intro: (n) => (n === 1
-    ? "This one is a call I've made, with what it rests on named beside it."
-    : "Each of these is a call I've made, with what it rests on named beside it."),
-  question: (n) => (n === 1 ? 'Document it?' : 'Document them?'),
-  confirm: (n, more) => `${n === 1 ? 'Document it' : `Document all ${n}`} and move on${moreTail(more)}`,
-  discuss: "Say discuss and a number — I'll raise it after the rest land",
-  ask: 'Tell me a number to expand',
-  fields: ['title', 'detail'],
-};
-
-/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, auto?: {row: string, line: (n: number) => string}, marker?: string, fields: string[]}>} */
-const BATCH_LANES = {
-  apply: {
-    marker: 'No Decision Needed',
-    intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
-    question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
-    confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
-    ask: "Tell me a number to expand, or one you don't think is settled",
-    fields: ['title', 'detail'],
-  },
-  settled: {
-    ...CALL_LANE,
-    // The opt-in and its unstopped form: the row that sets the gate mode,
-    // and the line the screen closes on once it is set. The landings follow
-    // the line, so it speaks in the present.
-    auto: {
-      row: 'Document this screen and every remaining settled finding automatically',
-      line: (n) => (n === 1 ? 'Documenting it' : `Documenting all ${n}`),
-    },
-  },
-  decide: { ...CALL_LANE, marker: 'Decided From the Record' },
-  route: {
-    marker: 'Belongs Elsewhere',
-    intro: (n) => (n === 1
-      ? "Not this topic's to answer. It goes to its owner's mailbox as a message, carrying the context built here."
-      : "Not this topic's to answer. Each goes to its owner's mailbox as a message, carrying the context built here."),
-    question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
-    confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
-    ask: 'Tell me a number to expand, or one that should stay here',
-    fields: ['title', 'target', 'detail'],
-  },
-};
-
-// The call screen's two names, and the fact that picks between them: the
-// specification batches the calls its review has made, every other caller
-// walks them. Both surfaces read it — it names the batch lane here, and at
-// `render finding` it says whether a settled finding carries its own gate.
-const CALL_LANE_NAMES = ['settled', 'decide'];
+// The phase that batches its review's calls; `render finding` reads it too,
+// to say whether a settled finding carries its own gate.
 const SETTLED_BATCH_PHASE = 'specification';
-
-/** The call lane the address serves — the other name is refused there. @param {string} phase */
-const callLaneOf = (phase) => (phase === SETTLED_BATCH_PHASE ? 'settled' : 'decide');
-
-// The phase whose calls never batch: a discussion's go through raise one at
-// a time, and its close is the decided screen (9.7.5).
-const UNFLUSHED_PHASE = 'discussion';
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string, first?: string}} args
+ * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function findingBatch(cwd, { dotpath, file, first }) {
+function findingBatch(cwd, { dotpath, file }) {
   if (!file) throw new Error('render finding-batch: --file <payload.json> is required');
   const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'finding-batch');
+  if (phase !== SETTLED_BATCH_PHASE) {
+    throw new Error(`render finding-batch: only a specification batches its review's calls — ${phase} walks each through render finding`);
+  }
   const p = readJsonPayload(cwd, file, 'finding-batch');
-  if (!Object.hasOwn(BATCH_LANES, p.lane)) {
-    throw new Error(`render finding-batch: "lane" must be one of ${Object.keys(BATCH_LANES).join(', ')}`);
-  }
-  const lane = BATCH_LANES[p.lane];
-  if (CALL_LANE_NAMES.includes(p.lane) && phase === UNFLUSHED_PHASE) {
-    throw new Error('render finding-batch: a discussion flushes no calls — each goes through raise, and Claude\'s own show on the map since the person last looked');
-  }
-  if (CALL_LANE_NAMES.includes(p.lane) && p.lane !== callLaneOf(phase)) {
-    throw new Error(`render finding-batch: lane "${p.lane}" is not served at the ${phase} phase — its call lane is "${callLaneOf(phase)}"`);
-  }
-  if (first && !lane.marker) {
-    throw new Error(`render finding-batch: --first opens a drain on its lane's marker, and lane "${p.lane}" carries none`);
-  }
   if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
+    throw new Error('render finding-batch: "items" must be a non-empty array of {title, detail}');
   }
   if (p.items.length > BATCH_MAX) {
-    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the lane over successive screens`);
+    throw new Error(`render finding-batch: a screen holds at most ${BATCH_MAX} items (${p.items.length} given) — render the batch over successive screens`);
   }
   const more = p.remaining === undefined ? 0 : p.remaining;
   if (!Number.isInteger(more) || more < 0) {
-    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of this lane\'s findings beyond the screen');
+    throw new Error('render finding-batch: "remaining" must be a non-negative integer — the count of settled findings beyond the screen');
   }
   p.items.forEach((it, i) => {
-    for (const field of lane.fields) {
+    for (const field of ['title', 'detail']) {
       if (!isFilled(it[field])) throw new Error(`render finding-batch: item ${i + 1} is missing "${field}"`);
     }
   });
   const count = p.items.length;
-  // Batch rows carry no walk-state — the lane is all-or-nothing, so no
-  // glyph column. A route row's destination rides the tag slot.
   const body = worklist({
-    intro: lane.intro(count),
-    items: p.items.map((it) => ({ title: it.title, tag: it.target ? `→ ${it.target}` : undefined, note: it.detail })),
+    intro: count === 1
+      ? "This one is a call I've made, with what it rests on named beside it."
+      : "Each of these is a call I've made, with what it rests on named beside it.",
+    items: p.items.map((it) => ({ title: it.title, note: it.detail })),
   });
-  if (lane.auto && laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
+  if (laneHoldsAuto(itemOf(manifest, phase, topic) || {}, 'review')) {
+    // The landings follow the line, so it speaks in the present.
     return section('DISPLAY: finding batch auto-approved', AUTO_GATE_MARKDOWN_INSTRUCTION,
-      `${body}\n\n${lane.auto.line(count)} [auto].`);
+      `${body}\n\n${count === 1 ? 'Documenting it' : `Documenting all ${count}`} [auto].`);
   }
-  const heading = first ? `**\`▪ ${lane.marker}\`**\n\n` : '';
   return [
-    section('DISPLAY: finding batch', emitAs('markdown'), `${heading}${body}`),
+    section('DISPLAY: finding batch', emitAs('markdown'), body),
     section(
       'MENU: finding batch',
       MENU_INSTRUCTION,
       menu('', [
-        cmdOption('y', 'yes', lane.confirm(count, more)),
-        ...(lane.auto ? [cmdOption('a', 'auto', lane.auto.row)] : []),
-        ...(lane.discuss ? [promptOption('Discuss', lane.discuss)] : []),
-        promptOption('Ask', lane.ask),
-      ], { question: lane.question(count) }),
+        cmdOption('y', 'yes', `${count === 1 ? 'Document it' : `Document all ${count}`} and move on${moreTail(more)}`),
+        cmdOption('a', 'auto', 'Document this screen and every remaining settled finding automatically'),
+        promptOption('Discuss', "Say discuss and a number — I'll raise it after the rest land"),
+        promptOption('Ask', 'Tell me a number to expand'),
+      ], { question: count === 1 ? 'Document it?' : 'Document them?' }),
     ),
   ].join('\n');
 }
@@ -4343,10 +3779,10 @@ function mailOffer(cwd, { dotpath, file }) {
   const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
   if (!files.length) throw new Error(`render mail-offer: ${topic}'s mailbox is empty — nothing to offer`);
   if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
-  /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
+  /** @type {Map<string, {file: string, title: string, from: string}>} */
   const byFile = new Map();
   p.items.forEach((it, i) => {
-    for (const field of ['file', 'title', 'origin', 'from_phase', 'from_date']) {
+    for (const field of ['file', 'title', 'from']) {
       if (!isFilled(it[field])) throw new Error(`render mail-offer: item ${i + 1} is missing "${field}"`);
     }
     if (byFile.has(it.file)) throw new Error(`render mail-offer: duplicate item for "${it.file}"`);
@@ -4363,7 +3799,7 @@ function mailOffer(cwd, { dotpath, file }) {
     heading: { label: 'Mailbox', noun: 'message' },
     items: files.map((f) => {
       const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
-      return { title: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
+      return { title: it.title, note: it.from };
     }),
     walked: true,
   });
@@ -4411,7 +3847,7 @@ function mailBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
   const files = mailboxFiles(stateRoot(cwd), workUnit, topic);
   if (!files.length) throw new Error(`render mail-block: ${topic}'s mailbox is empty — nothing blocks conclusion`);
-  const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
+  const doing = phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
   return [
     section(
@@ -4498,7 +3934,7 @@ function phasePausedSurface(cwd, { dotpath, phase }) {
   /** @type {(topic: string) => string} */
   const owed = phase === 'specification'
     ? (topic) => owedSources(awaitedSources(manifest, topic), specSourcePhase(manifest.work_type))
-    : (topic) => owedWaits(waits(manifest, phase, topic), 'the topic');
+    : (topic) => owedWaits(waits(manifest, phase, topic));
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
     .map((item) => ({ topic: item.name, owed: owed(item.name) }))
@@ -4532,11 +3968,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
   const revisitable = phaseTargets(manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 
-  // A derived phase's line matches phase-completed's: the session is
-  // complete, never the phase — sibling records may still live.
-  let statement = DERIVED_PHASES.includes(prev)
-    ? `${titlecase(prev)} session complete for "${titlecase(workUnit)}".`
-    : `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
+  let statement = `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
   if (skipReview) {
     // A live reconcile flag makes the skip-review exit an informed choice:
     // the gate names what completing now would carry unresolved.
@@ -4579,7 +4011,7 @@ function listJoin(parts) {
  */
 function discoveryCancelStatement(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+    throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no discussion item of that name`);
   }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle === 'cancelled') {
@@ -4793,10 +4225,8 @@ function epicAllDoneGate(cwd, { dotpath }) {
 // whole table. Empty when the selection raises no concern. The specification
 // row counts the discussions the grouping analysis will read; the planning
 // and implementation rows read the build order and name the topics sitting
-// ahead of the selection. Discussion entries carry no gate: research
-// outstanding on a topic is a wait on its discussion's conclusion, held by
-// the wait gate, never a warning at entry. Advisory always: the menu offers
-// proceed-anyway, never a refusal.
+// ahead of the selection. Discussion entries carry no gate. Advisory always:
+// the menu offers proceed-anyway, never a refusal.
 // ---------------------------------------------------------------------------
 
 const { SOFT_GATE_ACTIONS } = require('./projections/epic.cjs');
@@ -4916,27 +4346,8 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 // step-opening — the chrome a step opens on where its marker or signpost
 // names state: the step marker as the section's first line, the signpost
 // beneath it. Each step reads what it names — the work type, the phase in
-// flight, the do-now actions the review synthesis wrote to the cache. A
-// session's `--resumed` is the one fact the session alone holds: a fresh
-// start and a continued session both stand in progress with their file in
-// place by the time the session step opens.
+// flight, the do-now actions the review synthesis wrote to the cache.
 // ---------------------------------------------------------------------------
-
-/** @type {Record<string, {name: string, resumed: string, fresh: string, rest: string}>} */
-const SESSION_OPENINGS = {
-  research: {
-    name: 'Research Session',
-    resumed: 'Picking the research back up where it left off.',
-    fresh: 'Starting the research session.',
-    rest: "This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage.",
-  },
-  discussion: {
-    name: 'Discussion Session',
-    resumed: 'Picking the discussion back up where the map leaves it.',
-    fresh: "Discussion starting. I'll track our conversation on a Discussion Map.",
-    rest: "You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.",
-  },
-};
 
 /**
  * The review's do-now actions, counted from the synthesis output.
@@ -4956,17 +4367,10 @@ function doNowCount(cwd, workUnit, topic) {
   return count;
 }
 
-/** @typedef {{cwd: string, workUnit: string, phase: string, topic: string, manifest: any, resumed: boolean}} StepContext */
+/** @typedef {{cwd: string, workUnit: string, phase: string, topic: string, manifest: any}} StepContext */
 
 /** @type {Record<string, {phases: string[], open: (ctx: StepContext) => {name: string, signpost: string}}>} */
 const STEP_OPENINGS = {
-  session: {
-    phases: ['research', 'discussion'],
-    open: ({ phase, resumed }) => {
-      const s = SESSION_OPENINGS[phase];
-      return { name: s.name, signpost: `${resumed ? s.resumed : s.fresh} ${s.rest}` };
-    },
-  },
   conclude: {
     phases: ['specification'],
     open: ({ manifest }) => ({
@@ -5001,10 +4405,10 @@ const STEP_OPENING_STEPS = Object.keys(STEP_OPENINGS);
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, step?: string, resumed?: string}} args
+ * @param {{dotpath: string, step?: string}} args
  * @returns {string}
  */
-function stepOpeningSurface(cwd, { dotpath, step, resumed }) {
+function stepOpeningSurface(cwd, { dotpath, step }) {
   if (step === undefined || !STEP_OPENING_STEPS.includes(step)) {
     throw new Error(`render step-opening: --step must be one of ${STEP_OPENING_STEPS.join(', ')}, got "${step ?? ''}"`);
   }
@@ -5013,7 +4417,7 @@ function stepOpeningSurface(cwd, { dotpath, step, resumed }) {
   if (!opening.phases.includes(phase)) {
     throw new Error(`render step-opening: the ${step} step opens in ${opening.phases.join(' or ')}, got phase "${phase}"`);
   }
-  const { name, signpost } = opening.open({ cwd, workUnit, phase, topic, manifest, resumed: Boolean(resumed) });
+  const { name, signpost } = opening.open({ cwd, workUnit, phase, topic, manifest });
   return section('DISPLAY: step opening', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ ${name}\`**\n\n> ${signpost}`);
 }
 
@@ -5082,11 +4486,10 @@ function blocker(fact, guidance) {
 }
 
 // ---------------------------------------------------------------------------
-// direct-entry-gate — the epic menu's d/r doors take a free-typed topic name.
+// direct-entry-gate — the epic menu's d door takes a free-typed topic name.
 // A name already on the map is not a new topic: the menu row is the way in,
-// so the door refuses, naming where the topic stands — outstanding research
-// first, at either door, since its row is the topic's own; a closed topic
-// names its closure, which is what explains its empty menu. A cancelled,
+// so the door refuses, naming where the topic stands; a closed topic names
+// its closure, which is what explains its empty menu. A cancelled,
 // postponed, decided or dead-ended topic carries no row of its own, so it
 // names the row that brings it back — a postponed one only while its roadmap
 // item still waits, since another epic's pull leaves it no way back. Red like
@@ -5111,22 +4514,17 @@ const POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic
  */
 function directEntryGate(cwd, { dotpath }) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
-  if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render direct-entry-gate: phase must be research or discussion, got "${phase}"`);
+  if (phase !== 'discussion') {
+    throw new Error(`render direct-entry-gate: phase must be discussion, got "${phase}"`);
   }
   if (manifest.work_type !== 'epic') return '';
-  const item = phaseItems(manifest, 'discovery').find((i) => i.name === topic);
-  if (!item) return '';
-  const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
-  const research = CLOSED_LIFECYCLES.includes(lifecycle) ? null : outstandingResearch(manifest, topic);
-  const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
-  const guidance = research
-    ? 'Its research row is the way in.'
-    : lifecycle === 'postponed' && !postponedStillWaits(cwd, workUnit, topic)
-      ? POSTPONED_TAKEN
-      : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
+  if (!phaseItems(manifest, 'discovery').some((i) => i.name === topic)) return '';
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  const guidance = lifecycle === 'postponed' && !postponedStillWaits(cwd, workUnit, topic)
+    ? POSTPONED_TAKEN
+    : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
   return [
-    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${titlecase(topic)}" is already on the map — ${stands}`),
+    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${titlecase(topic)}" is already on the map — ${lifecyclePhrase(lifecycle)}`),
     section('DISPLAY: direct entry guidance', CONTINUE_MARKDOWN_INSTRUCTION, `> ${guidance}`),
   ].join('\n');
 }
@@ -5141,10 +4539,11 @@ function entryGate(cwd, { dotpath, own }) {
   const t = titlecase(topic);
 
   if (own) {
-    // --own checks the topic's OWN terminal statuses where its phase starts,
-    // not its prerequisites — the start's own routing handles the live ones.
-    if (phase !== 'research' && phase !== 'discussion' && phase !== 'specification') {
-      throw new Error(`render entry-gate: --own is only supported for research, discussion and specification, got "${phase}"`);
+    // --own checks the specification's OWN terminal statuses where it
+    // starts, not its prerequisites — the start's own routing handles the
+    // live ones.
+    if (phase !== 'specification') {
+      throw new Error(`render entry-gate: --own is only supported for specification, got "${phase}"`);
     }
     const item = itemOf(manifest, phase, topic) || {};
     if (item.status === 'cancelled') {
@@ -5156,13 +4555,6 @@ function entryGate(cwd, { dotpath, own }) {
         'Continue it from that work unit.',
       );
     }
-    if (phase !== 'specification') {
-      if (item.status !== 'postponed') return '';
-      return blocker(
-        `"${t}" is postponed to the roadmap`,
-        postponedStillWaits(cwd, workUnit, topic) ? 'Pull it forward from the epic menu (`f/forward`).' : POSTPONED_TAKEN,
-      );
-    }
     if (item.status === 'superseded') {
       return blocker(
         `The specification for "${t}" was consolidated into "${titlecase(String(item.superseded_by || ''))}"`,
@@ -5170,19 +4562,6 @@ function entryGate(cwd, { dotpath, own }) {
       );
     }
     return '';
-  }
-
-  if (phase === 'discussion') {
-    // Research feeds discussion: outstanding research holds the discussion
-    // shut at entry, every work type — the birth guard's read, rendered.
-    const research = outstandingResearch(manifest, topic);
-    if (!research) return '';
-    return blocker(
-      `Entry blocked — this discussion awaits research on "${t}" (${researchWaitState(research)})`,
-      manifest.work_type === 'epic'
-        ? 'Return to the epic menu — its research row is the way in.'
-        : 'Continue the work unit — the research is its next step.',
-    );
   }
 
   if (phase === 'planning') {
@@ -5681,7 +5060,7 @@ function workunitReceiptSurface(cwd, args) {
 function unitCancelled(manifest, stage, name) {
   if (stage === 'discovery') {
     if (!discoveryUnitExists(manifest, name)) {
-      throw new Error(`render topic-receipt: no topic "${name}" — nothing on the map and no research or discussion item of that name`);
+      throw new Error(`render topic-receipt: no topic "${name}" — nothing on the map and no discussion item of that name`);
     }
     return computeTopicLifecycle(manifest, name).lifecycle === 'cancelled';
   }
@@ -5709,7 +5088,7 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
     throw new Error(`render topic-receipt: --verb ${verb} addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no research or discussion item of that name`);
+    throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no discussion item of that name`);
   }
 }
 
@@ -5792,14 +5171,12 @@ function absorbSummarySurface(cwd, args) {
   if (!discussion || typeof discussion !== 'object' || typeof discussion.status !== 'string') {
     throw new Error(`render absorb-summary: feature "${workUnit}" has no discussion — nothing to absorb`);
   }
-  const research = itemOf(manifest, 'research', workUnit);
   const series = itemOf(manifest, 'experiment', workUnit);
   const experiments = series && typeof series === 'object'
     ? Object.keys(series.experiments || {}).filter((id) => isParentExperimentId(id)).length
     : 0;
   return absorbSummary(workUnit, /** @type {string} */ (args.into), /** @type {string} */ (args.topic), {
     discussion: discussion.status,
-    ...(research && typeof research === 'object' && typeof research.status === 'string' ? { research: research.status } : {}),
     experiments,
     seeds: Array.isArray(manifest.seeds) ? manifest.seeds.length : 0,
     imports: Array.isArray(manifest.imports) ? manifest.imports.length : 0,
@@ -5818,9 +5195,9 @@ function absorbReceiptSurface(cwd, args) {
     throw new Error(`render absorb-receipt: no discussion item "${topic}" on "${workUnit}" — the absorb has not run`);
   }
   const moved = (args.moved || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const unknown = moved.filter((m) => !['research', 'seeds', 'imports'].includes(m));
+  const unknown = moved.filter((m) => !['seeds', 'imports'].includes(m));
   if (unknown.length > 0) {
-    throw new Error(`render absorb-receipt: --moved entries must be research, seeds, or imports, got "${unknown.join(', ')}"`);
+    throw new Error(`render absorb-receipt: --moved entries must be seeds or imports, got "${unknown.join(', ')}"`);
   }
   let experiments = 0;
   if (args.experiments !== undefined) {
@@ -6364,14 +5741,6 @@ const OPENERS = {
       `Before we name topics, let's pull on a few things — ${p.questions}${fullStop(p.questions)}`,
     );
   },
-  discussion: (cwd, { dotpath }) => {
-    const { phase, topic } = resolveAddress(cwd, dotpath, 'opener');
-    if (phase !== 'discussion') {
-      throw new Error(`render opener: --variant discussion takes <work_unit>.discussion.<topic>, got phase "${phase}"`);
-    }
-    return section('DISPLAY: opener', OPENER_INSTRUCTION,
-      [`New discussion: ${topic}`, '', "What's the core problem or decision we need to work through?"].join('\n'));
-  },
 };
 
 /** @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
@@ -6429,7 +5798,7 @@ function synthesisGateSurface(_cwd, _args) {
   return section('MENU: synthesis gate', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', 'Commit these topics and conclude'),
     cmdOption('e', 'explore', 'Go back to exploration; not ready to commit yet'),
-    promptOption('Adjust', 'Tell me what to change (split, merge, rename, re-route, edit summary)'),
+    promptOption('Adjust', 'Tell me what to change (split, merge, rename, edit summary)'),
   ], { question: 'Commit these topics?' }));
 }
 
@@ -6470,282 +5839,6 @@ function queryFailureGateSurface(cwd, { file }) {
     cmdOption('s', 'skip', 'Proceed without knowledge context for this phase'),
   ], { question: 'How should I proceed?' }));
   return [display, gate].join('\n');
-}
-
-// The legacy research split's dialog gates, keyed by what each asks: themes
-// = the candidate theme list's early sanity gate, plan = the drafted plan's
-// apply consent, remove = the destructive theme-removal confirm.
-/** @type {Record<string, {question: string, options: () => string[]}>} */
-const LEGACY_SPLIT_GATES = {
-  themes: {
-    question: 'Proceed with these themes?',
-    options: () => [
-      cmdOption('y', 'yes', 'Proceed to draft cache files'),
-      cmdOption('a', 'abandon', 'Skip this source file'),
-      promptOption('Redirect', 'Adjust the theme list (rename, merge two, split one, add, remove)'),
-    ],
-  },
-  plan: {
-    question: 'Apply this plan?',
-    options: () => [
-      cmdOption('y', 'yes', 'Apply this plan'),
-      cmdOption('a', 'abandon', 'Skip this source file'),
-      promptOption('Edit', 'Modify cache files or plan.json (rename, merge, split, add, remove). To rewrite a draft, edit the cache file directly between renders.'),
-    ],
-  },
-  remove: {
-    question: 'Remove the theme?',
-    options: () => [
-      cmdOption('y', 'yes', 'Remove the theme and drop its content'),
-      cmdOption('n', 'no', 'Back out'),
-    ],
-  },
-};
-
-const LEGACY_SPLIT_GATE_VARIANTS = Object.keys(LEGACY_SPLIT_GATES);
-
-/**
- * One of the legacy split dialog's gates. The remove confirm says first what
- * the removal of `--theme` drops.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function legacySplitGateSurface(_cwd, { variant, theme }) {
-  if (variant === undefined || !LEGACY_SPLIT_GATE_VARIANTS.includes(variant)) {
-    throw new Error(`render legacy-split-gate: --variant must be one of ${LEGACY_SPLIT_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
-  }
-  const gate = LEGACY_SPLIT_GATES[variant];
-  const gateSection = section(`MENU: legacy split ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options(), { question: gate.question }));
-  if (variant !== 'remove') return gateSection;
-  if (!isFilled(theme)) throw new Error('render legacy-split-gate: --theme is required with --variant remove — the theme the removal drops');
-  return [
-    section('DISPLAY: legacy split removal', emitAs('markdown'), `> Removing "${theme}" drops its drafted content — gone unless another theme has already reabsorbed it.`),
-    gateSection,
-  ].join('\n');
-}
-
-const { legacySources } = require('./legacy-split.cjs');
-
-// The legacy research split's displays, keyed by what each shows. Read from
-// the epic's state: sources = the scan the split opens on (the interrupted
-// splits and unsplittable sources it flags, then the qualifying sources it
-// works through), skipped = a source left as it stood. Over a payload:
-// candidates = the theme list at the early sanity gate (a batch worklist,
-// summary beneath each name), plan = the drafted plan (each theme's summary,
-// drafted content, and cache path as a tree, then the rename apply makes —
-// its stamp is minted at apply, so the footer names the slot), errors =
-// validate.cjs's refusals as bullets, apply = apply.cjs's outcome. Names,
-// summaries, counts, previews, and the scripts' answers are judgment content
-// and ride the payload; the cache layout is the engine's.
-/** @type {Record<string, string[]>} */
-const LEGACY_SPLIT_THEME_FIELDS = {
-  candidates: ['kebab_name', 'summary'],
-  plan: ['kebab_name', 'summary', 'content_preview'],
-};
-
-/** @param {string} cwd @param {string} dotpath @returns {{workUnit: string, sources: import('./legacy-split.cjs').LegacySources}} */
-function legacySplitScan(cwd, dotpath) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'legacy-split-display');
-  return { workUnit, sources: legacySources(cwd, manifest) };
-}
-
-/** A ⚑ advisory whose label and tail each wrap on their own lines. @param {string} label @param {string} tail @returns {string} */
-function legacySplitFlag(label, tail) {
-  const budget = displayWidth() - 4;
-  return callout([...wrap(label, budget), ...wrap(tail, budget)]);
-}
-
-/** The scan's sections — each present only where the scan found its kind. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function legacySplitSources(cwd, { dotpath }) {
-  const { sources } = legacySplitScan(cwd, dotpath);
-  const sections = [];
-  if (sources.stranded_sentinels.length > 0) {
-    sections.push(section('DISPLAY: legacy split interrupted', CONTINUE_INSTRUCTION, [
-      legacySplitFlag('Interrupted split(s) detected — a prior apply crashed mid-flight.', 'Clear each, then reopen the epic via /leeway to retry:'),
-      '',
-      ...sources.stranded_sentinels.flatMap((name) => bulletRow(name, { indent: '    ' })),
-      '',
-      ...indentedBody(['Per-item recovery is under "Recovery from Interrupted Apply" at the end of this skill.'], { indent: '    ' }),
-    ].join('\n')));
-  }
-  if (sources.unsplittable.length > 0) {
-    sections.push(section('DISPLAY: legacy split unsplittable', CONTINUE_INSTRUCTION, [
-      callout('Unsplittable source(s) — rename each on the discovery map to a kebab name, then reopen the epic to split:'),
-      '',
-      ...sources.unsplittable.flatMap((src) => bulletRow(`${src.name} — ${src.reason}`, { indent: '    ' })),
-    ].join('\n')));
-  }
-  if (sources.qualifying_sources.length > 0) {
-    sections.push(section('DISPLAY: legacy split sources', CONTINUE_INSTRUCTION, [
-      'Qualifying source files (in-progress, migration-seeded):',
-      '',
-      ...sources.qualifying_sources.flatMap((name) => bulletRow(`${name}.md`)),
-    ].join('\n')));
-  }
-  return sections.join('\n');
-}
-
-/**
- * The sub-step opening on a source the split takes up — one the scan still
- * finds qualifying, since the split works through those alone.
- * @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string}
- */
-function legacySplitProcessing(cwd, { dotpath, source }) {
-  if (!isFilled(source)) throw new Error('render legacy-split-display: --source is required — the source the split takes up');
-  const { workUnit, sources } = legacySplitScan(cwd, dotpath);
-  if (!sources.qualifying_sources.includes(source)) {
-    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — the split works through the qualifying sources alone`);
-  }
-  return section('DISPLAY: legacy split processing', CONTINUE_MARKDOWN_INSTRUCTION,
-    `**\`▪ Processing ${source}\`**\n\n> Working on ${source}.md.`);
-}
-
-/**
- * The split's closing line, from the session's tallies — an aborted apply
- * first, since its stuck sentinel needs clearing before anything else.
- * @param {{applied: number, abandoned: number, errored: number}} t
- * @returns {string}
- */
-function legacySplitOutcome({ applied, abandoned, errored }) {
-  if (errored > 0) {
-    return `${errored} source file(s) aborted mid-apply; ${applied} decomposed; ${abandoned} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /leeway.`;
-  }
-  if (applied === 0 && abandoned === 0) return 'No legacy source files needed decomposition.';
-  if (abandoned === 0) return 'Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.';
-  if (applied > 0) {
-    return `${applied} source file(s) decomposed; ${abandoned} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /leeway.`;
-  }
-  return 'No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /leeway.';
-}
-
-/** The split's conclusion. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
-function legacySplitComplete(_cwd, args) {
-  const [applied, abandoned, errored] = ['applied', 'abandoned', 'errored'].map((flag) => countFlag(args[flag], 'legacy-split-display', flag));
-  return section('DISPLAY: legacy split complete', CONTINUE_MARKDOWN_INSTRUCTION,
-    `**\`□ Legacy Split Complete\`**\n\n> ${legacySplitOutcome({ applied, abandoned, errored })}`);
-}
-
-/** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
-const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, processing: legacySplitProcessing, complete: legacySplitComplete };
-
-/** validate.cjs's refusals. @param {Record<string, any>} p @returns {string} */
-function legacySplitErrors(p) {
-  if (!Array.isArray(p.errors) || p.errors.length === 0) {
-    throw new Error('render legacy-split-display: "errors" must be a non-empty array of strings');
-  }
-  p.errors.forEach((e, i) => {
-    if (!isFilled(e)) throw new Error(`render legacy-split-display: errors[${i}] must be a non-empty string`);
-  });
-  const body = [`Validation failed for ${p.source}:`, '', ...p.errors.flatMap((e) => bulletRow(e))];
-  return section('DISPLAY: legacy split errors', CONTINUE_INSTRUCTION, body.join('\n'));
-}
-
-/** @param {Record<string, any>} result @param {string} field @returns {string} */
-function applyField(result, field) {
-  if (!isFilled(result[field])) throw new Error(`render legacy-split-display: "result.${field}" must be a non-empty string — a failed apply names it`);
-  return result[field];
-}
-
-/** apply.cjs's failure: the stage it stopped at, its error, the recovery it names. @param {string} source @param {Record<string, any>} result @returns {string} */
-function legacySplitApplyFailed(source, result) {
-  const [stage, error, hint] = ['stage', 'error', 'recovery_hint'].map((field) => applyField(result, field));
-  return section('DISPLAY: legacy split apply failed', CONTINUE_INSTRUCTION, [
-    `Apply failed for ${source} at stage "${stage}":`,
-    ...errorOutputLines(error),
-    '',
-    ...wrap(`Recovery: ${hint}`, displayWidth()),
-  ].join('\n'));
-}
-
-/** apply.cjs's success: the themes it landed, then any knowledge-base cleanup warnings. @param {string} source @param {Record<string, any>} result @returns {string} */
-function legacySplitApplied(source, result) {
-  const themes = result.applied && result.applied.themes;
-  if (!Number.isInteger(themes) || themes < 1) {
-    throw new Error('render legacy-split-display: "result.applied.themes" must be a positive integer — the themes the apply landed');
-  }
-  const warnings = result.kb_warnings ?? [];
-  if (!Array.isArray(warnings) || warnings.some((w) => !isFilled(w))) {
-    throw new Error('render legacy-split-display: "result.kb_warnings" must be an array of non-empty strings when present');
-  }
-  const applied = section('DISPLAY: legacy split applied', CONTINUE_INSTRUCTION, `Applied ${source}: ${themes} new file(s).`);
-  if (warnings.length === 0) return applied;
-  return [applied, section('DISPLAY: legacy split kb warnings', CONTINUE_MARKDOWN_INSTRUCTION, [
-    '> ⚑ Knowledge-base cleanup reported warnings:',
-    ...warnings.map((w) => `> - ${escapeMarkdown(w)}`),
-    '>',
-    '> The next start brings the knowledge base up to date.',
-  ].join('\n'))].join('\n');
-}
-
-/** apply.cjs's outcome, its JSON carried whole under `result`. @param {Record<string, any>} p @returns {string} */
-function legacySplitApply(p) {
-  const result = p.result;
-  if (!result || typeof result !== 'object' || typeof result.ok !== 'boolean') {
-    throw new Error('render legacy-split-display: "result" must be the JSON apply.cjs answered, its "ok" a boolean');
-  }
-  return result.ok ? legacySplitApplied(p.source, result) : legacySplitApplyFailed(p.source, result);
-}
-
-/** The theme list or the drafted plan. @param {'candidates'|'plan'} variant @param {Record<string, any>} p @param {string} cwd @returns {string} */
-function legacySplitThemes(variant, p, cwd) {
-  const fields = LEGACY_SPLIT_THEME_FIELDS[variant];
-  if (variant === 'plan' && !isFilled(p.work_unit)) {
-    throw new Error('render legacy-split-display: "work_unit" must be a non-empty string');
-  }
-  if (!Array.isArray(p.themes) || p.themes.length === 0) {
-    throw new Error(`render legacy-split-display: "themes" must be a non-empty array of {${[...fields, ...(variant === 'plan' ? ['paragraph_count'] : [])].join(', ')}}`);
-  }
-  p.themes.forEach((t, i) => {
-    for (const field of fields) {
-      if (!isFilled(t[field])) throw new Error(`render legacy-split-display: theme ${i + 1} is missing "${field}"`);
-    }
-    if (variant === 'plan' && (!Number.isInteger(t.paragraph_count) || t.paragraph_count < 0)) {
-      throw new Error(`render legacy-split-display: theme ${i + 1} "paragraph_count" must be a non-negative integer`);
-    }
-  });
-
-  if (variant === 'candidates') {
-    const body = worklist({
-      intro: `Candidate themes for ${p.source}.md:`,
-      items: p.themes.map((t) => ({ title: t.kebab_name, note: t.summary })),
-    });
-    return section('DISPLAY: legacy split candidates', CONTINUE_MARKDOWN_INSTRUCTION, body);
-  }
-
-  const lines = [`Plan for ${p.source}.md:`, ''];
-  p.themes.forEach((t, i) => {
-    lines.push(`${i + 1}. ${t.kebab_name}`);
-    lines.push(treeList([
-      `Summary: ${t.summary}`,
-      `Content: ${t.paragraph_count} para(s) — "${t.content_preview}..."`,
-      `Cache: ${statePath(cwd, '.cache', p.work_unit, 'legacy-split', p.source, `${t.kebab_name}.md`)}`,
-    ], { indent: '   ' }));
-    lines.push('');
-  });
-  lines.push(`Source file will be renamed to ${p.source}-superseded-<datetime>.md.`);
-  return section('DISPLAY: legacy split plan', CONTINUE_INSTRUCTION, lines.join('\n'));
-}
-
-/** @type {Record<string, (p: Record<string, any>, cwd: string) => string>} */
-const LEGACY_SPLIT_PAYLOAD_DISPLAYS = {
-  candidates: (p, cwd) => legacySplitThemes('candidates', p, cwd),
-  plan: (p, cwd) => legacySplitThemes('plan', p, cwd),
-  errors: legacySplitErrors,
-  apply: legacySplitApply,
-};
-
-const LEGACY_SPLIT_DISPLAY_VARIANTS = [...Object.keys(LEGACY_SPLIT_STATE_DISPLAYS), ...Object.keys(LEGACY_SPLIT_PAYLOAD_DISPLAYS)];
-
-/** One of the legacy split's displays. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function legacySplitDisplaySurface(cwd, args) {
-  const { variant, file } = args;
-  if (variant === undefined || !LEGACY_SPLIT_DISPLAY_VARIANTS.includes(variant)) {
-    throw new Error(`render legacy-split-display: --variant must be one of ${LEGACY_SPLIT_DISPLAY_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
-  }
-  if (Object.hasOwn(LEGACY_SPLIT_STATE_DISPLAYS, variant)) return LEGACY_SPLIT_STATE_DISPLAYS[variant](cwd, args);
-  if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'legacy-split-display');
-  if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
-  return LEGACY_SPLIT_PAYLOAD_DISPLAYS[variant](p, cwd);
 }
 
 // ---------------------------------------------------------------------------
@@ -7035,7 +6128,6 @@ const SURFACES = {
   'task-list': taskList,
   'plan-progress': planProgress,
   'findings-summary': findingsSummary,
-  'finding-announce': findingAnnounce,
   'finding-batch': findingBatch,
   'finding': finding,
   'review-presentation': reviewPresentation,
@@ -7043,7 +6135,6 @@ const SURFACES = {
   'spec-review-gate': specReviewGate,
   'spec-completion-gate': specCompletionGate,
   'convergence-diagnostic': convergenceDiagnostic,
-  'carry-note-gate': carryNoteGate,
   'hypothesis-board': hypothesisBoard,
   'findings-signoff-gate': findingsSignoffGate,
   'fix-direction': fixDirection,
@@ -7054,15 +6145,6 @@ const SURFACES = {
   'mail-announce': mailAnnounce,
   'mail-offer': mailOffer,
   'mail-block': mailBlock,
-  'send-offer': sendOffer,
-  'research-threads': researchThreadsSurface,
-  'research-conclude-gate': researchConcludeGate,
-  'deep-dive-offer': deepDiveOffer,
-  'perspective-offer': perspectiveOffer,
-  'in-flight-agents-gate': inFlightAgentsGate,
-  'review-findings-gate': reviewFindingsGate,
-  'send-candidates': sendCandidates,
-  'off-topic-offer': offTopicOffer,
   'backlog-gate': backlogGate,
   'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
@@ -7089,7 +6171,6 @@ const SURFACES = {
   'plan-review-gate': planReviewGate,
   'scoping-questions': scopingQuestions,
   'complexity-gate': complexityGate,
-  'first-phase-gate': firstPhaseGate,
   'correction-gate': correctionGate,
   'analysis-proceed-gate': analysisProceedGate,
   'spec-confirm-gate': specConfirmGate,
@@ -7178,8 +6259,6 @@ const SURFACES = {
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ready': knowledgeReadySurface,
-  'legacy-split-gate': legacySplitGateSurface,
-  'legacy-split-display': legacySplitDisplaySurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,

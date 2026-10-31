@@ -128,13 +128,12 @@ describe('leeway discovery', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { exploration: { status: 'completed' } } },
-        discussion: { items: { auth: { status: 'in-progress' } } },
+        discussion: { items: { exploration: { status: 'completed' }, auth: { status: 'in-progress' } } },
         specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
     const r = discover(dir);
-    assert.deepStrictEqual(r.epics.work_units[0].active_phases, ['research', 'discussion', 'specification']);
+    assert.deepStrictEqual(r.epics.work_units[0].active_phases, ['discussion', 'specification']);
   });
 
   it('epic with no phases has empty active_phases', () => {
@@ -289,7 +288,7 @@ describe('leeway discovery', () => {
   it('epic active_phases ignores flat status with no items', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { status: 'in-progress' } },
+      phases: { discussion: { status: 'in-progress' } },
     });
     const r = discover(dir);
     assert.deepStrictEqual(r.epics.work_units[0].active_phases, []);
@@ -456,8 +455,7 @@ describe('leeway format', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        research: { items: { exploration: { status: 'completed' } } },
-        discussion: { items: { auth: { status: 'in-progress' } } },
+        discussion: { items: { exploration: { status: 'completed' }, auth: { status: 'in-progress' } } },
       },
     });
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
@@ -528,7 +526,7 @@ describe('leeway format', () => {
   it('carries no phase labels or active phases — the view verb owns them', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
-      phases: { research: { items: { exploration: { status: 'completed' } } } },
+      phases: { discussion: { items: { exploration: { status: 'completed' } } } },
     });
     createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
     const out = format(discover(dir));

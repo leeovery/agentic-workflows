@@ -25,7 +25,7 @@ Emit the call's MENU section verbatim per its marker.
 First check the topic's mailbox — a waiting message must be worked before concluding:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} investigation {topic}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic mailbox {work_unit} {topic}
 ```
 
 **If the response's `files` is non-empty:**

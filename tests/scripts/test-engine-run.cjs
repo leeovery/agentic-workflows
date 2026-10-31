@@ -38,11 +38,11 @@ const ENGINE = path.join(REPO, 'skills/leeway-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
 const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
 
-/** A feature work unit with one research item to write to. */
+/** A bugfix work unit with one investigation item to write to. */
 function seed(dir, name = 'payments') {
   createManifest(dir, name, {
-    work_type: 'feature',
-    phases: { research: { items: { [name]: { status: 'in-progress' } } } },
+    work_type: 'bugfix',
+    phases: { investigation: { items: { [name]: { status: 'in-progress' } } } },
   });
   return name;
 }
@@ -85,7 +85,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('a mutation answers one ok:true JSON line on stdout, exit 0', () => {
-    const res = engine.run(['manifest', 'set', 'payments.research.payments', 'brief_incorporated=true'], { cwd: dir });
+    const res = engine.run(['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
     assert.strictEqual(res.stderr, '');
     assert.strictEqual(res.stdout.split('\n').filter(Boolean).length, 1, 'one line, nothing after it');
@@ -95,7 +95,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('a refusal answers {ok:false} on stderr with exit 1, and writes nothing', () => {
     const before = manifestOf(dir);
-    const res = engine.run(['topic', 'complete', 'payments', 'research', 'absent'], { cwd: dir });
+    const res = engine.run(['topic', 'complete', 'payments', 'investigation', 'absent'], { cwd: dir });
     assert.strictEqual(res.code, 1);
     assert.strictEqual(res.stdout, '', 'a refusal says nothing on stdout');
     assert.strictEqual(JSON.parse(res.stderr).ok, false);
@@ -103,14 +103,14 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 
   it('a bare read writes its bare value to stdout', () => {
-    assert.deepStrictEqual(engine.run(['manifest', 'get', 'payments.research.payments', 'status'], { cwd: dir }),
+    assert.deepStrictEqual(engine.run(['manifest', 'get', 'payments.investigation.payments', 'status'], { cwd: dir }),
       { stdout: 'in-progress\n', stderr: '', code: 0 });
-    assert.deepStrictEqual(engine.run(['manifest', 'exists', 'payments.research.absent'], { cwd: dir }),
+    assert.deepStrictEqual(engine.run(['manifest', 'exists', 'payments.investigation.absent'], { cwd: dir }),
       { stdout: 'false\n', stderr: '', code: 0 });
   });
 
   it('a read\'s expected miss carries the read\'s own exit code', () => {
-    const res = engine.run(['manifest', 'key-of', 'payments.research', 'items', 'absent'], { cwd: dir });
+    const res = engine.run(['manifest', 'key-of', 'payments.investigation', 'items', 'absent'], { cwd: dir });
     assert.strictEqual(res.code, 2, 'an expected miss is 2, not a refusal');
     assert.match(res.stderr, /^Error: Value "absent" not found/);
     assert.strictEqual(res.stdout, '');
@@ -136,10 +136,10 @@ describe('engine.run — the invocation is the caller\'s', () => {
     const other = setupFixture();
     try {
       seed(other);
-      engine.run(['manifest', 'set', 'payments.research.payments', 'status=completed'], { cwd: other });
-      assert.strictEqual(engine.run(['manifest', 'get', 'payments.research.payments', 'status'], { cwd: dir }).stdout,
+      engine.run(['manifest', 'set', 'payments.investigation.payments', 'status=completed'], { cwd: other });
+      assert.strictEqual(engine.run(['manifest', 'get', 'payments.investigation.payments', 'status'], { cwd: dir }).stdout,
         'in-progress\n', 'the first fixture is untouched');
-      assert.strictEqual(engine.run(['manifest', 'get', 'payments.research.payments', 'status'], { cwd: other }).stdout,
+      assert.strictEqual(engine.run(['manifest', 'get', 'payments.investigation.payments', 'status'], { cwd: other }).stdout,
         'completed\n');
       assert.strictEqual(process.cwd(), here, 'the caller was never chdir-ed');
     } finally {
@@ -149,9 +149,9 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('an environment key is held for the call and restored after it, absent keys included', () => {
     withProcessEnv({ CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: 'ambient' }, () => {
-      engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
+      engine.run(['presence', 'beat', 'payments', 'investigation', 'payments'],
         { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'held-session', CLAUDE_PID: String(process.pid) } });
-      assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments').session_id, 'held-session',
+      assert.strictEqual(presenceRecord(dir, 'payments', 'investigation', 'payments').session_id, 'held-session',
         'the call\'s environment reached the domain');
       assert.ok(!('CLAUDE_CODE_SESSION_ID' in process.env), 'a key that was absent is absent again');
       assert.strictEqual(process.env.CLAUDE_PID, 'ambient', 'a key that was set is what it was');
@@ -160,9 +160,9 @@ describe('engine.run — the invocation is the caller\'s', () => {
 
   it('a key the caller takes away is gone for the call', () => {
     withProcessEnv({ CLAUDE_CODE_SESSION_ID: 'ambient-session' }, () => {
-      engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
+      engine.run(['presence', 'beat', 'payments', 'investigation', 'payments'],
         { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: String(process.pid) } });
-      assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments').session_id, null,
+      assert.strictEqual(presenceRecord(dir, 'payments', 'investigation', 'payments').session_id, null,
         'the engine saw no session id at all');
       assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, 'ambient-session', 'and it came back');
     });
@@ -180,14 +180,14 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 
   it('stdin is the caller\'s text — the hook verbs read it and nothing else', () => {
-    engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
+    engine.run(['presence', 'beat', 'payments', 'investigation', 'payments'],
       { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'ending-session', CLAUDE_PID: String(process.pid) } });
     const res = engine.run(['presence', 'cleanup'], { cwd: dir, stdin: JSON.stringify({ session_id: 'ending-session' }) });
     assert.strictEqual(res.code, 0, res.stderr);
     const answer = JSON.parse(res.stdout);
     assert.strictEqual(answer.session_id, 'ending-session');
-    assert.deepStrictEqual(answer.cleared, [{ work_unit: 'payments', phase: 'research', topic: 'payments' }]);
-    assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments'), null);
+    assert.deepStrictEqual(answer.cleared, [{ work_unit: 'payments', phase: 'investigation', topic: 'payments' }]);
+    assert.strictEqual(presenceRecord(dir, 'payments', 'investigation', 'payments'), null);
   });
 
   it('no stdin is empty stdin — a hook verb with nothing to read answers, never blocks', () => {
@@ -202,7 +202,7 @@ describe('engine.run — the invocation is the caller\'s', () => {
     assert.strictEqual(res.stdout, '');
     assert.ok(res.stderr.trim().length > 0, 'the message is on stderr');
     assert.throws(() => JSON.parse(res.stderr), 'and it is a message, not a refusal response');
-    assert.strictEqual(engine.run(['manifest', 'get', 'payments', 'work_type'], { cwd: dir }).stdout, 'feature\n',
+    assert.strictEqual(engine.run(['manifest', 'get', 'payments', 'work_type'], { cwd: dir }).stdout, 'bugfix\n',
       'the next call still works');
   });
 
@@ -238,8 +238,8 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
     dir = setupFixture();
     seed(dir);
     createFile(dir, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(dir, '.leeway/payments/research/payments.md', '# Payments\n\nCards settle nightly.\n');
-    engine.run(['knowledge', 'index', '.leeway/payments/research/payments.md'], { cwd: dir });
+    createFile(dir, '.leeway/payments/investigation/payments.md', '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', '.leeway/payments/investigation/payments.md'], { cwd: dir });
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -266,7 +266,7 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('answers a command that never waits exactly as run does', async () => {
-    const args = ['manifest', 'get', 'payments.research.payments', 'status'];
+    const args = ['manifest', 'get', 'payments.investigation.payments', 'status'];
     assert.deepStrictEqual(await engine.runAsync(args, { cwd: dir }), engine.run(args, { cwd: dir }));
   });
 
@@ -278,7 +278,7 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
 
   it('run refuses a command it cannot wait for, naming runAsync — a raise\'s draw, which waits on its rows\' checks, among them', () => {
     assert.throws(() => engine.run(['knowledge', 'query', 'cards'], { cwd: dir }), /engine knowledge query answers asynchronously — call runAsync/);
-    assert.throws(() => engine.run(['raise', 'payments.research.payments', '--answers', 'abcd'], { cwd: dir }), /engine raise payments\.research\.payments answers asynchronously — call runAsync/);
+    assert.throws(() => engine.run(['raise', 'payments.investigation.payments', '--answers', 'abcd'], { cwd: dir }), /engine raise payments\.investigation\.payments answers asynchronously — call runAsync/);
   });
 
   it('run refuses a waiting command before it acts — nothing written, the environment untouched', () => {
@@ -297,21 +297,21 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('a single-file index answers at once, so run takes it', () => {
-    const res = engine.run(['knowledge', 'index', '.leeway/payments/research/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '.leeway/payments/investigation/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
   it('--dry-run is a switch: it never takes the argument after it as its value', () => {
-    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/payments/research/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/payments/investigation/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
     assert.match(res.stdout, /^Indexed \d+ chunks from /);
-    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/payments/research/payments.md')}\n`), res.stdout);
+    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/payments/investigation/payments.md')}\n`), res.stdout);
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
     const { runKnowledge, knowledgeWaits } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
-      ['index'], ['index', '.leeway/payments/research/payments.md'], ['query', 'cards'], ['check'], ['status'],
+      ['index'], ['index', '.leeway/payments/investigation/payments.md'], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
       ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
     ];
@@ -345,12 +345,12 @@ describe('the two doors answer alike', () => {
   // The in-process entry is only worth having if it is the CLI. Each case is
   // run both ways against the same state and compared byte for byte.
   for (const [what, args] of Object.entries({
-    'a read': ['manifest', 'get', 'payments.research.payments', 'status'],
-    'an expected miss': ['manifest', 'key-of', 'payments.research', 'items', 'absent'],
-    'a mutation': ['manifest', 'set', 'payments.research.payments', 'brief_incorporated=true'],
-    'a refusal': ['topic', 'complete', 'payments', 'research', 'absent'],
+    'a read': ['manifest', 'get', 'payments.investigation.payments', 'status'],
+    'an expected miss': ['manifest', 'key-of', 'payments.investigation', 'items', 'absent'],
+    'a mutation': ['manifest', 'set', 'payments.investigation.payments', 'brief_incorporated=true'],
+    'a refusal': ['topic', 'complete', 'payments', 'investigation', 'absent'],
     'a usage': ['workunit'],
-    'a render surface': ['render', 'resume-gate', 'payments.research.payments'],
+    'a render surface': ['render', 'resume-gate', 'payments.investigation.payments'],
   })) {
     it(what, () => {
       const spawned = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8' });
