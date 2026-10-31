@@ -508,6 +508,14 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
   return sim.run(next.argv);
 }
 
+/**
+ * A question Claude asks on the topic's discussion map, as a spawn measures
+ * one: its short id. @param {Sim} sim @param {string} wu @param {string} topic @param {string} text
+ */
+function askedOn(sim, wu, topic, text) {
+  return sim.run(['ledger', 'ask', `${wu}.discussion.${topic}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+}
+
 /** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
 function linearPick(sim, wu, action) {
   return pickRoute(sim, linearMenu(sim, wu).keys, action);
@@ -1000,5 +1008,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, decideTopic, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, pauseCheck, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

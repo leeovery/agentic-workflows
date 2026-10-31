@@ -64,7 +64,7 @@ function summary(counts) {
 
 /** Claude's calls since the person last looked, each answer beneath its question. @param {MapView['since']} since */
 function sinceTree(since) {
-  return renderTree(since.map(({ question, answer }) => ({ title: `◇ ${question}`, body: answer === null ? [] : [answer] })), { width: TREE_WIDTH });
+  return renderTree(since.map(({ question, answer }) => ({ title: `◇ ${clipped(question, ROW_MAX)}`, body: answer === null ? [] : [answer] })), { width: TREE_WIDTH });
 }
 
 /**

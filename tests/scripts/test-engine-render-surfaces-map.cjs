@@ -52,7 +52,7 @@ const world = fixtureFrom('map-', (dir) => {
   const timing = askIn(dir, 'How fast does a note open?');
   decideIn(dir, askIn(dir, 'How does first run open?'), { ...PERSON, text: 'The tour first.' });
   decideIn(dir, askIn(dir, 'Is pricing mentioned?'), { ...MADE, text: 'No price line anywhere in first run.' });
-  decideIn(dir, askIn(dir, 'Which corner does a note open in?'), { ...MADE, given: 'your-call', text: 'Top left.' });
+  decideIn(dir, askIn(dir, 'Which corner of the screen does a new note open in?'), { ...MADE, given: 'your-call', text: 'Top left.' });
   ledgerHelpers(() => dir).carriedOver(NOTE, askIn(dir, 'Does a note dim when idle?'), 'After a minute.');
   writeIn(dir, 'move', NOTE, ['--question', askIn(dir, 'Where does a space keep its notes?'), '--to', 'space-homing'], MADE);
   createManifest(dir, UNIT, {
@@ -83,7 +83,7 @@ describe('render map (9.5.6)', () => {
       'SINCE YOU LAST LOOKED (2 calls by Claude)',
       '  ├─ ◇ Is pricing mentioned?',
       '  │     No price line anywhere in first run.',
-      '  └─ ◇ Which corner does a note open in?',
+      '  └─ ◇ Which corner of the screen does a new n…',
       '        Top left.',
       '',
       'OPEN (2 of yours)',
@@ -95,7 +95,7 @@ describe('render map (9.5.6)', () => {
       'DECIDED (1 of yours · 2 calls by Claude · 1 carried over)',
       '  ├─ ✓ How does first run open?                    [yours]',
       '  ├─ ◇ Is pricing mentioned?                       [Claude\'s call]',
-      '  ├─ ◇ Which corner does a note open in?           [your call]',
+      '  ├─ ◇ Which corner of the screen does a new n…    [your call]',
       '  └─ ✓ Does a note dim when idle?                  [carried over]',
       '',
       'MOVED ON (1 of yours)',

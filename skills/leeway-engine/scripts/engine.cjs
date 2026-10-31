@@ -260,7 +260,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   topic cancel <work-unit> <discovery|specification> <topic>
   topic reactivate <work-unit> <discovery|specification> <topic>
   topic postpone <work-unit> <topic> --horizon "<horizon>"
-  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)
+  experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
@@ -1320,7 +1320,7 @@ function runExperiment(call, argv) {
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
-        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> [--question <id>] | --parent <E{n}>)');
+        throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)');
       }
       const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem, question: opts.question });
       beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);

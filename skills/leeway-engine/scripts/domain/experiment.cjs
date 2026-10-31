@@ -16,8 +16,9 @@
 // loop drifts past. The spawn (`create`) is the phase's one door: it
 // allocates the id, installs the spawning session's problem statement
 // (moved from a cache scratch — the engine still never writes prose),
-// records the question on the topic's map it measures, where one is named
-// (experiment-question.cjs), and locks the spawning discussion
+// records the question on the topic's map it measures, required — every
+// experiment measures a point on the map (9.1.11; experiment-question.cjs),
+// and locks the spawning discussion
 // (`awaiting_experiments`); a split creates sub-experiments (`E{n}.{m}`)
 // under a running parent, and the lock stays on the parent — it releases
 // once, when the parent concludes or is abandoned. The release edge lives in
@@ -173,8 +174,8 @@ function liveSubs(item, parentId) {
  * (creating it, or setting a completed series back to in-progress — a new
  * spawn reopens the series), and locks the spawning item:
  * `awaiting_experiments` gains the id on the in-progress discussion the
- * question came from. `question` names, by a prefix of its ledger id, the
- * question open on the topic's map the experiment measures; the record keeps
+ * question came from. `question`, required on a spawn, names by a prefix of
+ * its ledger id the question open on the topic's map the experiment measures; the record keeps
  * its full id, and the map shows the question waiting on it. A split (`parent`
  * names a running experiment) allocates `E{n}.{m}` under it — no lock moves
  * (the wait stays on the parent and releases once, when the parent as a
@@ -219,6 +220,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
   if (from !== undefined) {
     if (problem === undefined) {
       throw new Error('--problem <file> is required on a spawn — no record is conceived without its problem statement');
+    }
+    if (question === undefined) {
+      throw new Error('--question <id> is required on a spawn — an experiment measures an open question on the topic\'s map, and its report reaches the topic through it');
     }
     // The scratch is consumed after the create — confine it to the cache so
     // a mis-passed path can never read (and delete) a live artifact.

@@ -11,28 +11,32 @@
 //   (checklist.cjs): a topic a message set back in progress (10.2.7) is
 //   worked afresh and closed again before its gate shows again. It refuses
 //   a unit not in progress and a topic whose discussion is not in progress.
-// - Claude's payload — the proposed product-record lines and the new-topic
-//   candidates — is staged in the topic's cache with `--file`, against the
-//   close it was drawn for, and nothing reaches the ledger or the map
-//   before the person's yes (8.9.7). A line widens a decision on the
-//   topic's map into a rule for the product: an entry of its own at the
-//   unit's level, off the topic's map — a question in the wording of the
-//   one the decision answers, relying on it, and the line answering that
-//   question, relying on the decision too — so neither the map nor the
-//   screen changes as it lands. Each line takes its ids as staged, so a yes
-//   run again after a kill lands no line twice; and a decision the product
-//   record widens already takes no second line, so a restage after that
-//   kill, or after a reopen, lands none twice either; nor does a payload
-//   widen one decision twice. A line widening a decision that replaced one
-//   a line of the record widens lands as the person's replacement of that
-//   line, at the same yes (8.9.2), the screen showing the text it replaces;
-//   and the yes refuses while a line of the record widens a decision of the
-//   topic replaced since and nothing staged replaces it, so the record never
-//   holds two rules for one call. A restage keeps the strike of every
-//   candidate it still names. Candidates are an epic's alone, each checked
-//   by the map's own rules for adding a topic (discovery-map.cjs).
-//   The screen draws from the staged payload again without `--file`, the
-//   calls listed with `--calls`.
+// - Claude's payload — the proposed product-record lines, the record's lines it
+//   withdraws, and the new-topic candidates — is staged in the topic's cache
+//   with `--file`, against the close it was drawn for, and nothing reaches the
+//   ledger or the map before the person's yes (8.9.7). A line widens a decision
+//   on the topic's map into a rule for the product: an entry of its own at the
+//   unit's level, off the topic's map — a question in the wording of the one
+//   the decision answers, relying on it, and the line answering that question,
+//   relying on the decision too — so neither the map nor the screen changes as
+//   it lands. Each line takes its ids as staged, so a yes run again after a
+//   kill lands no line twice; and a decision the product record widens already
+//   takes no second line, so a restage after that kill, or after a reopen,
+//   lands none twice either; nor does a payload widen one decision twice. A
+//   line widening a decision that replaced one a line of the record widens
+//   lands as the person's replacement of that line, at the same yes (8.9.2),
+//   the screen showing the text it replaces; and the yes refuses while a line
+//   of the record widens a decision of the topic replaced since and nothing
+//   staged replaces or withdraws it, so the record never holds two rules for
+//   one call. A withdrawal takes a line of the record widening a decision of
+//   the topic out of the record, the screen showing the text it withdraws: it
+//   lands as the person's replacement of that line by the decision the widened
+//   one now stands as, at the unit's level and not for the product (8.9.2), so
+//   the line leaves the product record and its trail stays. A restage keeps the
+//   strike of every candidate it still names. Candidates are an epic's alone,
+//   each checked by the map's own rules for adding a topic (discovery-map.cjs).
+//   The screen draws from the staged payload again without `--file`, the calls
+//   listed with `--calls`.
 // - What the person decided is shown apart from the rows carried over,
 //   which never pass as theirs (21.6.5), and from Claude's calls, counted by
 //   the kind each decision carries; a call the labeller has not reached is
@@ -53,10 +57,12 @@
 //   writes nothing. Then it lands each line — its question, then the
 //   person's product-wide decision answering it (by the person, their own,
 //   moving no one: their yes over Claude's line) — each through the
-//   ledger's lock with its commit; then, in one manifest save and its
-//   commit, adds the candidates not struck to the epic's map, each routed
-//   to discussion from the topic, marks the topic decided, and records
-//   that the yes took the close. The staged payload goes. It
+//   ledger's lock with its commit, a line or withdrawal its first run
+//   landed passing its check and landing nothing again; then, in one
+//   manifest save and its commit, adds the candidates not struck to the
+//   epic's map, each routed to discussion from the topic, marks the topic
+//   decided, and records that the yes took the close. Each withdrawal lands
+//   as the lines do, after them. The staged payload goes. It
 //   answers what comes next: an epic's menu, else today's specification
 //   (9.7.6 waits on 29.15).
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
@@ -77,7 +83,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { carrying } = require('./ledger.cjs');
 const { newId, resolveId } = require('./ledger-ids.cjs');
-const { factsOf, productOf, notCurrent } = require('./ledger-fold.cjs');
+const { factsOf, productOf, notCurrent, currentsOf } = require('./ledger-fold.cjs');
 const { readShown, answerMap } = require('./ledger-read.cjs');
 const { departureRow } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
@@ -103,12 +109,19 @@ const { decidedScreen, strikePick, waitAgents } = require('./projections/decided
  * @typedef {{id: string, question: string, asks: string, text: string, why: string, widens: string, replaces: {id: string, text: string}|null}} StagedLine
  */
 
+/**
+ * A product-record line withdrawn, as staged: the id its withdrawal lands
+ * as, the line by full id and text, why, and the decision the one it widens
+ * now stands as, by full id and text.
+ * @typedef {{id: string, line: string, text: string, why: string, now: {id: string, text: string}}} StagedWithdrawal
+ */
+
 /** A new-topic candidate as staged, struck or standing. @typedef {{name: string, reason: string, struck: boolean}} StagedCandidate */
 
 /**
  * Claude's payload as staged in the topic's cache, against the close it was
  * drawn for.
- * @typedef {{closed: string, lines: StagedLine[], candidates: StagedCandidate[]}} Staged
+ * @typedef {{closed: string, lines: StagedLine[], withdrawals: StagedWithdrawal[], candidates: StagedCandidate[]}} Staged
  */
 
 const PHASE = 'discussion';
@@ -151,9 +164,12 @@ function filled(v) {
   return typeof v === 'string' && v.trim() !== '';
 }
 
-/** Refuses an object whose keys are not exactly `keys`. @param {unknown} v @param {string} what @param {string[]} keys */
-function shaped(v, what, keys) {
-  if (!isObject(v) || Object.keys(v).sort().join() !== [...keys].sort().join()) throw new Error(`${what} must be {${keys.join(', ')}}`);
+/** Refuses an object whose keys are not `keys`, with any of `optional`. @param {unknown} v @param {string} what @param {string[]} keys @param {string[]} [optional] */
+function shaped(v, what, keys, optional = []) {
+  const given = isObject(v) ? Object.keys(v) : null;
+  if (given === null || !keys.every((key) => given.includes(key)) || !given.every((key) => keys.includes(key) || optional.includes(key))) {
+    throw new Error(`${what} must be {${[...keys, ...optional.map((key) => `${key}?`)].join(', ')}}`);
+  }
   return /** @type {Record<string, unknown>} */ (v);
 }
 
@@ -228,6 +244,45 @@ function stagedLine(shower, rows, given, at) {
   return { id: newId(), question: newId(), asks, text, why, widens: decision, replaces };
 }
 
+/**
+ * A withdrawal as Claude's payload gives it, staged, its id minted: refused
+ * where it is not `{line, why}`, or `line` names no line of the product
+ * record widening a decision of the topic.
+ * @param {Shower} shower @param {string} unit @param {string} topic @param {unknown} given @param {number} at
+ * @returns {StagedWithdrawal}
+ */
+function stagedWithdrawal(shower, unit, topic, given, at) {
+  const what = `withdrawal ${at + 1}`;
+  const { line, why } = shaped(given, what, ['line', 'why']);
+  if (!filled(line) || !filled(why)) throw new Error(`${what}'s line and why are each a non-empty string`);
+  const { folded } = shower;
+  let id;
+  try {
+    id = resolveId(line, folded.facts.keys());
+  } catch (err) {
+    throw new Error(`${what} withdraws ${line}: ${messageOf(err)}`);
+  }
+  if (!productOf(folded).decisions.includes(id)) throw new Error(`${what} withdraws ${line}: ${line} is no line of the product record`);
+  const widened = factsOf(folded, id).relies_on.find((d) => factsOf(folded, d).unit === unit && factsOf(folded, d).topic === topic);
+  const [now] = widened === undefined ? [] : currentsOf(folded, widened);
+  if (now === undefined) throw new Error(`${what} withdraws ${line}: it widens no decision of ${topic} standing`);
+  return { id: newId(), line: id, text: /** @type {string} */ (shower.show(id).text), why, now: { id: now, text: /** @type {string} */ (shower.show(now).text) } };
+}
+
+/**
+ * Refused where one record line is withdrawn twice, or withdrawn and
+ * replaced by a line at once.
+ * @param {Shower} shower @param {StagedLine[]} lines @param {StagedWithdrawal[]} withdrawals
+ */
+function checkWithdrawn(shower, lines, withdrawals) {
+  withdrawals.forEach(({ line }, i) => {
+    const first = withdrawals.findIndex((w) => w.line === line);
+    if (first < i) throw new Error(`withdrawal ${i + 1} withdraws ${shower.short(line)}, as withdrawal ${first + 1} does`);
+    const replacing = lines.findIndex(({ replaces }) => replaces?.id === line);
+    if (replacing >= 0) throw new Error(`withdrawal ${i + 1} withdraws ${shower.short(line)}, which line ${replacing + 1} replaces — a record line is replaced or withdrawn`);
+  });
+}
+
 /** How a candidate dismissed from the map is re-added: by the person, on the map. */
 const RE_ADD = 'the person re-adds it on the map';
 
@@ -286,17 +341,20 @@ function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
   } catch (err) {
     throw new Error(`the payload ${file} cannot be read as JSON — ${messageOf(err)}`);
   }
-  const { lines, candidates } = shaped(parsed, 'the payload', ['lines', 'candidates']);
-  if (!Array.isArray(lines) || !Array.isArray(candidates)) throw new Error('the payload\'s lines and candidates are each a list');
+  const { lines, candidates, withdraws = [] } = shaped(parsed, 'the payload', ['lines', 'candidates'], ['withdraws']);
+  if (!Array.isArray(lines) || !Array.isArray(candidates) || !Array.isArray(withdraws)) throw new Error('the payload\'s lines, withdraws and candidates are each a list');
   const widened = lines.map((line, i) => stagedLine(shower, rows, line, i));
   widened.forEach(({ widens }, i) => {
     const first = widened.findIndex((line) => line.widens === widens);
     if (first < i) throw new Error(`line ${i + 1} widens ${shower.short(widens)}, as line ${first + 1} does — a decision takes one line`);
   });
+  const withdrawals = withdraws.map((given, i) => stagedWithdrawal(shower, unit, topic, given, i));
+  checkWithdrawn(shower, widened, withdrawals);
   /** @type {Staged} */
   const staged = {
     closed,
     lines: widened,
+    withdrawals,
     candidates: stagedCandidates(manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
   };
   fs.mkdirSync(path.dirname(stagedFile(cwd, unit, topic)), { recursive: true });
@@ -425,6 +483,7 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
         calls: side.calls,
         listed: calls !== undefined,
         lines: staged.lines.map(({ text, replaces }) => ({ text, replaces: replaces?.text ?? null })),
+        withdrawals: staged.withdrawals.map(({ text, why }) => ({ text, why })),
         candidates: staged.candidates,
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
@@ -501,38 +560,64 @@ function lineRaises(unit, { id, question, asks, text, why, widens, replaces }) {
 }
 
 /**
- * Refused where a product-record line standing relies on a decision of the
- * topic replaced since and no staged line replaces it: the rule it states
- * is widened afresh from the replacement, or the record holds two.
- * @param {Shower} shower @param {string} unit @param {string} topic @param {StagedLine[]} lines
+ * The raise a staged withdrawal lands as, at the unit's level: the
+ * person's replacement of the line by the decision the one it widens now
+ * stands as, not for the product (8.9.2).
+ * @param {string} unit @param {StagedWithdrawal} withdrawal
+ * @returns {import('./ledger-write.cjs').Raised}
  */
-function checkReplacedLines(shower, unit, topic, lines) {
+function withdrawalRaise(unit, { id, line, text, why, now }) {
+  return {
+    said: 'decided yes',
+    place: { unit, phase: PHASE, topic: null },
+    lands: 'replace',
+    linked: { replaces: line, reason: 'changed-mind', cause: null, relies_on: [now.id] },
+    content: { by: 'person', who_moved_whom: 'none', given: 'own', text: now.text, why, product_wide: false, drops: [text] },
+    id,
+    logs: null,
+    checkRead: () => {},
+  };
+}
+
+/**
+ * Refused where a product-record line standing relies on a decision of the
+ * topic replaced since and nothing staged replaces or withdraws it: the
+ * rule it states is widened afresh from the replacement or withdrawn, or
+ * the record holds two.
+ * @param {Shower} shower @param {string} unit @param {string} topic @param {Staged} staged
+ */
+function checkReplacedLines(shower, unit, topic, { lines, withdrawals }) {
   const { folded } = shower;
   const replacedHere = (/** @type {string} */ id) => {
     const facts = factsOf(folded, id);
     return facts.unit === unit && facts.topic === topic && 'replaced_by' in (notCurrent(folded, id) ?? {});
   };
-  const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !lines.some((line) => line.replaces?.id === id));
+  const covered = (/** @type {string} */ id) => lines.some((line) => line.replaces?.id === id) || withdrawals.some((w) => w.line === id);
+  const left = productOf(folded).decisions.find((id) => factsOf(folded, id).relies_on.some(replacedHere) && !covered(id));
   if (left !== undefined) {
-    throw new Error(`the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and no line staged replaces it — a line widening the replacement is staged with --file`);
+    throw new Error(`the product record's line ${shower.short(left)}, "${shower.show(left).text}", widens a decision of ${topic} replaced since, and nothing staged replaces or withdraws it — a line widening the replacement, or a withdrawal of the line, is staged with --file`);
   }
 }
 
 /**
- * Refused where a staged line could not land as the ledger stands — the
- * decision it widens no longer current — by the link check its question's
- * landing makes, writing nothing; the unit taking writes is the topic's
- * own check (`openTopic`).
- * @param {string} cwd @param {string} unit @param {StagedLine[]} lines @param {string[]} warnings
+ * Refused where a staged line or withdrawal could not land as the ledger
+ * stands — the decision it widens or the line it replaces no longer
+ * current — by the link check its first landing makes, writing nothing;
+ * the unit taking writes is the topic's own check (`openTopic`).
+ * @param {string} cwd @param {string} unit @param {Staged} staged @param {string[]} warnings
  */
-function checkLines(cwd, unit, lines, warnings) {
-  lines.forEach((line, at) => {
+function checkLines(cwd, unit, { lines, withdrawals }, warnings) {
+  const firsts = [
+    ...lines.map((line, at) => ({ what: `line ${at + 1}`, raised: lineRaises(unit, line)[0] })),
+    ...withdrawals.map((withdrawal, at) => ({ what: `withdrawal ${at + 1}`, raised: withdrawalRaise(unit, withdrawal) })),
+  ];
+  for (const { what, raised } of firsts) {
     try {
-      checkRaised(cwd, lineRaises(unit, line)[0], warnings);
+      checkRaised(cwd, raised, warnings);
     } catch (err) {
-      throw new Error(`line ${at + 1} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; it is staged again with --file`);
+      throw new Error(`${what} cannot land — ${messageOf(err).replace(/^decided yes: /, '')}; it is staged again with --file`);
     }
-  });
+  }
 }
 
 /**
@@ -547,13 +632,14 @@ function decidedYes(cwd, unit, topic) {
   const staged = onClosedTopic(cwd, unit, topic, ({ shower, closed, side }) => {
     const ready = stagedFor(cwd, unit, topic, closed);
     if (side.verdict !== null) throw new Error('a verdict is still to ask — render decided asks each before the yes');
-    checkReplacedLines(shower, unit, topic, ready.lines);
+    checkReplacedLines(shower, unit, topic, ready);
     return ready;
   });
   const added = staged.candidates.filter(({ struck }) => !struck);
   checkCandidates(loadWorkUnitManifest(cwd, unit), topic, added, 'the candidates');
-  checkLines(cwd, unit, staged.lines, warnings);
+  checkLines(cwd, unit, staged, warnings);
   const lines = staged.lines.map((line) => lineRaises(unit, line).map((raised) => landRaised(cwd, raised, warnings).landed.id).at(-1));
+  const withdrawn = staged.withdrawals.map((withdrawal) => landRaised(cwd, withdrawalRaise(unit, withdrawal), warnings).landed.id);
   const at = new Date().toISOString();
   const manifest = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
@@ -566,7 +652,7 @@ function decidedYes(cwd, unit, topic) {
   const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `decided(${unit}): ${topic}`, warnings);
   fs.rmSync(stagedFile(cwd, unit, topic), { force: true });
   /** @type {Record<string, unknown>} */
-  const result = { unit, topic, decided: at, lines, candidates: added.map(({ name }) => name), committed: outcome.committed, next: nextAfter(manifest, unit) };
+  const result = { unit, topic, decided: at, lines, withdrawn, candidates: added.map(({ name }) => name), committed: outcome.committed, next: nextAfter(manifest, unit) };
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${unit} --state`);
   return result;

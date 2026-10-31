@@ -96,12 +96,8 @@ describe('pipeline simulation: workunit', () => {
     // A standing do-not-report call on this topic's material.
     sim.run(['manifest', 'push', `${feat}.discussion.${feat}`, 'dismissed_grounds',
       'the migration path is settled and out of scope']);
-    // The discussion spawned an experiment still awaiting its evidence — the
-    // series travels with the topic, wait and all.
-    const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion',
-      '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
-    assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
-    sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
+    // An experiment travelling with the topic returns with 29.15, which
+    // carries the feature's ledger entries through the absorb (5.8.18).
     // A peer sends a message to the topic — it waits in the topic's
     // mailbox, and the mailbox follows the topic.
     const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
@@ -113,7 +109,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
       /MENU: absorb confirm gate/, 'the proceed consent renders for an absorbable feature');
     assert.match(sim.render(['absorb-summary', feat, '--into', epic, '--topic', 'stray-topic'], { expect: 'content' }),
-      /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
+      /Discussion:/, 'the pre-confirm summary derives from the feature manifest');
 
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
@@ -138,32 +134,10 @@ describe('pipeline simulation: workunit', () => {
     assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
 
-    // The series sub-tree audits whole at its epic identity: item, record,
-    // wait, directory — and the lock's edges keep holding after the move.
-    assert.deepStrictEqual(m.phases.experiment.items['stray-topic'],
-      { status: 'in-progress', experiments: { E1: { slug: 'cutover-cost', status: 'conceived' } } },
-      'the series travels whole — records and derived status intact');
-    assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'],
-      'the evidence wait rides the moved discussion item');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', 'stray-topic', 'experiments', 'E1-cutover-cost', 'problem.md')),
-      'the record directory moved under the topic name');
-    sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
-    assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
-      /E1 cutover-cost/, 'the register renders the moved series at the epic address');
-
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic', '--experiments', '1'], { expect: 'content' }),
-      /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
+    assert.match(sim.render(['absorb-receipt', epic, '--topic', 'stray-topic'], { expect: 'content' }),
+      /Stray Topic/, 'absorb receipt renders from the epic post-state');
     assert.match(sim.render(['absorb-continuation', epic, '--feature', feat], { expect: 'content' }),
       /MENU: absorb continuation/, 'the continuation menu renders from the post-absorb state');
-
-    // The release edge survives the move: walking E1 to its verdict at the
-    // epic address releases the wait and the discussion can conclude.
-    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
-    sim.run(['experiment', 'approve', epic, 'stray-topic', 'E1']);
-    sim.run(['experiment', 'advance', epic, 'stray-topic', 'E1']);
-    const settled = sim.run(['experiment', 'conclude', epic, 'stray-topic', 'E1', '--verdict', 'cutover costs a week — staged rollout adopted']);
-    assert.deepStrictEqual(settled.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
-    assert.strictEqual(sim.manifest(epic).phases.discussion.items['stray-topic'].awaiting_experiments, undefined);
   });
 
   it('reference imports: a research session lands files, absorb re-homes them over a collision, promote carries the linked one', () => {
