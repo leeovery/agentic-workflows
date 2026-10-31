@@ -90,8 +90,8 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 - `.workflows/manifest.json` — project manifest: work-unit registry, defaults, roadmap, baseline
 - `.workflows/{work_unit}/manifest.json` — work-unit manifest
-- `.workflows/{work_unit}/discovery/session-NNN.md`, `discovery/briefs/{topic}.md` — discovery session logs, an epic's topic briefs
-- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
+- `.workflows/{work_unit}/discovery/session-NNN.md` — discovery session logs
+- `.workflows/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it
 - `.workflows/{work_unit}/investigation/{topic}.md`
 - `.workflows/{work_unit}/specification/{topic}/specification.md`
 - `.workflows/{work_unit}/planning/{topic}/planning.md` — plus `phase-{N}-tasks.md` and the task files

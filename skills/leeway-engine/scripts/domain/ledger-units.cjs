@@ -37,12 +37,9 @@
 
 const fs = require('fs');
 const { isObject, workUnitManifestPath, readWorkUnitManifest, readProjectManifest, workUnitNames, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
-const { EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { EXPERIMENT_TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { PRODUCT } = require('./ledger-events.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
-
-/** The phases a topic exists in: those before the spec (4.11.2). */
-const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
 
 /** The topic lifecycles that are not live. */
 const SET_ASIDE = Object.freeze(['cancelled', 'postponed']);

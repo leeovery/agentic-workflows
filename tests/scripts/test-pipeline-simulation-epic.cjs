@@ -37,8 +37,8 @@ describe('pipeline simulation: epic', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Orbit', '--session-log-file', log]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'alpha', routing: 'discussion', summary: 'Alpha summary' },
-      { name: 'beta', routing: 'discussion', summary: 'Beta summary' },
+      { name: 'alpha', summary: 'Alpha summary' },
+      { name: 'beta', summary: 'Beta summary' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2']);
@@ -69,7 +69,6 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.deepStrictEqual(rows('alpha'), [['continue_discussion', 'Continue "Alpha" — *discussion* · mail waiting']]);
     assert.match(sim.render(['send-report', `${wu}.alpha`, '--sent', decision.message_path], { expect: 'content' }), /^\/leeway orbit alpha$/m);
-    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /messages wait in its mailbox/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_discussion', '--topic', 'alpha'], { expect: 'empty' });
     // The entry raises the waiting message before anything is read; the
     // question it raised is asked, and the message answered by it leaves.
@@ -138,16 +137,17 @@ describe('pipeline simulation: epic', () => {
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
-    // A discussion sends a message to a topic it opens (create-discovery-
-    // topic B): the row lands with no summary or description for the next
-    // epic entry to draft. The conclusion's arrival meets it at Step 2, the
+    // The d door names a topic with nothing to draft its summary from
+    // (ensure-discovery-item C): the row lands with no summary or description
+    // for the next epic entry to draft, and a discussion sends it a message.
+    // The conclusion's arrival meets it at Step 2, the
     // backfill commits, and backfill-checks C hands the menu off with the
     // arguments it arrived with — the fresh menu recovers nothing and leads
     // with the banner.
     const wu = 'sends';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Sends', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
-      [{ name: 'alpha', routing: 'discussion', summary: 'Alpha', description: 'What alpha settles.' }])]);
+      [{ name: 'alpha', summary: 'Alpha', description: 'What alpha settles.' }])]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const toRecover = () => EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu))
       .split('\n').filter((line) => /summary=absent|description=absent/.test(line));
@@ -155,7 +155,7 @@ describe('pipeline simulation: epic', () => {
     menuEntry(sim, wu);
     enterEntry(sim, wu, 'discussion', 'alpha');
     sim.write(`.leeway/${wu}/topics/alpha/log.md`, '# Discussion — Alpha\n');
-    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'message:alpha', '--backfill', '--force-dismissed']);
+    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'direct-start', '--backfill', '--force-dismissed']);
     const message = sim.write('.leeway/.cache/scratch/message.md', 'Off-topic\n\nDetails.\n');
     sim.run(['topic', 'send', wu, 'beta', '--from', 'alpha', '--content', message, '--slug', 'off-topic']);
     const at = `${wu}.discussion.alpha`;
@@ -171,7 +171,7 @@ describe('pipeline simulation: epic', () => {
     // whose provide row lands the person's summary.
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file',
       sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: { beta: null } })], { expect: 'content' }),
-    /1\. Beta {2}\(discussion\)\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
+    /1\. Beta\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
     sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file',
       sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/backfill-ops.json`,

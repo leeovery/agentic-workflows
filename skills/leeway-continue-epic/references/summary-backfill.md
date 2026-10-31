@@ -7,7 +7,7 @@
 The caller passes:
 
 - `work_unit` — the epic's work unit name
-- `items_to_recover` — list of discovery-map rows missing summary, description, or both. Each row carries `name`, `routing`, `summary=present|absent`, `description=present|absent`, and — after `—` — the current summary text when present
+- `items_to_recover` — list of discovery-map rows missing summary, description, or both. Each row carries `name`, `summary=present|absent`, `description=present|absent`, and — after `—` — the current summary text when present
 
 ## A. Read Source Files
 
@@ -122,7 +122,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `provide`:** when the reply carries no text — the choice alone — ask for each item's summary and **STOP.** Wait for user response. Set each item's null field(s) from the user's text — the summary as given, a description drawn from it — and include them in the writes below.
 
-**If `dismiss`:** for each such item, set the null field(s) to a minimal value derived from the topic name and routing, ending `(source artifact missing)`, and include them in the writes below.
+**If `dismiss`:** for each such item, set the null field(s) to a minimal value derived from the topic name, ending `(source artifact missing)`, and include them in the writes below.
 
 **If `leave`:** the items stay out of the writes below and re-qualify on the next epic entry.
 

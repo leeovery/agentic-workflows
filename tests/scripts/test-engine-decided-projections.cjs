@@ -18,7 +18,7 @@ const { decidedScreen } = require('../../skills/leeway-engine/scripts/domain/pro
 
 /** @type {import('../../skills/leeway-engine/scripts/domain/projections/decided.cjs').DecidedView} */
 const VIEW = {
-  unit: 'fumi', topic: 'note-window',
+  unit: 'fumi', topic: 'note-window', title: 'Note Window',
   decided: [], carried: [], moved: 0, calls: [], listed: false,
   lines: [], withdrawals: [], candidates: [], skips: [], verdict: null,
 };

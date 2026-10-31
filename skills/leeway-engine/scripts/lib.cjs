@@ -60,6 +60,7 @@ module.exports = {
   schema: {
     VALID_PHASES: schema.VALID_PHASES,
     WORK_TYPE_PIPELINES: schema.WORK_TYPE_PIPELINES,
+    KEBAB_SLUG_PATTERN: schema.KEBAB_SLUG_PATTERN,
   },
   reads: {
     listFiles: reads.listFiles,

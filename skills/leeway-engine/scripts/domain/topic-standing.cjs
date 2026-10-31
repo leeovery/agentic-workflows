@@ -11,12 +11,12 @@
 //   names them, a single-topic unit's is the unit — and none once the unit
 //   has its `spec.md`, from which a change is settled in the spec (4.11.2,
 //   10.2.2).
-// - What the topic is now: postponed, cancelled or closed as a dead end on
-//   the map, promoted out of the unit, decided, or for a bugfix its
-//   investigation concluded, the unit's menu leading past it. A message
-//   waits in a postponed topic's mailbox, reopens a decided or concluded
-//   one and goes to the inbox for a cancelled one (10.1.6, 10.1.8, 10.2.7),
-//   so only a topic closed as a dead end or promoted refuses it.
+// - What the topic is now: postponed or cancelled on the map, promoted out
+//   of the unit, decided, or for a bugfix its investigation concluded, the
+//   unit's menu leading past it. A message waits in a postponed topic's
+//   mailbox, reopens a decided or concluded one and goes to the inbox for a
+//   cancelled one (10.1.6, 10.1.8, 10.2.7), so only a promoted topic
+//   refuses it.
 // And whether a unit's discovery can still be talked in: an epic's, until
 // its spec closes the map (8.6.5, 8.2.11); every other type's ended at
 // start this work. The product's conversation never closes.
@@ -117,7 +117,6 @@ function topicStanding({ cwd, phase, unit, topic, manifest }) {
 /** @type {Readonly<Record<string, (topic: string, through: string) => string>>} */
 const SET_ASIDE = Object.freeze({
   cancelled: (topic, through) => `the topic "${topic}" is cancelled — reactivating it goes through ${through}`,
-  handled: (topic, through) => `the topic "${topic}" is closed as a dead end — reopening it goes through ${through}`,
 });
 
 /**
@@ -132,12 +131,11 @@ function postponedRefusal(cwd, unit, topic, through) {
 }
 
 /**
- * Why a topic takes nothing more, entry or message: closed as a dead end, or
- * promoted out of the unit; null where it can.
+ * Why a topic takes nothing more, entry or message: promoted out of the
+ * unit; null where it can.
  * @param {Standing} at @returns {string|null}
  */
 function closedStanding({ topic = '', manifest }) {
-  if (computeTopicLifecycle(manifest, topic).lifecycle === 'handled') return SET_ASIDE.handled(topic, reopenedThrough(manifest));
   const item = itemOf(manifest, 'discussion', topic);
   return item?.status === 'promoted' ? `the topic "${topic}" was promoted to "${item.promoted_to}" — it carries on there` : null;
 }

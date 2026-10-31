@@ -268,8 +268,8 @@ const layout = Object.freeze({
   productSession: (number) => `.product/sessions/session-${number}.md`,
   /** A spike's folder, the product's or a unit's, or a path in it. @param {string} owner `.product`, or a unit @param {string} spike `NNN-{slug}` @param {...string} segments */
   spike: (owner, spike, ...segments) => [owner, 'spikes', spike, ...segments].join('/'),
-  /** @param {string} unit @param {string} topic */
-  brief: (unit, topic) => `${unit}/discovery/briefs/${topic}.md`,
+  /** A topic's brief. @param {string} unit @param {string} topic */
+  brief: (unit, topic) => `${unit}/topics/${topic}/brief.md`,
   /** A file the person shared. @param {string} unit @param {...string} segments */
   imports: (unit, ...segments) => [unit, 'imports', ...segments].join('/'),
   /** A unit's analysis file. @param {string} unit @param {string} name */

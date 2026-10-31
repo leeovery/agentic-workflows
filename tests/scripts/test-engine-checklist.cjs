@@ -61,7 +61,7 @@ const CARDS = phase('Cards', { scenarios: ['1.S1'], sections: ['1'], relies_on: 
 const REFUNDS = phase('Refunds', { scenarios: ['2.S1'], sections: ['2'], relies_on: [1] });
 
 /** A discussion topic, mapped. @param {number} order */
-const mapped = (order) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery' });
+const mapped = (order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });
 
 /** The cut `phases` written onto `unit` by the verb, from a file outside the project. @param {string} dir @param {Phase[]} phases */
 function cut(dir, phases) {

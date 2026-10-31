@@ -19,8 +19,8 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} DiscoveryMapRow
  * @property {string} name
- * @property {string} lifecycle   fresh|discussing|decided|handled|cancelled|postponed
- * @property {string|null} [routing]
+ * @property {string} lifecycle   fresh|discussing|decided|cancelled|postponed
+ * @property {string} [title]      how screens title the topic, its name titlecased where none is given
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
  * @property {string|null} [promoted_to]  the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} [mail_waiting]  messages wait in the topic's mailbox, whatever its items' status
@@ -34,7 +34,6 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {number} decided
  * @property {number} in_flight
  * @property {number} fresh
- * @property {number} handled
  * @property {number} cancelled
  * @property {number} postponed
  */
@@ -42,7 +41,6 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
 /**
  * @typedef {object} ProposedTopic
  * @property {string} name
- * @property {string} routing   discussion
  * @property {string} summary   one line, from the exploration
  * @property {string} description  a short paragraph, from the exploration — what the topic covers and why it surfaced
  */
@@ -53,7 +51,6 @@ const BREAKDOWN = /** @type {const} */ ([
   ['decided', 'decided'],
   ['in_flight', 'in flight'],
   ['fresh', 'fresh'],
-  ['handled', 'dead-ended'],
   ['cancelled', 'cancelled'],
   ['postponed', 'postponed'],
 ]);
@@ -70,16 +67,16 @@ function breakdown(summary) {
 /** @param {DiscoveryMapRow[]} rows */
 function mapNodes(rows) {
   return rows.map((row) => ({
-    title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
-    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null))],
+    title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title }),
+    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null))],
   }));
 }
 
-/** Proposed rows: ○ (fresh-to-be) + name, the summary and — a blank line on — the description beneath, routing on the `↳ state` line. @param {ProposedTopic[] } proposed */
+/** Proposed rows: ○ (fresh-to-be) + name, the summary and — a blank line on — the description beneath. @param {ProposedTopic[] } proposed */
 function proposedNodes(proposed) {
   return proposed.map((t) => ({
     title: title({ glyph: '○', label: titlecase(t.name) }),
-    body: [t.summary, '', t.description, stateNote(`routed to ${t.routing}`)],
+    body: [t.summary, '', t.description],
   }));
 }
 
@@ -101,8 +98,8 @@ function discoveryMapView(workUnit, map) {
 
 /**
  * The synthesised-map display block — the harvest proposal: the proposed
- * topics (summary and description wrapped beneath, routing on the state
- * line), the existing map unchanged below it, and the framing footer.
+ * topics (summary and description wrapped beneath), the existing map
+ * unchanged below it, and the framing footer.
  * @param {string} workUnit
  * @param {{rows: DiscoveryMapRow[], summary: DiscoveryMapSummary}} map
  * @param {ProposedTopic[]} proposed
@@ -125,7 +122,7 @@ function discoverySynthesisView(workUnit, map, proposed) {
 
   // A closing sentence, not a detail of the tree above it — column 0.
   const footer = `${proposed.length} topic${proposed.length === 1 ? '' : 's'}. `
-    + 'Summaries and descriptions come from the exploration; routing is my read of where each one goes next.';
+    + 'Summaries and descriptions come from the exploration.';
   parts.push(wrapWithPrefix(footer, { width: TREE_WIDTH, prefix: '' }).join('\n') + '\n');
 
   return parts.join('\n');

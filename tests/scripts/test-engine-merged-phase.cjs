@@ -33,7 +33,7 @@ const world = fixtureFrom('merged-phase-', (dir) => {
   createManifest(dir, EPIC, {
     work_type: 'epic',
     phases: {
-      discovery: { items: { alpha: { order: 1, summary: 'Alpha', routing: 'discussion', source: 'discovery' } } },
+      discovery: { items: { alpha: { order: 1, summary: 'Alpha', source: 'discovery' } } },
       discussion: { items: { alpha: { status: 'in-progress' } } },
     },
   });
@@ -63,7 +63,6 @@ describe('research is no skill and no phase', () => {
     assert.strictEqual(Object.hasOwn(VALID_PHASE_STATUSES, 'research'), false);
     assert.match(refuses(dir, ['manifest', 'set', `${EPIC}.research.alpha`, 'status', 'in-progress']).error, /^Invalid phase "research"/);
     assert.match(refuses(dir, ['topic', 'start', EPIC, 'research', 'alpha']).error, /^unknown or non-lifecycle phase "research"/);
-    assert.strictEqual(refuses(dir, ['discovery-map', 'add', EPIC, 'beta', 'research', '--summary', 'Beta']).error, 'unknown routing "research" (discussion)');
   });
 });
 

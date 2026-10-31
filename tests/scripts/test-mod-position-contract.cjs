@@ -132,7 +132,7 @@ describe('the mods read conversation position as the engine writes it', () => {
     fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: {
-        discovery: { items: { ledger: { order: 1, summary: 'The ledger', routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { ledger: { order: 1, summary: 'The ledger', source: 'discovery' } } },
         discussion: { items: { ledger: { status: 'in-progress' } } },
       },
     }));

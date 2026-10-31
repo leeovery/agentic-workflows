@@ -46,7 +46,7 @@ const MENU = `${UNIT}.discussion.menu-bar`;
 
 /** A discovery map row a topic's cancel and postpone take. @param {number} order @param {string} summary */
 function row(order, summary) {
-  return { order, summary, routing: 'discussion', source: 'discovery' };
+  return { order, summary, source: 'discovery' };
 }
 
 // The unit's two topics, each mapped and under discussion.
@@ -402,7 +402,7 @@ function ledgerReadHelpers(dir) {
 }
 
 // ---------------------------------------------------------------------------
-// The write suites (test-engine-ledger-write.cjs, -links, -trust).
+// The write suites (test-engine-ledger-write.cjs, -verbs, -append-race, -links, -trust).
 // ---------------------------------------------------------------------------
 
 const ID = /^[0-9A-Za-z]{21}$/;

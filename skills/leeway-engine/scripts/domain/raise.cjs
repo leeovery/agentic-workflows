@@ -170,7 +170,8 @@ const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
 const { entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent } = require('./ledger-fold.cjs');
-const { liveness } = require('./ledger-units.cjs');
+const { liveness, manifestOf } = require('./ledger-units.cjs');
+const { topicTitles } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -178,7 +179,7 @@ const { type, TEXT, FLAG, oneOf, listOf } = require('./event-fields.cjs');
 const { KEY } = require('./trust-events.cjs');
 const { record } = require('./trust-log.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
-const { drawnRows } = require('./projections/raise.cjs');
+const { drawnRows, raiseScreen } = require('./projections/raise.cjs');
 const decisionPoint = require('./decision-point.cjs');
 
 /** @typedef {import('./event-fields.cjs').Type} Type */
@@ -1093,4 +1094,16 @@ function unraised(cwd, points) {
     .map((point) => ({ ...point, answers: shortId(point.answers, read.facts.keys()) }));
 }
 
-module.exports = { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits, unraised };
+/**
+ * The raise's screen, the topic of its place by the name it goes by
+ * (8.8.17).
+ * @param {string} cwd @param {Seal} seal @param {{technical?: boolean}} [opts]
+ * @returns {string}
+ */
+function raiseScreenOf(cwd, seal, { technical = false } = {}) {
+  const root = findStateRoot(cwd);
+  const manifest = root === null ? null : manifestOf(root, seal.place.unit);
+  return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
+}
+
+module.exports = { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf };

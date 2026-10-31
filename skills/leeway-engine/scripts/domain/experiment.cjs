@@ -28,9 +28,9 @@
 // until the discussion writes the result (9.1.11). A report concluding after
 // that question closed reaches the topic as a message, through `topic send`,
 // which reopens a decided topic and commits its own delivery. Known edge: a
-// report owed to a topic closed as a dead end or promoted, or to a unit
-// given its spec.md while the experiment ran, is refused by the send after
-// the conclusion has committed, and never arrives.
+// report owed to a promoted topic, or to a unit given its spec.md while the
+// experiment ran, is refused by the send after the conclusion has committed,
+// and never arrives.
 //
 // The phase item is derived bookkeeping over the records: the spawn opens it
 // (and reopens a completed series), the last record's terminal transition
@@ -62,7 +62,7 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
-const { statePath, stateRelative } = require('../kernel/state-root.cjs');
+const { statePath, cacheScratch } = require('../kernel/state-root.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -224,12 +224,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
     if (question === undefined) {
       throw new Error('--question <id> is required on a spawn — an experiment measures an open question on the topic\'s map, and its report reaches the topic through it');
     }
-    // The scratch is consumed after the create — confine it to the cache so
-    // a mis-passed path can never read (and delete) a live artifact.
-    scratchAbs = path.resolve(cwd, problem);
-    if (!(stateRelative(cwd, scratchAbs) || '').startsWith('.cache/')) {
-      throw new Error(`--problem must point inside ${statePath(cwd, '.cache')}/ — got "${problem}"`);
-    }
+    scratchAbs = cacheScratch(cwd, problem, '--problem');
     try {
       problemBody = fs.readFileSync(scratchAbs, 'utf8');
     } catch {

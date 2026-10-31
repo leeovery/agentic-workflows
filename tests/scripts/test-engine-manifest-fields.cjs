@@ -199,7 +199,8 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
       runJson(dir, ['set', 'auth.implementation.auth', 'task_gate_mode', mode]);
       assert.strictEqual(readWorkUnit(dir, 'auth').phases.implementation.items.auth.task_gate_mode, mode);
     }
-    assert.match(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error, /carry no status field/);
+    assert.strictEqual(runFails(dir, ['set', 'auth.discovery.topic', 'status', 'in-progress']).error,
+      'Phase "discovery" items carry no status field — lifecycle is computed at render time; create map items with `engine topic add`');
     assert.match(runFails(dir, ['set', 'ghost', 'status', 'completed']).error, /Work unit "ghost" not found/);
   });
 

@@ -42,13 +42,13 @@
 // started, `licence` under way with agents a process now gone dispatched,
 // `sync` decided, `export` promoted, `removal` cancelled, `widgets` postponed
 // with its roadmap item waiting, `reports` postponed with its item gone to
-// another epic, `dead-end` closed as one — a spike, and four discovery logs,
-// the fourth open, the first pointing into the product's sessions; an epic,
-// `atlas`, with none; an epic past its spec; the product's conversation with
-// two logs and none open; a feature, `quick-sync`, with discovery's log and
-// a seed; a feature with its spec; a bugfix; a quick-fix; and a cancelled
-// and a completed unit. Each test's conversation has its own system config,
-// and its own Claude Code config holding its transcript.
+// another epic — a spike, and four discovery logs, the fourth open, the
+// first pointing into the product's sessions; an epic, `atlas`, with none;
+// an epic past its spec; the product's conversation with two logs and none
+// open; a feature, `quick-sync`, with discovery's log and a seed; a feature
+// with its spec; a bugfix; a quick-fix; and a cancelled and a completed unit.
+// Each test's conversation has its own system config, and its own Claude
+// Code config holding its transcript.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -79,7 +79,7 @@ const GONE = '2147483646';
 const PEER = String(process.ppid);
 
 /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
-const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, routing: 'discussion', source: 'discovery', ...marks });
+const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
 
 /** A roadmap item a topic of the epic was postponed as. @param {string} topic @param {Record<string, unknown>} [marks] */
 const postponedAs = (topic, marks = {}) => ({ horizon: 'next', summary: topic, origin: `postpone:${EPIC}`, postponed_from: { work_unit: EPIC, topic }, ...marks });
@@ -103,7 +103,6 @@ const world = fixtureFrom('engine-enter-', (dir) => {
         items: {
           onboarding: row(1), licence: row(2), sync: row(3), export: row(4),
           removal: row(5, { cancelled: true }), widgets: row(6, { postponed: true }), reports: row(7, { postponed: true }),
-          'dead-end': row(8, { handled: true }),
         },
       },
       discussion: {
@@ -239,13 +238,12 @@ describe('what cannot be entered is refused, naming the way on, and nothing is w
     assert.strictEqual(refused(['discussion', 'specced']), 'specced has its spec — a topic exists only before it, and a change is settled in the spec from here');
   });
 
-  it('a topic standing closed: cancelled, postponed — its roadmap item waiting or gone to another epic — closed as a dead end, promoted out of the unit, decided', () => {
+  it('a topic standing closed: cancelled, postponed — its roadmap item waiting or gone to another epic — promoted out of the unit, decided', () => {
     const through = 'the epic menu\'s discovery row';
-    assert.deepStrictEqual(['removal', 'widgets', 'reports', 'dead-end', 'export', 'sync'].map((topic) => refused(['discussion', EPIC, topic])), [
+    assert.deepStrictEqual(['removal', 'widgets', 'reports', 'export', 'sync'].map((topic) => refused(['discussion', EPIC, topic])), [
       `the topic "removal" is cancelled — reactivating it goes through ${through}`,
       `the topic "widgets" is postponed to the roadmap — pulling it forward goes through ${through}`,
       'the topic "reports" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back',
-      `the topic "dead-end" is closed as a dead end — reopening it goes through ${through}`,
       'the topic "export" was promoted to "portability" — it carries on there',
       `the topic "sync" is decided — it reopens through a message sent to it, or through ${through}`,
     ]);
@@ -341,7 +339,7 @@ describe('a topic not yet started', () => {
     assert.deepStrictEqual(readManifest(dir, EPIC).phases.discussion.items.onboarding, { status: 'in-progress' });
     assert.strictEqual(lastMessage(dir), `discussion(${EPIC}): start onboarding`);
     assert.deepStrictEqual(stateGit(dir, ['diff', '--name-only', before, 'HEAD']).trim().split('\n'), [layout.manifest(EPIC)]);
-    assert.ok(!fs.existsSync(at(layout.topic(EPIC, 'onboarding'))), 'nothing under the topic\'s folder');
+    assert.deepStrictEqual(fs.readdirSync(at(layout.topic(EPIC, 'onboarding'))), ['brief.md'], 'nothing under the topic\'s folder but its brief');
   });
 
   it('holds the writer lock around the start: a live holder keeps the topic unstarted until it lets go', (t) => {

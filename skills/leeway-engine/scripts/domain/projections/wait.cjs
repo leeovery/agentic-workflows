@@ -82,14 +82,14 @@ function waitGate(waits, epic) {
  * its clause drops the name. No holder left renders the bare line.
  * @param {string} phase  the paused phase
  * @param {string} workUnit
- * @param {{topic: string, owed: string}[]} holders  the phase's in-progress items still awaiting something, each with what it awaits
+ * @param {{topic: string, title: string, owed: string}[]} holders  the phase's in-progress items still awaiting something, each as screens title it, with what it awaits
  * @returns {string}
  */
 function phasePaused(phase, workUnit, holders) {
   const head = `${titlecase(phase)} paused for "${titlecase(workUnit)}"`;
-  const clauses = holders.map(({ topic, owed }) => (topic === workUnit
+  const clauses = holders.map(({ topic, title, owed }) => (topic === workUnit
     ? `awaiting ${owed}`
-    : `"${titlecase(topic)}" awaits ${owed}`));
+    : `"${title}" awaits ${owed}`));
   const line = clauses.length > 0 ? `${head} — ${clauses.join('; ')}.` : `${head}.`;
   return section('DISPLAY: phase paused', CONTINUE_INSTRUCTION, line);
 }

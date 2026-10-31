@@ -49,10 +49,10 @@ describe('pipeline simulation: concurrency', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Event relay overhaul', '--session-log-file', log]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'ingest', routing: 'discussion', summary: 'How events arrive' },
-      { name: 'ranking', routing: 'discussion', summary: 'How events are ordered' },
-      { name: 'metrics', routing: 'discussion', summary: 'What good looks like' },
-      { name: 'dispatch', routing: 'discussion', summary: 'How events leave' },
+      { name: 'ingest', summary: 'How events arrive' },
+      { name: 'ranking', summary: 'How events are ordered' },
+      { name: 'metrics', summary: 'What good looks like' },
+      { name: 'dispatch', summary: 'How events leave' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 4 topics`]);

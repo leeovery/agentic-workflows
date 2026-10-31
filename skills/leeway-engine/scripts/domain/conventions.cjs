@@ -107,7 +107,6 @@ const DISCOVERY_GLYPH = {
   discussing: '◐',
   decided: '✓',
   fresh: '○',
-  handled: '⊙',
   cancelled: '⊘',
   postponed: '⊖',
 };
@@ -127,16 +126,15 @@ function discoveryGlyph(tier) {
 // pending experiment evidence, released when the experiment ends.
 // `promotedTo` (the map row's promoted_to) names the cross-cutting unit a
 // decided topic's discussion moved to with its specification.
-/** @param {string} lifecycle @param {string|null} [routing] @param {boolean} [mailWaiting] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
-function discoveryLifecycleLabel(lifecycle, routing, mailWaiting, waits, promotedTo) {
+/** @param {string} lifecycle @param {boolean} [mailWaiting] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
+function discoveryLifecycleLabel(lifecycle, mailWaiting, waits, promotedTo) {
   let label;
   switch (lifecycle) {
     case 'discussing': label = 'discussing'; break;
     case 'decided': label = promotedTo ? `decided · promoted to ${promotedTo}` : 'decided'; break;
-    case 'handled': label = 'dead end'; break;
     case 'cancelled': label = 'cancelled'; break;
     case 'postponed': label = 'postponed'; break;
-    default: label = routing ? `fresh · routed to ${routing}` : 'fresh';
+    default: label = 'fresh';
   }
   if (Array.isArray(waits)) {
     const ids = waits.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));

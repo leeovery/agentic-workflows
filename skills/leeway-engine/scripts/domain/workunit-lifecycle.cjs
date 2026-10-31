@@ -262,7 +262,7 @@ function pivotWorkUnit(cwd, workUnit) {
 
   // The feature's single topic joins the map (no summary/description —
   // backfill semantics). Its own locked read-modify-write.
-  addItem(cwd, workUnit, workUnit, { routing: 'discussion', backfill: true });
+  addItem(cwd, workUnit, workUnit, { backfill: true });
 
   // The registration must agree with the manifest — a fresh read under the
   // project lock, upserted, so a legacy unit that predates registration is

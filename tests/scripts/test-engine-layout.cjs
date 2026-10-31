@@ -4,7 +4,8 @@
 // The layout on disk (leeway-engine/scripts/domain/layout.cjs, 4.11): the
 // table of places and its reader, `layoutPlace`. Unit layer, no world.
 // Every place 4.11.17's tree draws holds a sample path, with its kind — the
-// logs 4.11's four — and a sample outside each folder is in none; names are
+// logs 4.11's four, a topic's brief the engine's alone (8.7.6) — and a sample
+// outside each folder is in none, today's briefs folder among them; names are
 // compared as the fold spells them; the tracker's store is each shipped
 // task driver's; each of today's places holds its sample, is no log, and
 // names the phase from 29.11 to 29.17 that retires it (E4); the product's
@@ -48,7 +49,7 @@ const DRAWN = Object.freeze({
   'pay/manifest.json': 'engine {unit}/manifest.json',
   'pay/discovery/session-001.md': 'log {unit}/discovery/session-{NNN}.md',
   'pay/seeds/2026-10-30--smart-retry.md': 'free {unit}/seeds',
-  'pay/topics/auth/brief.md': 'file {unit}/topics/{topic}/brief.md',
+  'pay/topics/auth/brief.md': 'engine {unit}/topics/{topic}/brief.md',
   'pay/topics/auth/log.md': 'log {unit}/topics/{topic}/log.md',
   'pay/topics/auth/mail/001-retry-policy.md': 'file {unit}/topics/{topic}/mail/{NNN}-{slug}.md',
   'pay/topics/auth/experiments/E1-token-cost/problem.md': 'file {unit}/topics/{topic}/experiments/E{n}-{slug}/{problem,design,report}.md',
@@ -77,7 +78,6 @@ const DRAWN = Object.freeze({
 
 /** A path in each of today's places, and the place's path. */
 const TODAYS = Object.freeze({
-  'pay/discovery/briefs/auth.md': '{unit}/discovery/briefs/{topic}.md',
   '.baseline/.state/agenda-api.md': '.baseline',
   'pay/.state/discovery-gap-analysis.md': '{unit}/.state',
   'pay/implementation/auth/review-tasks-c1.md': '{unit}/implementation/{topic}',
@@ -104,7 +104,7 @@ const OUTSIDE = Object.freeze([
   'Pay/spec.md', 'pay/topics/a.b/log.md', 'pay/discovery/session-1.md', 'pay/build/tasks/1.md', 'pay/build/tasks/0.2.md', 'pay/build/runs/3.s2/run-001.json', 'pay/review/round-0.md',
   '.inbox/ideas/30-10-2026--smart-retry.md', '.inbox/ideas/today--smart-retry.md', '.inbox/ideas/2026-10-30--smart_retry.md', 'pay/build/phases/phase-1/check_out-a.md',
   'pay/topics/auth/experiments/E0-token-cost/problem.md', 'pay/topics/auth/experiments/E1-token-cost/E1.0-cold-start/report.md', 'pay/build/runs/0.S2/run-001.json', 'pay/build/runs/3.S0/run-001.json',
-  'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth/notes.md',
+  'pay/research/auth.md', 'pay/discussion/auth.md', 'pay/experiment/auth/E1-token-cost/E1.1-cold-start/report.md', 'pay/discussion/.mailbox/auth/001-retry-policy.md', 'pay/discovery/sessions/notes.md', 'pay/discovery/briefs/auth.md',
   '.roadmap/notes.md', '.roadmap/sessions/notes.md', '.state/environment.md',
   'pay/discovery/sessions/session-001.md', '.roadmap/sessions/session-001.md', '.roadmap/imports/deck.pdf',
 ]);
@@ -113,7 +113,7 @@ const OUTSIDE = Object.freeze([
 const named = (at) => (at === null ? null : `${at.kind} ${at.path}`);
 
 describe('4.11\'s places (4.11.17)', () => {
-  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger and spec-review.json (6.2.3) — and every place has one', () => {
+  it('every place the tree draws holds its sample, of its kind — the engine\'s alone the manifests, the ledger, spec-review.json (6.2.3) and a topic\'s brief (8.7.6) — and every place has one', () => {
     assert.deepStrictEqual(Object.fromEntries(Object.keys(DRAWN).map((rel) => [rel, named(layoutPlace(rel))])), DRAWN);
     assert.deepStrictEqual(new Set(Object.values(DRAWN)), new Set(LAYOUT.map(named)));
   });

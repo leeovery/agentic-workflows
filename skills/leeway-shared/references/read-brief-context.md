@@ -18,15 +18,9 @@ Nothing to read here — briefs exist only for epics (the inverse of `seed-conte
 
 #### Otherwise
 
-Read the topic's brief pointer:
+**If the brief, `.leeway/{work_unit}/topics/{topic}/brief.md`, exists:**
 
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} brief_path
-```
-
-**If `brief_path` is present and the brief file exists:**
-
-Read the file at `brief_path` in full — the *discovery brief* — and use it as the starting context for this phase. `brief_path` is relative to the work unit directory: `.workflows/{work_unit}/{brief_path}` (canonically `.workflows/{work_unit}/discovery/briefs/{topic}.md`). Don't dump it back to the user verbatim. It is soft by location: provisional rather than fixed. Ratifying it means carrying it forward as the working position and letting this phase's findings test it — never re-eliciting decisions discovery already reached with the user.
+Read it in full — the *discovery brief* — and use it as the starting context for this phase. Don't dump it back to the user verbatim. It is soft by location: provisional rather than fixed. Ratifying it means carrying it forward as the working position and letting this phase's findings test it — never re-eliciting decisions discovery already reached with the user.
 
 → Proceed to **B. Track the Read**.
 

@@ -75,7 +75,7 @@ describe('pipeline simulation: roadmap', () => {
 
     // An epic grows by topics: a bug is never pulled forward into one.
     sim.run(['workunit', 'create', 'reports', 'epic', '--description', 'Reporting', '--session-log-file', sessionLog(sim, 'reports')]);
-    sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports', '--routing', 'discussion'], /pull-forward takes ideas only; start it with the pull/);
+    sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports'], /pull-forward takes ideas only; start it with the pull/);
 
     // A bug pulled alone is a bugfix — its note stays on the roadmap, read as a source.
     sim.run(['workunit', 'create', 'export-timeout', 'bugfix', '--description', 'Large exports time out',
@@ -189,7 +189,7 @@ describe('pipeline simulation: roadmap', () => {
 
     // Pull-forward: a waiting item joins the in-flight epic as a map topic
     // in one composed transaction.
-    sim.run(['roadmap', 'pull-forward', 'menu-management', '--into', 'mvp', '--routing', 'discussion']);
+    sim.run(['roadmap', 'pull-forward', 'menu-management', '--into', 'mvp']);
     assert.strictEqual(sim.manifest('mvp').phases.discovery.items['menu-management'].source, 'roadmap');
 
     enterEntry(sim, 'mvp', 'discussion', 'guest-ordering');
@@ -217,14 +217,15 @@ describe('pipeline simulation: roadmap', () => {
     // hands the item back — and the dismissed name then needs the user's
     // confirmed re-add to pull forward again.
     sim.run(['roadmap', 'add', 'reporting', '--horizon', 'v1', '--summary', 'owners see the numbers']);
-    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion']);
-    const removed = sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
-    assert.deepStrictEqual(removed.roadmap_reverted, ['reporting']);
+    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp']);
+    const removed = sim.run(['topic', 'remove', 'mvp', 'reporting']);
+    assert.deepStrictEqual(removed.roadmap_returned, [{ name: 'reporting', horizon: 'v1' }]);
+    assert.match(sim.sections, /^Removed "Reporting" from the map\. "Reporting" is back on the roadmap under v1\.$/m);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'reporting').state, 'waiting');
-    sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion'], /previously dismissed/);
-    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
-    sim.run(['discovery-map', 'remove', 'mvp', 'reporting']);
+    sim.refuses(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp'], /previously dismissed/);
+    sim.run(['roadmap', 'pull-forward', 'reporting', '--into', 'mvp', '--force-dismissed']);
+    sim.run(['topic', 'remove', 'mvp', 'reporting']);
     // The same door reads the list the re-add is refused against, and offers
     // the re-add over it.
     assert.match(sim.render(['dismissed-topics', 'mvp'], { expect: 'content' }),
@@ -447,7 +448,7 @@ describe('pipeline simulation: roadmap', () => {
     // lands the idea as a topic — the bug is material for it, never a topic.
     assert.strictEqual(sim.run(['session', 'label', 'launch', 'discovery', 'launch']).labelled, false);
     sim.run(['discovery-map', 'add-batch', 'launch', '--file', sim.write('.leeway/.cache/launch/discovery/topics.json', [
-      { name: 'guest-checkout', routing: 'discussion', summary: 'Guests buy without an account' },
+      { name: 'guest-checkout', summary: 'Guests buy without an account' },
     ])]);
     // The binds: every idea joined to the unit with no topic. The bug, joined
     // the same way, is never one of them — and the verb refuses it.

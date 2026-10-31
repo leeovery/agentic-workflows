@@ -37,6 +37,9 @@ const WORK_TYPE_PIPELINES = {
 // list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
+/** The phases a topic exists in: those before the spec (4.11.2). */
+const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
+
 const VALID_PHASE_STATUSES = {
   // Empty on purpose, never removed: discovery items are map items with NO
   // status field (lifecycle is computed at render time), and an empty
@@ -62,11 +65,6 @@ const VALID_PHASE_STATUSES = {
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],
 };
-
-// Where a discovery-map item routes when work starts on it. Also the legal
-// `--phase` choices when a topic spawn seeds its first phase item — the
-// routable phases ARE the routing vocabulary.
-const VALID_ROUTINGS = ['discussion'];
 
 // One experiment record in a topic's series
 // (`phases.experiment.items.{topic}.experiments.{id}.status`): the
@@ -252,8 +250,8 @@ module.exports = {
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
   DERIVED_PHASES,
+  TOPIC_PHASES,
   VALID_PHASE_STATUSES,
-  VALID_ROUTINGS,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
   EXPERIMENT_ID_PATTERN,

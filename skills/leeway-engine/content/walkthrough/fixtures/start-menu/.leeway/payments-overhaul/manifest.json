@@ -8,13 +8,11 @@
     "discovery": {
       "items": {
         "card-capture": {
-          "routing": "discussion",
           "source": "discovery",
           "summary": "How card details are taken and stored.",
           "description": "How card details are taken and stored."
         },
         "reconciliation": {
-          "routing": "discussion",
           "source": "discovery",
           "summary": "Matching settlements against invoices.",
           "description": "Matching settlements against invoices."

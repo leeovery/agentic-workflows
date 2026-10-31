@@ -233,7 +233,7 @@ describe('engine workunit create — a name already taken refuses', () => {
       status: 'in-progress',
       created: '2026-01-01',
       description: 'Original description',
-      phases: { discovery: { items: { 'auth-flow': { routing: 'discussion' } } } },
+      phases: { discovery: { items: { 'auth-flow': {} } } },
     }, null, 2) + '\n');
     commitAll(fix.project, 'existing unit');
     return {

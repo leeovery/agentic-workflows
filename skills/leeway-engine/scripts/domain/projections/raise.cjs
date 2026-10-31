@@ -20,6 +20,7 @@
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 const { titlecase } = require('../conventions.cjs');
+const { titled } = require('../derivations.cjs');
 
 /** @typedef {import('../raise.cjs').Seal} Seal */
 /** @typedef {import('./surfaces.cjs').Next} Next */
@@ -60,24 +61,28 @@ function asking({ fact }) {
     : { question: 'Which way?', prompt: 'Ask about it, or tell me what I\'ve missed' };
 }
 
-/** Where the question stands: its unit, and its topic where it has one of its own. @param {Seal['place']} place */
-function header({ unit, topic }) {
-  return [unit, ...(topic === null || topic === unit ? [] : [topic])].map(titlecase).join(' · ');
+/**
+ * Where the question stands: its unit, and its topic where it has one of its
+ * own, by the name it goes by.
+ * @param {Seal['place']} place @param {Record<string, string>} titles
+ */
+function header({ unit, topic }, titles) {
+  return [titlecase(unit), ...(topic === null || topic === unit ? [] : [titled(titles, topic)])].join(' · ');
 }
 
 /**
  * The lines above the rows, each block apart: the header, the question, the
  * lean, what the person would notice, why it asks, and the mechanism where
  * it is shown.
- * @param {Seal} seal @param {boolean} technical
+ * @param {Seal} seal @param {boolean} technical @param {Record<string, string>} titles
  * @returns {string[]}
  */
-function statement(seal, technical) {
+function statement(seal, technical, titles) {
   const { place, call, reason } = seal;
   const lean = call.rows.find((row) => row.key === leanOf(seal));
   const rows = drawnRows(seal);
   return [
-    header(place),
+    header(place, titles),
     '',
     escapeMarkdown(call.question),
     '',
@@ -96,11 +101,12 @@ function statement(seal, technical) {
 }
 
 /**
- * The raise's MENU, declared as its seal names it.
- * @param {Seal} seal @param {{technical?: boolean}} [opts]
+ * The raise's MENU, declared as its seal names it; `titles` the place's
+ * unit's topic titles.
+ * @param {Seal} seal @param {{technical?: boolean, titles: Record<string, string>}} opts
  * @returns {string}
  */
-function raiseScreen(seal, { technical = false } = {}) {
+function raiseScreen(seal, { technical = false, titles }) {
   const { id } = seal;
   const { question, prompt } = asking(seal);
   const rows = [
@@ -109,7 +115,7 @@ function raiseScreen(seal, { technical = false } = {}) {
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', prompt),
   ];
-  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical).join('\n'), rows, { question }));
+  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, titles).join('\n'), rows, { question }));
 }
 
 module.exports = { drawnRows, raiseScreen };

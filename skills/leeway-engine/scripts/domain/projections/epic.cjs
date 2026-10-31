@@ -13,7 +13,7 @@
 const { signpost, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../../kernel/manifest-schema.cjs');
 const { heldStatement } = require('./enter.cjs');
-const { CONVERSATION_ACTIONS } = require('../derivations.cjs');
+const { CONVERSATION_ACTIONS, titled, itemTitle } = require('../derivations.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, derivedFrom, stateNote, materialBlock, discoveryGlyph, discoveryLifecycleLabel } = require('../conventions.cjs');
 const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
@@ -117,7 +117,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null);
+  return discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -155,11 +155,11 @@ function statusTag(item) {
   return item.blocked_by !== undefined || depBlocked ? `${item.status} · blocked` : item.status;
 }
 
-/** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items */
-function phaseNodes(phase, items) {
+/** Build the tree nodes for one build/flat phase. @param {string} phase @param {PhaseEntry[]} items @param {Record<string, string>} titles */
+function phaseNodes(phase, items, titles) {
   return displayOrder(phase, items).map((item) => {
     const tagText = statusTag(item);
-    const head = title({ label: titlecase(item.name) });
+    const head = title({ label: itemTitle(titles, phase, item.name) });
     // The plan format rides inside the tag rather than after it: anything
     // appended past the tag column would break the alignment for every row.
     const tag = phase === 'planning' && item.format ? `${tagText} · ${item.format}` : tagText;
@@ -167,7 +167,7 @@ function phaseNodes(phase, items) {
     const children = [];
     if (phase === 'specification' && Array.isArray(item.sources)) {
       for (const src of item.sources) {
-        children.push({ title: title({ label: titlecase(sourceName(src)) }), tag: src.status || 'pending' });
+        children.push({ title: title({ label: titled(titles, sourceName(src)) }), tag: src.status || 'pending' });
       }
     }
     if (phase === 'implementation') {
@@ -182,10 +182,10 @@ function phaseNodes(phase, items) {
   });
 }
 
-/** Sub-header + item tree for one phase. @param {string} phase @param {PhaseEntry[]} items */
-function phaseBlock(phase, items) {
+/** Sub-header + item tree for one phase. @param {string} phase @param {PhaseEntry[]} items @param {Record<string, string>} titles */
+function phaseBlock(phase, items, titles) {
   return treeHeader(`${phase.toUpperCase()} (${countSummary(items)})`) + '\n'
-    + renderTree(phaseNodes(phase, items), { width: TREE_WIDTH });
+    + renderTree(phaseNodes(phase, items, titles), { width: TREE_WIDTH });
 }
 
 /** ⚑ callout wrapped under the flag — continuation lines align with the text. @param {string} text */
@@ -208,7 +208,6 @@ function mapStatusSuffix(detail) {
   if (s.decided) parts.push(`${s.decided} decided`);
   if (s.in_flight) parts.push(`${s.in_flight} in flight`);
   if (s.fresh) parts.push(`${s.fresh} fresh`);
-  if (s.handled) parts.push(`${s.handled} dead-ended`);
   if (s.cancelled) parts.push(`${s.cancelled} cancelled`);
   return parts.length ? ' · ' + parts.join(' · ') : '';
 }
@@ -242,7 +241,7 @@ function mapNodes(rows, heldAges) {
     if (row.source_provenance) body.push(derivedFrom(row.source_provenance));
     body.push(stateNote(`${lifecycleLabel(row)}${inSessionCue(heldAges.get(row.name))}`));
     return {
-      title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
+      title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title }),
       body,
     };
   });
@@ -322,7 +321,7 @@ function displayRecommendation(detail) {
   for (const name of detail.reopened_discussions) {
     const owner = spec.find((s) => (s.sources || []).some((src) => sourceName(src) === name));
     if (owner) {
-      return `${titlecase(owner.name)} specification sources the reopened ${titlecase(name)} discussion. `
+      return `${titlecase(owner.name)} specification sources the reopened ${titled(detail.titles, name)} discussion. `
         + 'Once that discussion concludes, the specification will need revisiting to extract new content.';
     }
   }
@@ -338,7 +337,7 @@ function displayRecommendation(detail) {
 function postponedLine(detail) {
   if (detail.postponed.length === 0) return null;
   const named = detail.postponed
-    .map((t) => `${titlecase(t.name)} → ${t.horizon ?? 'no roadmap item'}`)
+    .map((t) => `${titled(detail.titles, t.name)} → ${t.horizon ?? 'no roadmap item'}`)
     .join(' · ');
   return wrapWithPrefix(`postponed: ${named}`, { width: TREE_WIDTH, prefix: '  ' }).join('\n');
 }
@@ -416,7 +415,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
     if (populated.length === 0) continue;
     stages.push(
       signpost(stage.name, { width: TREE_WIDTH }) + '\n\n'
-      + populated.map((p) => phaseBlock(p, detail.phases[p])).join('\n')
+      + populated.map((p) => phaseBlock(p, detail.phases[p], detail.titles)).join('\n')
     );
   }
 
@@ -535,19 +534,18 @@ function topicRoute(action, workUnit, topic) {
 // The mail cue rides every row shape: the bare start rows carry it as
 // their tail; a row that already has a tail carries it as the tail's cue,
 // the way continueLabel cues `input moved`.
-/** @param {string} action @param {string} name @param {boolean} [mailWaiting] @returns {LabelParts} */
-function discoveryEntryLabel(action, name, mailWaiting) {
-  const t = titlecase(name);
+/** @param {string} action @param {string} t the topic as screens title it @param {boolean} [mailWaiting] @returns {LabelParts} */
+function discoveryEntryLabel(action, t, mailWaiting) {
   const cue = mailWaiting ? 'mail waiting' : undefined;
   return action === 'continue_discussion'
     ? { head: `Continue "${t}"`, tail: 'discussion', cue }
     : { head: `Start discussion for "${t}"`, tail: cue };
 }
 
-/** @param {string} phase @param {PhaseEntry} item @returns {LabelParts} */
-function continueLabel(phase, item) {
+/** @param {string} phase @param {PhaseEntry} item @param {Record<string, string>} titles @returns {LabelParts} */
+function continueLabel(phase, item, titles) {
   const cue = item.reconcile_needed !== undefined ? 'input moved' : undefined;
-  return { head: `Continue "${titlecase(item.name)}"`, tail: continueTail(phase, item), cue };
+  return { head: `Continue "${itemTitle(titles, phase, item.name)}"`, tail: continueTail(phase, item), cue };
 }
 
 /** @param {string} phase @param {PhaseEntry} item @returns {string} */
@@ -558,12 +556,13 @@ function continueTail(phase, item) {
   return `implementation (Phase ${item.current_phase}, ${tasks} task(s) completed)`;
 }
 
-/** @param {NextPhaseEntry} n @param {boolean} [srcFlagged]  the entry's source item carries a live reconcile flag @returns {LabelParts} */
-function startVerbLabel(n, srcFlagged) {
-  const t = titlecase(n.name);
+/** @param {NextPhaseEntry} n @param {boolean} srcFlagged  the entry's source item carries a live reconcile flag @param {Record<string, string>} titles @returns {LabelParts} */
+function startVerbLabel(n, srcFlagged, titles) {
+  const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)];
+  const t = itemTitle(titles, phase, n.name);
   const head = n.action === 'start_implementation'
     ? `Start implementation of "${t}"`
-    : `Start ${ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (n.action)]} for "${t}"`;
+    : `Start ${phase} for "${t}"`;
   return { head, tail: n.label, cue: srcFlagged ? 'input moved' : undefined };
 }
 
@@ -575,7 +574,7 @@ function discoveryEntry(workUnit, row, action) {
     action,
     topic: row.name,
     route: topicRoute(action, workUnit, row.name),
-    label: discoveryEntryLabel(action, row.name, row.mail_waiting),
+    label: discoveryEntryLabel(action, row.title, row.mail_waiting),
   };
 }
 
@@ -596,7 +595,7 @@ function experimentEntries(workUnit, detail) {
       action: 'continue_experiment',
       topic: item.name,
       route: topicRoute('continue_experiment', workUnit, item.name),
-      label: { head: `Enter the laboratory for "${titlecase(item.name)}"`, tail: `${live.length} experiment${live.length === 1 ? '' : 's'} queued` },
+      label: { head: `Enter the laboratory for "${titled(detail.titles, item.name)}"`, tail: `${live.length} experiment${live.length === 1 ? '' : 's'} queued` },
     });
   }
   return out;
@@ -619,7 +618,7 @@ function continueEntries(workUnit, detail, phase, held) {
       action: `continue_${phase}`,
       topic: item.name,
       route: topicRoute(`continue_${phase}`, workUnit, item.name),
-      label: continueLabel(phase, item),
+      label: continueLabel(phase, item, detail.titles),
       ...(item.reconcile_needed !== undefined ? { input_moved: true } : {}),
       ...(item.blocked_by !== undefined ? { blocked_by: item.blocked_by } : {}),
     }));
@@ -652,7 +651,7 @@ function startEntries(workUnit, detail, phase) {
       action: n.action,
       topic: n.name,
       route: topicRoute(n.action, workUnit, n.name),
-      label: startVerbLabel(n, srcFlagged),
+      label: startVerbLabel(n, srcFlagged, detail.titles),
       ...(srcFlagged ? { input_moved: true } : {}),
     };
     out.push(entry);
@@ -957,11 +956,11 @@ function epicMenu(workUnit, detail, opts = {}) {
 // A struck row is the one blocked row the menu offers, so its gate also
 // names what holds the entry shut — a yes here would otherwise meet the
 // phase's own refusal blind.
-/** @param {string} phase @param {string} topic @param {string[]|undefined} by */
-function entryHoldClause(phase, topic, by) {
+/** @param {string} phase @param {string} topic @param {string[]|undefined} by @param {Record<string, string>} titles */
+function entryHoldClause(phase, topic, by, titles) {
   if (by === undefined) return '';
   const what = phase === 'planning' ? `the specification for "${titlecase(topic)}" is unsettled`
-    : `its sources are not concluded (${by.map(titlecase).join(', ')})`;
+    : `its sources are not concluded (${by.map((source) => titled(titles, source)).join(', ')})`;
   return ` Its entry is also held shut — ${what} — so proceeding meets that gate next.`;
 }
 
@@ -976,16 +975,17 @@ function entryHoldClause(phase, topic, by) {
  * skill owns that conversation, so the user meets one gate per attempt.
  * @param {string} workUnit  this epic — the holder of the topic this entry would open
  * @param {MenuKey} entry
+ * @param {Record<string, string>} titles  the epic's topic titles (EpicDetail's `titles`)
  * @returns {string} one labelled MENU section
  */
-function epicInSessionGate(workUnit, entry) {
+function epicInSessionGate(workUnit, entry, titles) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (entry.action)];
   const topic = entry.topic || '';
   return section(
     `MENU: in-session gate — ${entry.key}`,
     MENU_INSTRUCTION,
     menuFrame([
-      heldStatement(workUnit, phase, topic, entry.session_age ?? 0, entryHoldClause(phase, topic, entry.blocked_by)),
+      heldStatement({ unit: workUnit, phase, place: topic, title: itemTitle(titles, phase, topic), ageSeconds: entry.session_age ?? 0 }, entryHoldClause(phase, topic, entry.blocked_by, titles)),
       '',
       '**`◆ Proceed anyway?`**',
       '',
@@ -1123,8 +1123,8 @@ function epicCompletedMenu(workUnit, detail) {
     return {
       phase: item.phase,
       topic: item.name,
-      row: title({ label: titlecase(item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
-      label: { head: `Resume "${titlecase(item.name)}"`, tail: item.phase, cue: flagged ? 'input moved' : undefined },
+      row: title({ label: itemTitle(detail.titles, item.phase, item.name), tag: flagged ? 'completed · input moved' : 'completed' }),
+      label: { head: `Resume "${itemTitle(detail.titles, item.phase, item.name)}"`, tail: item.phase, cue: flagged ? 'input moved' : undefined },
       route: topicRoute(`continue_${item.phase}`, workUnit, item.name),
     };
   });
@@ -1147,13 +1147,13 @@ const UNIT_PRESENCE_PHASES = { discovery: ['discussion', 'experiment'], specific
  * of a unit a live session holds, and either the pick label or the lock
  * reason — a locked row takes no label.
  * @param {{name: string, stage: UnitStage, locked?: string}} unit
- * @param {{tag: string, tail?: string, verb: string, detail: string}} parts
+ * @param {{tag: string, tail?: string, verb: string, detail: string, titles: Record<string, string>}} parts
  * @param {PresenceRow[]|undefined} presence
  * @returns {SubViewRow}
  */
-function unitRow(unit, { tag, tail = '', verb, detail }, presence) {
+function unitRow(unit, { tag, tail = '', verb, detail, titles }, presence) {
   const age = heldAgesIn(presence, UNIT_PRESENCE_PHASES[unit.stage]).get(unit.name);
-  const name = titlecase(unit.name);
+  const name = itemTitle(titles, unit.stage, unit.name);
   const base = { phase: unit.stage, group: UNIT_GROUP[unit.stage], topic: unit.name, row: `${title({ label: name, tag })}${tail}${inSessionCue(age)}`, route: null };
   return unit.locked !== undefined
     ? { ...base, locked: unit.locked }
@@ -1170,7 +1170,7 @@ function unitRow(unit, { tag, tail = '', verb, detail }, presence) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicCancelMenu(detail, opts = {}) {
-  const rows = detail.cancellable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Cancel', detail: unit.state }, opts.presence));
+  const rows = detail.cancellable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Cancel', detail: unit.state, titles: detail.titles }, opts.presence));
   return selectionSubView('Cancellable Topics', 'No cancellable topics.', 'Which topic would you like to cancel?', 'cancel', rows,
     { allLocked: 'Nothing can be cancelled right now — each row names what holds it.' });
 }
@@ -1195,7 +1195,7 @@ function unitReturns(unit) {
 function epicReactivateMenu(detail, opts = {}) {
   const rows = detail.cancelled.map((unit) => {
     const returns = unitReturns(unit);
-    return unitRow(unit, { tag: 'cancelled', tail: ` — ${returns}`, verb: 'Reactivate', detail: returns }, opts.presence);
+    return unitRow(unit, { tag: 'cancelled', tail: ` — ${returns}`, verb: 'Reactivate', detail: returns, titles: detail.titles }, opts.presence);
   });
   return selectionSubView('Cancelled Topics', 'No cancelled topics.', 'Which topic would you like to reactivate?', 'reactivate', rows,
     { allLocked: 'Nothing can be reactivated right now — each row names what holds it.' });
@@ -1211,7 +1211,7 @@ function epicReactivateMenu(detail, opts = {}) {
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}
  */
 function epicPostponeMenu(detail, opts = {}) {
-  const rows = detail.postponable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Postpone', detail: unit.state }, opts.presence));
+  const rows = detail.postponable.map((unit) => unitRow(unit, { tag: unit.state, verb: 'Postpone', detail: unit.state, titles: detail.titles }, opts.presence));
   return selectionSubView('Postponable Topics', 'No postponable topics.', 'Which topic would you like to postpone?', 'postpone', rows,
     { allLocked: 'Nothing can be postponed right now — each row names what holds it.' });
 }
@@ -1226,7 +1226,7 @@ function epicPostponeMenu(detail, opts = {}) {
  */
 function epicPullForwardMenu(detail) {
   const rows = detail.postponed.filter((t) => t.waiting).map((t) => {
-    const name = titlecase(t.name);
+    const name = titled(detail.titles, t.name);
     return {
       phase: 'discovery',
       group: UNIT_GROUP.discovery,

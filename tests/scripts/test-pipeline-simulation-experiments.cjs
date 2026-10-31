@@ -49,8 +49,8 @@ describe('pipeline simulation: experiments', () => {
     const wu = 'lab';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Measured decisions', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'timing', routing: 'discussion', summary: 'Timing behaviour' },
-      { name: 'layout', routing: 'discussion', summary: 'Layout rules' },
+      { name: 'timing', summary: 'Timing behaviour' },
+      { name: 'layout', summary: 'Layout rules' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);

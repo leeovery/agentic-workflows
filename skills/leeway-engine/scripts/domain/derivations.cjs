@@ -10,8 +10,9 @@
 const fs = require('fs');
 const path = require('path');
 const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs');
+const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -614,10 +615,6 @@ function postponePlan(manifest, name, project, horizon) {
   if (lifecycle === 'cancelled') {
     locks.push({ reason: `"${name}" is cancelled — reactivate it from the epic menu first` });
   }
-  // A dead end has nothing to carry forward, so "later" is a contradiction.
-  if (lifecycle === 'handled') {
-    locks.push({ reason: `"${name}" is closed as a dead end — reopen it first` });
-  }
   const specs = unitLocks(manifest, name);
   if (specs.length > 0) {
     locks.push({ reason: `postponing "${name}" is refused while ${lockingSpecsPhrase(specs)} — a topic past specification is past "not yet"` });
@@ -645,8 +642,7 @@ function postponePlan(manifest, name, project, horizon) {
  */
 
 // The source lifecycles that hold a cancelled specification's reactivate
-// shut, each with its own way out. A dead-ended source is not among them:
-// its discussion still concluded, so the specification can stand on it.
+// shut, each with its own way out.
 const UNAVAILABLE_SOURCE_LIFECYCLES = ['cancelled', 'postponed'];
 
 /**
@@ -1052,12 +1048,12 @@ function computeAnalysisCacheStatus(manifest, stateDir, kind) {
   };
 }
 
-const TIER_RANK = { '✓': 0, '◐': 1, '○': 2, '⊙': 3, '⊘': 4, '⊖': 5 };
+const TIER_RANK = { '✓': 0, '◐': 1, '○': 2, '⊘': 3, '⊖': 4 };
 
 // Shared row comparator for the discovery map: tier rank first — decided
-// leads, then in-flight, fresh, with handled/cancelled/postponed
-// trailing — then suggested execution order ascending (null orders sort
-// last), then name as final fallback.
+// leads, then in-flight, fresh, with cancelled/postponed trailing — then
+// suggested execution order ascending (null orders sort last), then name as
+// final fallback.
 function compareMapRows(a, b) {
   const ra = TIER_RANK[a.tier] != null ? TIER_RANK[a.tier] : 99;
   const rb = TIER_RANK[b.tier] != null ? TIER_RANK[b.tier] : 99;
@@ -1069,9 +1065,9 @@ function compareMapRows(a, b) {
 }
 
 // The tiers a topic carries no suggested execution order under — off the
-// board (cancelled), non-actionable (handled), or waiting on the roadmap
-// (postponed); each stashes its order and gets none back until it returns.
-const UNORDERED_TIERS = ['⊘', '⊙', '⊖'];
+// board (cancelled) or waiting on the roadmap (postponed); each stashes its
+// order and gets none back until it returns.
+const UNORDERED_TIERS = ['⊘', '⊖'];
 
 // True when any live map item lacks a suggested execution order.
 // Programmatic detection — the assignment of order values stays with Claude.
@@ -1087,19 +1083,15 @@ function computeTopicLifecycle(manifest, topicName) {
   const discussion = phaseItems(manifest, 'discussion').find(i => i.name === topicName);
   const ds = discussion ? discussion.status : null;
 
-  // Stored markers win over name-matching, the cancel ahead of the postpone
-  // ahead of the dead end: a cancelled topic is off the board whatever its
-  // items say, a postponed one has left the epic for the roadmap, a
-  // dead-ended one is terminal with no next action. Read only the item's own
-  // fields — never inspect siblings or provenance.
+  // Stored markers win over name-matching, the cancel ahead of the postpone:
+  // a cancelled topic is off the board whatever its items say, a postponed
+  // one has left the epic for the roadmap. Read only the item's own fields —
+  // never inspect siblings or provenance.
   if (discovery && discovery.cancelled === true) {
     return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, discussion_state: ds };
   }
   if (discovery && discovery.postponed === true) {
     return { lifecycle: 'postponed', tier: '⊖', current_phase: null, discussion_state: ds };
-  }
-  if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null, discussion_state: ds };
   }
 
   // A promoted discussion concluded and moved on with its specification to a
@@ -1124,7 +1116,7 @@ function computeTopicLifecycle(manifest, topicName) {
 }
 
 // The lifecycles a topic leaves the board under — no row, no action.
-const CLOSED_LIFECYCLES = ['cancelled', 'handled', 'postponed'];
+const CLOSED_LIFECYCLES = ['cancelled', 'postponed'];
 
 /**
  * The refusal every write over a promoted item makes — each hand transition
@@ -1146,7 +1138,6 @@ function lifecyclePhrase(lifecycle) {
     case 'fresh': return 'nothing has started on it';
     case 'discussing': return 'discussion is in flight on it';
     case 'decided': return 'discussion has concluded';
-    case 'handled': return 'it is closed as a dead end and stays on the map as record';
     case 'postponed': return 'it is postponed and waits on the roadmap';
     default: return 'it is cancelled and stays on the map as record'; // cancelled
   }
@@ -1173,13 +1164,12 @@ function computeNextAction(lifecycle) {
 }
 
 function computeMapSummary(items) {
-  const counts = { total: items.length, decided: 0, in_flight: 0, fresh: 0, handled: 0, cancelled: 0, postponed: 0 };
+  const counts = { total: items.length, decided: 0, in_flight: 0, fresh: 0, cancelled: 0, postponed: 0 };
   for (const it of items) {
     switch (it.tier) {
       case '✓': counts.decided++; break;
       case '◐': counts.in_flight++; break;
       case '○': counts.fresh++; break;
-      case '⊙': counts.handled++; break;
       case '⊘': counts.cancelled++; break;
       case '⊖': counts.postponed++; break;
     }
@@ -1214,13 +1204,111 @@ function mailPhase(workType) {
 }
 
 /**
- * A topic's mailbox, state-relative — the one place the layout is spelled:
- * one per topic, in the topic's own folder, naming no phase (10.1.3).
+ * A topic's own folder, state-relative — the one place the layout is
+ * spelled (4.11.5).
+ * @param {string} workUnit @param {string} topic
+ * @returns {string}
+ */
+function topicDir(workUnit, topic) {
+  return `${workUnit}/topics/${topic}`;
+}
+
+/**
+ * A topic's mailbox, state-relative: one per topic, in the topic's own
+ * folder, naming no phase (10.1.3).
  * @param {string} workUnit @param {string} topic
  * @returns {string}
  */
 function mailboxDir(workUnit, topic) {
-  return `${workUnit}/topics/${topic}/mail`;
+  return `${topicDir(workUnit, topic)}/mail`;
+}
+
+/**
+ * A topic's brief, state-relative: discovery's brief for the topic, in its
+ * own folder (8.7.1).
+ * @param {string} workUnit @param {string} topic
+ * @returns {string}
+ */
+function briefFile(workUnit, topic) {
+  return `${topicDir(workUnit, topic)}/brief.md`;
+}
+
+/**
+ * The names struck from an epic's map — each topic removed, and each
+ * candidate the person struck — which nothing proposes again (8.10.11).
+ * @param {object} manifest
+ * @returns {string[]}
+ */
+function dismissedNames(manifest) {
+  const discovery = /** @type {Record<string, any>} */ (manifest).phases?.discovery;
+  return Array.isArray(discovery?.dismissed) ? discovery.dismissed : [];
+}
+
+/**
+ * The titles a rename gave the unit's started topics, by key — each the name
+ * the person renamed the topic to, its key keeping the name it started under
+ * (8.8.17). A screen drawn without the manifest carries these.
+ * @param {object} manifest
+ * @returns {Record<string, string>}
+ */
+function topicTitles(manifest) {
+  const items = /** @type {Record<string, any>} */ (manifest).phases?.discovery?.items ?? {};
+  return Object.fromEntries(Object.entries(items).flatMap(([key, row]) => (row && typeof row.title === 'string' ? [[key, row.title]] : [])));
+}
+
+/**
+ * The name a topic goes by: its title where a rename gave it one, else its
+ * key. @param {Record<string, string>} titles the unit's `topicTitles` @param {string} topic
+ */
+function goesBy(titles, topic) {
+  return Object.hasOwn(titles, topic) ? titles[topic] : topic;
+}
+
+/**
+ * How every screen titles a topic of the unit — the one way a topic's name
+ * reaches the person: the name it goes by, title-cased.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} topic
+ * @returns {string}
+ */
+function titled(titles, topic) {
+  return titlecase(goesBy(titles, topic));
+}
+
+/**
+ * The name an item of `phase` goes by: a topic the name it goes by, a
+ * specification and what is built from it its own name, though it may share
+ * a topic's key.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * @returns {string}
+ */
+function itemName(titles, phase, name) {
+  return TOPIC_PHASES.includes(phase) ? goesBy(titles, name) : name;
+}
+
+/**
+ * How screens title an item of `phase`: `itemName`, title-cased.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * @returns {string}
+ */
+function itemTitle(titles, phase, name) {
+  return titlecase(itemName(titles, phase, name));
+}
+
+/** `titled` read from the unit's manifest. @param {object} manifest @param {string} topic @returns {string} */
+function topicTitle(manifest, topic) {
+  return titled(topicTitles(manifest), topic);
+}
+
+/**
+ * The key of the topic on the unit's map that goes by `said` — its key or
+ * its title — or null where none does: a name the person says, resolved.
+ * @param {object} manifest @param {string} said
+ * @returns {string|null}
+ */
+function topicKeyOf(manifest, said) {
+  if (itemOf(manifest, 'discovery', said)) return said;
+  const titles = topicTitles(manifest);
+  return Object.keys(titles).find((key) => titles[key] === said) ?? null;
 }
 
 /**
@@ -1286,7 +1374,8 @@ function mailPhases(stateDir, manifest) {
  * @property {boolean} summary_present
  * @property {string|null} description        raw value, for surfaces that render it in full
  * @property {boolean} description_present     normalised presence
- * @property {string|null} routing
+ * @property {string} title                   how screens title the topic (`topicTitle`)
+ * @property {string} goes_by                 the name the topic goes by — its title, else its key
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
@@ -1331,7 +1420,8 @@ function buildDiscoveryMap(manifest, stateDir) {
       summary_present: summaryText !== null,
       description: item.description || null,
       description_present: descriptionText !== null,
-      routing: item.routing || null,
+      title: topicTitle(manifest, item.name),
+      goes_by: goesBy(topicTitles(manifest), item.name),
       source: item.source || 'discovery',
       source_provenance: computeSourceProvenance(item.source),
       order: item.order ?? null,
@@ -1415,7 +1505,17 @@ module.exports = {
   buildDiscoveryMap,
   ownNamedItems,
   mailPhase,
+  topicDir,
   mailboxDir,
+  briefFile,
+  dismissedNames,
+  topicTitle,
+  topicTitles,
+  goesBy,
+  titled,
+  itemName,
+  itemTitle,
+  topicKeyOf,
   mailboxFiles,
   mailboxDepth,
   mailPhases,

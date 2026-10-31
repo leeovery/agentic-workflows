@@ -137,10 +137,10 @@ describe('engine workunit pivot — happy path', () => {
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');
-    // Backfill map item: routing + source only — no summary/description
+    // Backfill map item: source only — no summary/description
     // (summary-backfill drafts them), never a status field.
     assert.deepStrictEqual(m.phases.discovery.items, {
-      'auth-flow': { routing: 'discussion', source: 'discovery' },
+      'auth-flow': { source: 'discovery' },
     });
     // The project-manifest registration flips too; siblings untouched.
     assert.deepStrictEqual(readProjectManifest(fix).work_units, {
@@ -208,7 +208,7 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
 
   it('refuses a re-run: the topic is already on the discovery map', () => {
     const m = featureManifest();
-    m.phases.discovery = { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } };
+    m.phases.discovery = { items: { 'auth-flow': { source: 'discovery' } } };
     fix = setupFixture(m);
     const before = snapshot(fix);
     assert.match(engineFails(fix, ['workunit', 'pivot', 'auth-flow']).error, /already on the discovery map/);

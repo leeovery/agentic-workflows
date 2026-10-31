@@ -369,29 +369,23 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryGlyph('unknown-tier'), '');
   });
 
-  it('discoveryLifecycleLabel says dead end plainly, whatever cue rides it', () => {
-    assert.strictEqual(discoveryLifecycleLabel('handled', 'discussion'), 'dead end');
-    assert.strictEqual(discoveryLifecycleLabel('handled', null, false, []), 'dead end');
-  });
-
   it('discoveryLifecycleLabel appends the mail waiting cue when parked', () => {
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'discussion', true), 'fresh · routed to discussion · mail waiting');
-    assert.strictEqual(discoveryLifecycleLabel('fresh', null, true), 'fresh · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', true), 'fresh · mail waiting');
     // The cue survives on non-fresh rows — a parked stub stays visible.
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', true), 'discussing · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', true), 'discussing · mail waiting');
     // A composite label keeps its own tail before the cue.
-    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', true, [], 'auth-platform'), 'decided · promoted to auth-platform · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('decided', true, [], 'auth-platform'), 'decided · promoted to auth-platform · mail waiting');
   });
 
   it('discoveryLifecycleLabel appends the awaited experiment ids directly after the lifecycle', () => {
     const e = (id) => ({ kind: 'experiment', id });
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', false, [e('E1')]), 'discussing · awaiting E1');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', true, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · mail waiting');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', false, []), 'discussing');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', false, [e('E1')]), 'discussing · awaiting E1');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', true, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', false, []), 'discussing');
   });
 
   it('discoveryLifecycleLabel renders no cue when mailWaiting is false or omitted', () => {
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'discussion', false), 'fresh · routed to discussion');
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'discussion'), 'fresh · routed to discussion');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', false), 'fresh');
+    assert.strictEqual(discoveryLifecycleLabel('fresh'), 'fresh');
   });
 });

@@ -30,9 +30,9 @@ const { ROW_MAX, counted } = require('./map.cjs');
 /** @typedef {import('./surfaces.cjs').Next} Next */
 
 /**
- * The decided screen as it is drawn.
+ * The decided screen as it is drawn, `title` the topic as screens title it.
  * @typedef {{
- *   unit: string, topic: string,
+ *   unit: string, topic: string, title: string,
  *   decided: string[], carried: string[], moved: number,
  *   calls: {question: string|null, answer: string, kind: string|null, handed: string|null}[],
  *   listed: boolean,
@@ -135,8 +135,8 @@ function verdictBlock({ at, of, question, lean, yours }) {
  * @param {DecidedView} view
  */
 function decidedDisplay(view) {
-  const { topic, decided, carried, calls, listed, lines, withdrawals, candidates, skips, verdict } = view;
-  const blocks = [`${titlecase(topic)} — decided`];
+  const { title, decided, carried, calls, listed, lines, withdrawals, candidates, skips, verdict } = view;
+  const blocks = [`${title} — decided`];
   blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0 ? `${INDENT}${noneOfYours(view)}` : questionTree(decided)));
   if (carried.length > 0) blocks.push(block(`CARRIED OVER (${carried.length})`, questionTree(carried)));
   if (calls.length > 0) blocks.push(block(`CLAUDE'S CALLS (${calls.length})`, `${INDENT}${kindCounts(calls)}${listed ? `\n${callTree(calls)}` : ''}`));
@@ -157,13 +157,13 @@ function theCount(n, one, many) {
 }
 
 /** What the person's yes covers, said on the gate: the lines, the withdrawals and the candidates not struck. @param {DecidedView} view */
-function yesCovers({ topic, lines, withdrawals, candidates }) {
+function yesCovers({ title, lines, withdrawals, candidates }) {
   const covers = [
     ...theCount(lines.length, 'product-record line', 'product-record lines'),
     ...theCount(withdrawals.length, 'withdrawal', 'withdrawals'),
     ...theCount(candidates.filter(({ struck }) => !struck).length, 'candidate', 'candidates'),
   ];
-  return `Your yes marks ${titlecase(topic)} decided${covers.length === 0 ? '' : `, with ${series(covers, 'and')}`}.`;
+  return `Your yes marks ${title} decided${covers.length === 0 ? '' : `, with ${series(covers, 'and')}`}.`;
 }
 
 /** The verdict gate over the departure the screen asks about: each verdict given at decided. @param {NonNullable<DecidedView['verdict']>} verdict */
@@ -233,15 +233,15 @@ function agentsOfKind(n, kind) {
  * and whether to wait for what they find — the gate drawn again once their
  * reports land, empty when none still runs — or go on to the close, a report
  * landing later taken in when the topic next opens.
- * @param {string} unit @param {string} topic @param {string[]} kinds the kind of each agent running, in dispatch order
+ * @param {string} unit @param {string} topic @param {string} title the topic as screens title it @param {string[]} kinds the kind of each agent running, in dispatch order
  * @returns {string}
  */
-function waitAgents(unit, topic, kinds) {
+function waitAgents(unit, topic, title, kinds) {
   /** @type {Map<string, number>} */
   const byKind = new Map();
   for (const kind of kinds) byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
   const running = [...byKind].map(([kind, n]) => agentsOfKind(n, kind)).join(', ');
-  return section('MENU: wait for agents', MENU_INSTRUCTION, menu(`Still running on ${titlecase(topic)}: ${running}.`, [
+  return section('MENU: wait for agents', MENU_INSTRUCTION, menu(`Still running on ${title}: ${running}.`, [
     cmdOption('w', 'wait', 'Wait — take in what they find first', runs(['render', 'wait-agents', `${unit}.${topic}`])),
     cmdOption('g', 'go', 'Go on — their reports wait for the next opening', { next: { kind: 'continue' } }),
   ], { question: 'Wait for them?' }));

@@ -42,7 +42,7 @@ function writeEpicFixture(dir) {
     work_type: 'epic',
     status: 'in-progress',
     phases: {
-      discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery', summary: 'Auth' } } },
+      discovery: { items: { 'auth-flow': { source: 'discovery', summary: 'Auth' } } },
     },
   }, null, 2) + '\n');
 }

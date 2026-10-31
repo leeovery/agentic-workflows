@@ -91,8 +91,8 @@ function seedHeldEpic(dir) {
     work_type: 'epic',
     phases: {
       discovery: { items: {
-        auth: { routing: 'discussion', source: 'discovery', order: 1 },
-        billing: { routing: 'discussion', source: 'discovery', order: 2 },
+        auth: { source: 'discovery', order: 1 },
+        billing: { source: 'discovery', order: 2 },
       } },
       discussion: { items: { auth: { status: 'in-progress' } } },
     },
@@ -181,7 +181,7 @@ describe('gate payload — a render surface', () => {
   it('a labelled key row states its label as its head', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
     });
     const gate = gateOf(output(dir, ['render', 'cancel-gate', 'pay.discovery.data-export'], { env: ANNOUNCED }));
 
@@ -253,7 +253,7 @@ describe('gate payload — the statement', () => {
   it('a statement label over an explicit question is the statement, its markup gone', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } },
     });
     const gate = gateOf(output(dir, ['render', 'cancel-gate', 'pay.discovery.data-export'], { env: ANNOUNCED }));
 
@@ -285,7 +285,7 @@ describe('gate payload — the statement', () => {
   });
 
   it('a statement over the question is the statement', () => {
-    createManifest(dir, 'auth', { phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery' } } } } });
+    createManifest(dir, 'auth', { phases: { discovery: { items: { 'data-export': { source: 'discovery' } } } } });
     const gate = gateOf(output(dir, ['render', 'cancel-gate', 'auth.discovery.data-export'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'Cancel it?');
@@ -551,11 +551,11 @@ describe('gate payload — every gateway verb', () => {
       phases: {
         discovery: {
           items: {
-            auth: { routing: 'discussion', source: 'discovery', order: 1 },
-            billing: { routing: 'discussion', source: 'discovery', order: 2 },
-            search: { routing: 'discussion', source: 'discovery', order: 3, cancelled: true },
-            offline: { routing: 'discussion', source: 'discovery', order: 4, postponed: true },
-            tax: { routing: 'discussion', source: 'discovery', order: 5 },
+            auth: { source: 'discovery', order: 1 },
+            billing: { source: 'discovery', order: 2 },
+            search: { source: 'discovery', order: 3, cancelled: true },
+            offline: { source: 'discovery', order: 4, postponed: true },
+            tax: { source: 'discovery', order: 5 },
           },
         },
         discussion: {

@@ -144,13 +144,19 @@
 // (21.5.8): the research phase goes, a topic whose research joined its log
 // and that has no discussion yet taking a discussion item of the research's
 // standing, and its discussion taking the research's wait on its
-// experiments; scoping goes; and so do the map's routing, a discussion's
-// subtopics, staging, the spec's build order (a cancelled spec's stashed one
-// too) and its review cycles and baseline, the plan's review tracking and
-// dependencies, and the caches of the discovery gap analysis and the
-// discussion analysis, whose files go with them (21.5.17), and every
-// discussion's reconcile flag, whatever it holds. Everything else carries as it stood,
-// the fields 21.5.9 names among them, a brief's path following its brief.
+// experiments; scoping goes; and so do the map's routing and brief path (a
+// topic's brief has one place), a discussion's subtopics, staging, the
+// spec's build order (a cancelled spec's stashed one too) and its review
+// cycles and baseline, the plan's review tracking and dependencies, and the
+// caches of the discovery gap analysis and the discussion analysis, whose
+// files go with them (21.5.17), and every discussion's reconcile flag,
+// whatever it holds. The dead end goes too (21.5.22): a topic marked
+// `handled` whose work had concluded — its discussion decided, or, with no
+// discussion of its own, its research done, as 043's umbrellas were — keeps
+// its conclusion, its discussion decided and its record carried by 079 as
+// any decided topic's; any other is cancelled, as the cancel leaves one, no
+// decision written, its mail going to the inbox with a cancelled topic's.
+// Everything else carries as it stood, the fields 21.5.9 names among them.
 // Each later reshape of a manifest updates this move until it is released
 // (E4): the reshape's own steps written for `.leeway/` before this one —
 // 073's linters — find nothing there when a project comes from
@@ -201,6 +207,8 @@
 //     again merges what it wrote;
 //   - a project still on today's skills rewrites the shared `config.json`
 //     through the link, as it would have its own.
+//   - a dead-ended topic the move cancels keeps any experiment still running
+//     on it, and the wait its discussion holds on one.
 //
 
 const fs = require('fs');
@@ -260,7 +268,7 @@ const RETIRED_PHASE_FIELDS = {
   specification: ['build_order_stale'],
 };
 const RETIRED_ITEM_FIELDS = {
-  discovery: ['routing'],
+  discovery: ['routing', 'brief_path'],
   discussion: ['subtopics', 'reconcile_needed'],
   specification: ['order', 'previous_order', 'review_cycle', 'review_baseline_words', 'tracking'],
   planning: ['review_cycle', 'review_baseline_words', 'approvals', 'tracking', 'external_dependencies'],
@@ -532,17 +540,59 @@ function foldResearch(manifest, topics) {
   if (Object.keys(discussion).length > 0) manifest.phases.discussion = { ...manifest.phases.discussion, items: discussion };
 }
 
-/** Each phase's retired fields and its items', a brief's path following its brief. @param {Record<string, any>} phases */
+/** Each phase's retired fields and its items'. @param {Record<string, any>} phases */
 function dropRetired(phases) {
   for (const phase of RETIRED_PHASES) delete phases[phase];
   for (const [phase, entry] of Object.entries(phases)) {
     if (!isObject(entry)) continue;
     for (const field of [...STAGING, ...(RETIRED_PHASE_FIELDS[phase] ?? [])]) delete entry[field];
     const retired = [...STAGING, ...(RETIRED_ITEM_FIELDS[phase] ?? [])];
-    for (const [topic, item] of Object.entries(isObject(entry.items) ? entry.items : {})) {
+    for (const item of Object.values(isObject(entry.items) ? entry.items : {})) {
       if (!isObject(item)) continue;
       for (const field of retired) delete item[field];
-      if (phase === 'discovery' && item.brief_path === `discovery/briefs/${topic}.md`) item.brief_path = `topics/${topic}/brief.md`;
+    }
+  }
+}
+
+/** The discussion statuses a topic concluded under. */
+const CONCLUDED = ['completed', 'promoted'];
+
+/**
+ * Whether a topic's work had concluded, as `manifest`, the unit's before the
+ * move, says it: its discussion decided, or, with no discussion of its own,
+ * its research done.
+ * @param {Record<string, any>} manifest @param {string} topic
+ */
+function concluded(manifest, topic) {
+  const discussion = itemsOf(manifest, 'discussion')[topic];
+  if (isObject(discussion)) return CONCLUDED.includes(discussion.status);
+  return itemsOf(manifest, 'research')[topic]?.status === 'completed';
+}
+
+/**
+ * Each topic on the reshaped map marked dead-ended (`handled`) unmarked: one
+ * whose work had concluded keeps it, its discussion decided; any other not
+ * cancelled or postponed already is cancelled, as the cancel leaves a topic
+ * — its row marked and its order stashed, its discussion's status stashed.
+ * @param {Record<string, any>} manifest the unit's before the move @param {Record<string, any>} reshaped
+ */
+function settleDeadEnds(manifest, reshaped) {
+  const discussion = itemsOf(reshaped, 'discussion');
+  for (const [topic, row] of Object.entries(itemsOf(reshaped, 'discovery'))) {
+    if (!isObject(row) || row.handled !== true) continue;
+    delete row.handled;
+    if (row.cancelled === true || row.postponed === true) continue;
+    const item = discussion[topic];
+    if (concluded(manifest, topic)) {
+      if (isObject(item)) item.status = CONCLUDED.includes(item.status) ? item.status : 'completed';
+      continue;
+    }
+    row.cancelled = true;
+    if (row.order != null) row.previous_order = row.order;
+    delete row.order;
+    if (isObject(item) && typeof item.status === 'string' && !['cancelled', 'postponed'].includes(item.status)) {
+      item.previous_status = item.status;
+      item.status = 'cancelled';
     }
   }
 }
@@ -565,6 +615,7 @@ function reshapedManifest(manifest, topics) {
   const out = structuredClone(manifest);
   if (isObject(out.phases)) {
     foldResearch(out, topics);
+    settleDeadEnds(manifest, out);
     dropRetired(out.phases);
     const experiments = itemsOf(out, 'experiment');
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];

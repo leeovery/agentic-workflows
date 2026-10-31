@@ -35,10 +35,10 @@ describe('pipeline simulation: epic-topics', () => {
     const wu = 'cuts';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
-      { name: 'export', routing: 'discussion', summary: 'Data export' },
-      { name: 'auth', routing: 'discussion', summary: 'Auth flow' },
-      { name: 'billing', routing: 'discussion', summary: 'Billing' },
-      { name: 'roles', routing: 'discussion', summary: 'Roles' },
+      { name: 'export', summary: 'Data export' },
+      { name: 'auth', summary: 'Auth flow' },
+      { name: 'billing', summary: 'Billing' },
+      { name: 'roles', summary: 'Roles' },
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-map', 'sequence', wu, 'export=1', 'auth=2', 'billing=3', 'roles=4']);
@@ -58,15 +58,15 @@ describe('pipeline simulation: epic-topics', () => {
     const marked = sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
     assert.deepStrictEqual([marked.cancelled, marked.discarded, marked.abandoned, marked.released_waits], [[], [], [], []]);
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export,
-      { routing: 'discussion', source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
+      { source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Export"\./);
     assert.deepStrictEqual(cancelledUnits(), ['discovery/export']);
     assert.deepStrictEqual(menuOptions(), ['a', 'e']);
-    sim.refuses(['discovery-map', 'remove', wu, 'export'], /it is cancelled and stays on the map as record; reactivate it from the epic menu first/);
+    sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first$/);
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export'], /"export" is already cancelled/);
     const returned = sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.deepStrictEqual(returned.restored, []);
-    assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export, { routing: 'discussion', source: 'discovery', summary: 'Data export', order: 1 });
+    assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export, { source: 'discovery', summary: 'Data export', order: 1 });
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'reactivate'], { expect: 'content' }), /Reactivated "Export"\.\n/);
     assert.deepStrictEqual(cancelledUnits(), []);
 
@@ -216,18 +216,12 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(cancelledUnits(), ['specification/roles-v2']);
     assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup the discussions from the menu (s/spec)');
 
-    // A closed map row takes no message — dead-ended or cancelled — the
-    // backstop for a peer closing the target under a landing; the cancel
-    // marker sits over the dead end and lifts off it.
-    sim.run(['discovery-map', 'handle', wu, 'export']);
-    sim.refuses(sendArgv(sim, wu, 'export', 'auth'), /^the topic "export" is closed as a dead end — reopening it goes through the epic menu's discovery row$/);
+    // A cancelled map row takes no message — the backstop for a peer closing
+    // the target under a landing.
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
     assert.match(sim.run(sendArgv(sim, wu, 'export', 'auth')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
       'a cancelled topic\'s message goes to the inbox as an idea');
-    sim.refuses(['discovery-map', 'unhandle', wu, 'export'], /it's cancelled; reactivate it from the epic menu first/);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
-    assert.strictEqual(detail().discovery_map.find((r) => r.name === 'export').lifecycle, 'handled');
-    sim.run(['discovery-map', 'unhandle', wu, 'export']);
 
     // A cancel that would take nothing refuses: an off-map topic whose only
     // item is promoted, a specification carrying no status.

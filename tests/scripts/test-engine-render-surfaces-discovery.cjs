@@ -15,8 +15,12 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
+const path = require('path');
+
 const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { appendEntry } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
+const { SESSION_ID, MADE } = require('./ledger-world.cjs');
 
 describe('render map-op-gate', () => {
   let dir;
@@ -26,12 +30,11 @@ describe('render map-op-gate', () => {
       phases: {
         discovery: {
           items: {
-            'auth-flow': { routing: 'discussion', source: 'discovery' },
-            'legacy-bits': { routing: 'discussion', source: 'discovery' },
-            'dead-end': { routing: 'discussion', source: 'discovery', handled: true },
-            'in-flight': { routing: 'discussion', source: 'discovery' },
-            gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-            away: { routing: 'discussion', source: 'discovery', postponed: true },
+            'auth-flow': { source: 'discovery' },
+            'legacy-bits': { source: 'discovery' },
+            'in-flight': { source: 'discovery' },
+            gone: { source: 'discovery', cancelled: true },
+            away: { source: 'discovery', postponed: true },
           },
         },
         discussion: { items: { 'in-flight': { status: 'in-progress' } } },
@@ -88,29 +91,30 @@ describe('render map-op-gate', () => {
     ].join('\n'));
   });
 
-  it('each remaining op carries its own headline and confirm question', () => {
-    const rename = render('rename', { name: 'auth-flow', new_name: 'sign-in-flow' });
-    assert.match(rename, /Rename "auth-flow" → "sign-in-flow"\./);
-    assert.match(rename, /no files exist under\n {2}this name\. Manifest mutation only\./);
-    assert.match(rename, /`◆ Confirm rename\?`/);
-
-    const close = render('close', { name: 'auth-flow' });
-    assert.match(close, /Close "auth-flow" as a dead end\./);
-    assert.match(close, /Reversible with "reopen auth-flow"\./);
-    assert.match(close, /`◆ Confirm close as dead end\?`/);
-
-    const reopen = render('reopen', { name: 'dead-end' });
-    assert.match(reopen, /Reopen "dead-end"\./);
-    assert.match(reopen, /Clears the dead-end marker\./);
-    assert.match(reopen, /`◆ Confirm reopen\?`/);
+  it('each remaining op carries its own headline and confirm question — a rename at any lifecycle, a started topic taking the name as its title (8.8.17)', () => {
+    for (const name of ['auth-flow', 'in-flight']) {
+      assert.strictEqual(render('rename', { name, new_name: 'sign-in-flow' }, `rename-${name}.json`), [
+        '=== DISPLAY: map operation (emit verbatim as a text code block (```text fence), directly above the menu) ===',
+        `Rename "${name}" → "sign-in-flow".`,
+        '',
+        "=== MENU: map operation gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+        DOTS,
+        '**`◆ Confirm rename?`**',
+        '',
+        '**`y/yes`**',
+        '**`n/no`**',
+        '',
+      ].join('\n'));
+    }
 
     const descriptions = render('edit-description', { items: [{ name: 'auth-flow', description: 'A long one…' }] });
     assert.match(descriptions, /Updating 1 description\(s\):/);
     assert.match(descriptions, /`◆ Apply\?`/);
   });
 
-  it('validates loudly — op vocabulary, payload shape, routing pair', () => {
-    assert.throws(() => render('edit', { name: 'x' }), /--op must be one of edit-summary, edit-description, remove, rename, close, reopen/);
+  it('validates loudly — op vocabulary, payload shape', () => {
+    assert.throws(() => render('edit', { name: 'x' }), /--op must be one of edit-summary, edit-description, remove, rename, got "edit"/);
+    assert.throws(() => render('close', { name: 'auth-flow' }, 'close.json'), /--op must be one of edit-summary, edit-description, remove, rename, got "close"/);
     assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay', op: 'remove' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'map-op-gate', { dotpath: 'pay.discovery.auth-flow', op: 'remove', file: writePayload(dir, 'a.json', { name: 'x' }) }), /address must be a bare <work_unit>/);
     assert.throws(() => render('remove', {}), /"name" must be a non-empty string/);
@@ -122,9 +126,7 @@ describe('render map-op-gate', () => {
   });
 
   it('refuses a name the map does not hold — every op, batch rows included', () => {
-    for (const op of ['remove', 'close', 'reopen']) {
-      assert.throws(() => render('' + op, { name: 'ghost' }, `${op}-ghost.json`), /render map-op-gate: no discovery item "ghost" on the map/);
-    }
+    assert.throws(() => render('remove', { name: 'ghost' }, 'remove-ghost.json'), /render map-op-gate: no discovery item "ghost" on the map/);
     assert.throws(() => render('rename', { name: 'ghost', new_name: 'spectre' }, 'rn.json'), /no discovery item "ghost" on the map/);
     assert.throws(() => render('edit-summary', { items: [{ name: 'auth-flow', summary: 'a' }, { name: 'ghost', summary: 'b' }] }, 'es.json'),
       /no discovery item "ghost" on the map/);
@@ -140,81 +142,31 @@ describe('render map-op-gate', () => {
     return out.slice(REFUSED.length + 1).trimEnd().replace(/\n/g, ' ');
   };
 
-  it('a destructive op its lifecycle forbids answers its refusal alone, wrapped — no menu, nothing to confirm', () => {
+  it('a removal its topic\'s standing forbids answers its verb\'s refusal alone, wrapped — no menu, nothing to confirm', () => {
     assert.strictEqual(render('remove', { name: 'in-flight' }, 'r1.json'), [
       REFUSED,
-      '"in-flight" can\'t be removed from the map — discussion is in',
-      'flight on it. To stop work on it, use `a`/`cancel` from the epic',
-      'menu instead — or postpone it to the roadmap for later.',
+      '"in-flight" can\'t be removed — discussion is in flight on it;',
+      'cancel from the epic menu instead.',
       '',
     ].join('\n'));
-    assert.strictEqual(refusal(render('rename', { name: 'in-flight', new_name: 'x' }, 'r2.json')),
-      '"in-flight" can\'t be renamed from the map — discussion is in flight on it. To stop work on it, use `a`/`cancel` from the epic menu instead — or postpone it to the roadmap for later.');
+    assert.strictEqual(refusal(render('remove', { name: 'gone' }, 'r2.json')),
+      '"gone" can\'t be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first.');
+    assert.strictEqual(refusal(render('remove', { name: 'away' }, 'r3.json')),
+      '"away" can\'t be removed — it is postponed and waits on the roadmap; pull it forward from the roadmap first.');
   });
 
-  it('the destructive refusal names where the topic stands from its own state', () => {
-    writeManifest(dir, 'pay', {
-      phases: {
-        discovery: { items: { settled: { routing: 'discussion', source: 'discovery' } } },
-        discussion: { items: { settled: { status: 'completed' } } },
-      },
-    });
-    const phrase = (name) => refusal(render('remove', { name }, `${name}.json`)).match(/— (.*)\. To stop/)[1];
-    assert.strictEqual(phrase('settled'), 'discussion has concluded');
-  });
-
-  it('a closed row names its way back on every destructive op — the reopen, the reactivate, the pull', () => {
-    for (const [op, extra, verb] of [['remove', {}, 'removed'], ['rename', { new_name: 'x' }, 'renamed']]) {
-      assert.strictEqual(refusal(render(op, { name: 'dead-end', ...extra }, `${op}-h.json`)),
-        `"dead-end" can't be ${verb} from the map — it is closed as a dead end and stays on the map as record. Say "reopen dead-end" to make it actionable again.`);
-      assert.strictEqual(refusal(render(op, { name: 'gone', ...extra }, `${op}-c.json`)),
-        `"gone" can't be ${verb} from the map — it is cancelled and stays on the map as record. Reactivate it from the epic menu first.`);
-      assert.strictEqual(refusal(render(op, { name: 'away', ...extra }, `${op}-p.json`)),
-        `"away" can't be ${verb} from the map — it is postponed and waits on the roadmap. Pull it forward from the roadmap first.`);
-    }
-  });
-
-  it('a marker op its lifecycle forbids answers the very refusal its transaction throws', () => {
-    assert.strictEqual(render('close', { name: 'dead-end' }, 'm1.json'), `${REFUSED}\n"dead-end" can't be closed as a dead end — it's already closed.\n`);
-    assert.strictEqual(refusal(render('close', { name: 'gone' }, 'm2.json')),
-      '"gone" can\'t be closed as a dead end — it\'s cancelled; reactivate it from the epic menu first.');
-    assert.strictEqual(refusal(render('close', { name: 'away' }, 'm3.json')),
-      '"away" can\'t be closed as a dead end — it\'s postponed; pull it forward from the roadmap first.');
-    assert.strictEqual(refusal(render('reopen', { name: 'auth-flow' }, 'm4.json')),
-      '"auth-flow" can\'t be reopened — it isn\'t closed as a dead end, so there\'s nothing to reopen.');
-    assert.strictEqual(refusal(render('reopen', { name: 'gone' }, 'm5.json')),
-      '"gone" can\'t be reopened — it\'s cancelled; reactivate it from the epic menu first.');
-    assert.strictEqual(refusal(render('reopen', { name: 'away' }, 'm6.json')),
-      '"away" can\'t be reopened — it\'s postponed; pull it forward from the roadmap first.');
-  });
-
-  it('a close over messages waiting in the topic\'s mailbox is refused', () => {
+  it('a removal of an unstarted topic the ledger names is refused, as its verb refuses it — and one over waiting messages is asked, its verb moving them to the inbox (8.8.16)', () => {
+    appendEntry(path.join(dir, '.leeway'), { event: 'asked', unit: 'pay', topic: 'legacy-bits', phase: 'discovery', session: SESSION_ID, ...MADE, text: 'Still owned?', part_of: null, relies_on: [], cites: [] }, []);
+    assert.strictEqual(refusal(render('remove', { name: 'legacy-bits' }, 'named.json')),
+      '"legacy-bits" can\'t be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead.');
     writePayload(dir, '.leeway/pay/topics/auth-flow/mail/001-a-point.md', 'A point\n');
-    assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'w.json')),
-      '"auth-flow" can\'t be closed as a dead end — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead.');
+    assert.match(render('remove', { name: 'auth-flow' }, 'mailed.json'), /`◆ Confirm removal\?`/);
   });
 
-  it('a destructive op over messages waiting in a fresh topic\'s mailbox is refused, as its transaction refuses it', () => {
-    writePayload(dir, '.leeway/pay/topics/auth-flow/mail/001-a-point.md', 'A point\n');
-    for (const [op, extra, verb] of [['remove', {}, 'removed'], ['rename', { new_name: 'x' }, 'renamed']]) {
-      assert.strictEqual(refusal(render(op, { name: 'auth-flow', ...extra }, `${op}-w.json`)),
-        `"auth-flow" can't be ${verb} from the map — messages wait in its mailbox; open the topic to answer them, or cancel the topic from the epic menu instead.`);
+  it('an edit rides any lifecycle', () => {
+    for (const name of ['away', 'gone', 'in-flight']) {
+      assert.match(render('edit-summary', { items: [{ name, summary: 'Still editable' }] }, `edit-${name}.json`), /Updating 1 summary\(ies\):/);
     }
-  });
-
-  it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {
-    assert.match(render('edit-summary', { items: [{ name: 'away', summary: 'Still editable' }] }, 'p6.json'),
-      /Updating 1 summary\(ies\):/);
-    writeManifest(dir, 'pay', {
-      phases: {
-        discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
-        discussion: { items: { 'auth-flow': { status: 'cancelled' } } },
-      },
-    });
-    assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'c1.json')),
-      '"auth-flow" can\'t be closed as a dead end — it\'s cancelled; reactivate it from the epic menu first.');
-    assert.match(render('edit-summary', { items: [{ name: 'auth-flow', summary: 'Still editable' }] }, 'c2.json'),
-      /Updating 1 summary\(ies\):/);
   });
 });
 
@@ -241,7 +193,7 @@ describe('render dismissed-topics', () => {
       '**`◆ Re-add any of these to the map?`**',
       '',
       '**`b/back`**    → Return to the session',
-      '**Name them** → Tell me which to re-add (and routing if known)',
+      '**Name them** → Tell me which to re-add',
       '',
     ].join('\n'));
   });
@@ -296,7 +248,6 @@ describe('render candidate-gate', () => {
 
   const payload = {
     name: 'signal-freshness-contract',
-    routing: 'discussion',
     summary: 'What freshness the ranking signals must guarantee downstream',
   };
   const render = (obj = payload, name = 'c.json') => renderSurface(dir, 'candidate-gate', {
@@ -307,7 +258,7 @@ describe('render candidate-gate', () => {
     staged('gated');
     assert.strictEqual(render(), [
       '=== DISPLAY: candidate (emit verbatim as a text code block (```text fence)) ===',
-      'Signal Freshness Contract [discussion]',
+      'Signal Freshness Contract',
       '  What freshness the ranking signals must guarantee downstream',
       '  surfaced by gap analysis',
       '',
@@ -323,8 +274,7 @@ describe('render candidate-gate', () => {
       `${NB(13)}this name`,
       '**`p/postpone`** → Postpone — the topic joins the map with its brief',
       `${NB(13)}and waits on the roadmap under a horizon you name`,
-      '**Comment**    → Tell me what to change (routing, summary, or',
-      `${NB(13)}description)`,
+      '**Comment**    → Tell me what to change (summary or description)',
       '',
     ].join('\n'));
   });
@@ -342,10 +292,7 @@ describe('render candidate-gate', () => {
     staged('gated');
     assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay' }), /--file <payload\.json> is required/);
     assert.throws(() => render({ ...payload, name: 'nope' }, 'n.json'), /"nope" is not a pending candidate — a stale payload never renders/);
-    for (const routing of ['planning', 'research']) {
-      assert.throws(() => render({ ...payload, routing }, 'r.json'), new RegExp(`"routing" must be one of discussion, got "${routing}"`));
-    }
-    assert.throws(() => render({ name: 'signal-freshness-contract', routing: 'discussion' }, 's.json'), /"summary" must be a non-empty string/);
+    assert.throws(() => render({ name: 'signal-freshness-contract' }, 's.json'), /"summary" must be a non-empty string/);
 
     staged('gated', 'approved');
     assert.throws(() => render(), /is not a pending candidate/);

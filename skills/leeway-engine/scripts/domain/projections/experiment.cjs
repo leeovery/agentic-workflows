@@ -18,7 +18,7 @@
 
 const { renderTree } = require('../../kernel/render.cjs');
 const { isParentExperimentId } = require('../../kernel/manifest-schema.cjs');
-const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
+const { TREE_WIDTH, treeHeader, title, stateNote } = require('../conventions.cjs');
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, MENU_INSTRUCTION } = require('./surfaces.cjs');
 
 /**
@@ -60,12 +60,12 @@ function registerNodes(rows) {
 /**
  * The series register — the topic's full measurement history. Renders the
  * none-yet line over an empty series, so no caller needs a branch.
- * @param {string} topic @param {SeriesRow[]} rows
+ * @param {string} named the topic as screens title it @param {SeriesRow[]} rows
  * @returns {string}
  */
-function experimentRegister(topic, rows) {
+function experimentRegister(named, rows) {
   const n = rows.length;
-  const head = treeHeader(`Experiments — ${titlecase(topic)} (${n} experiment${n === 1 ? '' : 's'})`);
+  const head = treeHeader(`Experiments — ${named} (${n} experiment${n === 1 ? '' : 's'})`);
   const body = n === 0
     ? head + '\n  (none yet — the series starts at E1)'
     : head + '\n' + renderTree(registerNodes(rows), { width: TREE_WIDTH, gap: true });

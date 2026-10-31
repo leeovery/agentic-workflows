@@ -74,8 +74,8 @@ describe('epic projections: dashboard (map branch)', () => {
       phases: {
         discovery: {
           items: {
-            'kitchen-hardware': { routing: 'discussion', source: 'discovery', order: 1, summary: LONG_TOKEN_SUMMARY },
-            'menu-admin': { routing: 'discussion', source: 'message:exploration', order: 2, summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles' },
+            'kitchen-hardware': { source: 'discovery', order: 1, summary: LONG_TOKEN_SUMMARY },
+            'menu-admin': { source: 'message:exploration', order: 2, summary: 'Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles' },
           },
         },
         specification: { items: { 'roles-and-permissions': { status: 'completed', sources: { 'menu-admin': { status: 'incorporated' }, 'auth-flow': { status: 'pending' } } } } },
@@ -99,13 +99,13 @@ describe('epic projections: dashboard (map branch)', () => {
     '  │     Receipt printing, KDS handoff, and the',
     '  │     fastest-cumulative-time-tiebreak-resolution-policy-and-of',
     '  │     fline-sync token that cannot break',
-    '  │     ↳ Fresh · routed to discussion',
+    '  │     ↳ Fresh',
     '  │',
     '  └─ ○ Menu Admin',
     '        Business-side menu modelling, admin shell (Filament vs',
     '        custom Vue/Nuxt), JustEat import, staff/roles',
     '        ↳ From exploration',
-    '        ↳ Fresh · routed to discussion',
+    '        ↳ Fresh',
     '',
     '── DEFINITION ───────────────────────────────────────────────────',
     '',
@@ -130,8 +130,8 @@ describe('epic projections: dashboard (map branch)', () => {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          fees: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Fee rules' },
-          refunds: { routing: 'discussion', source: 'discovery', order: 2, summary: 'Refund rules' },
+          fees: { source: 'discovery', order: 1, summary: 'Fee rules' },
+          refunds: { source: 'discovery', order: 2, summary: 'Refund rules' },
         } },
         discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
         specification: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc', sources: { fees: { status: 'incorporated' } } } } },
@@ -167,9 +167,9 @@ describe('epic projections: dashboard (map branch)', () => {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          auth: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Auth flow' },
-          'data-export': { routing: 'discussion', source: 'discovery', postponed: true, previous_order: 2 },
-          reporting: { routing: 'discussion', source: 'discovery', postponed: true, previous_order: 3 },
+          auth: { source: 'discovery', order: 1, summary: 'Auth flow' },
+          'data-export': { source: 'discovery', postponed: true, previous_order: 2 },
+          reporting: { source: 'discovery', postponed: true, previous_order: 3 },
         } },
         discussion: { items: { auth: { status: 'in-progress' }, reporting: { status: 'postponed', previous_status: 'completed' } } },
       },
@@ -203,7 +203,7 @@ describe('epic projections: dashboard (map branch)', () => {
     }, null, 2));
     const detail = detailFor(dir, 'pv2', {
       work_type: 'epic',
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery', postponed: true } } } },
     });
     assert.strictEqual(detail.convergence_state, 'settled');
     assert.strictEqual(epicDashboard('pv2', detail), [
@@ -221,7 +221,7 @@ describe('epic projections: dashboard (map branch)', () => {
     fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ work_units: {} }, null, 2));
     const detail = detailFor(dir, 'pv3', {
       work_type: 'epic',
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery', postponed: true } } } },
     });
     assert.deepStrictEqual(detail.postponed, [{ name: 'data-export', horizon: null, item: null, waiting: false }]);
     assert.ok(epicDashboard('pv3', detail).includes('  postponed: Data Export → no roadmap item'));
@@ -259,7 +259,7 @@ describe('epic projections: dashboard (map branch)', () => {
   it('omits the callout block when no stage-meta applies', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } } },
+      phases: { discovery: { items: { topic: { source: 'discovery', order: 1 } } } },
     });
     assert.strictEqual(
       epicDashboard('v1', d),
@@ -268,7 +268,7 @@ describe('epic projections: dashboard (map branch)', () => {
         '',
         'DISCUSSION (1 topic · 1 fresh)',
         '  └─ ○ Topic',
-        '        ↳ Fresh · routed to discussion',
+        '        ↳ Fresh',
         '',
       ].join('\n')
     );
@@ -278,7 +278,7 @@ describe('epic projections: dashboard (map branch)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { 'menu-admin': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { 'menu-admin': { source: 'discovery', order: 1 } } },
         discussion: { items: { 'menu-admin': { status: 'completed' } } },
         specification: { items: { 'menu-admin': { status: 'completed', reconcile_needed: 'discussion', sources: { 'menu-admin': { status: 'stale' } } } } },
         planning: {
@@ -322,7 +322,7 @@ describe('epic projections: dashboard (map branch)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { fees: { source: 'discovery', order: 1 } } },
         discussion: { items: { fees: { status: 'completed' } } },
         specification: { items: { fees: { status: 'completed', sources: { fees: { status: 'incorporated' } } } } },
         planning: { items: { fees: { status: 'completed' } } },
@@ -342,7 +342,7 @@ describe('epic projections: dashboard (map branch)', () => {
     const world = (phases) => detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { fees: { source: 'discovery', order: 1 } } },
         discussion: { items: { fees: { status: 'completed' } } },
         ...phases,
       },
@@ -367,13 +367,13 @@ describe('epic projections: dashboard (map branch)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'discussion', source: 'message:origin-topic', order: 1 } } },
+        discovery: { items: { parked: { source: 'message:origin-topic', order: 1 } } },
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
     const out = epicDashboard('v1', d);
     assert.ok(out.includes('DISCUSSION (1 topic · 1 fresh)'), out);
-    assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · routed to discussion · mail waiting/, out);
+    assert.match(out, /  └─ ○ Parked\n[\s\S]*?↳ Fresh · mail waiting/, out);
   });
 });
 
@@ -477,7 +477,7 @@ describe('epic projections: key', () => {
   it('map with no build items produces no key (the ↳ state lines carry the words)', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
-      phases: { discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } } },
+      phases: { discovery: { items: { topic: { source: 'discovery', order: 1 } } } },
     });
     assert.strictEqual(epicKey(d), '');
   });
@@ -486,7 +486,7 @@ describe('epic projections: key', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { topic: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { topic: { source: 'discovery', order: 1 } } },
         planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
       },
     });
@@ -546,11 +546,11 @@ describe('epic projections: menu', () => {
       unaccounted_discussions: ['payments', 'menu-admin'],
       reopened_discussions: [],
       discovery_map: [
-        { name: 'menu-admin', summary_present: true, summary: 'x', description_present: true, routing: 'discussion', source: 'discovery', source_provenance: null, order: 1, lifecycle: 'decided', tier: '✓', current_phase: 'discussion', next_action: null },
+        { name: 'menu-admin', summary_present: true, summary: 'x', description_present: true, source: 'discovery', source_provenance: null, order: 1, lifecycle: 'decided', tier: '✓', current_phase: 'discussion', next_action: null },
       ],
       convergence_state: 'settled',
       needs_sequencing: false,
-      map_summary: { total: 1, decided: 1, in_flight: 0, ready: 0, fresh: 0, handled: 0, cancelled: 0 },
+      map_summary: { total: 1, decided: 1, in_flight: 0, fresh: 0, cancelled: 0, postponed: 0 },
       imports_count: 0,
       seeds_count: 0,
       analysis_caches: {
@@ -613,16 +613,15 @@ describe('epic projections: menu', () => {
     assert.ok(!keys.some((k) => k.action === 'start_planning'), 'gated start_planning never surfaces');
   });
 
-  it('in-progress map recommends the top discovery row; ✓/⊙/⊘ rows get no entry', () => {
+  it('in-progress map recommends the top discovery row; ✓/⊘ rows get no entry', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
         discovery: {
           items: {
-            ready: { routing: 'discussion', source: 'discovery', order: 1 },
-            decided: { routing: 'discussion', source: 'discovery', order: 2 },
-            'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
-            dropped: { routing: 'discussion', source: 'discovery' },
+            ready: { source: 'discovery', order: 1 },
+            decided: { source: 'discovery', order: 2 },
+            dropped: { source: 'discovery' },
           },
         },
         discussion: {
@@ -642,7 +641,6 @@ describe('epic projections: menu', () => {
     assert.strictEqual(numbered[0].recommended, true);
     assert.ok(/\*\*`1`\*\* +→ Start discussion for "Ready" \(recommended\)/.test(rendered), rendered);
     assert.ok(/\*\*`e\/reactivate`\*\* +→ Reactivate a cancelled topic/.test(rendered), 'cancelled items exist');
-    assert.ok(!rendered.includes('Dead Lead'), 'handled row has no menu entry');
     assert.ok(!rendered.includes('Dropped'), 'cancelled row has no menu entry');
   });
 
@@ -650,8 +648,8 @@ describe('epic projections: menu', () => {
     // Same actionable rows either side; the only difference is a decided topic
     // present on the map, which now sorts above them all.
     const actionable = {
-      inflight: { routing: 'discussion', source: 'discovery', order: 1 },
-      fresh: { routing: 'discussion', source: 'discovery', order: 2 },
+      inflight: { source: 'discovery', order: 1 },
+      fresh: { source: 'discovery', order: 2 },
     };
 
     const without = detailFor(dir, 'v1', {
@@ -661,7 +659,7 @@ describe('epic projections: menu', () => {
     const with_ = detailFor(dir, 'v2', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { ...actionable, settled: { routing: 'discussion', source: 'discovery', order: 3 } } },
+        discovery: { items: { ...actionable, settled: { source: 'discovery', order: 3 } } },
         discussion: { items: { inflight: { status: 'in-progress' }, settled: { status: 'completed' } } },
       },
     });
@@ -712,7 +710,7 @@ describe('epic projections: menu', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'discussion', source: 'message:origin-topic', order: 1 } } },
+        discovery: { items: { parked: { source: 'message:origin-topic', order: 1 } } },
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
@@ -757,8 +755,8 @@ describe('epic projections: presence join', () => {
       phases: {
         discovery: {
           items: {
-            'topic-a': { routing: 'discussion', source: 'discovery', order: 1 },
-            'topic-b': { routing: 'discussion', source: 'discovery', order: 2 },
+            'topic-a': { source: 'discovery', order: 1 },
+            'topic-b': { source: 'discovery', order: 2 },
           },
         },
         discussion: { items: { 'topic-a': { status: 'in-progress' } } },
@@ -806,7 +804,7 @@ describe('epic projections: presence join', () => {
   it('renders the in-session confirm gate as a labelled MENU section, byte-for-byte', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
     const marked = keys.find((k) => k.in_session);
-    assert.strictEqual(epicInSessionGate('v1', marked), [
+    assert.strictEqual(epicInSessionGate('v1', marked, {}), [
       '=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
@@ -824,7 +822,7 @@ describe('epic projections: presence join', () => {
     return detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { 'topic-a': { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { 'topic-a': { source: 'discovery', order: 1 } } },
         discussion: { items: { 'topic-a': { status: 'completed' } } },
         specification: { items: { 'topic-a': { status: 'completed', order: 1, sources: { 'topic-a': { status: 'incorporated' } } } } },
         planning: { items: { 'topic-a': { status: 'completed', format: 'local-markdown' } } },
@@ -891,7 +889,7 @@ describe('epic projections: presence join', () => {
   it('the in-session gate speaks for document phases alone — a code entry never reaches it', () => {
     const d = twoTopicDetail();
     const { keys } = epicMenu('v1', d, { presence: [heldRow] });
-    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session));
+    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session), {});
     assert.match(gate, /second concurrent session on the same discussion/, 'the doc consequence is the only one left');
     assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
   });
@@ -900,7 +898,7 @@ describe('epic projections: presence join', () => {
     const d = twoTopicDetail();
     const out = epicDashboard('v1', d, { presence: [heldRow] });
     assert.match(out, /◐ Topic A\n\s*│\s*↳ Discussing · in session \(last active 2m ago\)\n/, out);
-    assert.doesNotMatch(out, /↳ Fresh · routed to discussion · in session/, out);
+    assert.doesNotMatch(out, /↳ Fresh · in session/, out);
     assert.strictEqual(epicKey(d), '', 'the ↳ state line carries the words — no session legend');
   });
 
@@ -912,7 +910,7 @@ describe('epic projections: presence join', () => {
     assert.strictEqual(marked.topic, 'topic-a');
     assert.notStrictEqual(marked.recommended, true, 'never recommended, however long idle');
     assert.ok(/~~Continue "Topic A" — \*discussion\*~~ · in session \(last\n +active 3h ago\)/.test(rendered), rendered);
-    assert.match(epicInSessionGate('v1', marked), /"Topic A" is open in another session — last active 3h ago\./);
+    assert.match(epicInSessionGate('v1', marked, {}), /"Topic A" is open in another session — last active 3h ago\./);
     assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
   });
 
@@ -1021,7 +1019,7 @@ describe('epic projections: selection sub-views', () => {
   });
 
   // Every unit shape the cancel menu meets on a mapped epic: a locked topic,
-  // a held one, a never-started one, a dead end, a cancelled one (absent), a
+  // a held one, a never-started one, a cancelled one (absent), a
   // held specification, a locked one, a cancelled one (absent), a proposed
   // grouping (absent).
   function unitDetail() {
@@ -1029,11 +1027,10 @@ describe('epic projections: selection sub-views', () => {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
-          auth: { routing: 'discussion', source: 'discovery', order: 1 },
-          billing: { routing: 'discussion', source: 'discovery', order: 2 },
-          gone: { routing: 'discussion', source: 'discovery', cancelled: true, previous_order: 4 },
-          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
+          'data-export': { source: 'discovery', order: 3 },
+          auth: { source: 'discovery', order: 1 },
+          billing: { source: 'discovery', order: 2 },
+          gone: { source: 'discovery', cancelled: true, previous_order: 4 },
         } },
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress', awaiting_experiments: ['E1'] }, legacy: { status: 'cancelled', previous_status: 'completed' } } },
         specification: { items: {
@@ -1063,11 +1060,10 @@ describe('epic projections: selection sub-views', () => {
       '     it first',
       '  ├─ 1. Billing [discussing · awaiting E1] · in session (last',
       '        active 30s ago)',
-      '  ├─ 2. Data Export [fresh · routed to discussion]',
-      '  └─ 3. Dead Lead [dead end]',
+      '  └─ 2. Data Export [fresh]',
       '',
       'Specifications',
-      '  ├─ 4. Unified [in-progress] · in session (last active 60m',
+      '  ├─ 3. Unified [in-progress] · in session (last active 60m',
       '        ago)',
       '  └─ Shipped [completed] · in session (last active 5s ago) ·',
       '     implementation started — fix forward',
@@ -1079,9 +1075,8 @@ describe('epic projections: selection sub-views', () => {
       '',
       '**`1`**      → Cancel "Billing" — *discussing · awaiting E1* · in session',
       `${NB(9)}(last active 30s ago)`,
-      '**`2`**      → Cancel "Data Export" — *fresh · routed to discussion*',
-      '**`3`**      → Cancel "Dead Lead" — *dead end*',
-      '**`4`**      → Cancel "Unified" — *in-progress* · in session (last active',
+      '**`2`**      → Cancel "Data Export" — *fresh*',
+      '**`3`**      → Cancel "Unified" — *in-progress* · in session (last active',
       `${NB(9)}60m ago)`,
       '**`b/back`** → Return to menu',
     ].join('\n'));
@@ -1090,26 +1085,24 @@ describe('epic projections: selection sub-views', () => {
       [
         ['1', 'cancel', 'billing', 'discovery', null],
         ['2', 'cancel', 'data-export', 'discovery', null],
-        ['3', 'cancel', 'dead-lead', 'discovery', null],
-        ['4', 'cancel', 'unified', 'specification', null],
+        ['3', 'cancel', 'unified', 'specification', null],
         ['b', 'back', null, null, null],
       ]
     );
     assert.strictEqual(epicCancelMenu(unitDetail()).display.includes('in session'), false, 'no presence, no cue');
   });
 
-  it('postpone-menu: every Discovery unit, locked rows keyless with their reason — a dead end among them — a held unit cued; cancelled and postponed rows absent', () => {
+  it('postpone-menu: every Discovery unit, locked rows keyless with their reason, a held unit cued; cancelled and postponed rows absent', () => {
     const presence = [{ phase: 'discussion', topic: 'billing', age_seconds: 30, held: true, session_id: 's1' }];
     const detail = detailFor(dir, 'p1', {
       work_type: 'epic',
       phases: {
         discovery: { items: {
-          auth: { routing: 'discussion', source: 'discovery', order: 1 },
-          billing: { routing: 'discussion', source: 'discovery', order: 2 },
-          'data-export': { routing: 'discussion', source: 'discovery', order: 3 },
-          gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-          away: { routing: 'discussion', source: 'discovery', postponed: true },
-          'dead-lead': { routing: 'discussion', source: 'discovery', handled: true },
+          auth: { source: 'discovery', order: 1 },
+          billing: { source: 'discovery', order: 2 },
+          'data-export': { source: 'discovery', order: 3 },
+          gone: { source: 'discovery', cancelled: true },
+          away: { source: 'discovery', postponed: true },
         } },
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'in-progress' } } },
         specification: { items: { unified: { status: 'in-progress', sources: { auth: { status: 'incorporated' } } } } },
@@ -1124,11 +1117,7 @@ describe('epic projections: selection sub-views', () => {
       '     past specification is past "not yet"',
       '  ├─ 1. Billing [discussing] · in session (last active 30s',
       '        ago)',
-      '  ├─ 2. Data Export [fresh · routed to discussion]',
-      // A dead end is the answer to its own question — the roadmap holds
-      // what is still to do, so it reopens before it can wait.
-      '  └─ Dead Lead [dead end] · "dead-lead" is closed as a dead end —',
-      '     reopen it first',
+      '  └─ 2. Data Export [fresh]',
       '',
     ].join('\n'));
     assert.strictEqual(view.rendered, [
@@ -1137,7 +1126,7 @@ describe('epic projections: selection sub-views', () => {
       '',
       '**`1`**      → Postpone "Billing" — *discussing* · in session (last',
       `${NB(9)}active 30s ago)`,
-      '**`2`**      → Postpone "Data Export" — *fresh · routed to discussion*',
+      '**`2`**      → Postpone "Data Export" — *fresh*',
       '**`b/back`** → Return to menu',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -1190,10 +1179,10 @@ describe('epic projections: selection sub-views', () => {
     work_type: 'epic',
     phases: {
       discovery: { items: {
-        billing: { routing: 'discussion', source: 'discovery', order: 1 },
-        away: { routing: 'discussion', source: 'roadmap', postponed: true, previous_order: 2 },
-        'gone-again': { routing: 'discussion', source: 'discovery', postponed: true },
-        taken: { routing: 'discussion', source: 'discovery', postponed: true },
+        billing: { source: 'discovery', order: 1 },
+        away: { source: 'roadmap', postponed: true, previous_order: 2 },
+        'gone-again': { source: 'discovery', postponed: true },
+        taken: { source: 'discovery', postponed: true },
       } },
       discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
     },
@@ -1237,12 +1226,12 @@ describe('epic projections: selection sub-views', () => {
     // taken, both leave the menu without the row — and the sub-view empty.
     const none = detailFor(dir, 'pf2', {
       work_type: 'epic',
-      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery' } } } },
+      phases: { discovery: { items: { billing: { source: 'discovery' } } } },
     });
     assert.deepStrictEqual(options(none), []);
     const onlyTaken = detailFor(dir, 'pf3', {
       work_type: 'epic',
-      phases: { discovery: { items: { taken: { routing: 'discussion', source: 'discovery', postponed: true } } } },
+      phases: { discovery: { items: { taken: { source: 'discovery', postponed: true } } } },
     });
     assert.deepStrictEqual(options(onlyTaken), []);
     assert.strictEqual(epicPullForwardMenu(onlyTaken).display, 'No postponed topics waiting.\n');
@@ -1340,7 +1329,7 @@ describe('epic projections: selection sub-views', () => {
     // postpone — the empty state, and no option.
     const away = detailFor(dir, 'v3', {
       work_type: 'epic',
-      phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
+      phases: { discovery: { items: { 'data-export': { source: 'discovery', postponed: true } } } },
     });
     assert.deepStrictEqual(options(away), []);
     assert.strictEqual(epicPostponeMenu(away).display, 'No postponable topics.\n');
@@ -1534,7 +1523,7 @@ describe('epic projections: selection sub-views', () => {
     const d = detailFor(dir, 'v4', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { synonyms: { routing: 'discussion', source: 'discovery', cancelled: true }, notes: { routing: 'discussion', source: 'discovery' }, lab: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { synonyms: { source: 'discovery', cancelled: true }, notes: { source: 'discovery' }, lab: { source: 'discovery' } } },
         discussion: { items: { synonyms: { status: 'cancelled', previous_status: 'completed' }, notes: { status: 'completed' }, lab: { status: 'in-progress' } } },
         experiment: { items: { lab: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'running' } } } } },
         specification: { items: {
@@ -1570,7 +1559,7 @@ describe('epic projections: selection sub-views', () => {
     const d = detailFor(dir, 'v5', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { a: { routing: 'discussion', source: 'discovery', cancelled: true }, b: { routing: 'discussion', source: 'discovery', cancelled: true } } },
+        discovery: { items: { a: { source: 'discovery', cancelled: true }, b: { source: 'discovery', cancelled: true } } },
         discussion: { items: { a: { status: 'cancelled', previous_status: 'completed' }, b: { status: 'cancelled', previous_status: 'completed' } } },
         specification: { items: { pair: { status: 'cancelled', previous_status: 'completed', sources: { a: { status: 'incorporated' }, b: { status: 'incorporated' } } } } },
       },
@@ -1699,8 +1688,8 @@ describe('epic projections: the topic-grain experiment entry', () => {
       phases: {
         discovery: {
           items: {
-            timing: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Timing behaviour' },
-            layout: { routing: 'discussion', source: 'discovery', order: 2, summary: 'Layout rules' },
+            timing: { source: 'discovery', order: 1, summary: 'Timing behaviour' },
+            layout: { source: 'discovery', order: 2, summary: 'Layout rules' },
           },
         },
         discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1'] }, layout: { status: 'in-progress' } } },
@@ -1839,7 +1828,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     return detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { billing: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { billing: { source: 'discovery', order: 1 } } },
         ...(discussion ? { discussion: { items: { billing: discussion } } } : {}),
       },
     });
@@ -1850,7 +1839,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { fees: { routing: 'discussion', source: 'discovery' } } },
+        discovery: { items: { fees: { source: 'discovery' } } },
         discussion: { items: { fees: { status: 'in-progress' } } },
         specification: { items: { fees: { status: 'completed', sources: [{ topic: 'fees', status: 'stale' }] } } },
       },
@@ -1967,7 +1956,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const d = detailFor(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { fees: { routing: 'discussion', source: 'discovery', order: 1 } } },
+        discovery: { items: { fees: { source: 'discovery', order: 1 } } },
         discussion: { items: { fees: { status: 'in-progress' } } },
         specification: { items: { 'billing-grouping': { status: 'in-progress', order: 1, sources: [{ topic: 'fees', status: 'stale' }] } } },
       },
@@ -1979,7 +1968,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     assert.strictEqual(spec.in_session, true);
     assert.deepStrictEqual(spec.blocked_by, ['fees']);
     assert.notStrictEqual(spec.recommended, true);
-    assert.match(epicInSessionGate('v1', spec),
+    assert.match(epicInSessionGate('v1', spec, {}),
       /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are not concluded \(Fees\) — so proceeding meets that gate next\. Only proceed/);
   });
 
@@ -2002,7 +1991,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const plan = keys.find((k) => k.action === 'continue_planning');
     assert.strictEqual(plan.in_session, true);
     assert.deepStrictEqual(plan.blocked_by, ['specification']);
-    assert.match(epicInSessionGate('v1', plan),
+    assert.match(epicInSessionGate('v1', plan, {}),
       /Its entry is also held shut — the specification for "Billing" is unsettled — so proceeding meets that gate next\./);
     // The specification settling releases it: the row, the tag, and the cue go.
     const settled = world({ status: 'completed', sources: [{ topic: 'talks', status: 'incorporated' }] });
@@ -2016,6 +2005,6 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 120)] });
     const entry = keys.find((k) => k.in_session);
     assert.strictEqual(entry.blocked_by, undefined);
-    assert.doesNotMatch(epicInSessionGate('v1', entry), /held shut/);
+    assert.doesNotMatch(epicInSessionGate('v1', entry, {}), /held shut/);
   });
 });

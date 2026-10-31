@@ -46,7 +46,7 @@ Resolution is computed against the **live** state at landing time, never cached 
 node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
-Find the row whose name is `{target}`.
+Find the row whose name is `{target}`, or whose `goes_by` is — a started topic the person renamed goes by the new name — and set `target` to that row's name.
 
 #### If no row matches
 
@@ -54,9 +54,9 @@ The target is not on the map yet.
 
 → Proceed to **B. New Target**.
 
-#### If the row's lifecycle is `handled` or `cancelled`
+#### If the row's lifecycle is `cancelled`
 
-The topic is closed — no future session will raise its mailbox, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
+The topic is closed — no future session will raise its mailbox, and concluded artefacts may exist beneath it.
 
 → Proceed to **D. Closed Target**.
 
@@ -68,15 +68,15 @@ The topic waits on the roadmap and the message waits with it — the delivery pa
 
 #### Otherwise
 
-The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic), and a cancelled or dead-ended target refuses loudly with its recovery path.
+The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic).
 
 → Proceed to **C. Send the Message**.
 
 ## B. New Target
 
-Create the target via the shared topic-creation core. The core writes the map item alone — the phase item is created as `unstarted` in **C**, never started:
+Create the target via the shared topic-creation core. The core lands the map item and its brief — the phase item is created as `unstarted` in **C**, never started:
 
-→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `discussion`, source = `message:{origin}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
+→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, source = `message:{origin}`, message = `{message}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
 
 → On return, proceed to **C. Send the Message**.
 
@@ -92,7 +92,7 @@ One engine transaction owns the whole delivery: `topic send` handles the item st
    node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {origin} --content .leeway/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug}
    ```
 
-**If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
+**If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
 
 → Return to **A. Resolve the Target**.
 
@@ -110,7 +110,7 @@ Set `landed_topic = {target}` and `result = landed`. When the response carries `
 
 ## D. Closed Target
 
-Never stub over a concluded artefact, and never send a message no session will raise. Present the state and let the user decide — the surface derives which closed state the target is in and words the reopen row for it:
+Never stub over a concluded artefact, and never send a message no session will raise. Present the state and let the user decide:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs render send-closed-target {work_unit}.discovery.{target}
@@ -122,13 +122,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `open`:**
 
-Reopen the topic — for `handled`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
-```
-
-For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; the discussion cancelled under its name returns with it:
+Reactivate the topic as one unit (an engine transaction — it commits itself); the discussion cancelled under its name returns with it:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}

@@ -335,8 +335,8 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
         work_type: 'epic',
         phases: {
           discovery: { items: {
-            gone: { routing: 'discussion', source: 'discovery', cancelled: true },
-            exports: { routing: 'discussion', source: 'discovery', postponed: true },
+            gone: { source: 'discovery', cancelled: true },
+            exports: { source: 'discovery', postponed: true },
           } },
           discussion: { items: {
             auth: { status: 'in-progress' },
