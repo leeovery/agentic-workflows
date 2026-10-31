@@ -64,12 +64,13 @@ describe('pipeline simulation: ledger', () => {
     sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
     sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /the current one is/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
 
+    const session = sim.env.CLAUDE_CODE_SESSION_ID;
     const events = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
     assert.deepStrictEqual(events.map((e) => [e.event, e.topic, e.session]), [
-      ['asked', 'note-window', 'sim-session'], ['found', 'note-window', 'sim-session'], ['decided', 'note-window', 'sim-session'],
-      ['asked', 'note-window', 'sim-session'], ['replaced', 'note-window', 'sim-session'], ['still-holds', 'note-window', 'sim-session'],
-      ['asked', 'note-window', 'sim-session'], ['moved', 'note-window', 'sim-session'], ['merged', 'space-homing', 'sim-session'],
-      ['asked', null, 'sim-session'],
+      ['asked', 'note-window', session], ['found', 'note-window', session], ['decided', 'note-window', session],
+      ['asked', 'note-window', session], ['replaced', 'note-window', session], ['still-holds', 'note-window', session],
+      ['asked', 'note-window', session], ['moved', 'note-window', session], ['merged', 'space-homing', session],
+      ['asked', null, session],
     ]);
     assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
 

@@ -158,7 +158,7 @@ describe('cancel-gate', () => {
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.away' }),
       /"away" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.ghost' }),
-      /no topic "ghost" — nothing on the map and no discussion item of that name/);
+      /render cancel-gate: no topic "ghost" — the map's topics are gone, away, auth$/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.shipped' }),
       /"shipped" is locked — implementation has started, so the menu never offers it/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.specification.grp' }),
@@ -257,7 +257,7 @@ describe('postpone-gate', () => {
       },
     });
     const gate = (topic) => renderSurface(dir, 'postpone-gate', { dotpath: `pay.discovery.${topic}`, horizon: 'mvp' });
-    assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — nothing on the map and no discussion item of that name/);
+    assert.throws(() => gate('ghost'), /render postpone-gate: no topic "ghost" — the map's topics are auth, gone, away, locked, busy$/);
     assert.throws(() => gate('away'), /render postpone-gate: "away" is already postponed — it waits on the roadmap/);
     assert.throws(() => gate('gone'), /render postpone-gate: "gone" is cancelled — reactivate it from the epic menu first/);
     assert.throws(() => gate('locked'), /render postpone-gate: postponing "locked" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"/);
@@ -318,7 +318,7 @@ describe('topic-receipt — the postpone verb', () => {
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'postpone' }),
       /--verb postpone addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'postpone' }),
-      /no topic "ghost" — nothing on the map and no discussion item of that name/);
+      /render topic-receipt: no topic "ghost" — the map's topics are auth$/);
   });
 });
 
@@ -388,7 +388,7 @@ describe('topic-receipt — the restore verb', () => {
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'restore' }),
       /--verb restore addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'restore' }),
-      /no topic "ghost" — nothing on the map and no discussion item of that name/);
+      /render topic-receipt: no topic "ghost" — the map's topics are auth$/);
   });
 });
 
@@ -2649,7 +2649,7 @@ describe('render send-closed-target', () => {
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.live' }),
       /"live" is "fresh", not cancelled — the gate serves cancelled targets/);
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.ghost' }),
-      /no discovery item "ghost" on the map/);
+      /render send-closed-target: no topic "ghost" — the map's topics are legacy-bits, live$/);
     assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
       /address must be <work_unit>\.discovery\.<target>, got phase "discussion"/);
   });

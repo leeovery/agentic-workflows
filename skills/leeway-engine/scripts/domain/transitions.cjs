@@ -33,7 +33,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
-  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir,
+  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir, topicKey, noTopicRefusal,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
@@ -865,7 +865,7 @@ function indexRestored(cwd, workUnit, topic, restored, warnings) {
 /** @param {object} manifest @param {string} topic */
 function assertDiscoveryUnit(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`no topic "${topic}" — nothing on the map and no discussion item of that name`);
+    throw new Error(noTopicRefusal(manifest, topic));
   }
 }
 
@@ -958,19 +958,20 @@ function cancelSpecificationUnit(manifest, spec) {
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery` | `specification`
- * @param {string} topic
+ * @param {string} said  the topic, by its key or its title (8.8.17), or the specification
  * @returns {TopicCancelResult}
  */
-function cancelTopic(cwd, workUnit, phase, topic) {
+function cancelTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('cancel', phase);
-  const { mail, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
+  const { mail, topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? cancelDiscoveryUnit(manifest, topic)
       : cancelSpecificationUnit(manifest, topic);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     const { moveWaitingToInbox } = require('./mail.cjs');
-    return { ...outcome, mail: stage === 'discovery' ? moveWaitingToInbox(cwd, workUnit, topic) : [] };
+    return { ...outcome, topic, mail: stage === 'discovery' ? moveWaitingToInbox(cwd, workUnit, topic) : [] };
   });
 
   /** @type {string[]} */
@@ -1089,18 +1090,19 @@ function reactivateSpecificationUnit(manifest, spec) {
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase  `discovery` | `specification`
- * @param {string} topic
+ * @param {string} said  the topic, by its key or its title (8.8.17), or the specification
  * @returns {TopicReactivateResult}
  */
-function reactivateTopic(cwd, workUnit, phase, topic) {
+function reactivateTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('reactivate', phase);
-  const returned = withWorkUnitLock(cwd, workUnit, () => {
+  const { topic, ...returned } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? reactivateDiscoveryUnit(manifest, topic)
       : reactivateSpecificationUnit(manifest, topic);
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return outcome;
+    return { ...outcome, topic };
   });
 
   /** @type {string[]} */
@@ -1158,16 +1160,17 @@ function postponedSources(cwd, workUnit, topic) {
  * heartbeats follow the write, as every transition's do.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @param {string} topic
+ * @param {string} said  the topic, by its key or its title (8.8.17)
  * @param {{horizon?: string}} opts  the roadmap bucket the topic waits in
  * @returns {TopicPostponeResult}
  */
-function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
+function postponeTopic(cwd, workUnit, said, { horizon } = {}) {
   if (typeof horizon !== 'string' || horizon.trim() === '') {
     throw new Error('topic postpone: --horizon is required — the roadmap bucket the topic waits in');
   }
-  const taken = withWorkUnitLock(cwd, workUnit, () => {
+  const { topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const topic = topicKey(manifest, said);
     if (manifest.work_type !== 'epic') {
       throw new Error(`postpone is epic-only — "${workUnit}" is a ${manifest.work_type}, whose topic is the work unit; a pulled unit's "not now" is the work-unit cancel's revert`);
     }
@@ -1186,7 +1189,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
 
     const roadmap = postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources });
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { postponed, discarded: plan.discards, roadmap };
+    return { topic, postponed, discarded: plan.discards, roadmap };
   });
 
   /** @type {string[]} */

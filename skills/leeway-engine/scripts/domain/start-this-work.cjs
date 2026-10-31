@@ -21,9 +21,9 @@
 // - The yes checks the staged payload against the project as it stands, then,
 //   as one transaction under the writer lock, writes the unit (workunit-
 //   create.cjs) — its manifest, its seeds moved out of the inbox, each
-//   roadmap item's note copied in beside them with the item as it stood
-//   (4.11.16), and its first discovery log holding a pointer line into the product's sessions
-//   for each place that shaped it — its one topic's brief, and then, in one
+//   roadmap item's note copied in beside them (4.11.16), and its first
+//   discovery log holding a pointer line into the product's sessions for
+//   each place that shaped it — its one topic's brief, and then, in one
 //   write of the project manifest, the unit's registration, each roadmap item
 //   it starts from joined to it, and the product's open session closed
 //   (8.14.11). A failure part-way leaves no unit. One commit takes it all.
@@ -38,7 +38,7 @@ const path = require('path');
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
+const { roadmapItems, roadmapSeedRefusal, briefFile } = require('./derivations.cjs');
 const { waitingTwin, noteOfSource, notePath } = require('./roadmap.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
@@ -128,14 +128,9 @@ function shapingPlaces(cwd, given) {
  */
 function roadmapSeeds(project, given) {
   const names = listed(given, 'roadmap');
-  return names.map((name, at) => {
-    const item = typeof name === 'string' ? roadmapItems(project)[name] : undefined;
-    if (item === undefined) throw new Error(`roadmap: the roadmap has no item ${JSON.stringify(name)}`);
-    const join = itemJoin(item);
-    if (join !== null) throw new Error(`roadmap: "${name}" is joined to work unit "${join.work_unit}" already`);
-    if (names.indexOf(name) < at) throw new Error(`roadmap: "${name}" is named twice`);
-    return /** @type {string} */ (name);
-  });
+  const refusal = roadmapSeedRefusal(project, names);
+  if (refusal !== null) throw new Error(`roadmap: ${refusal}`);
+  return /** @type {string[]} */ (names);
 }
 
 /**
@@ -205,8 +200,8 @@ function firstLogOf(unit, places) {
 }
 
 /**
- * The notes of the roadmap items the unit starts from, each on disk with the
- * item as it stood, for its seeds (4.11.16).
+ * The notes of the roadmap items the unit starts from, each on disk, for its
+ * seeds (4.11.16).
  * @param {string} cwd @param {string[]} roadmap
  * @returns {import('./workunit-create.cjs').NoteSeed[]}
  */
@@ -216,7 +211,7 @@ function noteSeedsOf(cwd, roadmap) {
     const item = items[name];
     const note = (Array.isArray(item.sources) ? item.sources : []).map(noteOfSource).find((found) => found !== null);
     const at = note ? notePath(note.folder, note.file) : null;
-    return at !== null && fs.existsSync(statePath(cwd, at)) ? [{ name, note: at, item: structuredClone(item) }] : [];
+    return at !== null && fs.existsSync(statePath(cwd, at)) ? [{ name, note: at }] : [];
   });
 }
 

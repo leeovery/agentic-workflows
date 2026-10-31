@@ -256,6 +256,6 @@ function closeDiscoverySession(cwd, name, { message }) {
 }
 
 module.exports = {
-  openSession, closeDiscoverySession, sessionLogs, latestSessionLog, nextSessionNumber, productSession,
+  openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
   activeSession, sessionLogsAt, productConversation,
 };

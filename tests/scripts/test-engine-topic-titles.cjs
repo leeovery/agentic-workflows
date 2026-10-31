@@ -25,7 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ok, output, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, readManifest, writeState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { SESSION, MADE, row } = require('./ledger-world.cjs');
 const { markAllButTheClosingPass } = require('./decided-world.cjs');
@@ -62,6 +62,17 @@ function asPeer(dir, args) {
 function sendIn(dir, to, from, slug) {
   const content = writeState(dir, layout.cache('scratch', 'message.md'), 'Open it top left\n\nTheir reasoning: the eye lands there.\n');
   return ok(dir, ['topic', 'send', UNIT, to, '--from', from, '--content', content, '--slug', slug]);
+}
+
+/**
+ * `phases` gone from the unit in `dir`: a specification sourcing a topic
+ * holds its cancel and its postpone shut, and a live experiment its postpone.
+ * @param {string} dir @param {string[]} phases
+ */
+function without(dir, ...phases) {
+  const manifest = readManifest(dir, UNIT);
+  for (const phase of phases) delete manifest.phases[phase];
+  createManifest(dir, UNIT, manifest);
 }
 
 /** `out` names the topic as `phrase` does, and never by its key titlecased. @param {string} out @param {string} phrase */
@@ -157,26 +168,15 @@ describe('a screen that writes as it shows, or over the unit changed, goes by th
   beforeEach(() => { dir = world(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  /**
-   * `phases` gone from the unit: a specification sourcing a topic holds its
-   * cancel and its postpone shut, and a live experiment its postpone.
-   * @param {string[]} phases
-   */
-  function gone(...phases) {
-    const manifest = readManifest(dir, UNIT);
-    for (const phase of phases) delete manifest.phases[phase];
-    createManifest(dir, UNIT, manifest);
-  }
-
   /** @type {[string, () => string, string][]} */
   const SURFACES = [
     ['the phase note, beating the topic\'s presence', () => renderSurface(dir, 'phase-note', { dotpath: `${UNIT}.discussion.${KEY}`, verb: 'Resuming' }), `Resuming discussion: ${TITLE}`],
     ['the cancel gate', () => {
-      gone('specification');
+      without(dir, 'specification');
       return renderSurface(dir, 'cancel-gate', { dotpath: `${UNIT}.discovery.${KEY}` });
     }, `Cancelling **${TITLE}**`],
     ['the postpone gate', () => {
-      gone('specification', 'experiment');
+      without(dir, 'specification', 'experiment');
       return renderSurface(dir, 'postpone-gate', { dotpath: `${UNIT}.discovery.${KEY}`, horizon: 'next' });
     }, `Postponing **${TITLE}**`],
   ];
@@ -196,9 +196,91 @@ describe('a send by the title (8.8.17, 10.3.4)', () => {
     const sent = sendIn(dir, NAME, 'space-homing', 'corner');
     assert.strictEqual(sent.message_path, statePath(dir, layout.mailbox(UNIT, KEY, '001-corner.md')));
     assert.strictEqual(sent.topic, KEY);
-    assert.match(output(dir, ['render', 'send-report', `${UNIT}.${KEY}`, '--sent', sent.message_path]), new RegExp(`^Sent to ${TITLE}, on Fumi$`, 'm'));
+    assert.match(output(dir, ['render', 'send-report', `${UNIT}.${NAME}`, '--sent', sent.message_path]), new RegExp(`^Sent to ${TITLE}, on Fumi$`, 'm'));
     const back = sendIn(dir, 'space-homing', KEY, 'frame');
     assert.match(fs.readFileSync(back.message_path, 'utf8'), new RegExp(`^From ${TITLE} · `, 'm'));
+  });
+});
+
+describe('every other verb, render and entry that names a topic takes its title, and acts on its key (8.8.17)', () => {
+  /** @type {string} */
+  let dir;
+  beforeEach(() => { dir = world(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** The gate `render` draws, answered `pick`: the row's next argv. @param {string[]} render @param {string} gate @param {string} pick */
+  function answered(render, gate, pick) {
+    output(dir, ['render', ...render], { env: SESSION });
+    return ok(dir, ['gate', gate, '--pick', pick], { env: SESSION }).next.argv;
+  }
+
+  /** The line of `out` that `pattern` opens. @param {string} out @param {RegExp} pattern */
+  const lineOf = (out, pattern) => out.split('\n').find((line) => pattern.test(line)) ?? '';
+
+  // Each call names the topic by its title: a verb answers the key it acted
+  // on, a gate's row carries it, a render reads the topic under it. A topic
+  // left from a conversation sitting in it hands that conversation to the
+  // epic's menu.
+  /** @type {[string, () => string, string][]} */
+  const CALLS = [
+    ['topic edit', () => ok(dir, ['topic', 'edit', UNIT, NAME, '--summary', 'Notes, quickly']).name, KEY],
+    ['topic rename', () => ok(dir, ['topic', 'rename', UNIT, NAME, 'note-pane']).renamed_from, KEY],
+    ['topic remove, refused for a started topic', () => refusedPristine(dir, ['topic', 'remove', UNIT, NAME]).error, `"${KEY}" can't be removed — discussion is in flight on it; cancel from the epic menu instead`],
+    ['topic order', () => Object.keys(ok(dir, ['topic', 'order', UNIT, `${NAME}=3`]).ordered).join(), KEY],
+    ['topic brief, refused for a started topic', () => {
+      const draft = writeState(dir, layout.cache('scratch', 'brief.md'), 'What notes are for.\n');
+      return refusedPristine(dir, ['topic', 'brief', UNIT, NAME, '--brief', draft]).error;
+    }, `topic brief: "${KEY}" started — what bears on it goes as a message`],
+    ['topic cancel', () => {
+      without(dir, 'specification');
+      ok(dir, ['enter', 'discussion', UNIT, NAME, '--take'], { env: SESSION });
+      const { topic, next } = ok(dir, ['topic', 'cancel', UNIT, 'discovery', NAME], { env: SESSION });
+      return `${topic} ${next.kind}`;
+    }, `${KEY} handoff`],
+    ['topic reactivate', () => {
+      without(dir, 'specification');
+      ok(dir, ['topic', 'cancel', UNIT, 'discovery', KEY]);
+      return ok(dir, ['topic', 'reactivate', UNIT, 'discovery', NAME]).topic;
+    }, KEY],
+    ['topic postpone', () => {
+      without(dir, 'specification', 'experiment');
+      ok(dir, ['enter', 'discussion', UNIT, NAME, '--take'], { env: SESSION });
+      const { topic, next } = ok(dir, ['topic', 'postpone', UNIT, NAME, '--horizon', 'later'], { env: SESSION });
+      return `${topic} ${next.kind}`;
+    }, `${KEY} handoff`],
+    ['render approve-map, its yes', () => {
+      const staged = writeState(dir, layout.cache('scratch', 'approve-map.json'), JSON.stringify({ topics: [{ name: NAME }, { name: 'space-homing' }, { name: 'sync' }] }));
+      return ok(dir, answered(['approve-map', UNIT, '--file', staged], 'approve the map', 'y')).topics.join();
+    }, `${KEY},space-homing,sync`],
+    ['render cancel-gate, its yes', () => {
+      without(dir, 'specification');
+      return answered(['cancel-gate', `${UNIT}.discovery.${NAME}`], 'cancel gate', 'y').join(' ');
+    }, `topic cancel ${UNIT} discovery ${KEY}`],
+    ['render postpone-gate, its yes', () => {
+      without(dir, 'specification', 'experiment');
+      return answered(['postpone-gate', `${UNIT}.discovery.${NAME}`, '--horizon', 'later'], 'postpone gate', 'y').join(' ');
+    }, `topic postpone ${UNIT} ${KEY} --horizon later`],
+    ['render horizon-pick, a horizon\'s row', () => {
+      ok(dir, ['roadmap', 'add', 'offline-notes', '--horizon', 'later', '--summary', 'Notes offline']);
+      return answered(['horizon-pick', `${UNIT}.discovery.${NAME}`], 'horizon pick', '1').join(' ');
+    }, `render postpone-gate ${UNIT}.discovery.${KEY} --horizon later`],
+    ['render topic-receipt', () => {
+      without(dir, 'specification');
+      ok(dir, ['topic', 'cancel', UNIT, 'discovery', KEY]);
+      return lineOf(output(dir, ['render', 'topic-receipt', `${UNIT}.discovery.${NAME}`, '--verb', 'cancel']), /^Cancelled /);
+    }, `Cancelled "${TITLE}".`],
+    ['render map', () => lineOf(output(dir, ['render', 'map', `${UNIT}.${NAME}`]), /^Map — /), `Map — ${TITLE}`],
+    ['enter discussion', () => ok(dir, ['enter', 'discussion', UNIT, NAME, '--take'], { env: SESSION }).topic, KEY],
+    ['handoff topic', () => lineOf(output(dir, ['handoff', 'topic', UNIT, NAME]), /^args: /), `args: epic ${UNIT} ${KEY}`],
+  ];
+
+  for (const [named, act, expected] of CALLS) {
+    it(`${named}: the title resolves to the topic's key`, () => assert.strictEqual(act(), expected));
+  }
+
+  it('a name no topic goes by is refused naming the map\'s topics, by the names they go by', () => {
+    assert.strictEqual(refusedPristine(dir, ['topic', 'postpone', UNIT, 'ghost', '--horizon', 'later']).error,
+      `no topic "ghost" — the map's topics are ${NAME}, space-homing, sync`);
   });
 });
 

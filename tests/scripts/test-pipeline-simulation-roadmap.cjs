@@ -89,7 +89,7 @@ describe('pipeline simulation: roadmap', () => {
 
     // An epic grows by topics: a bug is never pulled forward into one.
     sim.run(['workunit', 'create', 'reports', 'epic', '--description', 'Reporting', '--session-log-file', sessionLog(sim, 'reports')]);
-    sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports'], /pull-forward takes ideas only; start it with the pull/);
+    sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports'], /pull-forward takes ideas only; pull it from the roadmap's menu, which hands it into discovery/);
 
     // A bug pulled alone pre-seeds a bugfix — its note stays on the roadmap,
     // read as a source.
@@ -169,9 +169,8 @@ describe('pipeline simulation: roadmap', () => {
     // commit covering the session's dirt.
     const closed = sim.run(['discovery-session', 'close', 'product', '-m', 'discovery(product): end the session']);
     assert.strictEqual(closed.session, '001');
-    state = sim.run(['roadmap', 'state']);
-    assert.strictEqual(state.active_session, null);
-    assert.strictEqual(state.next_session_number, 2);
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway', 'manifest.json'), 'utf8')).product_session, undefined);
+    assert.deepStrictEqual(sim.run(['roadmap', 'state']).session_logs.map((/** @type {{number: number}} */ log) => log.number), [1]);
 
     // The pull is the commitment point: start this work joins the item, and
     // the join flips the derived state.

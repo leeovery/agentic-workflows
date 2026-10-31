@@ -45,7 +45,7 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { sessionLogs, nextSessionNumber, productSession } = require('./discovery-session.cjs');
+const { sessionLogs } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
@@ -67,8 +67,8 @@ const NOTES_DIR = `${ROADMAP_DIR}/notes`;
 /**
  * Whether an item becomes a topic when it meets an epic — an idea alone; a
  * bug or a quick-fix rides with its unit as material, never a topic. The one
- * predicate behind bind, pull-forward, absorb's re-aim, and discovery's
- * anti-twin flag (its gateway, through the library).
+ * predicate behind pull-forward, absorb's re-aim, and discovery's anti-twin
+ * flag (its gateway, through the library).
  * @param {{kind?: unknown}} item
  * @returns {boolean}
  */
@@ -330,7 +330,7 @@ function deriveItemState(cwd, item) {
  * @property {string} [new_horizon]
  * @property {string} [work_unit]
  * @property {string} [topic]
- * @property {{work_unit: string, topic: string}} [prior]  bind / pull-forward: the epic the topic's prior record sits in
+ * @property {{work_unit: string, topic: string}} [prior]  pull-forward: the epic the topic's prior record sits in
  * @property {{work_unit: string, topic: string}} [epic_row_cancelled]  remove: the postponed row this removal cancelled
  * @property {{phase: string, status: string|null}[]} [restored]  pull-forward: the postponed items the return brought back
  * @property {{phase: string, topic: string}[]} [flagged]
@@ -347,28 +347,21 @@ function deriveItemState(cwd, item) {
  * and holds nothing yet. Items come back horizon-ordered (list order, then insertion
  * order within a horizon; items naming an unknown horizon trail last so a
  * hand-edited manifest still renders). The product's conversation's
- * session material rides along: `active_session` (its marker, or null),
- * `session_logs` (number + path, ascending, from disk) and
- * `next_session_number` — a session can exist before any item does, so
- * these are read even when the node itself is absent; and the node's
- * `imports` entries with their origins.
+ * session logs ride along (number + path, ascending, from disk) — a session
+ * can exist before any item does, so they are read even when the node itself
+ * is absent.
  * @param {string} cwd
- * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string, origin: string}[]}}
+ * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, session_logs: {number: number, path: string}[]}}
  */
 function roadmapState(cwd) {
   const sessionsDir = statePath(cwd, PRODUCT_SESSIONS);
-  const sessionBase = {
-    session_logs: sessionLogs(sessionsDir).map(({ number, file }) => ({ number, path: path.join(sessionsDir, file) })),
-    next_session_number: nextSessionNumber(sessionsDir),
-  };
+  const logs = sessionLogs(sessionsDir).map(({ number, file }) => ({ number, path: path.join(sessionsDir, file) }));
   const empty = {
     exists: false,
     horizons: /** @type {string[]} */ ([]),
     items: /** @type {RoadmapItemRow[]} */ ([]),
     totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
-    active_session: /** @type {string|null} */ (null),
-    ...sessionBase,
-    imports: /** @type {{path: string, origin: string}[]} */ ([]),
+    session_logs: logs,
   };
   /** @type {Record<string, any>} */
   let manifest = {};
@@ -377,14 +370,8 @@ function roadmapState(cwd) {
   } catch {
     return empty;
   }
-  const activeSession = productSession(manifest);
-  if (!hasRoadmapNode(manifest)) return { ...empty, exists: sessionBase.session_logs.length > 0, active_session: activeSession };
+  if (!hasRoadmapNode(manifest)) return { ...empty, exists: logs.length > 0 };
   const roadmap = manifest.roadmap;
-  const importEntries = Array.isArray(roadmap.imports)
-    ? roadmap.imports
-      .filter((/** @type {*} */ e) => e && typeof e.path === 'string')
-      .map((/** @type {*} */ e) => ({ path: statePath(cwd, ROADMAP_DIR, e.path), origin: typeof e.origin === 'string' ? e.origin : '' }))
-    : [];
   const horizons = Array.isArray(roadmap.horizons) ? roadmap.horizons.filter((/** @type {*} */ h) => typeof h === 'string') : [];
   const itemsObj = roadmap.items && typeof roadmap.items === 'object' && !Array.isArray(roadmap.items) ? roadmap.items : {};
 
@@ -424,7 +411,7 @@ function roadmapState(cwd) {
     else if (row.state === 'shipped') totals.shipped++;
     else totals.orphaned++;
   }
-  return { exists: true, horizons, items, totals, active_session: activeSession, ...sessionBase, imports: importEntries };
+  return { exists: true, horizons, items, totals, session_logs: logs };
 }
 
 /**
@@ -1063,56 +1050,6 @@ function removeHorizon(cwd, name) {
 }
 
 /**
- * Bind a pulled item to the topic it crystallised as — the epic harvest's
- * closing move for a pulled item (the anti-twin rule: an item pulled
- * pre-harvest comes out of the harvest as itself). The topic must exist on
- * the joined unit's discovery map. Re-binding updates the topic (a split or
- * rename at the harvest re-aims the join). Self-commits.
- * @param {string} cwd @param {string} name @param {{topic?: string}} [opts]
- * @returns {RoadmapOpResult}
- */
-function bindItem(cwd, name, { topic } = {}) {
-  if (typeof topic !== 'string' || topic === '') throw new Error('--topic is required');
-  const result = transactProject(cwd, (manifest) => {
-    const roadmap = requireRoadmap(manifest);
-    const item = roadmapItem(roadmap, name);
-    const join = itemJoin(item);
-    if (!join) throw new Error(`"${name}" is not joined to a work unit — pull it first`);
-    if (!becomesTopic(item)) {
-      throw new Error(`"${name}" is a ${item.kind} — it rides with the unit as material; only an idea binds to a topic`);
-    }
-    /** @type {any} */
-    let unit;
-    try {
-      unit = loadWorkUnitManifest(cwd, join.work_unit);
-    } catch {
-      throw new Error(`"${name}" is joined to work unit "${join.work_unit}", which no longer exists — the join is orphaned`);
-    }
-    const mapItems = (unit.phases && unit.phases.discovery && unit.phases.discovery.items) || {};
-    if (!mapItems[topic] || typeof mapItems[topic] !== 'object') {
-      throw new Error(`no discovery item "${topic}" on "${join.work_unit}" — bind names a topic the harvest landed`);
-    }
-    item.pulled_to = { work_unit: join.work_unit, topic };
-    // A topic that waited here after a postpone, landing in a different epic:
-    // the new row carries the prior record's address, which its discussion
-    // reads in full and relitigates. A return to the epic that
-    // postponed it needs none — the record is already that epic's.
-    const from = itemPostponedFrom(item);
-    const prior = from && from.work_unit !== join.work_unit ? from : null;
-    /** @type {RoadmapOpResult} */
-    const out = { op: 'bind', name, work_unit: join.work_unit, topic };
-    if (prior) out.prior = { work_unit: prior.work_unit, topic: prior.topic };
-    return out;
-  });
-  if (result.prior) {
-    const { setPrior } = require('./discovery-map.cjs');
-    setPrior(cwd, /** @type {string} */ (result.work_unit), topic, result.prior);
-  }
-  return commitRoadmap(cwd, result, `roadmap: bind ${name} to ${result.work_unit}/${result.topic}`,
-    result.prior ? { workUnit: result.work_unit } : {});
-}
-
-/**
  * The pull's return leg over a topic this epic postponed: the Discovery unit
  * restored, the join re-recorded, and `postponed_from` dropped — the topic is
  * in flight again, and a later postpone sets it afresh. One commit stages
@@ -1147,7 +1084,7 @@ function returnPostponed(cwd, name, into, topic) {
  * list included; `forceDismissed` passes the user's confirmed re-add
  * through), then writes the join, then one commit staging both manifests.
  * Map item first, join second: a crash between leaves a visible, repairable
- * topic (pull + bind recovers), never a dangling join.
+ * topic (approve the map's bind recovers it), never a dangling join.
  *
  * An item this very epic postponed takes the **return** branch instead: the
  * epic's own row is restored rather than a second one created — the marker
@@ -1168,7 +1105,7 @@ function pullForwardItem(cwd, name, { into, forceDismissed = false } = {}) {
   const preJoin = itemJoin(preItem);
   if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
   if (!becomesTopic(preItem)) {
-    throw new Error(`"${name}" is a ${preItem.kind} — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own`);
+    throw new Error(`"${name}" is a ${preItem.kind} — an epic grows by topics, and pull-forward takes ideas only; pull it from the roadmap's menu, which hands it into discovery as work of its own`);
   }
 
   /** @type {any} */
@@ -1523,7 +1460,6 @@ module.exports = {
   mergeHorizons,
   splitHorizon,
   removeHorizon,
-  bindItem,
   pullForwardItem,
   takeInRefusal,
   waitingTwin,

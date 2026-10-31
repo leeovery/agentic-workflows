@@ -33,12 +33,6 @@ function state(cwd) {
 function stateLines(s) {
   const lines = [
     `exists: ${s.exists}`,
-    `active_session: ${s.active_session ?? 'null'}`,
-    // Padded like the log's own filename — the flow interpolates this into
-    // durable source pointers, so the two spellings must never diverge.
-    `next_session_number: ${String(s.next_session_number).padStart(3, '0')}`,
-    `session_count: ${s.session_logs.length}`,
-    `import_count: ${s.imports.length}`,
     `horizons: ${s.horizons.join(', ') || '(none)'}`,
     `totals: ${s.totals.items} items — ${s.totals.in_flight} in flight, ${s.totals.waiting} waiting, ${s.totals.shipped} shipped, ${s.totals.orphaned} orphaned`,
   ];

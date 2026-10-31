@@ -51,7 +51,7 @@ const { withWorkUnitLock, withProjectLock, readProjectManifest } = require('../k
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -241,14 +241,15 @@ function parseEntry(entries, argv) {
 }
 
 /**
- * The topic an entry is at — at a topic-level row the one named, else the
- * unit's own where it has one topic; none at a unit-level row, which refuses
- * one named.
+ * The topic an entry is at — at a topic-level row the one named, by its key
+ * or its title, else the unit's own where it has one topic; none at a
+ * unit-level row, which refuses one named.
  * @param {Entry} entry @param {Record<string, any>} manifest @param {string} phase @param {string} unit @param {string|undefined} named
  * @returns {string|undefined}
  */
 function topicOf(entry, manifest, phase, unit, named) {
-  if (entry.level === 'topic') return named ?? (manifest.work_type === 'epic' ? undefined : unit);
+  if (entry.level === 'topic' && named !== undefined) return topicKey(manifest, named);
+  if (entry.level === 'topic') return manifest.work_type === 'epic' ? undefined : unit;
   if (named !== undefined) throw new Error(`${phase} is entered at the work unit — name no topic: engine enter ${phase} ${unit}`);
   return undefined;
 }

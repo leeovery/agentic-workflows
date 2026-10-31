@@ -54,7 +54,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalN
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKeyOf } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -355,7 +355,7 @@ function sendMessage(cwd, unit, said, { from, contentFile, slug }) {
   const { scratch, content } = messageIn(cwd, contentFile);
   const { topic, landed } = withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
-    const key = topicKeyOf(manifest, said) ?? said;
+    const key = topicKey(manifest, said);
     const message = withSender(content, senderTitle(cwd, manifest, key, from));
     return { topic: key, landed: manifest.status === 'cancelled' ? toInbox(cwd, unit, `${unit} is cancelled`, message, slug) : toTopic(cwd, manifest, key, message, slug) };
   });
@@ -476,7 +476,7 @@ function sendReportOf(cwd, address, sent) {
   const [unit, said, ...rest] = (address ?? '').split('.');
   if (!unit || !said || rest.length > 0 || !sent) throw new Error(`Usage: engine ${SEND_REPORT_USAGE}`);
   const manifest = unitManifest(cwd, unit);
-  const topic = topicKeyOf(manifest, said) ?? said;
+  const topic = topicKey(manifest, said);
   const at = path.resolve(cwd, sent);
   const folder = path.posix.dirname(stateRelative(cwd, at) ?? '');
   if (![mailboxDir(unit, topic), INBOX_IDEAS].includes(folder) || !fs.existsSync(at)) {

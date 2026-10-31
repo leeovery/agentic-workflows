@@ -368,7 +368,7 @@ describe('engine CLI: roadmap horizon ops', () => {
   });
 });
 
-describe('engine CLI: roadmap bind / pull-forward', () => {
+describe('engine CLI: roadmap pull-forward', () => {
   const setup = roadmapWorld((at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
@@ -380,18 +380,6 @@ describe('engine CLI: roadmap bind / pull-forward', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
-
-  it('bind names the topic the item crystallised as — validated against the map', () => {
-    joinedTo(dir, 'mvp', 'ordering');
-    assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'guest-ordering']).error, /no discovery item "guest-ordering" on "mvp"/);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-    manifest.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
-    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
-    const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
-    assert.strictEqual(res.work_unit, 'mvp');
-    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'guest-ordering' });
-    assert.match(runFail(dir, ['bind', 'loyalty', '--topic', 'guest-ordering']).error, /not joined to a work unit/);
-  });
 
   it('pull-forward lands the map topic and the join in one commit staging both manifests', () => {
     const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp']);
@@ -427,7 +415,7 @@ describe('engine CLI: roadmap bind / pull-forward', () => {
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
     const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
     assert.strictEqual(runFail(dir, ['pull-forward', 'login-crash', '--into', 'mvp']).error,
-      '"login-crash" is a bug — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own');
+      '"login-crash" is a bug — an epic grows by topics, and pull-forward takes ideas only; pull it from the roadmap\'s menu, which hands it into discovery as work of its own');
     assert.match(runFail(dir, ['pull-forward', 'typo', '--into', 'mvp']).error, /^"typo" is a quick-fix — /);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
     assert.strictEqual('pulled_to' in readProject(dir).roadmap.items['login-crash'], false);
@@ -457,10 +445,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
       horizons: [],
       items: [],
       totals: { items: 0, waiting: 0, in_flight: 0, shipped: 0, orphaned: 0 },
-      active_session: null,
       session_logs: [],
-      next_session_number: 1,
-      imports: [],
     });
   });
 
@@ -524,12 +509,12 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's']).error, /horizons is malformed/);
   });
 
-  it('reads the product\'s conversation\'s sessions: its marker on the project manifest, its logs and next number from .product/sessions — a log alone giving a roadmap that exists, holding nothing', () => {
+  it('reads the product\'s conversation\'s session logs from .product/sessions — a log alone giving a roadmap that exists, holding nothing', () => {
     const logs = ['session-001.md', 'session-003.md'].map((name) => path.join(dir, '.leeway', '.product', 'sessions', name));
     for (const log of logs) writeSource(dir, path.relative(path.join(dir, '.leeway'), log));
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ product_session: '003' }, null, 2));
-    const sessions = ({ exists, items, active_session, session_logs, next_session_number }) => ({ exists, items: items.map((i) => i.name), active_session, session_logs, next_session_number });
-    const expected = { exists: true, active_session: '003', session_logs: [{ number: 1, path: logs[0] }, { number: 3, path: logs[1] }], next_session_number: 4 };
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({}, null, 2));
+    const sessions = ({ horizons, totals, items, ...rest }) => ({ ...rest, items: items.map((i) => i.name) });
+    const expected = { ok: true, exists: true, session_logs: [{ number: 1, path: logs[0] }, { number: 3, path: logs[1] }] };
     assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: [] });
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
     assert.deepStrictEqual(sessions(runOk(dir, ['state'])), { ...expected, items: ['loyalty'] });
@@ -551,25 +536,6 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
-  function epicManifest() {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
-  }
-  function writeEpic(m) {
-    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
-  }
-
-  it('re-binding re-aims the join at the new topic, the unit carried', () => {
-    joinedTo(dir, 'mvp', 'ordering');
-    const m = epicManifest();
-    m.phases.discovery.items.ordering = { source: 'roadmap', summary: 's' };
-    m.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
-    writeEpic(m);
-    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
-    const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
-    assert.strictEqual(res.topic, 'guest-ordering');
-    assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'guest-ordering' });
-  });
-
   it('add and add-batch refuse an illegal horizon name before anything is written', () => {
     const before = projectManifestText(dir);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1.5', '--summary', 's']).error, /not a legal horizon name/);
@@ -584,11 +550,6 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     const res = runOk(dir, ['horizon', 'split', 'mvp', '--new', 'mvp-2', '--items', 'kds', '--position', '1']);
     assert.deepStrictEqual(res.horizons, ['mvp-2', 'mvp', 'v1']);
     assert.match(runFail(dir, ['horizon', 'merge', 'v1', '--into', 'never-made']).error, /no horizon "never-made"/);
-  });
-
-  it('bind on an orphaned join names the orphan', () => {
-    joinItem(dir, 'ordering', 'never-created');
-    assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'x']).error, /no longer exists — the join is orphaned/);
   });
 });
 

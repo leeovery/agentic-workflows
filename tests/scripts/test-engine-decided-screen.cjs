@@ -23,10 +23,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, readManifest, statePath } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, statePath } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
-const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, sectionOf, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, screen, staged, answer, run, reverse } = decidedHelpers(dir);

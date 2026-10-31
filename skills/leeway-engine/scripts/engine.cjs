@@ -298,7 +298,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap rename <old> <new>
   roadmap move <name> --horizon <h>
   roadmap remove <name>
-  roadmap bind <name> --topic <topic>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
   roadmap horizon rename <old> <new>
@@ -1086,7 +1085,8 @@ function runTopic(call, argv) {
       if (!workUnit || !topic || positional.length !== 2) {
         throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
       }
-      respond(call, { ...postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon }), next: leaveNext(workUnit, 'discovery', topic, 'postponed') });
+      const postponed = postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon });
+      respond(call, { ...postponed, next: leaveNext(workUnit, 'discovery', postponed.topic, 'postponed') });
       return;
     }
     if (Object.hasOwn(MAP_VERBS, command)) {
@@ -1106,7 +1106,7 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.phase, topic, 'cancelled') });
+      respond(call, { ...cancelled, next: leaveNext(workUnit, cancelled.phase, cancelled.topic, 'cancelled') });
       return;
     }
     const result = fn(call.cwd, workUnit, phase, topic);
@@ -1547,11 +1547,6 @@ function runRoadmap(call, argv) {
     } else if (command === 'remove') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
       respond(call, roadmap.removeRoadmapItem(cwd, positional[0]));
-    } else if (command === 'bind') {
-      if (positional.length !== 1 || !opts.topic) {
-        throw new Error('Usage: engine roadmap bind <name> --topic <topic>');
-      }
-      respond(call, roadmap.bindItem(cwd, positional[0], { topic: opts.topic }));
     } else if (command === 'pull-forward') {
       if (positional.length !== 1 || !opts.into) {
         throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> [--force-dismissed]');
@@ -1561,7 +1556,7 @@ function runRoadmap(call, argv) {
         forceDismissed: flags.has('force-dismissed'),
       }));
     } else {
-      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull|bind|pull-forward|horizon> …');
+      throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|remove|pull-forward|horizon> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -2049,8 +2044,7 @@ function runCommit(call, argv) {
       else if (a === '--inbox') inbox = true;
       else if (a === '--workflows') workflows = true;
       else if (a === '--migrations') migrationsScope = true;
-      // `--roadmap` names the product scope until the roadmap's rewrite (29.16).
-      else if (a === '--product' || a === '--roadmap') productScope = true;
+      else if (a === '--product') productScope = true;
       else if (paths) files.push(a);
       else if (workUnit === null) workUnit = a;
       else throw new Error(`unexpected argument "${a}"`);

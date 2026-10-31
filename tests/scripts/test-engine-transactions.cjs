@@ -219,7 +219,7 @@ describe('engine topic cancel — the discovery unit', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']).error, /"data-export" is already cancelled/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'ghost']).error,
-      /no topic "ghost" — nothing on the map and no discussion item of that name/);
+      /no topic "ghost" — the map's topics are data-export, auth-flow, fee-model, session-model$/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'discovery', 'data-export']).error, /manifest not found/);
     for (const phase of ['discussion', 'experiment', 'planning', 'nonsense']) {
       assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', phase, 'auth-flow']).error,

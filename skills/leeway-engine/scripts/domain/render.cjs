@@ -55,13 +55,13 @@ const {
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, awaitedExperiments, waits, itemOf,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
-  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames,
+  topicTitle, topicTitles, titled, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -87,8 +87,9 @@ const WORKLIST_STATUSES = Object.keys(WORKLIST_GLYPH);
 
 /**
  * Parse a 3-segment dotpath `work_unit.phase.topic`, validating the work unit
- * exists. Loud on shape errors — surfaces are called from prescribed prose
- * and a malformed address is an authoring bug.
+ * exists; a topic phase's topic is named by its key or its title, and
+ * answered as its key. Loud on shape errors — surfaces are called from
+ * prescribed prose and a malformed address is an authoring bug.
  * @param {string} cwd @param {string} dotpath @param {string} surface
  * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
  */
@@ -97,9 +98,10 @@ function resolveAddress(cwd, dotpath, surface) {
   if (parts.length !== 3 || parts.some((p) => p === '')) {
     throw new Error(`render ${surface}: address must be <work_unit>.<phase>.<topic>, got "${dotpath}"`);
   }
-  const [workUnit, phase, topic] = parts;
+  const [workUnit, phase, said] = parts;
   const manifest = loadManifest(cwd, workUnit);
   if (!manifest) throw new Error(`render ${surface}: work unit "${workUnit}" not found`);
+  const topic = TOPIC_PHASES.includes(phase) ? topicKey(manifest, said) : said;
   return { workUnit, phase, topic, manifest };
 }
 
@@ -2143,7 +2145,8 @@ function candidateGate(cwd, { dotpath, file, variant }) {
 }
 
 // discovery-map — an epic's map for Claude and for the person: its topics in
-// their order with their lifecycles, and the names struck from it.
+// their order with their lifecycles, an unstarted topic's brief, the one a
+// rewrite reads first, and the names struck from it.
 
 /**
  * @param {string} cwd
@@ -2154,7 +2157,8 @@ function discoveryMapSurface(cwd, { dotpath }) {
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'discovery-map');
   if (manifest.work_type !== 'epic') throw new Error(`render discovery-map: a ${manifest.work_type} has no map — its one topic is the unit itself`);
   const { map, summary } = buildDiscoveryMap(manifest, stateRoot(cwd));
-  return discoveryMapScreen(workUnit, { rows: map, summary }, dismissedNames(manifest));
+  const rows = map.map((row) => (row.lifecycle === 'fresh' ? { ...row, brief: statePath(cwd, briefFile(workUnit, row.name)) } : row));
+  return discoveryMapScreen(workUnit, { rows, summary }, dismissedNames(manifest));
 }
 
 // send-closed-target — the send's stop over a cancelled target, which no
@@ -2172,9 +2176,8 @@ function sendClosedTarget(cwd, { dotpath }) {
   if (phase !== 'discovery') {
     throw new Error(`render send-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
   }
-  const items = (((manifest.phases || {}).discovery || {}).items) || {};
-  if (!items[topic]) {
-    throw new Error(`render send-closed-target: no discovery item "${topic}" on the map`);
+  if (!itemOf(manifest, 'discovery', topic)) {
+    throw new Error(`render send-closed-target: ${noTopicRefusal(manifest, topic)}`);
   }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle !== 'cancelled') {
@@ -3816,7 +3819,7 @@ function listJoin(parts) {
  */
 function discoveryCancelStatement(manifest, topic) {
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render cancel-gate: no topic "${topic}" — nothing on the map and no discussion item of that name`);
+    throw new Error(`render cancel-gate: ${noTopicRefusal(manifest, topic)}`);
   }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle === 'cancelled') {
@@ -4839,7 +4842,7 @@ function workunitReceiptSurface(cwd, args) {
 function unitCancelled(manifest, stage, name) {
   if (stage === 'discovery') {
     if (!discoveryUnitExists(manifest, name)) {
-      throw new Error(`render topic-receipt: no topic "${name}" — nothing on the map and no discussion item of that name`);
+      throw new Error(`render topic-receipt: ${noTopicRefusal(manifest, name)}`);
     }
     return computeTopicLifecycle(manifest, name).lifecycle === 'cancelled';
   }
@@ -4867,7 +4870,7 @@ function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
     throw new Error(`render topic-receipt: --verb ${verb} addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
   if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render topic-receipt: no topic "${topic}" — nothing on the map and no discussion item of that name`);
+    throw new Error(`render topic-receipt: ${noTopicRefusal(manifest, topic)}`);
   }
 }
 
@@ -5285,15 +5288,15 @@ function roadmapAddGateSurface(cwd, args) {
 
 /**
  * The address of a topic leaving for the roadmap, checked as the postpone
- * gate reads it.
+ * gate reads it, naming the topic by its key.
  * @param {string} cwd @param {string} dotpath @returns {string}
  */
 function postponeAddress(cwd, dotpath) {
-  const { phase } = resolveAddress(cwd, dotpath, 'horizon-pick');
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'horizon-pick');
   if (phase !== 'discovery') {
     throw new Error(`render horizon-pick: address must be <work_unit>.discovery.<topic>, got phase "${phase}"`);
   }
-  return dotpath;
+  return `${workUnit}.${phase}.${topic}`;
 }
 
 /**

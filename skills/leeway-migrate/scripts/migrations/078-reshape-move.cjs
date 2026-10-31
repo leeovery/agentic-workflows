@@ -50,8 +50,9 @@
 // today's words — the offer is made once per project, and a completed
 // assessment was offered it — and one still under way kept as nothing, so
 // the offer is made again (21.11.1, 21.11.2, 8.12.11); each roadmap item's
-// sources follow their files, once each, and the roadmap's imports' paths
-// follow theirs, its open session marked as the product's conversation's
+// sources follow their files, once each, the roadmap's `imports` index is
+// dropped — its files are the product's assets, which nothing indexes — and
+// its open session is marked as the product's conversation's
 // (`product_session`). The inbox and the environment setup file are carried as
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), left
@@ -1202,9 +1203,10 @@ function moveProduct(from, state, relocations) {
 /**
  * The project manifest less the baseline's status fields, a recorded
  * `native`, `skipped` or `completed` kept as the brownfield offer's answer
- * (21.11.1, 21.11.2); each roadmap item's sources following their files, once each,
- * and the roadmap's imports' paths into its assets (21.5.7); the roadmap's
- * open session the product's conversation's, `product_session`.
+ * (21.11.1, 21.11.2); each roadmap item's sources following their files, once each;
+ * the roadmap's `imports` index dropped, its files the product's assets
+ * (21.5.7); the roadmap's open session the product's conversation's,
+ * `product_session`.
  * @param {Record<string, any>} project @param {Relocations} relocations
  * @returns {Record<string, any>}
  */
@@ -1216,7 +1218,7 @@ function reshapedProject(project, relocations) {
   for (const item of Object.values(isObject(roadmap.items) ? roadmap.items : {})) {
     if (isObject(item) && Array.isArray(item.sources)) item.sources = [...new Set(item.sources.map((source) => relocations.get(source) ?? source))];
   }
-  if (Array.isArray(roadmap.imports)) roadmap.imports = roadmap.imports.map(asAsset);
+  delete roadmap.imports;
   if (Object.hasOwn(roadmap, 'active_session')) {
     out.product_session = roadmap.active_session;
     delete roadmap.active_session;

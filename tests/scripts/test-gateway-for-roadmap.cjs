@@ -22,7 +22,6 @@ function writeRoadmap(dir, roadmap) {
 
 const MAP = {
   horizons: ['mvp', 'v1'],
-  imports: [{ path: 'imports/app-idea.md', imported_at: '2026-08-01T00:00:00Z' }],
   items: {
     ordering: { horizon: 'mvp', summary: 'customers order', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
     menus: { horizon: 'mvp', summary: 'operators maintain', kind: 'idea', origin: 'harvest' },
@@ -42,17 +41,11 @@ describe('leeway-roadmap gateway: view', () => {
   it('emits DATA + TITLE + DISPLAY + MENU with the state tables and action keys', () => {
     writeRoadmap(dir, MAP);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
-    const manifest = path.join(dir, '.leeway', 'manifest.json');
-    fs.writeFileSync(manifest, JSON.stringify({ ...JSON.parse(fs.readFileSync(manifest, 'utf8')), product_session: '002' }, null, 2));
     createFile(dir, '.leeway/.product/sessions/session-001.md', '# Product Session 001\n');
     createFile(dir, '.leeway/.product/sessions/session-002.md', '# Product Session 002\n');
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.match(res.stdout, /=== DATA /);
-    assert.match(res.stdout, /exists: true/);
-    assert.match(res.stdout, /active_session: 002/);
-    assert.match(res.stdout, /next_session_number: 003/);
-    assert.match(res.stdout, /import_count: 1/);
+    assert.match(res.stdout, /=== DATA [^\n]*\nexists: true\nhorizons: mvp, v1\ntotals: /, 'the DATA opens on the roadmap\'s own state');
     assert.match(res.stdout, /ITEMS \(name {2}horizon {2}kind {2}state {2}work_unit\):/);
     assert.match(res.stdout, /  ordering {2}mvp {2}idea {2}in-flight {2}mvp/);
     assert.match(res.stdout, /  loyalty {2}v1 {2}bug {2}waiting {2}—/);
@@ -64,7 +57,7 @@ describe('leeway-roadmap gateway: view', () => {
     assert.match(res.stdout, /=== DISPLAY[\s\S]*◐ Ordering/);
     assert.match(res.stdout, /Loyalty\n.*rewards\n.*↳ Bug · waiting/);
     assert.match(res.stdout, /Start work on waiting item\(s\) — creates a piece of\s+work \(2 waiting\)/);
-    assert.match(res.stdout, /=== MENU[\s\S]*\*\*`p\/product`\*\*\s+→ Talk about the product\n/, 'an open session changes nothing on the row');
+    assert.match(res.stdout, /=== MENU[\s\S]*\*\*`p\/product`\*\*\s+→ Talk about the product\n/);
     // The way out of the roadmap is the surface it was entered from.
     assert.match(res.stdout, /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
   });

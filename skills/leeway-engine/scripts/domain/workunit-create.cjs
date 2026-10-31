@@ -77,9 +77,9 @@ function assertLegalWorkUnitName(workUnit) {
  */
 
 /**
- * A roadmap item's note the unit starts from: the item's name, its note,
- * state-relative, and the item as it stood (4.11.16).
- * @typedef {{name: string, note: string, item: Record<string, any>}} NoteSeed
+ * A roadmap item's note the unit starts from: the item's name and its note,
+ * state-relative (4.11.16).
+ * @typedef {{name: string, note: string}} NoteSeed
  */
 
 /**
@@ -149,9 +149,9 @@ function unwriteWorkUnit(cwd, workUnit, seeds) {
  * Write a new unit, checked by `checkWorkUnit`, under its lock: its folder
  * and manifest, its imports copied into `imports/`, its inbox seeds moved
  * into `seeds/` and each roadmap item's note copied there, each recorded with
- * its source — a roadmap item's with the item as it stood — so a cancel can
- * put it back, and its first discovery log holding `firstLog`, an epic's
- * marked open — the sole work type with a resumable discovery session. No
+ * its source, so a cancel can put it back, and its first discovery log
+ * holding `firstLog`, an epic's marked open — the sole work type with a
+ * resumable discovery session. No
  * registration and no commit. A write that fails part-way is undone.
  * @param {string} cwd @param {string} workUnit @param {string} workType
  * @param {{description: string, firstLog: string, imports?: string[], seedItems?: import('./inbox.cjs').InboxItem[], noteSeeds?: NoteSeed[]}} unit
@@ -180,8 +180,8 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       const seedsDir = path.join(wuDir, 'seeds');
       const takenSeeds = new Set();
       const seedPlan = [
-        ...seedItems.map((item) => ({ from: item.rel, moves: true, source: SEED_SOURCES[item.folder], item: undefined })),
-        ...noteSeeds.map(({ name, note, item }) => ({ from: note, moves: false, source: `${ROADMAP_SEED}${name}`, item })),
+        ...seedItems.map((item) => ({ from: item.rel, moves: true, source: SEED_SOURCES[item.folder] })),
+        ...noteSeeds.map(({ name, note }) => ({ from: note, moves: false, source: `${ROADMAP_SEED}${name}` })),
       ].map((seed) => {
         const dest = dedupe(normaliseBasename(path.posix.basename(seed.from)) ?? 'seed.md', seedsDir, takenSeeds);
         takenSeeds.add(dest);
@@ -193,11 +193,11 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       for (const move of importPlan) pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
 
       if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
-      for (const { from, moves, source, item, dest } of seedPlan) {
+      for (const { from, moves, source, dest } of seedPlan) {
         if (moves) fs.renameSync(statePath(cwd, from), path.join(seedsDir, dest));
         else fs.copyFileSync(statePath(cwd, from), path.join(seedsDir, dest));
         seeds.push({ dest, source, ...(moves ? { back: from } : {}) });
-        pushEntry(manifest, 'seeds', { path: `seeds/${dest}`, source, seeded_at: isoNow(), ...(item === undefined ? {} : { item }) });
+        pushEntry(manifest, 'seeds', { path: `seeds/${dest}`, source, seeded_at: isoNow() });
       }
 
       fs.mkdirSync(path.join(wuDir, 'discovery'), { recursive: true });

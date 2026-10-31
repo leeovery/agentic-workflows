@@ -11,7 +11,7 @@
 // writes and commits nothing. The open is the entry's
 // (test-engine-enter.cjs); what a commit takes with a log — the files it
 // links — is test-engine-state-commit-layout.cjs's; `commit --discovery`
-// and `--product` are test-engine-commit-door.cjs's.
+// and `--product` are test-engine-commit-door-state.cjs's.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library holding an epic mid-session (logs 001 and 002, the marker on 002)

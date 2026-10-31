@@ -24,9 +24,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, readManifest, readState, statePath, lastMessage, touched, head, layout, writeState } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, lastMessage, touched, head, layout, writeState } = require('./engine-harness.cjs');
 const { joinedTo } = require('./roadmap-world.cjs');
-const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp, sectionOf } = require('./discovery-gates-world.cjs');
+const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
 const dir = useGatesWorld();
 const { scratch, payload, screen, answer, run } = gatesHelpers(dir);
@@ -145,7 +145,7 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
       [{ kind: 'handoff', skill: 'leeway-scoping-process', args: ['quick-fix', 'typo-fix'] }, undefined, false]);
   });
 
-  it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source and the item as it stood; a cancel puts the item back on its horizon (4.S35)', () => {
+  it('lands an inbox item and a roadmap item\'s note as seeds, the manifest recording each source; a cancel puts the item back on its horizon (4.S35)', () => {
     ok(dir(), ['roadmap', 'add-batch', '--file', payload([{ name: 'retry-on-drop', horizon: 'next', summary: 'Retry when the line drops', note: `.leeway/${IDEA}` }])]);
     const stood = readManifest(dir(), '.').roadmap.items['retry-on-drop'];
     const res = started({ ...oneTopic('feature', 'checkout-retry'), seeds: [statePath(dir(), BUG)], roadmap: ['retry-on-drop'] });
@@ -155,7 +155,7 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     ]);
     assert.deepStrictEqual(readManifest(dir(), 'checkout-retry').seeds.map(({ seeded_at: at, ...seed }) => seed), [
       { path: 'seeds/2026-06-02-login-loop.md', source: 'inbox:bug' },
-      { path: 'seeds/2026-06-01-smart-retry.md', source: 'roadmap:retry-on-drop', item: stood },
+      { path: 'seeds/2026-06-01-smart-retry.md', source: 'roadmap:retry-on-drop' },
     ]);
     assert.strictEqual(stood.horizon, 'next');
     assert.deepStrictEqual(fs.readdirSync(statePath(dir(), 'checkout-retry/seeds')).sort(), ['2026-06-01-smart-retry.md', '2026-06-02-login-loop.md']);
@@ -199,10 +199,10 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
   });
 
   it('refuses a roadmap item missing, named twice, or joined to work already', () => {
-    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['no-such'] }), 'render start-this-work: roadmap: the roadmap has no item "no-such"');
-    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync', 'note-sync'] }), 'render start-this-work: roadmap: "note-sync" is named twice');
+    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['no-such'] }), 'render start-this-work: roadmap: the roadmap has no item "no-such" to seed the work');
+    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync', 'note-sync'] }), 'render start-this-work: roadmap: roadmap item "note-sync" is named twice');
     joinedTo(dir(), 'atlas', 'note-sync');
-    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync'] }), 'render start-this-work: roadmap: "note-sync" is joined to work unit "atlas" already');
+    assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync'] }), 'render start-this-work: roadmap: roadmap item "note-sync" is joined to work unit "atlas" already — only a waiting item seeds new work');
   });
 
   it('refuses a feature or a bugfix beside a waiting roadmap idea of its name, unless it starts from the item (8.1.6)', () => {

@@ -22,7 +22,7 @@ const path = require('path');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
 const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses } = require('./engine-harness.cjs');
-const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo } = require('./roadmap-world.cjs');
+const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo, boundTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
   let dir;
@@ -122,8 +122,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   it('the re-wait arm: a pulled topic\'s own item loses its join, takes the horizon, and keeps its name and origin', () => {
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order', '--origin', 'harvest']);
-    joinedTo(dir, 'mvp', 'guest-ordering');
-    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    boundTo(dir, 'mvp', 'ordering', 'guest-ordering');
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: true });
     const item = readProject(dir).roadmap.items['guest-ordering'];
@@ -135,15 +134,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(item.kind, 'idea');
   });
 
-  it('a bug or a quick-fix never binds to a topic — it rides with the unit — so a re-wait is always an idea\'s', () => {
+  it('a bug or a quick-fix rides with the unit, bound to no topic, so a postpone\'s re-wait is always an idea\'s', () => {
     runOk(dir, ['add', 'checkout-crash', '--horizon', 'mvp', '--summary', 'the order page crashes', '--kind', 'bug']);
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
     joinedTo(dir, 'mvp', 'checkout-crash', 'typo');
-    const before = projectManifestText(dir);
-    assert.strictEqual(runFail(dir, ['bind', 'checkout-crash', '--topic', 'ordering']).error,
-      '"checkout-crash" is a bug — it rides with the unit as material; only an idea binds to a topic');
-    assert.match(runFail(dir, ['bind', 'typo', '--topic', 'ordering']).error, /^"typo" is a quick-fix — it rides with the unit/);
-    assert.strictEqual(projectManifestText(dir), before);
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.strictEqual(res.roadmap.reverted_join, false, 'nothing bound to the topic, so the topic\'s own idea is born');
     assert.strictEqual(readProject(dir).roadmap.items.ordering.kind, 'idea');
@@ -254,8 +248,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     commitAll(dir, 'inbox');
     fs.writeFileSync(path.join(dir, 'batch.json'), JSON.stringify([{ name: 'guest-ordering', horizon: 'mvp', summary: 'customers order', note: inboxNote }]));
     runOk(dir, ['add-batch', '--file', 'batch.json']);
-    joinedTo(dir, 'mvp', 'guest-ordering');
-    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    boundTo(dir, 'mvp', 'ordering', 'guest-ordering');
     assert.strictEqual(engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']).roadmap.reverted_join, true);
     assert.ok(readProject(dir).roadmap.items['guest-ordering'].sources.includes('.roadmap/notes/ideas/2026-03-01--guest-ordering.md'));
 
@@ -317,8 +310,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     writeSource(dir, '.product/sessions/session-001.md');
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
       '--source', '.product/sessions/session-001.md', '--source', 'mvp/topics/ordering/log.md']);
-    joinedTo(dir, 'mvp', 'guest-ordering');
-    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    boundTo(dir, 'mvp', 'ordering', 'guest-ordering');
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
       '.product/sessions/session-001.md',
@@ -343,32 +335,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
   });
 
-  it('bind carries prior when the pull landed elsewhere, and never when it came home', () => {
-    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    createManifest(dir, 'v2', {
-      work_type: 'epic',
-      status: 'in-progress',
-      phases: { discovery: { items: { checkout: { source: 'discovery', summary: 's' } } } },
-    });
-    commitAll(dir, 'v2');
-    joinedTo(dir, 'v2', 'ordering');
-    const res = runOk(dir, ['bind', 'ordering', '--topic', 'checkout']);
-    assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
-    assert.deepStrictEqual(
-      JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.checkout.prior,
-      { work_unit: 'mvp', topic: 'ordering' });
-    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('v2/manifest.json'), 'the map write rides the bind commit');
-  });
-
-  it('a bind back into the epic that postponed the topic writes no prior', () => {
-    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    joinedTo(dir, 'mvp', 'ordering');
-    const res = runOk(dir, ['bind', 'ordering', '--topic', 'menus']);
-    assert.strictEqual('prior' in res, false);
-    assert.strictEqual('prior' in epic().phases.discovery.items.menus, false);
-  });
-
   it('roadmap move re-buckets a postponed item freely — it is waiting', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     const res = runOk(dir, ['move', 'ordering', '--horizon', 'later']);
@@ -391,8 +357,8 @@ describe('engine CLI: the cancel-revert hop', () => {
       },
     });
     commitAll(at, 'fixture');
-    joinedTo(at, 'mvp', 'ordering', 'menus');
-    runOk(at, ['bind', 'ordering', '--topic', 'ordering']);
+    joinedTo(at, 'mvp', 'menus');
+    boundTo(at, 'mvp', 'ordering', 'ordering');
   });
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });

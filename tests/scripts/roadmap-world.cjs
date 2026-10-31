@@ -69,4 +69,13 @@ function joinedTo(dir, into, ...names) {
   commitAll(dir, `roadmap: join ${names.join(', ')} to ${into}`);
 }
 
-module.exports = { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo };
+/**
+ * A roadmap item joined to a unit's topic as approve the map binds it,
+ * committed. @param {string} dir @param {string} into @param {string} topic @param {string} name
+ */
+function boundTo(dir, into, topic, name) {
+  joinItem(dir, name, into, topic);
+  commitAll(dir, `roadmap: bind ${name} to ${into}/${topic}`);
+}
+
+module.exports = { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo, boundTo };

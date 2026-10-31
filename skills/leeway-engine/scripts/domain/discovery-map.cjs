@@ -7,8 +7,9 @@
 // change it, the `topic` verbs. Each does what the person asked, commits what
 // it wrote, and answers one line (8.8.6, 8.8.7):
 // - add: a topic, its brief installed at `topics/{topic}/brief.md` from
-//   Claude's draft in the cache, which it consumes — the brief's only writer
-//   (8.7.6). Refused: a name that is not a lowercase slug (8.8.18), one on
+//   Claude's draft in the cache, which it consumes (8.7.6); `writeBrief` is
+//   the one write of a brief, which start this work's and approve the map's
+//   yeses share. Refused: a name that is not a lowercase slug (8.8.18), one on
 //   the map, one struck from it unless the person asks for it back
 //   (8.10.11), and the twin of a waiting roadmap item, unless the topic takes
 //   that item in, the item then leaving the roadmap and the topic's source
@@ -30,9 +31,10 @@
 // - brief: a brief rewritten before its topic starts; once it has, what bears
 //   on it goes as a message (8.7.6).
 // A verb naming a topic on the map takes its key or the title a rename gave
-// it. A topic is unstarted while its lifecycle reads fresh: no conversation
-// on it yet, whether or not mail waits for it. A topic a ledger event names keeps
-// that name for good (ledger-fold.cjs), so it is neither removed nor moved.
+// it (`topicKey`). A topic is unstarted while its lifecycle reads fresh: no
+// conversation on it yet, whether or not mail waits for it. A topic a ledger
+// event names keeps that name for good (ledger-fold.cjs), so it is neither
+// removed nor moved.
 // Rename and remove take the writer lock first, then read the manifest, the
 // ledger and the mailbox under it, so no entry or message lands between the
 // check and the write. A topic's lifecycle is computed at render time with
@@ -44,7 +46,7 @@
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer, readProjectManifest } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { computeTopicLifecycle, lifecyclePhrase, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle, topicKeyOf } = require('./derivations.cjs');
+const { computeTopicLifecycle, lifecyclePhrase, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle, topicKey, noTopicRefusal } = require('./derivations.cjs');
 const { KEBAB_SLUG_PATTERN } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, cacheScratch } = require('../kernel/state-root.cjs');
 const { namesTopic } = require('./ledger-fold.cjs');
@@ -106,25 +108,14 @@ function discoveryItems(manifest) {
 }
 
 /**
- * The map's topic `name`, or a loud error.
+ * The map's topic `name`, refused where the map has none.
  * @param {object} manifest @param {string} name
  * @returns {Record<string, any>}
  */
 function mapItem(manifest, name) {
-  const item = discoveryItems(manifest)[name];
-  if (!item || typeof item !== 'object') {
-    throw new Error(`no discovery item "${name}" in the manifest (phases.discovery.items)`);
-  }
+  const item = itemOf(manifest, 'discovery', name);
+  if (!item) throw new Error(noTopicRefusal(manifest, name));
   return item;
-}
-
-/**
- * The key of the map's topic going by `said` — its key, or the title a
- * rename gave it (8.8.17) — `said` itself where none does.
- * @param {object} manifest @param {string} said
- */
-function mapKey(manifest, said) {
-  return topicKeyOf(manifest, said) ?? said;
 }
 
 /** The map's container, made where the manifest has none. @param {Record<string, any>} manifest */
@@ -599,7 +590,7 @@ function editTopic(cwd, workUnit, said, { summary, description } = {}) {
   }
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const name = mapKey(manifest, said);
+    const name = topicKey(manifest, said);
     const item = mapItem(manifest, name);
     if (summary !== undefined) item.summary = summary;
     if (description !== undefined) item.description = description;
@@ -672,7 +663,7 @@ function renameTopic(cwd, workUnit, said, newName) {
   const warnings = [];
   const renamed = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const oldName = mapKey(manifest, said);
+    const oldName = topicKey(manifest, said);
     const item = mapItem(manifest, oldName);
     const was = topicTitle(manifest, oldName);
     if (newName === (item.title ?? oldName)) throw new Error(`topic rename: "${oldName}" goes by "${newName}" already`);
@@ -735,7 +726,7 @@ function removeTopic(cwd, workUnit, said) {
   const warnings = [];
   const removed = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const name = mapKey(manifest, said);
+    const name = topicKey(manifest, said);
     mapItem(manifest, name);
     const title = topicTitle(manifest, name);
     const refusal = removeRefusal(manifest, name, ledgerNames(cwd, workUnit, name, warnings));
@@ -779,7 +770,7 @@ function rewriteBrief(cwd, workUnit, said, draft) {
   const drafted = draftIn(cwd, draft, 'topic brief: --brief');
   const rewritten = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const name = mapKey(manifest, said);
+    const name = topicKey(manifest, said);
     mapItem(manifest, name);
     const refusal = briefRefusal(manifest, name);
     if (refusal !== null) throw new Error(`topic brief: "${name}" ${refusal}`);
@@ -803,13 +794,13 @@ function sequenceMap(cwd, workUnit, orders) {
   const { ordered, titles } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
-    const entries = Object.entries(orders).map(([said, order]) => /** @type {[string, number]} */ ([mapKey(manifest, said), order]));
+    const entries = Object.entries(orders).map(([said, order]) => /** @type {[string, number]} */ ([topicKey(manifest, said), order]));
     if (entries.length === 0) {
       throw new Error('no {topic}={order} assignments given');
     }
     for (const [topic, order] of entries) {
       if (!items[topic] || typeof items[topic] !== 'object') {
-        throw new Error(`no discovery item "${topic}" in the manifest (phases.discovery.items)`);
+        throw new Error(noTopicRefusal(manifest, topic));
       }
       if (!Number.isInteger(order) || order < 1) {
         throw new Error(`order for "${topic}" must be a positive integer (got ${JSON.stringify(order)})`);
@@ -839,33 +830,8 @@ function sequenceMap(cwd, workUnit, orders) {
   return result;
 }
 
-/**
- * Record the earlier epic whose record a topic carries — the address a pull
- * of a postponed item copies onto the receiving epic's row when it lands
- * anywhere but the epic that postponed it. Allowed at any lifecycle: the
- * bind that writes it runs after the topic is on the map and may run again.
- * No git commit — the calling transaction stages the manifest.
- * @param {string} cwd project root
- * @param {string} workUnit
- * @param {string} name
- * @param {{work_unit: string, topic: string}} prior
- * @returns {MapChange}
- */
-function setPrior(cwd, workUnit, name, prior) {
-  const priorRef = validatePrior(prior);
-  return withWorkUnitLock(cwd, workUnit, () => {
-    const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const item = mapItem(manifest, name);
-    item.prior = priorRef;
-
-    saveWorkUnitManifest(cwd, workUnit, manifest);
-    const { lifecycle } = computeTopicLifecycle(manifest, name);
-    return { work_unit: workUnit, name, op: 'set-prior', prior: priorRef, lifecycle, map_total: mapTotal(manifest) };
-  });
-}
-
 module.exports = {
-  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, setPrior, topicNameRefusal,
+  sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
   addBatchTo, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
 };

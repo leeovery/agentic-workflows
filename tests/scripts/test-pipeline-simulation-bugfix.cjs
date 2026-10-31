@@ -24,7 +24,7 @@ const { startMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/doma
 const { workUnitStatus } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/workunit.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases,
+  Sim, startUnit, handoffEntry, handoff, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: bugfix', () => {
@@ -35,8 +35,8 @@ describe('pipeline simulation: bugfix', () => {
   it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
     const wu = 'crash-fix';
     startNew(sim, 'bugfix');
-    const log = sessionLog(sim, wu);
-    sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
+    const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
 
     handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
     handoffEntry(sim, wu, 'investigation', wu);
