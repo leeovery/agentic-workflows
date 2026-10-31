@@ -28,7 +28,7 @@ const {
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, handoff, bridgeTo, arriveAtEpicMenu, waitAgents, startKeys, decideTopic, askedOn,
+  Sim, sessionLog, carryOn, menuEntry, handoffEntry, enterEntry, handoff, bridgeTo, arriveAtEpicMenu, waitAgents, startKeys, decideTopic, askedOn, send,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -162,11 +162,14 @@ describe('pipeline simulation: experiments', () => {
     claudeDecides(sim, wu, 'timing', placement, 'Where the last window closed.');
     decideTopic(sim, wu, 'timing');
 
-    // Series continuation: the next questions spawn E2 and E3 onto the
-    // completed series and reopen it; abandonment is the other release — the
-    // waiting point reverts to open, no downstream hop.
-    sim.run(['topic', 'reopen', wu, 'discussion', 'timing']);
+    // Series continuation: a message reopens the decided topic, and the next
+    // questions spawn E2 and E3 onto the completed series and reopen it;
+    // abandonment is the other release — the waiting point reverts to open,
+    // no downstream hop.
+    const toTiming = send(sim, wu, 'timing', 'layout', 'which-monitor');
+    assert.strictEqual(toTiming.reopened, true);
     const monitor = askedOn(sim, wu, 'timing', 'Which monitor takes a new window?');
+    sim.run(['topic', 'answered', wu, 'timing', path.basename(toTiming.message_path, '.md'), '--entry', monitor]);
     const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion', '--question', monitor,
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
     assert.strictEqual(next.id, 'E2');
@@ -229,14 +232,16 @@ describe('pipeline simulation: experiments', () => {
     // spawn from the reopened conversation revives it at the next id.
     sim.refuses(['topic', 'reactivate', wu, 'experiment', 'layout'], /^reactivate is topic-level per stage — discovery/);
 
-    // Reopen: the series item is derived bookkeeping no phase's start
-    // reconciles, so the settled series is left untouched.
-    const reopened = sim.run(['topic', 'reopen', wu, 'discussion', 'layout']);
+    // A message reopens it: the series item is derived bookkeeping no
+    // phase's start reconciles, so the settled series is left untouched.
+    const reopened = send(sim, wu, 'layout', 'timing', 'grid-at-scale');
+    assert.strictEqual(reopened.reopened, true);
     assert.strictEqual(reopened.reconcile_flagged, undefined, 'no specification downstream — nothing takes the flag');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.reconcile_needed, undefined,
       'the series item never takes a reconcile flag');
 
     const scale = askedOn(sim, wu, 'layout', 'Does the grid hold at scale?');
+    sim.run(['topic', 'answered', wu, 'layout', path.basename(reopened.message_path, '.md'), '--entry', scale]);
     const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'discussion', '--question', scale,
       '--problem', sim.write(`.leeway/.cache/${wu}/discussion/layout/problem.md`, '# Problem — follow-up\n')]);
     assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');

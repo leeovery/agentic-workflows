@@ -121,6 +121,9 @@ function reconcilePhases(cfg, manifest) {
   return out;
 }
 
+/** The phases a revisit never enters. */
+const UNREVISITABLE = [...DERIVED_PHASES, 'discussion'];
+
 /**
  * Where a single-topic unit's routes enter from `nextPhase`. The next route
  * enters the phase, naming the item in flight — else a parked stub its
@@ -129,7 +132,8 @@ function reconcilePhases(cfg, manifest) {
  * before `nextPhase` in the pipeline (every completed phase where it sits
  * outside — the finalising case), one per completed item where a phase's
  * items carry names of their own; never the derived phase, since a concluded
- * verdict stands and a new spawn is what reopens the series. A unit whose
+ * verdict stands and a new spawn is what reopens the series, nor a decided
+ * discussion, which reopens through a message sent to it. A unit whose
  * items all carry its name routes to the unit alone.
  * @param {object} manifest @param {string} nextPhase
  * @returns {{next: PhaseTarget, revisit: PhaseTarget[]}}
@@ -144,7 +148,7 @@ function phaseTargets(manifest, nextPhase) {
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
     revisit: completedPhases(cfg, manifest)
-      .filter((phase) => !DERIVED_PHASES.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx))
+      .filter((phase) => !UNREVISITABLE.includes(phase) && (nextIdx === -1 || cfg.pipeline.indexOf(phase) < nextIdx))
       .flatMap((phase) => {
         const completed = ownNamedItems(manifest, phase).filter((i) => i.status === 'completed');
         /** @type {PhaseTarget[]} */

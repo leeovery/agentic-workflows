@@ -117,9 +117,9 @@ describe('pipeline simulation: epic-specification', () => {
     assert.match(single('content'), new RegExp(`Refining specification: Solo\\n\\nExisting: ${soloSpec} \\[completed\\]\\n\\nAll sources extracted:\\n {2}• checkout\\n[\\s\\S]*A refinement is for factual corrections and sharpening\\.`));
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
 
-    // A re-decided discussion stales its row: the path proceeds as a
-    // continue, confirming the reconcile it carries.
-    sim.run(['topic', 'reopen', wu, 'discussion', 'checkout']);
+    // A message re-opens the discussion, and re-decided it stales its row:
+    // the path proceeds as a continue, confirming the reconcile it carries.
+    send(sim, wu, 'checkout', 'checkout', 'checkout-moves');
     discussed(sim, wu, 'checkout');
     assert.match(single('content'), new RegExp(`Continuing specification: Solo\\n\\nExisting: ${soloSpec} \\[completed\\]\\n\\nSources re-decided since extraction \\(reconcile\\):\\n {2}• checkout \\[stale\\]\\n`));
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });

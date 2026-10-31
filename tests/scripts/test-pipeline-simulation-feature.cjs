@@ -71,16 +71,16 @@ describe('pipeline simulation: feature', () => {
     // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
     assert.match(sim.engine(['knowledge', 'status']).stdout, /^By phase:\n {2}record: 3\n\n/m);
-    // A hop short of review carries no skip row — proceed or revisit.
-    const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
-    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
-    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.ok(!hop.includes('d/done'), hop);
+    // A hop short of review carries no skip row, and the decided discussion
+    // behind it is no revisit — it reopens by a message — so the hop asks
+    // nothing.
+    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
 
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
     // The bridge's one stop before review: proceed, complete without
-    // review, or revisit — every earlier phase is completed, so all three.
+    // review, or revisit — the delivery phases behind it are completed, so
+    // all three.
     const gate = sim.render(['next-phase-gate', wu, '--prev', 'implementation', '--next', 'review'], { expect: 'content' });
     assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to review/);
     assert.match(gate, /\*\*`d\/done`\*\* +→ Complete without review/);

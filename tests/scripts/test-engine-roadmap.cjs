@@ -949,7 +949,6 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     for (const args of [
       ['topic', 'start', 'mvp', 'discussion', 'ordering'],
       ['topic', 'complete', 'mvp', 'discussion', 'ordering'],
-      ['topic', 'reopen', 'mvp', 'discussion', 'ordering'],
       ['topic', 'supersede', 'mvp', 'discussion', 'ordering', '--by', 'menus'],
     ]) {
       engineFails(args, /discussion item "ordering" is postponed — the topic waits on the roadmap; pull it forward from there instead/);

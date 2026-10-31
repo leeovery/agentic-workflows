@@ -30,13 +30,7 @@
     "discussion": {
       "items": {
         "sign-in": {
-          "status": "completed",
-          "subtopics": {
-            "session-length": {
-              "status": "decided",
-              "parent": null
-            }
-          }
+          "status": "completed"
         },
         "billing": {
           "status": "in-progress"

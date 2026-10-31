@@ -123,14 +123,14 @@ Work through these steps in order:
    Check whether a completed specification has flagged the order stale (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest exists {work_unit}.specification build_order_stale`). When `true`, collect one more op — this reconcile is the sequencing, so the flag clears with it:
    - `{work_unit}.specification` → delete `build_order_stale`
 
-9. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes, order sets, the flag delete), to `.workflows/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
+9. **Apply the reconcile.** Write the collected ops, in the order gathered (augments, stale deletes, upserts, prunes, order sets, the flag delete), to `.leeway/.cache/{work_unit}/specification/reconcile-ops.json` with the Write tool:
    ```json
    [{"op": "set", "path": "{work_unit}.specification.{name}", "fields": {"status": "proposed", "sources.{discussion}.status": "pending", "order": 2}},
     {"op": "delete", "path": "{work_unit}.specification", "field": "items.{name}"}]
    ```
    Persist the whole reconcile in one atomic call — a failing op means the manifest is untouched, never half-reconciled:
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
+   node .claude/skills/leeway-engine/scripts/engine.cjs manifest apply {work_unit} --file .leeway/.cache/{work_unit}/specification/reconcile-ops.json
    ```
 
 → Proceed to **D. Write the Cache**.
@@ -143,10 +143,10 @@ Write the cache **after** all manifest mutations. The checksum is written last �
 
 Create the cache directory if needed:
 ```bash
-mkdir -p .workflows/{work_unit}/.state
+mkdir -p .leeway/{work_unit}/.state
 ```
 
-Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter) — the manifest holds the authoritative grouping→source mapping, so this file carries only coupling/rationale and tension lines:
+Write to `.leeway/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter) — the manifest holds the authoritative grouping→source mapping, so this file carries only coupling/rationale and tension lines:
 
 ```markdown
 # Discussion Consolidation Analysis

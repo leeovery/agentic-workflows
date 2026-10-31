@@ -133,7 +133,6 @@ function saveState(cwd, workUnit, phase, topic, state) {
   io.writeJsonAtomic(file, state);
 }
 
-
 /**
  * The row addressed by id, or a loud miss naming what exists.
  * @param {{agents: Record<string, any>}} state

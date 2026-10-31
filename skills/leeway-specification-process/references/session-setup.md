@@ -26,7 +26,7 @@ Hold these in session: construction extracts from the sources.
 
 ## Hold the Grouping Analysis's Tensions
 
-Read any `**Tension**` lines for this specification's grouping from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — only an epic's grouping analysis writes them). Hold them in session: construction raises each per its Resolve Source Incoherence discipline.
+Read any `**Tension**` lines for this specification's grouping from `.leeway/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — only an epic's grouping analysis writes them). Hold them in session: construction raises each per its Resolve Source Incoherence discipline.
 
 ## Hold the Incorporated Specifications
 

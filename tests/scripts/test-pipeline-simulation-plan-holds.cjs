@@ -48,9 +48,10 @@ describe('pipeline simulation: plan holds', () => {
     // A message lands back on both source discussions: each specification's
     // row stales and takes the flag — the record is moving beneath the plan.
     for (const topic of ['billing', 'fees']) {
-      const ro = sim.run(['topic', 'reopen', wu, 'discussion', topic]);
+      const ro = send(sim, wu, topic, topic, `${topic}-moves`);
       assert.deepStrictEqual(ro.sources_staled, [topic]);
-      assert.deepStrictEqual(ro.reconcile_flagged, [{ phase: 'specification', topic }]);
+      assert.strictEqual(ro.reconcile_flagged, true);
+      assert.strictEqual(sim.manifest(wu).phases.specification.items[topic].reconcile_needed, 'discussion');
     }
 
     // Every planning surface holds: the conclusion, the entry, an unborn

@@ -238,10 +238,10 @@ Nothing was written, and the agreed resolution reached nobody — say so in one 
 
 #### Otherwise
 
-Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
+Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.leeway/.cache/{work_unit}/{phase}/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md --slug {kebab-case gap name}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .leeway/.cache/{work_unit}/{phase}/{topic}/gap-message.md --slug {kebab-case gap name}
 ```
 
 Set `landed_topic` = `{doc}`.

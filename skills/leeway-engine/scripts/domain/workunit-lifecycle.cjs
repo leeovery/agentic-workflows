@@ -282,7 +282,6 @@ function pivotWorkUnit(cwd, workUnit) {
   const outcome = commitStateTail(cwd, [workUnit, 'manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', committed: outcome.committed, warnings };
-
   noteCommitOutcome(result, outcome);
   return result;
 }

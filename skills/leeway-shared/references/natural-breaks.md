@@ -26,10 +26,10 @@ Any of these means defer:
 
 - You asked the user a direct question in your previous response and their reply hasn't yet arrived
 - A gate is waiting on the user's answer — what arrived is held until it is answered
-- A subtopic is actively `exploring`, or a thread is being dug, and you are mid-probe on a specific concern within it
+- A line of inquiry is under way and you are mid-probe on a specific concern within it
 - The user is mid-response to a question you initiated (said "hold on", "let me think", or has only partially answered)
 - You are mid-synthesis or mid-summary and haven't closed out the current point
-- The current exchange is the first turn of a newly started subtopic or thread — momentum belongs there, not to a new announcement
+- The current exchange is the first turn of a newly opened line of inquiry — momentum belongs there, not to a new announcement
 - The user just raised a new concern that you haven't yet engaged with
 - The user picked `later` on an announce or offer menu (background-agent findings, the mailbox) in their most recent turn — treat the next few turns as continuation, not a fresh break. Re-raising the menu on the very next turn would ignore their deferral. Wait until the conversation has genuinely moved on before re-raising.
 

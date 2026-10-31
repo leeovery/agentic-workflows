@@ -46,7 +46,7 @@ const MAP = [
   },
 ];
 
-// A discussion-map fixture exercising nesting (children).
+// A tree fixture exercising nesting (children).
 const DISCUSSION = [
   { title: '✓ Subsystem Prefix Taxonomy [decided]' },
   {
@@ -249,7 +249,7 @@ describe('render shape: renderTree (discovery map)', () => {
     assert.ok(!out.includes('├─') && !out.includes('┌─'));
   });
 
-  it('nests children with an accumulating gutter (discussion-map shape)', () => {
+  it('nests children with an accumulating gutter', () => {
     const lines = renderTree(DISCUSSION, { width: 72 }).split('\n');
     // Parent is a non-last sibling, so its children sit under a continued │.
     assert.ok(lines.includes('  ├─ → Decision-Point INFO Line Shape [converging]'));

@@ -266,9 +266,9 @@ describe('leeway-bridge format', () => {
       'next_phase: planning',
       'completed_phases: discussion, specification',
       'reconcile_pending: (none)',
-      'revisitable_phases: discussion, specification',
+      'revisitable_phases: specification',
       'next_route: /leeway-planning-process feature auth',
-      'revisit_routes: /leeway-discussion-process feature auth, /leeway-specification-process feature auth',
+      'revisit_routes: /leeway-specification-process feature auth',
       '',
     ].join('\n'));
   });
@@ -417,15 +417,15 @@ describe('leeway-bridge format', () => {
       'next_phase: specification',
       'completed_phases: discussion, specification',
       'reconcile_pending: specification/fees (discussion)',
-      'revisitable_phases: discussion/fee-rules, discussion/fee-display',
+      'revisitable_phases: (none)',
       'next_route: /leeway-specification-process cross-cutting fees',
-      'revisit_routes: /leeway-discussion-process cross-cutting fees fee-rules, /leeway-discussion-process cross-cutting fees fee-display',
+      'revisit_routes: (none)',
       '',
     ].join('\n'));
-    // The menu its numbers count, row for row.
-    const menu = renderSurface(dir, 'revisit-phases', { dotpath: 'fees' });
-    assert.match(menu, /\*\*`1`\*\* +→ Discussion "Fee Rules" — \*completed\*\n\*\*`2`\*\* +→ Discussion "Fee Display" — \*completed\*\n/, menu);
-    assert.match(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), /`r\/revisit`/);
+    // A decided discussion reopens by a message, never a revisit: no menu
+    // numbers one, and the hop asks nothing.
+    assert.throws(() => renderSurface(dir, 'revisit-phases', { dotpath: 'fees' }), /"fees" has no completed earlier phase to revisit/);
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), '');
   });
 
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {

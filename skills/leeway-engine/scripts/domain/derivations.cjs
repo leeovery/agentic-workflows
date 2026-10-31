@@ -605,7 +605,6 @@ function postponePlan(manifest, name, project, horizon) {
   const locks = [];
   if (!discoveryUnitExists(manifest, name)) {
     locks.push({ reason: `no topic "${name}" — nothing on the map and no discussion item of that name` });
-
     return { items: [], discards: [], locks };
   }
   const { lifecycle } = computeTopicLifecycle(manifest, name);

@@ -134,7 +134,7 @@ Then discuss it as real session material: engage, challenge, connect it to what 
 
 → Proceed to **D. Fold**.
 
-**If the user moves on without engaging it** — they bounce to another subtopic, another message, or the main thread:
+**If the user moves on without engaging it** — they bounce to another line of inquiry, another message, or the main thread:
 
 The message stays in the mailbox and the opt-in is cleared — a half-walked entry keeps its unresolved asks, and its re-raise resumes at the first of them. Follow them; the check re-offers at a later break, and the conclusion gate holds until the mailbox is empty.
 
@@ -160,6 +160,16 @@ node .claude/skills/leeway-engine/scripts/engine.cjs ledger ask {work_unit}.{pha
 
 ```json
 {"text": "…", "by": "claude", "who_moved_whom": "none"}
+```
+
+Where the discussion reached a decision or a direction, decide the question with what the fold recorded; one the user parked as a deferred thread stays open. `by` is `person` where the user made the call, `claude` where you did:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs ledger decide {work_unit}.{phase}.{topic} --answers {id}
+```
+
+```json
+{"text": "…", "why": "…", "by": "person", "who_moved_whom": "none"}
 ```
 
 Then take the message out of the mailbox — the engine removes its file and commits the removal under its name. The response answers `remaining` — route on it; never recap the answered message on either branch:

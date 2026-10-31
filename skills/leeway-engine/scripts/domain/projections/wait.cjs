@@ -16,7 +16,6 @@ const { specUnsettledPhrase } = require('../derivations.cjs');
 
 /** @typedef {import('../derivations.cjs').Wait} Wait */
 
-
 /** @param {Wait[]} waits @returns {string[]} the evidence ids, derivation order */
 function experimentIds(waits) {
   return waits.flatMap((w) => (w.kind === 'experiment' ? [w.id] : []));
@@ -96,4 +95,3 @@ function phasePaused(phase, workUnit, holders) {
 }
 
 module.exports = { waitGate, phasePaused, owedWaits, owedSources };
-

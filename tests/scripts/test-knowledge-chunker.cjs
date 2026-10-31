@@ -612,7 +612,6 @@ describe('phase chunking configs', () => {
     assert.strictEqual(chunk(copy, loadConfig('investigation')).length, 1);
   });
 
-
   it('specification.json declares Corrigenda as own-chunk — the only config that does', () => {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')

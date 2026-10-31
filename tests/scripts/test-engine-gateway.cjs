@@ -323,7 +323,8 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     });
   }
 
-  // Every unit mid-flight with an earlier phase to revisit; the epic holds a
+  // Every linear unit with an earlier phase to revisit — a decided discussion
+  // being none, the cross-cutting concern is finalising; the epic holds a
   // cancelled topic, a topic postponed to the roadmap, a plan blocked on a
   // dependency, a concluded specification and a proposed grouping, so each
   // of its sub-views offers rows.
@@ -352,10 +353,13 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
         },
       });
       createFile(dir, '.leeway/live-epic/specification/billing/specification.md', '# Billing\n');
-      linearUnit(dir, 'live-feature', 'feature', 'discussion', 'specification');
+      linearUnit(dir, 'live-feature', 'feature', 'specification', 'planning');
       linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
       linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');
-      linearUnit(dir, 'live-policy', 'cross-cutting', 'discussion', 'specification');
+      createManifest(dir, 'live-policy', {
+        work_type: 'cross-cutting',
+        phases: { discussion: { items: { 'live-policy': { status: 'completed' } } }, specification: { items: { 'live-policy': { status: 'completed' } } } },
+      });
     },
     // No active work: the start view's empty state, every conditional row on.
     quiet: projectManifest,

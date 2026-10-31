@@ -213,7 +213,7 @@ describe('gate payload — a render surface', () => {
     const gate = gateOf(output(dir, ['render', 'revisit-phases', 'auth'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.gate, 'revisit phases');
-    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Discussion', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
+    assert.deepStrictEqual(gate.options[0], { key: '1', word: null, head: 'Specification', tail: 'completed', cue: null, holder: null, detail: null, struck: false, recommended: false });
     assert.deepStrictEqual(gate.options.at(-1), { key: 'b', word: 'back', head: 'Return to the previous menu', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false });
   });
 
@@ -382,14 +382,17 @@ describe('gate payload — a gateway menu', () => {
 
   it('a glyph-off statement over a hand-glyphed question', () => {
     createManifest(dir, 'auth', {
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-      completed_phases: ['discovery', 'discussion'],
-      next_phase: 'specification',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'completed' } } },
+      },
+      completed_phases: ['discovery', 'discussion', 'specification'],
+      next_phase: 'planning',
     });
     const gate = gateOf(runGateway(dir, 'leeway-continue-linear', ['view', 'auth'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed?');
-    assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for specification.');
+    assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for planning.');
   });
 
   it('a meta option carries its description as its detail, unwrapped, never as statement', () => {
@@ -474,7 +477,7 @@ describe('gate payload — every gateway verb', () => {
     },
     'leeway-continue-linear': {
       index: [refused()],
-      view: [gated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), gated('view', 'logging'), ungated('view', 'nowhere')],
+      view: [ungated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), ungated('view', 'logging'), ungated('view', 'nowhere')],
       fallback: [refused('checkout')],
     },
     'leeway-continue-epic': {
@@ -584,7 +587,7 @@ describe('gate payload — every gateway verb', () => {
     createFile(dir, '.leeway/v2/specification/done-spec/specification.md', '# Done');
     createFile(dir, '.leeway/v2/specification/data-spec/specification.md', '# Data');
 
-    /** A linear unit whose phase concluded, so its view asks whether to proceed. @param {string} name @param {string} workType @param {string} phase @param {string} next */
+    /** A linear unit whose one phase concluded — its view asks whether to proceed where that phase is revisitable, and hands straight on behind a decided discussion. @param {string} name @param {string} workType @param {string} phase @param {string} next */
     const concluded = (name, workType, phase, next) => createManifest(dir, name, {
       work_type: workType,
       phases: { [phase]: { items: { [name]: { status: 'completed' } } } },

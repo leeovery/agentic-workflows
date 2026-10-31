@@ -1129,25 +1129,29 @@ function checkFrameworkLoad(files) {
 const BASH_GRANT = /Bash\(([^)]*)\)/g;
 const SCRIPT_GRANT = /^node\s/;
 
+/** Each Bash grant in a file's frontmatter `allowed-tools`, with its line. */
+function* bashGrants(file) {
+  const lines = readLines(file);
+  if (lines[0] === undefined || lines[0].trim() !== '---') return;
+  let inGrants = false;
+  for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+    if (/^\S/.test(lines[i])) inGrants = lines[i].startsWith('allowed-tools:');
+    if (!inGrants) continue;
+    for (const [, grant] of lines[i].matchAll(BASH_GRANT)) yield { line: i + 1, grant };
+  }
+}
+
 function checkBashGrantsCarryWildcard(files) {
   const out = [];
   for (const file of files) {
-    const lines = readLines(file);
-    if (lines[0] === undefined || lines[0].trim() !== '---') continue;
-    let inGrants = false;
-    for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
-      const line = lines[i];
-      if (/^\S/.test(line)) inGrants = line.startsWith('allowed-tools:');
-      if (!inGrants) continue;
-      for (const [, grant] of line.matchAll(BASH_GRANT)) {
-        if (SCRIPT_GRANT.test(grant)) {
-          if (grant.endsWith(' *') || grant.endsWith(':*')) continue;
-          out.push({ file, line: i + 1, message: `Bash(${grant}) is a script grant that does not end in \` *\` or \`:*\` — it matches no call with arguments` });
-          continue;
-        }
-        if (grant.includes('*')) continue;
-        out.push({ file, line: i + 1, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
+    for (const { line, grant } of bashGrants(file)) {
+      if (SCRIPT_GRANT.test(grant)) {
+        if (grant.endsWith(' *') || grant.endsWith(':*')) continue;
+        out.push({ file, line, message: `Bash(${grant}) is a script grant that does not end in \` *\` or \`:*\` — it matches no call with arguments` });
+        continue;
       }
+      if (grant.includes('*')) continue;
+      out.push({ file, line, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
     }
   }
   return out;
@@ -1212,6 +1216,48 @@ function checkNoDesignTools(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 31 — a message's scratch is under the state's cache. `topic send`
+// takes its `--content` from `.leeway/.cache/` alone, refusing any other
+// path, so a send whose prose writes the message elsewhere fails every time.
+// ---------------------------------------------------------------------------
+
+// A usage line's `<file>` placeholder names no path.
+const SEND_CONTENT = /topic send\b.*?--content\s+([^<\s]\S*)/;
+
+function checkSendScratch(files) {
+  const out = [];
+  for (const file of files) {
+    readLines(file).forEach((line, i) => {
+      const hit = line.match(SEND_CONTENT);
+      if (hit && !hit[1].startsWith('.leeway/.cache/')) {
+        out.push({ file, line: i + 1, message: `topic send takes its --content from .leeway/.cache/ alone, got ${hit[1]}` });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 32 — a Bash grant names the state under `.leeway/`. The workflows keep
+// their state there, so a grant on a `.workflows/` path matches no call the
+// skill's prose makes, and the call stops for permission.
+// ---------------------------------------------------------------------------
+
+const RETIRED_ROOT = /(^|\s)\.workflows\//;
+
+function checkGrantsNameTheStateRoot(files) {
+  const out = [];
+  for (const file of files) {
+    for (const { line, grant } of bashGrants(file)) {
+      if (RETIRED_ROOT.test(grant)) {
+        out.push({ file, line, message: `Bash(${grant}) names .workflows/ — the state lives under .leeway/` });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1243,6 +1289,8 @@ const CHECKS = [
   ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
   ['29: the framework\'s references load once, from framework.md alone', checkFrameworkLoadsOnce],
   ['30: no design tool is named', checkNoDesignTools],
+  ['31: a message\'s scratch is under the state\'s cache', checkSendScratch],
+  ['32: a Bash grant names the state under .leeway/', checkGrantsNameTheStateRoot],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2427,6 +2475,34 @@ test('check 30 (no design tool) — 9.S53: catches each listed tool named in a s
   });
 });
 
+test('check 31 (send scratch) — catches a topic send whose --content sits outside .leeway/.cache/; permits one inside it, a usage line\'s placeholder, and a line naming the verb with no --content', () => {
+  withTemp((dir) => {
+    const send = (where) => `node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {topic} --content ${where}/{work_unit}/discussion/{topic}/message-{slug}.md --slug {slug}`;
+    const outside = write(dir, 'skills/x/references/out.md', `# Out\n\n\`\`\`bash\n${send('.workflows/.cache')}\n\`\`\`\n`);
+    assert.deepStrictEqual(checkSendScratch([outside]).map((v) => v.line), [4]);
+    const inside = write(dir, 'skills/x/references/in.md', `# In\n\n\`\`\`bash\n${send('.leeway/.cache')}\n\`\`\`\n\nA message out goes through \`topic send\`.\n\n    engine topic send <work-unit> <topic> --from <sender> --content <file> --slug <kebab>\n`);
+    assert.strictEqual(checkSendScratch([inside]).length, 0);
+  });
+});
+
+test('check 32 (grants name the state root) — catches a grant on a .workflows/ path, inline or listed; permits one under .leeway/ and a .workflows/ path in the body', () => {
+  withTemp((dir) => {
+    const grants = (root) => [
+      '---', 'name: leeway-a-process',
+      `allowed-tools: Bash(mkdir -p ${root}/*/.state), Bash(rm ${root}/*/.state/analysis.md)`,
+      'tools:', `  - Bash(ls ${root}/*)`, '---', '', `Write \`.workflows/{work_unit}/notes.md\`.`, '',
+    ].join('\n');
+    const retired = write(dir, 'skills/leeway-a-process/SKILL.md', grants('.workflows'));
+    const current = write(dir, 'skills/leeway-b-process/SKILL.md', grants('.leeway'));
+    assert.strictEqual(checkGrantsNameTheStateRoot([current]).length, 0);
+    const v = checkGrantsNameTheStateRoot([retired]);
+    assert.deepStrictEqual(v.map((x) => x.line), [3, 3], `each retired grant is caught at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^Bash\(mkdir -p \.workflows\/\*\/\.state\) names \.workflows\/ — the state lives under \.leeway\/$/);
+    const listed = write(dir, 'skills/leeway-c-process/SKILL.md', ['---', 'allowed-tools:', '  - Bash(rm .workflows/*/x.md)', '---', ''].join('\n'));
+    assert.deepStrictEqual(checkGrantsNameTheStateRoot([listed]).map((x) => x.line), [3]);
+  });
+});
+
 test('check 29 (the framework loads once) — catches a file the framework loads twice and a framework file loaded from anywhere else; permits the framework load itself, another shared reference, fenced content, and a corpus without the framework', () => {
   withTemp((dir) => {
     const shared = 'skills/leeway-shared/references';
@@ -2458,7 +2534,7 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
     const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
     const starred = write(dir, 'skills/leeway-a-process/SKILL.md', [
       '---', 'name: leeway-a-process',
-      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .workflows/*/.state), Read`,
+      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .leeway/*/.state), Read`,
       '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
     ].join('\n'));
     const agent = write(dir, 'agents/leeway-b.md', '---\nname: leeway-b\ntools: Read, Bash\n---\n\nBody.\n');

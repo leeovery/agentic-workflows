@@ -41,9 +41,8 @@
 // `leeway` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap, the baseline. Nothing else is a legitimate opening — help, the
-// linear continue menu, the bridge and the legacy research split are only
-// ever opened in place, mid-session, and a reference is never entered
-// directly. A case about help enters at leeway and picks the start
+// linear continue menu and the bridge are only ever opened in place,
+// mid-session, and a reference is never entered directly. A case about help enters at leeway and picks the start
 // menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
@@ -190,8 +189,8 @@ function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
   if (!OPENING_SKILLS.includes(entry)) {
     return [`entry "${entry}" is not somewhere a session starts — use a skill a conversation opens on `
-      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu, the bridge and the legacy `
-      + 'research split are only ever opened in place, mid-session, and a reference never directly'];
+      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu and the bridge `
+      + 'are only ever opened in place, mid-session, and a reference never directly'];
   }
   return [];
 }

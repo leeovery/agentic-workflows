@@ -1261,14 +1261,14 @@ describe('pipeline continuation surfaces', () => {
     const note = renderSurface(dir, 'phase-completed', { dotpath: 'pay', phase: 'experiment' });
     assert.ok(note.includes('Experiment session complete for "Pay".'), note);
     assert.ok(!note.includes('Experiment completed'), 'never claims the phase completed');
+  });
 
+  it('next-phase-gate: an experiment hands on without asking — nothing before the next phase is revisitable', () => {
     writeManifest(dir, 'lab', {
       work_type: 'feature',
       phases: { discussion: { items: { lab: { status: 'completed' } } } },
     });
-    const gate = renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'specification' });
-    assert.ok(gate.includes('Experiment session complete for "Lab".'), gate);
-    assert.match(gate, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'lab', prev: 'experiment', next: 'specification' }), '');
   });
 
   it('epic-all-done-gate and phase-completed carry their statements', () => {
@@ -1305,10 +1305,9 @@ describe('pipeline continuation surfaces', () => {
     });
     assert.throws(() => renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'review' }),
       /unknown --next "review" for a cross-cutting \(pipeline: experiment, discussion, specification\)/);
-    const hop = renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' });
-    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
-    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.ok(!hop.includes('d/done'), hop);
+    // The hop it has asks nothing: no skip, and a decided discussion is no
+    // revisit — it reopens by a message.
+    assert.strictEqual(renderSurface(dir, 'next-phase-gate', { dotpath: 'xc', prev: 'discussion', next: 'specification' }), '');
   });
 
   it('next-phase-gate: several live reconcile flags join into one cue', () => {

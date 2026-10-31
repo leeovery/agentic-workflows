@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's cross-cutting scenarios: the discussion to
-// specification hop offering proceed or revisit, never the skip; a
+// specification hop asking nothing — no revisit, never the skip; a
 // specification still being written stopping a peer's fresh plan, a
 // completed one referenced; and a cross-cutting concern promoted out of an
 // epic with its discussions, the roadmap's sources following the files.
@@ -26,7 +26,7 @@ const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs
 const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { epicDashboard } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const {
-  Sim, sessionLog, arrive, handoffEntry, enterEntry, handoff, decideTopic, discussed, bridgeTo, linearPick, startNew,
+  Sim, sessionLog, arrive, handoffEntry, enterEntry, handoff, decideTopic, discussed, bridgeTo, linearPick, startNew, send, sendArgv,
 } = require('./pipeline-world.cjs');
 
 const { specDetail } = require('./pipeline-oracle.cjs');
@@ -36,19 +36,18 @@ describe('pipeline simulation: cross-cutting', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('cross-cutting: the discussion→specification hop offers proceed or revisit, never the skip', () => {
+  it('cross-cutting: the discussion→specification hop asks nothing — no revisit, never the skip', () => {
     const wu = 'error-shape';
     startNew(sim, 'cross-cutting');
     sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
     // Cross-cutting goes to its discussion first, as a feature does.
     handoff(sim, `/leeway-discussion-process cross-cutting ${wu}`);
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['cross-cutting', wu] });
-    // The pipeline ends at specification, so review is never this type's
-    // next phase — the gate refuses the hop rather than offering a skip.
-    const hop = sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' });
-    assert.match(hop, /\*\*`y\/yes`\*\* +→ Proceed to specification/);
-    assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
-    assert.ok(!hop.includes('d/done'), hop);
+    // The decided discussion is no revisit — it reopens by a message — so
+    // the hop asks nothing. The pipeline ends at specification, so review is
+    // never this type's next phase — the gate refuses the hop rather than
+    // offering a skip.
+    sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
     // A session that stops here resumes from the cross-cutting continue menu,
     // which hands off where the bridge does.
@@ -155,7 +154,7 @@ describe('pipeline simulation: cross-cutting', () => {
       tracing: ['promoted', 'logging-cc'],
       billing: ['completed', undefined],
     });
-    sim.refuses(['topic', 'reopen', wu, 'discussion', 'tracing'], /promoted \(to "logging-cc"\)/);
+    sim.refuses(sendArgv(sim, wu, 'tracing', 'billing', 'to-tracing'), /^the topic "tracing" was promoted to "logging-cc" — it carries on there$/);
     // Past specification, moved elsewhere: the topics lock against cancel
     // and postpone, the sub-views naming the unit.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'tracing'],
@@ -190,25 +189,25 @@ describe('pipeline simulation: cross-cutting', () => {
       tracing: { status: 'incorporated' },
     });
 
-    // Reactivated, it offers each moved discussion for revisit by name, and
-    // the route the pick hands off names the one picked.
+    // Reactivated, it offers its specification for revisit and never a
+    // moved discussion — a decided discussion reopens by a message.
     sim.run(['workunit', 'reactivate', cc]);
     arrive(sim, cc);
     const linear = LINEAR_GATEWAY.view(sim.dir, cc);
-    assert.match(linear, /^ {2}1 {2}— {2}revisit_phase {2}logging {2}→ \/leeway-discussion-process cross-cutting logging-cc logging$/m, linear);
-    assert.match(linear, /^ {2}2 {2}— {2}revisit_phase {2}tracing {2}→ \/leeway-discussion-process cross-cutting logging-cc tracing$/m, linear);
-    assert.match(linear, /^ {2}3 {2}— {2}revisit_phase {2}logging-cc {2}→ \/leeway-specification-process cross-cutting logging-cc$/m, linear);
-    assert.match(sim.render(['revisit-phases', cc], { expect: 'content' }), /\*\*`2`\*\* +→ Discussion "Tracing" — \*completed\*/);
-    handoff(sim, `/leeway-discussion-process cross-cutting ${cc} tracing`);
+    assert.match(linear, /^ {2}1 {2}— {2}revisit_phase {2}logging-cc {2}→ \/leeway-specification-process cross-cutting logging-cc$/m, linear);
+    assert.doesNotMatch(linear, /leeway-discussion-process/, linear);
 
-    // The reopen flags the unit's specification through the reverse join;
-    // in flight, the discussion is the next route, by name, and its entry
-    // resumes it.
-    const reopened = sim.run(['topic', 'reopen', cc, 'discussion', 'tracing']);
-    assert.deepStrictEqual(reopened.reconcile_flagged, [{ phase: 'specification', topic: cc }]);
+    // A message reopens tracing and flags the unit's specification through
+    // the reverse join; in flight, the discussion is the next route, by
+    // name, and its entry resumes it.
+    const reopened = send(sim, cc, 'tracing', cc, 'sampling');
+    assert.strictEqual(reopened.reopened, true);
+    assert.strictEqual(reopened.reconcile_flagged, true);
     assert.deepStrictEqual(reopened.sources_staled, [cc]);
+    assert.strictEqual(sim.manifest(cc).phases.specification.items[cc].reconcile_needed, 'discussion');
     assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, cc)),
       new RegExp(`^next_route: /leeway-discussion-process cross-cutting ${cc} tracing$`, 'm'));
+    handoff(sim, `/leeway-discussion-process cross-cutting ${cc} tracing`);
 
     // Decided again, the next route is the specification's reconcile — by
     // the unit alone, its specification carrying the unit's name.
@@ -216,7 +215,7 @@ describe('pipeline simulation: cross-cutting', () => {
       { kind: 'handoff', skill: 'leeway-specification-process', args: ['cross-cutting', cc] });
     const dump = BRIDGE.format(BRIDGE.discover(sim.dir, cc));
     assert.match(dump, new RegExp(`^next_route: /leeway-specification-process cross-cutting ${cc}$`, 'm'), dump);
-    assert.match(dump, /^revisitable_phases: discussion\/logging, discussion\/tracing$/m, dump);
+    assert.match(dump, /^revisitable_phases: \(none\)$/m, dump);
     assert.strictEqual(LIB.detail.activeWorkUnit(sim.dir, cc)?.unit.phase_label, 'specification (input moved — reconcile)');
     bridgeTo(sim, cc, 'specification');
 

@@ -522,7 +522,6 @@ function epicDetail(cwd, manifest) {
 
   const discussionItems = phaseItems(manifest, 'discussion');
 
-
   const unaccountedDiscussions = [];
   for (const d of discussionItems) {
     if (d.status === 'completed' && !groupedDiscussions.has(d.name)) {

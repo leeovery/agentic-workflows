@@ -156,10 +156,10 @@ Re-read the spec item's status as at the top of this section; a terminal status 
 
 **If the work type is not `epic`:**
 
-Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
+Write the message in the message shape pinned in [sending-a-message.md](../../leeway-shared/references/sending-a-message.md) — `### {short title}`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.leeway/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name}
+node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {doc} --from {topic} --content .leeway/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name}
 ```
 
 → Proceed to **D. Pause the Specification**.

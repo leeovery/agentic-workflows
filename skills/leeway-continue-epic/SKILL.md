@@ -1,7 +1,7 @@
 ---
 name: leeway-continue-epic
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
+allowed-tools: Bash(node .claude/skills/leeway-continue-epic/scripts/gateway.cjs *), Bash(node .claude/skills/leeway/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-discovery/scripts/gateway.cjs *), Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *), Bash(mkdir -p .leeway/*/.state), Bash(rm .leeway/*/.state/discussion-consolidation-analysis.md)
 ---
 
 Continue an in-progress epic. Shows full phase-by-phase state and routes to the appropriate phase skill.

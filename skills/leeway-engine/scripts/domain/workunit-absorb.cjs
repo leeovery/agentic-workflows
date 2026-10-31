@@ -335,7 +335,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       // (slug, status, verdict, reason) — the register is the record.
       ensureContainer(experiment, 'items', 'phases.experiment.items')[topic] = copyWhole(experimentItem);
     }
-
     for (const move of importPlan) {
       if (!Array.isArray(epicManifest.imports)) epicManifest.imports = [];
       /** @type {Record<string, any>} */
@@ -410,7 +409,6 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     renamed_imports: renamedImports,
     seeds: seedMoves.map((move) => ({ path: statePath(cwd, into, 'seeds', move.dest), source: move.entry.source })),
     committed: outcome.committed,
-
     warnings,
   };
   if (experimentMove) {

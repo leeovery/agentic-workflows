@@ -9,6 +9,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { flagDownstream } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
 const { moveFiles } = require('../../skills/leeway-engine/scripts/domain/inbox.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
@@ -854,7 +855,16 @@ describe('engine topic reopen', () => {
     assert.strictEqual(readManifest(dir, 'payments').phases.planning.items['fee-model'].reconcile_needed, 'specification', 'the earlier flag preserved');
   });
 
-  it('discussion reopen flags owning specs by reverse join and stales their source rows', () => {
+  it('refuses a discussion, whatever it stands at — a decided one reopens through a message sent to it', () => {
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
+    for (const topic of ['session-model', 'refund-policy']) {
+      assert.strictEqual(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', topic]).error,
+        'a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+    }
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('a discussion\'s hop — taken by a message landing on it — flags owning specs by reverse join and stales their source rows', () => {
     const m = epicManifest();
     m.phases.specification = { items: {
       unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' }, other: { status: 'incorporated' } } },
@@ -863,16 +873,10 @@ describe('engine topic reopen', () => {
       gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
       building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
     } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
-
-    assert.deepStrictEqual(res.reconcile_flagged, [
-      { phase: 'specification', topic: 'unified' },
-      { phase: 'specification', topic: 'legacy' },
-    ]);
-    assert.deepStrictEqual(res.sources_staled, ['unified', 'legacy', 'building']);
-    const items = readManifest(dir, 'payments').phases.specification.items;
+    const fd = flagDownstream(m, 'epic', 'discussion', 'session-model');
+    assert.deepStrictEqual(fd.flagged, [{ phase: 'specification', topic: 'unified' }, { phase: 'specification', topic: 'legacy' }]);
+    assert.deepStrictEqual(fd.staled, ['unified', 'legacy', 'building']);
+    const items = m.phases.specification.items;
     assert.strictEqual(items.unified.reconcile_needed, 'discussion');
     assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
     assert.strictEqual(items.unified.sources.other.status, 'incorporated', 'sibling rows untouched');
@@ -884,24 +888,11 @@ describe('engine topic reopen', () => {
     // the stale row — but the row still stales.
     assert.strictEqual(items.building.reconcile_needed, undefined);
     assert.strictEqual(items.building.sources['session-model'].status, 'stale');
-  });
 
-  it('a second source re-deciding still stales its row on an already-flagged spec', () => {
-    const m = epicManifest();
-    m.phases.discussion.items['refund-policy'].status = 'completed';
-    m.phases.specification = { items: {
-      unified: { status: 'completed', reconcile_needed: 'discussion',
-        sources: { 'session-model': { status: 'stale' }, 'refund-policy': { status: 'incorporated' } } },
-    } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-
-    const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'refund-policy']);
-
-    assert.strictEqual(res.reconcile_flagged, undefined, 'the existing flag is never clobbered');
-    assert.deepStrictEqual(res.sources_staled, ['unified']);
-    const item = readManifest(dir, 'payments').phases.specification.items.unified;
-    assert.strictEqual(item.reconcile_needed, 'discussion');
-    assert.strictEqual(item.sources['refund-policy'].status, 'stale');
+    const again = flagDownstream(m, 'epic', 'discussion', 'other');
+    assert.deepStrictEqual(again.flagged, [{ phase: 'specification', topic: 'unrelated' }], 'an existing flag is never clobbered');
+    assert.deepStrictEqual(again.staled, ['unified', 'unrelated']);
+    assert.strictEqual(items.unified.sources.other.status, 'stale', 'a second source re-deciding still stales its row on a flagged spec');
   });
 
   it('specification reopen flags the completed plan — the pipeline hop', () => {
@@ -953,13 +944,13 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
-  it('refuses a promoted discussion — it left with its specification, and reopens in its cross-cutting unit', () => {
+  it('refuses a promoted specification — it left for its cross-cutting unit, and reopens there', () => {
     const m = epicManifest();
-    m.phases.discussion.items['session-model'] = { status: 'promoted', promoted_to: 'sessions' };
+    m.phases.specification = { items: { sessions: { status: 'promoted', promoted_to: 'sessions' } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
-    const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
-    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
+    const refusal = /specification item "sessions" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'specification', 'sessions']).error, refusal);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
@@ -975,8 +966,10 @@ describe('engine topic reopen', () => {
   });
 
   it('refuses a cancelled item — reactivate owns that path', () => {
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
+    const m = epicManifest();
+    m.phases.specification = { items: { 'auth-flow': { status: 'cancelled' } } };
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const err = engineFails(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
     assert.match(err.error, /is cancelled — reactivate it instead/);
   });
 

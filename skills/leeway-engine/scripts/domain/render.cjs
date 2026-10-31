@@ -3968,11 +3968,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
   const revisitable = phaseTargets(manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 
-  // A derived phase's line matches phase-completed's: the session is
-  // complete, never the phase — sibling records may still live.
-  let statement = DERIVED_PHASES.includes(prev)
-    ? `${titlecase(prev)} session complete for "${titlecase(workUnit)}".`
-    : `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
+  let statement = `${titlecase(prev)} completed for "${titlecase(workUnit)}".`;
   if (skipReview) {
     // A live reconcile flag makes the skip-review exit an informed choice:
     // the gate names what completing now would carry unresolved.
@@ -4567,7 +4563,6 @@ function entryGate(cwd, { dotpath, own }) {
     }
     return '';
   }
-
 
   if (phase === 'planning') {
     const spec = itemOf(manifest, 'specification', topic);

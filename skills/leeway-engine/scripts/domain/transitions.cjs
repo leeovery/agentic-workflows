@@ -538,6 +538,9 @@ function completeTopic(cwd, workUnit, phase, topic) {
 function reopenTopic(cwd, workUnit, phase, topic) {
   assertLegalWrite(phase, 'in-progress');
   assertNotDerived(phase, 'the experiment item is derived bookkeeping — a new spawn reopens the series (experiment create), never topic reopen');
+  if (phase === 'discussion') {
+    throw new Error('a decided discussion reopens through a message sent to it (topic send), never topic reopen');
+  }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
@@ -662,7 +665,6 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
     }
-
     item.status = 'superseded';
     item.superseded_by = by;
 

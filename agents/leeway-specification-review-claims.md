@@ -15,7 +15,7 @@ You receive via the orchestrator's prompt:
 
 1. **Work unit** — the work unit name (for output path construction)
 2. **Specification path** — the specification file to review
-3. **Source material paths** — the spec's source documents, resolved to file paths by the orchestrator (for locating where a failed claim originates — not for fidelity comparison)
+3. **Source material paths** — the spec's source documents, resolved by the orchestrator: a file path, or for a discussion the `ledger record` call that prints its record, which you run (for locating where a failed claim originates — not for fidelity comparison)
 4. **Import paths** — reference material the unit holds; a claim whose ground is one of these is measured against it
 5. **Topic name** — the specification topic
 6. **Cycle number** — which review cycle this is (used in output file naming)
@@ -40,7 +40,7 @@ Prioritise **load-bearing** claims — a decision, gate, scope boundary, or key 
 3. **Measure each load-bearing claim** — run the claim's recorded command where it carries one (the spec format records measurements as `` `command` → result ``); construct the obvious measurement where it doesn't; read the cited range where the claim is a guarantee resting on a citation, and hold the sentence against what the code does under the case it describes. Reuse nothing: not the documents' own figures, not prior cycles' tracking files, not any assertion that something was "verified" — a stated verification is a claim, not a measurement.
 4. **Verdict each claim**:
    - **Holds** — measurement matches. No finding.
-   - **Fails** — measurement contradicts the claim. Grep the source material for the same assertion:
+   - **Fails** — measurement contradicts the claim. Search the source material for the same assertion — a file by grep, a record in what its call prints:
      - Present in a source → category **Source defect**. The spec faithfully carries a defective source; the fix belongs to the source record, not the spec.
      - Spec-only → category **Enhancement to existing topic**, move `settled`, Proposed Text = the corrected claim carrying its command and result.
    - **Unreproducible** — no command you can construct checks it as written, or checking would mutate state → category **Gap/Ambiguity**: the claim must be restated measurably, sourced, or removed. A claim whose ground is a design file or image the unit holds is read, not filed here — only one whose ground the unit does not hold stays Unreproducible.

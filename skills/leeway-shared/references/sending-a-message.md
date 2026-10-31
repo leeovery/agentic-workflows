@@ -85,11 +85,11 @@ Create the target via the shared topic-creation core. The core writes the map it
 One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox under the line naming its sender, consumes the scratch file, and commits the delivery (message file + manifest).
 
 1. Derive `slug` — kebab-case of the message's short title.
-2. Write the full entry (shape above) to `.workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md` with the Write tool.
+2. Write the full entry (shape above) to `.leeway/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md` with the Write tool.
 3. Deliver:
 
    ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {origin} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug}
+   node .claude/skills/leeway-engine/scripts/engine.cjs topic send {work_unit} {target} --from {origin} --content .leeway/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug}
    ```
 
 **If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.

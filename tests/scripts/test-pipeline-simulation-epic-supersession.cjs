@@ -202,11 +202,11 @@ describe('pipeline simulation: epic supersession', () => {
     sim.refuses(['topic', 'start', wu, 'specification', 'alpha'], /superseded/);
     sim.refuses(['topic', 'complete', wu, 'specification', 'alpha'], /superseded/);
 
-    // The discussion hop finds the grouped spec by reverse join: re-deciding
-    // beta flags 'unified' (a spec named differently) and stales its beta row;
-    // the superseded alpha spec is terminal — never flagged.
-    const betaReopen = sim.run(['topic', 'reopen', wu, 'discussion', 'beta']);
-    assert.deepStrictEqual(betaReopen.reconcile_flagged, [{ phase: 'specification', topic: 'unified' }]);
+    // The discussion hop finds the grouped spec by reverse join: a message
+    // reopening beta flags 'unified' (a spec named differently) and stales
+    // its beta row; the superseded alpha spec is terminal — never flagged.
+    const betaReopen = send(sim, wu, 'beta', 'alpha', 'beta-moves');
+    assert.strictEqual(betaReopen.reconcile_flagged, true);
     assert.deepStrictEqual(betaReopen.sources_staled, ['unified']);
     const unified = sim.manifest(wu).phases.specification.items.unified;
     assert.strictEqual(unified.reconcile_needed, 'discussion');
@@ -224,8 +224,7 @@ describe('pipeline simulation: epic supersession', () => {
     const openRow = openView.actionable.find((r) => r.name === 'unified');
     assert.strictEqual(openRow.blocked, true);
     assert.deepStrictEqual(openRow.open_sources, ['beta']);
-    enterEntry(sim, wu, 'discussion', 'beta');
-    decideTopic(sim, wu, 'beta');
+    discussed(sim, wu, 'beta');
     sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'empty' });
     assert.strictEqual(specDetail(sim.dir, wu).actionable.find((r) => r.name === 'unified').blocked, false);
     // While stale, the spec boundary keeps the spec actionable — never
