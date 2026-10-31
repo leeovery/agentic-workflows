@@ -25,6 +25,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 
 const { ok, output, refusedPristine, readManifest, readState, statePath, lastMessage, touched, head, layout, writeState } = require('./engine-harness.cjs');
+const { joinedTo } = require('./roadmap-world.cjs');
 const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp, sectionOf } = require('./discovery-gates-world.cjs');
 
 const dir = useGatesWorld();
@@ -200,7 +201,7 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
   it('refuses a roadmap item missing, named twice, or joined to work already', () => {
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['no-such'] }), 'render start-this-work: roadmap: the roadmap has no item "no-such"');
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync', 'note-sync'] }), 'render start-this-work: roadmap: "note-sync" is named twice');
-    ok(dir(), ['roadmap', 'pull', 'note-sync', '--into', 'atlas']);
+    joinedTo(dir(), 'atlas', 'note-sync');
     assert.strictEqual(refusedStage({ ...FUMI, roadmap: ['note-sync'] }), 'render start-this-work: roadmap: "note-sync" is joined to work unit "atlas" already');
   });
 

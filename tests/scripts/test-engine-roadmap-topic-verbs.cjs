@@ -22,7 +22,7 @@ const path = require('path');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
 const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses } = require('./engine-harness.cjs');
-const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource } = require('./roadmap-world.cjs');
+const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
   let dir;
@@ -54,6 +54,22 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   const engineFails = (/** @type {string[]} */ args, /** @type {RegExp} */ p) => refuses(dir, args, p);
   const epicText = () => fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
+
+  it('roadmap state names the record a postponed topic left as its item\'s earlier: the brief and log where they exist, the ledger record call, each message waiting (18.8.17)', () => {
+    const mail = path.join(dir, '.leeway', 'mvp', 'topics', 'ordering', 'mail', '001-tax.md');
+    fs.mkdirSync(path.dirname(mail), { recursive: true });
+    fs.writeFileSync(mail, 'Tax\nFrom Discovery · 1 Jan\n');
+    commitAll(dir, 'a message waits');
+    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
+    const at = (/** @type {string} */ rel) => path.join(fs.realpathSync(dir), '.leeway', 'mvp', 'topics', 'ordering', rel);
+    const rows = runOk(dir, ['state']).items;
+    assert.deepStrictEqual(rows.find((/** @type {{name: string}} */ r) => r.name === 'ordering').earlier, {
+      brief: at('brief.md'),
+      record: 'node .claude/skills/leeway-engine/scripts/engine.cjs ledger record mvp ordering',
+      log: at('log.md'),
+      mail: [at('mail/001-tax.md')],
+    });
+  });
 
   it('the birth arm: map and horizon born JIT, origin and postponed_from written, sources only where the file exists', () => {
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
@@ -106,7 +122,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   it('the re-wait arm: a pulled topic\'s own item loses its join, takes the horizon, and keeps its name and origin', () => {
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order', '--origin', 'harvest']);
-    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'guest-ordering');
     runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
     const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(res.roadmap, { name: 'guest-ordering', horizon: 'later', born_map: false, born_horizon: true, reverted_join: true });
@@ -122,7 +138,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   it('a bug or a quick-fix never binds to a topic — it rides with the unit — so a re-wait is always an idea\'s', () => {
     runOk(dir, ['add', 'checkout-crash', '--horizon', 'mvp', '--summary', 'the order page crashes', '--kind', 'bug']);
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
-    runOk(dir, ['pull', 'checkout-crash', 'typo', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'checkout-crash', 'typo');
     const before = projectManifestText(dir);
     assert.strictEqual(runFail(dir, ['bind', 'checkout-crash', '--topic', 'ordering']).error,
       '"checkout-crash" is a bug — it rides with the unit as material; only an idea binds to a topic');
@@ -238,7 +254,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     commitAll(dir, 'inbox');
     fs.writeFileSync(path.join(dir, 'batch.json'), JSON.stringify([{ name: 'guest-ordering', horizon: 'mvp', summary: 'customers order', note: inboxNote }]));
     runOk(dir, ['add-batch', '--file', 'batch.json']);
-    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'guest-ordering');
     runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
     assert.strictEqual(engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']).roadmap.reverted_join, true);
     assert.ok(readProject(dir).roadmap.items['guest-ordering'].sources.includes('.roadmap/notes/ideas/2026-03-01--guest-ordering.md'));
@@ -301,7 +317,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     writeSource(dir, '.product/sessions/session-001.md');
     runOk(dir, ['add', 'guest-ordering', '--horizon', 'mvp', '--summary', 'customers order',
       '--source', '.product/sessions/session-001.md', '--source', 'mvp/topics/ordering/log.md']);
-    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'guest-ordering');
     runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
     assert.deepStrictEqual(readProject(dir).roadmap.items['guest-ordering'].sources, [
@@ -335,7 +351,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       phases: { discovery: { items: { checkout: { source: 'discovery', summary: 's' } } } },
     });
     commitAll(dir, 'v2');
-    runOk(dir, ['pull', 'ordering', '--into', 'v2']);
+    joinedTo(dir, 'v2', 'ordering');
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'checkout']);
     assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
     assert.deepStrictEqual(
@@ -347,7 +363,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   it('a bind back into the epic that postponed the topic writes no prior', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'ordering');
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'menus']);
     assert.strictEqual('prior' in res, false);
     assert.strictEqual('prior' in epic().phases.discovery.items.menus, false);
@@ -375,7 +391,7 @@ describe('engine CLI: the cancel-revert hop', () => {
       },
     });
     commitAll(at, 'fixture');
-    runOk(at, ['pull', 'ordering', 'menus', '--into', 'mvp']);
+    joinedTo(at, 'mvp', 'ordering', 'menus');
     runOk(at, ['bind', 'ordering', '--topic', 'ordering']);
   });
   beforeEach(() => { dir = setup(); });

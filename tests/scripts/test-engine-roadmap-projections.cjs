@@ -45,7 +45,7 @@ const FIXES = [
 ];
 
 describe('roadmap projections: pull working set', () => {
-  it('numbers waiting items horizon-major, with the DATA table resolving them', () => {
+  it('numbers waiting items horizon-major, with the DATA tables resolving them and counting each horizon\'s waiting', () => {
     const view = roadmapPullSetView(state(ROWS));
     assert.deepStrictEqual(view.rows, [
       { n: 1, name: 'menus', horizon: 'mvp', kind: 'idea' },
@@ -55,6 +55,7 @@ describe('roadmap projections: pull working set', () => {
     assert.match(view.data, /waiting_count: 3/);
     assert.match(view.data, /ITEMS \(n {2}name {2}horizon {2}kind\):/);
     assert.match(view.data, /  2  kds  mvp  idea/);
+    assert.match(view.data, /\nHORIZONS \(horizon {2}waiting\):\n {2}mvp {2}2\n {2}v1 {2}1$/, 'each horizon counts only its waiting items');
     assert.match(view.display, /mvp\n  ├─ 1\. Menus — operators maintain\n  └─ 2\. Kds — orders reach the kitchen/);
     assert.match(view.display, /v1\n  └─ 3\. Loyalty — rewards/);
     assert.ok(!view.display.includes('Ordering'), 'joined items never offer themselves for a pull');

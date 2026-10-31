@@ -20,7 +20,7 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok } = require('./engine-harness.cjs');
-const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText } = require('./roadmap-world.cjs');
+const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, joinedTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: inbox notes onto the roadmap, and back to the archive', () => {
   let dir;
@@ -271,7 +271,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
   it('a pulled item\'s note stays where it is — the remove refuses as for any pulled item', () => {
     runOk(dir, batch([{ name: 'login-crash', horizon: 'later', summary: 's', note: BUG }]));
     createManifest(dir, 'login-crash', { work_type: 'bugfix', status: 'in-progress' });
-    runOk(dir, ['pull', 'login-crash', '--into', 'login-crash']);
+    joinedTo(dir, 'login-crash', 'login-crash');
     assert.match(runFail(dir, ['remove', 'login-crash']).error, /joined to work unit "login-crash"/);
     assert.ok(exists(BUG_NOTE));
   });

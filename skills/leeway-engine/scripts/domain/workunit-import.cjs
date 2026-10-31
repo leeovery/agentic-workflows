@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the mid-session import — a file the user shares after the
-// opener, landing in the work unit's one imports home with the origin of the
+// Domain ring: the mid-session import — a file the user shares once the unit
+// exists, landing in the work unit's one imports home with the origin of the
 // session that took it.
 // ---------------------------------------------------------------------------
 

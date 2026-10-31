@@ -52,4 +52,21 @@ function writeSource(dir, rel) {
   fs.writeFileSync(abs, '# Session\n');
 }
 
-module.exports = { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource };
+/** Write a joined item directly — corrupt-shape and orphan fixtures the verbs refuse to create. */
+function joinItem(dir, name, workUnit, topic) {
+  const manifest = readProject(dir);
+  manifest.roadmap.items[name].pulled_to = topic ? { work_unit: workUnit, topic } : { work_unit: workUnit };
+  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(manifest, null, 2));
+}
+
+/**
+ * Roadmap items joined to a unit as start this work joins them, committed —
+ * for a suite whose subject comes after the join.
+ * @param {string} dir @param {string} into @param {...string} names
+ */
+function joinedTo(dir, into, ...names) {
+  for (const name of names) joinItem(dir, name, into);
+  commitAll(dir, `roadmap: join ${names.join(', ')} to ${into}`);
+}
+
+module.exports = { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo };

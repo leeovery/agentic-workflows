@@ -3,9 +3,8 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's epic scenarios: the epic started and its map
 // approved at discovery's gates; a topic's discussion, with a
-// message raised and answered through the topic's one mailbox; the d door
-// into the epic's discovery, where a new topic lands; an arrival that
-// backfills; and the last review
+// message raised and answered through the topic's one mailbox; a topic
+// landed in discovery started from its own row; an arrival that backfills; and the last review
 // handing off to the menu. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
 // test-pipeline-simulation-backwards.cjs.
@@ -135,32 +134,16 @@ describe('pipeline simulation: epic', () => {
     decideTopic(sim, wu, 'alpha');
   });
 
-  it('epic: the d door hands into the epic\'s discovery, where the new topic lands with its brief and its own start row carries it', () => {
+  it('epic: the d door is never the soft gate\'s, and a topic landed in discovery has its own start row, whose entry starts it', () => {
     const wu = 'lumen';
     mappedEpic(sim, wu, ['alpha']);
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
-
-    // The door is a route into the epic's discovery, never handed to the
-    // soft gate; the handoff still refuses an epic's discussion without a topic.
-    const door = `/leeway-discovery none ${wu}`;
-    assert.strictEqual(epicPick(sim, wu, 'new_topic').text, `Invoke \`${door}\`.`);
     sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'new_topic'], /unknown --action "new_topic"/);
     sim.refuses(['handoff', '/leeway-discussion-process', 'epic', wu], /^an epic enters discussion at a topic/);
-    sim.handOver();
-    sim.run(['enter', 'discovery', wu]);
-    assert.match(sim.render(['discovery-map', wu], { expect: 'content' }), /^ {2}- alpha \[fresh\] — alpha$/m);
 
-    // A name already on the map is refused before anything lands.
-    const before = JSON.stringify(sim.manifest(wu));
-    sim.refuses(['topic', 'add', wu, 'alpha', '--summary', 'Again', '--brief', briefDraft(sim, wu, 'alpha')], /"alpha" is already on the map/);
-    assert.strictEqual(JSON.stringify(sim.manifest(wu)), before, 'a refused name writes nothing');
-
-    // A new name lands fresh with its brief, and its own start row hands off
-    // to the discussion, whose entry starts it.
     const topic = 'omega';
     sim.run(['topic', 'add', wu, topic, '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--brief', briefDraft(sim, wu, topic)]);
-    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/${topic}/brief.md`)), 'the brief is the topic\'s');
     const route = `/leeway-discussion-process epic ${wu} ${topic}`;
     assert.strictEqual(epicPick(sim, wu, 'start_discussion', topic).text, `Invoke \`${route}\`.`);
     menuEntry(sim, wu);

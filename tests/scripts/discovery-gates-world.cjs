@@ -35,8 +35,8 @@ const EPIC = 'fumi';
 function beforeTheWork(dir) {
   keywordOnlyKnowledge(dir);
   ok(dir, ['workunit', 'create', 'atlas', 'feature', '--description', 'Maps', '--session-log-file', writeState(dir, layout.cache('atlas', 'session-001.md'), '# Atlas\n')]);
-  const draft = writeState(dir, layout.cache('product', 'session-001.md'), '# The product\n\n## Notes {#notes}\n\nStickies, but smarter.\n\n## Pricing {#pricing}\n\nOne-time.\n');
-  ok(dir, ['discovery-session', 'open', 'product', '--session-log-file', draft]);
+  ok(dir, ['enter', 'discovery', 'product']);
+  writeState(dir, PRODUCT_LOG, '# The product\n\n## Notes {#notes}\n\nStickies, but smarter.\n\n## Pricing {#pricing}\n\nOne-time.\n');
   commitOnState(statePath(dir), { [IDEA]: '# Smart Retry\n', [BUG]: '# Login Loop\n' }, 'inbox: two captures');
   ok(dir, ['roadmap', 'add', 'lifetime-tier', '--horizon', 'later', '--summary', 'A lifetime tier']);
   ok(dir, ['roadmap', 'add', 'note-sync', '--horizon', 'next', '--summary', 'Notes synced between Macs']);

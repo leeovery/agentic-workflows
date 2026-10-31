@@ -89,7 +89,7 @@ const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
 const { promoteWorkUnit } = require('./domain/workunit-promote.cjs');
-const { openDiscoverySession, closeDiscoverySession } = require('./domain/discovery-session.cjs');
+const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -224,7 +224,6 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
-  discovery-session open  <work-unit|product> --session-log-file <path>
   discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
@@ -299,7 +298,6 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   roadmap rename <old> <new>
   roadmap move <name> --horizon <h>
   roadmap remove <name>
-  roadmap pull <name> [<name> …] --into <work-unit>
   roadmap bind <name> --topic <topic>
   roadmap pull-forward <name> --into <epic> [--force-dismissed]
   roadmap horizon add <name> [--position <n>]
@@ -578,7 +576,7 @@ function runVerdict(call, argv) {
 // promote moves a completed epic specification (and its source discussions)
 // to a new, already-completed cross-cutting work unit — same shape: validated
 // completely before anything moves, one multi-pathspec commit at the end.
-// import is create's landing after the opener: files into the same
+// import is create's landing once the unit exists: files into the same
 // `imports/` home, stamped with the origin that took them, one confined
 // commit — and a beat on that origin's topic when a phase session landed it.
 // ---------------------------------------------------------------------------
@@ -782,32 +780,16 @@ function runBuildOrder(call, argv) {
 
 
 // ---------------------------------------------------------------------------
-// discovery-session — discovery's sessions, an epic's or the product's
-// (domain/discovery-session.cjs). open installs the model-drafted log under
-// the next session number and sets the place's marker — no commit (the
-// session is live; every state commit takes its log along). close clears
-// the marker and commits the place's scope with the caller's message. The
-// log's content is model-authored — the engine never writes prose.
+// discovery-session — the close of discovery's sessions, an epic's or the
+// product's (domain/discovery-session.cjs): it clears the place's marker and
+// commits the place's scope with the caller's message. `enter` opens them.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runDiscoverySession(call, argv) {
   const [command, ...rest] = argv;
   try {
-    if (command === 'open') {
-      /** @type {string|null} */ let workUnit = null;
-      /** @type {string|null} */ let sessionLogFile = null;
-      for (let i = 0; i < rest.length; i++) {
-        const a = rest[i];
-        if (a === '--session-log-file') sessionLogFile = rest[++i];
-        else if (workUnit === null) workUnit = a;
-        else throw new Error(`unexpected argument "${a}"`);
-      }
-      if (!workUnit || !sessionLogFile) {
-        throw new Error('Usage: engine discovery-session open <work-unit|product> --session-log-file <path>');
-      }
-      respond(call, openDiscoverySession(call.cwd, workUnit, { sessionLogFile }));
-    } else if (command === 'close') {
+    if (command === 'close') {
       /** @type {string|null} */ let workUnit = null;
       /** @type {string|null} */ let message = null;
       for (let i = 0; i < rest.length; i++) {
@@ -821,7 +803,7 @@ function runDiscoverySession(call, argv) {
       }
       respond(call, closeDiscoverySession(call.cwd, workUnit, { message }));
     } else {
-      throw new Error('Usage: engine discovery-session <open|close> …');
+      throw new Error('Usage: engine discovery-session close <work-unit|product> -m <message>');
     }
   } catch (err) {
     failJson(call, err);
@@ -1565,11 +1547,6 @@ function runRoadmap(call, argv) {
     } else if (command === 'remove') {
       if (positional.length !== 1) throw new Error('Usage: engine roadmap remove <name>');
       respond(call, roadmap.removeRoadmapItem(cwd, positional[0]));
-    } else if (command === 'pull') {
-      if (positional.length === 0 || !opts.into) {
-        throw new Error('Usage: engine roadmap pull <name> [<name> …] --into <work-unit>');
-      }
-      respond(call, roadmap.pullItems(cwd, positional, { into: opts.into }));
     } else if (command === 'bind') {
       if (positional.length !== 1 || !opts.topic) {
         throw new Error('Usage: engine roadmap bind <name> --topic <topic>');

@@ -1427,7 +1427,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   });
 
   it('a beat never changes a verb\'s answer, and discovery stays out of presence', () => {
-    // Discovery carries no heartbeat — `discovery-session open` serialises it
+    // Discovery carries no heartbeat — its session serialises it
     // engine-side — so the write lands and the beat silently no-ops.
     const res = ok(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'summary', 'Topic A']);
     assert.strictEqual(res.ok, true);

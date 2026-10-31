@@ -1013,7 +1013,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
 
 /**
  * Take a Discovery unit out of a hold — the shared body of the cancel's
- * reactivate and the roadmap pull's return: the map row's marker cleared,
+ * reactivate and the pull forward's return: the map row's marker cleared,
  * every item carrying a stash restored, and the map order returned unless a
  * live row took the number. The marker's field name is the hold's own, so
  * one read serves both. Mutates the loaded manifest.

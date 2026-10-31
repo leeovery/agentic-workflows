@@ -189,7 +189,7 @@ function writeWorkUnit(cwd, workUnit, workType, { description, firstLog, imports
       });
 
       copyImports(cwd, importsDir, importPlan);
-      // The opener is discovery's own door — every file it lands says so.
+      // A new unit's files come in through discovery — every file it lands says so.
       for (const move of importPlan) pushEntry(manifest, 'imports', importEntry(move.dest, 'discovery'));
 
       if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });

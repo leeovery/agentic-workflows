@@ -416,6 +416,42 @@ describe('the answer', () => {
     ]));
   });
 
+  it('an epic\'s topic postponed in another epic and pulled here reads at its first opening the record it left there — its brief, its ledger record, its log and its mail — and a resume reads it no more (18.8.17)', () => {
+    const manifest = readManifest(dir, EPIC);
+    manifest.phases.discovery.items.onboarding.prior = { work_unit: 'older', topic: 'billing' };
+    writeState(dir, layout.manifest(EPIC), JSON.stringify(manifest, null, 2));
+    writeState(dir, layout.brief('older', 'billing'), '# Billing\n');
+    writeState(dir, layout.topic('older', 'billing', 'log.md'), '## 2026-01-01 · session old\n');
+    writeState(dir, layout.mailbox('older', 'billing', '001-tax.md'), 'Tax\nFrom Discovery · 1 Jan\n\nWhich tax?\n');
+    commitAll(dir, 'pulled from older');
+    const earlier = [
+      `earlier brief: ${at(layout.brief('older', 'billing'))}`,
+      `earlier record: \`${ENGINE} ledger record older billing\``,
+      `earlier log: ${at(layout.topic('older', 'billing', 'log.md'))}`,
+      `earlier mail: ${at(layout.mailbox('older', 'billing', '001-tax.md'))}`,
+    ];
+    const opening = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(opening.includes(`${[`spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`, ...earlier].join('\n')}\n`), opening);
+    const resume = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding'])).sections;
+    assert.ok(!resume.includes('earlier'), resume);
+    assert.strictEqual(readState(dir, layout.brief('older', 'billing')), '# Billing\n', 'the earlier record is read, never changed');
+  });
+
+  it('a unit\'s one topic reads the earlier record of the roadmap item it was started from, which an epic postponed (18.8.17)', () => {
+    const project = JSON.parse(readState(dir, layout.projectManifest));
+    project.roadmap.items.widgets.pulled_to = { work_unit: FEATURE };
+    writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    writeState(dir, layout.topic(EPIC, 'widgets', 'log.md'), '## 2026-01-01 · session old\n');
+    commitAll(dir, 'widgets started as a feature');
+    const { sections } = withFrozenClock(() => enter(['discussion', FEATURE]));
+    assert.ok(sections.includes([
+      `product: \`${ENGINE} ledger product ${FEATURE} ${FEATURE}\``,
+      `earlier record: \`${ENGINE} ledger record ${EPIC} widgets\``,
+      `earlier log: ${at(layout.topic(EPIC, 'widgets', 'log.md'))}`,
+      `log: ${at(layout.topic(FEATURE, FEATURE, 'log.md'))}`,
+    ].join('\n')), sections);
+  });
+
   it('a resume adds the topic\'s own record, its map and the entries a replacement changed under it, and the agents a process now gone left: the report landed since, the agent lost with it — one of its own still running neither (9.S13, 24.S11, 9.3.6, 9.7.8)', () => {
     ok(dir, ['agent', 'dispatch', EPIC, 'discussion', 'licence', '--kind', 'deep-dive', '--label', 'mine'], { env: env() });
     const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'licence']));

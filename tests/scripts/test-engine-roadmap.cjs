@@ -19,17 +19,10 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok } = require('./engine-harness.cjs');
-const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource } = require('./roadmap-world.cjs');
+const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo } = require('./roadmap-world.cjs');
 
 /** A temp-dir git repo with an empty project manifest committed. */
 const setupGitFixture = roadmapWorld();
-
-/** Write a joined item directly — corrupt-shape and orphan fixtures the verbs refuse to create. */
-function joinItem(dir, name, workUnit, topic) {
-  const manifest = readProject(dir);
-  manifest.roadmap.items[name].pulled_to = topic ? { work_unit: workUnit, topic } : { work_unit: workUnit };
-  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(manifest, null, 2));
-}
 
 describe('engine CLI: roadmap add / add-batch', () => {
   let dir;
@@ -119,7 +112,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
     assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.product/sessions/session-002.md']).error,
       `source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
-      + 'open a session log\'s session first (discovery-session open product, or the session\'s own open)');
+      + 'enter the conversation that writes it first (engine enter discovery product)');
 
     writeSource(dir, '.product/sessions/session-001.md');
     const several = runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's',
@@ -212,7 +205,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
     ]));
     assert.strictEqual(runFail(dir, ['add-batch', '--file', 'unopened.json']).error,
       `add-batch: source ".product/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
-      + 'open a session log\'s session first (discovery-session open product, or the session\'s own open)');
+      + 'enter the conversation that writes it first (engine enter discovery product)');
 
     assert.strictEqual(projectManifestText(dir), before);
   });
@@ -375,7 +368,7 @@ describe('engine CLI: roadmap horizon ops', () => {
   });
 });
 
-describe('engine CLI: roadmap pull / bind / pull-forward', () => {
+describe('engine CLI: roadmap bind / pull-forward', () => {
   const setup = roadmapWorld((at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
@@ -388,35 +381,8 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
-  it('pull joins a subset and names the remainder per touched horizon', () => {
-    const res = runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
-    assert.deepStrictEqual(res.pulled, ['ordering', 'menus']);
-    assert.deepStrictEqual(res.remainder, { mvp: 1 });
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull 2 items into mvp');
-    const items = readProject(dir).roadmap.items;
-    assert.deepStrictEqual(items.ordering.pulled_to, { work_unit: 'mvp' });
-    assert.deepStrictEqual(items.menus.pulled_to, { work_unit: 'mvp' });
-    assert.strictEqual('pulled_to' in items.kds, false);
-    const state = runOk(dir, ['state']);
-    assert.strictEqual(state.totals.in_flight, 2);
-    assert.strictEqual(state.totals.waiting, 2);
-  });
-
-  it('pull validates everything before joining anything', () => {
-    const before = projectManifestText(dir);
-    assert.match(runFail(dir, ['pull', 'ordering', 'ghost', '--into', 'mvp']).error, /no roadmap item "ghost"/);
-    assert.match(runFail(dir, ['pull', 'ordering', 'ordering', '--into', 'mvp']).error, /more than once/);
-    assert.match(runFail(dir, ['pull', 'ordering', '--into', 'never-made']).error, /no work unit "never-made"/);
-    createManifest(dir, 'done-unit', { work_type: 'epic', status: 'completed' });
-    assert.match(runFail(dir, ['pull', 'ordering', '--into', 'done-unit']).error, /active work only/);
-    assert.strictEqual(projectManifestText(dir), before);
-
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
-    assert.match(runFail(dir, ['pull', 'ordering', '--into', 'mvp']).error, /already joined to work unit "mvp"/);
-  });
-
   it('bind names the topic the item crystallised as — validated against the map', () => {
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'ordering');
     assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'guest-ordering']).error, /no discovery item "guest-ordering" on "mvp"/);
     const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
@@ -446,7 +412,7 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   it('pull-forward refuses a non-epic, a joined item, and an occupied topic name', () => {
     createManifest(dir, 'small', { work_type: 'feature', status: 'in-progress' });
     assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'small']).error, /is a feature/);
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'ordering');
     assert.match(runFail(dir, ['pull-forward', 'ordering', '--into', 'mvp']).error, /already joined/);
     runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp']);
     runOk(dir, ['move', 'kds', '--horizon', 'v1']);
@@ -593,7 +559,7 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   }
 
   it('re-binding re-aims the join at the new topic, the unit carried', () => {
-    runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
+    joinedTo(dir, 'mvp', 'ordering');
     const m = epicManifest();
     m.phases.discovery.items.ordering = { source: 'roadmap', summary: 's' };
     m.phases.discovery.items['guest-ordering'] = { source: 'roadmap', summary: 's' };
@@ -602,11 +568,6 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
     assert.strictEqual(res.topic, 'guest-ordering');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'guest-ordering' });
-  });
-
-  it('a cross-horizon pull names the remainder per touched horizon', () => {
-    const res = runOk(dir, ['pull', 'ordering', 'loyalty', '--into', 'mvp']);
-    assert.deepStrictEqual(res.remainder, { mvp: 1, v1: 0 });
   });
 
   it('add and add-batch refuse an illegal horizon name before anything is written', () => {
@@ -652,7 +613,7 @@ describe('engine CLI: the re-aim — absorb moves a join, never orphans it', () 
     fs.mkdirSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.leeway', 'loyalty-feat', 'topics', 'loyalty-feat', 'log.md'), '# Discussion\n');
     commitAll(dir, 'feature fixture');
-    runOk(dir, ['pull', 'loyalty', '--into', 'loyalty-feat']);
+    joinedTo(dir, 'loyalty-feat', 'loyalty');
 
     const res = engineOk(['workunit', 'absorb', 'loyalty-feat', '--into', 'mvp', '--topic', 'loyalty']);
     assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);

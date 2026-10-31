@@ -88,23 +88,11 @@ No dispatch.
 
 ## C. Sweep
 
-The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file and manifest stamps; each approved topic's add committed itself with its brief. Check for leavings:
-
-```bash
-git status --porcelain -- .workflows/{work_unit}/.state .workflows/{work_unit}/manifest.json
-```
-
-#### If the tree is dirty
+The analysis and its gate write state nothing self-commits — the staging file and gate registrations, spent-state clears, the cache file and manifest stamps; each approved topic's add committed itself with its brief. Commit what is left; with nothing left it answers `committed: null`:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} --state -m "discovery({work_unit}): analysis run bookkeeping"
 ```
-
-→ Proceed to **D. Return**.
-
-#### Otherwise
-
-Every write was already carried by a self-committing delivery — nothing to sweep.
 
 → Proceed to **D. Return**.
 
