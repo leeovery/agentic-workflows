@@ -11,7 +11,7 @@
 
 const { section, CONTINUE_INSTRUCTION, clipped } = require('./surfaces.cjs');
 const { renderTree, TAG_GAP } = require('../../kernel/render.cjs');
-const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
+const { TREE_WIDTH } = require('../conventions.cjs');
 
 /** How long a row's question runs before it is cut, so its tag stays on the line. */
 const ROW_MAX = 40;
@@ -23,12 +23,12 @@ const ROW_MAX = 40;
  */
 
 /**
- * The map as it is drawn: the topic, how many of the person's questions are
- * decided, open and gone on, how many calls Claude made and rows were
- * carried over, the calls since the person last looked, and the rows of
- * each section.
+ * The map as it is drawn: the topic as screens title it, how many of the
+ * person's questions are decided, open and gone on, how many calls Claude
+ * made and rows were carried over, the calls since the person last looked,
+ * and the rows of each section.
  * @typedef {{
- *   topic: string,
+ *   title: string,
  *   counts: {yours: number, decided: number, open: number, moved: number, calls: number, carried: number},
  *   since: {question: string, answer: string|null}[],
  *   open: DrawnRow[], decided: DrawnRow[], moved: DrawnRow[],
@@ -72,8 +72,8 @@ function sinceTree(since) {
  * @param {MapView} view
  * @returns {string}
  */
-function mapScreen({ topic, counts, since, open, decided, moved }) {
-  const blocks = [`Map — ${titlecase(topic)}`];
+function mapScreen({ title, counts, since, open, decided, moved }) {
+  const blocks = [`Map — ${title}`];
   const column = Math.max(0, ...[...open, ...decided, ...moved].map((row) => rowHead(row).length)) + TAG_GAP;
   if (counts.yours + counts.calls + counts.carried === 0) {
     blocks[0] += '\nNothing on the map yet: no question asked and no call made.';

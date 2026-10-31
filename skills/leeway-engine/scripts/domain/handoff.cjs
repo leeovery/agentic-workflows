@@ -24,7 +24,7 @@ const { parseInboxPaths } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase } = require('./derivations.cjs');
+const { mailPhase, topicTitles, goesBy } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
@@ -45,7 +45,7 @@ function phaseSkill(phase) {
  * @property {string} usage      its arguments, as a refusal names them
  * @property {number[]} counts   how many arguments it takes
  * @property {(cwd: string, args: string[]) => void} check  refuses an argument of the wrong shape
- * @property {(args: string[]) => string} where  where the work goes, named for the person
+ * @property {(cwd: string, args: string[]) => string} where  where the work goes, named for the person
  * @property {number} [quoted]   the argument it reads quoted
  */
 
@@ -121,7 +121,7 @@ function phaseTarget(phase) {
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
     },
-    where: ([, unit, topic]) => at(titlecase(phase), topic ?? unit),
+    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : goesBy(topicTitles(loadWorkUnitManifest(cwd, unit)), topic)),
   };
 }
 
@@ -143,7 +143,7 @@ const TARGETS = {
       if (seeds !== NO_ARGUMENT) throw new Error(`inbox seeds start new work, never an existing epic's discovery — got "${seeds}"`);
       assertWorkUnit(cwd, unit, 'epic');
     },
-    where: ([, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),
+    where: (_cwd, [, unit]) => at('Discovery', unit === NO_ARGUMENT ? null : unit),
   },
   'leeway-roadmap': {
     usage: 'open',
@@ -168,7 +168,7 @@ const TARGETS = {
       }
       assertWorkUnit(cwd, unit, 'epic');
     },
-    where: ([unit]) => at('Epic', unit),
+    where: (_cwd, [unit]) => at('Epic', unit),
   },
   ...Object.fromEntries(PIPELINE_PHASES.map((phase) => [phaseSkill(phase), phaseTarget(phase)])),
 };
@@ -206,7 +206,7 @@ function resolveHandoff(cwd, named, args) {
     skill,
     args: composed,
     text: `Invoke \`/${[skill, composed].filter(Boolean).join(' ')}\`.`,
-    line: `→ ${target.where(args)}`,
+    line: `→ ${target.where(cwd, args)}`,
   };
 }
 

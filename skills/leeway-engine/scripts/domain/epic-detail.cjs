@@ -34,6 +34,8 @@ const {
   deliveryStarted,
   specUnsettled,
   OPEN_SOURCE_STATUSES,
+  topicTitles,
+  titled,
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
 const { discoveryLifecycleLabel, titlecase } = require('./conventions.cjs');
@@ -146,6 +148,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} summary
  * @property {boolean} description_present
  * @property {string} title  how screens title the topic (derivations' `topicTitle`)
+ * @property {string} goes_by  the name the topic goes by — its title, else its key
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
@@ -193,6 +196,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string[]} reopened_discussions
  * @property {{name: string, by: string[]}[]} spec_blocked  live spec items whose source discussion has not concluded
  * @property {MapRow[]} discovery_map
+ * @property {Record<string, string>} titles  the titles a rename gave started topics, by key (derivations' `topicTitles`)
  * @property {string|null} active_session  in-progress discovery session number, or null
  * @property {string|null} convergence_state  `in-progress` | `settled` | null (no map)
  * @property {boolean} needs_sequencing
@@ -266,7 +270,8 @@ function discoveryLockReason(manifest, topic) {
 function specificationLockReason(manifest, spec) {
   const locks = specReactivateLocks(manifest, spec);
   if (locks.length === 0) return undefined;
-  const { holds, recovery } = reactivateLockPhrases(locks, titlecase, { now: true });
+  const titles = topicTitles(manifest);
+  const { holds, recovery } = reactivateLockPhrases(locks, (name) => titled(titles, name), { now: true });
   return `locked — ${holds}; ${recovery}`;
 }
 
@@ -663,6 +668,7 @@ function epicDetail(cwd, manifest) {
     reopened_discussions: reopenedDiscussions,
     spec_blocked: specBlocked,
     discovery_map: discoveryMap,
+    titles: topicTitles(manifest),
     active_session: (manifest.phases && manifest.phases.discovery && typeof manifest.phases.discovery.active_session === 'string')
       ? manifest.phases.discovery.active_session : null,
     convergence_state: convergenceState,

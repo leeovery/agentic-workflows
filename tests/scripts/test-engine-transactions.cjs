@@ -2012,8 +2012,11 @@ describe('engine topic start — the discovery map gates the birth of a phase it
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'gamma']).created, false);
   });
 
-  it('a topic off the map, and every non-epic work unit, are ungated by the map', () => {
-    assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).created, true);
+  it('a topic off the map is refused, writing nothing; a non-epic work unit is ungated by the map', () => {
+    const before = fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8');
+    assert.strictEqual(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).error,
+      'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8'), before);
     writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
       phases: { discovery: { items: { feat: { source: 'discovery' } } } },

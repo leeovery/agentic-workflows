@@ -8,7 +8,8 @@
 // waiting mail heads it (10.4.2): `From {sender} · {16 Oct}`. Three verbs:
 // - `topic send <unit> <topic> --from <sender> --content <file> --slug
 //   <kebab>` lands a message, the scratch it was written to consumed. The
-//   sender is a name, never text: a topic of the unit or an item of one of
+//   topic is named by its key or by the title a rename gave it (8.8.17),
+//   either landing in its one mailbox. The sender is a name, never text: a topic of the unit or an item of one of
 //   its phases — a specification grouping its topics under a name of its own
 //   sends as that name — `{unit}.{topic}` for another unit's, or an
 //   experiment of the unit — `E{n}` of the
@@ -51,7 +52,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, illegalNameReason, workUnitNa
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicKeyOf } = require('./derivations.cjs');
 const { parkMessageItem, flagDownstream, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -97,7 +98,7 @@ function experimentSender(manifest, topic, from) {
   const [series, id] = slash === -1 ? [topic, from] : [from.slice(0, slash), from.slice(slash + 1)];
   if (!EXPERIMENT_ID_PATTERN.test(id) || (slash !== -1 && series === topic)) return null;
   if (manifest.phases?.experiment?.items?.[series]?.experiments?.[id] === undefined) return null;
-  return series === topic ? `Experiment ${id}` : `Experiment ${id}, on ${titlecase(series)}`;
+  return series === topic ? `Experiment ${id}` : `Experiment ${id}, on ${topicTitle(manifest, series)}`;
 }
 
 /** Whether the unit holds `name` as a topic or as an item of one of its phases. @param {Record<string, any>} manifest @param {string} name */
@@ -116,7 +117,7 @@ function topicSender(cwd, manifest, from) {
   const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
   const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
   if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsSender(sender, held)) return null;
-  return unit === manifest.name || held === unit ? titlecase(held) : `${titlecase(held)}, on ${titlecase(unit)}`;
+  return unit === manifest.name || held === unit ? topicTitle(sender, held) : `${topicTitle(sender, held)}, on ${titlecase(unit)}`;
 }
 
 /**
@@ -293,20 +294,22 @@ function toTopic(cwd, manifest, topic, message, slug) {
 
 /**
  * `topic send`: the message landed — in the topic's mailbox, or for a
- * cancelled topic in the inbox — its scratch consumed, and committed.
- * @param {string} cwd @param {string} unit @param {string} topic @param {{from?: string, contentFile?: string, slug?: string}} opts
+ * cancelled topic in the inbox — its scratch consumed, and committed. The
+ * topic is named by its key or by the title a rename gave it (8.8.17).
+ * @param {string} cwd @param {string} unit @param {string} said @param {{from?: string, contentFile?: string, slug?: string}} opts
  * @returns {Record<string, unknown>}
  */
-function sendMessage(cwd, unit, topic, { from, contentFile, slug }) {
+function sendMessage(cwd, unit, said, { from, contentFile, slug }) {
   if (!from || !contentFile || !slug) throw new Error(`Usage: engine ${SEND_USAGE}`);
-  assertLegalTopicName(topic);
+  assertLegalTopicName(said);
   if (!KEBAB_SLUG_PATTERN.test(slug)) throw new Error(`--slug must be kebab-case, got "${slug}"`);
   unitManifest(cwd, unit);
   const { scratch, content } = messageIn(cwd, contentFile);
-  const landed = withWorkUnitLock(cwd, unit, () => {
+  const { topic, landed } = withWorkUnitLock(cwd, unit, () => {
     const manifest = loadWorkUnitManifest(cwd, unit);
-    const message = withSender(content, senderTitle(cwd, manifest, topic, from));
-    return manifest.status === 'cancelled' ? toInbox(cwd, unit, `${unit} is cancelled`, message, slug) : toTopic(cwd, manifest, topic, message, slug);
+    const key = topicKeyOf(manifest, said) ?? said;
+    const message = withSender(content, senderTitle(cwd, manifest, key, from));
+    return { topic: key, landed: manifest.status === 'cancelled' ? toInbox(cwd, unit, `${unit} is cancelled`, message, slug) : toTopic(cwd, manifest, key, message, slug) };
   });
   fs.rmSync(scratch, { force: true });
   /** @type {string[]} */
@@ -417,14 +420,15 @@ const SEND_REPORT_USAGE = 'render send-report <work-unit>.<topic> --sent <path>'
 /**
  * The send report for the message a send landed at `sent`, the path its
  * response answered: in the topic's mailbox, or the inbox for a cancelled
- * topic.
+ * topic. The topic is named by its key or its title.
  * @param {string} cwd @param {string} address `<work-unit>.<topic>` @param {string} [sent]
  * @returns {string}
  */
 function sendReportOf(cwd, address, sent) {
-  const [unit, topic, ...rest] = (address ?? '').split('.');
-  if (!unit || !topic || rest.length > 0 || !sent) throw new Error(`Usage: engine ${SEND_REPORT_USAGE}`);
+  const [unit, said, ...rest] = (address ?? '').split('.');
+  if (!unit || !said || rest.length > 0 || !sent) throw new Error(`Usage: engine ${SEND_REPORT_USAGE}`);
   const manifest = unitManifest(cwd, unit);
+  const topic = topicKeyOf(manifest, said) ?? said;
   const at = path.resolve(cwd, sent);
   const folder = path.posix.dirname(stateRelative(cwd, at) ?? '');
   if (![mailboxDir(unit, topic), INBOX_IDEAS].includes(folder) || !fs.existsSync(at)) {
@@ -433,9 +437,11 @@ function sendReportOf(cwd, address, sent) {
   /** @type {import('./projections/mail.cjs').Landing} */
   let landing = 'inbox';
   if (folder !== INBOX_IDEAS) landing = computeTopicLifecycle(manifest, topic).lifecycle === 'postponed' ? 'postponed' : 'mailbox';
-  /** @type {{name: string, how: 'cancelled'|'removed'}} */
-  const gone = manifest.status === 'cancelled' ? { name: unit, how: 'cancelled' } : { name: topic, how: removedTopic(manifest, topic) ? 'removed' : 'cancelled' };
-  return sendReport({ unit, topic, title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
+  /** @type {{title: string, how: 'cancelled'|'removed'}} */
+  const gone = manifest.status === 'cancelled'
+    ? { title: titlecase(unit), how: 'cancelled' }
+    : { title: topicTitle(manifest, topic), how: removedTopic(manifest, topic) ? 'removed' : 'cancelled' };
+  return sendReport({ unit, topic, named: topicTitle(manifest, topic), title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
 }
 
 module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, moveWaitingToInbox, sendReportOf };

@@ -804,7 +804,7 @@ describe('epic projections: presence join', () => {
   it('renders the in-session confirm gate as a labelled MENU section, byte-for-byte', () => {
     const { keys } = epicMenu('v1', twoTopicDetail(), { presence: [heldRow] });
     const marked = keys.find((k) => k.in_session);
-    assert.strictEqual(epicInSessionGate('v1', marked), [
+    assert.strictEqual(epicInSessionGate('v1', marked, {}), [
       '=== MENU: in-session gate — 1 (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '"Topic A" is open in another session — last active 2m ago. Proceeding starts a second concurrent session on the same discussion; its work could conflict with that session\'s. Only proceed if you know that session is no longer working; if it is wedged but alive, release its hold with `node .claude/skills/leeway-engine/scripts/engine.cjs presence clear v1 discussion topic-a`.',
@@ -889,7 +889,7 @@ describe('epic projections: presence join', () => {
   it('the in-session gate speaks for document phases alone — a code entry never reaches it', () => {
     const d = twoTopicDetail();
     const { keys } = epicMenu('v1', d, { presence: [heldRow] });
-    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session));
+    const gate = epicInSessionGate('v1', keys.find((k) => k.in_session), {});
     assert.match(gate, /second concurrent session on the same discussion/, 'the doc consequence is the only one left');
     assert.doesNotMatch(gate, /Code phases run one at a time/, 'the code wording belongs to the code-gate surface');
   });
@@ -910,7 +910,7 @@ describe('epic projections: presence join', () => {
     assert.strictEqual(marked.topic, 'topic-a');
     assert.notStrictEqual(marked.recommended, true, 'never recommended, however long idle');
     assert.ok(/~~Continue "Topic A" — \*discussion\*~~ · in session \(last\n +active 3h ago\)/.test(rendered), rendered);
-    assert.match(epicInSessionGate('v1', marked), /"Topic A" is open in another session — last active 3h ago\./);
+    assert.match(epicInSessionGate('v1', marked, {}), /"Topic A" is open in another session — last active 3h ago\./);
     assert.match(epicDashboard('v1', d, { presence: [idle] }), /↳ Discussing · in session \(last active 3h ago\)/);
   });
 
@@ -1968,7 +1968,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     assert.strictEqual(spec.in_session, true);
     assert.deepStrictEqual(spec.blocked_by, ['fees']);
     assert.notStrictEqual(spec.recommended, true);
-    assert.match(epicInSessionGate('v1', spec),
+    assert.match(epicInSessionGate('v1', spec, {}),
       /same specification; its work could conflict with that session's\. Its entry is also held shut — its sources are not concluded \(Fees\) — so proceeding meets that gate next\. Only proceed/);
   });
 
@@ -1991,7 +1991,7 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const plan = keys.find((k) => k.action === 'continue_planning');
     assert.strictEqual(plan.in_session, true);
     assert.deepStrictEqual(plan.blocked_by, ['specification']);
-    assert.match(epicInSessionGate('v1', plan),
+    assert.match(epicInSessionGate('v1', plan, {}),
       /Its entry is also held shut — the specification for "Billing" is unsettled — so proceeding meets that gate next\./);
     // The specification settling releases it: the row, the tag, and the cue go.
     const settled = world({ status: 'completed', sources: [{ topic: 'talks', status: 'incorporated' }] });
@@ -2005,6 +2005,6 @@ describe('epic projections: held entries and the topic\'s cues', () => {
     const { keys } = epicMenu('v1', d, { presence: [peerIn('discussion', 'billing', 120)] });
     const entry = keys.find((k) => k.in_session);
     assert.strictEqual(entry.blocked_by, undefined);
-    assert.doesNotMatch(epicInSessionGate('v1', entry), /held shut/);
+    assert.doesNotMatch(epicInSessionGate('v1', entry, {}), /held shut/);
   });
 });

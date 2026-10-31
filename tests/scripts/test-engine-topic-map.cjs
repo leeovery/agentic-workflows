@@ -8,11 +8,14 @@
 // draft at add and rewritten only before its topic starts (8.7.6); the
 // names a topic may take (8.8.18) and the ones struck from the map (8.10.11);
 // the roadmap item a topic takes in, and gives back at its removal (8.1.6,
-// 18.8.20); a started topic renamed by its title (8.8.17); a removal's
-// waiting mail sent to the inbox (8.8.16); and `discovery-map`, the verbs'
-// alias until discovery's rewrite, its dead-end verbs gone (8.6.6). The race
-// between a removal and a ledger write is test-engine-ledger-write.cjs's;
-// a send to a removed topic, test-engine-topic-mail.cjs's.
+// 18.8.20); a started topic renamed by its title, which names it wherever a
+// verb names it (8.8.17); a removal's waiting mail sent to the inbox
+// (8.8.16); a removal racing the writes on its topic, a finding it waited
+// behind and a start that waited behind it; and `discovery-map`, the verbs'
+// alias until discovery's rewrite, its dead-end verbs gone (8.6.6). A ledger
+// write that waited behind a removal is test-engine-ledger-write.cjs's; a
+// send to a removed topic, test-engine-topic-mail.cjs's; how a renamed topic's
+// screens name it, test-engine-topic-titles.cjs's.
 //
 // Layer: verb. World: a project with its state worktree, built once and
 // copied, holding the epic `payments`, a topic at each lifecycle on its map —
@@ -26,11 +29,18 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
+const path = require('path');
+
 const {
-  ok, okSections, refusedPristine, fixtureFrom, commitAll, cleanupFixture, head, lastMessage, touched, withFrozenClock, FROZEN_AT,
+  ok, okSections, refuses, refusedPristine, fixtureFrom, commitAll, cleanupFixture, head, lastMessage, touched, withFrozenClock, lockAttempts, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, readManifest, readState, writeState, statePath, layout } = require('./discovery-test-utils.cjs');
-const { SESSION, MADE } = require('./ledger-world.cjs');
+const { SESSION, SESSION_ID, MADE } = require('./ledger-world.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { removeTopic } = require(path.join(SCRIPTS, 'domain/discovery-map.cjs'));
+const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const UNIT = 'payments';
 const TODAY = FROZEN_AT.slice(0, 10);
@@ -92,8 +102,8 @@ const committedFiles = () => touched(statePath(dir), 'HEAD');
 /** A roadmap item as the project manifest holds it. @param {string} name */
 const roadmapItem = (name) => JSON.parse(readState(dir, layout.projectManifest)).roadmap.items[name];
 
-/** A ledger entry written on a topic's discovery place. @param {string} topic */
-const askOn = (topic) => ok(dir, ['ledger', 'ask', `${UNIT}.discovery.${topic}`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Does it work offline?' }) });
+/** A finding written on a topic's discovery place, the one entry discovery takes. @param {string} topic */
+const findOn = (topic) => ok(dir, ['ledger', 'find', `${UNIT}.discovery.${topic}`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Checkout has no offline path.', how: 'read Checkout.swift', known: 'read' }) });
 
 describe('topic add (8.7.6, 8.8.18, 8.10.11)', () => {
   it('lands the topic with its brief installed from Claude\'s draft, the draft consumed, and commits both, its report one line with no confirm (8.S46, 8.S14, 8.S19)', () => {
@@ -255,8 +265,52 @@ describe('topic rename (8.8.17)', () => {
     assert.strictEqual('title' in items()['discussing-topic'], false);
   });
 
+  it('moves a topic set aside and brought back unstarted, its title left behind with its old key', () => {
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'fresh-topic']);
+    ok(dir, ['topic', 'rename', UNIT, 'fresh-topic', 'offline-mode']);
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'fresh-topic']);
+
+    const { res, sections } = okSections(dir, ['topic', 'rename', UNIT, 'fresh-topic', 'card-payments']);
+
+    assert.deepStrictEqual([res.name, res.title, res.was, res.moved], ['card-payments', 'Card Payments', 'Offline Mode', true]);
+    assert.strictEqual('title' in items()['card-payments'], false);
+    assert.strictEqual(sections, report('Renamed "Offline Mode" to "Card Payments".'));
+  });
+
+  it('renamed to its key, drops the title of a topic brought back unstarted, leaving it where it stands', () => {
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'fresh-topic']);
+    ok(dir, ['topic', 'rename', UNIT, 'fresh-topic', 'offline-mode']);
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'fresh-topic']);
+
+    const { res, sections } = okSections(dir, ['topic', 'rename', UNIT, 'fresh-topic', 'fresh-topic']);
+
+    assert.deepStrictEqual([res.name, res.title, res.moved], ['fresh-topic', 'Fresh Topic', false]);
+    assert.deepStrictEqual(items()['fresh-topic'], ITEMS['fresh-topic']);
+    assert.strictEqual(readState(dir, layout.brief(UNIT, 'fresh-topic')), '# Fresh\n');
+    assert.strictEqual(sections, report('Renamed "Offline Mode" to "Fresh Topic".'));
+  });
+
+  it('renames to a name struck from the map, at the person\'s ask, taking it off the list (8.10.11)', () => {
+    const res = ok(dir, ['topic', 'rename', UNIT, 'mailed-topic', 'dismissed-name']);
+
+    assert.deepStrictEqual([res.name, res.moved, res.re_added], ['dismissed-name', true, true]);
+    assert.deepStrictEqual(readManifest(dir, UNIT).phases.discovery.dismissed, []);
+  });
+
+  it('takes the title a rename gave a topic wherever a verb names it, as well as its key (8.8.17)', () => {
+    ok(dir, ['topic', 'rename', UNIT, 'discussing-topic', 'checkout-flow']);
+
+    assert.strictEqual(okSections(dir, ['topic', 'edit', UNIT, 'checkout-flow', '--summary', 'S']).sections, report('Updated "Checkout Flow"\'s summary.'));
+    assert.strictEqual(items()['discussing-topic'].summary, 'S');
+    assert.deepStrictEqual(ok(dir, ['topic', 'order', UNIT, 'checkout-flow=1']).ordered, { 'discussing-topic': 1 });
+    assert.strictEqual(refusedPristine(dir, ['topic', 'brief', UNIT, 'checkout-flow', '--brief', draft('late')]).error, 'topic brief: "discussing-topic" started — what bears on it goes as a message');
+    assert.strictEqual(refusedPristine(dir, ['topic', 'remove', UNIT, 'checkout-flow']).error, '"discussing-topic" can\'t be removed — discussion is in flight on it; cancel from the epic menu instead');
+    assert.deepStrictEqual(ok(dir, ['topic', 'rename', UNIT, 'checkout-flow', 'payment-flow']).name, 'discussing-topic');
+    assert.strictEqual(items()['discussing-topic'].title, 'payment-flow');
+  });
+
   it('keeps the key of an unstarted topic the ledger names, which names it for good, giving it the title', () => {
-    askOn('fresh-topic');
+    findOn('fresh-topic');
 
     const res = ok(dir, ['topic', 'rename', UNIT, 'fresh-topic', 'offline-mode']);
 
@@ -273,6 +327,7 @@ describe('topic rename (8.8.17)', () => {
       [['mailed-topic', 'mailed-topic'], 'topic rename: "mailed-topic" goes by "mailed-topic" already'],
       [['mailed-topic', 'decided-topic'], 'topic rename: "decided-topic" on the map goes by "decided-topic" — pick a different name'],
       [['mailed-topic', 'checkout-flow'], 'topic rename: "discussing-topic" on the map goes by "checkout-flow" — pick a different name'],
+      [['mailed-topic', 'loyalty'], 'topic rename: "loyalty" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap loyalty, or name the topic apart'],
       [['mailed-topic', 'stray'], '"mailed-topic" can\'t be renamed — a folder already stands at payments/topics/stray'],
     ])) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'rename', UNIT, ...args]).error, refusal);
@@ -313,7 +368,7 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
   });
 
   it('refuses a topic started, set aside or named by the ledger, pointing the way to what the person is after, writing nothing (8.8.8)', () => {
-    askOn('fresh-topic');
+    findOn('fresh-topic');
 
     for (const [topic, refusal] of [
       ['discussing-topic', 'discussion is in flight on it; cancel from the epic menu instead'],
@@ -324,6 +379,51 @@ describe('topic remove (8.8.6, 8.8.16, 8.10.11)', () => {
     ]) {
       assert.strictEqual(refusedPristine(dir, ['topic', 'remove', UNIT, topic]).error, `"${topic}" can't be removed — ${refusal}`);
     }
+  });
+});
+
+describe('a removal racing the writes on its topic (8.8.6)', () => {
+  /** The writer lock, held by a live peer. */
+  function lockHeld() {
+    const lock = statePath(dir, layout.lock);
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    return lock;
+  }
+
+  it('takes the lock before it reads the ledger: a finding landed on the topic while it waited refuses it, the topic left on the map', (t) => {
+    const lock = lockHeld();
+    // The peer lets go and lands a finding on fresh-topic the moment the removal finds the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      fs.unlinkSync(lock);
+      appendEntry(statePath(dir), {
+        event: 'found', unit: UNIT, topic: 'fresh-topic', phase: 'discovery', session: SESSION_ID, ...MADE,
+        text: 'Landed first?', how: 'read Checkout.swift', known: 'read', command: null, result: null, product_wide: false, relies_on: [], cites: [],
+      }, []);
+    });
+
+    assert.throws(() => removeTopic(dir, UNIT, 'fresh-topic'),
+      { message: '"fresh-topic" can\'t be removed — the ledger holds entries on it, which name it for good; cancel from the epic menu instead' });
+
+    assert.deepStrictEqual(attempts, ['taken', 'made', 'made']);
+    assert.deepStrictEqual(Object.keys(items()), Object.keys(ITEMS));
+  });
+
+  it('lands before a start that waited on the lock, which reads the map again and starts nothing', (t) => {
+    const lock = lockHeld();
+    const { 'fresh-topic': _removed, ...mapped } = ITEMS;
+    // The peer removes fresh-topic, as `topic remove` leaves the map, and lets go once the entry, its checks passed, finds the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      createManifest(dir, UNIT, { ...readManifest(dir, UNIT), phases: { ...readManifest(dir, UNIT).phases, discovery: { items: mapped, dismissed: ['dismissed-name', 'fresh-topic'] } } });
+      fs.unlinkSync(lock);
+    });
+
+    assert.strictEqual(refuses(dir, ['enter', 'discussion', UNIT, 'fresh-topic'], { env: SESSION }).error,
+      'discussion can\'t start on "fresh-topic" — it is not on the map; a topic starts from its row on the epic menu');
+
+    assert.deepStrictEqual(attempts, ['taken', 'made']);
+    assert.deepStrictEqual(readManifest(dir, UNIT).phases.discussion.items, {
+      'discussing-topic': { status: 'in-progress' }, 'decided-topic': { status: 'completed' }, 'cancelled-topic': { status: 'cancelled', previous_status: 'in-progress' }, 'mailed-topic': { status: 'unstarted' },
+    }, 'a discussion born for a topic off the map');
   });
 });
 
@@ -374,7 +474,7 @@ describe('topic brief (8.7.6)', () => {
     assert.strictEqual(refusedPristine(dir, ['topic', 'brief', UNIT, 'discussing-topic', '--brief', scratch]).error,
       'topic brief: "discussing-topic" started — what bears on it goes as a message');
     assert.strictEqual(refusedPristine(dir, ['topic', 'brief', UNIT, 'cancelled-topic', '--brief', scratch]).error,
-      'topic brief: "cancelled-topic" it is cancelled and stays on the map as record');
+      'topic brief: "cancelled-topic" takes no brief — it is cancelled and stays on the map as record');
     assert.strictEqual(fs.existsSync(scratch), true);
   });
 });

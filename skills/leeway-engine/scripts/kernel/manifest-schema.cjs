@@ -37,6 +37,9 @@ const WORK_TYPE_PIPELINES = {
 // list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
+/** The phases a topic exists in: those before the spec (4.11.2). */
+const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
+
 const VALID_PHASE_STATUSES = {
   // Empty on purpose, never removed: discovery items are map items with NO
   // status field (lifecycle is computed at render time), and an empty
@@ -247,6 +250,7 @@ module.exports = {
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
   DERIVED_PHASES,
+  TOPIC_PHASES,
   VALID_PHASE_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,

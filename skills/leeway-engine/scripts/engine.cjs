@@ -68,8 +68,7 @@ const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule, answerGithubSquash } = require('./domain/github-setup.cjs');
 const { answerGate, recordGateShown } = require('./domain/gate.cjs');
-const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits } = require('./domain/raise.cjs');
-const { raiseScreen } = require('./domain/projections/raise.cjs');
+const { RAISE_USAGE, drawRaise, showRaise, answerRaise, raiseWaits, raiseScreenOf } = require('./domain/raise.cjs');
 const { openGate } = require('./domain/projections/surfaces.cjs');
 const { mapReceipt } = require('./domain/projections/transactions.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
@@ -1799,7 +1798,7 @@ async function runRaiseDraw(call, argv) {
       return;
     }
     const { decision, reason, seal, redrawn, warnings } = drawn;
-    const screen = raiseScreen(seal);
+    const screen = raiseScreenOf(call.cwd, seal);
     respond(call, { decision, reason, raise: seal.id, redrawn, ...(warnings.length > 0 ? { warnings } : {}) });
     respondSections(call, screen);
   } catch (err) {
@@ -1810,7 +1809,7 @@ async function runRaiseDraw(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runRaiseShow(call, argv) {
   const { seal, technical } = showRaise(argv);
-  const screen = raiseScreen(seal, { technical });
+  const screen = raiseScreenOf(call.cwd, seal, { technical });
   respond(call, { raise: seal.id });
   respondSections(call, screen);
 }

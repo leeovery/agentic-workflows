@@ -66,6 +66,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, postponedStillWaits, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
+  topicTitle, topicTitles, titled, itemTitle, goesBy,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -148,7 +149,7 @@ function resumeGate(cwd, args) {
     ));
   }
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'resume-gate');
-  const t = titlecase(topic);
+  const t = itemTitle(topicTitles(manifest), phase, topic);
   if (variant === 'plan') {
     const item = itemOf(manifest, 'planning', topic) || {};
     // A restart deletes the planning directory first and the manifest entry
@@ -228,7 +229,7 @@ function resumeGate(cwd, args) {
   parts.push(section(
     'MENU: resume gate',
     MENU_INSTRUCTION,
-    menu(`Found existing ${phase} for **${titlecase(topic)}**.`, [
+    menu(`Found existing ${phase} for **${t}**.`, [
       cmdOption('c', 'continue', 'Pick up where you left off'),
       cmdOption('r', 'restart', `Delete the ${phase} and start fresh`),
     ], { question: RESUME_QUESTION }),
@@ -2393,7 +2394,7 @@ function concludeGate(cwd, { dotpath }) {
  * number, each parent's sub-experiments beneath it. A loud error when the
  * phase is wrong or the topic holds no series.
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{workUnit: string, topic: string, rows: import('./projections/experiment.cjs').SeriesRow[]}}
+ * @returns {{workUnit: string, topic: string, title: string, rows: import('./projections/experiment.cjs').SeriesRow[]}}
  */
 function resolveExperiment(cwd, dotpath, surface) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
@@ -2408,7 +2409,7 @@ function resolveExperiment(cwd, dotpath, surface) {
   const rows = Object.entries(experiments)
     .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
     .sort((a, b) => compareExperimentIds(a.id, b.id));
-  return { workUnit, topic, rows };
+  return { workUnit, topic, title: topicTitle(manifest, topic), rows };
 }
 
 /** The series' live top-level records, id order. @param {import('./projections/experiment.cjs').SeriesRow[]} rows */
@@ -2422,8 +2423,8 @@ function liveExperiments(rows) {
  * @returns {string}
  */
 function experimentRegisterSurface(cwd, { dotpath }) {
-  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-register');
-  return experimentRegister(topic, rows);
+  const { title, rows } = resolveExperiment(cwd, dotpath, 'experiment-register');
+  return experimentRegister(title, rows);
 }
 
 /**
@@ -2619,7 +2620,7 @@ function summaryBackfillGate(cwd, { dotpath, variant, file }) {
     throw new Error(`render summary-backfill-gate: --variant must be one of ${SUMMARY_BACKFILL_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
-  if (variant === 'unsourced') return unsourcedGate(cwd, file);
+  if (variant === 'unsourced') return unsourcedGate(cwd, file, topicTitles(manifest));
   const rows = backfillRows(cwd, workUnit, manifest);
   const drafted = draftedSummaries(cwd, file, rows);
   if (variant === 'proposed') return proposedSummaries(rows, drafted, CONTINUE_INSTRUCTION);
@@ -2633,14 +2634,14 @@ function summaryBackfillGate(cwd, { dotpath, variant, file }) {
   ].join('\n');
 }
 
-/** The topics no source file could be drafted from. @param {string} cwd @param {string|undefined} file @returns {string} */
-function unsourcedGate(cwd, file) {
+/** The topics no source file could be drafted from. @param {string} cwd @param {string|undefined} file @param {Record<string, string>} titles @returns {string} */
+function unsourcedGate(cwd, file, titles) {
   if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
   const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
   if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
     throw new Error('render summary-backfill-gate: "names" must be a non-empty array of topic names');
   }
-  const unsourced = [`${p.names.length} topic(s) have no source file to draft from:`, '', ...p.names.map((n) => `- ${titlecase(n)}`)];
+  const unsourced = [`${p.names.length} topic(s) have no source file to draft from:`, '', ...p.names.map((n) => `- ${titled(titles, n)}`)];
   return section('MENU: unsourced topics gate', MENU_INSTRUCTION, menu(unsourced.join('\n'), [
     cmdOption('p', 'provide', "Tell me the summary for each and I'll write it"),
     cmdOption('d', 'dismiss', 'Write a minimal name-derived summary noting the missing source, so this stops re-prompting'),
@@ -3427,7 +3428,7 @@ function specConfirmGate(cwd, { dotpath, single, unify }) {
 
   return [
     section('DISPLAY: spec confirmation', emitAs('text', ', directly above the menu'), specificationConfirmation({
-      variant, state_root: stateRoot(cwd), work_unit: workUnit, name: topic, status: spec.status, sources, supersedes,
+      variant, state_root: stateRoot(cwd), work_unit: workUnit, name: topic, status: spec.status, sources, supersedes, titles: topicTitles(manifest),
     })),
     section('MENU: spec confirm gate', MENU_INSTRUCTION, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
   ].join('\n');
@@ -3872,13 +3873,14 @@ function phasePausedSurface(cwd, { dotpath, phase }) {
   if (!PAUSING_PHASES.includes(phase)) {
     throw new Error(`render phase-paused: --phase must be <${PAUSING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
   }
+  const titles = topicTitles(manifest);
   /** @type {(topic: string) => string} */
   const owed = phase === 'specification'
-    ? (topic) => owedSources(awaitedSources(manifest, topic), specSourcePhase(manifest.work_type))
+    ? (topic) => owedSources(awaitedSources(manifest, topic).map((name) => goesBy(titles, name)), specSourcePhase(manifest.work_type))
     : (topic) => owedWaits(waits(manifest, phase, topic));
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
-    .map((item) => ({ topic: item.name, owed: owed(item.name) }))
+    .map((item) => ({ topic: item.name, title: itemTitle(titles, phase, item.name), owed: owed(item.name) }))
     .filter((holder) => holder.owed !== '');
   return phasePaused(phase, workUnit, holders);
 }
@@ -3965,7 +3967,7 @@ function discoveryCancelStatement(manifest, topic) {
   if (locking.length > 0) {
     throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${unitLockNames(locking)}) — the menu never offers it`);
   }
-  const name = titlecase(topic);
+  const name = topicTitle(manifest, topic);
   const plan = cancelPlan(manifest, 'discovery', topic);
   if (plan.items.length === 0) {
     if (!itemOf(manifest, 'discovery', topic)) {
@@ -4022,7 +4024,8 @@ function specificationCancelStatement(manifest, spec) {
     throw new Error(`render cancel-gate: "${spec}" has nothing to cancel — it carries no status, so the menu never offers it`);
   }
   const withPlan = plan.items.some(({ phase }) => phase === 'planning');
-  const sources = sourceRows(item.sources).map(([n]) => titlecase(n));
+  const titles = topicTitles(manifest);
+  const sources = sourceRows(item.sources).map(([n]) => titled(titles, n));
   const frees = sources.length > 0
     ? ` and frees its source discussion${sources.length === 1 ? '' : 's'} (${sources.join(', ')}) to be regrouped or cancelled`
     : '';
@@ -4096,10 +4099,10 @@ function workUnitCancel(cwd, dotpath) {
  * @param {string} workUnit @param {string} topic
  * @param {import('./derivations.cjs').PostponePlan} plan @param {string} horizon
  * @param {Record<string, any>|null} project  the project manifest, the gate's one read
+ * @param {string} name  the topic as screens title it
  * @returns {string}
  */
-function postponeStatement(workUnit, topic, plan, horizon, project) {
-  const name = titlecase(topic);
+function postponeStatement(workUnit, topic, plan, horizon, project, name) {
   const goes = plan.items.length === 0
     ? `Postponing **${name}** sets it aside — nothing has started, so only the map row is marked.`
     : `Postponing **${name}** marks its ${listJoin(plan.items.map(({ phase, item }) => `${phase} [${item.status}]`))} postponed — its record stays on disk and comes back with the pull.`;
@@ -4136,7 +4139,7 @@ function postponeGate(cwd, { dotpath, horizon }) {
   return section(
     'MENU: postpone gate',
     MENU_INSTRUCTION,
-    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project), [
+    menu(postponeStatement(workUnit, topic, plan, /** @type {string} */ (horizon), project, topicTitle(manifest, topic)), [
       cmdOption('y', 'yes', 'Postpone it', { next: { kind: 'engine', argv: ['topic', 'postpone', workUnit, topic, '--horizon', /** @type {string} */ (horizon)] } }),
       cmdOption('n', 'no', 'Keep it here', { next: { kind: 'continue' } }),
       promptOption('Comment', 'Tell me what to change (the horizon)', { next: { kind: 'continue' } }),
@@ -4273,13 +4276,13 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
  * @returns {string}
  */
 function phaseNote(cwd, { dotpath, verb, noun }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'phase-note');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'phase-note');
   if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
   beatQuietly(cwd, workUnit, phase, topic);
   return section(
     'DISPLAY: phase note',
     CONTINUE_INSTRUCTION,
-    `${verb} ${isFilled(noun) ? noun : phase}: ${titlecase(topic)}`,
+    `${verb} ${isFilled(noun) ? noun : phase}: ${itemTitle(topicTitles(manifest), phase, topic)}`,
   );
 }
 
@@ -4464,7 +4467,7 @@ function directEntryGate(cwd, { dotpath }) {
     ? POSTPONED_TAKEN
     : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
   return [
-    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${titlecase(topic)}" is already on the map — ${lifecyclePhrase(lifecycle)}`),
+    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${topicTitle(manifest, topic)}" is already on the map — ${lifecyclePhrase(lifecycle)}`),
     section('DISPLAY: direct entry guidance', CONTINUE_MARKDOWN_INSTRUCTION, `> ${guidance}`),
   ].join('\n');
 }
@@ -4476,7 +4479,8 @@ function directEntryGate(cwd, { dotpath }) {
  */
 function entryGate(cwd, { dotpath, own }) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
-  const t = titlecase(topic);
+  const titles = topicTitles(manifest);
+  const t = itemTitle(titles, phase, topic);
 
   if (own) {
     // --own checks the specification's OWN terminal statuses where it
@@ -4637,7 +4641,7 @@ function entryGate(cwd, { dotpath, own }) {
         .filter((n) => n && items[n] && OPEN_SOURCE_STATUSES.includes(items[n].status));
       if (open.length > 0) {
         return blocker(
-          `Sources for "${t}" are not concluded: ${open.join(', ')}`,
+          `Sources for "${t}" are not concluded: ${open.map((n) => goesBy(titles, n)).join(', ')}`,
           'A specification cannot be built from a record still open — conclude the discussion(s), then re-enter this specification.',
         );
       }
@@ -4657,7 +4661,7 @@ function entryGate(cwd, { dotpath, own }) {
       }
       if (disc.status !== 'completed') {
         return blocker(
-          `The discussion for "${titlecase(name)}" is not yet completed`,
+          `The discussion for "${titled(titles, name)}" is not yet completed`,
           'The discussion must be completed before specification can begin.',
         );
       }
@@ -5043,13 +5047,14 @@ function topicReceiptSurface(cwd, args) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
   const verb = args.verb;
   const warn = args.warn === '1';
+  const name = itemTitle(topicTitles(manifest), phase, topic);
   if (verb === 'complete') {
     const item = itemOf(manifest, phase, topic);
     if (!item) throw new Error(`render topic-receipt: no ${phase} item "${topic}"`);
     if (item.status !== 'completed') {
       throw new Error(`render topic-receipt: "${topic}" is "${item.status}", not "completed" — the complete has not run`);
     }
-    return topicReceipt(verb, topic, { warn });
+    return topicReceipt(verb, name, { warn });
   }
   if (verb === 'supersede') {
     if (phase !== 'specification') {
@@ -5059,7 +5064,7 @@ function topicReceiptSurface(cwd, args) {
     if (!item || item.status !== 'superseded') {
       throw new Error(`render topic-receipt: "${topic}" is not superseded — the supersede has not run`);
     }
-    return topicReceipt(verb, topic, { warn });
+    return topicReceipt(verb, name, { warn });
   }
   if (verb === 'postpone') {
     assertDiscoveryUnitAddress(manifest, phase, topic, verb);
@@ -5067,14 +5072,14 @@ function topicReceiptSurface(cwd, args) {
       throw new Error(`render topic-receipt: "${topic}" is not postponed — the postpone has not run`);
     }
     const waiting = postponedItem(loadProjectManifest(cwd), workUnit, topic);
-    return topicReceipt(verb, topic, { warn, horizon: waiting ? waiting.horizon : null });
+    return topicReceipt(verb, name, { warn, horizon: waiting ? waiting.horizon : null });
   }
   if (verb === 'restore') {
     assertDiscoveryUnitAddress(manifest, phase, topic, verb);
     if (computeTopicLifecycle(manifest, topic).lifecycle === 'postponed') {
       throw new Error(`render topic-receipt: "${topic}" is still postponed — the pull forward has not run`);
     }
-    return topicReceipt(verb, topic, { warn, restored: unitStatuses(manifest, 'discovery', topic) });
+    return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, 'discovery', topic) });
   }
   if (verb !== 'cancel' && verb !== 'reactivate') {
     throw new Error(`render topic-receipt: --verb must be complete, supersede, cancel, reactivate, postpone, or restore, got "${verb}"`);
@@ -5086,12 +5091,12 @@ function topicReceiptSurface(cwd, args) {
   const cancelled = unitCancelled(manifest, stage, topic);
   if (verb === 'cancel') {
     if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
-    return topicReceipt(verb, topic, { warn });
+    return topicReceipt(verb, name, { warn });
   }
   if (cancelled) {
     throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
   }
-  return topicReceipt(verb, topic, { warn, restored: unitStatuses(manifest, stage, topic) });
+  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, stage, topic) });
 }
 
 /**

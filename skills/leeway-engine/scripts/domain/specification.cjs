@@ -18,7 +18,7 @@ const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { loadActiveManifests, fileExists, filesChecksum } = require('./reads.cjs');
 const {
   OPEN_SOURCE_STATUSES, itemOf, phaseItems, sourceRows, specGroupsSources, lockingSpecs, specIncorporations,
-  collectAnalysisInputs, computeAnalysisCacheStatus,
+  collectAnalysisInputs, computeAnalysisCacheStatus, topicTitles,
 } = require('./derivations.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
@@ -51,6 +51,7 @@ const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'unstarted'
  * @property {DiscoverySpec[]} specifications  those grouping their sources — a started one once its file is on disk — actionable first, the build order breaking ties
  * @property {{name: string, sources: string[]}[]} cancelled_specifications  each cancelled specification's reserved key and the sources it grouped
  * @property {'none'|'valid'|'stale'} cache  the grouping analysis's cache against the discussion files — none when no analysis was written
+ * @property {Record<string, string>} titles  the titles a rename gave started topics, by key (derivations' `topicTitles`)
  * @property {{discussion_count: number, completed_count: number, in_progress_count: number,
  *   spec_count: number, proposed_count: number, concluded_count: number,
  *   has_discussions: boolean, has_completed: boolean,
@@ -106,6 +107,7 @@ const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'unstarted'
  * @property {boolean} has_materialized     any live non-proposed spec exists
  * @property {boolean} record_open          any discussion in-progress — the analysis actions are withheld
  * @property {SingleContext|null} single    set for the single scenario only
+ * @property {Record<string, string>} titles  the titles a rename gave started topics, by key
  */
 
 /** Display tag for one materialized source. @param {DiscoverySource} src */
@@ -223,6 +225,7 @@ function specificationDiscovery(cwd, workUnit) {
     specifications,
     cancelled_specifications: cancelledSpecifications,
     cache: !analysis.stamped ? 'none' : (analysis.status === 'valid' ? 'valid' : 'stale'),
+    titles: topicTitles(manifest),
     current_state: {
       discussions_checksum: filesChecksum(collectAnalysisInputs(manifest, stateDir, 'grouping-analysis')),
       discussion_count: discussions.length,
@@ -410,6 +413,7 @@ function specificationDetail(workUnit, result) {
     has_materialized: rows.some((r) => r.status !== 'proposed'),
     record_open: inProgress.length > 0,
     single,
+    titles: result.titles,
   };
 }
 

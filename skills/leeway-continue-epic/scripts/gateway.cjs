@@ -103,8 +103,8 @@ function reconcilePending(d) {
 
 // The scoped state dump for one epic — the reasoning surface Steps 1–6
 // read: the all-done flag, analysis-cache statuses, the sequencing flag, and
-// the discovery-map rows (tier, lifecycle, field presence, current
-// summary text).
+// the discovery-map rows (tier, lifecycle, the name a renamed topic goes by
+// beside its key, field presence, current summary text).
 /** @param {string} workUnit @param {EpicDetail|null} d */
 function formatScoped(workUnit, d) {
   const lines = [];
@@ -124,6 +124,7 @@ function formatScoped(workUnit, d) {
   }
   for (const t of d.discovery_map) {
     let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
+    if (t.goes_by !== t.name) line += ` goes_by=${t.goes_by}`;
     line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
     if (t.mail_waiting) line += ` mail=waiting`;
@@ -221,7 +222,7 @@ function inSessionGate(workUnit, key) {
   if (entry.code_session) {
     return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
   }
-  return engine.project.epicInSessionGate(workUnit, entry);
+  return engine.project.epicInSessionGate(workUnit, entry, d.titles);
 }
 
 /** @typedef {(name: string, detail: object, opts: {presence: object[]}) => {keys: object[], title: string, display: string, rendered: string}} SubViewProjection */

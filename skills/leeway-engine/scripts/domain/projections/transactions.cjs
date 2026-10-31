@@ -92,12 +92,11 @@ function workunitReceipt(verb, workUnit, workType, { pipeline = false, skippedRe
  * pull forward's restore the statuses their items returned to (none for a
  * never-started topic).
  * @param {'complete'|'supersede'|'cancel'|'reactivate'|'postpone'|'restore'} verb
- * @param {string} topic
+ * @param {string} name  the topic or specification as screens title it
  * @param {{warn?: boolean, restored?: {phase: string, status: string}[], horizon?: string|null}} [opts]
  * @returns {string}
  */
-function topicReceipt(verb, topic, { warn = false, restored = [], horizon = null } = {}) {
-  const name = titlecase(topic);
+function topicReceipt(verb, name, { warn = false, restored = [], horizon = null } = {}) {
   if (verb === 'complete') {
     return warn
       ? warningBlock('Knowledge indexing warning', 'The artifact is saved. The next start retries the indexing.', CONTINUE_INSTRUCTION)

@@ -42,13 +42,14 @@ const GONE = { cancelled: 'is cancelled', removed: 'was removed from the map' };
 /**
  * The send report: where the message landed, and for a mailbox the command
  * that opens the target topic.
- * @param {{unit: string, topic: string, title: string, landing: Landing, gone: {name: string, how: 'cancelled'|'removed'}}} sent  `gone` the unit or topic whose going sent it to the inbox
+ * @param {{unit: string, topic: string, named: string, title: string, landing: Landing, gone: {title: string, how: 'cancelled'|'removed'}}} sent
+ *   `named` the topic as screens title it, `title` the message's; `gone` the unit or topic whose going sent it to the inbox, as screens title it
  * @param {{width?: number}} [opts]
  * @returns {string}
  */
-function sendReport({ unit, topic, title, landing, gone }, { width = displayWidth() } = {}) {
-  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${titlecase(gone.name)} ${GONE[gone.how]}, so the message went to the inbox as an idea`);
-  const to = topic === unit ? titlecase(unit) : `${titlecase(topic)}, on ${titlecase(unit)}`;
+function sendReport({ unit, topic, named, title, landing, gone }, { width = displayWidth() } = {}) {
+  if (landing === 'inbox') return section('DISPLAY: send report', CONTINUE_INSTRUCTION, `${gone.title} ${GONE[gone.how]}, so the message went to the inbox as an idea`);
+  const to = topic === unit ? named : `${named}, on ${titlecase(unit)}`;
   return section('DISPLAY: send report', CONTINUE_INSTRUCTION, [
     `Sent to ${to}`,
     ...indented(title, width),

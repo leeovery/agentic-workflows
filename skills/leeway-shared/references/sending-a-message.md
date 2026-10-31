@@ -46,7 +46,7 @@ Resolution is computed against the **live** state at landing time, never cached 
 node .claude/skills/leeway-discovery/scripts/gateway.cjs {work_unit}
 ```
 
-Find the row whose name is `{target}`.
+Find the row whose name is `{target}`, or whose `goes_by` is — a started topic the person renamed goes by the new name — and set `target` to that row's name.
 
 #### If no row matches
 

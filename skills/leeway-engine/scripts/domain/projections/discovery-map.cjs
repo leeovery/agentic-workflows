@@ -67,7 +67,7 @@ function breakdown(summary) {
 /** @param {DiscoveryMapRow[]} rows */
 function mapNodes(rows) {
   return rows.map((row) => ({
-    title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title ?? titlecase(row.name) }),
+    title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title }),
     body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null))],
   }));
 }

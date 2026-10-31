@@ -18,7 +18,9 @@
 // - rename: an unstarted topic moves whole — its key, its folder and its
 //   place in the order, a roadmap item it took in following it; one that has
 //   started takes the new name as its title on every screen, its key, folder,
-//   mail and ledger entries keeping the name it started under (8.8.17).
+//   mail and ledger entries keeping the name it started under (8.8.17). A
+//   waiting roadmap item's name is refused as add refuses it, and a name
+//   struck from the map is taken back.
 // - remove: an unstarted topic only, a started one cancelled instead, with
 //   its confirm (8.8.8). Its waiting mail goes to the inbox as ideas, a
 //   roadmap item it took in goes back on its horizon (8.8.16, 18.8.20), and
@@ -26,8 +28,9 @@
 // - order: the topics' order (8.6.2).
 // - brief: a brief rewritten before its topic starts; once it has, what bears
 //   on it goes as a message (8.7.6).
-// A topic is unstarted while its lifecycle reads fresh: no conversation on it
-// yet, whether or not mail waits for it. A topic a ledger event names keeps
+// A verb naming a topic on the map takes its key or the title a rename gave
+// it. A topic is unstarted while its lifecycle reads fresh: no conversation
+// on it yet, whether or not mail waits for it. A topic a ledger event names keeps
 // that name for good (ledger-fold.cjs), so it is neither removed nor moved.
 // Rename and remove take the writer lock first, then read the manifest, the
 // ledger and the mailbox under it, so no entry or message lands between the
@@ -40,7 +43,7 @@
 const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer, readProjectManifest } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { computeTopicLifecycle, lifecyclePhrase, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle } = require('./derivations.cjs');
+const { computeTopicLifecycle, lifecyclePhrase, CLOSED_LIFECYCLES, itemOf, topicDir, briefFile, dismissedNames, topicTitle, topicKeyOf } = require('./derivations.cjs');
 const { KEBAB_SLUG_PATTERN } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, cacheScratch } = require('../kernel/state-root.cjs');
 const { namesTopic } = require('./ledger-fold.cjs');
@@ -60,7 +63,7 @@ const { moveWaitingToInbox } = require('./mail.cjs');
  * @property {string} [brief]            add/brief: the brief, absolute
  * @property {string} [from_roadmap]     add: the roadmap item the topic took in
  * @property {{work_unit: string, topic: string}} [prior]  add/set-prior: the epic the topic's earlier record sits in
- * @property {boolean} [re_added]        add: a name struck from the map, added back
+ * @property {boolean} [re_added]        add, rename: a name struck from the map, taken back
  * @property {{name: string, title: string, from_roadmap?: string}[]} [added]  add-batch
  * @property {string[]} [readded]        add-batch: the names struck from the map, added back
  * @property {string} [renamed_from]     rename: the key before
@@ -112,6 +115,15 @@ function mapItem(manifest, name) {
     throw new Error(`no discovery item "${name}" in the manifest (phases.discovery.items)`);
   }
   return item;
+}
+
+/**
+ * The key of the map's topic going by `said` — its key, or the title a
+ * rename gave it (8.8.17) — `said` itself where none does.
+ * @param {object} manifest @param {string} said
+ */
+function mapKey(manifest, said) {
+  return topicKeyOf(manifest, said) ?? said;
 }
 
 /** The map's container, made where the manifest has none. @param {Record<string, any>} manifest */
@@ -212,7 +224,7 @@ function removeRefusal(manifest, name, named) {
 function briefRefusal(manifest, name) {
   const { lifecycle } = computeTopicLifecycle(manifest, name);
   if (lifecycle === 'fresh') return null;
-  return CLOSED_LIFECYCLES.includes(lifecycle) ? lifecyclePhrase(lifecycle) : 'started — what bears on it goes as a message';
+  return CLOSED_LIFECYCLES.includes(lifecycle) ? `takes no brief — ${lifecyclePhrase(lifecycle)}` : 'started — what bears on it goes as a message';
 }
 
 /**
@@ -386,10 +398,16 @@ function checkRoadmap(project, unit, entries, said) {
     const refusal = e.from_roadmap === undefined ? null : takeInRefusal(project, unit, e.from_roadmap);
     if (refusal !== null) throw new Error(`${said}: "${e.name}" can't take the item in — ${refusal}`);
     const twin = waitingTwin(project, e.name);
-    if (twin !== null && !taken.has(twin)) {
-      throw new Error(`${said}: "${e.name}" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap ${twin}, or name the topic apart`);
-    }
+    if (twin !== null && !taken.has(twin)) throw new Error(`${said}: ${twinRefusal(e.name, twin)}`);
   }
+}
+
+/**
+ * Why a topic can't go by `name` while a waiting roadmap item of that name
+ * stands (8.1.6). @param {string} name @param {string} twin
+ */
+function twinRefusal(name, twin) {
+  return `"${name}" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap ${twin}, or name the topic apart`;
 }
 
 /**
@@ -482,17 +500,18 @@ function addTopics(cwd, workUnit, entries, { source, requireBrief = true } = {})
 
 /**
  * `topic edit`: a topic's summary, its description, or both, at any
- * lifecycle, committed.
- * @param {string} cwd @param {string} workUnit @param {string} name
+ * lifecycle, committed. The topic is named by its key or its title.
+ * @param {string} cwd @param {string} workUnit @param {string} said
  * @param {{summary?: string, description?: string}} fields
  * @returns {MapChange}
  */
-function editTopic(cwd, workUnit, name, { summary, description } = {}) {
+function editTopic(cwd, workUnit, said, { summary, description } = {}) {
   if (summary === undefined && description === undefined) {
     throw new Error('at least one of --summary/--description is required');
   }
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const name = mapKey(manifest, said);
     const item = mapItem(manifest, name);
     if (summary !== undefined) item.summary = summary;
     if (description !== undefined) item.description = description;
@@ -503,7 +522,7 @@ function editTopic(cwd, workUnit, name, { summary, description } = {}) {
     if (description !== undefined) out.description = description;
     return out;
   });
-  return committed(cwd, [`${workUnit}/manifest.json`], `discovery(${workUnit}): edit ${name}`, result, []);
+  return committed(cwd, [`${workUnit}/manifest.json`], `discovery(${workUnit}): edit ${result.name}`, result, []);
 }
 
 /**
@@ -546,31 +565,40 @@ function nameTaken(manifest, topic, name) {
 /**
  * `topic rename`: an unstarted topic, one the ledger names not, moved whole
  * to the new name — its key, its folder and its place in the order, a
- * roadmap item it took in re-aimed; any other given the new name as the
- * title every screen shows, its key, folder, mail and ledger entries keeping
- * the name it started under (8.8.17), a rename back to that name dropping
- * the title. Refused for the name the topic goes by already, and for one
- * another topic goes by. The writer lock is taken first, the ledger read
- * under it. Committed.
- * @param {string} cwd @param {string} workUnit @param {string} oldName @param {string} newName
+ * roadmap item it took in re-aimed, and any title it took while set aside
+ * dropped; any other given the new name as the title every screen shows,
+ * its key, folder, mail and ledger entries keeping the name it started under
+ * (8.8.17). A rename to the key drops the title, whatever the topic's
+ * lifecycle. A name struck from the map leaves the struck names, the person
+ * having asked for it (8.10.11). Refused for the name the topic goes by
+ * already, one another topic goes by, and one a waiting roadmap item
+ * carries (8.1.6). The writer lock is taken first, the ledger read under
+ * it. The topic is named by its key or its title. Committed.
+ * @param {string} cwd @param {string} workUnit @param {string} said @param {string} newName
  * @returns {MapChange}
  */
-function renameTopic(cwd, workUnit, oldName, newName) {
+function renameTopic(cwd, workUnit, said, newName) {
   const misnamed = topicNameRefusal(newName);
   if (misnamed !== null) throw new Error(`topic rename: ${misnamed}`);
   /** @type {string[]} */
   const warnings = [];
   const renamed = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const oldName = mapKey(manifest, said);
     const item = mapItem(manifest, oldName);
     const was = topicTitle(manifest, oldName);
     if (newName === (item.title ?? oldName)) throw new Error(`topic rename: "${oldName}" goes by "${newName}" already`);
     const holder = nameTaken(manifest, oldName, newName);
     if (holder !== null) throw new Error(`topic rename: "${holder}" on the map goes by "${newName}" — pick a different name`);
-    const moved = computeTopicLifecycle(manifest, oldName).lifecycle === 'fresh' && !ledgerNames(cwd, workUnit, oldName, warnings);
+    const twin = newName === oldName ? null : waitingTwin(readProjectManifest(cwd), newName);
+    if (twin !== null) throw new Error(`topic rename: ${twinRefusal(newName, twin)}`);
+    const moved = newName !== oldName && computeTopicLifecycle(manifest, oldName).lifecycle === 'fresh' && !ledgerNames(cwd, workUnit, oldName, warnings);
     if (moved) moveTopic(cwd, manifest, oldName, newName);
-    else if (newName === oldName) delete item.title;
+    if (moved || newName === oldName) delete item.title;
     else item.title = newName;
+    const dismissed = dismissedNames(manifest);
+    const reAdded = dismissed.includes(newName);
+    if (reAdded) manifest.phases.discovery.dismissed = dismissed.filter((n) => n !== newName);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     if (moved && fs.existsSync(statePath(cwd, topicDir(workUnit, oldName)))) {
       fs.renameSync(statePath(cwd, topicDir(workUnit, oldName)), statePath(cwd, topicDir(workUnit, newName)));
@@ -583,10 +611,12 @@ function renameTopic(cwd, workUnit, oldName, newName) {
       lifecycle: computeTopicLifecycle(manifest, key).lifecycle, map_total: mapTotal(manifest),
     };
     if (reaimed.length > 0) out.roadmap_reaimed = reaimed;
+    if (reAdded) out.re_added = true;
     return out;
   });
-  const paths = [`${workUnit}/manifest.json`, ...(renamed.moved ? [topicDir(workUnit, oldName), topicDir(workUnit, newName)] : []), ...(renamed.roadmap_reaimed ? [PROJECT_MANIFEST_SPEC] : [])];
-  return committed(cwd, paths, `discovery(${workUnit}): rename ${oldName} to ${newName}`, renamed, warnings);
+  const from = /** @type {string} */ (renamed.renamed_from);
+  const paths = [`${workUnit}/manifest.json`, ...(renamed.moved ? [topicDir(workUnit, from), topicDir(workUnit, newName)] : []), ...(renamed.roadmap_reaimed ? [PROJECT_MANIFEST_SPEC] : [])];
+  return committed(cwd, paths, `discovery(${workUnit}): rename ${from} to ${newName}`, renamed, warnings);
 }
 
 /**
@@ -596,15 +626,17 @@ function renameTopic(cwd, workUnit, oldName, newName) {
  * mailbox read, each waiting message moved to the inbox as an idea, the map
  * row and any stub a message parked it with deleted, its name struck from
  * the map (8.10.11), its folder deleted, and a roadmap item it took in put
- * back on its horizon (8.8.16, 18.8.20). Committed.
- * @param {string} cwd @param {string} workUnit @param {string} name
+ * back on its horizon (8.8.16, 18.8.20). The topic is named by its key or
+ * its title. Committed.
+ * @param {string} cwd @param {string} workUnit @param {string} said
  * @returns {MapChange}
  */
-function removeTopic(cwd, workUnit, name) {
+function removeTopic(cwd, workUnit, said) {
   /** @type {string[]} */
   const warnings = [];
   const removed = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const name = mapKey(manifest, said);
     mapItem(manifest, name);
     const title = topicTitle(manifest, name);
     const refusal = removeRefusal(manifest, name, ledgerNames(cwd, workUnit, name, warnings));
@@ -627,6 +659,7 @@ function removeTopic(cwd, workUnit, name) {
       }),
     };
   });
+  const name = /** @type {string} */ (removed.result.name);
   const paths = [
     `${workUnit}/manifest.json`, topicDir(workUnit, name), ...removed.mail.map(({ idea }) => idea),
     ...(removed.result.roadmap_returned?.length ? [PROJECT_MANIFEST_SPEC] : []),
@@ -637,39 +670,41 @@ function removeTopic(cwd, workUnit, name) {
 /**
  * `topic brief`: a topic's brief rewritten from Claude's draft, the draft
  * consumed — refused once the topic has started, when what bears on it goes
- * as a message (8.7.6). Committed.
- * @param {string} cwd @param {string} workUnit @param {string} name @param {string|undefined} draft
+ * as a message (8.7.6). The topic is named by its key or its title.
+ * Committed.
+ * @param {string} cwd @param {string} workUnit @param {string} said @param {string|undefined} draft
  * @returns {MapChange}
  */
-function rewriteBrief(cwd, workUnit, name, draft) {
+function rewriteBrief(cwd, workUnit, said, draft) {
   if (draft === undefined) throw new Error('topic brief: --brief names the draft');
   const drafted = draftIn(cwd, draft, 'topic brief: --brief');
   const rewritten = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    const name = mapKey(manifest, said);
     mapItem(manifest, name);
     const refusal = briefRefusal(manifest, name);
     if (refusal !== null) throw new Error(`topic brief: "${name}" ${refusal}`);
     const rel = installBrief(cwd, workUnit, name, drafted);
     return { rel, result: /** @type {MapChange} */ ({ work_unit: workUnit, op: 'brief', name, title: topicTitle(manifest, name), brief: statePath(cwd, rel) }) };
   });
-  return committed(cwd, [rewritten.rel], `discovery(${workUnit}): rewrite ${name}'s brief`, rewritten.result, []);
+  return committed(cwd, [rewritten.rel], `discovery(${workUnit}): rewrite ${rewritten.result.name}'s brief`, rewritten.result, []);
 }
 
 /**
  * `topic order`: the map's order (8.6.2), each topic's `order` set and the
  * discovery scope committed. Choosing the order is the caller's; every topic must
  * be on the map and live, every order a positive integer — checked before
- * anything is written.
+ * anything is written. A topic is named by its key or its title.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {Record<string, number>} orders  topic → order
  * @returns {SequenceResult}
  */
 function sequenceMap(cwd, workUnit, orders) {
-  const titles = withWorkUnitLock(cwd, workUnit, () => {
+  const { ordered, titles } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
-    const entries = Object.entries(orders);
+    const entries = Object.entries(orders).map(([said, order]) => /** @type {[string, number]} */ ([mapKey(manifest, said), order]));
     if (entries.length === 0) {
       throw new Error('no {topic}={order} assignments given');
     }
@@ -692,14 +727,14 @@ function sequenceMap(cwd, workUnit, orders) {
       items[topic].order = order;
     }
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return Object.fromEntries(entries.map(([topic]) => [topic, topicTitle(manifest, topic)]));
+    return { ordered: Object.fromEntries(entries), titles: Object.fromEntries(entries.map(([topic]) => [topic, topicTitle(manifest, topic)])) };
   });
 
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitStateTail(cwd, discoveryScope(cwd, workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
-  const result = { work_unit: workUnit, op: 'order', ordered: orders, titles, committed: outcome.committed };
+  const result = { work_unit: workUnit, op: 'order', ordered, titles, committed: outcome.committed };
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;

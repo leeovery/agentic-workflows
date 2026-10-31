@@ -5,9 +5,11 @@
 // through its topics' discussions — a review's back-off, mail reopening a
 // decided topic, presence, session labels and the hooks, a topic cancelled
 // and reactivated, the map's own verbs — each brief written with its topic,
-// a rename, a brief refused once its topic has started, a topic a message
-// names landed with its brief, and one removed with its mail sent to the
-// inbox — the map deriving after every change. What
+// a rename, a brief refused once its topic has started, a decided topic
+// renamed and a message aimed at its new name, a topic a message names
+// landed with its brief, one removed with its mail sent to the inbox, and one
+// taking in the roadmap idea of its name — the map deriving after every
+// change. What
 // the grouping makes of the decided topics is
 // test-pipeline-simulation-epic-supersession.cjs.
 //
@@ -25,6 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/scripts/gateway.cjs'));
+const DISCOVERY_GATEWAY = require(path.join(ROOT, 'skills/leeway-discovery/scripts/gateway.cjs'));
 const {
   epicMenu, epicDashboard,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
@@ -350,10 +353,17 @@ describe('pipeline simulation: epic map', () => {
     const reparked = send(sim, wu, 'delta', 'alpha', 'third-parked');
     assert.strictEqual(reparked.message_path, path.join(sim.dir, `.leeway/${wu}/topics/delta/mail/002-third-parked.md`));
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
-    // Landing on a decided discussion reopens it to receive the entry: the
-    // question the message raised is answered, and the topic is decided
-    // again.
-    const reopened = send(sim, wu, 'beta', 'alpha', 'retry-policy');
+    // Beta renamed once decided goes by the new name, its key kept: a message
+    // the person aims at that name finds beta's row on the map's reader by
+    // the name it goes by, as sending-a-message reads it. Landing on a decided
+    // discussion reopens it to receive the entry: the question the message
+    // raised is answered, and the topic is decided again.
+    sim.run(['topic', 'rename', wu, 'beta', 'retry-rules']);
+    assert.match(sim.sections, /^Renamed "Beta" to "Retry Rules"\.$/m);
+    const rows = DISCOVERY_GATEWAY.format(DISCOVERY_GATEWAY.discover(sim.dir, wu)).split('\n');
+    const [, target] = /** @type {RegExpExecArray} */ (/^ {2}- \S+ (\S+) \[\w+\] goes_by=retry-rules /.exec(/** @type {string} */ (rows.find((line) => line.includes(' goes_by=retry-rules ')))));
+    assert.strictEqual(target, 'beta');
+    const reopened = send(sim, wu, target, 'alpha', 'retry-policy');
     assert.strictEqual(reopened.reopened, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'in-progress');
     const retry = ask('beta', 'Does the retry policy still hold?');
@@ -382,5 +392,15 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual(removed.inbox.map((file) => path.relative(sim.dir, file).replace(/\d{4}-\d{2}-\d{2}/, 'DATE')), ['.leeway/.inbox/ideas/DATE--stray-thought.md']);
     assert.deepStrictEqual([fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/epsilon`)), sim.manifest(wu).phases.discovery.dismissed], [false, ['epsilon']]);
     assert.ok(send(sim, wu, 'epsilon', 'alpha', 'late-thought').inbox_path, 'a send to a removed topic goes to the inbox');
+
+    // Zeta: a topic a message names that waits on the roadmap as an idea of
+    // its name. The add refuses to stand beside it, and lands again taking it
+    // in, as create-discovery-topic does.
+    sim.run(['roadmap', 'horizon', 'add', 'later']);
+    sim.run(['roadmap', 'add', 'zeta', '--horizon', 'later', '--summary', 'Zeta, waiting']);
+    const zeta = ['topic', 'add', wu, 'zeta', '--source', 'message:alpha', '--summary', 'Zeta summary', '--brief', draft('zeta'), '--re-add'];
+    sim.refuses(zeta, /^topic add: "zeta" would stand beside the waiting roadmap item of its name — take it in with --from-roadmap zeta, or name the topic apart$/);
+    assert.strictEqual(sim.run([...zeta, '--from-roadmap', 'zeta']).from_roadmap, 'zeta');
+    send(sim, wu, 'zeta', 'alpha', 'roadmap-thought');
   });
 });

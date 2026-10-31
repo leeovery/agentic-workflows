@@ -51,7 +51,7 @@ const { withWorkUnitLock, withProjectLock, readProjectManifest } = require('../k
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
-const { computeTopicLifecycle, itemOf, briefFile } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle } = require('./derivations.cjs');
 const { unitInProgress, assertPhaseHeld, phaseStanding } = require('./topic-standing.cjs');
 const { startTopic } = require('./transitions.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -306,7 +306,7 @@ function settle(cwd, entry, at, held, departure) {
 function heldQuestion({ phase, unit, topic, manifest }, place, ageSeconds, move) {
   const take = ['enter', phase, unit, ...(topic === undefined ? [] : [topic]), TAKE, ...(move ? [MOVE] : [])];
   const menu = manifest.work_type === 'epic' ? { skill: 'leeway-continue-epic', args: [unit] } : null;
-  return heldGate({ unit, phase, place, ageSeconds, take, menu });
+  return heldGate({ unit, phase, place, title: topicTitle(manifest, place), ageSeconds, take, menu });
 }
 
 /**

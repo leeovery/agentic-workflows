@@ -29,6 +29,7 @@ const { readShown, answerMap } = require('./ledger-read.cjs');
 const { answerShown } = require('./ledger-since.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { titlecase } = require('./conventions.cjs');
+const { topicTitles, titled } = require('./derivations.cjs');
 const { mapScreen } = require('./projections/map.cjs');
 
 /** @typedef {import('./projections/map.cjs').DrawnRow} DrawnRow */
@@ -89,37 +90,56 @@ function rowStanding(row) {
   return DECIDED_STANDS.includes(row.stands) ? closedBy(answersOn(row)).whose : 'moved';
 }
 
-/** Where a row gone on stands now: moved to a topic, later on the roadmap, or elsewhere. @param {Row} row */
-function goneTo({ stands, moved_to: to, stands_in: standsIn }) {
-  if (stands === 'later') return 'later, on the roadmap';
-  if (stands === 'moved-away') return `moved to ${titlecase(/** @type {string} */ (to))}`;
-  const where = /** @type {{unit: string, topic: string|null}} */ (standsIn);
-  return `on ${titlecase(where.topic ?? where.unit)}`;
+/**
+ * How the map names a topic of a unit: by the name it goes by (8.8.17).
+ * @typedef {(unit: string, topic: string) => string} Namer
+ */
+
+/**
+ * A `Namer` reading each unit's titles once, from its manifest.
+ * @param {string} root @returns {Namer}
+ */
+function topicNamer(root) {
+  /** @type {Map<string, Record<string, string>>} */
+  const titles = new Map();
+  return (unit, topic) => {
+    if (!titles.has(unit)) titles.set(unit, topicTitles(manifestOf(root, unit) ?? {}));
+    return titled(/** @type {Record<string, string>} */ (titles.get(unit)), topic);
+  };
 }
 
-/** What an open question waits on, beneath it. @param {Row} row @returns {string[]} */
-function openNotes({ moved_from: from, waiting_on: waiting }) {
-  const notes = from === null ? [] : [`↳ From ${titlecase(from)}'s message`];
+/** Where a row gone on stands now: moved to a topic, later on the roadmap, or elsewhere. @param {Row} row @param {string} unit @param {Namer} named */
+function goneTo({ stands, moved_to: to, stands_in: standsIn }, unit, named) {
+  if (stands === 'later') return 'later, on the roadmap';
+  if (stands === 'moved-away') return `moved to ${named(unit, /** @type {string} */ (to))}`;
+  const where = /** @type {{unit: string, topic: string|null}} */ (standsIn);
+  return `on ${where.topic === null ? titlecase(where.unit) : named(where.unit, where.topic)}`;
+}
+
+/** What an open question waits on, beneath it. @param {Row} row @param {string} unit @param {Namer} named @returns {string[]} */
+function openNotes({ moved_from: from, waiting_on: waiting }, unit, named) {
+  const notes = from === null ? [] : [`↳ From ${named(unit, from)}'s message`];
   if (waiting !== null) notes.push(waiting.running ? `↳ Waiting on experiment ${waiting.experiment}, still running` : `↳ Experiment ${waiting.experiment} has reported — its result is still to write`);
   return notes;
 }
 
 /**
  * The map's rows sorted into its sections, each as it is drawn, with the
- * counts the map opens on.
- * @param {Row[]} rows
+ * counts the map opens on; the topics a row names, of `unit` or another,
+ * `named`.
+ * @param {Row[]} rows @param {string} unit @param {Namer} named
  * @returns {{counts: MapView['counts'], open: DrawnRow[], decided: DrawnRow[], moved: DrawnRow[]}}
  */
-function mapSections(rows) {
+function mapSections(rows, unit, named) {
   /** @type {{open: DrawnRow[], decided: DrawnRow[], moved: DrawnRow[]}} */
   const drawn = { open: [], decided: [], moved: [] };
   const decided = { yours: 0, carried: 0, claudes: 0 };
   for (const row of rows) {
     const standing = rowStanding(row);
     if (standing === 'open') {
-      drawn.open.push({ glyph: '○', text: row.text, tag: 'yours', notes: openNotes(row) });
+      drawn.open.push({ glyph: '○', text: row.text, tag: 'yours', notes: openNotes(row, unit, named) });
     } else if (standing === 'moved') {
-      drawn.moved.push({ glyph: '→', text: row.text, tag: goneTo(row), notes: [] });
+      drawn.moved.push({ glyph: '→', text: row.text, tag: goneTo(row, unit, named), notes: [] });
     } else {
       decided[standing] += 1;
       drawn.decided.push({ glyph: standing === 'claudes' ? '◇' : '✓', text: row.text, tag: closedBy(answersOn(row)).tag, notes: [] });
@@ -193,7 +213,8 @@ function mapSurface(cwd, { dotpath }) {
     return readShown(root, warnings, (shower) => {
       const rows = /** @type {Row[]} */ (answerMap(shower, place, root).questions);
       const shown = /** @type {{id: string, text: string}[]} */ (/** @type {unknown} */ (answerShown(shower, place, root, warnings).calls));
-      return mapScreen({ topic, since: sinceRows(rows, shown), ...mapSections(rows) });
+      const named = topicNamer(root);
+      return mapScreen({ title: named(unit, topic), since: sinceRows(rows, shown), ...mapSections(rows, unit, named) });
     });
   } catch (err) {
     throw carrying(err, warnings);

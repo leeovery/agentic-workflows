@@ -88,7 +88,7 @@ const { readShown, answerMap } = require('./ledger-read.cjs');
 const { departureRow } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
-const { itemOf } = require('./derivations.cjs');
+const { itemOf, topicTitle } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkBatchEntries, addBatchTo } = require('./discovery-map.cjs');
@@ -477,6 +477,7 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
       return decidedScreen({
         unit,
         topic,
+        title: topicTitle(manifest, topic),
         decided: side.decided,
         carried: side.carried,
         moved: side.moved,
@@ -523,7 +524,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
   const { unit, topic, manifest } = topicAddress(stateRoot(cwd), dotpath, 'wait-agents');
   if (itemOf(manifest, PHASE, topic) === undefined) throw new Error(`render wait-agents: ${unit} has no discussion of "${topic}"`);
   const running = runningAgents(cwd, unit, PHASE, topic);
-  return running.length === 0 ? '' : waitAgents(unit, topic, running.map(({ kind }) => kind));
+  return running.length === 0 ? '' : waitAgents(unit, topic, topicTitle(manifest, topic), running.map(({ kind }) => kind));
 }
 
 /**

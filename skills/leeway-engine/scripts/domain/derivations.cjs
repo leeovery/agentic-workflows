@@ -12,7 +12,7 @@ const path = require('path');
 const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -1245,15 +1245,60 @@ function dismissedNames(manifest) {
 }
 
 /**
- * How every screen titles a topic of the unit: the name the person renamed
- * it to once it had started, its key keeping the name it started under, or
- * else its own name (8.8.17).
- * @param {object} manifest @param {string} topic
+ * The titles a rename gave the unit's started topics, by key — each the name
+ * the person renamed the topic to, its key keeping the name it started under
+ * (8.8.17). A screen drawn without the manifest carries these.
+ * @param {object} manifest
+ * @returns {Record<string, string>}
+ */
+function topicTitles(manifest) {
+  const items = /** @type {Record<string, any>} */ (manifest).phases?.discovery?.items ?? {};
+  return Object.fromEntries(Object.entries(items).flatMap(([key, row]) => (row && typeof row.title === 'string' ? [[key, row.title]] : [])));
+}
+
+/**
+ * The name a topic goes by: its title where a rename gave it one, else its
+ * key. @param {Record<string, string>} titles the unit's `topicTitles` @param {string} topic
+ */
+function goesBy(titles, topic) {
+  return Object.hasOwn(titles, topic) ? titles[topic] : topic;
+}
+
+/**
+ * How every screen titles a topic of the unit — the one way a topic's name
+ * reaches the person: the name it goes by, title-cased.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} topic
  * @returns {string}
  */
+function titled(titles, topic) {
+  return titlecase(goesBy(titles, topic));
+}
+
+/**
+ * How screens title an item of `phase`: a topic by the name it goes by, a
+ * specification and what is built from it by its own name.
+ * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * @returns {string}
+ */
+function itemTitle(titles, phase, name) {
+  return TOPIC_PHASES.includes(phase) ? titled(titles, name) : titlecase(name);
+}
+
+/** `titled` read from the unit's manifest. @param {object} manifest @param {string} topic @returns {string} */
 function topicTitle(manifest, topic) {
-  const row = itemOf(manifest, 'discovery', topic);
-  return titlecase(row && typeof row.title === 'string' ? row.title : topic);
+  return titled(topicTitles(manifest), topic);
+}
+
+/**
+ * The key of the topic on the unit's map that goes by `said` — its key or
+ * its title — or null where none does: a name the person says, resolved.
+ * @param {object} manifest @param {string} said
+ * @returns {string|null}
+ */
+function topicKeyOf(manifest, said) {
+  if (itemOf(manifest, 'discovery', said)) return said;
+  const titles = topicTitles(manifest);
+  return Object.keys(titles).find((key) => titles[key] === said) ?? null;
 }
 
 /**
@@ -1320,6 +1365,7 @@ function mailPhases(stateDir, manifest) {
  * @property {string|null} description        raw value, for surfaces that render it in full
  * @property {boolean} description_present     normalised presence
  * @property {string} title                   how screens title the topic (`topicTitle`)
+ * @property {string} goes_by                 the name the topic goes by — its title, else its key
  * @property {string} source
  * @property {string|null} source_provenance
  * @property {number|null} order
@@ -1365,6 +1411,7 @@ function buildDiscoveryMap(manifest, stateDir) {
       description: item.description || null,
       description_present: descriptionText !== null,
       title: topicTitle(manifest, item.name),
+      goes_by: goesBy(topicTitles(manifest), item.name),
       source: item.source || 'discovery',
       source_provenance: computeSourceProvenance(item.source),
       order: item.order ?? null,
@@ -1453,6 +1500,11 @@ module.exports = {
   briefFile,
   dismissedNames,
   topicTitle,
+  topicTitles,
+  goesBy,
+  titled,
+  itemTitle,
+  topicKeyOf,
   mailboxFiles,
   mailboxDepth,
   mailPhases,

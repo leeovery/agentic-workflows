@@ -56,10 +56,11 @@ function discover(cwd, workUnit) {
   };
 }
 
-// The thin scoped dump: the map (rows + counts), the dismissed list, the
-// work unit's manifest context (description, seeds, imports), the session-log
-// index, analysis-cache statuses, and the next session number — exactly what
-// the session loop, initialize step, map operations, continuity load, and the
+// The thin scoped dump: the map (rows + counts, a renamed topic's name it
+// goes by beside its key), the dismissed list, the work unit's manifest
+// context (description, seeds, imports), the session-log index,
+// analysis-cache statuses, and the next session number — exactly what the
+// session loop, initialize step, map operations, continuity load, and the
 // shared topic-discovery dispatch read. Rendering is map-view's concern.
 function format(result) {
   if (result.error) {
@@ -78,6 +79,7 @@ function format(result) {
   } else {
     for (const t of result.discovery_map) {
       let line = `  - ${t.tier} ${t.name} [${t.lifecycle}]`;
+      if (t.goes_by !== t.name) line += ` goes_by=${t.goes_by}`;
       if (t.source && t.source !== 'discovery') line += ` source=${t.source}`;
       if (t.current_phase) line += ` phase=${t.current_phase}`;
       if (t.mail_waiting) line += ` mail=waiting`;

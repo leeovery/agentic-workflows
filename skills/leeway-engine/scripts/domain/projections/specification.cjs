@@ -16,6 +16,7 @@ const path = require('path');
 const { renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 const { menuFrame, cmdOption, bulletRow, optionDetail, autoSelectLine } = require('./surfaces.cjs');
+const { goesBy, titled } = require('../derivations.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -63,10 +64,15 @@ function counted(n, noun) {
   return `${n} ${noun}${n === 1 ? '' : 's'}`;
 }
 
-/** ⚑ block for in-progress discussions, or '' when none. @param {string[]} names */
-function notReadyBlock(names) {
+/** Discussions by the name each topic goes by. @param {string[]} names @param {Record<string, string>} titles */
+function discussionBullets(names, titles) {
+  return bullets(names.map((name) => goesBy(titles, name)));
+}
+
+/** ⚑ block for in-progress discussions, or '' when none. @param {string[]} names @param {Record<string, string>} titles */
+function notReadyBlock(names, titles) {
   if (names.length === 0) return '';
-  return NOT_READY_HEAD + '\n\n' + bullets(names);
+  return NOT_READY_HEAD + '\n\n' + discussionBullets(names, titles);
 }
 
 /** @param {SpecRow} row */
@@ -77,12 +83,12 @@ function specLine(row) {
 
 // One numbered grouping/spec block: `N. Title` with the detail tree hanging
 // beneath at a 3-space indent (branch glyphs align under the title text).
-/** @param {number} number @param {SpecRow} row */
-function itemBlock(number, row) {
+/** @param {number} number @param {SpecRow} row @param {Record<string, string>} titles */
+function itemBlock(number, row, titles) {
   /** @type {TreeNode[]} */
   const nodes = [{ title: specLine(row) }];
   if (row.sources.length > 0) {
-    nodes.push({ title: 'Discussions:', children: row.sources.map((s) => ({ title: s.name, tag: s.tag })) });
+    nodes.push({ title: 'Discussions:', children: row.sources.map((s) => ({ title: goesBy(titles, s.name), tag: s.tag })) });
   }
   const tree = renderTree(nodes, { width: TREE_WIDTH })
     .replace(/\n+$/, '')
@@ -184,8 +190,8 @@ function singleDisplay(detail) {
   };
   return compose([
     SINGLE_INTRO[single.variant],
-    itemBlock(1, row),
-    notReadyBlock(detail.in_progress_discussions),
+    itemBlock(1, row, detail.titles),
+    notReadyBlock(detail.in_progress_discussions, detail.titles),
     keyBlock(displayedTerms([row])),
     autoSelectLine(single.proceed_name),
   ]);
@@ -195,8 +201,8 @@ function singleDisplay(detail) {
 function groupingsDisplay(detail) {
   return compose([
     'Recommended breakdown for specifications with their source discussions.',
-    ...detail.actionable.map((row, i) => itemBlock(i + 1, row)),
-    notReadyBlock(detail.in_progress_discussions),
+    ...detail.actionable.map((row, i) => itemBlock(i + 1, row, detail.titles)),
+    notReadyBlock(detail.in_progress_discussions, detail.titles),
     keyBlock(displayedTerms(detail.actionable)),
     detail.actionable.length >= 2 && !detail.record_open ? TIP : '',
   ]);
@@ -207,7 +213,7 @@ function analyzeDisplay(detail) {
   return compose([
     `${counted(detail.counts.completed_count, 'completed discussion')} found.\n`
       + wrap('No specification is proposed, in progress, or completed.', TREE_WIDTH).join('\n'),
-    'Completed discussions:\n' + bullets(detail.completed_discussions),
+    'Completed discussions:\n' + discussionBullets(detail.completed_discussions, detail.titles),
   ]);
 }
 
@@ -218,14 +224,14 @@ function specsMenuDisplay(detail) {
     + `${counted(cs.spec_count, 'specification')} exist${cs.spec_count === 1 ? 's' : ''}.`];
   if (detail.actionable.length > 0) {
     blocks.push('Existing specifications:');
-    detail.actionable.forEach((row, i) => blocks.push(itemBlock(i + 1, row)));
+    detail.actionable.forEach((row, i) => blocks.push(itemBlock(i + 1, row, detail.titles)));
   } else {
     blocks.push('All specifications are completed — see Manage completed specifications.');
   }
   if (detail.unassigned.length > 0) {
-    blocks.push('Completed discussions not in a specification:\n' + bullets(detail.unassigned));
+    blocks.push('Completed discussions not in a specification:\n' + discussionBullets(detail.unassigned, detail.titles));
   }
-  blocks.push(notReadyBlock(detail.in_progress_discussions));
+  blocks.push(notReadyBlock(detail.in_progress_discussions, detail.titles));
   blocks.push(keyBlock(displayedTerms(detail.actionable)));
   if (!detail.record_open) {
     if (detail.cache_status === 'none') blocks.push('No grouping analysis exists.');
@@ -324,7 +330,7 @@ function specificationMenu(detail) {
       const verb = row.status === 'proposed' ? 'Start' : 'Continue';
       numbered.push({
         key: '', action: 'blocked_spec', topic: row.name,
-        label: `${verb} "${titlecase(row.name)}" — blocked by ${row.open_sources.map(titlecase).join(', ')} (reopened)`,
+        label: `${verb} "${titlecase(row.name)}" — blocked by ${row.open_sources.map((source) => titled(detail.titles, source)).join(', ')} (reopened)`,
       });
       continue;
     }
@@ -418,6 +424,7 @@ function specificationCompletedMenu(detail) {
  * @property {string} status              the item's status — proposed before its first session
  * @property {{name: string, status: string, individual: boolean}[]} sources  status: pending | stale | incorporated; individual: another started specification already covers it
  * @property {string[]} supersedes        the started specifications the start incorporates
+ * @property {Record<string, string>} titles  the titles a rename gave started topics, by key
  */
 
 const CONFIRM_VERBS = { create: 'Creating', unify: 'Creating', continue: 'Continuing', refine: 'Refining' };
@@ -440,15 +447,16 @@ function bulletRows(texts) {
  * @returns {string}
  */
 function specificationConfirmation(c) {
+  const sources = c.sources.map((source) => ({ ...source, name: goesBy(c.titles, source.name) }));
   const specPath = (name) => path.join(c.state_root, c.work_unit, 'specification', name, 'specification.md');
-  const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
+  const named = (status) => sources.filter((s) => s.status === status).map((s) => s.name);
   const head = `${CONFIRM_VERBS[c.variant]} specification: ${titlecase(c.name)}`;
   const output = `Output: ${specPath(c.name)}`;
 
   if (c.variant === 'unify') {
     return compose([
       head,
-      listBlock('Sources:', bulletRows(c.sources.map((s) => s.name))),
+      listBlock('Sources:', bulletRows(sources.map((s) => s.name))),
       listBlock('Existing specifications to incorporate:', bulletRows(c.supersedes.map((n) => `${specPath(n)} → will be superseded`))),
       output,
     ]);
@@ -456,7 +464,7 @@ function specificationConfirmation(c) {
   if (c.variant === 'create') {
     return compose([
       head,
-      listBlock('Sources:', bulletRows(c.sources.map((s) => (s.individual ? `${s.name} (has individual spec — will be incorporated)` : s.name)))),
+      listBlock('Sources:', bulletRows(sources.map((s) => (s.individual ? `${s.name} (has individual spec — will be incorporated)` : s.name)))),
       output,
       listBlock('After completion:', c.supersedes.map((n) => `  ${specPath(n)} → marked as superseded`)),
     ]);
@@ -466,7 +474,7 @@ function specificationConfirmation(c) {
   const pending = named('pending');
   const stale = named('stale');
   if (pending.length === 0 && stale.length === 0) {
-    return compose([head, existing, listBlock('All sources extracted:', bulletRows(c.sources.map((s) => s.name)))]);
+    return compose([head, existing, listBlock('All sources extracted:', bulletRows(sources.map((s) => s.name)))]);
   }
   return compose([
     head,

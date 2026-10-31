@@ -30,13 +30,12 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
-  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
+  phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases, briefFile, topicDir,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
-const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
 const { closeInFlight } = require('./agent-state.cjs');
@@ -183,7 +182,8 @@ function assertSpecSettled(manifest, phase, topic, verb) {
 // The map decides whether a topic's discussion can be born — the same join
 // the epic menu renders its rows from, so the engine is never the permissive
 // path around it. The gate is on birth alone: an in-progress item resumes
-// regardless (the map already shows that phase live).
+// regardless (the map already shows that phase live). A topic off the map —
+// removed while the start waited on the lock among them — has none.
 
 /**
  * @param {object} manifest @param {string} phase @param {string} topic
@@ -194,7 +194,9 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
   const allowed = CONVERSATION_ACTIONS[/** @type {keyof typeof CONVERSATION_ACTIONS} */ (phase)];
   if (!allowed) return;
   if (existing && existing.status === 'in-progress') return;
-  if (!phaseItems(manifest, 'discovery').some((i) => i.name === topic)) return;
+  if (!phaseItems(manifest, 'discovery').some((i) => i.name === topic)) {
+    throw new Error(`${phase} can't start on "${topic}" — it is not on the map; a topic starts from its row on the epic menu`);
+  }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   const next = computeNextAction(lifecycle);
   if (next && allowed.includes(next)) return;
@@ -1163,7 +1165,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
     if (plan.locks.length > 0) throw new Error(plan.locks[0].reason);
 
     const row = itemOf(manifest, 'discovery', topic);
-    const summary = row && typeof row.summary === 'string' && row.summary.trim() !== '' ? row.summary : titlecase(topic);
+    const summary = row && typeof row.summary === 'string' && row.summary.trim() !== '' ? row.summary : topicTitle(manifest, topic);
     const sources = postponedSources(cwd, workUnit, topic);
     const postponed = stashItems(plan.items, 'postponed');
     discardGroupings(manifest, plan.discards);

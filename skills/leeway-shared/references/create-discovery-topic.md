@@ -47,9 +47,21 @@ node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {crea
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~` — so the shell passes it through literally.
 
+#### If the response is `ok: false` naming a waiting roadmap item of the name
+
+The topic is that item's work, so it takes the item in. Land it again with `--from-roadmap {item}`, the item the refusal names:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs topic add {work_unit} {created_topic} --source "{source}" --summary "{summary}" --brief .leeway/.cache/{work_unit}/discovery/{created_topic}-brief.md --re-add --from-roadmap {item}
+```
+
+The add commits itself.
+
+→ Return to caller.
+
 #### If the response is `ok: false` naming the name taken
 
-The map moved since validation — a concurrent session landed the same name, another topic goes by it, or a waiting roadmap item carries it. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
+The map moved since validation — a concurrent session landed the same name, or another topic goes by it. Derive a different kebab-case name from the point in hand, set `proposed_name` to it, and re-validate against the fresh map:
 
 → Return to **A. Validate the Name**.
 
