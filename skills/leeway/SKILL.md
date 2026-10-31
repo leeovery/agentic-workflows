@@ -151,12 +151,6 @@ Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its 
 
 → On return, proceed to **Step 0.7**.
 
-#### If `brownfield_offer` is `accepted`
-
-The offer's research is owed.
-
-→ Load **[handing-off.md](../leeway-shared/references/handing-off.md)** with route = `/leeway-discovery none none`.
-
 #### Otherwise
 
 A recorded answer — render nothing.

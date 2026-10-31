@@ -591,6 +591,16 @@ describe('leeway sub-view sections', () => {
     assert.ok(!out.includes('=== MENU'), out);
   });
 
+  it('a bare /leeway reaches the menu while a brownfield offer\'s research is owed — every way in offered, the p row noting the research (8.12.13)', () => {
+    createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
+    createFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
+    const out = run(['view']);
+    for (const row of ['1  —  continue_work_unit  auth-flow', 'p  product  open_product', 'm  manage  manage', 'h  help  open_help']) {
+      assert.match(out, new RegExp(`^ {2}${row.split('  ').join(' {2}')}`, 'm'), row);
+    }
+    assert.match(out, /^\*\*`p\/product`\*\* +→ Talk about the product — \*research owed\*$/m);
+  });
+
   it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {
     const IDEA = '.leeway/.inbox/ideas/2026-06-02--smart-retry.md';
     const BUG = '.leeway/.inbox/bugs/2026-06-01--login-timeout.md';

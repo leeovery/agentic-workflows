@@ -101,6 +101,9 @@ function roadmapRows(roadmap) {
   });
 }
 
+/** The product row's note while the brownfield research is owed. */
+const RESEARCH_OWED = 'research owed';
+
 // The roadmap menu row, rendered only once the layer exists.
 /** @param {StartDetail} detail @returns {StartMenuKey|null} */
 function roadmapMenuRow(detail) {
@@ -110,13 +113,19 @@ function roadmapMenuRow(detail) {
 
 /**
  * The product's conversation's row, always there (18.2.13): its session count
- * and last date once it has sessions. It hands into discovery at no unit.
+ * and last date once it has sessions, and the brownfield research while it is
+ * owed, which the conversation's next opening resumes (8.12.13). It hands
+ * into discovery at no unit.
  * @param {StartDetail} detail @returns {StartMenuKey}
  */
-function productMenuRow({ product: { sessions, last } }) {
+function productMenuRow({ product: { sessions, last }, research_owed: owed }) {
   const head = 'Talk about the product';
   const count = `${sessions} session${sessions === 1 ? '' : 's'}`;
-  const label = sessions === 0 ? head : { head, tail: last === null ? count : `${count}, last on ${dayMonth(last)}` };
+  const tail = sessions === 0 ? null : last === null ? count : `${count}, last on ${dayMonth(last)}`;
+  /** @type {string|LabelParts} */
+  let label = head;
+  if (tail !== null) label = { head, tail, cue: owed ? RESEARCH_OWED : undefined };
+  else if (owed) label = { head, tail: RESEARCH_OWED };
   return { key: 'p', word: 'product', action: 'open_product', route: '/leeway-discovery none none', label };
 }
 

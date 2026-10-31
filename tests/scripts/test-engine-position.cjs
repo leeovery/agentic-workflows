@@ -662,7 +662,14 @@ describe('conversation position', () => {
 
   it('a position left at the baseline, a place the project no longer has, carries nothing on', () => {
     writePosition({ name: 'baseline' });
-    assert.deepStrictEqual([reads().skill, reads().files], [null, []]);
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: { name: 'baseline' },
+      place: 'baseline',
+      skill: null,
+      files: [],
+      text: 'This conversation was working in "baseline", but this project has no work unit "baseline", so there is nothing to carry on from.',
+    });
   });
 
   it('a place no longer open carries nothing on — the work unit gone from this project or closed, the place\'s item closed', () => {

@@ -686,18 +686,25 @@ describe('start projections: the brownfield offer\'s answer (8.S44, 8.12.1)', ()
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('changes no menu: the empty state, the start menu and manage are the same whatever the answer — nothing asks whether to use the workflows, and no answer gates a way into work', () => {
+  it('changes no menu but the p row\'s note of owed research: the empty state, the start menu and manage offer the same rows whatever the answer — nothing asks whether to use the workflows, and no answer gates a way into work', () => {
     const menus = () => ({
-      empty: emptyMenu(startDetail(dir)).rendered,
-      start: startMenu(fullFixture(dir)).rendered,
+      empty: emptyMenu(startDetail(dir)).keys,
+      start: startMenu(fullFixture(dir)).keys,
       manage: manageListView(startDetail(dir)).menu,
     });
+    const productLabel = (keys) => keys.find((k) => k.action === 'open_product').label;
     const unanswered = menus();
     for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
       cleanupFixture(dir);
       dir = setupFixture();
       writeBrownfieldOffer(dir, answer);
-      assert.deepStrictEqual(menus(), unanswered, answer);
+      const answered = menus();
+      // The one exception: an accepted offer's p row notes the research owed (8.12.13).
+      for (const menu of answer === 'accepted' ? ['empty', 'start'] : []) {
+        assert.deepStrictEqual(productLabel(answered[menu]), { head: 'Talk about the product', tail: 'research owed' }, menu);
+        answered[menu] = answered[menu].map((k) => (k.action === 'open_product' ? { ...k, label: productLabel(unanswered[menu]) } : k));
+      }
+      assert.deepStrictEqual(answered, unanswered, answer);
     }
   });
 });
@@ -776,6 +783,16 @@ describe('start projections: roadmap rows', () => {
       'the date is the latest conversation a log names, past a log none has written in yet');
     const keys = full.keys.map((k) => k.key);
     assert.ok(keys.indexOf('3') < keys.indexOf('p') && keys.indexOf('p') < keys.indexOf('s'), `after the work, before start: ${keys}`);
+  });
+
+  it('the p row notes the brownfield research while it is owed — its tail before any session, after the tail once there are sessions — and drops it once completed (8.12.13)', () => {
+    const productRow = () => emptyMenu(startDetail(dir)).keys.find((k) => k.action === 'open_product');
+    writeBrownfieldOffer(dir, 'accepted');
+    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *research owed*');
+    createFile(dir, '.leeway/.product/sessions/session-001.md', '## 2026-10-12 · session one\n\nPricing first.\n');
+    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *1 session, last on 12 Oct* · research owed');
+    writeBrownfieldOffer(dir, 'completed');
+    assert.strictEqual(drawLabel(productRow().label), 'Talk about the product — *1 session, last on 12 Oct*');
   });
 
   it('sessions whose logs name no conversation are counted, with no date', () => {

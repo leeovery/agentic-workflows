@@ -8,11 +8,9 @@
 // {work-unit} · {phase} · {topic}`, the topic left out where it is the
 // work unit, the product's conversation's entry `{original} · product`, a
 // navigation skill and the bridge `{original} · {work-unit}`, the roadmap
-// `{original} · roadmap`, and
-// leeway puts the original
-// back through boot's `repair`. Leaving a place is never an event: the name
-// changes on arrival, and at session end, where `session cleanup` restores
-// it. A resumed session gets its label back: `session resume`, a
+// `{original} · roadmap`, and leeway puts the original back through boot's
+// `repair`. Leaving a place is never an event: the name changes on arrival,
+// and at session end, where `session cleanup` restores it. A resumed session gets its label back: `session resume`, a
 // SessionStart hook fired on `claude --resume`, re-applies the
 // conversation's position (position.cjs — recorded by the same arrivals,
 // labels on or off, and outliving the session) where the project has its

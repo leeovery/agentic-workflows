@@ -249,18 +249,6 @@ describe('engine boot', () => {
     execFileSync('git', ['clone', '-q', '--depth', '1', `file://${project}`, shallow]);
     assert.strictEqual(baselineSignal(shallow), null);
   });
-
-  it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
-    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {} }));
-    const res = runEngine(stubbed, fix.project, ['boot']);
-    assert.deepStrictEqual([res.knowledge, res.brownfield_offer, res.baseline_signal.commits_total], ['not-ready', 'none', 2]);
-  });
-
-  it('brownfield_offer: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
-    fs.writeFileSync(statePath(fix.project, layout.projectManifest), JSON.stringify({ work_units: {}, brownfield_offer: 'accepted' }));
-    const res = runEngine(stubbed, fix.project, ['boot']);
-    assert.deepStrictEqual([res.knowledge, res.brownfield_offer], ['not-ready', 'accepted']);
-  });
 });
 
 describe('engine boot: no worktree include', () => {

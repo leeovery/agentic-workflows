@@ -13,9 +13,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
+const { loadActiveManifests, loadAllManifests, loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { productConversation } = require('./discovery-session.cjs');
+const { researchOwed } = require('./brownfield.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
@@ -120,6 +121,7 @@ function pipelineOf(workType) {
  * @property {InboxDetail} inbox
  * @property {ReturnType<import('./roadmap.cjs').roadmapState>} roadmap
  * @property {ReturnType<import('./discovery-session.cjs').productConversation>} product
+ * @property {boolean} research_owed  the brownfield offer accepted, its research not yet landed (8.12.13)
  * @property {StartState} state
  */
 
@@ -292,6 +294,7 @@ function startDetail(cwd) {
     inbox,
     roadmap: roadmapState(cwd),
     product: productConversation(cwd),
+    research_owed: researchOwed(loadProjectManifest(cwd)),
     state: {
       has_any_work: (epics.length + features.length + bugfixes.length + quick_fixes.length + cross_cutting.length) > 0,
       epic_count: epics.length,

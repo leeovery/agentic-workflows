@@ -40,7 +40,7 @@ node .claude/skills/leeway-engine/scripts/engine.cjs render brownfield-offer-gat
 
 **If `yes`:**
 
-Record the acceptance — written and committed in one call, so the next start resumes the research until it lands:
+Record the acceptance — written and committed in one call, so the product's conversation resumes the research at its next opening until it lands:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs brownfield record accepted
