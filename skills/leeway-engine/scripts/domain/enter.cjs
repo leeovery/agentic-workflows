@@ -104,12 +104,13 @@ function mailRaised({ cwd, unit, topic = '' }) {
  * message waiting, its name the one `topic answered` takes; the topic's
  * brief — for the unit's one topic, discovery's log and the unit's
  * seeds; the record of every other topic decided so far, never its log; the
- * product record with the findings it holds from the code; and the unit's
- * spikes. Resuming adds the topic's own record (9.3.11), its map, and the
- * entries a replacement changed under it, each confirmed or replaced in the
- * conversation (9.3.6), and the reports of
- * the agents the topic was left with, landed since, with those lost with a
- * process that no longer runs (9.7.8). The log comes with every entry's.
+ * product record, with what discovery found of the product and of the unit,
+ * which no topic's record shows (9.3.12); and the unit's spikes. Resuming
+ * adds the topic's own record (9.3.11), its map, and the entries a
+ * replacement changed under it, each confirmed or replaced in the
+ * conversation (9.3.6), and the reports of the agents the topic was left
+ * with, landed since, with those lost with a process that no longer runs
+ * (9.7.8). The log comes with every entry's.
  * @param {Entering} at @returns {Line[]}
  */
 function discussionReads({ cwd, unit, topic = '', manifest, started }) {
@@ -125,7 +126,7 @@ function discussionReads({ cwd, unit, topic = '', manifest, started }) {
     ...(own ? filesIn(statePath(cwd, unit, 'discovery', 'sessions')) : []).map(as('discovery log')),
     ...(own ? existing(seeds.map((seed) => statePath(cwd, unit, seed.path))) : []).map(as('seed')),
     ...decided.map((other) => as('decided')(`\`${recordCall(unit, other)}\``)),
-    as('product')(`\`${productCall()}\``),
+    as('product')(`\`${productCall(unit)}\``),
     ...filesIn(statePath(cwd, unit, 'spikes')).map(as('spike')),
     ...(started ? [] : /** @type {const} */ (['record', 'map', 'affected']).map((view) => as(view)(`\`${ledgerView(view, unit, topic)}\``))),
     ...agents.landed.map(({ file }) => as('landed')(file)),

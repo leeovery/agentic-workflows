@@ -15,6 +15,8 @@
 //   nor postponed: the map row's own mark, which a cancel or a postpone sets
 //   and a reactivate, or the pull back into its own epic, clears. An entry
 //   made at the unit's level carries no topic, and its unit alone decides.
+//   The product's place (8.12.9) has no manifest, nothing cancels it and it
+//   has no topic to set aside, so it is always live.
 // - A unit is finished once its status reads completed; until then it is
 //   still under way.
 // - A unit's live topics: those it names that are live.
@@ -36,6 +38,7 @@
 const fs = require('fs');
 const { isObject, workUnitManifestPath, readWorkUnitManifest, readProjectManifest, workUnitNames, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
 const { EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { PRODUCT } = require('./ledger-events.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
@@ -90,6 +93,7 @@ function experimentWaits(manifest) {
  * @returns {string|null}
  */
 function deadReason(unit, topic, manifest) {
+  if (unit === PRODUCT) return null;
   if (manifest === null) return `there is no work unit "${unit}"`;
   if (manifest.status === 'cancelled') return `${unit} is cancelled`;
   if (topic === null) return null;

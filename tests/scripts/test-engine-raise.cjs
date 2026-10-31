@@ -451,6 +451,12 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.strictEqual(await refusedDraw(['nope.discussion.note-window', '--answers', asked.where], JSON.stringify(CALL)), 'raise: there is no work unit "nope"');
   });
 
+  it('a place in discovery, the product\'s or a topic\'s on the map, where nothing is decided (8.3.4)', async () => {
+    for (const place of ['product.discovery', NOTE.replace('.discussion.', '.discovery.')]) {
+      assert.strictEqual(await refusedDraw([place, '--answers', asked.where], JSON.stringify(CALL)), 'raise: nothing is decided in discovery — carry it as input', place);
+    }
+  });
+
   it('a question ledger decide would refuse to answer from the place: another topic\'s', async () => {
     assert.match(await refusedDraw([NOTE, '--answers', asked.homing], JSON.stringify(CALL)),
       /^raise --answers names \w+, a question on space-homing — before the spec a topic writes on its own entries alone/);

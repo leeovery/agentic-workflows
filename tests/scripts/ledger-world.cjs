@@ -407,7 +407,7 @@ function ledgerReadHelpers(dir) {
 
 const ID = /^[0-9A-Za-z]{21}$/;
 
-/** @typedef {{phase: string, topic: string|null}} Place */
+/** Where an entry is made: the unit's phase and topic, or another unit's where it names one. @typedef {{unit?: string, phase: string, topic: string|null}} Place */
 
 const AT_NOTE = Object.freeze({ phase: 'discussion', topic: 'note-window' });
 
@@ -421,9 +421,9 @@ function ledgerWriteHelpers(dir) {
 
   /**
    * Assert the ledger's last line is exactly the event of `own` made at
-   * `place` by this session: the engine's version first, then its id, the
-   * event and its tags, the time written, and its own fields in the schema's
-   * order. Answers its id.
+   * `place` — the unit's, unless it names another — by this session: the
+   * engine's version first, then its id, the event and its tags, the time
+   * written, and its own fields in the schema's order. Answers its id.
    * @param {string} event @param {Place} place @param {Record<string, unknown>} own
    * @returns {string}
    */
@@ -432,7 +432,7 @@ function ledgerWriteHelpers(dir) {
     const { id, at } = JSON.parse(raw);
     assert.match(id, ID);
     assert.ok(Math.abs(Date.parse(at) - Date.now()) < 60000, `${at} is not the time written`);
-    assert.strictEqual(raw, JSON.stringify({ v: LEDGER_VERSION, id, event, unit: UNIT, topic: place.topic, phase: place.phase, session: SESSION_ID, at, ...own }));
+    assert.strictEqual(raw, JSON.stringify({ v: LEDGER_VERSION, id, event, unit: place.unit ?? UNIT, topic: place.topic, phase: place.phase, session: SESSION_ID, at, ...own }));
     return id;
   }
 

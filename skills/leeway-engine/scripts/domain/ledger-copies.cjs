@@ -10,7 +10,9 @@
 //   topic's, or a unit's own level's (ledger-fold.cjs) — each showing its
 //   current answers only, never what they replaced, and the current entries
 //   elsewhere made there or that it rests on (5.8.19); and once the ledger
-//   exists, the product record. A place whose record shows nothing has no
+//   exists, the product record. The product's place (8.12.9) has none: it is
+//   no unit's, and its findings reach a topic through its opening alone
+//   (9.3.12), never a search. A place whose record shows nothing has no
 //   copy: a cancelled topic or unit, or a postponed topic while it waits,
 //   has its copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
@@ -68,6 +70,7 @@ const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
+const { PRODUCT } = require('./ledger-events.cjs');
 const { factsOf, standingOf, wordingOf, answersOf, laterOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
@@ -181,7 +184,7 @@ function copiesOf(root, notes) {
     /** @type {Map<string, string>} */
     const copies = new Map();
     for (const { unit, topic, record } of placeRecords(shower.folded)) {
-      if (record.questions.length + record.findings.length + record.decisions.length + record.other_topics.length === 0) continue;
+      if (unit === PRODUCT || record.questions.length + record.findings.length + record.decisions.length + record.other_topics.length === 0) continue;
       copies.set(recordFile(unit, topic), recordText(shower, unit, topic, record));
     }
     copies.set(PRODUCT_FILE, productText(shower));

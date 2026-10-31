@@ -172,7 +172,7 @@ describe('a record (5.6.5, 5.8.4)', () => {
 });
 
 describe('the product record (5.8.6)', () => {
-  it('holds every current entry marked product-wide, from every unit and topic, each with the answers it replaced beneath it', () => {
+  it('8.S42: holds every current entry marked product-wide, from every unit and topic, each with the answers it replaced beneath it, and nothing else of the ledger', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const finding = find(NOTE, 'Notes sync through iCloud.', [], { product_wide: true });
     find(NOTE, 'A spike floated a panel.');
@@ -182,7 +182,7 @@ describe('the product record (5.8.6)', () => {
 
     const product = read('product');
 
-    assert.deepStrictEqual(product, { ok: true, findings: [current(finding)], decisions: [current(replaced, [old]), current(minted)] });
+    assert.deepStrictEqual(product, { ok: true, findings: [current(finding)], decisions: [current(replaced, [old]), current(minted)], discovery: [] });
     assert.strictEqual(line(replaced).product_wide, true, 'the replacement did not keep the mark');
   });
 });
@@ -243,7 +243,8 @@ describe('refusals', () => {
   it('refuses a read naming no unit, a unit there is none of, a topic the unit does not have, or anything but its places', () => {
     assert.match(refuses(dir, ['ledger', 'record']).error, /^Usage: engine ledger record <work-unit> \[<topic>\]$/);
     assert.match(refuses(dir, ['ledger', 'map', UNIT]).error, /^Usage: engine ledger map <work-unit> <topic>$/);
-    assert.match(refuses(dir, ['ledger', 'product', UNIT]).error, /^Usage: engine ledger product$/);
+    assert.match(refuses(dir, ['ledger', 'product', UNIT, 'note-window']).error, /^Usage: engine ledger product \[<work-unit>\]$/);
+    assert.match(refuses(dir, ['ledger', 'product', 'mint']).error, /^ledger product: there is no work unit "mint"$/);
     assert.match(refuses(dir, ['ledger', 'record', UNIT, '--topic', 'note-window']).error, /^Usage: engine ledger record /);
     assert.match(refuses(dir, ['ledger', 'record', 'mint']).error, /^ledger record: there is no work unit "mint"$/);
     assert.match(refuses(dir, ['ledger', 'map', UNIT, 'menu-bar']).error, /^ledger map: fumi has no topic "menu-bar"$/);
@@ -268,6 +269,6 @@ describe('refusals', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), {
       ok: true, unit: UNIT, topic: 'note-window', live: true, questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [],
     });
-    assert.deepStrictEqual(read('product'), { ok: true, findings: [], decisions: [] });
+    assert.deepStrictEqual(read('product'), { ok: true, findings: [], decisions: [], discovery: [] });
   });
 });

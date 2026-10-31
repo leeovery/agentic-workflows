@@ -17,7 +17,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **This topic's record** — as the ledger reads it, in JSON: the questions, findings and decisions current on the topic, each by its short id, a question with where it stands, a decision with who made it (`by`, `given`) and its `why` and what it rules out, a finding with how it is known, each with what it replaced beneath it under `replaced`. `None recorded.` where the topic holds nothing yet.
 - **This topic's log** — the path of the log the conversation keeps, its journey, options and reversals. Read it whole. `None recorded.` where none is written yet.
 - **Other topics' records** — each other live topic of the work, under a heading naming it, in the same shape.
-- **The product record** — the findings and decisions that hold for the whole product.
+- **The product record** — the findings and decisions that hold for the whole product, and apart from them, under `discovery`, what discovery found of the product as a whole.
 - **Your report** — the file your report goes to.
 
 ## The Bar

@@ -358,14 +358,14 @@ describe('the answer', () => {
     assert.strictEqual(entrySections([question], [['log', '/a/log.md']]), `${question}${data(['log: /a/log.md'])}`);
   });
 
-  it('an opening reads the brief, the record of each topic decided so far, the product record and the unit\'s spikes, then names the log', () => {
+  it('an opening reads the brief, the record of each topic decided so far, the product record with what discovery found of the product and the unit, and the unit\'s spikes, then names the log (9.3.12)', () => {
     transcript('sess-1');
     const { sections } = withFrozenClock(() => enter(['discussion', EPIC, 'onboarding']));
     assert.strictEqual(sections, data([
       `brief: ${at(layout.brief(EPIC, 'onboarding'))}`,
       `decided: \`${ENGINE} ledger record ${EPIC} export\``,
       `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
-      `product: \`${ENGINE} ledger product\``,
+      `product: \`${ENGINE} ledger product ${EPIC}\``,
       `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
       `log: ${at(layout.topic(EPIC, 'onboarding', 'log.md'))}`,
       `log header: ## ${TODAY} · session sess-1 · transcript ${path.join(claude, 'projects', '-Users-person-fumi', 'sess-1.jsonl')}`,
@@ -377,7 +377,7 @@ describe('the answer', () => {
     assert.strictEqual(sections, data([
       `discovery log: ${at(layout.session(FEATURE, '001'))}`,
       `seed: ${at(layout.unit(FEATURE, 'seeds', 'idea.md'))}`,
-      `product: \`${ENGINE} ledger product\``,
+      `product: \`${ENGINE} ledger product ${FEATURE}\``,
       `log: ${at(layout.topic(FEATURE, FEATURE, 'log.md'))}`,
       `log header: ## ${TODAY} · session sess-1`,
     ]));
@@ -389,7 +389,7 @@ describe('the answer', () => {
     assert.strictEqual(sections, data([
       `decided: \`${ENGINE} ledger record ${EPIC} export\``,
       `decided: \`${ENGINE} ledger record ${EPIC} sync\``,
-      `product: \`${ENGINE} ledger product\``,
+      `product: \`${ENGINE} ledger product ${EPIC}\``,
       `spike: ${at(layout.unit(EPIC, 'spikes', '001-first-run'))}`,
       `record: \`${ENGINE} ledger record ${EPIC} licence\``,
       `map: \`${ENGINE} ledger map ${EPIC} licence\``,

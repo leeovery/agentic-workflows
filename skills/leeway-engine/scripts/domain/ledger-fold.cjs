@@ -11,16 +11,17 @@
 // replacement taking the kind it stands for, or none for an event that is no
 // entry; who made it, how a decision was given, and who moved whom; whether
 // Claude leaned on its chain — it, or an entry down its chain, Claude's own
-// call or carrying Claude's sealed answer (ledger-verdicts.cjs); the unit
-// and topic it was written on; the first entry of its chain; its links, an
-// asset link's path and whether it gives a status or a lift among them;
-// every entry linking back to it — the replacements naming it, the merges
-// that took it as a duplicate, the confirmations that it still holds, the
-// person's keeps of it against Claude's proposed replacement, which change
-// nothing current, the asset links giving a file a status or a lift beside
-// it, and on the first entry of a question's chain, the answers to, the
-// parts of (5.3.11), the merges of and the moves of any wording; and where
-// its line sits, so a read shows an entry by reading that one line again.
+// call or carrying Claude's sealed answer (ledger-verdicts.cjs); the unit,
+// topic and phase it was written in; the first entry of its chain; its
+// links, an asset link's path and whether it gives a status or a lift among
+// them; every entry linking back to it — the replacements naming it, the
+// merges that took it as a duplicate, the confirmations that it still
+// holds, the person's keeps of it against Claude's proposed replacement,
+// which change nothing current, the asset links giving a file a status or a
+// lift beside it, and on the first entry of a question's chain, the answers
+// to, the parts of (5.3.11), the merges of and the moves of any wording; and
+// where its line sits, so a read shows an entry by reading that one line
+// again.
 // It keeps one thing a read shows that the entry's line never holds: what
 // the late one-decision check last found of a decision that landed
 // unchecked (16.19.8).
@@ -123,6 +124,10 @@
 //   unit on no topic. Every place's record is built in one pass, each id's
 //   places worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
+// - What discovery found (9.3.12): the current findings standing at the
+//   product's place (8.12.9) and, for a unit, at the unit's own level, their
+//   chain begun in discovery — none product-wide, which the product record
+//   holds. They belong to no topic, so no topic's record shows them.
 // - An entry's assets (9.10.5–9.10.7, 9.10.16): for each file linked from
 //   it, the latest live link giving a status, and apart from it the latest
 //   live lift, which no status after it undoes; a link made where it is set
@@ -133,7 +138,7 @@
 // ---------------------------------------------------------------------------
 
 const { withLedger } = require('./ledger.cjs');
-const { entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
+const { PRODUCT, entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs');
 
 /** @typedef {import('./ledger.cjs').EntryPlace} EntryPlace */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
@@ -155,6 +160,7 @@ const { entryKind, claudesCall, roadmapItemOf } = require('./ledger-events.cjs')
  *   leaned: boolean,
  *   unit: string,
  *   topic: string|null,
+ *   phase: string,
  *   root: string,
  *   place: EntryPlace,
  *   answers: string|null,
@@ -250,6 +256,7 @@ const ID_FACTS = {
       leaned: claudesCall({ by: event.by, given: event.given }) || typeof event.sealed === 'string' || (event.event === 'replaced' && named(facts, event.replaces).leaned),
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
+      phase: /** @type {string} */ (event.phase),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,
       place,
       answers: idOrNull(event.answers),
@@ -1063,8 +1070,26 @@ function productOf(folded) {
   return product;
 }
 
+/**
+ * What discovery found (9.3.12): every current finding, in the ledger's
+ * order, standing at the product's place or, given a unit, at that unit's
+ * own level, whose chain began in discovery, and none marked product-wide.
+ * @param {Folded} folded @param {string|null} unit
+ * @returns {string[]}
+ */
+function discoveredOf(folded, unit) {
+  /** @type {string[]} */
+  const found = [];
+  for (const [id, facts] of folded.facts) {
+    if (facts.kind !== 'finding' || facts.product_wide === true || factsOf(folded, facts.root).phase !== 'discovery') continue;
+    const standing = standingOf(folded, id);
+    if (standing.topic === null && (standing.unit === PRODUCT || standing.unit === unit) && isCurrent(folded, id)) found.push(id);
+  }
+  return found;
+}
+
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, whyDead, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf,
+  keptOf, assetsOf, foldedBeneath, wordingOf, answersOf, questionStands, laterOf, showsIn, mapOf, recordOf, placeRecords, productOf, discoveredOf,
   movedToBy,
 };

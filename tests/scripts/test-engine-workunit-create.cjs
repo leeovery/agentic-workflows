@@ -511,6 +511,7 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, createArgs('baseline', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('roadmap', 'epic')).error, /is reserved/);
     assert.match(engineFails(fix, createArgs('none', 'feature')).error, /is reserved/);
+    assert.match(engineFails(fix, createArgs('product', 'epic')).error, /is reserved/);
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/none')));
   });
 

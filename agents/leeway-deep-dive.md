@@ -17,7 +17,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **Your question** — the open question, its short id and its text.
 - **Your kind of dive** — one of the kinds below; a read's names the file it reads, by its path.
 - **This topic's record** — as the ledger reads it, in JSON: the questions, findings and decisions current on the topic, each by its short id, a decision with who made it (`by`, `given`) and its `why`, a finding with how it is known (`known`, `how`, and a measurement's `command` and `result`), each with what it replaced beneath it under `replaced`. `None recorded.` where the topic holds nothing yet.
-- **The product record** — the findings and decisions that hold for the whole product, in the same shape.
+- **The product record** — the findings and decisions that hold for the whole product, and apart from them, under `discovery`, what discovery found of the product as a whole, in the same shape.
 - **Your report** — the file your report goes to.
 
 ## Kinds

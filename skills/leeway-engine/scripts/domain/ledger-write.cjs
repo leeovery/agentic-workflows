@@ -10,6 +10,12 @@
 //   exist, and the phase be discovery or one of its work type's. A topic
 //   exists only before the spec (4.11.2) and must hold an item in the phase;
 //   from the spec on every entry is the unit's, carrying no topic (5.2.3).
+//   The product's place, `product.discovery`, holds what is found of the
+//   product as a whole, which no unit holds (8.12.9): it has no manifest,
+//   no other phase and no topic. Discovery, at the product's place or a
+//   unit's, takes findings alone, none of them product-wide: nothing in it
+//   is decided (8.3.4, 8.9.6), so any other write made there, a raise's
+//   among them, is refused before anything is read.
 //   The unit and topic must be live (5.8.17), as a move's destination must,
 //   both before the lock and again under it. The session is the
 //   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
@@ -141,7 +147,7 @@ const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { appendEntry, carrying, withLedger, commitLedger } = require('./ledger.cjs');
-const { HEADER, REASONS, ROADMAP, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
+const { HEADER, REASONS, ROADMAP, PRODUCT, entryKind, claudesCall, roadmapItemOf, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, readFolded, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, hasRoadmapItem, manifestOf, experimentWaits, liveness } = require('./ledger-units.cjs');
@@ -212,9 +218,9 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 
 /**
  * Where a write is made: the dot-path naming it, the project's state root,
- * the unit and its manifest, the phase, and the topic, or null at the
- * unit's level.
- * @typedef {{dotpath: string, root: string, unit: string, manifest: Record<string, any>, phase: string, topic: string|null}} Address
+ * the unit and its manifest — none at the product's place — the phase, and
+ * the topic, or null at the unit's level.
+ * @typedef {{dotpath: string, root: string, unit: string, manifest: Record<string, any>|null, phase: string, topic: string|null}} Address
  */
 
 /**
@@ -444,22 +450,25 @@ function phasesOf(manifest) {
 }
 
 /**
- * Where a write is made, read from its dot-path. Refuses, in the words of
+ * Where `write` is made, read from its dot-path. Refuses, in the words of
  * `said`, the command asking, a path of another shape, a phase that is none,
- * a unit that does not exist, a phase its work type does not have, a topic
- * from the spec on, a topic with no item in the phase, and a unit or topic
- * that is not live.
- * @param {string} cwd @param {string} said @param {string} dotpath
+ * anything but a finding in discovery, a place of the product's but its
+ * own, a unit that does not exist, a phase its work type does not have, a
+ * topic from the spec on, a topic with no item in the phase, and a unit or
+ * topic that is not live.
+ * @param {string} cwd @param {string} said @param {string} dotpath @param {Write} write
  * @returns {Address}
  */
-function addressOf(cwd, said, dotpath) {
+function addressOf(cwd, said, dotpath, write) {
   const parts = dotpath.split('.');
   if (parts.length < 2 || parts.length > 3 || parts.some((part) => part === '')) {
     throw new Error(`${said}: "${dotpath}" names no place to write — <work-unit>.<phase>.<topic>, or <work-unit>.<phase> at the unit's level`);
   }
   const [unit, phase, topic = null] = parts;
   if (!VALID_PHASES.includes(phase)) throw new Error(`${said}: "${phase}" is no phase — one of ${VALID_PHASES.join(', ')}`);
+  if (phase === 'discovery' && write.event !== 'found') throw new Error(`${said}: nothing is decided in discovery — carry it as input`);
   const root = stateRoot(cwd);
+  if (unit === PRODUCT) return productAddress(said, dotpath, root, phase, topic);
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   const phases = phasesOf(manifest);
@@ -471,6 +480,20 @@ function addressOf(cwd, said, dotpath) {
   const at = { dotpath, root, unit, manifest, phase, topic };
   checkPlaceLive(said, at, liveness(root));
   return at;
+}
+
+/**
+ * The product's place (8.12.9), which has no manifest and is always live.
+ * Refuses, in the words of `said`, the command asking, a phase but
+ * discovery and a topic.
+ * @param {string} said @param {string} dotpath @param {string} root @param {string} phase @param {string|null} topic
+ * @returns {Address}
+ */
+function productAddress(said, dotpath, root, phase, topic) {
+  if (phase !== 'discovery' || topic !== null) {
+    throw new Error(`${said}: "${dotpath}" is no place of the product's — what is found of the product as a whole goes at ${PRODUCT}.discovery`);
+  }
+  return { dotpath, root, unit: PRODUCT, manifest: null, phase, topic };
 }
 
 /**
@@ -522,7 +545,7 @@ function checkDestination(said, at, given) {
     return;
   }
   if (to === at.topic) throw new Error(`${said}: --to names ${to}, the topic it moves from — a question moves to another topic`);
-  if (!hasTopic(at.manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
+  if (at.manifest === null || !hasTopic(at.manifest, to)) throw new Error(`${said}: ${at.unit} has no topic "${to}" to move the question to`);
   checkDestinationLive(said, at, given, liveness(at.root));
 }
 
@@ -840,6 +863,19 @@ function checkSaid(said, kind, { by, given, known, command, result }) {
 }
 
 /**
+ * Refuse, in the words of `said`, the command asking, a product-wide entry
+ * made in discovery, which feeds the product record and decides nothing: a
+ * principle said there is decided in the first topic it bears on (8.9.3,
+ * 8.9.6).
+ * @param {string} said @param {Address} at @param {Record<string, unknown>} content
+ */
+function checkUnwidened(said, at, { product_wide: productWide }) {
+  if (at.phase === 'discovery' && productWide === true) {
+    throw new Error(`${said}: nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on`);
+  }
+}
+
+/**
  * Refuse, in the words of `said`, the command asking, a decision carried
  * over outside the migration: carried over, it tells the trust log of no
  * call (21.1.5), so at any other time it would hide one of Claude's.
@@ -900,7 +936,7 @@ function checkUnmeasured({ said, write, at, content }, linked, read) {
 function writePlaced(cwd, verb, args, said, usage, warnings) {
   const write = WRITES[verb];
   const { dotpath, given } = readArgs(verb, args, said, usage);
-  const at = addressOf(cwd, said, dotpath);
+  const at = addressOf(cwd, said, dotpath, write);
   checkValues(said, write, given);
   write.checkGiven(said, at, given);
   return readFolded(at.root, ID_FACTS, warnings, (facts, entryAt) => {
@@ -919,9 +955,9 @@ function writePlaced(cwd, verb, args, said, usage, warnings) {
  * Refuses argv the verb does not take, a place it cannot write, no session,
  * a value its event cannot hold, stdin holding no JSON object, the person's
  * entry carrying Claude's sealed answer, content the kind does not hold, a
- * decision carried over outside the migration, and who moved whom the
- * departure rule does not allow, which it sets where
- * the writer leaves it out and the rule allows one value alone.
+ * product-wide finding in discovery, a decision carried over outside the
+ * migration, and who moved whom the departure rule does not allow, which it
+ * sets where the writer leaves it out and the rule allows one value alone.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
  * @returns {Request}
  */
@@ -929,7 +965,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const said = `ledger ${verb}`;
   const write = WRITES[verb];
   const { dotpath, given } = readArgs(verb, args, said, `Usage: engine ${verbUsage(verb)}   (content as JSON on stdin)`);
-  const at = addressOf(cwd, said, dotpath);
+  const at = addressOf(cwd, said, dotpath, write);
   if (write.fromTopic && at.topic === null) {
     throw new Error(TOPIC_PHASES.includes(at.phase)
       ? `${said}: a question moves from a topic — name it: ${at.unit}.${at.phase}.<topic>`
@@ -948,6 +984,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const derived = derivedMove(content, kind, reason, replaced);
   const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
   checkSaid(said, kind, fields);
+  checkUnwidened(said, at, fields);
   checkCarried(said, at, kind, fields);
   const unmoved = movedRefusal(fields, kind, reason, replaced);
   if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
@@ -987,7 +1024,7 @@ function valuesOf(value) {
  */
 function raisedRequest(cwd, { said, place, lands, linked, content, id, logs, checkRead }, warnings) {
   const write = RAISED[lands];
-  const at = addressOf(cwd, said, dotpathOf(place));
+  const at = addressOf(cwd, said, dotpathOf(place), write);
   const given = new Map(write.flags.map((flag) => [flag.field, valuesOf(linked[flag.field])]));
   const before = readBefore(at, warnings);
   const replaced = write === WRITES.replace ? factsOf(before(), /** @type {string} */ (linked.replaces)) : null;

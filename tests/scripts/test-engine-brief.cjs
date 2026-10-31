@@ -446,6 +446,15 @@ describe('the product researcher\'s brief', () => {
     assert.strictEqual(brief, `Brief ${res.id} — the product researcher's\n\n${filledTemplate('product-researcher', {})}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null, topic: null });
   });
+
+  it('its agent\'s definition fixes Opus at medium, lands each finding at the product\'s place as read from the code, and brings back what stays open as questions (8.12.4, 8.12.5, 26.5.3)', () => {
+    const definition = fs.readFileSync(path.join(__dirname, '../../agents/leeway-product-researcher.md'), 'utf8');
+    const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(definition)?.[1] ?? '';
+
+    assert.deepStrictEqual(['name', 'model', 'effort'].map((key) => new RegExp(`^${key}: (.*)$`, 'm').exec(frontmatter)?.[1]), ['leeway-product-researcher', 'opus', 'medium']);
+    assert.match(definition, /^node \.claude\/skills\/leeway-engine\/scripts\/engine\.cjs ledger find product\.discovery <<'EOF'\n\{[^\n]*"known": "read"\}\nEOF$/m);
+    assert.match(definition, /^## Open\n\n- \{The question/m);
+  });
 });
 
 describe('the refusals, nothing written and no brief stored', () => {
