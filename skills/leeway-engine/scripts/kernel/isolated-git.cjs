@@ -14,6 +14,15 @@
 // each hook the config defines by name (git 2.54 on) is disabled by that
 // name. The fsmonitor hook goes off with them.
 //
+// A command no form of which fires a hook (`HOOKLESS`) runs without the
+// names. Every other reads them from the config once per verb
+// (`withVerbReads`): every runner the verb makes at one cwd shares the read,
+// and a `config` call through any runner, which may have changed them, has
+// them read again. Outside a verb a runner reads them at its first call that
+// needs them, and again after its own `config` call. No read outlives its
+// verb, so a process running many verbs — the test harness, over many
+// worlds — never hands one verb's read to another.
+//
 // Files go into git and come out of it as the bytes they are, whatever the
 // person's config says: line endings are never converted (`core.autocrlf`),
 // and the person's own attributes file (`core.attributesFile`), which can
@@ -33,6 +42,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 const { spawnSync } = require('child_process');
 const { GitError, READ_BUDGET_BYTES } = require('./git.cjs');
 
@@ -63,6 +73,9 @@ const REPOSITORY_ENV = Object.freeze([
 ]);
 
 const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=']);
+// Whatever their arguments, these move no ref and write no index, and
+// commit, check out, merge, rebase and push nothing.
+const HOOKLESS = Object.freeze(['cat-file', 'config', 'for-each-ref', 'ls-tree', 'rev-list', 'rev-parse']);
 const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
 const REFS_LOGGED = Object.freeze(['-c', 'core.logAllRefUpdates=true']);
 
@@ -101,6 +114,24 @@ function isolatedEnv() {
 }
 
 /**
+ * The hooks the config defines, by the cwd they were read at.
+ * @typedef {Map<string, string[]>} HookReads
+ */
+
+/** The reads of the verb running, where one runs. @type {AsyncLocalStorage<HookReads>} */
+const verbReads = new AsyncLocalStorage();
+
+/**
+ * Run `fn` as one verb: its runners share one read of the config's hooks at
+ * each cwd, dropped once `fn` answers — once its promise settles, where it
+ * answers one.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function withVerbReads(fn) {
+  return verbReads.run(new Map(), fn);
+}
+
+/**
  * The names of the hooks the config defines at `cwd` (`hook.<name>.command`),
  * none where git reads none.
  * @param {string} cwd @param {Record<string, string>} env
@@ -113,14 +144,29 @@ function configuredHookNames(cwd, env) {
 }
 
 /**
- * The environment a call runs under: isolated, each configured hook disabled
- * by name through `GIT_CONFIG_COUNT`, which takes a name holding `=` whole.
- * @param {string} cwd
+ * The hooks the config defines at `cwd`, as `reads` holds them, read where
+ * it holds none.
+ * @param {HookReads} reads @param {string} cwd @param {Record<string, string>} env
+ * @returns {string[]}
+ */
+function hooksAt(reads, cwd, env) {
+  let names = reads.get(cwd);
+  if (names === undefined) {
+    names = configuredHookNames(cwd, env);
+    reads.set(cwd, names);
+  }
+  return names;
+}
+
+/**
+ * The variables disabling each hook named, through `GIT_CONFIG_COUNT`, which
+ * takes a name holding `=` whole.
+ * @param {string[]} names
  * @returns {Record<string, string>}
  */
-function hooksOffEnv(cwd) {
-  const env = isolatedEnv();
-  const names = configuredHookNames(cwd, env);
+function hooksOff(names) {
+  /** @type {Record<string, string>} */
+  const env = {};
   if (names.length === 0) return env;
   env.GIT_CONFIG_COUNT = String(names.length);
   names.forEach((name, i) => {
@@ -132,14 +178,17 @@ function hooksOffEnv(cwd) {
 
 /**
  * A git runner bound to `cwd`, isolated, with hooks and conversions off and
- * every ref update logged. The config's hooks are read once, at the runner's
- * first call.
+ * every ref update logged. The environment is taken at the runner's first
+ * call; the config's hooks are the verb's read (`withVerbReads`), or, where
+ * no verb runs, the runner's own.
  * @param {string} cwd
  * @returns {IsolatedGit}
  */
 function isolatedGit(cwd) {
   /** @type {Record<string, string>|null} */
   let base = null;
+  /** @type {HookReads} */
+  const own = new Map();
 
   /**
    * Run git, throwing where it ran past its time limit: a call cut short has
@@ -147,10 +196,13 @@ function isolatedGit(cwd) {
    * @param {string[]} args @param {RunOptions} opts
    */
   function spawn(args, { input, timeoutMs = CALL_TIMEOUT_MS, env, out }) {
-    base ??= hooksOffEnv(cwd);
+    base ??= isolatedEnv();
+    const reads = verbReads.getStore() ?? own;
+    const hooks = HOOKLESS.includes(args[0]) ? {} : hooksOff(hooksAt(reads, cwd, base));
     const res = spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
-      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
+      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...hooks, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
+    if (args[0] === 'config') reads.clear();
     if (/** @type {NodeJS.ErrnoException|undefined} */ (res.error)?.code === 'ETIMEDOUT') {
       throw new GitError(`git ${args[0]} timed out after ${timeoutMs / 1000}s`);
     }
@@ -278,4 +330,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };
+module.exports = { REPOSITORY_ENV, CALL_TIMEOUT_MS, isolatedGit, withVerbReads, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };

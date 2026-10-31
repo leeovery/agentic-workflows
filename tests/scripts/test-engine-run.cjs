@@ -78,6 +78,32 @@ function withProcessEnv(values, fn) {
   }
 }
 
+/**
+ * The folder of each read of the config's hooks the git processes `fn`
+ * starts make, as trace2 records them: `fn` is given the environment to run
+ * them under.
+ * @param {(env: Record<string, string>) => void} fn
+ * @returns {string[]}
+ */
+function hooksReadIn(fn) {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'trace2-'));
+  const file = path.join(folder, 'events.json');
+  try {
+    fn({ GIT_TRACE2_EVENT: file });
+    /** @type {Map<string, {argv?: string[], worktree?: string}>} */
+    const processes = new Map();
+    for (const event of fs.readFileSync(file, 'utf8').trim().split('\n').map((line) => JSON.parse(line))) {
+      const seen = processes.get(event.sid) ?? {};
+      if (event.event === 'start') seen.argv = event.argv;
+      if (event.event === 'def_repo') seen.worktree = event.worktree;
+      processes.set(event.sid, seen);
+    }
+    return [...processes.values()].filter(({ argv }) => argv?.includes('^hook\\..+\\.command$')).map(({ worktree }) => String(worktree));
+  } finally {
+    fs.rmSync(folder, { recursive: true, force: true });
+  }
+}
+
 describe('engine.run — the invocation is the caller\'s', () => {
   let dir;
 
@@ -166,6 +192,12 @@ describe('engine.run — the invocation is the caller\'s', () => {
         'the engine saw no session id at all');
       assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, 'ambient-session', 'and it came back');
     });
+  });
+
+  it('a call reads the config\'s hooks once in each folder its git runs in — boot\'s many calls in each among them', () => {
+    const folders = hooksReadIn((env) => assert.strictEqual(engine.run(['boot'], { cwd: dir, env }).code, 0));
+
+    assert.deepStrictEqual(folders.sort(), [dir, path.join(dir, '.leeway')]);
   });
 
   it('the display width resolves per call, and the process keeps its own', () => {

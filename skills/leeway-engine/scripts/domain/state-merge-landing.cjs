@@ -130,6 +130,15 @@ function startLanding(ctx, landing) {
 }
 
 /**
+ * Whether a landing is recorded in the state worktree, for `finishLanding`
+ * to finish or drop.
+ * @param {OpenedWorktree} worktree
+ */
+function landingRecorded({ gitDir }) {
+  return fs.existsSync(path.join(gitDir, LANDING));
+}
+
+/**
  * Finish the landing a kill cut short in the state worktree, where one is
  * recorded and the branch still stands at the tip it moves from; drop the
  * record where the branch has moved on. The caller holds the writer lock.
@@ -148,4 +157,4 @@ function finishLanding(worktree, branch) {
   return [];
 }
 
-module.exports = { readRecord, openMerge, startLanding, finishLanding };
+module.exports = { readRecord, openMerge, startLanding, landingRecorded, finishLanding };
