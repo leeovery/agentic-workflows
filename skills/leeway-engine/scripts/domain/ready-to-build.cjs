@@ -53,7 +53,7 @@
 
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { isCurrent } = require('./ledger-fold.cjs');
@@ -66,7 +66,7 @@ const { specEntryRefusal } = require('./spec-entry.cjs');
 const { specReading } = require('./spec-sections.cjs');
 const { readLandedSpec } = require('./spec-landed.cjs');
 const { readyClose } = require('./checklist.cjs');
-const { pageOpen, reviewStates, settleReview } = require('./spec-review.cjs');
+const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-review.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { record } = require('./trust-log.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
@@ -82,9 +82,6 @@ const PHASE = 'specification';
 
 const READY_TO_BUILD_USAGE = 'ready-to-build yes <work-unit> --position auto|step [--marks <file>]';
 const POSITION_USAGE = 'workunit position <work-unit> auto|step';
-
-/** Where Claude reads the open review page's marks back to, for the gate's rows to hand on. @param {string} cwd @param {string} unit */
-const readBackFile = (cwd, unit) => statePath(cwd, '.cache', unit, PHASE, 'read-back.json');
 
 /**
  * Why ready to build cannot show for the unit before its checklist is read,
