@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the files a log links (9.10.11) — the spikes and shared files
 // a session's log points at, which nothing else links while nothing is
-// decided, so a commit that takes the log takes them too (state-worktree.cjs).
+// decided, so a commit that takes the log takes them too (state-worktree.cjs);
+// the spec's land takes the files the spec links the same way (spec-land.cjs).
 //
 // A link is a markdown link's target, `[text](target)` or `[text](<target>)`,
 // its fragment and query dropped. It names a file or folder read from the

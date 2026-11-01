@@ -9,8 +9,10 @@
 //
 // In the state it refuses a path the layout has no place for, and a file
 // only the engine writes, naming the verb that writes it where one does
-// (layout.cjs). It reads the target as a path in the state of the project
-// the target itself is in — whatever project the conversation sits in —
+// (layout.cjs); and a unit's `spec.md` once its spec is concluded, never
+// corrected after (11.9.1, spec-entry.cjs). It reads the target as a path in
+// the state of the project the target itself is in — whatever project the
+// conversation sits in —
 // landing where Claude Code's tool would write it (kernel/state-root,
 // `resolvedPath`): its `..` read from the text, its links followed, a code
 // worktree's path into the main checkout's state among them. At user level
@@ -44,7 +46,7 @@ const fs = require('fs');
 const path = require('path');
 const { STATE_DIR_NAME, findStateRoot, stateRelative, resolvedPath } = require('../kernel/state-root.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
-const { folding, layoutPlace, engineRefusal } = require('./layout.cjs');
+const { SPEC_PLACE, folding, layoutPlace, engineRefusal } = require('./layout.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];
@@ -121,15 +123,31 @@ function namesBelow(file, root, fold) {
 }
 
 /**
- * Why the hook refuses a write to the state-relative `rel`, or null where
- * the layout has a place for it that is not the engine's alone.
- * @param {string} rel @param {(name: string) => string} fold
+ * Why the hook refuses a write to the state-relative `rel` as a concluded
+ * unit's spec, or null where it is no unit's spec or one not concluded. The
+ * state is read from `from`, a folder in it.
+ * @param {string} from @param {string} rel
  * @returns {string|null}
  */
-function placeRefusal(rel, fold) {
+function concludedRefusal(from, rel) {
+  const unit = rel.split('/')[0];
+  // Loaded for a write to a spec alone: the hook runs before every write.
+  const { specStanding } = require('./spec-entry.cjs');
+  if (specStanding(from, unit) !== 'concluded') return null;
+  return `${STATE_DIR_NAME}/${rel} is ${unit}'s concluded spec, never corrected — a later change replaces its entry on the ledger`;
+}
+
+/**
+ * Why the hook refuses a write to the state-relative `rel`, or null where
+ * the layout has a place for it that is not the engine's alone, nor a
+ * concluded spec. The state is read from `from`, a folder in it.
+ * @param {string} from @param {string} rel @param {(name: string) => string} fold
+ * @returns {string|null}
+ */
+function placeRefusal(from, rel, fold) {
   const at = layoutPlace(rel, fold);
   if (at === null) return `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
-  return engineRefusal(at, rel);
+  return at.path === SPEC_PLACE ? concludedRefusal(from, rel) : engineRefusal(at, rel);
 }
 
 /**
@@ -145,7 +163,7 @@ function stateRefusal(file) {
   const root = findStateRoot(from);
   if (root === null) return null;
   const rel = stateRelative(from, file);
-  return rel === null ? null : placeRefusal(rel, folding(root));
+  return rel === null ? null : placeRefusal(from, rel, folding(root));
 }
 
 /**

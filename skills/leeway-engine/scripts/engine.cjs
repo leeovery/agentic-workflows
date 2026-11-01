@@ -74,6 +74,7 @@ const { mapReceipt } = require('./domain/projections/transactions.cjs');
 const { LAND_USAGE, landOpen, landChain, landPhase, landFinish } = require('./domain/landing.cjs');
 const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
+const { SPEC_USAGE, landSpec } = require('./domain/spec-land.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
@@ -279,6 +280,7 @@ ${LAND_USAGE.replace(/^/gm, '  ')}
 ${BRIEF_USAGE.replace(/^/gm, '  ')}
   brief guard                        (hook before Agent and SendMessage; its JSON on stdin)
   ${CUT_USAGE}
+  ${SPEC_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
 ${DECIDED_USAGE.replace(/^/gm, '  ')}
   start-this-work yes
@@ -1310,6 +1312,23 @@ function runCut(call, argv) {
   try {
     if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${CUT_USAGE}`);
     respond(call, writeCut(call.cwd, positional[0], opts.file));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// spec — a unit's spec.md landed: checked, traced against the ledger and
+// committed (domain/spec-land.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runSpec(call, argv) {
+  const [verb, ...rest] = argv;
+  const { opts, positional } = parseArgs(rest);
+  try {
+    if (verb !== 'land' || positional.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${SPEC_USAGE}`);
+    respond(call, landSpec(call.cwd, positional[0]));
   } catch (err) {
     failJson(call, err);
   }
@@ -2379,6 +2398,7 @@ const COMMANDS = Object.freeze({
   gate: runGate,
   raise: runRaise,
   cut: runCut,
+  spec: runSpec,
   checklist: runChecklist,
   migrate: runMigrate,
   decided: runDecided,

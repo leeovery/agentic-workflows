@@ -25,10 +25,11 @@
 // `topics/{topic}/mail/`; the unit's topics settled, one live at least and
 // every live one decided (spec-standing.cjs); each phase of the cut naming
 // its scenarios and its sections, what it relies on maybe nothing; every
-// part of `spec.md` drawn on by a phase, directly or through its area, an
-// area with no parts whole; what a phase relies on done — an earlier phase's
-// close recorded, another unit completed; and a directive's check passing
-// (directives.cjs).
+// statement of `spec.md` traced to the ledger (spec-trace.cjs), a spec its
+// grammar cannot read failing it; every part of `spec.md` drawn on by a
+// phase, directly or through its area, an area with no parts whole; what a
+// phase relies on done — an earlier phase's close recorded, another unit
+// completed; and a directive's check passing (directives.cjs).
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic.
 //
@@ -57,8 +58,9 @@ const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
-const { readSpec, specSections } = require('./spec-sections.cjs');
+const { readSpec, specSections, specStatements } = require('./spec-sections.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
+const { inventedStatements } = require('./spec-trace.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -167,6 +169,21 @@ function sectionsDrawn({ cwd, unit, manifest }) {
     .every((address) => drawn.has(address) || drawn.has(address.split('.')[0]));
 }
 
+/**
+ * Every statement of the unit's spec traced to the ledger (11.4.1); a spec
+ * the grammar cannot read, or none, fails it (11.4.5).
+ * @param {Named} named
+ */
+function statementsTraced({ cwd, unit, warnings }) {
+  let statements;
+  try {
+    ({ statements } = specStatements(readSpec(cwd, /** @type {string} */ (unit))));
+  } catch {
+    return false;
+  }
+  return inventedStatements(cwd, /** @type {string} */ (unit), statements, warnings).length === 0;
+}
+
 /** What the phase relies on is done: each earlier phase's close recorded, each other unit completed (12.6.2, 12.6.3). @param {Named} named */
 function reliedOnDone({ cwd, manifest, phase }) {
   const finished = finishedUnits(stateRoot(cwd));
@@ -241,7 +258,7 @@ const POINTS = Object.freeze({
       { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen', check: settled },
       { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', applies: moreThanOneTopic },
       { key: 'replacements-checked', text: 'the spec has checked each replacement against what it replaced' },
-      { key: 'statements-traced', text: 'every statement traced' },
+      { key: 'statements-traced', text: 'every statement traced', check: statementsTraced },
       { key: 'review-settled', text: 'the review\'s last pass changed nothing' },
       { key: 'phases-complete', text: 'each phase in the cut has its scenarios, sections and relies-on', check: phasesComplete },
       { key: 'invariants-checked', text: 'every invariant names a check or says none can' },
