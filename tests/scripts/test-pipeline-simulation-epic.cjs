@@ -31,6 +31,7 @@ const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domai
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
   Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, specEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow, cutTheSpec,
+  answerGate,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -190,6 +191,43 @@ describe('pipeline simulation: epic', () => {
     sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
     assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
     assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
+  });
+
+  it('epic: at the spec, before it is written, the sweep is briefed, its message reopens a decided topic, and its candidate comes to approve the map, whose yes hands back to the menu; the sweep run once (8.10.3, 8.10.9, 8.S33, 8.S50)', () => {
+    const wu = 'tessera';
+    mappedEpic(sim, wu, ['alpha', 'beta']);
+    discussed(sim, wu, 'alpha');
+    const { next } = discussed(sim, wu, 'beta');
+    handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+    specEntry(sim, wu, ['alpha', 'beta']);
+    const sweepRun = () => JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items.find((item) => item.key === 'sweep-run').state;
+    assert.strictEqual(sweepRun(), 'open');
+
+    assert.deepStrictEqual(
+      (({ role, agent }) => ({ role, agent }))(sim.run(['brief', 'sweep', wu])),
+      { role: 'sweep', agent: 'leeway-sweep' });
+    sim.write(`.leeway/.cache/${wu}/specification/sweep.json`, {
+      candidates: [
+        { name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' },
+        { name: 'delta', reason: 'Nothing decides who cleans up.', brief: '# Delta\n\nThe clean-up.\n' },
+      ],
+      messages: [{ topic: 'beta', text: 'Alpha settled the order\n\nBeta takes it in.' }],
+      builder_calls: [{ call: 'The export file name.', why: 'The person would leave it.' }],
+    });
+    assert.strictEqual(send(sim, wu, 'beta', `${wu}.specification`, 'alpha-settled-the-order').reopened, true);
+    assert.strictEqual(sweepRun(), 'done');
+
+    const screen = sim.render(['approve-map', wu, '--sweep'], { expect: 'content' });
+    assert.match(screen, /^FOUND BY THE SWEEP \(2 candidates, yours to take or strike\)$/m);
+    assert.doesNotMatch(screen, /Alpha settled the order|export file name/, 'the messages and the builder\'s calls reach no screen');
+    sim.render(answerGate(sim, 'approve the map', '--pick', 's').next.argv.slice(1), { expect: 'content' });
+    sim.run(answerGate(sim, 'approve the map strike', '--pick', '2').next.argv);
+    sim.render(['approve-map', wu], { expect: 'content' });
+    const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
+    assert.deepStrictEqual([yes.candidates, yes.struck, yes.next], [['gamma'], ['delta'], { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }]);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
+    arrive(sim, wu);
+    assert.deepStrictEqual(sim.manifest(wu).phases.discovery.dismissed, ['delta']);
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {

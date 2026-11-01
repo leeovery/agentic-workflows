@@ -23,7 +23,8 @@
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
 // `topics/{topic}/mail/`; the unit's topics settled, one live at least and
-// every live one decided (spec-standing.cjs); each phase of the cut naming
+// every live one decided (spec-standing.cjs); the sweep between topics run,
+// its report written and reading (sweep.cjs); each phase of the cut naming
 // its scenarios and its sections, what it relies on maybe nothing; every
 // statement and screen of `spec.md` traced to the ledger (spec-trace.cjs), a
 // spec its grammar cannot read failing it; every part of `spec.md` drawn on
@@ -61,6 +62,7 @@ const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { readSpec, specSections, specStatements } = require('./spec-sections.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
+const { hasSweepReport } = require('./sweep.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -151,6 +153,9 @@ function mailboxEmpty({ cwd, unit, topic }) {
 
 /** The unit's topics settled, as its spec's entry reads them (11.2.1). @param {Named} named */
 const settled = ({ manifest }) => topicsSettled(manifest);
+
+/** The sweep between topics run: the unit has a sweep report that reads, one sweep per spec (8.10.3). @param {Named} named */
+const sweepRun = ({ cwd, unit }) => hasSweepReport(cwd, /** @type {string} */ (unit));
 
 /** Each phase of the cut names a scenario and a section; what it relies on may be nothing (11.5.4). @param {Named} named */
 function phasesComplete({ manifest }) {
@@ -256,7 +261,7 @@ const POINTS = Object.freeze({
     place: onUnit(() => ({ path: ['ready-to-build'] })),
     items: [
       { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen', check: settled },
-      { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', applies: moreThanOneTopic },
+      { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', check: sweepRun, applies: moreThanOneTopic },
       { key: 'replacements-checked', text: 'the spec has checked each replacement against what it replaced' },
       { key: 'statements-traced', text: 'every statement traced', check: statementsTraced },
       { key: 'review-settled', text: 'the review\'s last pass changed nothing' },
