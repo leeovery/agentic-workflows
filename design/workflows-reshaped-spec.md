@@ -740,7 +740,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `.inbox/`: one file per capture, `{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, as today; an archived item moves to `.inbox/.archived/{kind}/`, its name kept, and the unit that closed it is recorded on the project manifest (18.6.4);
 - `.product/`: the product's conversation (8.2.7), its logs `sessions/session-NNN.md`, every session before a work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); `spikes/` and `assets/` (4.11.12). The roadmap's items themselves are on the project manifest;
 - `.state/migrations`: each migration applied, its id on a line of its own (4.7.4);
-- a unit's `seeds/`: each seed's file under its name normalised as every inbox seed's has always been, a double dash folded to one, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and no copy of a roadmap item as it stood: the item stays on the project manifest, joined to the work, so cancelling the work can put it back by undoing the join on the live item, as renamed or merged since (18.8.20);
+- a unit's `seeds/`: each seed's file under its name normalised as every inbox seed's has always been, a double dash folded to one, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and no copy of a roadmap item as it stood: the item stays on the project manifest, joined to the work, so cancelling the work undoes the join and puts it back on the horizon it came from, as renamed or merged since (18.8.20);
 - no unit has a `.state/`: nothing writes one once tracking and analysis files go (4.10.3).
 
 [Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26; Claude's derivation, 29.12 slice 12.6: seeds land as today; Claude's derivation, 29.12's phase review: as built]
@@ -824,7 +824,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
     └── the conversation's other files, as today
 ```
 
-4.11.18 The unit's manifest keeps no status for the spec. The spec is written once `spec.md` exists, and concluded once ready to build's yes has begun the build, which records the build's position on the manifest (3.3). [Claude's proposal, 29.13 planning]
+4.11.18 The unit's manifest keeps no status for the spec. The spec is written once `spec.md` exists, and concluded once ready to build's yes has begun the build, which records the build's position on the manifest (3.3, 4.11.5). [Claude's proposal, 29.13 planning]
 
 ## 4-S. Scenarios for §4
 
@@ -892,7 +892,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.product/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
-4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their names normalised as every inbox seed's has always been, a double dash folded to one, and the unit's manifest records each seed's source and no copy of the roadmap item; when the work is cancelled, then the item, as renamed or merged since, is back on its horizon. (4.11.16, 18.8.20)
+4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their names normalised as every inbox seed's has always been, a double dash folded to one, and the unit's manifest records each seed's source and no copy of the roadmap item; when the work is cancelled, then the item is back on the horizon it came from, as renamed or merged since. (4.11.16, 18.8.20)
 
 4.S36 Given work on one machine pushed to the remote, when boot runs on another machine whose state branch is behind, then before anything writes state the branch fast-forwards to the remote's tip and no merge commit is made; given a clone holding state commits a failed push left behind, with the remote not moved, when boot runs, then they are pushed. (4.7.8, 4.3.3)
 
@@ -10081,9 +10081,9 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.6.9 The entries the directive marks product-wide start the product record (§8). [R37]
 
-21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. A point on a topic never started is not raised at the directive's end: it stays an open question on that topic, for its discussion to open with. A point on a cancelled or postponed topic, or in a cancelled unit, is not raised either: it stays an open question on that topic until the topic, or its unit, returns (5.8.17). [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15; Claude's proposal, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
+21.6.10 The records directive asks nothing per entry. At its end it raises what no log settles, one point at a time, each answered or left open (§16). The points to raise are marked in the carried record, and the directive's check lists those still to raise, so a session that lost its context raises none twice and misses none. A point on a topic never started is not raised at the directive's end: it stays an open question on that topic, for its discussion to open with. A point on a cancelled or postponed topic, or in a cancelled unit, is not raised either: it waits with the topic, and is an open question on that topic once the topic, or its unit, returns (5.8.17). [R38; ruled by the person 2026-10-17; Claude's derivation, 29.11 slice 11.15; Claude's proposal, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
 
-21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles on a live topic that has started is raised to the person one at a time; each is answered or left open. A never-started topic's points stay open for its discussion, and a cancelled or postponed topic's until it returns (21.6.10). [R38, R24; Claude's derivation, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
+21.6.11 Screen: the records directive's closing raises. After the directive's work, each point no log settles on a live topic that has started is raised to the person one at a time; each is answered or left open. A never-started topic's points stay open for its discussion, and a cancelled or postponed topic's, or a cancelled unit's, wait to open once it returns (21.6.10). [R38, R24; Claude's derivation, 29.12 slice 12.4; Claude's derivation, 29.11: as built]
 
 21.6.12 A never-started epic topic's record is carried at its discovery place — its unit, phase `discovery`, the topic — and holds its questions and findings only, nothing decided, since nothing in discovery is a decision (8.3.4). [Claude's proposal, 29.12 slice 12.4]
 
