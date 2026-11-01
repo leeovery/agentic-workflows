@@ -12,8 +12,26 @@ const path = require('path');
 const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
+/**
+ * Whether the unit's build has begun: ready to build's yes recorded on its
+ * manifest as `build`, which concludes its spec (P7).
+ * @param {Record<string, any>} manifest
+ */
+function buildBegun(manifest) {
+  return isObject(manifest.build);
+}
+
+/**
+ * A phase's status over its live items. The one spec a unit writes keeps no
+ * items: it reads completed once its build has begun, and none before —
+ * whether its `spec.md` is written is the state's to say (spec-standing.cjs).
+ * A unit whose building began under the old spec keeps that spec's items.
+ * @param {Record<string, any>} manifest @param {string} phase
+ * @returns {string|null}
+ */
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
   if (p.items && typeof p.items === 'object') {
@@ -37,7 +55,7 @@ function phaseStatus(manifest, phase) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
-  return null;
+  return phase === 'specification' && buildBegun(manifest) ? 'completed' : null;
 }
 
 function phaseItems(manifest, phase) {
@@ -913,7 +931,11 @@ function computeNextPhase(manifest) {
     if (wt === 'cross-cutting') {
       return { next_phase: 'done', phase_label: 'pipeline complete' };
     }
-    return { next_phase: 'planning', phase_label: 'ready for planning' };
+    // The one spec a unit writes leads into its build (E6); a unit whose
+    // building began under the old spec keeps that spec's items, and its plan.
+    return phaseItems(manifest, 'specification').length === 0
+      ? { next_phase: 'implementation', phase_label: 'ready for implementation' }
+      : { next_phase: 'planning', phase_label: 'ready for planning' };
   }
   if (ps('specification') === 'in-progress') {
     return {
@@ -1494,6 +1516,7 @@ function buildDiscoveryMap(manifest, stateDir) {
 module.exports = {
   phaseData,
   phaseItems,
+  buildBegun,
   phaseStatus,
   sourceRows,
   sourceRow,

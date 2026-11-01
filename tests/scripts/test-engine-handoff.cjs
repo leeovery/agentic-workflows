@@ -163,19 +163,20 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
   });
 
-  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit', () => {
+  it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec, entered at the unit, an epic\'s with no topic, a topic named travelling on and naming nothing (4.11.2)', () => {
     for (const type of VALID_WORK_TYPES) {
       const unit = `${type}-unit`;
       createManifest(dir, unit, { work_type: type });
       for (const phase of WORK_TYPE_PIPELINES[type]) {
         const skill = PHASE_SKILLS[phase];
         const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-        if (type !== 'epic') {
+        const atUnit = phase === 'specification';
+        if (type !== 'epic' || atUnit) {
           assert.strictEqual(inline(dir, [skill, type, unit]),
             inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
         }
         assert.strictEqual(inline(dir, [skill, type, unit, 'checkout']),
-          inlineAnswer(skill, `${type} ${unit} checkout`, `→ ${name} · checkout`), `${skill} ${type} with a topic`);
+          inlineAnswer(skill, `${type} ${unit} checkout`, `→ ${name} · ${atUnit ? unit : 'checkout'}`), `${skill} ${type} with a topic`);
       }
     }
   });
@@ -416,8 +417,8 @@ describe('engine handoff — refusals', () => {
     }
   });
 
-  it('every epic phase refuses the epic alone — the epic menu names the topic before it hands off', () => {
-    for (const phase of WORK_TYPE_PIPELINES.epic) {
+  it('every epic phase entered at a topic refuses the epic alone — the epic menu names the topic before it hands off', () => {
+    for (const phase of WORK_TYPE_PIPELINES.epic.filter((each) => each !== 'specification')) {
       refused(dir, [PHASE_SKILLS[phase], 'epic', 'fumi'], new RegExp(`^an epic enters ${phase} at a topic$`));
     }
   });

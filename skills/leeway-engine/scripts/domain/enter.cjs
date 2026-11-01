@@ -14,21 +14,24 @@
 // do; and answers what the phase needs to begin or resume, in sections: any
 // question first, then a DATA naming what to read, as paths and engine
 // calls, never their contents, read as the place stood before the entry
-// wrote anything, and the log the conversation keeps with the line it opens
-// its next write with (8.14.8) — or, for a row that writes that line
-// itself, the line written. The reading comes after the question (2.10.3).
+// wrote anything, and the log the conversation keeps, where it keeps one,
+// with the line it opens its next write with (8.14.8) — or, for a row that
+// writes that line itself, the line written; what a read of the ledger said
+// on the way rides the response as warnings. The reading comes after the
+// question (2.10.3).
 //
 // A phase enters through its row of `ENTRIES`: its level — at a topic, or at
 // the work unit — whether the product's conversation enters through it too,
 // why it cannot be entered as it stands (topic-standing.cjs, the rule a
 // handoff into a topic and a message to one share), whether and how it
-// starts, the questions it raises first, what it reads, its log, and where a
-// level move leaves from. A topic-level row refuses an epic entered at no
-// topic, a topic once the unit has its spec (4.11.2), and a topic the unit
-// lacks; a unit-level row takes no topic, and is entered after the spec as
-// before it. Discussion is the first row and discovery the second
-// (discovery-entry.cjs); each later phase adds its own as its rewrite moves
-// it onto the entry. A unit-level place is the unit itself, as a
+// starts, the questions it raises first, what it reads, its log where it
+// keeps one, and where a level move leaves from. A topic-level row refuses
+// an epic entered at no topic, a topic once the unit has its spec (4.11.2),
+// and a topic the unit lacks; a unit-level row takes no topic, and is
+// entered after the spec as before it. Discussion is the first row,
+// discovery the second (discovery-entry.cjs) and specification the third
+// (spec-entry.cjs); each later phase adds its own as its rewrite moves it
+// onto the entry. A unit-level place is the unit itself, as a
 // single-topic unit's topic is; the product's is `product`, a project place
 // with no manifest of its own, whose marker and lock are the project
 // manifest's.
@@ -65,6 +68,7 @@ const { entrySections, heldGate } = require('./projections/enter.cjs');
 const { waitingMessages } = require('./mail.cjs');
 const { waitingMail } = require('./projections/mail.cjs');
 const { DISCOVERY } = require('./discovery-entry.cjs');
+const { SPECIFICATION } = require('./spec-entry.cjs');
 const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 
 /** @typedef {[string, string]} Line a DATA line, its key and its value */
@@ -72,9 +76,9 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
 /** @typedef {import('./topic-standing.cjs').Standing} Standing */
 
 /**
- * What a row reads from once it is entered: where the entry is, and whether
- * this entry started it.
- * @typedef {Standing & {started: boolean}} Entering
+ * What a row reads from once it is entered: where the entry is, whether
+ * this entry started it, and what a read of the ledger said on the way.
+ * @typedef {Standing & {started: boolean, notes: string[]}} Entering
  */
 
 /**
@@ -93,9 +97,9 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * is yet to start, and what starts it; the questions owed before anything is
  * read, each a section drawn whole; what it reads, as the place stood before
  * the entry wrote anything; the log its conversation keeps, state-relative,
- * and whether the entry writes the conversation's line into it rather than
- * naming it; and where a level move into it leaves from, for a row that
- * takes one.
+ * where it keeps one, and whether the entry writes the conversation's line
+ * into it rather than naming it; and where a level move into it leaves from,
+ * for a row that takes one, which keeps a log.
  * @typedef {object} Entry
  * @property {'topic'|'unit'} level
  * @property {boolean} [product]
@@ -104,7 +108,7 @@ const { earlierRecord, earlierReads } = require('./earlier-record.cjs');
  * @property {(cwd: string, unit: string, topic?: string) => void} start
  * @property {(at: Entering) => string[]} questions
  * @property {(at: Entering) => Line[]} reads
- * @property {(at: Entering) => string} log
+ * @property {(at: Entering) => string} [log]
  * @property {boolean} [writesHeader]
  * @property {(at: Standing) => Departure} [move]
  */
@@ -205,6 +209,7 @@ const ENTRIES = Object.freeze({
     log: ({ unit, topic = '' }) => topicLog(unit, topic),
   },
   discovery: DISCOVERY,
+  specification: SPECIFICATION,
 });
 
 const TAKE = '--take';
@@ -308,7 +313,7 @@ function settle(cwd, entry, at, held, departure) {
     : topic === undefined ? `${phase}(${unit}): start` : `${phase}(${unit}): start ${topic}`;
   const outcome = held.lock(() => {
     if (started) entry.start(cwd, unit, topic);
-    departure?.leave(statePath(cwd, entry.log(at)), unit);
+    departure?.leave(statePath(cwd, /** @type {NonNullable<Entry['log']>} */ (entry.log)(at)), unit);
     return commitStateTail(cwd, [...(started ? [held.manifest] : []), ...(departure?.logs ?? [])], message, warnings);
   });
   /** @type {{committed: string|null, note?: string, warnings?: string[]}} */
@@ -350,23 +355,36 @@ function enterThrough(entries, cwd, argv) {
   const hold = take ? null : peerHold(cwd, unit, phase, place);
   if (hold !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: heldQuestion(at, place, hold.age_seconds, move) };
   /** @type {Entering} */
-  const entering = { ...at, started: entry.unstarted(at) };
+  const entering = { ...at, started: entry.unstarted(at), notes: [] };
   const reads = entry.reads(entering);
   const held = heldAt(cwd, phase, unit, place);
+  /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
   const commit = entering.started || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
   held.arrive();
   beatQuietly(cwd, unit, phase, place);
+  const lines = [...reads, ...logLines(cwd, entry, entering)];
+  const warnings = [...entering.notes, ...(commit.warnings ?? [])];
+  return {
+    response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },
+    sections: entrySections(entry.questions(entering), lines),
+  };
+}
+
+/**
+ * The DATA's last lines, for a row whose conversation keeps a log: the log,
+ * then the line the conversation's next write opens with where it owes one
+ * — or, for a row that writes that line itself, none, the line written.
+ * @param {string} cwd @param {Entry} entry @param {Entering} at
+ * @returns {Line[]}
+ */
+function logLines(cwd, entry, at) {
+  if (entry.log === undefined) return [];
+  const log = statePath(cwd, entry.log(at));
   const sessionId = handedSession();
-  const log = statePath(cwd, entry.log(entering));
   const header = owedHeader(log, sessionId, sessionId === null ? null : runningTranscript(sessionId));
   if (header !== null && entry.writesHeader) appendLine(log, header);
   const owed = entry.writesHeader ? null : header;
-  /** @type {Line[]} */
-  const lines = [...reads, ['log', log], ...(owed === null ? [] : /** @type {Line[]} */ ([['log header', owed]]))];
-  return {
-    response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit },
-    sections: entrySections(entry.questions(entering), lines),
-  };
+  return [['log', log], ...(owed === null ? [] : /** @type {Line[]} */ ([['log header', owed]]))];
 }
 
 /**

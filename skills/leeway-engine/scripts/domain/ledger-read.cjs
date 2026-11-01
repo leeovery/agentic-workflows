@@ -6,7 +6,8 @@
 // and Claude's calls since the person last looked (ledger-since.cjs) — each
 // a projection of the ledger worked out when read, never kept (5.8.2),
 // answered as JSON; what the person sees of them is drawn later. The
-// verdict queue is read the same way (verdict.cjs).
+// verdict queue is read the same way (verdict.cjs), and so are the files a
+// unit's current entries link as canonical, which its spec links (11.6.3).
 //
 // - Each read folds the ledger in one streamed pass (ledger-fold.cjs) and
 //   reads again the lines of the entries it shows alone, from the file the
@@ -313,6 +314,21 @@ function readShown(root, warnings, answer) {
 }
 
 /**
+ * The files the unit's current entries link as canonical (9.10.5), each
+ * once, as its record lists the entries linking them; what a landing the
+ * read's check finished said pushed to `warnings`.
+ * @param {string} root @param {string} unit @param {string[]} warnings
+ * @returns {string[]}
+ */
+function canonicalAssets(root, unit, warnings) {
+  return readShown(root, warnings, (shower) => {
+    const { questions, findings, decisions } = recordOf(shower.folded, unit, null);
+    const linked = [...questions, ...findings, ...decisions].flatMap((id) => shower.assets(id));
+    return [...new Set(linked.filter(({ status }) => status === 'canonical').map(({ path }) => path))];
+  });
+}
+
+/**
  * `ledger <record|map|product|affected|since|shown>`: the projection read,
  * as JSON, and as warnings what a landing its check finished said, and what
  * the read said on the way.
@@ -332,4 +348,4 @@ function readLedgerVerb(cwd, verb, args) {
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, answerMap };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, readShown, answerMap, canonicalAssets };

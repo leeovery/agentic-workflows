@@ -8,9 +8,9 @@
 //   reactivated first, a completed one closed to new work.
 // - Its phase: one its work type's pipeline holds.
 // - The topic: a name that is one, a topic the unit holds — an epic's map
-//   names them, a single-topic unit's is the unit — and none once the unit
-//   has its `spec.md`, from which a change is settled in the spec (4.11.2,
-//   10.2.2).
+//   names them, a single-topic unit's is the unit — and none once the
+//   unit's spec is written (spec-standing.cjs), from which a change is
+//   settled in the spec (4.11.2, 10.2.2).
 // - What the topic is now: postponed or cancelled on the map, promoted out
 //   of the unit, decided, or for a bugfix its investigation concluded, the
 //   unit's menu leading past it. A message waits in a postponed topic's
@@ -22,11 +22,11 @@
 // start this work. The product's conversation never closes.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
+const { specStanding } = require('./spec-standing.cjs');
 
 /**
  * Where a topic stands as it is checked: the unit's manifest as it stood on
@@ -70,11 +70,11 @@ function assertPhaseHeld(manifest, phase) {
 }
 
 /**
- * Whether the unit has its spec — past which no topic exists (4.11.2) and an
- * epic's map is closed (8.6.5).
+ * Whether the unit's spec is written — past which no topic exists (4.11.2)
+ * and an epic's map is closed (8.6.5).
  * @param {string} cwd @param {string} unit
  */
-const hasSpec = (cwd, unit) => fs.existsSync(statePath(cwd, unit, 'spec.md'));
+const hasSpec = (cwd, unit) => specStanding(cwd, unit) !== 'none';
 
 /**
  * Where a decided or set-aside topic of the unit is reopened (8.6.5).

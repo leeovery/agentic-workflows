@@ -120,24 +120,30 @@ function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;
 }
 
+// The phases entered at the work unit, whatever its type (4.11.2): a topic
+// named travels on, and names nothing.
+const UNIT_LEVEL_PHASES = ['specification'];
+
 /**
  * A phase's skill: the work type it serves, a work unit of that type, and the
- * topic — a legal name, which need not exist. An epic always names its topic;
- * a single-topic unit's topic is the unit itself.
+ * topic — a legal name, which need not exist. An epic names its topic where
+ * the phase is entered at one; a single-topic unit's topic is the unit
+ * itself.
  * @param {string} phase @returns {Target}
  */
 function phaseTarget(phase) {
   const served = VALID_WORK_TYPES.filter((type) => WORK_TYPE_PIPELINES[type].includes(phase));
+  const atUnit = UNIT_LEVEL_PHASES.includes(phase);
   return {
     usage: `<${served.join('|')}> <work-unit> [<topic>]`,
     counts: [2, 3],
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
-      if (type === 'epic' && topic === undefined) throw new Error(`an epic enters ${phase} at a topic`);
+      if (type === 'epic' && topic === undefined && !atUnit) throw new Error(`an epic enters ${phase} at a topic`);
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
     },
-    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
+    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined || atUnit ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
   };
 }
 

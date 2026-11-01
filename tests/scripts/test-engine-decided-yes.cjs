@@ -9,7 +9,9 @@
 // or in a unit with one topic parked on the roadmap (8.S31), the struck
 // names recorded as the person's answer and refused when a later close
 // stages them (8.S60), the topic decided and
-// what comes next, the counts it covers in words; a refused yes writing
+// what comes next — an epic's menu while a live topic is left to work, a
+// topic its own yes lands among them, its spec once none is (24.S3) — the
+// counts it covers in words; a refused yes writing
 // nothing, and a yes run again after a kill
 // landing nothing twice — a restage after it taking no second line; the
 // yes refused with nothing staged, a verdict still to ask, or no
@@ -162,6 +164,20 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     run(answer('decided', 'y'));
     assert.deepStrictEqual(ok(dir(), ['ledger', 'product']).decisions.map((/** @type {{text: string}} */ d) => d.text), ['First run shows the product before it asks.']);
     assert.strictEqual(readManifest(dir(), UNIT).phases.discussion.items['note-window'].status, 'completed');
+  });
+
+  it('24.S3: an epic\'s last live topic decided goes into its spec, at the unit — another topic postponed is no longer live', () => {
+    ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'next'], { env: SESSION });
+    close();
+    staged(NO_PAYLOAD);
+    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', UNIT] });
+  });
+
+  it('counts the topic its own yes lands: a candidate taken leaves the epic a topic to work, so the yes goes back to its menu (F1)', () => {
+    ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'next'], { env: SESSION });
+    close();
+    staged({ lines: [], candidates: [candidate('removing-fumi', 'Nothing decides what removing Fumi takes back.')] });
+    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT, 'discussion', 'completed'] });
   });
 
   it('hands a feature\'s decided topic off to its specification', () => {

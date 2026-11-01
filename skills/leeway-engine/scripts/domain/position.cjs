@@ -40,7 +40,8 @@ const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { specSources } = require('./spec-standing.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -238,15 +239,19 @@ function dropPosition(sessionId) {
 // runs the work there, then the topic's documents. A work unit's menu carries
 // nothing on, so it names neither; nor does a place this project no longer
 // has open — the work unit gone or closed, the item closed, a topic on the
-// map cancelled or postponed — nor one whose skill this project lacks. A
-// phase whose skill carries no recovery section of its own has the note
-// carry it whole (24.2.6), naming the engine calls it re-reads beside its
-// documents and the log its conversation keeps, which is caught up from the
-// conversation's transcript (8.14.9): discussion's names the topic's record
-// and its log (24.2.1–24.2.3); discovery's, at an epic, the unit's map and
-// the open log, and at the product's conversation its open log (24.2.8,
-// 8.14.6) — the latest on disk where none is open. Every other phase's note
-// sends Claude to its skill's own steps.
+// map cancelled or postponed, a spec concluded — nor one whose skill this
+// project lacks. A phase whose skill carries no recovery section of its own
+// has the note carry it whole (24.2.6), naming the engine calls it re-reads
+// beside its documents and the log its conversation keeps, where it keeps
+// one, which is caught up from the conversation's transcript (8.14.9):
+// discussion's names the topic's record and its log (24.2.1–24.2.3);
+// discovery's, at an epic, the unit's map and the open log, and at the
+// product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
+// where none is open; specification's, at the unit whatever topic its place
+// names, what its entry reads to carry it on — each live topic's record and
+// log, then the spec once written and the cut once cut (spec-standing.cjs),
+// the spec keeping no log. Every other phase's note sends Claude to its
+// skill's own steps.
 // ---------------------------------------------------------------------------
 
 /**
@@ -393,8 +398,10 @@ function workAt(cwd, position, manifest) {
     }
     case 'investigation':
       return { skill, documents: [statePath(cwd, INDEXED_ARTIFACTS.investigation(name, topic))] };
-    case 'specification':
-      return { skill, documents: [statePath(cwd, specificationFile(name, topic))] };
+    case 'specification': {
+      const { records, logs, spec, cut } = specSources(cwd, manifest);
+      return { skill, documents: [...logs, ...spec], whole: { calls: [...records, ...cut], log: null } };
+    }
     case 'experiment':
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
     case 'scoping':
@@ -447,9 +454,9 @@ function placeLine({ name, phase, topic }, separator) {
 
 /**
  * Why a work unit's place is no longer open to carry on from, or null where
- * it is: the work unit gone from this project or closed, the place's item
- * closed, or — in a phase a topic on the map holds — the topic cancelled or
- * postponed.
+ * it is: the work unit gone from this project or closed, its spec concluded
+ * at the spec's place, the place's item closed, or — in a phase a topic on
+ * the map holds — the topic cancelled or postponed.
  * @param {Position} position @param {Manifest} manifest
  * @returns {string|null}
  */
@@ -458,6 +465,7 @@ function closedReason(position, manifest) {
   if (isProjectPlace(name, phase)) return null;
   if (manifest === null) return `this project has no work unit "${name}"`;
   if (manifest.status !== 'in-progress') return `"${name}" is ${typeof manifest.status === 'string' ? manifest.status : 'not in progress'}`;
+  if (phase === 'specification' && buildBegun(manifest)) return 'its spec is concluded';
   if (phase === undefined || typeof topic !== 'string') return null;
   const status = itemOf(manifest, phase, topic)?.status;
   if (typeof status === 'string' && TERMINAL_STATUSES.includes(status)) return `the ${phase} is ${status}`;
