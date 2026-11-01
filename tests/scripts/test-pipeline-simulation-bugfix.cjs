@@ -85,13 +85,13 @@ describe('pipeline simulation: bugfix', () => {
     assert.strictEqual(bugSpec.sources[wu].status, 'stale');
     assert.strictEqual(bugSpec.reconcile_needed, 'investigation');
     // The reopened investigation's chunks stay live, a query marking them
-    // reopened; the spec's stay unmarked — still the concluded record.
+    // reopened; the spec is never indexed (11.1.2).
     const provenance = async () => (await sim.engineAsync(['knowledge', 'query', 'investigation', 'spec'])).stdout;
     const reopenedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2} \| reopened\]$/m;
     const concludedLine = /^\[investigation \| crash-fix\/crash-fix \| medium \| \d{4}-\d{2}-\d{2}\]$/m;
     const whileReopened = await provenance();
     assert.match(whileReopened, reopenedLine);
-    assert.match(whileReopened, /^\[specification \| crash-fix\/crash-fix \| high \| \d{4}-\d{2}-\d{2}\]$/m);
+    assert.doesNotMatch(whileReopened, /^\[specification \|/m);
     sim.refuses(['topic', 'complete', wu, 'specification', wu], /unresolved source rows|completed/);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
     assert.match(await provenance(), concludedLine, 'the marker goes as the topic concludes again');

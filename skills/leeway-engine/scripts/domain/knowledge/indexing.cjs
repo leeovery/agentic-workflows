@@ -353,7 +353,7 @@ function planIndex(root, chunks, manifests, { scope, pruning, awaiting = new Set
   const plan = { fresh: [], changed: [], unchanged: [], pruned: [], retired: retirements(root, indexed.values(), manifests, scope) };
   for (const artifact of discoverArtifacts(root, manifests)) {
     if (scope && artifact.workUnit !== scope) continue;
-    if (pruning && pruning.prunes(artifact.workUnit, artifact.phase)) {
+    if (pruning && pruning.prunes(artifact.workUnit)) {
       plan.pruned.push(artifact);
       continue;
     }
@@ -448,7 +448,7 @@ function reconcile(root, { cfg, provider }, scope = null) {
     retire: (db) => retirements(root, identitiesOf(store.allChunks(db)).values(), readManifests(root), scope),
   });
   /** @param {Chunk} chunk */
-  const pending = (chunk) => (!scope || chunk.work_unit === scope) && !(pruning && pruning.prunes(chunk.work_unit, chunk.phase));
+  const pending = (chunk) => (!scope || chunk.work_unit === scope) && !(pruning && pruning.prunes(chunk.work_unit));
   return { built, failures, retired: written.retired, unchanged: plan.unchanged, embedder, snapshot: written.snapshot, pending };
 }
 

@@ -544,9 +544,9 @@ describe('knowledge chunker — character budget', () => {
   it('holds the budget and the verbatim slice across every real fixture', () => {
     for (const [fixture, config] of [
       ['discussion-fixture.md', ownChunkConfig()],
-      ['spec-folio-fixture.md', loadConfig('specification')],
-      ['spec-deep-nested-fixture.md', loadConfig('specification')],
-      ['specification-fixture.md', loadConfig('specification')],
+      ['spec-folio-fixture.md', loadConfig('investigation')],
+      ['spec-deep-nested-fixture.md', loadConfig('investigation')],
+      ['specification-fixture.md', loadConfig('investigation')],
       ['research-oversized-h3-fixture.md', loadConfig('investigation')],
     ]) {
       const src = loadFixture(fixture);
@@ -584,14 +584,14 @@ describe('phase chunking configs', () => {
       assert.strictEqual(cfg.keep_whole_below, phase === 'record' ? 0 : 50);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
-      assert.strictEqual(typeof cfg.special_sections, 'object');
+      assert.deepStrictEqual(cfg.special_sections, {});
       assert.strictEqual(typeof cfg.confidence, 'string');
     });
   }
 
-  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline (8.14.7, 9.2.2)', () => {
+  it('indexes a topic\'s record, and never a log — the research, the discussion\'s, discovery\'s, the roadmap\'s sessions — nor the baseline, nor the spec (8.14.7, 9.2.2, 11.1.2)', () => {
     assert.ok(phases.includes('record'));
-    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline']) {
+    for (const phase of ['research', 'discussion', 'discovery', 'roadmap', 'baseline', 'specification']) {
       assert.ok(!phases.includes(phase), phase);
       assert.strictEqual(fs.existsSync(path.join(chunkingDir, phase + '.json')), false, phase);
     }
@@ -610,66 +610,6 @@ describe('phase chunking configs', () => {
       ['fumi / note-window', 'Finding: Panels float above every Space.'],
     ]);
     assert.strictEqual(chunk(copy, loadConfig('investigation')).length, 1);
-  });
-
-  it('specification.json declares Corrigenda as own-chunk — the only config that does', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
-    );
-    assert.deepStrictEqual(cfg.special_sections, { Corrigenda: 'own-chunk' });
-    for (const phase of ['investigation', 'imports', 'analysis', 'seeds']) {
-      const other = JSON.parse(
-        fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
-      );
-      assert.strictEqual(other.special_sections['Corrigenda'], undefined, phase);
-    }
-  });
-
-  it('non-specification configs have empty special_sections', () => {
-    for (const phase of ['investigation', 'imports', 'analysis']) {
-      const cfg = JSON.parse(
-        fs.readFileSync(path.join(chunkingDir, phase + '.json'), 'utf8')
-      );
-      assert.deepStrictEqual(cfg.special_sections, {});
-    }
-  });
-
-  it('a bottom Corrigenda section chunks in isolation — whole under the budget, split past it', () => {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(chunkingDir, 'specification.json'), 'utf8')
-    );
-    const entries = (count) => Array.from({ length: count }, (_, i) => [
-      '### 2026-08-0' + ((i % 9) + 1) + ' — batch ' + i,
-      '',
-      '> **Corrigendum 2026-08-0' + ((i % 9) + 1) + '** (from `other`): "claim ' + i + '" — corrected: truth ' + i + '.',
-    ].join('\n')).join('\n');
-    const spec = (count) => [
-      '# Billing Specification',
-      '',
-      'Intro paragraph.',
-      '',
-      '## Scope',
-      '',
-      Array.from({ length: 60 }, (_, i) => 'scope line ' + (i + 1)).join('\n'),
-      '',
-      '## Corrigenda',
-      '',
-      entries(count),
-      '',
-    ].join('\n');
-
-    const small = chunk(spec(70), cfg);
-    const corrigenda = small.filter((c) => c.content.startsWith('## Corrigenda'));
-    assert.strictEqual(corrigenda.length, 1, 'exactly one Corrigenda chunk');
-    assert.ok(corrigenda[0].content.includes('claim 69'), 'the whole section in one chunk');
-    assert.strictEqual(small.filter((c) => c.content.startsWith('### 2026')).length, 0);
-    const intro = small.find((c) => c.content.startsWith('# Billing Specification'));
-    assert.ok(intro && !intro.content.includes('Corrigendum'), 'title chunk free of corrigenda');
-
-    const big = chunk(spec(400), cfg);
-    assert.ok(big.filter((c) => c.content.startsWith('### 2026')).length > 1, 'an over-budget own-chunk splits');
-    for (const c of big) assert.ok(c.content.length <= MAX_CHUNK_CHARS);
-    assert.ok(big.some((c) => c.content.includes('claim 399')));
   });
 
   it('imports.json declares low confidence', () => {
@@ -900,7 +840,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('chunks a specification fixture into expected sections', () => {
     const src = loadFixture('specification-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     // 12 H2 sections in the portal spec (Overview through Dependencies).
@@ -950,7 +890,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('returns minimal spec as single chunk (below keep_whole_below)', () => {
     const src = loadFixture('spec-minimal-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     assert.strictEqual(chunks.length, 1);
@@ -964,7 +904,7 @@ describe('knowledge chunker — real fixtures', () => {
 
   it('handles code blocks with headings without false splits', () => {
     const src = loadFixture('artifact-with-codeblocks-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     // Exactly two real H2 sections. Anything matching the fake code-block
@@ -1010,10 +950,10 @@ describe('knowledge chunker — real fixtures', () => {
       ['discussion-fixture.md', ownChunkConfig()],
       ['discussion-no-map-fixture.md', ownChunkConfig()],
       ['investigation-fixture.md', loadConfig('investigation')],
-      ['specification-fixture.md', loadConfig('specification')],
+      ['specification-fixture.md', loadConfig('investigation')],
       ['research-single-section-fixture.md', loadConfig('investigation')],
-      ['spec-minimal-fixture.md', loadConfig('specification')],
-      ['artifact-with-codeblocks-fixture.md', loadConfig('specification')],
+      ['spec-minimal-fixture.md', loadConfig('investigation')],
+      ['artifact-with-codeblocks-fixture.md', loadConfig('investigation')],
       ['artifact-no-headings-fixture.md', loadConfig('investigation')],
     ];
     for (const [fixture, config] of cases) {
@@ -1052,7 +992,7 @@ describe('knowledge chunker — real fixtures', () => {
     // lines, stays whole). Verifies that a real artifact with one huge
     // parent H2 splits at its H3s.
     const src = loadFixture('spec-deep-nested-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 11, 'expected >= 11 chunks, got ' + chunks.length);
@@ -1108,7 +1048,7 @@ describe('knowledge chunker — real fixtures', () => {
     // various sizes — structurally different from both portal and tick
     // specs.
     const src = loadFixture('spec-folio-fixture.md');
-    const cfg = loadConfig('specification');
+    const cfg = loadConfig('investigation');
     const chunks = chunk(src, cfg);
 
     assert.ok(chunks.length >= 10);

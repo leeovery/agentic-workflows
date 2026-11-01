@@ -20,7 +20,6 @@ const {
   OPEN_SOURCE_STATUSES, itemOf, phaseItems, sourceRows, specGroupsSources, lockingSpecs, specIncorporations,
   collectAnalysisInputs, computeAnalysisCacheStatus, topicTitles,
 } = require('./derivations.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // Discussion statuses the menu never counts: cancelled is closed, postponed
@@ -28,6 +27,14 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 // cross-cutting unit, and unstarted is a stub holding messages that was
 // never discussed.
 const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'unstarted'];
+
+/**
+ * A topic's specification file, state-relative.
+ * @param {string} workUnit @param {string} topic
+ */
+function specificationFile(workUnit, topic) {
+  return `${workUnit}/specification/${topic}/specification.md`;
+}
 
 /**
  * @typedef {object} DiscoverySource
@@ -203,7 +210,7 @@ function specificationDiscovery(cwd, workUnit) {
     const spec = discoverySpec(manifest, item.name, item);
     if (spec.status === 'proposed') proposedCount++;
     else if (spec.status !== 'promoted') {
-      if (!fileExists(statePath(cwd, INDEXED_ARTIFACTS.specification(workUnit, item.name)))) continue;
+      if (!fileExists(statePath(cwd, specificationFile(workUnit, item.name)))) continue;
       specCount++;
     }
     if (Number.isInteger(item.order)) spec.order = item.order;
@@ -337,7 +344,7 @@ function incorporations(cwd, manifest, workUnit, topic) {
   const own = new Set(sourceRows(item.sources).map(([name]) => name));
   return specIncorporations(manifest, topic).map((name) => ({
     topic: name,
-    path: statePath(cwd, INDEXED_ARTIFACTS.specification(workUnit, name)),
+    path: statePath(cwd, specificationFile(workUnit, name)),
     covers: sourceRows(/** @type {Record<string, any>} */ (itemOf(manifest, 'specification', name)).sources)
       .map(([source]) => source)
       .filter((source) => own.has(source)),
@@ -417,4 +424,4 @@ function specificationDetail(workUnit, result) {
   };
 }
 
-module.exports = { specificationDiscovery, specificationDetail, sourceTag, discoverySpec, specConfirmation, incorporations };
+module.exports = { specificationFile, specificationDiscovery, specificationDetail, sourceTag, discoverySpec, specConfirmation, incorporations };

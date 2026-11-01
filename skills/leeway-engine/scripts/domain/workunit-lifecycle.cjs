@@ -158,7 +158,7 @@ function cancelWorkUnit(cwd, workUnit) {
 /**
  * Re-index a work unit's chunk-backed material: the bulk pass scoped to the
  * unit — every completed indexed-phase topic, the shape-valid imports and
- * seeds, the analysis caches, and an epic's discovery session logs.
+ * seeds, the analysis caches and the record copies.
  *
  * `clearFirst` (pivot) removes the unit's chunks before re-indexing: a pivot
  * restamps the work_type of chunks already indexed, which the bulk pass

@@ -190,13 +190,10 @@ describe('pipeline simulation: sessions', () => {
 
     fs.rmSync(path.join(sim.dir, `.leeway/${wu}/specification/${wu}`), { recursive: true, force: true });
     fs.rmSync(path.join(sim.dir, `.leeway/${wu}/planning/${wu}`), { recursive: true, force: true });
-    // The spec's knowledge-base entry goes with its file, through the door.
-    const removal = ['knowledge', 'remove', '--work-unit', wu, '--phase', 'specification', '--topic', wu];
-    const removed = sim.engine(removal);
-    assert.strictEqual(removed.code, 0, removed.stderr);
-    assert.match(removed.stdout, new RegExp(`^Removed [1-9]\\d* chunks for ${wu}/specification/${wu}\\n$`));
-    assert.strictEqual(sim.engine([...removal, '--dry-run']).stdout, `Would remove 0 chunks for ${wu}/specification/${wu}\n`,
-      'none of the spec\'s chunks is left');
+    // The restart's removal through the door finds nothing: the spec is never
+    // indexed (11.1.2).
+    const removed = sim.engine(['knowledge', 'remove', '--work-unit', wu, '--phase', 'specification', '--topic', wu]);
+    assert.deepStrictEqual([removed.code, removed.stdout], [0, `Removed 0 chunks for ${wu}/specification/${wu}\n`], removed.stderr);
     const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
     const cleaned = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean).map((rel) => `.leeway/${rel}`);
     assert.match(cleanup.committed, /^[0-9a-f]+$/);

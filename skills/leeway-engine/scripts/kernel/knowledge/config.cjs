@@ -37,7 +37,7 @@ const DEFAULTS = {
   // work, so S0 sits high enough to keep the curve gentle: one 4-topic epic
   // ≈ 0.92, three ≈ 0.78.
   decay_base_stability: 5,
-  // Storage backstop: `compact` prunes a unit's non-spec chunks once their
+  // Storage backstop: `compact` prunes a unit's chunks once their
   // retrievability R falls below this floor (i.e. already unreachable in
   // ranking). false disables pruning.
   decay_prune_below: 0.05,

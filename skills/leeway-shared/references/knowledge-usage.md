@@ -28,7 +28,7 @@ A query is `node .claude/skills/leeway-engine/scripts/engine.cjs knowledge query
 - Good: `"OAuth2 PKCE flow for mobile clients"`, `"why we ruled out email as a primary identity field"`
 - Poor: `"auth-flow"` (a slug), `"auth"` (too broad)
 
-Several terms run as separate searches in one invocation, merged and deduplicated — batch your angles into one call. Never prepend metadata to a term: `"auth-flow specification UUID identity"` is worse than `"UUID identity"` with `--phase specification`.
+Several terms run as separate searches in one invocation, merged and deduplicated — batch your angles into one call. Never prepend metadata to a term: `"auth-flow record UUID identity"` is worse than `"UUID identity"` with `--phase record`.
 
 - `--boost:<field> <value>` — a re-ranking hint, not a filter: `+0.1` per match, repeatable, fields `work-unit`, `work-type`, `phase`, `topic`, `confidence` (keyword-only, a boost only breaks near-ties). Reach for it before `--work-unit`: `--boost:work-unit {work_unit}` prefers this unit's context while keeping other units' prior work in the pool; stack boosts for a preference on several dimensions.
 - `--work-unit`, `--work-type`, `--phase`, `--topic` — hard filters (comma-separated lists accepted); non-matching chunks are excluded, so filtering by work unit drops the cross-unit context you usually want.
@@ -36,13 +36,12 @@ Several terms run as separate searches in one invocation, merged and deduplicate
 
 ## C. Reading the results
 
-Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source file's last change as this copy of the project saw it (on a fresh clone, the clone day), closing on `| reopened` where its topic is in progress again — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. Results come best first, except that one topic's records answering the same term run in its order — the specification, then the investigation it was built from. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
+Each result is a provenance line — `[phase | work_unit/topic | confidence | YYYY-MM-DD]`, dated by the source file's last change as this copy of the project saw it (on a fresh clone, the clone day), closing on `| reopened` where its topic is in progress again — then the headings its excerpt sits under, joined by ` › `; the excerpt, the passage of the matching chunk closest to the query, or its opening lines where no line shares the query's words; and its `Source:` path with the chunk's line range (`path:L3-39`). Where the file no longer holds the chunk — edited since it was indexed — the headings line is absent and the path is bare. Results come best first. `[0 results]` means no prior context was found: move on. Notes above the count say why the query ran keyword-only, that chunks still await vectors, why the last vector fill fell short, or that a knowledge config setting was ignored. The results stand either way and the query exits `0`; there is nothing to relay — a start's warnings tell the person what needs them.
 
 Excerpts land in context; read further only when a result looks load-bearing — its source file at the result's line range, or, where the path is bare, around the passage its excerpt comes from. Most queries return a couple of mildly relevant results and one directly relevant — read that one, and skim the rest from their excerpts alone.
 
 Confidence is intrinsic to the source phase — how much weight to give the content, never whether to use it:
 
-- `high` — specification: a decision validated and written down. Trust the *what*; verify the *why* against the source when it matters.
 - `high` — record: a topic's ledger record, what was asked and what stands decided on each question. Trust the decision; a replaced answer is history the record keeps beside it.
 - `medium` — investigation: diagnostic work tied to specific symptoms. Trust the diagnosis; check the symptom is still current.
 - `low` — imports, seeds, analysis: reference material, raw captures and derived summaries, never validated decisions; the provenance line's phase says which.
@@ -83,17 +82,7 @@ Continue the phase, recording that knowledge retrieval was skipped so the user k
 
 ## E. When a surfaced artifact is wrong
 
-A result (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. What happens next depends on the source phase.
-
-#### If the source is a specification
-
-Never leave it standing — the spec is the golden record and its chunks stay live at full confidence, so every future query re-serves the error as validated context.
-
-→ Load **[correcting-historical-artifacts.md](correcting-historical-artifacts.md)** and follow its instructions.
-
-#### If the source is any other phase
-
-Leave the artifact alone — no correction is owed. Its phase decays in the knowledge base; record what is actually true in the current work's own artifact and let the stale claim age out.
+A result (or its source file) can carry a claim you have verified is wrong or has shifted since it was written. Leave the artifact alone — no correction is owed. Its phase decays in the knowledge base; record what is actually true in the current work's own artifact and let the stale claim age out.
 
 → Return to caller.
 
@@ -119,7 +108,7 @@ Before documenting such a decision:
 1. **Consult** — run a scoped query for the term or the re-decided ground, or cite the sibling's current decided text when it is already in this session's context.
 2. **Trace** — record the check as one line inside the documented decision, whether the consult queried or cited: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
 
-When the consult surfaces text the new decision contradicts or supersedes, route by owner. Text that *anticipates* the decision — a lean recorded as a lean, a question the sibling deferred or sent to this topic — is neither: the deferral is its forward pointer, nothing is owed, and no message is sent. A sibling topic in the same epic: send it a message through the session's off-topic path at that moment. Another work unit's specification: it is owed a correction — never a prose note to carry — follow **E. When a surfaced artifact is wrong**. Any other document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E**'s non-spec arm).
+When the consult surfaces text the new decision contradicts or supersedes, route by owner. Text that *anticipates* the decision — a lean recorded as a lean, a question the sibling deferred or sent to this topic — is neither: the deferral is its forward pointer, nothing is owed, and no message is sent. A sibling topic in the same epic: send it a message through the session's off-topic path at that moment. A document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E. When a surfaced artifact is wrong**).
 
 In ordinary conversation the first trigger is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a message's fold — both triggers apply and the consult is a required step; the engagement flows name it.
 

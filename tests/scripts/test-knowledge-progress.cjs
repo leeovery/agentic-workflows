@@ -171,12 +171,11 @@ describe('progressElapsed', () => {
     { name: 'frontier', status: 'completed', completed_at: '2024-12-01', work_type: 'feature' },
   ];
 
-  it('is the unit\'s place on the clock, and 0 for a specification however far behind', () => {
+  it('is the unit\'s place on the clock, 0 for the frontier and a unit it does not hold', () => {
     const elapsedOf = progressElapsed(units, { feature: 1.0 });
-    assert.strictEqual(elapsedOf('buried', 'discussion'), 1);
-    assert.strictEqual(elapsedOf('buried', 'specification'), 0);
-    assert.strictEqual(elapsedOf('frontier', 'discussion'), 0);
-    assert.strictEqual(elapsedOf('unlisted', 'discussion'), 0);
+    assert.strictEqual(elapsedOf('buried'), 1);
+    assert.strictEqual(elapsedOf('frontier'), 0);
+    assert.strictEqual(elapsedOf('unlisted'), 0);
   });
 });
 
@@ -193,19 +192,16 @@ describe('pruneTest', () => {
     { name: 'active', status: 'in-progress', work_type: 'feature' },
   ];
 
-  it('prunes a unit below the floor, non-spec phases only', () => {
+  it('prunes a unit below the floor', () => {
     const { floor, prunes } = pruneTest(cfg, units);
     assert.strictEqual(floor, 0.95);
-    for (const phase of ['record', 'investigation', 'imports', 'seeds', 'discovery', 'analysis']) {
-      assert.strictEqual(prunes('buried', phase), true, phase);
-    }
-    assert.strictEqual(prunes('buried', 'specification'), false, 'specifications never decay');
+    assert.strictEqual(prunes('buried'), true);
   });
 
   it('keeps a unit above the floor, the frontier, an in-progress unit, and an unknown one', () => {
     const { prunes } = pruneTest(cfg, units);
     for (const unit of ['recent', 'frontier', 'active', 'unlisted']) {
-      assert.strictEqual(prunes(unit, 'discussion'), false, unit);
+      assert.strictEqual(prunes(unit), false, unit);
     }
   });
 
@@ -221,7 +217,7 @@ describe('pruneTest', () => {
     // A unit one completion behind: R(1,5) ≈ 0.979 clears a 0.97 floor,
     // where R(1,3) ≈ 0.965 would not.
     const { prunes } = pruneTest({ decay_prune_below: 0.97 }, units);
-    assert.strictEqual(prunes('recent', 'discussion'), false);
-    assert.strictEqual(prunes('buried', 'discussion'), true);
+    assert.strictEqual(prunes('recent'), false);
+    assert.strictEqual(prunes('buried'), true);
   });
 });
