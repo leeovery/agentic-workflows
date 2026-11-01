@@ -170,6 +170,10 @@ function auditState(dir, label) {
       ctx(`${wu}: work_type "${manifest.work_type}" not in schema`));
     assert.ok(schema.VALID_WORK_UNIT_STATUSES.includes(manifest.status),
       ctx(`${wu}: status "${manifest.status}" not in schema`));
+    if ('build' in manifest) {
+      assert.ok(schema.BUILD_POSITIONS.includes(manifest.build?.position),
+        ctx(`${wu}: the build's position "${manifest.build?.position}" not in schema`));
+    }
 
     auditImports(manifest.imports, wu);
 

@@ -6,7 +6,9 @@
 // the unit, the spec written from the writer's brief and landed citing what
 // was decided, its review's one pass settling it, its review page built and
 // published, its marks read back, a re-land planned for the open page,
-// and the spec cut into phases through the cut's corridor; and, with both
+// and the spec cut into phases through the cut's corridor, then ready to
+// build over the open page — the pick taking the marks read back fresh, the
+// build begun and its position switched; and, with both
 // topics decided, the sweep before the spec is written — briefed and taken,
 // its message reopening a decided topic and its candidates taken or struck
 // at approve the map, whose yes hands back to the menu; or the empty sweep,
@@ -28,7 +30,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, cutTheSpec,
+  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, cutTheSpec, readyToBuild,
 } = require('./pipeline-world.cjs');
 
 const WU = 'tessera';
@@ -46,7 +48,7 @@ describe('pipeline simulation: epic, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page, and it is cut into phases (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page, it is cut into phases, and ready to build\'s pick over the open page begins the build, its position switched after (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -90,6 +92,19 @@ describe('pipeline simulation: epic, the spec', () => {
     sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
     assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
     assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
+    // Ready to build over the open page: the pick hands on the marks read
+    // back fresh — the comment answered beneath its line — and the yes
+    // records the review and begins the build, handing to the epic's menu.
+    readyToBuild(sim, wu, ['--page']);
+    const picked = answerGate(sim, 'ready to build', '--pick', 'a');
+    sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, {
+      s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' }, c3000: { by: 'c', x: 'Alpha decided it.' } } } } },
+    });
+    const begun = sim.run(picked.next.argv);
+    assert.deepStrictEqual([begun.record, begun.next], [`${wu}/spec-review.json`, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }]);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
+    arrive(sim, wu);
+    sim.run(['workunit', 'position', wu, 'step']);
   });
 });
 

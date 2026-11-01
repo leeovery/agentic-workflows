@@ -10,8 +10,10 @@
 // reason, and the close (2.S2); the engine's own items worked out at each
 // call and never kept or marked — the person's questions on the ledger's map
 // (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
-// screen of `spec.md` traced, the cut against `spec.md`, what a phase
-// relies on — the review settled is test-engine-spec-review-settled.cjs's;
+// screen of `spec.md` traced, the cut against `spec.md`, the canonical
+// assets linked from `spec.md`, what a phase relies on — the review settled
+// is test-engine-spec-review-settled.cjs's; no phase's start before the
+// build begins (11.8.3);
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation
@@ -24,11 +26,11 @@
 // parts 1.1 and 1.2, each a statement of the builder's, area 2; scenarios
 // 1.S1 and 2.S1) and its cut written by
 // the verb, two phases, the first relying on another unit, `billing`, the
-// second on the first; `billing`, under way; and a feature of one topic,
-// `solo`, with no cut. And the same project with three checklists marked
-// through the verbs all but one item: decided's for `cards` all but
-// `findings-rerun`, phase 1's close all but `notes-consolidated`, and ready
-// to build's all but `assets-linked`. `show` taking no lock is
+// second on the first, its build begun; `billing`, under way; and a feature
+// of one topic, `solo`, with no cut. And the same project with three
+// checklists marked through the verbs all but one item: decided's for
+// `cards` all but `findings-rerun`, phase 1's close all but
+// `notes-consolidated`, and ready to build's all but `invariants-checked`. `show` taking no lock is
 // test-engine-manifest-io.cjs's.
 // ---------------------------------------------------------------------------
 
@@ -107,6 +109,7 @@ function project(dir) {
       discovery: { items: { cards: mapped(1), refunds: mapped(2) } },
       discussion: { items: { cards: { status: 'in-progress' }, refunds: { status: 'in-progress' } } },
     },
+    build: { position: 'auto' },
   });
   writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC);
   createManifest(dir, 'billing', {});
@@ -121,7 +124,7 @@ const marked = fixtureFrom('checklist-marked-', (at) => {
   project(at);
   doneAll(['decided', UNIT, 'cards'], ['findings-rerun'], at);
   doneAll(['phase-close', UNIT, '1'], ['notes-consolidated'], at);
-  doneAll(['ready-to-build', UNIT], ['assets-linked'], at);
+  doneAll(['ready-to-build', UNIT], ['invariants-checked'], at);
 });
 
 let dir = '';
@@ -186,7 +189,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'phases-complete engine done: each phase in the cut has its scenarios, sections and relies-on',
         'invariants-checked claude open: every invariant names a check or says none can',
         'sections-drawn engine done: every section of the spec drawn on by at least one phase in the cut',
-        'assets-linked claude open: canonical assets linked',
+        'assets-linked engine done: canonical assets linked',
       ],
       start: [
         'tasks-written claude open: tasks written with their links',
@@ -261,6 +264,24 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       'checklist show: solo has no cut — its phases come from engine cut',
       'checklist done: finish has no item "tidied" — its items are review-passed, inbox-closed, build-log-closed, records-indexed',
     ]);
+  });
+});
+
+describe('no phase starts before the build begins (11.8.1, 11.8.3, 11.S13)', () => {
+  eachOn(fresh);
+
+  it('refuses a phase\'s start, to show, mark or close, until ready to build\'s yes has begun the build, writing nothing — a phase\'s close untouched', () => {
+    const { build, ...waiting } = readManifest(dir, UNIT);
+    createManifest(dir, UNIT, waiting);
+    commitAll(dir, 'the build not begun');
+    const refusal = (/** @type {string} */ verb) => `checklist ${verb}: ${UNIT}'s build has not begun, so no phase starts — ready to build's yes begins it: render ready-to-build ${UNIT}`;
+
+    assert.deepStrictEqual([
+      refused(['show', 'phase-start', UNIT, '1']),
+      refused(['done', 'phase-start', UNIT, '1', 'tasks-written']),
+      refused(['close', 'phase-start', UNIT, '1']),
+    ], [refusal('show'), refusal('done'), refusal('close')]);
+    assert.deepStrictEqual([build, show('phase-close', UNIT, '1').checklist], [{ position: 'auto' }, 'phase-1-close']);
   });
 });
 
@@ -349,12 +370,12 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     seen.push(engines());
 
     assert.deepStrictEqual(seen, [
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn open'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done'],
-      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn open', 'assets-linked done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete done', 'sections-drawn done', 'assets-linked done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'review-settled open', 'phases-complete open', 'sections-drawn done', 'assets-linked done'],
     ]);
-    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'review-settled open', 'phases-complete open', 'sections-drawn open']);
+    assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'review-settled open', 'phases-complete open', 'sections-drawn open', 'assets-linked done']);
   });
 
   it('reads the unit\'s topics as settled once every live topic is decided — a topic under discussion open, one cancelled or postponed no longer live (11.2.1, 6.4.7)', () => {
@@ -388,6 +409,23 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     }
 
     assert.deepStrictEqual(seen, ['done', 'open', 'open', 'open']);
+  });
+
+  it('reads the canonical assets linked once spec.md links every file the unit\'s current entries link as canonical — one a reference link names never needed, a link to a file elsewhere linking nothing (11.6.3, 11.S9)', () => {
+    const linked = () => itemState('assets-linked', 'ready-to-build', UNIT);
+    const at = `${UNIT}.discussion.cards`;
+    const write = (/** @type {string} */ verb, /** @type {string[]} */ flags, /** @type {object} */ content) => ok(dir, ['ledger', verb, at, ...flags], { env: SESSION, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', ...content }) }).id;
+    const decided = write('decide', ['--answers', write('ask', [], { text: 'What does the form look like?' })], { text: 'As drawn.', why: 'The spike settled it.' });
+    for (const [file, status] of [['form.png', 'canonical'], ['notes.md', 'reference']]) {
+      writeState(dir, layout.assets(UNIT, file), `${file}\n`);
+      ok(dir, ['asset', 'add', UNIT, layout.assets(UNIT, file), '--entry', decided, '--status', status], { env: SESSION });
+    }
+    const seen = [linked()];
+    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](../form.png) shows. [builder]'));
+    seen.push(linked());
+    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed, as [the form](assets/form.png) shows. [builder]'));
+
+    assert.deepStrictEqual([...seen, linked()], ['open', 'open', 'done']);
   });
 
   it('reads what a phase relies on as done once an earlier phase\'s close is recorded and another unit is completed, never cancelled (12.6.3)', () => {
@@ -432,7 +470,7 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
   it('refuses ready to build\'s close while the cut leaves a section undrawn, naming every item open', () => {
     cut(dir, [{ ...CARDS, sections: ['1.1'] }, REFUNDS]);
 
-    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, sections-drawn, assets-linked');
+    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, review-settled, invariants-checked, sections-drawn');
   });
 
   it('counts no mark made before the last close toward the next: a topic reopened by mail closes again on its marks made since (10.2.7)', () => {

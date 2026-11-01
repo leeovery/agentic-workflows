@@ -95,9 +95,8 @@ const { carrying } = require('./ledger.cjs');
 const { newId, resolveId } = require('./ledger-ids.cjs');
 const { factsOf, productOf, notCurrent, currentsOf } = require('./ledger-fold.cjs');
 const { readShown, answerMap } = require('./ledger-read.cjs');
-const { departureRow } = require('./ledger-verdicts.cjs');
+const { verdictAsked } = require('./ledger-verdicts.cjs');
 const { landRaised, checkRaised } = require('./ledger-write.cjs');
-const { evidenceOf } = require('./trust-evidence.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { topicsSettled } = require('./spec-standing.cjs');
@@ -440,40 +439,6 @@ function stagedFor(cwd, unit, topic, closed) {
 }
 
 /**
- * The departure the decided screen asks its verdict of: the first on the
- * topic this machine logged never given a verdict here or anywhere, a skip
- * among them; with where it stands among the departures this close asks —
- * those given none before it closed.
- * Null where none waits.
- * @param {Shower} shower @param {string} root @param {string} unit @param {string} topic @param {string} closed
- * @returns {DecidedView['verdict']}
- */
-function verdictAsked(shower, root, unit, topic, closed) {
-  const { folded } = shower;
-  const evidence = evidenceOf(root);
-  const askedBefore = (/** @type {string} */ id) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
-  const departures = [...folded.facts.keys()].filter((id) => {
-    const facts = factsOf(folded, id);
-    return evidence.departures.has(id) && facts.unit === unit && facts.topic === topic && !askedBefore(id);
-  });
-  const waiting = departures.filter((id) => !evidence.asked.has(id));
-  if (waiting.length === 0) return null;
-  const [entry] = waiting;
-  const row = departureRow(shower, entry);
-  const facts = factsOf(folded, entry);
-  const decision = facts.event === 'kept' ? /** @type {string} */ (facts.entry) : entry;
-  const question = shower.show(/** @type {string} */ (factsOf(folded, decision).answers)).text;
-  return {
-    entry,
-    at: departures.length - waiting.length + 1,
-    of: departures.length,
-    question: /** @type {string} */ (question),
-    lean: /** @type {string|null} */ (row.lean),
-    yours: /** @type {string} */ (row.text),
-  };
-}
-
-/**
  * The record's side of the decided screen, read in one pass of the ledger:
  * the topic's map rows, what the person decided and what was carried over,
  * how many rows went on, Claude's calls with the kind each carries, and the
@@ -489,7 +454,7 @@ function recordSide(shower, root, unit, topic, closed) {
     kind: /** @type {string|null} */ (shower.show(resolveId(answer.id, shower.folded.facts.keys())).kind),
     handed: handedTag(answer),
   }));
-  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, unit, topic, closed) };
+  return { rows, decided: textsOf('yours'), carried: textsOf('carried'), moved: textsOf('moved').length, calls, verdict: verdictAsked(shower, root, (facts) => facts.unit === unit && facts.topic === topic, closed) };
 }
 
 /**

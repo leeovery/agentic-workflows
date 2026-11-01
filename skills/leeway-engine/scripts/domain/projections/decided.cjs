@@ -25,6 +25,7 @@
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, callout, clipped, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { block, series, callsBlock, verdictBlock, verdictGate } = require('./closing.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { ROW_MAX, counted } = require('./map.cjs');
@@ -36,24 +37,19 @@ const { ROW_MAX, counted } = require('./map.cjs');
  * @typedef {{
  *   unit: string, topic: string, title: string,
  *   decided: string[], carried: string[], moved: number,
- *   calls: {question: string|null, answer: string, kind: string|null, handed: string|null}[],
+ *   calls: import('./closing.cjs').ShownCall[],
  *   listed: boolean,
  *   lines: {text: string, replaces: string|null}[],
  *   withdrawals: {text: string, why: string}[],
  *   parks: boolean,
  *   candidates: {name: string, reason: string, struck: boolean, horizon: string|null}[],
  *   skips: {text: string, reason: string}[],
- *   verdict: {entry: string, at: number, of: number, question: string, lean: string|null, yours: string}|null,
+ *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  * }} DecidedView
  */
 
 const INDENT = '  ';
 const CONTINUED = '    ';
-
-/** A block's heading and its lines, or nothing where it has none to show. @param {string} heading @param {string} body */
-function block(heading, body) {
-  return `${heading}\n${body.replace(/\n+$/, '')}`;
-}
 
 /** The decided gate's address for its next steps. @param {{unit: string, topic: string}} view */
 function addressOf({ unit, topic }) {
@@ -65,11 +61,6 @@ function runs(argv) {
   return { next: { kind: 'engine', argv } };
 }
 
-/** Words as the person reads them, `last` before the last: `a`, `a or b`, `a, b or c`. @param {string[]} words @param {string} last */
-function series(words, last) {
-  return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} ${last} ${words.at(-1)}`;
-}
-
 /** What stands where nothing was the person's decision: what every question was instead. @param {DecidedView} view */
 function noneOfYours({ calls, carried, moved }) {
   const was = [...(calls.length > 0 ? ['a call of mine'] : []), ...(carried.length > 0 ? ['carried over'] : []), ...(moved > 0 ? ['moved on'] : [])];
@@ -79,25 +70,6 @@ function noneOfYours({ calls, carried, moved }) {
 /** Rows by their question alone, each cut to the map's length. @param {string[]} texts */
 function questionTree(texts) {
   return renderTree(texts.map((text) => ({ title: clipped(text, ROW_MAX) })), { width: TREE_WIDTH });
-}
-
-/** Claude's calls by kind, most first, the unlabelled last: `2 behaviour · 1 look · 3 unlabelled`. @param {DecidedView['calls']} calls */
-function kindCounts(calls) {
-  /** @type {Map<string, number>} */
-  const kinds = new Map();
-  for (const { kind } of calls) if (kind !== null) kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
-  const unlabelled = calls.filter(({ kind }) => kind === null).length;
-  const labelled = [...kinds].sort(([, a], [, b]) => b - a).map(([kind, n]) => `${n} ${kind}`);
-  return [...labelled, ...(unlabelled > 0 ? [`${unlabelled} unlabelled — the labeller gives each its kind`] : [])].join(' · ');
-}
-
-/** Each of Claude's calls, its question cut to keep its tag on the line — its kind, and how the person handed it over where they did — its answer beneath. @param {DecidedView['calls']} calls */
-function callTree(calls) {
-  return renderTree(calls.map(({ question, answer, kind, handed }) => ({
-    title: `◇ ${clipped(question ?? answer, ROW_MAX)}`,
-    tag: [kind ?? 'unlabelled', ...(handed === null ? [] : [handed])].join(' · '),
-    body: question === null ? [] : [answer],
-  })), { width: TREE_WIDTH });
 }
 
 /** A row of the product-record block, its continuations hung under its text, and beneath it what it changes in the record. @param {string} text @param {string|null} beneath */
@@ -142,14 +114,6 @@ function candidateTree(candidates) {
   }), { width: TREE_WIDTH });
 }
 
-/** The verdict asked of one departure: the question, Claude's answer and the person's. @param {NonNullable<DecidedView['verdict']>} verdict */
-function verdictBlock({ at, of, question, lean, yours }) {
-  return block(`YOUR VERDICT (${at} of ${counted(of, 'call')} you changed)`, renderTree([{
-    title: clipped(question, ROW_MAX),
-    body: [...(lean === null ? [] : [`My answer: ${lean}`]), `Yours: ${yours}`],
-  }], { width: TREE_WIDTH }));
-}
-
 /**
  * The decided screen's display: each block that has something to show.
  * @param {DecidedView} view
@@ -159,7 +123,7 @@ function decidedDisplay(view) {
   const blocks = [`${title} — decided`];
   blocks.push(block(`WHAT YOU DECIDED (${decided.length})`, decided.length === 0 ? `${INDENT}${noneOfYours(view)}` : questionTree(decided)));
   if (carried.length > 0) blocks.push(block(`CARRIED OVER (${carried.length})`, questionTree(carried)));
-  if (calls.length > 0) blocks.push(block(`CLAUDE'S CALLS (${calls.length})`, `${INDENT}${kindCounts(calls)}${listed ? `\n${callTree(calls)}` : ''}`));
+  if (calls.length > 0) blocks.push(callsBlock(calls, listed));
   if (lines.length + withdrawals.length > 0) blocks.push(recordBlock(view));
   if (candidates.length > 0) blocks.push(block(`${candidateWords(parks).heading} (${candidates.length})`, candidateTree(candidates)));
   if (skips.length > 0) blocks.push(skips.map(({ text, reason }) => callout(`Skipped: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
@@ -185,17 +149,6 @@ function yesCovers({ title, lines, withdrawals, parks, candidates }) {
     ...theCount(candidates.filter(({ struck }) => !struck).length, words.one, words.many),
   ];
   return `Your yes marks ${title} decided${covers.length === 0 ? '' : `, with ${series(covers, 'and')}`}.`;
-}
-
-/** The verdict gate over the departure the screen asks about: each verdict given at decided. @param {NonNullable<DecidedView['verdict']>} verdict */
-function verdictGate({ entry }) {
-  const give = (/** @type {string} */ verdict) => runs(['verdict', 'give', entry, verdict, '--at', 'decided']);
-  return section('MENU: verdict', MENU_INSTRUCTION, menu('', [
-    cmdOption('n', 'nothing', 'Nothing — mine would have served as well', give('nothing')),
-    cmdOption('f', 'fix', 'A fix later', give('fix')),
-    cmdOption('l', 'loss', 'A real loss', give('loss')),
-    cmdOption('s', 'skip', 'Skip — I can\'t call it yet; it waits in the verdict queue', give('skip')),
-  ], { question: 'What would my answer have cost the product?' }));
 }
 
 /**
@@ -224,7 +177,7 @@ function decidedGate(view) {
  */
 function decidedScreen(view) {
   const display = section('DISPLAY: decided', CONTINUE_INSTRUCTION, decidedDisplay(view));
-  return display + (view.verdict === null ? decidedGate(view) : verdictGate(view.verdict));
+  return display + (view.verdict === null ? decidedGate(view) : verdictGate(view.verdict, 'decided'));
 }
 
 /**
