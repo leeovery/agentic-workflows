@@ -278,8 +278,8 @@ function writeSpecReview(cwd, unit) {
   return pageOpen(cwd, unit) ? writeRecord(cwd, unit, reviewStates(cwd, unit)) : null;
 }
 
-/** Why the unit's marks cannot be stored, before they are read, or null. @param {string} cwd @param {string} unit @returns {string|null} */
-function marksRefusal(cwd, unit) {
+/** Why the unit's review page can neither be built nor its marks stored, before anything is read, or null. @param {string} cwd @param {string} unit @returns {string|null} */
+function pageRefusal(cwd, unit) {
   if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) return `there is no work unit "${unit}"`;
   const standing = specStanding(cwd, unit);
   if (standing === 'none') return `${unit} has no spec — its folder holds no ${SPEC_FILE}, and the page reviews the spec`;
@@ -293,7 +293,7 @@ function marksRefusal(cwd, unit) {
  * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd @returns {Reviewed[]}
  */
 function stored(cwd, unit, file) {
-  const refused = marksRefusal(cwd, unit);
+  const refused = pageRefusal(cwd, unit);
   if (refused !== null) throw new Error(refused);
   const marks = marksIn(path.resolve(cwd, file));
   const reviewed = reviewOf(specPage(cwd, unit), marks);
@@ -400,5 +400,5 @@ function holdNumbers(cwd, unit, landed, lines) {
 }
 
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, pageOpen, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
+  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
 };

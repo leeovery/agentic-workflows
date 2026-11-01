@@ -76,6 +76,7 @@ const { BRIEF_USAGE, issueBrief } = require('./domain/brief.cjs');
 const { CUT_USAGE, writeCut } = require('./domain/cut.cjs');
 const { SPEC_USAGE, landSpec } = require('./domain/spec-land.cjs');
 const { MARKS_USAGE, storeMarks } = require('./domain/spec-review.cjs');
+const { PAGE_USAGE, PUSH_USAGE, buildPage, pushPage } = require('./domain/spec-page.cjs');
 const { CHECKLIST_USAGE, runChecklistVerb } = require('./domain/checklist.cjs');
 const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
@@ -283,6 +284,8 @@ ${BRIEF_USAGE.replace(/^/gm, '  ')}
   ${CUT_USAGE}
   ${SPEC_USAGE}
   ${MARKS_USAGE}
+  ${PAGE_USAGE}
+  ${PUSH_USAGE}
 ${CHECKLIST_USAGE.replace(/^/gm, '  ')}
 ${DECIDED_USAGE.replace(/^/gm, '  ')}
   start-this-work yes
@@ -1321,9 +1324,10 @@ function runCut(call, argv) {
 
 // ---------------------------------------------------------------------------
 // spec — a unit's spec.md landed: checked, traced against the ledger and
-// committed (domain/spec-land.cjs); and the marks read back from its review
+// committed (domain/spec-land.cjs); the marks read back from its review
 // page stored, answering the comments waiting for Claude
-// (domain/spec-review.cjs).
+// (domain/spec-review.cjs); and the review page built, and a re-land's
+// change planned for it (domain/spec-page.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1334,6 +1338,17 @@ function runSpec(call, argv) {
     if (verb === 'marks') {
       if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${MARKS_USAGE}`);
       respond(call, storeMarks(call.cwd, positional[0], opts.file));
+      return;
+    }
+    if (verb === 'page') {
+      if (positional.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${PAGE_USAGE}`);
+      respond(call, buildPage(call.cwd, positional[0]));
+      return;
+    }
+    if (verb === 'push') {
+      const named = Object.keys(opts);
+      if (positional.length !== 1 || !opts.reason || !opts.store || named.some((name) => !['reason', 'store', 'from'].includes(name))) throw new Error(`Usage: engine ${PUSH_USAGE}`);
+      respond(call, pushPage(call.cwd, positional[0], { reason: opts.reason, store: opts.store, from: opts.from }));
       return;
     }
     if (verb !== 'land' || positional.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${SPEC_USAGE}`);
