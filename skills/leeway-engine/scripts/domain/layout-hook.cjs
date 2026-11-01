@@ -10,7 +10,7 @@
 // In the state it refuses a path the layout has no place for, and a file
 // only the engine writes, naming the verb that writes it where one does
 // (layout.cjs); and a unit's `spec.md` once its spec is concluded, never
-// corrected after (11.9.1, spec-entry.cjs). It reads the target as a path in
+// corrected after (11.9.1, spec-standing.cjs). It reads the target as a path in
 // the state of the project the target itself is in — whatever project the
 // conversation sits in —
 // landing where Claude Code's tool would write it (kernel/state-root,
@@ -132,7 +132,7 @@ function namesBelow(file, root, fold) {
 function concludedRefusal(from, rel) {
   const unit = rel.split('/')[0];
   // Loaded for a write to a spec alone: the hook runs before every write.
-  const { specStanding } = require('./spec-entry.cjs');
+  const { specStanding } = require('./spec-standing.cjs');
   if (specStanding(from, unit) !== 'concluded') return null;
   return `${STATE_DIR_NAME}/${rel} is ${unit}'s concluded spec, never corrected — a later change replaces its entry on the ledger`;
 }

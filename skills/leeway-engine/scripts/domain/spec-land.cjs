@@ -11,13 +11,13 @@
 // nothing, so the file stands as written for the writer's next dispatch: a
 // unit the project lacks; a concluded spec — the build begun on it — which is
 // never corrected (11.9.1); a unit `enter specification` refuses, in its
-// words (spec-entry.cjs) — a topic not yet settled, a quick-fix, a
-// cross-cutting unit; a unit with no `spec.md`; and a spec its grammar
-// cannot read (spec-sections.cjs, `specStatements`), naming every fault, one
-// per line; and a commit git refuses. A statement or a screen that does not
-// trace refuses nothing: the land answers it, with why (spec-trace.cjs), for
-// the spec's review to take up (11.4.2), and ready to build's
-// `statements-traced` stays open while one does.
+// words (spec-entry.cjs) — one not in progress, a topic not yet settled, a
+// quick-fix, a cross-cutting unit; a unit with no `spec.md`; a spec its
+// grammar cannot read (spec-sections.cjs, `specStatements`), naming every
+// fault, one per line; and a commit git refuses. A statement or a screen
+// that does not trace refuses nothing: the land answers it, with why
+// (spec-trace.cjs), for the spec's review to take up (11.4.2), and ready to
+// build's `statements-traced` stays open while one does.
 //
 // It answers how many statements the spec holds, each invented line, and
 // the sections changed since the last land: each area and part whose text
