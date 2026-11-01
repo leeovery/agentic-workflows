@@ -4,35 +4,33 @@
 // Domain ring: where a work unit stands with its one spec, and whether it
 // may enter it — read by the spec's entry (spec-entry.cjs), the
 // ready-to-build checklist's topics-settled (checklist.cjs), the move after
-// a topic is decided (decided.cjs), the recovery note (position.cjs) and the
-// rule that holds a unit's topics closed past its spec (topic-standing.cjs).
-// It reads no ledger, so each of those can require it.
+// a topic is decided (decided.cjs), and every door the spec closes. It reads
+// no ledger, so each of those can require it.
 //
 // - The spec's standing is derived, never kept (P7): `concluded` once ready
 //   to build's yes began the build, `build` on the unit's manifest;
 //   `written` once `{unit}/spec.md` exists; else `none`.
-// - The topics are settled once every live topic is decided — a cancelled
-//   or postponed topic is not live — and a bugfix's one topic once its
-//   investigation has concluded (11.2.1, 18.5.1).
+// - Past its spec — written or concluded — no topic exists (4.11.2), and an
+//   epic's map is closed (18.4.19, P3): no topic is added, cancelled,
+//   reactivated, reopened or pulled forward, nor sent a message, nor talked
+//   over in the epic's discovery, and the unit is not absorbed, nor does it
+//   take one in. Each door reads this one predicate.
+// - The topics are settled once a live topic is decided and every live
+//   topic is — a cancelled or postponed topic is not live — and a bugfix's
+//   one topic once its investigation has concluded (11.2.1, 18.5.1).
 // - The spec is entered once the topics are settled, each refusal naming
 //   the way on: an epic's topics still open are worked from its menu or
-//   postponed to the roadmap (18.5.2). A quick-fix writes no spec (11.1.6),
-//   nor does a cross-cutting concern, whose type goes (19.6.1).
-// - What carries the spec on, named alike by its entry and its recovery
-//   note: each live topic's record, by its engine call, and its log — a
-//   bugfix's its investigation; once the spec is written, the spec; and the
-//   cut, by its call, once the manifest holds one.
+//   postponed to the roadmap (18.5.2), and an epic with none live has its
+//   map shaped in its discovery or a topic pulled forward from the roadmap.
+//   A cross-cutting concern writes no spec, its type going (19.6.1); a
+//   quick-fix's pipeline holds none (11.1.6, topic-standing.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { ENGINE_COMMAND } = require('../kernel/call.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { buildBegun, computeTopicLifecycle, itemOf, topicTitles, goesBy } = require('./derivations.cjs');
 const { specPath } = require('./spec-sections.cjs');
-const { topicLog, recordCall } = require('./topic-log.cjs');
-const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 
 /** @typedef {'none'|'written'|'concluded'} SpecStanding */
 
@@ -48,6 +46,30 @@ function specStanding(cwd, unit) {
   return fs.existsSync(specPath(cwd, unit)) ? 'written' : 'none';
 }
 
+/**
+ * Whether the unit is past its spec, written or concluded — the one rule
+ * every door the spec closes reads.
+ * @param {string} cwd @param {string} unit
+ */
+function pastItsSpec(cwd, unit) {
+  return specStanding(cwd, unit) !== 'none';
+}
+
+/**
+ * Why no topic of the unit can be made, changed or reached any more — the
+ * unit past its spec — or null where it can.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function pastSpecRefusal(cwd, unit) {
+  return pastItsSpec(cwd, unit) ? `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here` : null;
+}
+
+/** Refuses a unit past its spec. @param {string} cwd @param {string} unit */
+function assertBeforeSpec(cwd, unit) {
+  const refusal = pastSpecRefusal(cwd, unit);
+  if (refusal !== null) throw new Error(refusal);
+}
+
 /** The topics the spec is written from: an epic's live topics, a single-topic unit's own. @param {Record<string, any>} manifest @returns {string[]} */
 function specTopics(manifest) {
   return manifest.work_type === 'epic' ? liveTopics(manifest.name, manifest) : [manifest.name];
@@ -60,14 +82,14 @@ function settled(manifest, topic) {
     : computeTopicLifecycle(manifest, topic).lifecycle === 'decided';
 }
 
-/** The unit's live topics not yet settled, none once the spec can be written. @param {Record<string, any>} manifest @returns {string[]} */
-function unsettledTopics(manifest) {
-  return specTopics(manifest).filter((topic) => !settled(manifest, topic));
+/** Whether the unit's topics are settled, so its spec can be written. @param {Record<string, any>} manifest */
+function topicsSettled(manifest) {
+  const topics = specTopics(manifest);
+  return topics.length > 0 && topics.every((topic) => settled(manifest, topic));
 }
 
 /** @type {Readonly<Record<string, (unit: string) => string>>} */
 const NO_SPEC = Object.freeze({
-  'quick-fix': (unit) => `${unit} is a quick-fix, which writes no spec — its scoping is its spec and its plan in one`,
   'cross-cutting': (unit) => `${unit} is a cross-cutting concern, which writes no spec — cancel it through manage on the start menu; its decisions stay in the ledger`,
 });
 
@@ -81,40 +103,32 @@ const OPEN_TOPIC = Object.freeze({
 });
 
 /**
- * Why the unit, in progress, cannot enter its spec, or null where it can: a
- * quick-fix or a cross-cutting concern, which write none, or a topic not yet
- * settled.
- * @param {Record<string, any>} manifest @returns {string|null}
+ * Why an epic's topics hold its spec back: those still open, each by the
+ * name it goes by, or none live at all.
+ * @param {Record<string, any>} manifest @returns {string}
  */
-function entryRefusal(manifest) {
+function epicOpen(manifest) {
   const unit = manifest.name;
-  const none = NO_SPEC[manifest.work_type];
-  if (none !== undefined) return none(unit);
-  const open = unsettledTopics(manifest);
-  if (open.length === 0) return null;
-  if (manifest.work_type !== 'epic') return OPEN_TOPIC[manifest.work_type](unit);
+  const open = specTopics(manifest).filter((topic) => !settled(manifest, topic));
+  if (open.length === 0) {
+    return `${unit}'s spec waits until a topic is decided — none on its map is live: shape the map in its discovery, or pull a topic forward from the roadmap`;
+  }
   const titles = topicTitles(manifest);
   const names = open.map((topic) => `"${goesBy(titles, topic)}"`).join(', ');
   return `${unit}'s spec waits until every topic is decided, cancelled or postponed — still open: ${names}; work them from the epic's menu, or postpone them to the roadmap`;
 }
 
 /**
- * What carries the spec on: each live topic's record call and its log on
- * disk, absolute; the spec, once written; and the cut's call, once the
- * manifest holds a cut.
- * @param {string} cwd @param {Record<string, any>} manifest
- * @returns {{records: string[], logs: string[], spec: string[], cut: string[]}}
+ * Why the unit, in progress and its pipeline holding the spec, cannot enter
+ * it, or null where it can: a cross-cutting concern, which writes none, or
+ * its topics not yet settled.
+ * @param {Record<string, any>} manifest @returns {string|null}
  */
-function specSources(cwd, manifest) {
-  const unit = manifest.name;
-  const topics = specTopics(manifest);
-  const logOf = manifest.work_type === 'bugfix' ? INDEXED_ARTIFACTS.investigation : topicLog;
-  return {
-    records: topics.map((topic) => recordCall(unit, topic)),
-    logs: topics.map((topic) => statePath(cwd, logOf(unit, topic))).filter((log) => fs.existsSync(log)),
-    spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),
-    cut: isObject(manifest.cut) ? [`${ENGINE_COMMAND} manifest get ${unit} cut`] : [],
-  };
+function entryRefusal(manifest) {
+  const none = NO_SPEC[manifest.work_type];
+  if (none !== undefined) return none(manifest.name);
+  if (topicsSettled(manifest)) return null;
+  return manifest.work_type === 'epic' ? epicOpen(manifest) : OPEN_TOPIC[manifest.work_type](manifest.name);
 }
 
-module.exports = { specStanding, entryRefusal, unsettledTopics, specSources };
+module.exports = { specStanding, pastItsSpec, pastSpecRefusal, assertBeforeSpec, specTopics, topicsSettled, entryRefusal };

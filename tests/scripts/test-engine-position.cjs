@@ -20,9 +20,9 @@
 // written since (24.S10, 9.S67); so does
 // discovery's, at an epic its map and its open log, at the product's
 // conversation its open log (24.S19, 8.S67); and specification's, at the
-// unit, each live topic's record and log, then the spec once written and
-// its cut, a concluded spec carrying nothing on; every other phase's sends
-// Claude to its skill's own steps.
+// unit, each live topic's record and log, the files linked canonical, then
+// the spec once written and its cut, a concluded spec carrying nothing on;
+// every other phase's sends Claude to its skill's own steps.
 //
 
 require('./hermetic-env.cjs');
@@ -465,13 +465,18 @@ describe('conversation position', () => {
     }), 'the log\'s last line naming another, this conversation\'s is owed again');
   });
 
-  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, then the spec once written and the cut once cut, and no log of its own (24.2.6)', () => {
+  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the files linked canonical, then the spec once written and the cut once cut, and no log of its own (24.2.6)', () => {
     install('leeway-specification-process');
     workUnit('pay', 'epic', {
       discovery: { items: { ledger: { order: 1 }, refunds: { order: 2, cancelled: true } } },
       discussion: { items: { ledger: { status: 'completed' }, refunds: { status: 'cancelled' } } },
     });
     const log = write('.leeway/pay/topics/ledger/log.md');
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const asked = harness.ok(dir, ['ledger', 'ask', 'pay.discussion.ledger'], { env: env(), stdin: JSON.stringify({ ...made, text: 'What does the ledger hold?' }) }).id;
+    const decided = harness.ok(dir, ['ledger', 'decide', 'pay.discussion.ledger', '--answers', asked], { env: env(), stdin: JSON.stringify({ ...made, text: 'Entries.', why: 'Because.' }) }).id;
+    const asset = write('.leeway/pay/assets/flow.png');
+    ok(['asset', 'add', 'pay', 'pay/assets/flow.png', '--entry', decided, '--status', 'canonical']);
     ok(['session', 'label', 'pay', 'specification', 'pay']);
     const engine = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
     const specNote = (/** @type {string[]} */ calls, /** @type {string[]} */ files) => [
@@ -487,8 +492,8 @@ describe('conversation position', () => {
     workUnit('pay', 'epic', manifest.phases, { cut: { phases: [] } });
     const written = reads();
 
-    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log)], specNote(['ledger record pay ledger'], [log])]);
-    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(spec)], specNote(['ledger record pay ledger', 'manifest get pay cut'], [log, spec])]);
+    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log), abs(asset)], specNote(['ledger record pay ledger'], [log, asset])]);
+    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(asset), abs(spec)], specNote(['ledger record pay ledger', 'manifest get pay cut'], [log, asset, spec])]);
   });
 
   it('a spec concluded, its build begun, carries nothing on', () => {

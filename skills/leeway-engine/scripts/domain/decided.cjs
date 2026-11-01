@@ -100,7 +100,7 @@ const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { unsettledTopics } = require('./spec-standing.cjs');
+const { topicsSettled } = require('./spec-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
 const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
@@ -589,7 +589,7 @@ function waitAgentsSurface(cwd, { dotpath }) {
  */
 function nextAfter(manifest, unit) {
   if (manifest.work_type !== 'epic') return { kind: 'handoff', skill: 'leeway-specification-process', args: [manifest.work_type, unit] };
-  return unsettledTopics(manifest).length === 0
+  return topicsSettled(manifest)
     ? { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', unit] }
     : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit, PHASE, 'completed'] };
 }

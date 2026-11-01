@@ -34,6 +34,7 @@ const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
+const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -234,7 +235,7 @@ function reactivateWorkUnit(cwd, workUnit) {
  * (summary-backfill drafts summary/description on the next epic entry),
  * re-index the unit so chunk metadata carries the new work_type
  * (warn-don't-block), and commit both manifests. Only an in-progress feature
- * pivots.
+ * before its spec pivots, its topic gone past it (4.11.2).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @returns {WorkUnitPivotResult}
@@ -250,6 +251,7 @@ function pivotWorkUnit(cwd, workUnit) {
     }
     // The map add runs mid-transaction — prove it can succeed before flipping
     // anything.
+    assertBeforeSpec(cwd, workUnit);
     const phases = loaded.phases && typeof loaded.phases === 'object' ? loaded.phases : {};
     const discovery = phases.discovery && typeof phases.discovery === 'object' ? phases.discovery : {};
     const items = discovery.items && typeof discovery.items === 'object' ? discovery.items : {};

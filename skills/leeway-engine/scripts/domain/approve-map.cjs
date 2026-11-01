@@ -327,12 +327,12 @@ function landOnRoadmap(project, unit, { topics, parks, binds }) {
  * The epic's half of the yes, on the manifest given: the new topics, the
  * earlier record each carries, every topic's order, and the open discovery
  * session closed. Answers the session closed, or null.
- * @param {Record<string, any>} manifest @param {Staged} staged @param {Record<string, {work_unit: string, topic: string}>} priors
+ * @param {string} cwd @param {Record<string, any>} manifest @param {Staged} staged @param {Record<string, {work_unit: string, topic: string}>} priors
  * @returns {string|null}
  */
-function landOnMap(manifest, { topics }, priors) {
+function landOnMap(cwd, manifest, { topics }, priors) {
   const added = topics.filter(({ brief }) => brief !== undefined);
-  if (added.length > 0) addBatchTo(manifest, added.map(({ name, summary, description, from_roadmap: fromRoadmap }) => ({ name, summary: /** @type {string} */ (summary), description, from_roadmap: fromRoadmap })), 'approve-map yes');
+  if (added.length > 0) addBatchTo(cwd, manifest, added.map(({ name, summary, description, from_roadmap: fromRoadmap }) => ({ name, summary: /** @type {string} */ (summary), description, from_roadmap: fromRoadmap })), 'approve-map yes');
   const items = discoveryItems(manifest);
   for (const [topic, prior] of Object.entries(priors)) items[topic].prior = prior;
   topics.forEach(({ name }, at) => { items[name].order = at + 1; });
@@ -353,7 +353,7 @@ function writeYes(cwd, unit, staged, briefs) {
     const projectBefore = readProjectManifest(cwd);
     const manifest = structuredClone(unitBefore);
     const project = structuredClone(projectBefore);
-    const closed = landOnMap(manifest, staged, landOnRoadmap(project, unit, staged));
+    const closed = landOnMap(cwd, manifest, staged, landOnRoadmap(project, unit, staged));
     /** @type {string[]} */
     const written = [];
     let projectWritten = false;

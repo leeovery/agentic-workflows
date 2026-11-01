@@ -5,30 +5,31 @@
 // standing spec-standing.cjs): `engine enter specification <unit>`, at the
 // work unit. What it refuses, each refusal naming its way on and writing
 // nothing — an epic while any topic is neither decided, cancelled nor
-// postponed, each named, let in once they are postponed to the roadmap
-// (11.S1, 18.S21, 18.5.2); a feature's topic not yet decided, a bugfix's
-// investigation not yet concluded; a quick-fix (11.1.6) and a cross-cutting
-// concern (19.6.1); a topic named; and, for every verb that holds the spec
-// to its refusal, a unit not in progress. What it writes: nothing but where
-// the conversation is working (4.11.2), starting nothing and committing
-// nothing.
-// What it reads: each live topic's record and log — a bugfix's its
-// investigation — and the files the unit's current entries link as
-// canonical (11.6.3); once the spec is written, the spec and the cut; and
-// the agents the spec was left with, landed or lost (9.7.8). And the
-// spec's standing, none, written or concluded (P7). The settled rule as
-// topics-settled reads it is test-engine-checklist.cjs's, the move after a
-// topic is decided test-engine-decided-yes.cjs's, a message to a topic past
-// its spec refused test-engine-topic-mail.cjs's, and the recovery note
+// postponed, each named by the name it goes by, let in once they are
+// postponed to the roadmap (11.S1, 18.S21, 18.5.2), and an epic with no
+// live topic, its map unshaped or every topic set aside; a feature's topic
+// not yet decided, a bugfix's investigation not yet concluded; a quick-fix
+// (11.1.6) and a cross-cutting concern (19.6.1); a topic named; and, for
+// every verb that holds the spec to its refusal, a unit not in progress.
+// What it writes: nothing but where the conversation is working (4.11.2),
+// starting nothing and committing nothing. What it reads: each live topic's
+// record and log — a bugfix's its investigation — and the files the unit's
+// current entries link as canonical (11.6.3); once the spec is written, the
+// spec and the cut; and the agents the spec was left with, landed or lost
+// (9.7.8). And the spec's standing, none, written or concluded (P7). The
+// settled rule as topics-settled reads it is test-engine-checklist.cjs's,
+// the move after a topic is decided test-engine-decided-yes.cjs's, every
+// door past the spec test-engine-past-spec.cjs's, and the recovery note
 // test-engine-position.cjs's.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, whose map
 // holds three topics decided, one cancelled, one postponed, one under
-// discussion and one not started; an epic, `ready`, its topics settled —
-// `alpha` decided with its log and a decision linking one file canonical
-// and one reference, `beta` decided with neither, `removal` cancelled with
-// a decision linking a file canonical, `widgets` postponed; a feature under
-// discussion and one decided; a bugfix under investigation and one
+// discussion, renamed, and one not started; an epic, `ready`, its topics
+// settled — `alpha` decided with its log and a decision linking one file
+// canonical and one reference, `beta` decided with neither, `removal`
+// cancelled with a decision linking a file canonical, `widgets` postponed;
+// an epic with no topic, and one whose topics are all set aside; a feature
+// under discussion and one decided; a bugfix under investigation and one
 // concluded, its investigation written; a quick-fix; and a cross-cutting
 // concern. Each test's conversation has its own system config.
 // ---------------------------------------------------------------------------
@@ -72,7 +73,7 @@ const world = fixtureFrom('engine-spec-entry-', (dir) => {
     phases: {
       discovery: {
         items: {
-          alpha: row(1), beta: row(2), gamma: row(3), licence: row(4), onboarding: row(5),
+          alpha: row(1), beta: row(2), gamma: row(3), licence: row(4, { title: 'licensing' }), onboarding: row(5),
           removal: row(6, { cancelled: true }), widgets: row(7, { postponed: true }),
         },
       },
@@ -101,6 +102,14 @@ const world = fixtureFrom('engine-spec-entry-', (dir) => {
   createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
   createManifest(dir, 'fixed', { work_type: 'bugfix', phases: { investigation: { items: { fixed: { status: 'completed' } } } } });
   writeState(dir, layout.doc('fixed', 'investigation', 'fixed'), '# Fixed\n');
+  createManifest(dir, 'unshaped', { work_type: 'epic', phases: { discovery: { items: {} } } });
+  createManifest(dir, 'aside', {
+    work_type: 'epic',
+    phases: {
+      discovery: { items: { removal: row(1, { cancelled: true }), widgets: row(2, { postponed: true }) } },
+      discussion: { items: { removal: { status: 'cancelled' }, widgets: { status: 'postponed' } } },
+    },
+  });
   createManifest(dir, 'tweak', { work_type: 'quick-fix' });
   createManifest(dir, 'tracing', { work_type: 'cross-cutting', phases: { discussion: { items: { tracing: { status: 'completed' } } } } });
 });
@@ -148,11 +157,16 @@ afterEach(() => {
 });
 
 describe('what cannot enter the spec is refused, naming the way on, and nothing is written', () => {
-  it('an epic while any topic is neither decided, cancelled nor postponed — one under discussion, one not started — each named; postponed to the roadmap, they let it in (11.S1, 18.S21, 18.5.2)', () => {
+  it('an epic while any topic is neither decided, cancelled nor postponed — one under discussion, one not started — each named by the name it goes by; postponed to the roadmap, they let it in (11.S1, 18.S21, 18.5.2)', () => {
     assert.strictEqual(refused(['fumi']),
-      'fumi\'s spec waits until every topic is decided, cancelled or postponed — still open: "licence", "onboarding"; work them from the epic\'s menu, or postpone them to the roadmap');
+      'fumi\'s spec waits until every topic is decided, cancelled or postponed — still open: "licensing", "onboarding"; work them from the epic\'s menu, or postpone them to the roadmap');
     for (const topic of ['licence', 'onboarding']) ok(dir, ['topic', 'postpone', 'fumi', topic, '--horizon', 'next'], { env: env() });
     assert.strictEqual(enter('fumi').res.entered, true);
+  });
+
+  it('an epic with no live topic decided — its map not yet shaped, or every topic set aside — the way on its discovery or the roadmap', () => {
+    const none = (unit) => `${unit}'s spec waits until a topic is decided — none on its map is live: shape the map in its discovery, or pull a topic forward from the roadmap`;
+    assert.deepStrictEqual([refused(['unshaped']), refused(['aside'])], [none('unshaped'), none('aside')]);
   });
 
   it('a feature whose topic is not decided, and a bugfix whose investigation has not concluded; each enters once it has', () => {
@@ -171,9 +185,9 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     ]);
   });
 
-  it('answers the refusal for any verb that holds the spec to it: a quick-fix\'s its own, a unit the project lacks, and none where the unit may enter', () => {
+  it('answers the refusal for any verb that holds the spec to it, as the entry refuses: a quick-fix, a unit the project lacks, and none where the unit may enter', () => {
     assert.deepStrictEqual([specEntryRefusal(dir, 'tweak'), specEntryRefusal(dir, 'nowhere'), specEntryRefusal(dir, 'ready')], [
-      'tweak is a quick-fix, which writes no spec — its scoping is its spec and its plan in one',
+      'a quick-fix has no specification — its phases are scoping, implementation, review',
       'there is no work unit "nowhere" — the start menu lists the work in progress',
       null,
     ]);

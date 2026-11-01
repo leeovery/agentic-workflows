@@ -4,14 +4,14 @@
 // Domain ring: whether a unit's topic can still take work — the one rule the
 // entry (enter.cjs), the handoff into a topic (handoff.cjs) and a message
 // sent to one (mail.cjs) all hold it to, each refusal naming the way on; the
-// spec's refusal (spec-entry.cjs) holds the unit to its first part.
+// spec's refusal (spec-entry.cjs) holds the unit to its first two parts.
 // - The unit: one this project has, in progress — a cancelled unit
 //   reactivated first, a completed one closed to new work.
 // - Its phase: one its work type's pipeline holds.
 // - The topic: a name that is one, a topic the unit holds — an epic's map
-//   names them, a single-topic unit's is the unit — and none once the
-//   unit's spec is written (spec-standing.cjs), from which a change is
-//   settled in the spec (4.11.2, 10.2.2).
+//   names them, a single-topic unit's is the unit — and none once the unit
+//   is past its spec (spec-standing.cjs), from which a change is settled in
+//   the spec (4.11.2, 10.2.2).
 // - What the topic is now: postponed or cancelled on the map, promoted out
 //   of the unit, decided, or for a bugfix its investigation concluded, the
 //   unit's menu leading past it. A message waits in a postponed topic's
@@ -27,7 +27,7 @@ const { PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } =
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { computeNextPhase, computeTopicLifecycle, itemOf, postponedStillWaits } = require('./derivations.cjs');
-const { specStanding } = require('./spec-standing.cjs');
+const { pastItsSpec, pastSpecRefusal } = require('./spec-standing.cjs');
 
 /**
  * Where a topic stands as it is checked: the unit's manifest as it stood on
@@ -75,22 +75,21 @@ function unitInProgress(cwd, unit) {
 }
 
 /**
- * Refuses a phase the unit's work type has no place for, naming its phases;
- * never discovery, which every work type opens on.
- * @param {Record<string, any>} manifest @param {string} phase
+ * Why the unit's work type has no place for the phase, naming its phases,
+ * or null where it has; never discovery, which every work type opens on.
+ * @param {Record<string, any>} manifest @param {string} phase @returns {string|null}
  */
-function assertPhaseHeld(manifest, phase) {
-  if (phase === 'discovery') return;
+function phaseHeldRefusal(manifest, phase) {
+  if (phase === 'discovery') return null;
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (manifest.work_type)] ?? [];
-  if (!pipeline.includes(phase)) throw new Error(`a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`);
+  return pipeline.includes(phase) ? null : `a ${manifest.work_type} has no ${phase} — its phases are ${pipeline.join(', ')}`;
 }
 
-/**
- * Whether the unit's spec is written — past which no topic exists (4.11.2)
- * and an epic's map is closed (8.6.5).
- * @param {string} cwd @param {string} unit
- */
-const hasSpec = (cwd, unit) => specStanding(cwd, unit) !== 'none';
+/** Refuses a phase the unit's work type has no place for. @param {Record<string, any>} manifest @param {string} phase */
+function assertPhaseHeld(manifest, phase) {
+  const refusal = phaseHeldRefusal(manifest, phase);
+  if (refusal !== null) throw new Error(refusal);
+}
 
 /**
  * Where a decided or set-aside topic of the unit is reopened (8.6.5).
@@ -126,7 +125,8 @@ function topicStanding({ cwd, phase, unit, topic, manifest }) {
   if (topic === undefined) return `an epic enters ${phase} at one of its topics — name the topic: engine enter ${phase} ${unit} <topic>`;
   const illegal = illegalNameReason('topic', topic);
   if (illegal !== null) return `${illegal}; ${topicsNamed(manifest)}`;
-  if (hasSpec(cwd, unit)) return `${unit} has its spec — a topic exists only before it, and a change is settled in the spec from here`;
+  const past = pastSpecRefusal(cwd, unit);
+  if (past !== null) return past;
   return holdsTopic(manifest, topic) ? null : `${unit} has no topic "${topic}" — ${topicsNamed(manifest)}`;
 }
 
@@ -209,7 +209,7 @@ function discoveryStanding({ cwd, unit, manifest }) {
   if (manifest.work_type !== 'epic') {
     return `${unit} is a ${manifest.work_type} — its discovery ended at start this work, and reopening its decision goes through manage on the start menu`;
   }
-  return hasSpec(cwd, unit)
+  return pastItsSpec(cwd, unit)
     ? `${unit} has its spec, so its map is closed — talk about it belongs in the product's conversation, where what comes of it lands as roadmap items: engine enter discovery ${PRODUCT}`
     : null;
 }
@@ -240,4 +240,4 @@ function assertEnterable(cwd, phase, manifest, topic) {
   if (refusal !== null) throw new Error(refusal);
 }
 
-module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };
+module.exports = { knownUnit, noUnit, unitClosure, assertInProgress, unitInProgress, phaseHeldRefusal, assertPhaseHeld, holdsTopic, topicClosure, phaseStanding, discoveryStanding, assertEnterable };

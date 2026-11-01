@@ -41,7 +41,6 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
-const { specSources } = require('./spec-standing.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
@@ -249,9 +248,9 @@ function dropPosition(sessionId) {
 // product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
 // where none is open; specification's, at the unit whatever topic its place
 // names, what its entry reads to carry it on — each live topic's record and
-// log, then the spec once written and the cut once cut (spec-standing.cjs),
-// the spec keeping no log. Every other phase's note sends Claude to its
-// skill's own steps.
+// log, the canonical assets, then the spec once written and the cut once cut
+// (spec-entry.cjs), the spec keeping no log. Every other phase's note sends
+// Claude to its skill's own steps.
 // ---------------------------------------------------------------------------
 
 /**
@@ -399,8 +398,11 @@ function workAt(cwd, position, manifest) {
     case 'investigation':
       return { skill, documents: [statePath(cwd, INDEXED_ARTIFACTS.investigation(name, topic))] };
     case 'specification': {
-      const { records, logs, spec, cut } = specSources(cwd, manifest);
-      return { skill, documents: [...logs, ...spec], whole: { calls: [...records, ...cut], log: null } };
+      // Required here, as the ledger read it makes requires this module; a
+      // compaction's note has no reader for what that read says.
+      const { specSources } = require('./spec-entry.cjs');
+      const { records, logs, assets, spec, cut } = specSources(cwd, manifest, []);
+      return { skill, documents: [...logs, ...assets, ...spec], whole: { calls: [...records, ...cut], log: null } };
     }
     case 'experiment':
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };

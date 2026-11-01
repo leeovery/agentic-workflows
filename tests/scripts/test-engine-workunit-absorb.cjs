@@ -795,19 +795,6 @@ describe('engine workunit absorb — guards refuse loudly, both work units prist
     refusedPristine(ABSORB, /discussion log missing on disk/);
   });
 
-  it('refuses specification-or-beyond work on the feature', () => {
-    const withSpec = featureManifest();
-    withSpec.phases.specification = { items: { 'auth-flow': { status: 'in-progress' } } };
-    fix = setupFixture({ feature: withSpec });
-    refusedPristine(ABSORB, /has specification work — absorb is only for features before specification/);
-    fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-
-    const withPlan = featureManifest();
-    withPlan.phases.planning = { items: {} };
-    fix = setupFixture({ feature: withPlan });
-    refusedPristine(ABSORB, /has planning work/);
-  });
-
   it('refuses an illegal or colliding topic name — map item, dismissed, discussion item, log on disk', () => {
     const epic = epicManifest();
     epic.phases.discussion = { items: { 'session-model': { status: 'completed' } } };

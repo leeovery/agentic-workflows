@@ -22,8 +22,8 @@
 // close (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
-// `topics/{topic}/mail/`; the unit's topics settled, every live one decided
-// (spec-standing.cjs); each phase of the cut naming its scenarios and
+// `topics/{topic}/mail/`; the unit's topics settled, one live at least and
+// every live one decided (spec-standing.cjs); each phase of the cut naming its scenarios and
 // its sections, what it relies on maybe nothing; every part of `spec.md`
 // drawn on by a phase, directly or through its area, an area with no parts
 // whole; what a phase relies on done — an earlier phase's close recorded,
@@ -56,7 +56,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { readSpec, specSections } = require('./spec-sections.cjs');
-const { unsettledTopics } = require('./spec-standing.cjs');
+const { topicsSettled } = require('./spec-standing.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -145,8 +145,8 @@ function mailboxEmpty({ cwd, unit, topic }) {
   return mailboxDepth(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic)) === 0;
 }
 
-/** Every live topic of the unit decided, a bugfix's investigation concluded (11.2.1). @param {Named} named */
-const topicsSettled = ({ manifest }) => unsettledTopics(manifest).length === 0;
+/** The unit's topics settled, as its spec's entry reads them (11.2.1). @param {Named} named */
+const settled = ({ manifest }) => topicsSettled(manifest);
 
 /** Each phase of the cut names a scenario and a section; what it relies on may be nothing (11.5.4). @param {Named} named */
 function phasesComplete({ manifest }) {
@@ -236,7 +236,7 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>'],
     place: onUnit(() => ({ path: ['ready-to-build'] })),
     items: [
-      { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen', check: topicsSettled },
+      { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen', check: settled },
       { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', applies: moreThanOneTopic },
       { key: 'replacements-checked', text: 'the spec has checked each replacement against what it replaced' },
       { key: 'statements-traced', text: 'every statement traced' },

@@ -34,9 +34,8 @@ function buildBegun(manifest) {
  */
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
-  if (p.items && typeof p.items === 'object') {
-    const keys = Object.keys(p.items);
-    if (keys.length === 0) return null;
+  const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
+  if (keys.length > 0) {
     // Non-live statuses drop out of aggregation: cancelled/superseded/proposed,
     // promoted and postponed alike — a promoted spec continues in its
     // cross-cutting unit and a postponed topic waits on the roadmap, and
@@ -1016,9 +1015,11 @@ function computeUnitPhaseState(manifest, pipeline) {
  * The last phase, in the given pipeline order, with at least one completed
  * item — or null when nothing has completed. Single-topic phases carry one
  * item, so "an item completed" and "the phase aggregate is completed" coincide;
- * epics keep the per-item reading (one topic completing a phase is enough). The
- * one spelling every closed-unit surface reads (start dashboard, single-topic
- * detail, epic gateway) — each passes the pipeline its display walks.
+ * epics keep the per-item reading (one topic completing a phase is enough). A
+ * phase keeping no items, the one spec, completes as `phaseStatus` reads it.
+ * The one spelling every closed-unit surface reads (start dashboard,
+ * single-topic detail, epic gateway) — each passes the pipeline its display
+ * walks.
  * @param {object} manifest
  * @param {string[]} pipeline  phases to scan, in order
  * @returns {string|null}
@@ -1027,7 +1028,8 @@ function lastCompletedPhase(manifest, pipeline) {
   let last = null;
   for (const phase of pipeline) {
     const items = phaseItems(manifest, phase);
-    if (items.length > 0 && items.some((i) => i.status === 'completed')) last = phase;
+    const completed = items.length > 0 ? items.some((i) => i.status === 'completed') : phaseStatus(manifest, phase) === 'completed';
+    if (completed) last = phase;
   }
   return last;
 }

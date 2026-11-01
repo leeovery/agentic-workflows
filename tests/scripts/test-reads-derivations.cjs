@@ -14,7 +14,7 @@ const {
   loadProjectManifest,
 } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const {
-  phaseStatus, phaseItems, phaseData, computeNextPhase,
+  phaseStatus, phaseItems, phaseData, computeNextPhase, lastCompletedPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
@@ -325,9 +325,20 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual([
         phaseStatus({ phases: {} }, 'specification'),
         phaseStatus({ phases: {}, ...built }, 'specification'),
+        phaseStatus({ phases: { specification: { items: {} } }, ...built }, 'specification'),
         phaseStatus({ phases: {}, ...built }, 'planning'),
         phaseStatus({ phases: { specification: { items: { a: { status: 'in-progress' } } } } }, 'specification'),
-      ], [null, 'completed', null, 'in-progress']);
+      ], [null, 'completed', 'completed', null, 'in-progress']);
+    });
+  });
+
+  describe('lastCompletedPhase', () => {
+    it('reads the one spec completed once its build has begun, the unit cancelled after ready to build\'s yes past its discussion', () => {
+      const decided = { discussion: { items: { pay: { status: 'completed' } } } };
+      assert.deepStrictEqual([
+        lastCompletedPhase({ phases: decided }, ['discussion', 'specification', 'implementation']),
+        lastCompletedPhase({ phases: decided, build: { position: 'auto' } }, ['discussion', 'specification', 'implementation']),
+      ], ['discussion', 'specification']);
     });
   });
 

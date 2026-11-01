@@ -120,9 +120,17 @@ function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;
 }
 
-// The phases entered at the work unit, whatever its type (4.11.2): a topic
-// named travels on, and names nothing.
-const UNIT_LEVEL_PHASES = ['specification'];
+/**
+ * Whether the phase is entered at the work unit, whatever its type, as its
+ * row of the entry says (4.11.2): a topic named travels on, and names
+ * nothing.
+ * @param {string} phase
+ */
+function enteredAtUnit(phase) {
+  // Required here: the entry's rows reach this module through the position.
+  const { ENTRIES } = require('./enter.cjs');
+  return ENTRIES[phase]?.level === 'unit';
+}
 
 /**
  * A phase's skill: the work type it serves, a work unit of that type, and the
@@ -133,17 +141,16 @@ const UNIT_LEVEL_PHASES = ['specification'];
  */
 function phaseTarget(phase) {
   const served = VALID_WORK_TYPES.filter((type) => WORK_TYPE_PIPELINES[type].includes(phase));
-  const atUnit = UNIT_LEVEL_PHASES.includes(phase);
   return {
     usage: `<${served.join('|')}> <work-unit> [<topic>]`,
     counts: [2, 3],
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
-      if (type === 'epic' && topic === undefined && !atUnit) throw new Error(`an epic enters ${phase} at a topic`);
+      if (type === 'epic' && topic === undefined && !enteredAtUnit(phase)) throw new Error(`an epic enters ${phase} at a topic`);
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
     },
-    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined || atUnit ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
+    where: (cwd, [, unit, topic]) => at(titlecase(phase), topic === undefined || enteredAtUnit(phase) ? unit : itemName(topicTitles(loadWorkUnitManifest(cwd, unit)), phase, topic)),
   };
 }
 

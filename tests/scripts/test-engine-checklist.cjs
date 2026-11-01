@@ -82,6 +82,19 @@ function doneAll(named, but = [], at = dir) {
   }
 }
 
+/** `refunds` cancelled on the unit's map, as a cancel before the spec left it. */
+function refundsCancelled() {
+  const { phases } = readManifest(dir, UNIT);
+  createManifest(dir, UNIT, {
+    ...readManifest(dir, UNIT),
+    phases: {
+      ...phases,
+      discovery: { items: { ...phases.discovery.items, refunds: { ...phases.discovery.items.refunds, cancelled: true } } },
+      discussion: { items: { ...phases.discussion.items, refunds: { status: 'cancelled', previous_status: 'in-progress' } } },
+    },
+  });
+}
+
 /** The project every world starts from. @param {string} dir */
 function project(dir) {
   createManifest(dir, UNIT, {
@@ -215,7 +228,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
   it('leaves the sweep between topics off for a unit of one live topic — a feature\'s, or an epic\'s whose second is cancelled — and refuses marking it there', () => {
     const keys = (/** @type {string} */ unit) => show('ready-to-build', unit).items.map((/** @type {any} */ item) => item.key);
     const unswept = ['topics-settled', 'replacements-checked', 'statements-traced', 'review-settled', 'phases-complete', 'invariants-checked', 'sections-drawn', 'assets-linked'];
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'refunds'], { env: SESSION });
+    refundsCancelled();
 
     assert.deepStrictEqual([keys('solo'), keys(UNIT)], [unswept, unswept]);
     assert.strictEqual(refused(['done', 'ready-to-build', 'solo', 'sweep-run']),
@@ -345,7 +358,7 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     const seen = [settled()];
     createManifest(dir, UNIT, { ...readManifest(dir, UNIT), phases: { ...readManifest(dir, UNIT).phases, discussion: { items: { cards: { status: 'completed' }, refunds: { status: 'in-progress' } } } } });
     seen.push(settled());
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'refunds'], { env: SESSION });
+    refundsCancelled();
 
     assert.deepStrictEqual([...seen, settled()], ['open', 'open', 'done']);
   });

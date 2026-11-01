@@ -45,10 +45,7 @@ const { reaimAbsorbed } = require('./roadmap.cjs');
 const { mailboxDir, mailboxDepth } = require('./derivations.cjs');
 const { seriesDir } = require('./experiment-paths.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-
-// A feature with any of these phases has moved past discussion — absorption
-// would orphan the downstream artifacts, so the guard refuses.
-const SPEC_OR_BEYOND = ['specification', 'planning', 'implementation', 'review'];
+const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 /**
  * @typedef {object} WorkUnitAbsorbResult
@@ -185,13 +182,16 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (epicManifest.status !== 'in-progress') {
       throw new Error(`epic "${into}" is not in-progress (status: ${epicManifest.status ?? 'none'})`);
     }
+    // Checked before anything moves: the map add at the end refuses an epic
+    // past its spec too.
+    assertBeforeSpec(cwd, into);
     // The topic is substituted into every re-aimed import origin.
     if (!isPlainName(topic)) {
       throw new Error(`"${topic}" is not a legal topic name — dots, slashes, and surrounding whitespace break manifest addressing`);
     }
 
-    // The feature must have a discussion (item + log) and no spec-or-beyond
-    // work.
+    // The feature must have a discussion (item + log) and be before its spec,
+    // past which its topic is gone and the spec its record (4.11.2).
     const discussionItem = phaseItems(featureManifest, 'discussion')[feature];
     if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
       throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
@@ -200,11 +200,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (!fs.existsSync(discussionSrc)) {
       throw new Error(`discussion log missing on disk: ${discussionSrc}`);
     }
-    for (const phase of SPEC_OR_BEYOND) {
-      if (featureManifest.phases && typeof featureManifest.phases === 'object' && featureManifest.phases[phase]) {
-        throw new Error(`feature "${feature}" has ${phase} work — absorb is only for features before specification`);
-      }
-    }
+    assertBeforeSpec(cwd, feature);
 
     // A feature's phase items are single and self-named — discussion and
     // experiment alike. A foreign-named item refuses rather

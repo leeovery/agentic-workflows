@@ -151,18 +151,14 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(enterEntry(sim, wu, 'discussion', topic).started, true);
   });
 
-  it('epic: a topic decided while another is open goes back to the menu; with that one postponed, the last decided goes into the spec, entered at the unit (24.S3, 11.S1)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit (24.S3, 11.S1)', () => {
     const wu = 'ledgerly';
-    mappedEpic(sim, wu, ['alpha', 'beta', 'gamma']);
-    const first = discussed(sim, wu, 'alpha').next;
-    assert.deepStrictEqual(first, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu, 'discussion', 'completed'] });
-    handoff(sim, [`/${first.skill}`, ...first.args].join(' '));
-    arrive(sim, wu);
+    mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
-    const last = discussed(sim, wu, 'gamma').next;
-    assert.deepStrictEqual(last, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
-    handoff(sim, [`/${last.skill}`, ...last.args].join(' '));
-    specEntry(sim, wu, ['alpha', 'gamma']);
+    const next = discussed(sim, wu, 'alpha').next;
+    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
+    handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+    specEntry(sim, wu, ['alpha']);
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
