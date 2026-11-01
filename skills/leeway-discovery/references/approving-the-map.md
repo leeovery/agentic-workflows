@@ -15,7 +15,7 @@ Order the topics by what depends on what, foundations first: a topic whose resul
 Each new topic takes:
 - a `name`, a lowercase kebab-case slug, and a `summary`, one line on the capability or behaviour at stake, product first;
 - a `description`, two or three sentences on what it covers and why it surfaced;
-- a `brief`, the path of its draft under `.leeway/.cache/{home}/discovery/{home}/`, as the skill's **A Brief** says;
+- a `brief`, the path of its draft under `.leeway/.cache/{home}/discovery/{home}/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written;
 - `from_roadmap`, where it matches a waiting roadmap item: it takes the item in, never a twin beside it.
 
 A topic on the map already is named alone. Each roadmap item the epic was started from that became a topic is bound to it, `{"item", "topic"}`.

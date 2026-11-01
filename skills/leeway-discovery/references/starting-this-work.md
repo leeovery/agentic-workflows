@@ -29,7 +29,7 @@ Then write the payload to `.leeway/.cache/product/discovery/product/start-this-w
 - `description` — one line in the person's framing; `reason` — one line on why it is this type.
 - `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`: one session's log can shape several pieces of work, each pointing at its own parts.
 - `seeds` — the inbox paths it starts from, `$2`'s and any taken in; `roadmap` — the waiting roadmap items it starts from, `$2`'s `roadmap:{item}` seeds and any taken in.
-- `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.leeway/.cache/product/discovery/product/` as the skill's **A Brief** says.
+- `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.leeway/.cache/product/discovery/product/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written.
 
 Stage it and draw the screen, emitting its sections verbatim per their markers:
 
