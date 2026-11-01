@@ -82,7 +82,7 @@
 const {
   type, TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, field, event, addedIn, readFields,
 } = require('./event-fields.cjs');
-const { KEBAB_SLUG_PATTERN } = require('../kernel/manifest-schema.cjs');
+const { KEBAB_SLUG_PATTERN, BUILD_POSITIONS } = require('../kernel/manifest-schema.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 
 /** @typedef {import('./event-fields.cjs').Field} Field */
@@ -159,7 +159,7 @@ const SCHEMA = {
     verdict: event([field('entry', ID), field('verdict', oneOf(...VERDICTS)), field('point', oneOf(...VERDICT_POINTS))]),
     'blind-draw': event([field('entry', ID), field('kind', KIND)]),
     reversal: event([field('entry', ID), field('reverses', ID)]),
-    'position-switch': event([field('unit', SLUG), field('to', oneOf('auto', 'step'))]),
+    'position-switch': event([field('unit', SLUG), field('to', oneOf(...BUILD_POSITIONS))]),
     convergence: event([field('unit', SLUG), field('topic', SLUG)]),
     correction: event([field('entry', ID), field('kind', KIND), field('verdict', nullable(oneOf(...JUDGED)))]),
   },

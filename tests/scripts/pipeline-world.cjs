@@ -1125,6 +1125,19 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
+// The review of the spec's last land (11.7): a pass dispatched and briefed,
+// its clean report written where the dispatch said, taken in by the scan and
+// acknowledged clean.
+/** @param {Sim} sim @param {string} wu @returns {{id: string, file: string}} the pass */
+function specReviewed(sim, wu) {
+  const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
+  sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
+  fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\nNone identified.\n`);
+  sim.run(['agent', 'scan', wu, 'specification', wu]);
+  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
+  return pass;
+}
+
 // The cut's corridor (11.5.1): the phase cut's agent briefed from the unit's
 // spec, its cut staged where the brief says it goes, and `cut` run on it.
 /**
@@ -1136,6 +1149,18 @@ function cutTheSpec(sim, wu, phases) {
   assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'leeway-phase-cut');
   const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases });
   return sim.run(['cut', wu, '--file', staged]);
+}
+
+// Ready to build as the prose reaches it (11.8): its checklist worked —
+// Claude's items marked done, the engine's holding — and closed, then the
+// screen fetched, `flags` given. Answers what it drew.
+/** @param {Sim} sim @param {string} wu @param {string[]} [flags] */
+function readyToBuild(sim, wu, flags = []) {
+  for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items) {
+    if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'ready-to-build', wu, key]);
+  }
+  sim.run(['checklist', 'close', 'ready-to-build', wu]);
+  return sim.render(['ready-to-build', wu, ...flags], { expect: 'content' });
 }
 
 // The task writer's calls for one phase (12.5.2–12.5.4): the phase written
@@ -1169,5 +1194,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, cutTheSpec,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild,
 };

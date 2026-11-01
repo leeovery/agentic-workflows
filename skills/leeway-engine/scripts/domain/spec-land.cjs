@@ -40,12 +40,12 @@
 const fs = require('fs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { SPEC_FILE, specPath, readSpec, specStatements } = require('./spec-sections.cjs');
 const { specStanding, specEntryRefusal } = require('./spec-entry.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
+const { landedSpec } = require('./spec-landed.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
 const { heldNumberFaults, holdNumbers } = require('./spec-review.cjs');
@@ -119,7 +119,7 @@ function checkedSpec(cwd, unit) {
   if (refused !== null) refuse(refused);
   const text = refusing(() => readSpec(cwd, unit));
   const lines = refusing(() => specStatements(text));
-  const landed = isolatedGit(stateRoot(cwd)).tryRun(['show', `HEAD:${unit}/${SPEC_FILE}`]);
+  const landed = landedSpec(cwd, unit);
   const held = heldNumberFaults(cwd, unit, landed, lines);
   if (held.length > 0) refuse(held.join('\n'));
   return { text, lines, landed };

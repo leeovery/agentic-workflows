@@ -28,7 +28,7 @@
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
 // units, one whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1
-// and 3.S2 (11.S31's), and one, `billing`, with no spec. A phase's start is
+// and 3.S2 (11.S31's), its build begun, and one, `billing`, with no spec. A phase's start is
 // its checklist closed on the manifest: by `checklist close` for a first
 // phase relying on nothing, and written by hand for later ones, whose
 // starts would need each phase before them worked to its close first. And
@@ -70,7 +70,7 @@ const SPEC = [
 ].join('\n');
 
 const world = fixtureFrom('cut-', (dir) => {
-  createManifest(dir, UNIT, {});
+  createManifest(dir, UNIT, { build: { position: 'auto' } });
   writeState(dir, layout.unit(UNIT, SPEC_FILE), SPEC);
   createManifest(dir, 'billing', {});
   commitAll(dir, 'init');

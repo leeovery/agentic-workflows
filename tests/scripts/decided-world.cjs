@@ -25,6 +25,8 @@ const SOLO_AT = `${SOLO}.discussion.${SOLO}`;
 const SOLO_LOG = `${SOLO}/topics/${SOLO}/log.md`;
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const NO_PAYLOAD = Object.freeze({ lines: [], candidates: [] });
+/** The config folder the hermetic env pinned, put back after each test. */
+const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
 
 /** Claude's items of the decided checklist, but the closing pass. */
 const MARKED = ['decisions-entered', 'replacements-checked', 'conflicts-read', 'findings-rerun', 'product-lines-shown'];
@@ -96,15 +98,12 @@ function useDecidedWorld() {
   const config = useTempFolder('decided-config-');
   /** @type {string} */
   let dir;
-  /** @type {string|undefined} */
-  let pinned;
   beforeEach(() => {
     dir = world();
-    pinned = process.env.LEEWAY_CONFIG_DIR;
     process.env.LEEWAY_CONFIG_DIR = config();
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = pinned;
+    process.env.LEEWAY_CONFIG_DIR = PINNED;
     cleanupFixture(dir);
   });
   return () => dir;

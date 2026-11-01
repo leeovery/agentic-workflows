@@ -4,9 +4,13 @@
 // The pipeline simulation's epic scenarios on the spec's side: with the
 // other topic postponed, the last decided going into the spec, entered at
 // the unit, the spec written from the writer's brief and landed citing what
-// was decided, its review's one pass settling it, its review page built and
-// published, its marks read back, a re-land planned for the open page,
-// and the spec cut into phases through the cut's corridor; and, with both
+// was decided, its review's one pass settling it, the spec cut into phases
+// through the cut's corridor and ready to build closed, its review row
+// building the page, published, its marks read back, the wording agreed
+// re-landed onto the open page — the close voided and the review reopened
+// until a pass on the re-land and the checklist closed again — then the pick
+// taking the marks read back fresh, the build begun and its position
+// switched; and, with both
 // topics decided, the sweep before the spec is written — briefed and taken,
 // its message reopening a decided topic and its candidates taken or struck
 // at approve the map, whose yes hands back to the menu; or the empty sweep,
@@ -28,7 +32,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, cutTheSpec,
+  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild,
 } = require('./pipeline-world.cjs');
 
 const WU = 'tessera';
@@ -46,7 +50,7 @@ describe('pipeline simulation: epic, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page, and it is cut into phases (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, it is cut into phases and ready to build is closed, whose review row builds the page, its marks read back, the wording agreed re-landed onto the open page — voiding the close and reopening the review until a pass and a close again — and the pick over the open page begins the build, its position switched after (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -64,16 +68,27 @@ describe('pipeline simulation: epic, the spec', () => {
     spec('It settles as alpha decided.');
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
-    const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
-    sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
-    fs.writeFileSync(pass.file, '# Spec Review — spec-review-001\n\n## Findings\n\nNone identified.\n');
-    sim.run(['agent', 'scan', wu, 'specification', wu]);
-    sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
-    const ready = JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu]));
-    assert.strictEqual(ready.items.find((/** @type {{key: string}} */ item) => item.key === 'review-settled').state, 'done');
-    const { batches } = sim.run(['spec', 'page', wu]);
+    assert.strictEqual(specReviewed(sim, wu).id, 'spec-review-001');
+    /** Where ready to build's review-settled stands. */
+    const reviewSettled = () => JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items.find((/** @type {{key: string}} */ item) => item.key === 'review-settled').state;
+    assert.strictEqual(reviewSettled(), 'done');
+    // The cut's corridor: a cut `cut` refuses goes back to the agent in a
+    // fresh brief, and the one it writes again lands on the manifest.
+    const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };
+    const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases: [{ ...settle, scenarios: [] }] });
+    sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
+    assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
+    assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
+    // Ready to build, closed, offers the review page; its row builds it.
+    readyToBuild(sim, wu, ['--page']);
+    const review = answerGate(sim, 'ready to build', '--pick', 'r');
+    assert.deepStrictEqual(review.next, { kind: 'engine', argv: ['spec', 'page', wu] });
+    const { batches } = sim.run(review.next.argv);
     sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
-    const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
+    // The person comments; Claude answers beneath the line and the wording
+    // agreed lands, the open page brought up to it.
+    const readBack = `.leeway/.cache/${wu}/specification/read-back.json`;
+    const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(readBack, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' } } } } } })]);
     assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
     const store = `.leeway/.cache/${wu}/specification/store`;
     for (const { collection, doc_id: doc, file_path: file } of batches.flatMap((/** @type {string} */ batch) => JSON.parse(fs.readFileSync(batch, 'utf8')))) {
@@ -83,13 +98,23 @@ describe('pipeline simulation: epic, the spec', () => {
     sim.run(['spec', 'land', wu]);
     const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
     assert.deepStrictEqual(pushed.change.reworded, ['1-1-1']);
-    // The cut's corridor: a cut `cut` refuses goes back to the agent in a
-    // fresh brief, and the one it writes again lands on the manifest.
-    const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };
-    const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases: [{ ...settle, scenarios: [] }] });
-    sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
-    assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
-    assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
+    // The re-land after the close voids it and reopens the review: a pass on
+    // the re-land, and the checklist worked afresh and closed again.
+    sim.refuses(['render', 'ready-to-build', wu], /a land after the close voids it/);
+    assert.strictEqual(reviewSettled(), 'open');
+    specReviewed(sim, wu);
+    readyToBuild(sim, wu, ['--page']);
+    // The pick hands on the marks read back fresh — the comment answered —
+    // and the yes records the review and begins the build, handing to the
+    // epic's menu.
+    sim.write(readBack, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' }, c3000: { by: 'c', x: 'It holds now.' } } } } } });
+    const picked = answerGate(sim, 'ready to build', '--pick', 'a');
+    assert.deepStrictEqual(picked.next.argv.slice(-2), ['--marks', path.join(sim.dir, readBack)]);
+    const begun = sim.run(picked.next.argv);
+    assert.deepStrictEqual([begun.record, begun.next], [`${wu}/spec-review.json`, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }]);
+    handoff(sim, `/leeway-continue-epic ${wu}`);
+    arrive(sim, wu);
+    sim.run(['workunit', 'position', wu, 'step']);
   });
 });
 

@@ -58,6 +58,11 @@
 //   entry down its chain that holds one, or the answer of the nearest that
 //   held the lean, past the person's own earlier departures; beside a keep,
 //   the proposal it seals, the keep's row carrying the answer it kept.
+// - A verdict point (16.10.2, 16.10.11) asks, one at a time in the ledger's
+//   order, each departure this machine logged in the work it closes that
+//   has no verdict yet, a skip among them; its count is of the departures
+//   this close asks, so one given its verdict before the close is not among
+//   them.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
@@ -215,6 +220,43 @@ function departureRow(shower, id) {
 }
 
 /**
+ * The departure a verdict point asks next: its entry; where it stands among
+ * those the close asks, from 1; the question it answers, Claude's lean, and
+ * the person's answer.
+ * @typedef {{entry: string, at: number, of: number, question: string, lean: string|null, yours: string}} AskedVerdict
+ */
+
+/**
+ * The departure a verdict point asks its verdict of: the first this machine
+ * logged in the work the point closes — each departure whose facts
+ * `belongs` holds — never given a verdict here or anywhere, a skip among
+ * them; with where it stands among the departures this close asks, those
+ * given none before it closed. Null where none waits.
+ * @param {Shower} shower @param {string} root @param {(facts: IdFacts) => boolean} belongs @param {string} closed when the point's checklist closed
+ * @returns {AskedVerdict|null}
+ */
+function verdictAsked(shower, root, belongs, closed) {
+  const { folded } = shower;
+  const evidence = evidenceOf(root);
+  const askedBefore = (/** @type {string} */ id) => (evidence.asked.get(id) ?? Infinity) < Date.parse(closed);
+  const departures = [...folded.facts.keys()].filter((id) => evidence.departures.has(id) && belongs(factsOf(folded, id)) && !askedBefore(id));
+  const waiting = departures.filter((id) => !evidence.asked.has(id));
+  if (waiting.length === 0) return null;
+  const [entry] = waiting;
+  const row = departureRow(shower, entry);
+  const facts = factsOf(folded, entry);
+  const decision = facts.event === 'kept' ? /** @type {string} */ (facts.entry) : entry;
+  return {
+    entry,
+    at: departures.length - waiting.length + 1,
+    of: departures.length,
+    question: /** @type {string} */ (shower.show(/** @type {string} */ (factsOf(folded, decision).answers)).text),
+    lean: /** @type {string|null} */ (row.lean),
+    yours: /** @type {string} */ (row.text),
+  };
+}
+
+/**
  * The verdict queue's answer: the departures waiting on a verdict.
  * @param {Shower} shower @param {string} root
  */
@@ -222,4 +264,4 @@ function answerQueue(shower, root) {
   return { departures: queueOf(shower.folded, evidenceOf(root)).map((id) => departureRow(shower, id)) };
 }
 
-module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, departureRow, answerQueue };
+module.exports = { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove, movedRefusal, reverses, isDeparture, departureRow, verdictAsked, answerQueue };

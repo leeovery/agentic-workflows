@@ -82,6 +82,7 @@ const { DECIDED_USAGE, runDecidedVerb } = require('./domain/decided.cjs');
 const { runStartThisWorkVerb } = require('./domain/start-this-work.cjs');
 const { APPROVE_MAP_USAGE, runApproveMapVerb } = require('./domain/approve-map.cjs');
 const { SWEEP_USAGE, runSweepVerb } = require('./domain/sweep-take.cjs');
+const { READY_TO_BUILD_USAGE, POSITION_USAGE, runReadyToBuildVerb, runPositionVerb } = require('./domain/ready-to-build.cjs');
 const { MIGRATE_USAGE, runMigrateVerb } = require('./domain/directives.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -227,6 +228,7 @@ ${VERDICT_USAGE.replace(/^/gm, '  ')}
   workunit pivot <work-unit>
   workunit absorb <feature> --into <epic> --topic <name>
   workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>
+  ${POSITION_USAGE}
   build-order sequence <work-unit> <topic>=<order> [<topic>=<order> …]
   discovery-session close <work-unit|product> -m <message>
   topic start <work-unit> <phase> <topic>
@@ -293,6 +295,7 @@ ${DECIDED_USAGE.replace(/^/gm, '  ')}
   start-this-work yes
 ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   ${SWEEP_USAGE}
+  ${READY_TO_BUILD_USAGE}
   ${MIGRATE_USAGE}
   inbox archive <path> [<path> …]
   inbox restore <path> [<path> …]
@@ -451,6 +454,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   render start-this-work [--file <payload.json>]
   render approve-map <work-unit> [--file <payload.json> | --sweep]
   render approve-map-strike <work-unit>
+  render ready-to-build <work-unit> [--page] [--calls]
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -661,8 +665,10 @@ function runWorkunit(call, argv) {
         throw new Error('Usage: engine workunit promote <work-unit> <topic> --to <cc-work-unit> --description <text>');
       }
       respond(call, promoteWorkUnit(call.cwd, workUnit, topic, { to: opts.to, description: opts.description }));
+    } else if (command === 'position') {
+      respond(call, runPositionVerb(call.cwd, rest));
     } else {
-      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|promote> …');
+      throw new Error('Usage: engine workunit <create|import|complete|cancel|reactivate|pivot|absorb|promote|position> …');
     }
   } catch (err) {
     failJson(call, err);
@@ -1433,6 +1439,21 @@ function runApproveMap(call, argv) {
 function runSweep(call, argv) {
   try {
     respond(call, runSweepVerb(call.cwd, argv));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ready-to-build — the person's pick at the spec's gate, concluding the spec
+// and beginning the build in the position picked (domain/ready-to-build.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runReadyToBuild(call, argv) {
+  const { opts, positional } = parseArgs(argv);
+  try {
+    respond(call, runReadyToBuildVerb(call.cwd, positional, opts));
   } catch (err) {
     failJson(call, err);
   }
@@ -2362,7 +2383,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'calls', 'sweep'];
+const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'menu-only', 'single', 'unify', 'calls', 'sweep', 'page'];
 
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
@@ -2453,6 +2474,7 @@ const COMMANDS = Object.freeze({
   'start-this-work': runStartThisWork,
   'approve-map': runApproveMap,
   sweep: runSweep,
+  'ready-to-build': runReadyToBuild,
 });
 
 // Every command dispatched runs whole under the writer lock, its writes and

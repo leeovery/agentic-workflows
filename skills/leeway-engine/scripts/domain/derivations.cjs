@@ -642,6 +642,9 @@ function lockingSpecsPhrase(locks, nameOf = (n) => n) {
  * the postpone exists to avoid. Both roadmap-side inputs are read here, before
  * anything is written: a horizon the roadmap could not name would otherwise
  * refuse at the landing, with the epic already postponed and no item waiting.
+ * A decided topic still goes while the spec is written, the split moving
+ * whole decided topics (11.10.3), until ready to build's yes begins the
+ * build and closes the map for good (18.4.19).
  * @param {object} manifest  the epic's manifest
  * @param {string} name
  * @param {object|null|undefined} project  the project manifest — the roadmap side of the clash lock
@@ -661,6 +664,9 @@ function postponePlan(manifest, name, project, horizon) {
   }
   if (lifecycle === 'cancelled') {
     locks.push({ reason: `"${name}" is cancelled — reactivate it from the epic menu first` });
+  }
+  if (buildBegun(manifest)) {
+    locks.push({ reason: `postponing "${name}" is refused — ${manifest.name}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu` });
   }
   const specs = unitLocks(manifest, name);
   if (specs.length > 0) {

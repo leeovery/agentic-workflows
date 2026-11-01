@@ -196,6 +196,12 @@ const GATE_FIELDS = {
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
+// The build's positions (3.3.1), auto first, the default. The unit's
+// manifest holds where its build stands as `build`, written by ready to
+// build's yes, which concludes the spec (P7): `{position}`, the position
+// picked there and switched since through `workunit position`.
+const BUILD_POSITIONS = /** @type {const} */ (['auto', 'step']);
+
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation, never flagged, never reverted. One vocabulary for every
 // consumer (transitions, derivations, the roadmap's cross-join flag).
@@ -269,6 +275,7 @@ module.exports = {
   VALID_GATE_MODES,
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,
+  BUILD_POSITIONS,
   TERMINAL_STATUSES,
   PRODUCT,
   PROJECT_IDENTITIES,
