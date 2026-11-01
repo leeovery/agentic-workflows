@@ -168,7 +168,8 @@ describe('pipeline simulation: epic', () => {
     ].join('\n'));
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
-    sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
+    const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
+    assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {

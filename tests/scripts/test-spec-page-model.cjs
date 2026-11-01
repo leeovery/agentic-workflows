@@ -37,8 +37,8 @@ const SPEC = [
   '## 2. Refunds', '', '### 2.1 Whole', '', '2.1.1 A refund goes back to the card. [Ab12Cd]', '',
 ].join('\n');
 
-/** The page a spec's text draws, its lines resting on Claude's calls `calls`. @param {string} text @param {Set<string>} [calls] */
-const page = (text, calls) => pageOf(text, specReading(text), calls);
+/** The page a spec's text draws, its lines flagged as `drawn` gives. @param {string} text @param {{calls: Set<string>, builders: Set<string>}} [drawn] */
+const page = (text, drawn) => pageOf(text, specReading(text), drawn);
 
 /** A spec of one statement, written as given. @param {string[]} rows */
 const oneLine = (rows) => ['# P', '', '## 1. A', '', '### 1.1 B', '', ...rows, ''].join('\n');
@@ -98,10 +98,11 @@ describe('the review page\'s model of a spec (11.11.2, 11.11.3)', () => {
     assert.deepStrictEqual([lineId('16.3.7'), lineId('16.S69'), lineId('3.2.1-scr2')], ['16-3-7', '16-S69', '3-2-1-scr2']);
   });
 
-  it('flags a line resting on a call of Claude\'s first, before the builder\'s and a screen', () => {
-    const items = page(SPEC, new Set(['1.1.1', '1.1.2'])).sections[0].items.flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : []));
+  it('flags a line as the ledger draws it — resting on a call of Claude\'s first, then left to the builder — before a screen', () => {
+    const drawn = { calls: new Set(['1.1.1', '1.1.2']), builders: new Set(['2.1.1']) };
+    const items = page(SPEC, drawn).sections.flatMap(({ items: area }) => area).flatMap((item) => (item.k === 'line' ? [[item.id, item.flags]] : []));
 
-    assert.deepStrictEqual(items.slice(0, 2), [['1-1-1', ['claude']], ['1-1-2', ['claude', 'builder', 'screen']]]);
+    assert.deepStrictEqual([items[0], items[1], items.at(-1)], [['1-1-1', ['claude']], ['1-1-2', ['claude', 'builder', 'screen']], ['2-1-1', ['builder']]]);
   });
 
   it('a line\'s fingerprint holds its wording: a change to its sources alone or to how it wraps keeps it, a change of wording does not (11.11.6, 11.S28)', () => {

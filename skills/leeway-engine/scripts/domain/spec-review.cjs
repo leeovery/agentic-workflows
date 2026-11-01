@@ -6,29 +6,40 @@
 // open page holds, and the review's record.
 //
 // The page writes its `marks` collection, one document a section (`s1`,
-// `s2`, …), each `{"m": {"<lineId>": {s, h, t, at}}}`: `s` a tick, an open
-// conversation (`comment`) or empty; `h` the fingerprint of the wording the
-// person ticked or unticked (spec-page-model.cjs); `t` the line's
-// conversation, each message keyed `p<ms>` (the person) or `c<ms>` (Claude)
-// and its time in epoch milliseconds, `{by, x}`, an empty `x` a message the
-// person removed; and `at` when. Claude reads them back through
-// `spec marks <unit> --file <marks.json>`, the collection by document —
-// each as the page holds it, or as the artifact store saves it, under
-// `data` — and the engine keeps them at `.cache/{unit}/specification/
-// marks.json`, answering the comments waiting for Claude: a line whose
-// conversation is open, the person's message its last (11.11.4). It refuses,
-// every refusal opening `spec marks: `, storing nothing: a unit the project
-// lacks; one with no spec; a concluded spec, whose review ended when the
-// build began; a file it cannot read as the marks, naming every fault; and
-// a spec its grammar cannot read.
+// `s2`, …), each `{"m": {"<lineId>": {s, h, t, at}}}`: a line's id its
+// number with its dots as dashes; `s` a tick, an open conversation
+// (`comment`) or empty; `h` the fingerprint of the wording the person ticked
+// or unticked (spec-page-model.cjs); `t` the line's conversation, each
+// message keyed `p<ms>` (the person) or `c<ms>` (Claude) and its time in
+// epoch milliseconds, `{by, x}`, an empty `x` a message the person removed;
+// and `at` when. Claude reads them back through `spec marks <unit> --file
+// <marks.json>`, the collection by document — each as the page holds it, or
+// as the artifact store saves it, under `data` — and the engine keeps them
+// at `.cache/{unit}/specification/marks.json`, answering the comments
+// waiting for Claude: a line whose conversation is open, the person's
+// message its last (11.11.4). It refuses, every refusal opening
+// `spec marks: `, storing nothing: a unit the project lacks; one with no
+// spec; a concluded spec, whose review ended when the build began; a file it
+// cannot read as the marks, naming every fault; and a spec its grammar
+// cannot read.
+//
+// Nothing on the page reaches Claude by itself (11.11.5), so the comments
+// waiting and the record are only as fresh as the marks last stored: ready
+// to build's yes stores the marks it is handed first, then reads the
+// comments waiting and writes the record from them, in one call
+// (`settleReview`).
 //
 // The page is open while the unit holds stored marks or a page built for it
 // (`.cache/{unit}/specification/page/`). While it is, a number never changes
-// (11.11.3): `spec land` refuses a line moved to another number — its wording
-// one another number held, which no longer holds it — and an added number
-// below the next free one where it sits, past every number its part, its
-// area's scenarios or its line's screens held in the spec last landed or in
-// the marks. A line removed and its number brought back is that line again.
+// (11.11.3). Every number it holds is kept with its last wording in
+// `.cache/{unit}/specification/held.json`, which each land adds to: the
+// numbers of the spec the state branch holds and of the stored marks with
+// those of every land since the page opened. `spec land` refuses a line
+// moved to another number — its wording one another number held, which no
+// longer holds it; a number removed since the page opened given to another
+// line, a line brought back with its last wording being that line again;
+// and an added number not past every number held where it sits, its part,
+// its area's scenarios or its line's screens.
 //
 // The record (11.11.9) is `{unit}/spec-review.json`, written when the
 // person picks the build's position, only where the page was open — a spec
@@ -75,19 +86,18 @@ const REVIEW_FILE = 'spec-review.json';
  * @typedef {{id: string, number: string, section: number|null, wording: string|null, state: ReviewState, conversation: Said[], waiting: boolean}} Reviewed
  */
 /** A comment waiting for Claude: its line, the marks' document Claude answers in, the line's wording and its conversation. @typedef {{number: string, id: string, doc: string, wording: string, conversation: Said[]}} Waiting */
+/** The review settled at ready to build's yes: the comments waiting for Claude, and the record written — none while a comment waits. @typedef {{waiting: Waiting[], record: string|null}} Settled */
 
 /** A marks document's id. */
 const DOC = /^s[1-9][0-9]*$/;
+
+/** A line's id: a statement's or a scenario's number dashed, a screen's tail after it. */
+const LINE_ID = /^(?:[0-9]+-[0-9]+-[0-9]+|[0-9]+-S[0-9]+)(?:-scr[0-9]+)?$/;
 
 /** A message's key: who wrote it, and when, in epoch milliseconds. */
 const MESSAGE_KEY = /^[pc][0-9]+$/;
 
 const STATUSES = ['tick', 'comment', ''];
-
-/** @param {string} reason @returns {never} */
-function refuse(reason) {
-  throw new Error(`spec marks: ${reason}`);
-}
 
 /** The unit's review page's cache. @param {string} cwd @param {string} unit */
 const pageCache = (cwd, unit) => statePath(cwd, '.cache', unit, 'specification');
@@ -98,14 +108,17 @@ const marksFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'marks.json');
 /** Where the unit's page is built. @param {string} cwd @param {string} unit */
 const pageDir = (cwd, unit) => path.join(pageCache(cwd, unit), 'page');
 
+/** Where the numbers the unit's open page holds are kept. @param {string} cwd @param {string} unit */
+const heldFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'held.json');
+
 /** Whether the unit's review page is open: marks stored, or a page built. @param {string} cwd @param {string} unit */
 function pageOpen(cwd, unit) {
   return fs.existsSync(marksFile(cwd, unit)) || fs.existsSync(pageDir(cwd, unit));
 }
 
-/** A line's number from its id: dashes back to dots, a screen's or a note's tail kept. @param {string} id */
+/** A line's number from its id: dashes back to dots, a screen's tail kept. @param {string} id */
 function numberOf(id) {
-  const [, base, tail = ''] = /** @type {RegExpExecArray} */ (/^(.*?)(-(?:scr|note)[0-9]+)?$/.exec(id));
+  const [, base, tail = ''] = /** @type {RegExpExecArray} */ (/^(.*?)(-scr[0-9]+)?$/.exec(id));
   return `${base.replaceAll('-', '.')}${tail}`;
 }
 
@@ -129,6 +142,7 @@ function conversationFaults(what, said) {
 /** The faults of one mark. @param {string} doc @param {string} id @param {unknown} mark @returns {string[]} */
 function markFaults(doc, id, mark) {
   const what = `${doc}'s mark on ${id}`;
+  if (!LINE_ID.test(id)) return [`${what}: ${id} is no line's id — a line's number with its dots as dashes, as 3-2-1, 3-S4 or 3-2-1-scr1`];
   if (!isObject(mark)) return [`${what} is no mark — a mark is {"s", "h", "t", "at"}`];
   const { s, h, t, at } = /** @type {Record<string, unknown>} */ (mark);
   return [
@@ -150,9 +164,9 @@ function marksIn(file) {
   try {
     given = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
-    return refuse(`${file} holds no marks: ${messageOf(err)}`);
+    throw new Error(`${file} holds no marks: ${messageOf(err)}`);
   }
-  if (!isObject(given)) refuse(`${file} holds no marks — the marks are the page's collection by document, {"s1": {"m": {…}}, …}`);
+  if (!isObject(given)) throw new Error(`${file} holds no marks — the marks are the page's collection by document, {"s1": {"m": {…}}, …}`);
   /** @type {string[]} */
   const faults = [];
   /** @type {Marks} */
@@ -166,15 +180,17 @@ function marksIn(file) {
     for (const [id, mark] of Object.entries(body.m)) faults.push(...markFaults(doc, id, mark));
     marks[doc] = { m: body.m };
   }
-  if (faults.length > 0) refuse(faults.join('\n'));
+  if (faults.length > 0) throw new Error(faults.join('\n'));
   return marks;
 }
 
-/** The unit's stored marks, by document; none where none are stored. @param {string} cwd @param {string} unit @returns {Marks} */
-function storedMarks(cwd, unit) {
-  const file = marksFile(cwd, unit);
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+/** A JSON file the engine keeps in the page's cache, or `none` where it holds none. @template T @param {string} file @param {T} none @returns {T} */
+function cached(file, none) {
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : none;
 }
+
+/** The unit's stored marks, by document; none where none are stored. @param {string} cwd @param {string} unit @returns {Marks} */
+const storedMarks = (cwd, unit) => cached(marksFile(cwd, unit), {});
 
 /** Every mark, by line id. @param {Marks} marks @returns {Record<string, Mark>} */
 const byLine = (marks) => Object.assign({}, ...Object.values(marks).map(({ m }) => m));
@@ -237,26 +253,29 @@ function reviewStates(cwd, unit) {
 }
 
 /**
- * The comments on the unit's page waiting for Claude, by its stored marks;
- * none where none are stored (11.11.8).
+ * The comments on the unit's page waiting for Claude, by the marks last
+ * stored; none where none are stored (11.11.8).
  * @param {string} cwd @param {string} unit @returns {Waiting[]}
  */
 function commentsWaiting(cwd, unit) {
   return fs.existsSync(marksFile(cwd, unit)) ? waitingIn(reviewStates(cwd, unit)) : [];
 }
 
+/** The record of reviewed lines written: its path from the state root. @param {string} cwd @param {string} unit @param {Reviewed[]} reviewed */
+function writeRecord(cwd, unit, reviewed) {
+  const rel = `${unit}/${REVIEW_FILE}`;
+  writeJsonAtomic(statePath(cwd, rel), { lines: Object.fromEntries(reviewed.map(({ number, state, conversation }) => [number, { state, conversation }])) });
+  return rel;
+}
+
 /**
- * Write the unit's review record from its stored marks, where its page was
- * open; its path from the state root, or null where the person did not take
- * the review and none is written. Commits nothing: the caller commits it.
+ * Write the unit's review record from the marks last stored, where its page
+ * was open; its path from the state root, or null where the person did not
+ * take the review and none is written. Commits nothing: the caller commits it.
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
 function writeSpecReview(cwd, unit) {
-  if (!pageOpen(cwd, unit)) return null;
-  const rel = `${unit}/${REVIEW_FILE}`;
-  const lines = Object.fromEntries(reviewStates(cwd, unit).map(({ number, state, conversation }) => [number, { state, conversation }]));
-  writeJsonAtomic(statePath(cwd, rel), { lines });
-  return rel;
+  return pageOpen(cwd, unit) ? writeRecord(cwd, unit, reviewStates(cwd, unit)) : null;
 }
 
 /** Why the unit's marks cannot be stored, before they are read, or null. @param {string} cwd @param {string} unit @returns {string|null} */
@@ -269,25 +288,51 @@ function marksRefusal(cwd, unit) {
 }
 
 /**
+ * The marks in `file` stored as the unit's, after every check: every line
+ * as they leave it. Refuses, storing nothing, what `spec marks` refuses.
+ * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd @returns {Reviewed[]}
+ */
+function stored(cwd, unit, file) {
+  const refused = marksRefusal(cwd, unit);
+  if (refused !== null) throw new Error(refused);
+  const marks = marksIn(path.resolve(cwd, file));
+  const reviewed = reviewOf(specPage(cwd, unit), marks);
+  fs.mkdirSync(pageCache(cwd, unit), { recursive: true });
+  writeJsonAtomic(marksFile(cwd, unit), marks);
+  return reviewed;
+}
+
+/**
  * Store the marks Claude read back from the unit's review page, answering
  * the comments waiting for Claude.
  * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd
  * @returns {{unit: string, waiting: Waiting[]}}
  */
 function storeMarks(cwd, unit, file) {
-  const refused = marksRefusal(cwd, unit);
-  if (refused !== null) refuse(refused);
-  const marks = marksIn(path.resolve(cwd, file));
-  let page;
   try {
-    page = specPage(cwd, unit);
+    return { unit, waiting: waitingIn(stored(cwd, unit, file)) };
   } catch (err) {
-    return refuse(messageOf(err));
+    throw new Error(`spec marks: ${messageOf(err)}`);
   }
-  const waiting = waitingIn(reviewOf(page, marks));
-  fs.mkdirSync(pageCache(cwd, unit), { recursive: true });
-  writeJsonAtomic(marksFile(cwd, unit), marks);
-  return { unit, waiting };
+}
+
+/**
+ * The review settled at ready to build's yes, in one call: while the page
+ * is open, the marks in `file` stored first, then the comments waiting for
+ * Claude answered, and the record written from those marks only where none
+ * waits (11.11.8); nothing while no page is open (11.S22). Refuses, writing
+ * nothing, an open page with no marks given, and what `spec marks` refuses,
+ * in its words without its opening. Commits nothing: the caller commits the
+ * record.
+ * @param {string} cwd @param {string} unit @param {string} [file] absolute or from cwd
+ * @returns {Settled}
+ */
+function settleReview(cwd, unit, file) {
+  if (!pageOpen(cwd, unit)) return { waiting: [], record: null };
+  if (file === undefined) throw new Error(`${unit}'s review page is open, so the yes takes its marks — read them back from the page and give them as a file`);
+  const reviewed = stored(cwd, unit, file);
+  const waiting = waitingIn(reviewed);
+  return { waiting, record: waiting.length > 0 ? null : writeRecord(cwd, unit, reviewed) };
 }
 
 /** Where a number stands among its siblings: what precedes its last digits, and those digits. @param {string} number */
@@ -297,32 +342,63 @@ function slotOf(number) {
 }
 
 /**
+ * Every number the unit's open page holds, with the fingerprint of its last
+ * wording — null for one only a mark without a fingerprint names — and the
+ * numbers `landed`, the spec the state branch holds, gives.
+ * @param {string} cwd @param {string} unit @param {string|null} landed
+ * @returns {{held: Map<string, string|null>, live: Set<string>}}
+ */
+function heldNumbers(cwd, unit, landed) {
+  /** @type {Map<string, string|null>} */
+  const held = new Map(Object.entries(cached(heldFile(cwd, unit), { numbers: {} }).numbers));
+  const live = landed === null ? [] : specReading(landed).lines;
+  for (const { number, wording } of live) held.set(number, fingerprint(wording));
+  for (const [id, mark] of Object.entries(byLine(storedMarks(cwd, unit)))) if (!held.has(numberOf(id))) held.set(numberOf(id), mark.h ?? null);
+  return { held, live: new Set(live.map(({ number }) => number)) };
+}
+
+/**
  * What a land of `lines` would change of the numbers the unit's open page
  * holds (11.11.3), one fault a line: a line whose wording another number
- * held, which no longer holds it; and an added number not past every number
- * held where it sits. Held: the numbers of `landed`, the spec the state
- * branch holds, and of the stored marks. None while no page is open.
- * @param {string} cwd @param {string} unit @param {string|null} landed @param {Line[]} lines
+ * held, which no longer holds it; a number removed since the page opened
+ * given to another line; and an added number not past every number held
+ * where it sits. None while no page is open.
+ * @param {string} cwd @param {string} unit @param {string|null} landed the spec the state branch holds @param {Line[]} lines
  * @returns {string[]}
  */
 function heldNumberFaults(cwd, unit, landed, lines) {
   if (!pageOpen(cwd, unit)) return [];
-  /** @type {Map<string, string|null>} */
-  const held = new Map(landed === null ? [] : specReading(landed).lines.map(({ number, wording }) => [number, fingerprint(wording)]));
-  for (const id of Object.keys(byLine(storedMarks(cwd, unit)))) if (!held.has(numberOf(id))) held.set(numberOf(id), null);
+  const { held, live } = heldNumbers(cwd, unit, landed);
   const now = new Map(lines.map(({ number, wording }) => [number, fingerprint(wording)]));
+  const nextFree = (/** @type {string} */ number) => {
+    const { place } = slotOf(number);
+    const past = Math.max(0, ...[...held.keys()].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
+    return { past, next: `${place}${past + 1}` };
+  };
   return lines.flatMap(({ number }) => {
     const h = now.get(number);
     if (held.get(number) === h) return [];
     const moved = [...held].find(([other, was]) => other !== number && was === h && now.get(other) !== h);
     if (moved !== undefined) return [`${number} now holds the wording ${moved[0]} held — a number never changes while the review page is open: a line keeps its number, and a line added takes the next free one`];
-    if (held.has(number)) return [];
-    const { place, k } = slotOf(number);
-    const past = Math.max(0, ...[...held.keys()].map(slotOf).filter((slot) => slot.place === place).map((slot) => slot.k));
-    return k > past ? [] : [`${number} is added while the review page is open — a line added takes the next free number, ${place}${past + 1}`];
+    if (live.has(number)) return [];
+    const { past, next } = nextFree(number);
+    if (held.has(number)) return [`${number} was removed while the review page is open, and its number is not given to another line — a line added takes the next free number, ${next}`];
+    return slotOf(number).k > past ? [] : [`${number} is added while the review page is open — a line added takes the next free number, ${next}`];
   });
 }
 
+/**
+ * Keep, while the unit's page is open, every number it holds after a land of
+ * `lines` over `landed`, each with its last wording.
+ * @param {string} cwd @param {string} unit @param {string|null} landed @param {Line[]} lines
+ */
+function holdNumbers(cwd, unit, landed, lines) {
+  if (!pageOpen(cwd, unit)) return;
+  const { held } = heldNumbers(cwd, unit, landed);
+  for (const { number, wording } of lines) held.set(number, fingerprint(wording));
+  writeJsonAtomic(heldFile(cwd, unit), { numbers: Object.fromEntries(held) });
+}
+
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, pageOpen, storeMarks, reviewStates, commentsWaiting, writeSpecReview, heldNumberFaults,
+  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, pageOpen, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
 };

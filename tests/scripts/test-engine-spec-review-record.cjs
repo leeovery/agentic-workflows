@@ -6,22 +6,25 @@
 // tick on each line, drawn from the entries it cites (11.11.15, 11.S32) — a
 // line restating the person's decisions or resting on findings, or the
 // builder's, carries it with its reason; one resting on a call of Claude's,
-// on a decision whose question was marked hard to undo, or tracing to no
-// entry stays open with its reason, and a scenario takes its tick from its
-// statements; `engine spec marks <unit> --file`, storing the page's marks and
-// answering the comments waiting for Claude (11.11.4, 11.11.8), and each
-// refusal storing nothing; the record, `spec-review.json`, written from the
-// stored marks with each line's state and conversation (11.11.7, 11.11.9,
-// 11.S26, 11.S35) — none where the person did not take the review (11.S22)
-// — a tick on wording since changed read as changed, one on sources alone
-// changed kept (11.S28), a line removed after it was marked kept as removed;
+// on a decision carried over by the migration, on one marked hard to undo,
+// or tracing to no entry stays open with its reason, and a scenario takes
+// its tick from its statements but none of their flags; `engine spec marks
+// <unit> --file`, storing the page's marks and answering the comments
+// waiting for Claude (11.11.4, 11.11.8), and each refusal storing nothing;
+// the record, `spec-review.json`, written from the stored marks with each
+// line's state and conversation (11.11.7, 11.11.9, 11.S26, 11.S35) — none
+// where the person did not take the review (11.S22) — a tick on wording
+// since changed read as changed, one on sources alone changed kept (11.S28),
+// a line removed after it was marked kept as removed; the review settled at
+// ready to build's yes on the marks it is handed (11.11.5, 11.11.8, 11.S25);
 // and the numbers the open page holds, which `spec land` refuses to change
 // (11.11.3).
 //
 // Layer: verb. World, built once and copied: an epic, `payments`, its one
 // topic `cards` decided, its entries written through the ledger's verbs — a
 // decision of the person's, a call of Claude's, a "don't care" decision, a
-// finding and a question left open — and its spec landed citing them.
+// finding and a question left open — and one carried over as the migration
+// writes it, and its spec landed citing them.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -31,14 +34,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readState, commitAll, fixtureFrom, cleanupFixture,
+  ok, refusedPristine, statePath, layout, writeState, readState, commitAll, fixtureFrom, cleanupFixture, treeSnapshot,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
 const { specPage, lineTicks, HARD_TO_UNDO } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
-const { writeSpecReview, commentsWaiting } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
+const { writeSpecReview, commentsWaiting, settleReview } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
 const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { withUnitEntries } = require(path.join(SCRIPTS, 'domain/unit-entries.cjs'));
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -48,6 +51,7 @@ const SPEC = layout.unit(UNIT, 'spec.md');
 const RECORD = layout.unit(UNIT, 'spec-review.json');
 const MARKS = layout.cache(UNIT, 'specification', 'marks.json');
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
+const BUILDERS = 'Left to the builder: holds nothing you would see';
 
 /** The epic's manifest, its one topic's discussion as `status` gives it. @param {string} dir @param {string} status @param {Record<string, unknown>} [more] */
 function payments(dir, status, more = {}) {
@@ -81,21 +85,23 @@ const STATEMENTS = () => [
   `1.1.4 The form shows the card's brand. [${made.brand}]`,
   `1.1.5 Cards are checked as typed. [${made.open}]`,
   `1.1.6 Visa and Mastercard, an unknown brand refused. [${made.taken}, ${made.call}]`,
+  `1.1.7 A declined card is retried once. [${made.carried}]`,
+  `1.1.8 Corners are rounded. [${made.radius}]`,
 ];
 
 const world = fixtureFrom('spec-review-', (dir) => {
   payments(dir, 'in-progress');
   commitAll(dir, 'init');
-  const { write } = ledgerHelpers(() => dir);
+  const { write, carriedOver } = ledgerHelpers(() => dir);
   const at = `${UNIT}.discussion.cards`;
   const ask = (/** @type {string} */ text) => write('ask', at, [], { ...PERSON, text }).id;
   const decide = (/** @type {string} */ question, /** @type {string} */ text, content = {}) => write('decide', at, ['--answers', question], { ...PERSON, text, why: `Why: ${text}`, ...content }).id;
-  made.takenQuestion = ask('Which cards are taken?');
-  made.taken = decide(made.takenQuestion, 'Visa and Mastercard.');
+  made.taken = decide(ask('Which cards are taken?'), 'Visa and Mastercard.');
   made.call = decide(ask('What of an unknown brand?'), 'Refused.', MADE);
   made.radius = decide(ask('What radius are the corners?'), 'Ten points.', { ...MADE, given: 'dont-care' });
   made.brand = write('find', at, [], { ...MADE, text: 'The form shows the card\'s brand.', how: 'read in the code', known: 'read' }).id;
   made.open = ask('Are cards checked as typed?');
+  made.carried = carriedOver(at, ask('Is a declined card retried?'), 'Once.');
   payments(dir, 'completed');
   commitAll(dir, 'topics settled');
   writeState(dir, SPEC, spec(STATEMENTS()));
@@ -133,36 +139,39 @@ const record = () => JSON.parse(readState(dir, RECORD));
 /** A message as the record holds it. @param {'person'|'claude'} by @param {number} ms @param {string} text */
 const said = (by, ms, text) => ({ by, at: new Date(ms).toISOString(), text });
 
+/** The ids of the page's lines carrying a flag. @param {string} flag */
+const flagged = (flag) => specPage(dir, UNIT).sections.flatMap(({ items }) => items).flatMap((item) => (item.k === 'line' && item.flags.includes(flag) ? [item.id] : []));
+
 describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S32)', () => {
-  it('11.S32: a line restating the person\'s decision, resting on a finding, or the builder\'s carries the tick with its reason; one resting on a call of Claude\'s, alone or beside the person\'s, or citing a question stays open with its reason; a scenario takes its tick from its statements', () => {
+  it('11.S32: a line restating the person\'s decision, resting on a finding, or the builder\'s carries the tick with its reason; one resting on a call of Claude\'s, alone or beside the person\'s, on a decision carried over, or citing a question stays open with its reason; a scenario takes its tick from its statements', () => {
     const { ticks } = specPage(dir, UNIT);
 
     assert.deepStrictEqual(Object.fromEntries(ticks), {
       '1-1-1': { v: 'soft', why: `Restates your decision ${made.taken} of ${dayOf(made.taken)}` },
       '1-1-2': { v: 'open', why: `Rests on Claude's call ${made.call}` },
-      '1-1-3': { v: 'soft', why: 'Left to the builder: holds nothing you would see' },
+      '1-1-3': { v: 'soft', why: BUILDERS },
       '1-1-3-scr1': { v: 'soft', why: `Restates your decision ${made.taken} of ${dayOf(made.taken)}` },
       '1-1-4': { v: 'soft', why: `Rests on the finding ${made.brand} of ${dayOf(made.brand)}` },
       '1-1-5': { v: 'open', why: `Traces to no entry: ${made.open} is a question — cite its answer` },
       '1-1-6': { v: 'open', why: `Rests on Claude's call ${made.call}` },
+      '1-1-7': { v: 'open', why: `Rests on ${made.carried}, carried over from before, its maker unknown` },
+      '1-1-8': { v: 'soft', why: BUILDERS },
       '1-S1': { v: 'soft', why: 'Draws on 1.1.1 and 1.1.3, each carrying Claude\'s tick' },
       '1-S2': { v: 'open', why: 'Draws on 1.1.2, which waits on you' },
-      '2-1-1': { v: 'soft', why: 'Left to the builder: holds nothing you would see' },
+      '2-1-1': { v: 'soft', why: BUILDERS },
     });
   });
 
-  it('marks the lines resting on a call of Claude\'s, a scenario drawing on one among them (11.11.2)', () => {
-    const flagged = specPage(dir, UNIT).sections.flatMap(({ items }) => items).flatMap((item) => (item.k === 'line' && item.flags.includes('claude') ? [item.id] : []));
-
-    assert.deepStrictEqual(flagged, ['1-1-2', '1-1-6', '1-S2']);
+  it('flags the statements and screens resting on a call of Claude\'s, and those left to the builder by their bracket or by a "don\'t care" cited — a scenario taking none of its statements\' flags (11.11.2)', () => {
+    assert.deepStrictEqual([flagged('claude'), flagged('builder')], [['1-1-2', '1-1-6'], ['1-1-3', '1-1-8', '2-1-1']]);
   });
 
-  it('11.S36\'s drawn half: a line restating the person\'s decision whose question is marked hard to undo stays open, its reason saying so; unmarked, it carries the tick (P8)', () => {
+  it('11.S36\'s drawn half: a line restating the person\'s decision marked hard to undo stays open, its reason saying its question was; unmarked, it carries the tick (P8)', () => {
     const { lines } = specReading(readState(dir, SPEC));
     const marked = withUnitEntries(dir, UNIT, [], (view) => {
-      const question = /** @type {{line: Record<string, unknown>}} */ (view.entries.get(full(made.takenQuestion)));
+      const decision = /** @type {{line: Record<string, unknown>}} */ (view.entries.get(full(made.taken)));
       const unmarked = lineTicks(view, lines).ticks.get('1.1.1');
-      question.line[HARD_TO_UNDO] = true;
+      decision.line[HARD_TO_UNDO] = true;
       return [unmarked, lineTicks(view, lines).ticks.get('1.1.1')];
     });
 
@@ -174,12 +183,12 @@ describe('Claude\'s tick, drawn from the entries each line cites (11.11.15, 11.S
 });
 
 describe('the page\'s marks stored, answering the comments waiting for Claude (11.11.4, 11.11.5)', () => {
-  it('stores the marks by document, each as the page holds it or saved under data, and answers each line whose conversation is open with the person\'s message last', () => {
+  it('stores the marks by document, each as the page holds it or saved under data, and answers each line whose conversation is open with the person\'s message last, its messages in the order their keys\' times give', () => {
     const marks = {
       s1: {
         data: {
           m: {
-            '1-1-1': { s: 'comment', t: { ...message('p', 1000, 'Why Visa?'), ...message('c', 2000, 'Your decision.'), ...message('p', 3000, 'And Amex?') } },
+            '1-1-1': { s: 'comment', t: { ...message('p', 3000, 'And Amex?'), ...message('p', 1000, 'Why Visa?'), ...message('c', 2000, 'Your decision.') } },
             '1-1-2': { s: 'comment', t: { ...message('p', 1000, 'Refused how?'), ...message('c', 2000, 'With a message.') } },
             '1-1-4': { s: 'tick', h: hOf('1-1-4'), t: message('p', 1000, 'Fine.') },
           },
@@ -244,6 +253,7 @@ describe('marks refused, nothing stored', () => {
           '1-1-1': { s: 'done', h: 7, at: 1 },
           '1-1-2': 'tick',
           '1-1-3': { t: { x1: { x: 'Hm' }, p12: { by: 'q', x: 'Hm' }, c13: 'Hm' } },
+          '1-1': { s: 'tick' },
         },
       },
       s2: [],
@@ -260,6 +270,7 @@ describe('marks refused, nothing stored', () => {
       's1\'s mark on 1-1-3: "x1" is no message\'s key — p or c and the time in epoch milliseconds',
       's1\'s mark on 1-1-3: message p12 is no message — {"by": "p"|"c", "x": "<text>"}',
       's1\'s mark on 1-1-3: message c13 is no message — {"by": "p"|"c", "x": "<text>"}',
+      's1\'s mark on 1-1: 1-1 is no line\'s id — a line\'s number with its dots as dashes, as 3-2-1, 3-S4 or 3-2-1-scr1',
       's2 is no document of the marks — each is s<N>, holding {"m": {…}}',
     ].join('\n'));
   });
@@ -308,7 +319,7 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
           '1-1-4': { s: 'tick', h: 'aaaaaaaaaaaa' },
           '1-1-5': { s: 'comment', t: message('p', 3000, 'Typed how?') },
           '1-1-9': { s: 'tick', h: 'bbbbbbbbbbbb', t: message('p', 4000, 'Gone?') },
-          '1-1-8': { s: '', h: 'cccccccccccc' },
+          '1-1-10': { s: '', h: 'cccccccccccc' },
         },
       },
       s2: { m: { '2-1-1': { s: '', h: 'dddddddddddd' } } },
@@ -324,6 +335,8 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
         '1.1.4': { state: 'changed', conversation: [] },
         '1.1.5': { state: 'open', conversation: [said('person', 3000, 'Typed how?')] },
         '1.1.6': { state: 'passed', conversation: [] },
+        '1.1.7': { state: 'passed', conversation: [] },
+        '1.1.8': { state: 'claudes-tick', conversation: [] },
         '1.S1': { state: 'claudes-tick', conversation: [] },
         '1.S2': { state: 'passed', conversation: [] },
         '2.1.1': { state: 'claudes-tick', conversation: [] },
@@ -334,8 +347,8 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
 
   it('11.S28\'s code half: a tick stands across a land changing the line\'s sources alone, and reads changed once its wording changes', () => {
     storeMarks({ s1: { m: { '1-1-1': { s: 'tick', h: hOf('1-1-1') }, '1-1-4': { s: 'tick', h: hOf('1-1-4') } } } });
-    const [taken, brand, ...rest] = STATEMENTS();
-    writeState(dir, SPEC, spec([taken.replace(`[${made.taken}]`, `[${made.taken}, ${made.brand}]`), brand, ...rest.slice(0, 2), rest[2].replace('the card\'s brand', 'the brand'), ...rest.slice(3)]));
+    const [taken, ...rest] = STATEMENTS();
+    writeState(dir, SPEC, spec([taken.replace(`[${made.taken}]`, `[${made.taken}, ${made.brand}]`), ...rest.map((line) => line.replace('the card\'s brand', 'the brand'))]));
     ok(dir, ['spec', 'land', UNIT]);
     writeSpecReview(dir, UNIT);
 
@@ -350,45 +363,79 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
 
     assert.deepStrictEqual([none, absent], [null, false]);
     assert.deepStrictEqual(Object.values(record().lines).map(({ state }) => state), [
-      'claudes-tick', 'passed', 'claudes-tick', 'claudes-tick', 'claudes-tick', 'passed', 'passed', 'claudes-tick', 'passed', 'claudes-tick',
+      'claudes-tick', 'passed', 'claudes-tick', 'claudes-tick', 'claudes-tick', 'passed', 'passed', 'passed', 'claudes-tick', 'claudes-tick', 'passed', 'claudes-tick',
     ]);
   });
 });
 
+describe('the review settled at ready to build\'s yes, on the marks it is handed (11.11.5, 11.11.8)', () => {
+  it('stores the marks handed in before it reads them: the record written from them where no comment waits; a comment left since the marks last stored waits, and no record is written (11.S25)', () => {
+    storeMarks({});
+    const settled = settleReview(dir, UNIT, marksFile({ s1: { m: { '1-1-2': { s: 'tick', h: hOf('1-1-2') } } } }, 'fresh.json'));
+    const ticked = record().lines['1.1.2'].state;
+    fs.rmSync(statePath(dir, RECORD));
+    const late = settleReview(dir, UNIT, marksFile({ s1: { m: { '1-1-1': { s: 'comment', t: message('p', 1000, 'Amex?') } } } }, 'late.json'));
+
+    assert.deepStrictEqual([settled, ticked], [{ waiting: [], record: RECORD }, 'approved']);
+    assert.deepStrictEqual(late, {
+      waiting: [{ number: '1.1.1', id: '1-1-1', doc: 's1', wording: 'Visa and Mastercard are taken.', conversation: [said('person', 1000, 'Amex?')] }],
+      record: null,
+    });
+    assert.deepStrictEqual([fs.existsSync(statePath(dir, RECORD)), Object.keys(JSON.parse(readState(dir, MARKS)).s1.m)], [false, ['1-1-1']]);
+  });
+
+  it('settles nothing while no page is open (11.S22), and refuses an open page with no marks handed in, writing nothing', () => {
+    const closed = settleReview(dir, UNIT);
+    fs.mkdirSync(statePath(dir, layout.cache(UNIT, 'specification', 'page')), { recursive: true });
+    const before = treeSnapshot(dir);
+
+    assert.deepStrictEqual(closed, { waiting: [], record: null });
+    assert.throws(() => settleReview(dir, UNIT), /^Error: payments's review page is open, so the yes takes its marks — read them back from the page and give them as a file$/);
+    assert.deepStrictEqual(treeSnapshot(dir), before);
+  });
+});
+
 describe('the numbers the open review page holds, which a land never changes (11.11.3)', () => {
-  /** The spec with statements as given, landed: the answer, or the refusal with nothing written or committed. @param {string[]} statements */
+  /** The spec with statements as given, landed: the answer. @param {string[]} statements */
   const landing = (statements) => {
     writeState(dir, SPEC, spec(statements));
     return ok(dir, ['spec', 'land', UNIT]);
   };
-  /** @param {string[]} statements */
+  /** The spec with statements as given, its land refused with nothing written or committed: the refusal. @param {string[]} statements */
   const refused = (statements) => {
     writeState(dir, SPEC, spec(statements));
     return refusedPristine(dir, ['spec', 'land', UNIT]).error;
   };
   /** The landed statements with one inserted as 1.1.2, every later one renumbered. */
   function inserted() {
-    const [taken, call, radius, screen, brand, open, both] = STATEMENTS();
-    return [taken, `1.1.2 Amex is refused. [${made.call}]`, call.replace('1.1.2', '1.1.3'), radius.replace('1.1.3', '1.1.4'), screen, brand.replace('1.1.4', '1.1.5'), open.replace('1.1.5', '1.1.6'), both.replace('1.1.6', '1.1.7')];
+    const [taken, ...rest] = STATEMENTS();
+    return [taken, `1.1.2 Amex is refused. [${made.call}]`, ...rest.map((line) => line.replace(/^1\.1\.(\d+) /, (_, k) => `1.1.${Number(k) + 1} `))];
   }
 
   it('refuses, while the page is open, a line moved to another number and an added number below the next free one — the marks\' numbers held with the landed spec\'s', () => {
-    storeMarks({ s1: { m: { '1-1-8': { s: 'comment', t: message('p', 1000, 'Removed since.') } } } });
+    storeMarks({ s1: { m: { '1-1-10': { s: 'comment', t: message('p', 1000, 'Removed since.') } } } });
 
     assert.strictEqual(refused(inserted()).split('\n')[0], 'spec land: 1.1.3 now holds the wording 1.1.2 held — a number never changes while the review page is open: a line keeps its number, and a line added takes the next free one');
-    assert.strictEqual(refused([...STATEMENTS(), `1.1.7 Amex is refused. [${made.call}]`]), 'spec land: 1.1.7 is added while the review page is open — a line added takes the next free number, 1.1.9');
+    assert.strictEqual(refused([...STATEMENTS(), `1.1.9 Amex is refused. [${made.call}]`]), 'spec land: 1.1.9 is added while the review page is open — a line added takes the next free number, 1.1.11');
   });
 
-  it('lands, while the page is open, a number the marks held brought back, then a reworded line and a line added at the next free number', () => {
-    storeMarks({ s1: { m: { '1-1-7': { s: 'tick', h: 'aaaaaaaaaaaa' } } } });
-    const [taken, ...rest] = STATEMENTS();
-    const back = `1.1.7 Amex is refused. [${made.call}]`;
+  it('refuses, while the page is open, a number removed by an earlier land given to another line, and lands the removed line brought back with its wording', () => {
+    storeMarks({});
+    const kept = STATEMENTS().slice(0, -1);
+    landing(kept);
 
-    assert.strictEqual(landing([taken, ...rest, back]).statements, 8);
-    assert.strictEqual(landing([taken.replace('are taken', 'are both taken'), ...rest, back, `1.1.8 Discover is refused. [${made.call}]`]).statements, 9);
+    assert.strictEqual(refused([...kept, `1.1.8 Discover is refused. [${made.call}]`]), 'spec land: 1.1.8 was removed while the review page is open, and its number is not given to another line — a line added takes the next free number, 1.1.9');
+    assert.strictEqual(landing(STATEMENTS()).statements, 9);
+  });
+
+  it('lands, while the page is open, a reworded line and a line added at the next free number', () => {
+    storeMarks({});
+    const [taken, ...rest] = STATEMENTS();
+
+    assert.strictEqual(landing([taken.replace('are taken', 'are both taken'), ...rest, `1.1.9 Discover is refused. [${made.call}]`]).statements, 10);
   });
 
   it('lands a renumbered spec while no page is open', () => {
-    assert.strictEqual(landing(inserted()).statements, 8);
+    assert.strictEqual(landing(inserted()).statements, 10);
   });
 });

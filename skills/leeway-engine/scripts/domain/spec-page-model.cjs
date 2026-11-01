@@ -17,26 +17,27 @@
 // wraps, keeps the tick that holds its wording (11.11.6). The lines are
 // grouped by area, each area's items in the spec's order: its parts'
 // headings, its lines, and the heading of its block of scenarios. A line's
-// flags mark it resting on a call of Claude's (`claude`), the builder's
-// (`builder`), or a screen or holding a fenced block (`screen`).
+// flags mark a statement or a screen resting on a call of Claude's
+// (`claude`) or left to the builder (`builder`), and a screen or a line
+// holding a fenced block (`screen`).
 //
 // Claude's tick (11.11.15): a statement or a screen resting only on the
 // person's decisions and on findings, or left to the builder — its bracket
 // the builder's, or each entry it cites a "don't care" — carries the tick,
 // its reason the decisions it restates and when, the findings it rests on,
 // or that it holds nothing the person would see. One resting on a call of
-// Claude's — a decision Claude made, or the person handed to Claude, and no
-// migration carried over — or on a decision whose question was marked hard
-// to undo (16.11.7), its question's ledger line carrying `hard_to_undo:
-// true`, stays open, its reason saying which; so does one that does not
-// trace (spec-trace.cjs), its reason why. A scenario takes its tick from
-// the statements it draws on: it carries it where every one does.
+// Claude's — a decision Claude made, or the person handed to Claude — on a
+// decision the migration carried over, its maker unknown (21.6.5), or on a
+// decision marked hard to undo (16.11.7), its ledger line carrying
+// `hard_to_undo: true` beside the kind of its question, stays open, its
+// reason saying which; so does one that does not trace (spec-trace.cjs),
+// its reason why. A scenario takes its tick from the statements it draws
+// on — it carries it where every one does — and none of their flags.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 const { resolveId } = require('./ledger-ids.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
-const { currentsOf } = require('./ledger-fold.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
 const { untraced } = require('./spec-trace.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
@@ -46,7 +47,7 @@ const { withUnitEntries } = require('./unit-entries.cjs');
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
 /** @typedef {import('./unit-entries.cjs').UnitEntry} UnitEntry */
 
-/** The question's field that marks it hard to undo (16.11.7), absent until the labeller writes it. */
+/** The decision's field that marks its question hard to undo (16.11.7), absent until the labeller writes it. */
 const HARD_TO_UNDO = 'hard_to_undo';
 
 /** A line's mark, as the page reads its kind: Claude's call, the builder's, a screen. @typedef {'claude'|'builder'|'screen'} Flag */
@@ -66,6 +67,8 @@ const HARD_TO_UNDO = 'hard_to_undo';
 /** Claude's assessment of a line: its tick, `soft`, or open for the person, and why. @typedef {{v: 'soft'|'open', why: string}} Tick */
 /** A spec as its page draws it. @typedef {{h1: string, intro: string, sections: Area[], lines: ModelLine[]}} Page */
 /** The page with Claude's tick on each line, by id. @typedef {Page & {ticks: Map<string, Tick>}} SpecPage */
+/** The numbers of the lines resting on a call of Claude's, and of those left to the builder, as their ticks find them. @typedef {{calls: Set<string>, builders: Set<string>}} Drawn */
+/** A line's tick, and whether it rests on a call of Claude's or is left to the builder. @typedef {{tick: Tick, call: boolean, builder: boolean}} Assessed */
 
 /** A line's id: its number, its dots as dashes. @param {string} number */
 const lineId = (number) => number.replaceAll('.', '-');
@@ -84,14 +87,18 @@ function frontOf(text) {
   };
 }
 
-/** A line's flags. @param {Line} line @param {Set<string>} calls the numbers of the lines resting on a call of Claude's @returns {Flag[]} */
-function flagsOf(line, calls) {
+/** Nothing drawn from the ledger. @type {Drawn} */
+const UNDRAWN = Object.freeze({ calls: new Set(), builders: new Set() });
+
+/** A line's flags. @param {Line} line @param {Drawn} drawn @returns {Flag[]} */
+function flagsOf(line, { calls, builders }) {
   const screen = line.kind === 'screen' || line.parts.some(({ kind }) => kind === 'fence');
-  return /** @type {[Flag, boolean][]} */ ([['claude', calls.has(line.number)], ['builder', line.builder], ['screen', screen]]).filter(([, on]) => on).map(([flag]) => flag);
+  const flags = /** @type {[Flag, boolean][]} */ ([['claude', calls.has(line.number)], ['builder', line.builder || builders.has(line.number)], ['screen', screen]]);
+  return flags.filter(([, on]) => on).map(([flag]) => flag);
 }
 
-/** A line as the page draws it. @param {Line} line @param {Set<string>} calls @returns {Item} */
-function itemOf(line, calls) {
+/** A line as the page draws it. @param {Line} line @param {Drawn} drawn @returns {Item} */
+function itemOf(line, drawn) {
   const shown = line.kind === 'screen' || line.kind === 'note' ? line.kind : line.number;
   return {
     k: 'line',
@@ -101,19 +108,18 @@ function itemOf(line, calls) {
     ...(line.of === null ? {} : { after: line.of }),
     parts: line.parts.map(({ kind, text }) => [kind, text]),
     src: line.bracket ?? '',
-    flags: flagsOf(line, calls),
+    flags: flagsOf(line, drawn),
     h: fingerprint(line.wording),
   };
 }
 
 /**
  * The page a spec's reading draws, its faults aside — the caller refuses a
- * reading with faults — its lines resting on Claude's calls those `calls`
- * numbers.
- * @param {string} text @param {SpecReading} reading @param {Set<string>} [calls]
+ * reading with faults — its lines flagged as the ledger `drawn` them.
+ * @param {string} text @param {SpecReading} reading @param {Drawn} [drawn]
  * @returns {Page}
  */
-function pageOf(text, { lines, headings }, calls = new Set()) {
+function pageOf(text, { lines, headings }, drawn = UNDRAWN) {
   /** @type {Area[]} */
   const sections = [];
   /** @type {ModelLine[]} */
@@ -127,7 +133,7 @@ function pageOf(text, { lines, headings }, calls = new Set()) {
     const area = sections.at(-1);
     if (area === undefined) continue;
     if ('line' in mark) {
-      const item = itemOf(mark.line, calls);
+      const item = itemOf(mark.line, drawn);
       area.items.push(item);
       model.push({ id: lineId(mark.line.number), section: area.num, h: fingerprint(mark.line.wording), line: mark.line });
     } else if (mark.heading.kind === 'scenarios') {
@@ -147,19 +153,18 @@ function listed(names) {
 /** A noun for one or several. @param {string} one @param {number} count */
 const plural = (one, count) => (count === 1 ? one : `${one}s`);
 
-/** What an entry a line cites stands as for its tick. @typedef {'finding'|'builder'|'call'|'decision'} Sort */
+/** What an entry a line cites stands as for its tick. @typedef {'finding'|'builder'|'carried'|'call'|'decision'} Sort */
 
 /** @param {UnitEntry} entry @returns {Sort} */
 function sortOf({ kind, line }) {
   if (kind === 'finding') return 'finding';
   if (line.given === 'dont-care') return 'builder';
+  if (line.given === 'carried') return 'carried';
   return claudesCall(line) ? 'call' : 'decision';
 }
 
-/** Whether the question a decision answers was marked hard to undo, along its chain to the question as it stands. @param {UnitView} view @param {UnitEntry} decision */
-function markedHardToUndo({ folded, entries }, decision) {
-  return currentsOf(folded, /** @type {string} */ (decision.line.answers)).some((id) => entries.get(id)?.line[HARD_TO_UNDO] === true);
-}
+/** Whether a decision was marked hard to undo. @param {UnitEntry} decision */
+const markedHardToUndo = ({ line }) => line[HARD_TO_UNDO] === true;
 
 /** An entry named with when it was made. @param {UnitEntry} entry */
 const dated = ({ short, line }) => `${short} of ${String(line.at).slice(0, 10)}`;
@@ -171,54 +176,60 @@ const soft = (why) => ({ v: 'soft', why });
 /** @param {string} why @returns {Tick} */
 const open = (why) => ({ v: 'open', why });
 
+/** A tick as assessed, resting on a call of Claude's or left to the builder where `as` says. @param {Tick} tick @param {{call?: boolean, builder?: boolean}} [as] @returns {Assessed} */
+const assessed = (tick, { call = false, builder = false } = {}) => ({ tick, call, builder });
+
 /**
- * Claude's tick on a statement or a screen, from the entries it cites, and
- * whether it rests on a call of Claude's.
- * @param {UnitView} view @param {Line} line @returns {{tick: Tick, call: boolean}}
+ * Claude's tick on a statement or a screen, from the entries it cites.
+ * @param {UnitView} view @param {Line} line @returns {Assessed}
  */
 function citedTick(view, line) {
   const fault = untraced(view, line);
-  if (fault !== null) return { tick: open(`Traces to no entry: ${fault}`), call: false };
-  if (line.builder) return { tick: soft(BUILDERS), call: false };
+  if (fault !== null) return assessed(open(`Traces to no entry: ${fault}`));
+  if (line.builder) return assessed(soft(BUILDERS), { builder: true });
   const cited = line.cites.map((cite) => /** @type {UnitEntry} */ (view.entries.get(resolveId(cite, view.folded.facts.keys()))));
   const of = (/** @type {Sort} */ sort) => cited.filter((entry) => sortOf(entry) === sort);
-  const [calls, decisions, findings] = [of('call'), of('decision'), of('finding')];
-  const hard = decisions.filter((decision) => markedHardToUndo(view, decision));
+  const named = (/** @type {UnitEntry[]} */ entries) => listed(entries.map(({ short }) => short));
+  const [calls, carried, decisions, findings] = [of('call'), of('carried'), of('decision'), of('finding')];
+  const hard = decisions.filter(markedHardToUndo);
   const opens = [
-    ...(calls.length > 0 ? [`Rests on Claude's ${plural('call', calls.length)} ${listed(calls.map(({ short }) => short))}`] : []),
-    ...(hard.length > 0 ? [`Restates your ${plural('decision', hard.length)} ${listed(hard.map(({ short }) => short))}, ${hard.length === 1 ? 'its question' : 'their questions'} marked hard to undo`] : []),
+    ...(calls.length > 0 ? [`Rests on Claude's ${plural('call', calls.length)} ${named(calls)}`] : []),
+    ...(carried.length > 0 ? [`Rests on ${named(carried)}, carried over from before, ${carried.length === 1 ? 'its maker' : 'their makers'} unknown`] : []),
+    ...(hard.length > 0 ? [`Restates your ${plural('decision', hard.length)} ${named(hard)}, ${hard.length === 1 ? 'its question' : 'their questions'} marked hard to undo`] : []),
   ];
-  if (opens.length > 0) return { tick: open(opens.join('; ')), call: calls.length > 0 };
-  if (decisions.length > 0) return { tick: soft(`Restates your ${plural('decision', decisions.length)} ${listed(decisions.map(dated))}`), call: false };
-  if (findings.length > 0) return { tick: soft(`Rests on the ${plural('finding', findings.length)} ${listed(findings.map(dated))}`), call: false };
-  return { tick: soft(BUILDERS), call: false };
+  if (opens.length > 0) return assessed(open(opens.join('; ')), { call: calls.length > 0 });
+  if (decisions.length > 0) return assessed(soft(`Restates your ${plural('decision', decisions.length)} ${listed(decisions.map(dated))}`));
+  if (findings.length > 0) return assessed(soft(`Rests on the ${plural('finding', findings.length)} ${listed(findings.map(dated))}`));
+  return assessed(soft(BUILDERS), { builder: true });
 }
 
 /**
- * Claude's tick on a scenario, from the statements it draws on.
- * @param {Line} line @param {Map<string, {tick: Tick, call: boolean}>} drawn the statements' by number
- * @returns {{tick: Tick, call: boolean}}
+ * Claude's tick on a scenario, from the statements it draws on; none of
+ * their flags.
+ * @param {Line} line @param {Map<string, Assessed>} drawn the statements' by number
+ * @returns {Assessed}
  */
 function scenarioTick({ drawsOn }, drawn) {
   const waiting = drawsOn.filter((number) => drawn.get(number)?.tick.v !== 'soft');
-  const call = drawsOn.some((number) => drawn.get(number)?.call === true);
-  if (waiting.length === 0) return { tick: soft(`Draws on ${listed(drawsOn)}, ${drawsOn.length === 1 ? 'which carries' : 'each carrying'} Claude's tick`), call };
-  return { tick: open(`Draws on ${listed(waiting)}, which ${waiting.length === 1 ? 'waits' : 'wait'} on you`), call };
+  if (waiting.length === 0) return assessed(soft(`Draws on ${listed(drawsOn)}, ${drawsOn.length === 1 ? 'which carries' : 'each carrying'} Claude's tick`));
+  return assessed(open(`Draws on ${listed(waiting)}, which ${waiting.length === 1 ? 'waits' : 'wait'} on you`));
 }
 
 /**
- * Claude's tick on each line, by number, and the numbers of the lines
- * resting on a call of Claude's.
- * @param {UnitView} view @param {Line[]} lines @returns {{ticks: Map<string, Tick>, calls: Set<string>}}
+ * Claude's tick on each line, by number, and the lines the ticks find
+ * resting on a call of Claude's or left to the builder.
+ * @param {UnitView} view @param {Line[]} lines @returns {Drawn & {ticks: Map<string, Tick>}}
  */
 function lineTicks(view, lines) {
-  /** @type {Map<string, {tick: Tick, call: boolean}>} */
+  /** @type {Map<string, Assessed>} */
   const drawn = new Map();
   for (const line of lines) if (line.kind === 'statement' || line.kind === 'screen') drawn.set(line.number, citedTick(view, line));
   for (const line of lines) if (line.kind === 'scenario') drawn.set(line.number, scenarioTick(line, drawn));
+  const numbers = (/** @type {'call'|'builder'} */ as) => new Set([...drawn].filter(([, line]) => line[as]).map(([number]) => number));
   return {
-    ticks: new Map(lines.filter(({ number }) => drawn.has(number)).map(({ number }) => [number, /** @type {{tick: Tick}} */ (drawn.get(number)).tick])),
-    calls: new Set([...drawn].filter(([, { call }]) => call).map(([number]) => number)),
+    ticks: new Map(lines.filter(({ number }) => drawn.has(number)).map(({ number }) => [number, /** @type {Assessed} */ (drawn.get(number)).tick])),
+    calls: numbers('call'),
+    builders: numbers('builder'),
   };
 }
 
@@ -233,8 +244,8 @@ function specPage(cwd, unit, warnings = []) {
   const text = readSpec(cwd, unit);
   const reading = specReading(text);
   if (reading.faults.length > 0) throw new Error(reading.faults.join('\n'));
-  const { ticks, calls } = withUnitEntries(cwd, unit, warnings, (view) => lineTicks(view, reading.lines));
-  return { ...pageOf(text, reading, calls), ticks: new Map([...ticks].map(([number, tick]) => [lineId(number), tick])) };
+  const { ticks, ...drawn } = withUnitEntries(cwd, unit, warnings, (view) => lineTicks(view, reading.lines));
+  return { ...pageOf(text, reading, drawn), ticks: new Map([...ticks].map(([number, tick]) => [lineId(number), tick])) };
 }
 
 module.exports = { HARD_TO_UNDO, lineId, fingerprint, pageOf, lineTicks, specPage };

@@ -39,7 +39,7 @@ const { specStanding, specEntryRefusal } = require('./spec-entry.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
-const { heldNumberFaults } = require('./spec-review.cjs');
+const { heldNumberFaults, holdNumbers } = require('./spec-review.cjs');
 
 const SPEC_USAGE = 'spec land <work-unit>';
 
@@ -121,6 +121,7 @@ function landSpec(cwd, unit) {
   const invented = inventedLines(cwd, unit, lines, warnings);
   const changed = changedSections(landed, text);
   const outcome = refusing(() => commitStateScoped(cwd, rel, `spec(${unit}): landed`, { kept: logLinks(root, [rel]) }));
+  holdNumbers(cwd, unit, landed, lines);
   /** @type {Landed} */
   const result = { unit, statements: lines.filter(({ kind }) => kind === 'statement').length, invented, changed, committed: outcome.committed };
   warnings.push(...outcome.warnings);
