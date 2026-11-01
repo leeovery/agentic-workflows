@@ -11,7 +11,7 @@
 // call and never kept or marked — the person's questions on the ledger's map
 // (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
 // screen of `spec.md` traced, the cut against `spec.md`, what a phase
-// relies on — the review settled is test-engine-spec-review.cjs's;
+// relies on — the review settled is test-engine-spec-review-settled.cjs's;
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation

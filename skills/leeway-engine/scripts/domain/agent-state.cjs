@@ -35,13 +35,16 @@
 // spec's entry reads for the agents it was left with. A spec review's row is
 // bound, as its brief is issued, to the land of the spec it reviews
 // (spec-passes.cjs), `land` on its row. Its report is taken in only as it
-// reads (spec-report.cjs): one that does not is refused at the scan that
-// would take it in, the refusal on its row, `refused`, and the row closed,
-// never reported. It is acknowledged with exactly its report's findings, and
+// reads (spec-report.cjs), the findings it read kept on its row,
+// `report_findings`, which every later read takes in place of the report:
+// one that does not read is refused where it would be taken in, the refusal
+// on its row, `refused`, and the row closed, never reported. It is
+// acknowledged with exactly the findings its report was taken in with, and
 // never incorporated between its report and that acknowledgement, so a
 // finding is declined only where its pass was acknowledged with it and then
-// incorporated. A row incorporated while in flight is closed unread,
-// `abandoned` on its row, and a report landing after is never taken in.
+// incorporated. A row incorporated while in flight with no report is closed
+// unread: a report landing after is never taken in, since only a row in
+// flight is.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -54,7 +57,7 @@ const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../ker
 const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { markOf, lineOf, movesSince, lastDecisionLine } = require('./ledger-moves.cjs');
 const { pairProblem } = require('./lenses.cjs');
-const { reportFindings, reportFault } = require('./spec-report.cjs');
+const { readReport } = require('./spec-report.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -134,7 +137,7 @@ function loadState(cwd, workUnit, phase, topic) {
   if (!parsed.agents || typeof parsed.agents !== 'object') parsed.agents = {};
   for (const [id, row] of Object.entries(parsed.agents)) {
     if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)
-      || ('findings' in row && !Array.isArray(row.findings)) || ('surfaced' in row && !Array.isArray(row.surfaced))) {
+      || ['findings', 'surfaced', 'report_findings'].some((list) => list in row && !Array.isArray(row[list]))) {
       throw new Error(`Corrupt agent state at ${file}: row "${id}" is not a valid agent row`);
     }
   }
@@ -488,21 +491,24 @@ function contentFileExists(row, cwd, workUnit) {
   }
 }
 
-/** A row's report as written, null where none is. @param {any} row @param {string} cwd @param {string} workUnit @returns {string|null} */
-function reportOf(row, cwd, workUnit) {
-  return contentFileExists(row, cwd, workUnit) ? fs.readFileSync(path.join(agentDir(cwd, workUnit, row.phase, row.topic), `${row.id}.md`), 'utf8') : null;
-}
-
-/** Whether a spec review's report is in and reads. @param {any} row @param {string} cwd @param {string} workUnit */
-function specReportIn(row, cwd, workUnit) {
-  const report = reportOf(row, cwd, workUnit);
-  return report !== null && reportFault(report) === null;
-}
-
-/** Close a row still in flight, so a report landing after is never taken in. @param {any} row */
-function abandon(row) {
+/**
+ * Take a spec review's report in, its row in flight and its report on
+ * disk: where it reads, the findings it holds kept on its row and the row
+ * pending; where it does not, what does not read kept on its row and the
+ * row closed. Answers the refusal, said with its way on, null where it
+ * reads.
+ * @param {any} row @param {string} cwd @param {string} workUnit @returns {string|null}
+ */
+function takeInReport(row, cwd, workUnit) {
+  const read = readReport(fs.readFileSync(path.join(agentDir(cwd, workUnit, row.phase, row.topic), `${row.id}.md`), 'utf8'));
+  if ('findings' in read) {
+    row.report_findings = read.findings;
+    row.status = 'pending';
+    return null;
+  }
+  row.refused = read.fault;
   row.status = 'incorporated';
-  row.abandoned = true;
+  return `${row.id}'s report does not read as a spec review: ${read.fault} — it is set aside unread; dispatch another pass, and its brief carries this refusal`;
 }
 
 /** @param {any} row */
@@ -580,9 +586,9 @@ function runningAgents(cwd, workUnit, phase, topic) {
  * answer with the snapshot the surfacing protocol reads — the rows grouped
  * by state. Which row and which finding to take next is the protocol's
  * judgment, made from lane order and what the conversation just touched.
- * A spec review whose report does not read is closed instead, with the
- * refusal, answered under `refused` with the way on: another pass, its brief
- * carrying the refusal.
+ * A spec review's report is taken in as it reads; one that does not is
+ * closed instead, with the refusal, answered under `refused` with the way
+ * on: another pass, its brief carrying the refusal.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  */
 function scanAgents(cwd, workUnit, phase, topic) {
@@ -598,16 +604,14 @@ function scanAgents(cwd, workUnit, phase, topic) {
     /** @type {{id: string, refusal: string}[]} */
     const refused = [];
     for (const row of rows) {
-      if (row.status === 'in-flight' && contentFileExists(row, cwd, workUnit)) {
-        const fault = row.kind === 'spec-review' ? reportFault(/** @type {string} */ (reportOf(row, cwd, workUnit))) : null;
-        if (fault === null) row.status = 'pending';
-        else {
-          row.status = 'incorporated';
-          row.refused = fault;
-          refused.push({ id: row.id, refusal: `${row.id}'s report does not read as a spec review: ${fault} — it is set aside unread; dispatch another pass, and its brief carries this refusal` });
-        }
-        promoted = true;
+      if (row.status !== 'in-flight' || !contentFileExists(row, cwd, workUnit)) continue;
+      promoted = true;
+      if (row.kind !== 'spec-review') {
+        row.status = 'pending';
+        continue;
       }
+      const refusal = takeInReport(row, cwd, workUnit);
+      if (refusal !== null) refused.push({ id: row.id, refusal });
     }
     if (promoted) saveState(cwd, workUnit, phase, topic, state);
 
@@ -632,8 +636,8 @@ function scanAgents(cwd, workUnit, phase, topic) {
 /**
  * Acknowledge a pending row: record the finding ids read from the content
  * file. An empty list is legal — a clean report incorporates immediately. A
- * spec review is acknowledged with exactly its report's findings, so
- * `--clean` is refused while its report holds any.
+ * spec review is acknowledged with exactly the findings its report was
+ * taken in with, so `--clean` is refused while it holds any.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id @param {{findings: string[]}} opts
  */
@@ -656,7 +660,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
     if (row.status !== 'pending') {
       throw new Error(`Agent "${id}" is ${row.status} — only a pending row acknowledges (run \`agent scan\` to promote a finished agent)`);
     }
-    if (row.kind === 'spec-review') requireReportFindings(row, cwd, workUnit, findings);
+    if (row.kind === 'spec-review') requireReportFindings(row, findings);
     row.findings = findings;
     row.status = findings.length === 0 ? 'incorporated' : 'acknowledged';
     saveState(cwd, workUnit, phase, topic, state);
@@ -665,12 +669,12 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
 }
 
 /**
- * Refused unless `findings` are exactly the findings of the spec review's
- * report, in any order.
- * @param {any} row @param {string} cwd @param {string} workUnit @param {string[]} findings
+ * Refused unless `findings` are exactly the findings the spec review's
+ * report was taken in with, in any order.
+ * @param {any} row @param {string[]} findings
  */
-function requireReportFindings(row, cwd, workUnit, findings) {
-  const held = reportFindings(/** @type {string} */ (reportOf(row, cwd, workUnit))).map(({ id }) => id);
+function requireReportFindings(row, findings) {
+  const held = row.report_findings.map((/** @type {{id: string}} */ { id }) => id);
   if (held.length === findings.length && held.every((id) => findings.includes(id))) return;
   const holds = held.length === 0 ? 'no finding' : held.join(', ');
   throw new Error(`Agent "${row.id}" is a spec review whose report holds ${holds} — it is acknowledged with exactly its report's findings${held.length === 0 ? ', with --clean' : ''}`);
@@ -723,8 +727,10 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
  * consumed without surfacing (a perspective feeding synthesis); from
  * in-flight it abandons a row whose session died before the agent returned,
  * so a report landing after is never taken in. A spec review whose report
- * is in is refused until it is acknowledged: its findings are read before
- * any is declined.
+ * is in is refused until it is acknowledged, its findings read before any
+ * is declined: pending, or in flight with a report that reads; one in
+ * flight whose report does not read is refused as a scan refuses it, the
+ * refusal answered under `refusal`.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id
  */
@@ -738,13 +744,13 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
     if (row.status === 'incorporated') {
       throw new Error(`Agent "${id}" is already incorporated`);
     }
-    if (row.kind === 'spec-review' && (row.status === 'pending' || (row.status === 'in-flight' && specReportIn(row, cwd, workUnit)))) {
+    const refusal = row.kind === 'spec-review' && row.status === 'in-flight' && contentFileExists(row, cwd, workUnit) ? takeInReport(row, cwd, workUnit) : null;
+    if (row.kind === 'spec-review' && row.status === 'pending') {
       throw new Error(`Agent "${id}" is a spec review whose report is in, not yet acknowledged — agent ack records its findings first (agent scan takes the report in)`);
     }
-    if (row.status === 'in-flight') abandon(row);
-    else row.status = 'incorporated';
+    row.status = 'incorporated';
     saveState(cwd, workUnit, phase, topic, state);
-    return { work_unit: workUnit, phase, topic, ...publicRow(row) };
+    return { work_unit: workUnit, phase, topic, ...publicRow(row), ...(refusal === null ? {} : { refusal }) };
   });
 }
 
@@ -760,7 +766,7 @@ function closeInFlight(cwd, workUnit, phase, topic) {
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const closing = Object.values(state.agents).filter((row) => row.status === 'in-flight' && !contentFileExists(row, cwd, workUnit));
-    for (const row of closing) abandon(row);
+    for (const row of closing) row.status = 'incorporated';
     if (closing.length > 0) saveState(cwd, workUnit, phase, topic, state);
     return closing.map((row) => row.id);
   });
@@ -821,20 +827,8 @@ function bindSpec(cwd, workUnit, id, land) {
 
 /** @typedef {import('./spec-report.cjs').ReportFinding} ReportFinding */
 
-/**
- * The findings of a pass's report as the store took it in, null where a
- * scan has not, or it no longer reads.
- * @param {any} row @param {string} cwd @param {string} workUnit @returns {ReportFinding[]|null}
- */
-function passFindings(row, cwd, workUnit) {
-  const report = row.status === 'in-flight' ? null : reportOf(row, cwd, workUnit);
-  if (report === null) return null;
-  try {
-    return reportFindings(report);
-  } catch {
-    return null;
-  }
-}
+/** Whether a spec review's report was taken in. @param {any} row */
+const takenIn = (row) => Array.isArray(row.report_findings);
 
 /** A unit's spec reviews, in dispatch order. @param {string} cwd @param {string} workUnit */
 const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit, UNIT_PHASE, workUnit))
@@ -842,31 +836,42 @@ const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit,
   .sort((a, b) => String(a.created).localeCompare(String(b.created)) || a.id.localeCompare(b.id));
 
 /**
- * The unit's review passes, in the order they were dispatched: each spec
- * review bound to a land and neither abandoned nor refused, with its
- * report's file, whether a scan took the report in, its findings as the
- * report gives them, its status, and the findings it was acknowledged with
- * and surfaced. Read as a derivation reads, tolerant of the store.
+ * The unit's review passes whose report was taken in, in the order they
+ * were dispatched, each bound to a land: with its report's file, the
+ * findings it was taken in with, its status, and the findings it was
+ * acknowledged with and surfaced. A pass refused, or closed in flight, is
+ * never taken in. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit
- * @returns {{id: string, land: Landed, file: string, reported: boolean, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[]}[]}
+ * @returns {{id: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[]}[]}
  */
-function reviewPasses(cwd, workUnit) {
+function reportedPasses(cwd, workUnit) {
   const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
   return specReviewRows(cwd, workUnit)
-    .filter((row) => row.land !== undefined && row.abandoned !== true && row.refused === undefined)
-    .map((row) => {
-      const findings = passFindings(row, cwd, workUnit);
-      return {
-        id: row.id,
-        land: row.land,
-        file: path.join(dir, `${row.id}.md`),
-        reported: findings !== null,
-        findings: findings ?? [],
-        status: row.status,
-        acknowledged: Array.isArray(row.findings) ? row.findings : [],
-        surfaced: Array.isArray(row.surfaced) ? row.surfaced : [],
-      };
-    });
+    .filter((row) => row.land !== undefined && takenIn(row))
+    .map((row) => ({
+      id: row.id,
+      land: row.land,
+      file: path.join(dir, `${row.id}.md`),
+      findings: row.report_findings,
+      status: row.status,
+      acknowledged: Array.isArray(row.findings) ? row.findings : [],
+      surfaced: Array.isArray(row.surfaced) ? row.surfaced : [],
+    }));
+}
+
+/**
+ * The unit's review passes still in flight, bound to a land, in the order
+ * they were dispatched: each with its report on disk for a scan to take in,
+ * its agent running, or lost with the process that dispatched it.
+ * @param {string} cwd @param {string} workUnit @returns {{id: string, stands: 'landed'|'running'|'lost'}[]}
+ */
+function passesInFlight(cwd, workUnit) {
+  const startOf = startTimeReader();
+  /** @param {any} row @returns {'landed'|'running'|'lost'} */
+  const standing = (row) => (contentFileExists(row, cwd, workUnit) ? 'landed' : ownerAlive(row, startOf) ? 'running' : 'lost');
+  return specReviewRows(cwd, workUnit)
+    .filter((row) => row.status === 'in-flight' && row.land !== undefined)
+    .map((row) => ({ id: row.id, stands: standing(row) }));
 }
 
 /**
@@ -876,7 +881,7 @@ function reviewPasses(cwd, workUnit) {
  */
 function refusedReports(cwd, workUnit) {
   const rows = specReviewRows(cwd, workUnit);
-  const since = rows.reduce((last, row, at) => (row.status !== 'in-flight' && row.abandoned !== true && row.refused === undefined ? at : last), -1);
+  const since = rows.reduce((last, row, at) => (takenIn(row) ? at : last), -1);
   return rows.slice(since + 1).flatMap((row) => (typeof row.refused === 'string' ? [`${row.id}: ${row.refused}`] : []));
 }
 
@@ -900,6 +905,7 @@ module.exports = {
   dispatchedRows,
   bindQuestion,
   bindSpec,
-  reviewPasses,
+  reportedPasses,
+  passesInFlight,
   refusedReports,
 };

@@ -16,10 +16,13 @@
 // longer there. A section's order, and the blank lines between sections,
 // change none (E4).
 //
-// The passes it reads as reported are those whose report a scan of the agent
-// store took in (agent-state.cjs), reading as a spec review's report reads
-// (spec-report.cjs); a pass refused, or abandoned in flight, is ignored
-// whole, its report never read, whenever it lands.
+// The passes it reads as reported are those whose report the agent store
+// took in (agent-state.cjs), reading as a spec review's report reads
+// (spec-report.cjs), each with the findings it was taken in with, never its
+// report read again; a pass refused, or abandoned in flight, is ignored
+// whole, its report never read, whenever it lands. A pass still in flight,
+// bound to a land, holds the review until its report is taken in or it is
+// abandoned.
 //
 // What waits, one function (`outstanding`):
 // - for the writer: every current entry made at the unit's own level at the
@@ -48,9 +51,9 @@
 //   is open (11.7.2); it holds the writer's brief until the person answers.
 // - The review has settled where (a) the latest reported pass reviewed the
 //   spec as it stands — nothing changed since its land — (c) no gap waits,
-//   and (d) nothing waits, for the writer or to be surfaced. A writer taking
-//   the findings and landing the spec unchanged settles it; one changing a
-//   section sends it to a pass.
+//   and (d) nothing waits: no pass in flight, nothing for the writer and
+//   nothing to be surfaced. A writer taking the findings and landing the
+//   spec unchanged settles it; one changing a section sends it to a pass.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -62,7 +65,7 @@ const { specSections, scenarioBlocks, specIntroduction, readSpec } = require('./
 const { ID_FACTS, foldLedger, factsOf, questionStands } = require('./ledger-fold.cjs');
 const { markOf, lineOf } = require('./ledger-moves.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
-const { UNIT_PHASE, reviewPasses } = require('./agent-state.cjs');
+const { UNIT_PHASE, reportedPasses, passesInFlight } = require('./agent-state.cjs');
 
 /** The address of a spec's title and introduction among its sections. */
 const INTRODUCTION = 'introduction';
@@ -70,7 +73,7 @@ const INTRODUCTION = 'introduction';
 /** A spec's print: each section's hash by address, and an order-free digest of them. @typedef {{digest: string, sections: Record<string, string>}} Print */
 /** What a land keeps: the print of the spec it landed, and the ledger's mark at the first land. @typedef {Print & {first_mark: string|null}} Landed */
 /** A take: the ledger's mark as the writer's brief was issued, and every pass reported by then. @typedef {{ledger_mark: string|null, passes: string[]}} Taken */
-/** @typedef {ReturnType<typeof reviewPasses>[number]} Pass */
+/** @typedef {ReturnType<typeof reportedPasses>[number]} Pass */
 /** A finding waiting to be surfaced: its pass, its id and lane, and whether its pass is acknowledged. @typedef {{pass: string, id: string, lane: string, acknowledged: boolean}} Finding */
 /** What waits: the entries' full ids and the passes, for the writer, and the findings to be surfaced, each in order. @typedef {{entries: string[], passes: Pass[], surface: Finding[]}} Outstanding */
 
@@ -181,9 +184,6 @@ function lastTaken(cwd, unit) {
   return isObject(read) && Array.isArray(read.passes) ? /** @type {Taken} */ (read) : null;
 }
 
-/** The passes whose report is in, in the order they were dispatched. @param {string} cwd @param {string} unit */
-const reportedPasses = (cwd, unit) => reviewPasses(cwd, unit).filter(({ reported }) => reported);
-
 /** The latest pass whose report is in, or none. @param {string} cwd @param {string} unit @returns {Pass|undefined} */
 const latestReported = (cwd, unit) => reportedPasses(cwd, unit).pop();
 
@@ -277,11 +277,18 @@ function surfacing({ pass, id, lane, acknowledged }, at, all) {
   return `${first && !acknowledged ? `${pass} acknowledged, then ` : ''}the ${lane} ${id} of ${pass} ${lane === 'gap' ? 'raised' : 'replaced'}`;
 }
 
+/** A pass in flight's way on, by where it stands. @type {Readonly<Record<'landed'|'running'|'lost', (id: string) => string>>} */
+const IN_FLIGHT = Object.freeze({
+  landed: (id) => `${id}'s report is in, and agent scan takes it in`,
+  running: (id) => `${id} is still running, and the review waits for its report`,
+  lost: (id) => `${id} was lost with the process that dispatched it, and agent incorporate abandons it`,
+});
+
 /**
  * What the review waits on, past a pass that reviewed the spec as it
  * stands, said as the way on; null where nothing waits: a gap waiting on
- * the person; else the findings waiting to be surfaced, and what waits for
- * the writer.
+ * the person; else each pass in flight, the findings waiting to be
+ * surfaced, and what waits for the writer.
  * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {string|null}
  */
 function waitingOn(cwd, unit, warnings) {
@@ -293,6 +300,7 @@ function waitingOn(cwd, unit, warnings) {
     ...(entries.length === 0 ? [] : [`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} made at the spec`]),
   ];
   const ways = [
+    ...passesInFlight(cwd, unit).map(({ id, stands }) => IN_FLIGHT[stands](id)),
     ...(surface.length === 0 ? [] : [`the review's findings wait to be surfaced: ${surface.map(surfacing).join(', ')}`]),
     ...(forWriter.length === 0 ? [] : [`the writer's brief carries what waits for it, and the spec's land takes it: ${forWriter.join(', and ')}`]),
   ];
@@ -301,8 +309,8 @@ function waitingOn(cwd, unit, warnings) {
 
 /**
  * Whether the unit's review has settled: the latest pass that reported
- * reviewed the spec as it stands, and nothing waits on the person, for the
- * writer or to be surfaced.
+ * reviewed the spec as it stands, no pass is in flight, and nothing waits
+ * on the person, for the writer or to be surfaced.
  * @param {string} cwd @param {string} unit @param {string[]} warnings
  */
 function reviewSettled(cwd, unit, warnings) {

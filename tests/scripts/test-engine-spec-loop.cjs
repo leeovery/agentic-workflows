@@ -7,28 +7,36 @@
 // events — the writer's brief, alone or landed; spec.md edited, a statement,
 // the introduction, an area added, removed or moved, and landed or left
 // written; a pass dispatched, briefed and reported, clean or with findings
-// in each lane, its report malformed, or abandoned in flight and reporting
-// late with gap and fact findings; its report acknowledged with its
-// findings, acknowledged clean though it holds some or incorporated before
-// its acknowledgement, each refused; incorporated once acknowledged; a
-// finding surfaced; an entry made at the spec, an asset linked to one, a gap
-// asked and answered; the way on taken — each walk then following the way
-// on until the review settles. After every step the invariants, each read
-// from the events the walk performed and what the briefs carried, never from
-// the store's status:
+// in each lane, its findings' text quoting headings in fenced blocks or not,
+// its report malformed, or abandoned in flight and reporting late with gap
+// and fact findings; a pass left running, its owner alive or lost, then
+// reporting or abandoned; its report acknowledged with its findings,
+// acknowledged clean though it holds some or incorporated before its
+// acknowledgement, each refused; incorporated once acknowledged; a finding
+// surfaced; an entry made at the spec, an asset linked to one, a gap asked
+// and answered; the way on taken — each walk then following the way on until
+// the review settles. After every step the invariants, each read from the
+// events the walk performed and what the briefs carried, never from the
+// store's status:
 //
 // - Never settled with something unread: where ready to build's
-//   `review-settled` is done, every entry the walk made at the spec was
-//   carried by a writer's brief a land followed; every finding of a pass
-//   taken in — neither abandoned nor refused — is dealt with: a `rewrite`
-//   finding's report carried by a writer's brief a land followed, a `gap` or
-//   `fact` finding acknowledged by id and then surfaced, or its pass
-//   incorporated after that acknowledgement; and the latest pass taken in
-//   reviewed the spec as it stands.
+//   `review-settled` is done, no pass the walk briefed is still in flight;
+//   every entry the walk made at the spec was carried by a writer's brief a
+//   land followed; every finding of a pass whose report the walk wrote in
+//   the grammar, and did not abandon, is dealt with: a `rewrite` finding's
+//   report carried by a writer's brief a land followed, a `gap` or `fact`
+//   finding acknowledged by id and then surfaced, or its pass incorporated
+//   after that acknowledgement; and the latest such pass reviewed the spec as
+//   it stands.
+// - A report is refused exactly where the walk wrote it outside the grammar,
+//   and neither the way on nor a writer's brief names a pass the walk wrote
+//   so, or abandoned.
 // - What waits is what the writer is shown: the entries the way on counts,
 //   and the passes it names, are those the writer's next brief carries.
 // - Never stuck: where it is open, the way on names an action the walk
-//   takes, and taken, the store accepts it; followed, it settles.
+//   takes, and taken, the store accepts it; followed, it settles. A pass in
+//   flight it names as running is one the walk left running with its owner
+//   alive, and one it names as lost, one whose owner is not.
 //
 // The walks' coverage is pinned: across the seeds, every event occurs, and
 // the review settles before the walk is drained.
@@ -68,22 +76,39 @@ const AT_SPEC = `${UNIT}.specification`;
 const STORE = Object.freeze([UNIT, 'specification', UNIT]);
 const LANES = Object.freeze([[], ['rewrite'], ['gap'], ['fact'], ['gap', 'fact'], ['rewrite', 'gap'], ['rewrite', 'gap', 'fact']]);
 const LATE = Object.freeze([['gap', 'fact'], ['rewrite', 'gap', 'fact']]);
-/** Each way a report's finding is written outside the grammar: its heading and its lane line. @type {readonly ((id: string, lane: string) => string[])[]} */
+/** The Claude process a dispatch names as its owner: this one, which runs, or none, never verified alive. */
+const OWNERS = Object.freeze({ alive: Object.freeze({ CLAUDE_PID: String(process.pid) }), lost: Object.freeze({ CLAUDE_PID: undefined }) });
+/** A finding's lines: its heading, its lane line and its text. @param {string} heading @param {string} lane @param {string[]} [text] */
+const finding = (heading, lane, text = ['The spec and the records part here.']) => [heading, '', lane, '', ...text];
+/** Each way a report's finding is written in the grammar: plainly, or with a measurement and a section quoted, fenced. @type {readonly ((id: string, lane: string) => string[])[]} */
+const WELL_FORMED = Object.freeze([
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['Re-run:', '', '```sh', '# count the tables', 'ls tables | wc -l', '```', '', '```markdown', '## 2. Refunds', '', '### 2.1 Where', '```']),
+]);
+/** Each way a report's finding is written outside the grammar. @type {readonly ((id: string, lane: string) => string[])[]} */
 const MALFORMED = Object.freeze([
-  (id, lane) => [`### ${id}: a ${lane} finding`, `**Lane:** \`${lane}\``],
-  (id, lane) => [`### ${id}: a ${lane} finding`, `**Lane:** ${lane[0].toUpperCase()}${lane.slice(1)}`],
-  (id, lane) => [`### ${id}: a ${lane} finding`, `**Lane**: ${lane}`],
-  (id, lane) => [`#### ${id}: a ${lane} finding`, `**Lane:** ${lane}`],
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** \`${lane}\``),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane[0].toUpperCase()}${lane.slice(1)}`),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane**: ${lane}`),
+  (id, lane) => finding(`#### ${id}: a ${lane} finding`, `**Lane:** ${lane}`),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['The spec reads:', '', '## 2. Refunds']),
+  (id, lane) => finding(`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`, ['Re-run:', '', '```sh', '# count the tables']),
 ]);
 /** Every event a walk takes, pinned to occur across the seeds. */
 const EVENTS = Object.freeze([
   'writer brief', 'writer brief, landed', 'land', 'spec: a statement edited', 'spec: the introduction edited', 'spec: an area added',
-  'spec: an area removed', 'spec: areas moved', 'pass', 'pass, its report malformed', 'pass abandoned, reporting late', 'ack',
-  'ack --clean, refused', 'incorporate before its ack, refused', 'incorporate', 'surface', 'entry at the spec',
-  'asset linked to an entry at the spec', 'gap asked', 'gap answered', 'the way on taken',
+  'spec: an area removed', 'spec: areas moved', 'pass', 'pass, its report malformed', 'pass abandoned, reporting late', 'pass left running',
+  'pass lost with its owner', 'a pass in flight reports', 'a pass in flight abandoned', 'ack', 'ack --clean, refused',
+  'incorporate before its ack, refused', 'incorporate', 'surface', 'entry at the spec', 'asset linked to an entry at the spec', 'gap asked',
+  'gap answered', 'the way on taken',
 ]);
-/** The walks' seeds, chosen among sixty so that together they take every event and each of the loop's past holes fails one: a pass read leniently (8, 17), abandoned and read when it reports (2), or incorporated or acknowledged clean unread (7, 33, 42); a take recorded at the brief (8) or marked at the land (33); a finding surfaced and waiting still (7); an acknowledgement taken with other ids than its report holds (33). */
-const SEEDS = Object.freeze([2, 7, 8, 17, 33, 42]);
+/**
+ * The walks' seeds, chosen among sixty: together they take every event, one settles before it is drained, and each of the
+ * loop's holes put back fails one — a finding's fenced text read as headings, the section ended at one (35, 48), a pass in
+ * flight holding nothing (5, 48), a take marked at the land (35), every event at the spec counted (2), a surfaced finding
+ * waiting still (35), an acknowledgement before the report's ids or none (35).
+ */
+const SEEDS = Object.freeze([1, 2, 5, 35, 48]);
 const STEPS = 12;
 /** The most steps a drained walk follows the way on before it must have settled. */
 const DRAIN = 16;
@@ -156,14 +181,8 @@ function specOf({ take, intro, extras, swapped }) {
 /** A pass's report, one finding per lane given, each written as `form` writes it. @param {string} id @param {string[]} lanes @param {(id: string, lane: string) => string[]} form */
 const reportOf = (id, lanes, form) => [
   `# Spec Review — ${id}`, '', '## Findings', '',
-  ...(lanes.length === 0 ? ['None identified.'] : lanes.flatMap((lane, at) => {
-    const [heading, laneLine] = form(`F${at + 1}`, lane);
-    return [heading, '', laneLine, '', 'The spec and the records part here.', ''];
-  })),
+  ...(lanes.length === 0 ? ['None identified.'] : lanes.flatMap((lane, at) => [...form(`F${at + 1}`, lane), ''])),
 ].join('\n');
-
-/** A finding written as the grammar reads it. @param {string} id @param {string} lane */
-const WELL_FORMED = (id, lane) => [`### ${id}: a ${lane} finding`, `**Lane:** ${lane}`];
 
 /** The section a heading opens in a brief, to the next heading at its level. @param {string} brief @param {string} heading */
 function section(brief, heading) {
@@ -183,13 +202,17 @@ function reviewable() {
 }
 
 /**
- * A pass as the walk performed it: its findings' lanes; `taken` while the
- * store took it in, `ignored` once abandoned or refused; the ids the walk
- * acknowledged it with, null before, and surfaced; whether it is closed, and
- * whether the walk closed it after its acknowledgement, declining what it
- * did not surface; and the spec it reviewed.
- * @typedef {{id: string, lanes: string[], state: 'taken'|'ignored', acknowledged: Set<string>|null, surfaced: Set<string>, closed: boolean, declined: boolean, reviewed: string}} Pass
+ * A pass as the walk performed it: its report's file; its findings' lanes;
+ * `running` while the walk left it in flight, its owner alive or lost;
+ * `taken` once the walk wrote its report in the grammar, `ignored` once it
+ * wrote it outside or abandoned the pass; the ids the walk acknowledged it
+ * with, null before, and surfaced; whether it is closed, and whether the
+ * walk closed it after its acknowledgement, declining what it did not
+ * surface; and the spec it reviewed.
+ * @typedef {{id: string, file: string, lanes: string[], state: 'running'|'taken'|'ignored', owner: 'alive'|'lost', acknowledged: Set<string>|null, surfaced: Set<string>, closed: boolean, declined: boolean, reviewed: string}} Pass
  */
+
+/** @typedef {'pass'|'malformed'|'abandoned'|'running'|'lost'} Dispatch how the walk dispatches a pass, and what becomes of its report */
 
 /** @typedef {[string, () => void, string?]} Step an event's name, what it does, and the pass it is on */
 
@@ -240,6 +263,7 @@ class Walk {
       entries: new Set([...section(text, 'Written since your last brief').matchAll(/^- (\S+) /gm)].map(([, short]) => short)),
       passes: new Set([...section(text, 'The review\'s findings').matchAll(/^# Spec Review — (\S+)$/gm)].map(([, pass]) => pass)),
     };
+    for (const pass of carried.passes) this.passNamed(pass);
     const counted = /(\d+) entr(?:y|ies) made at the spec/.exec(named);
     const reports = /the report of (.+?)(?:, and \d+ entr(?:y|ies) made at the spec)?(?:;|$)/.exec(named);
     assert.deepStrictEqual(
@@ -266,21 +290,33 @@ class Walk {
     writeState(dir, SPEC, this.written);
   }
 
-  /** @param {'pass'|'malformed'|'abandoned'} kind @param {readonly string[]} [lanes] */
+  /** @param {Dispatch} kind @param {readonly string[]} [lanes] */
   review(kind, lanes) {
-    const { id, file } = ok(dir, ['agent', 'dispatch', ...STORE, '--kind', 'spec-review']);
+    const owner = kind === 'running' ? 'alive' : 'lost';
+    const { id, file } = ok(dir, ['agent', 'dispatch', ...STORE, '--kind', 'spec-review'], { env: OWNERS[owner] });
     ok(dir, ['brief', 'spec-reviewer', UNIT, '--agent', id], { env: SESSION });
-    const given = [...(lanes ?? this.pick(kind === 'pass' ? LANES : kind === 'malformed' ? LANES.slice(2) : LATE))];
+    const given = [...(lanes ?? this.pick(kind === 'malformed' ? LANES.slice(2) : kind === 'abandoned' ? LATE : LANES))];
     /** @type {Pass} */
-    const pass = { id, lanes: given, state: 'taken', acknowledged: null, surfaced: new Set(), closed: false, declined: false, reviewed: this.landed };
-    if (kind === 'abandoned') {
-      ok(dir, ['agent', 'incorporate', ...STORE, id]);
-      pass.state = 'ignored';
-    }
-    fs.writeFileSync(file, `${reportOf(id, given, kind === 'malformed' ? this.pick(MALFORMED) : WELL_FORMED)}\n`);
-    const { refused = [] } = ok(dir, ['agent', 'scan', ...STORE]);
-    if (refused.some((/** @type {{id: string}} */ refusal) => refusal.id === id)) pass.state = 'ignored';
+    const pass = { id, file, lanes: given, state: 'running', owner, acknowledged: null, surfaced: new Set(), closed: false, declined: false, reviewed: this.landed };
     this.passes.push(pass);
+    if (kind === 'running' || kind === 'lost') return;
+    if (kind === 'abandoned') this.abandon(pass);
+    this.report(pass, kind === 'malformed');
+  }
+
+  /** A pass's report written, in the grammar or outside it, and a scan, which refuses it exactly where it is written outside. @param {Pass} pass @param {boolean} [malformed] */
+  report(pass, malformed = false) {
+    fs.writeFileSync(pass.file, `${reportOf(pass.id, pass.lanes, this.pick(malformed ? MALFORMED : WELL_FORMED))}\n`);
+    const { refused = [] } = ok(dir, ['agent', 'scan', ...STORE]);
+    const isRefused = refused.some((/** @type {{id: string}} */ refusal) => refusal.id === pass.id);
+    assert.strictEqual(isRefused, malformed, `the scan ${isRefused ? 'refused' : 'did not refuse'} ${pass.id}, its report written ${malformed ? 'outside' : 'in'} the grammar, ${this.after}`);
+    if (pass.state === 'running') pass.state = malformed ? 'ignored' : 'taken';
+  }
+
+  /** A pass in flight incorporated, which abandons it. @param {Pass} pass */
+  abandon(pass) {
+    ok(dir, ['agent', 'incorporate', ...STORE, pass.id]);
+    pass.state = 'ignored';
   }
 
   /** @param {Pass} pass */
@@ -339,16 +375,26 @@ class Walk {
     this.gap = null;
   }
 
-  /** @param {string} id */
+  /** The pass in flight a way on names, where the walk left it running with its owner as `owner`; undefined where it did not. @param {string} id @param {'alive'|'lost'} owner */
+  inFlight(id, owner) {
+    const pass = this.passes.find((left) => left.id === id && left.state === 'running');
+    assert.ok(pass === undefined || pass.owner === owner, `the way on names ${id}, whose owner is ${pass?.owner}, as ${owner === 'alive' ? 'running' : 'lost'}, ${this.after}`);
+    return pass;
+  }
+
+  /** The pass the engine names, never one the walk abandoned or wrote outside the grammar. @param {string} id */
   passNamed(id) {
-    return this.passes.find((pass) => pass.id === id);
+    const pass = this.passes.find((named) => named.id === id);
+    assert.notStrictEqual(pass?.state, 'ignored', `the engine names ${id}, which the walk abandoned or wrote outside the grammar, ${this.after}`);
+    return pass;
   }
 
   /**
    * The step the way on names, read from the engine as it stands: the land
    * of spec.md as written; else what `waitingOn` names — the person's
-   * answer, a pass acknowledged or a finding surfaced, the writer's turn;
-   * else a pass; null where it names nothing the walk can take.
+   * answer, a pass in flight's report or its abandoning, a pass acknowledged
+   * or a finding surfaced, the writer's turn; else a pass; null where it
+   * names nothing the walk can take.
    * @param {boolean} issuable whether a pass's brief is issuable @returns {Step|null}
    */
   wayOn(issuable) {
@@ -356,6 +402,12 @@ class Walk {
     const named = waitingOn(dir, UNIT, []);
     if (named === null) return issuable ? ['pass', () => this.review('pass', [])] : null;
     if (/waits? on the person/.test(named)) return this.gap === null ? null : ['gap answered', () => this.answer()];
+    const running = /^(\S+) is still running, and the review waits for its report(?:;|$)/.exec(named);
+    const awaited = running === null ? undefined : this.inFlight(running[1], 'alive');
+    if (running !== null) return awaited === undefined ? null : ['a pass in flight reports', () => this.report(awaited), awaited.id];
+    const lost = /^(\S+) was lost with the process that dispatched it, and agent incorporate abandons it(?:;|$)/.exec(named);
+    const left = lost === null ? undefined : this.inFlight(lost[1], 'lost');
+    if (lost !== null) return left === undefined ? null : ['a pass in flight abandoned', () => this.abandon(left), left.id];
     const ack = /^the review's findings wait to be surfaced: (\S+) acknowledged, then/.exec(named);
     const ackPass = ack === null ? undefined : this.passNamed(ack[1]);
     if (ack !== null) return ackPass === undefined ? null : ['ack', () => this.ack(ackPass), ackPass.id];
@@ -368,6 +420,7 @@ class Walk {
   /** The events open to the walk now. @returns {Step[]} */
   events() {
     const { issuable, way } = this;
+    const running = this.passes.filter((pass) => pass.state === 'running');
     const taken = this.passes.filter((pass) => pass.state === 'taken');
     const unacknowledged = taken.filter((pass) => pass.acknowledged === null);
     const acknowledged = taken.filter((pass) => pass.acknowledged !== null && !pass.closed);
@@ -384,6 +437,12 @@ class Walk {
       issuable ? ['pass', () => this.review('pass')] : null,
       issuable ? ['pass, its report malformed', () => this.review('malformed')] : null,
       issuable ? ['pass abandoned, reporting late', () => this.review('abandoned')] : null,
+      issuable ? ['pass left running', () => this.review('running')] : null,
+      issuable ? ['pass lost with its owner', () => this.review('lost')] : null,
+      ...running.flatMap((pass) => /** @type {Step[]} */ ([
+        ['a pass in flight reports', () => this.report(pass), pass.id],
+        ['a pass in flight abandoned', () => this.abandon(pass), pass.id],
+      ])),
       ...unacknowledged.flatMap((pass) => /** @type {Step[]} */ ([
         ['ack', () => this.ack(pass), pass.id],
         ...(pass.lanes.length === 0 ? [] : /** @type {Step[]} */ ([['ack --clean, refused', () => this.offPath(pass, ['ack', '--clean']), pass.id]])),
@@ -423,6 +482,7 @@ class Walk {
     }
     const latest = this.passes.filter((pass) => pass.state === 'taken').pop();
     const since = latest === undefined ? null : changedSince(printOf(latest.reviewed).sections, this.written);
+    assert.deepStrictEqual(this.passes.filter((pass) => pass.state === 'running').map(({ id }) => id), [], `settled with a pass in flight, ${this.after}`);
     assert.deepStrictEqual([...this.made].filter((short) => !this.seen.entries.has(short)), [], `settled with entries no landed brief carried, ${this.after}`);
     assert.deepStrictEqual(this.undealt(), [], `settled with findings not dealt with, ${this.after}`);
     assert.ok(since !== null && since.changed.length + since.removed.length === 0, `settled on a spec the latest pass taken in did not review, ${this.after}`);

@@ -29,9 +29,9 @@
 // statement and screen of `spec.md` traced to the ledger (spec-trace.cjs), a
 // spec its grammar cannot read failing it; every part of `spec.md` drawn on
 // by a phase, directly or through its area, an area with no parts whole;
-// the review's last pass reported on `spec.md`'s print as it stands, no gap
-// it found waiting on the person and nothing it left waiting for the writer
-// (spec-passes.cjs);
+// the review's last pass reported on `spec.md`'s print as it stands, no pass
+// in flight, no gap it found waiting on the person and nothing it left
+// waiting, for the writer or to be surfaced (spec-passes.cjs);
 // what a phase relies on done — an earlier phase's close recorded, another
 // unit completed; and a directive's check passing (directives.cjs).
 // An item applies only where the unit has its step: the sweep between

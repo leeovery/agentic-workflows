@@ -35,7 +35,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 
 Write the report in two steps: the content to the brief's path with `.txt` in place of `.md`, with the Write tool, then rename it with Bash from the project root (`mv {path}.txt {path}.md`). The harness blocks a report-shaped `.md` written by a subagent, and the rename lands the report whole, so it is never read half written. If a step errors, quote the error in your status; only if the write itself fails may you return the report in your final message.
 
-The report is markdown, no frontmatter, and the engine takes it in only as it reads; one that does not is refused, unread. Each finding's heading is `### F{n}: {label}`, its id `F1`, `F2`, … in the order written, never renumbered or reused; its first line is its lane, the bare word — `**Lane:** rewrite`, `**Lane:** gap` or `**Lane:** fact` — and its text carries no heading of its own:
+The report is markdown, no frontmatter, and the engine takes it in only as it reads; one that does not is refused, unread. Each finding's heading is `### F{n}: {label}`, its id `F1`, `F2`, … in the order written, never renumbered or reused; its first line is its lane, the bare word — `**Lane:** rewrite`, `**Lane:** gap` or `**Lane:** fact` — and its text carries no heading of its own: a heading it quotes, a spec's section or a shell comment, sits in a fenced block. Findings is the report's last section:
 
 ```markdown
 # Spec Review — {the report's file name, e.g. spec-review-001}
