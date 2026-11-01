@@ -435,17 +435,15 @@ function discoverArtifacts(root, manifests) {
 
 /**
  * Why an indexed identity no longer belongs in the store, or null while it
- * may. Only positive knowledge retires: a phase the index does not read, the
- * source gone from disk, the work unit unregistered or cancelled, the
- * per-topic item gone or terminal. A work unit whose manifest could not be
- * read is evidence of nothing.
+ * may. Only positive knowledge retires: the source gone from disk, the work
+ * unit unregistered or cancelled, the per-topic item gone or terminal. A
+ * work unit whose manifest could not be read is evidence of nothing.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
  * @param {Set<string>|null} registry
  * @returns {string|null}
  */
 function retiredReason(root, entry, units, registry) {
-  if (!INDEXED_PHASES.includes(entry.phase)) return `${entry.phase} not indexed`;
   if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);

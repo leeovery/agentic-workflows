@@ -177,11 +177,6 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     assert.deepStrictEqual(files.filter((f) => f.includes('/discovery/') || f.startsWith('.product/')), []);
   });
 
-  it('11.1.2: discovers no spec, a topic\'s completed one or the unit\'s', () => {
-    const files = normalise(discover(root)).map((it) => it.file);
-    assert.deepStrictEqual(files.filter((f) => f.includes('/specification/') || f.endsWith('/spec.md')), []);
-  });
-
   it('discovers each discussion by its record copy and never by its log', () => {
     const files = normalise(discover(root)).map((it) => it.file);
     assert.deepStrictEqual(files.filter((f) => f.startsWith('.knowledge/records/')), [

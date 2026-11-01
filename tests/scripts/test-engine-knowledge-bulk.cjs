@@ -112,21 +112,6 @@ describe('engine knowledge index — the bulk index', () => {
     assert.deepStrictEqual(storedChunks(root).map((c) => c.topic), ['reopened-t']);
   });
 
-  it('never indexes a completed spec, and retires the chunks a store took from one before (11.1.2)', async () => {
-    feature('auth');
-    setItems(root, 'auth', { investigation: ['auth'], specification: ['auth'] });
-    write('auth/specification/auth/specification.md');
-    assert.strictEqual((await knowledge('index')).stdout, indexed('auth/investigation/auth.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
-
-    const db = store.loadStore(knowledgeAt(root).store);
-    const [investigation] = storedChunks(root);
-    store.insertDocument(db, { ...investigation, id: 'auth-specification-auth-001', phase: 'specification', source_file: 'auth/specification/auth/specification.md' });
-    store.saveStore(db, knowledgeAt(root).store);
-    assert.strictEqual((await knowledge('index')).stdout,
-      removed('auth/specification/auth/specification.md', 'specification not indexed') + '0 new, 0 changed, 1 removed, 1 unchanged.\n');
-    assert.deepStrictEqual(storedChunks(root).map((c) => c.phase), ['investigation']);
-  });
-
   it('--work-unit confines the index and its removals to that unit, its sibling left as it was', async () => {
     for (const name of ['alpha', 'beta']) feature(name);
     assert.strictEqual((await knowledge('index', '--work-unit', 'alpha')).stdout, indexed('alpha/investigation/alpha.md', 'new') + '1 new, 0 changed, 0 removed, 0 unchanged.\n');
