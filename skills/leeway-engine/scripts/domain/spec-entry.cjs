@@ -16,7 +16,8 @@
 // spec; the cut, by its call, once the manifest holds one; and while the
 // person's review page is open, its address and the file its marks are read
 // back to (spec-review.cjs). The entry adds approve the map, by its call,
-// while the sweep's candidates wait on the person (sweep.cjs, 8.10.9), and
+// while the sweep's candidates wait on the person (sweep.cjs, 8.10.9) — the
+// map as staged where one is, read back, else staged from the sweep — and
 // the reports of the agents the spec was left with, landed since, and those
 // lost with a process that no longer runs (9.7.8).
 //
@@ -39,6 +40,7 @@ const { canonicalAssets } = require('./ledger-read.cjs');
 const { agentsLeft } = require('./agent-state.cjs');
 const { openPage } = require('./spec-review.cjs');
 const { candidatesWaiting } = require('./sweep.cjs');
+const { sweptStaged } = require('./approve-map.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -92,11 +94,19 @@ function specReads({ cwd, unit, manifest, notes }) {
     ...spec.map(as('spec')),
     ...cut.map(asCall('cut')),
     ...(page === null ? [] : [as('review page')(page.url), as('read back')(page.readBack)]),
-    ...(candidatesWaiting(cwd, manifest).length === 0 ? [] : [asCall('approve the map')(`${ENGINE_COMMAND} render approve-map ${unit} --sweep`)]),
+    ...(candidatesWaiting(cwd, manifest).length === 0 ? [] : [asCall('approve the map')(approveMapCall(cwd, unit))]),
     ...agents.landed.map(({ file }) => as('landed')(file)),
     ...agents.lost.map(as('lost')),
   ];
 }
+
+/**
+ * The call that draws approve the map while the sweep's candidates wait:
+ * the map as staged, read back — Keep shaping's among it — or, where none
+ * is staged, staged again from the sweep taken.
+ * @param {string} cwd @param {string} unit
+ */
+const approveMapCall = (cwd, unit) => `${ENGINE_COMMAND} render approve-map ${unit}${sweptStaged(cwd, unit) ? '' : ' --sweep'}`;
 
 /** @type {Entry} */
 const SPECIFICATION = Object.freeze({

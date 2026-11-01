@@ -16,9 +16,9 @@
 // record and log — a bugfix's its investigation — and the files the unit's
 // current entries link as canonical (11.6.3); once the spec is written, the
 // spec and the cut, and while the review page is open, its address and the
-// file its marks are read back to; then the unit's own record; approve the
-// map while the sweep's candidates wait on the person (8.10.9); and the
-// agents the spec was left with, landed or lost (9.7.8). And the spec's standing, none, written or concluded (P7). The
+// file its marks are read back to; then the unit's own record; and the
+// agents the spec was left with, landed or lost (9.7.8). Approve the map,
+// named while the sweep's candidates wait, is test-engine-sweep.cjs's. And the spec's standing, none, written or concluded (P7). The
 // settled rule as topics-settled reads it is test-engine-checklist.cjs's,
 // the move after a topic is decided test-engine-decided-yes.cjs's, every
 // door past the spec test-engine-past-spec.cjs's, and the recovery note
@@ -259,24 +259,6 @@ describe('what the spec reads at its entry', () => {
       `review page: ${url}`,
       `read back: ${at(layout.cache('ready', 'specification', 'read-back.json'))}`,
     ]));
-  });
-});
-
-describe('the sweep\'s calls waiting on the person (8.10.9)', () => {
-  it('approve the map, by its call, while a candidate the sweep took is neither on the map nor struck from it', () => {
-    const candidate = (/** @type {string} */ name) => ({ name, reason: `Nothing decides ${name}.`, brief: `# ${name}\n` });
-    writeState(dir, layout.unit('ready', 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [candidate('alpha'), candidate('wallets')] }));
-    const waiting = enter('ready').sections;
-    const manifest = readManifest(dir, 'ready');
-    createManifest(dir, 'ready', { ...manifest, phases: { ...manifest.phases, discovery: { ...manifest.phases.discovery, dismissed: ['wallets'] } } });
-
-    assert.strictEqual(waiting, data([
-      ...records('ready', 'alpha', 'beta'),
-      `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
-      `asset: ${at(layout.assets('ready', 'design.png'))}`,
-      `approve the map: \`${ENGINE} render approve-map ready --sweep\``,
-    ]));
-    assert.ok(!enter('ready').sections.includes('approve the map'), 'struck, the last candidate waits no longer');
   });
 });
 

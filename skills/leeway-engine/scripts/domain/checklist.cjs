@@ -80,7 +80,7 @@ const { topicsSettled } = require('./spec-standing.cjs');
 const { inventedLines } = require('./spec-trace.cjs');
 const { readLandedSpec } = require('./spec-landed.cjs');
 const { sweepTaken, candidatesWaiting } = require('./sweep.cjs');
-const { reviewSettled } = require('./spec-passes.cjs');
+const { reviewSettled, cutRequests } = require('./spec-passes.cjs');
 const { mailboxDepth, buildBegun } = require('./derivations.cjs');
 const { canonicalAssets } = require('./ledger-read.cjs');
 const { logLinks } = require('./log-links.cjs');
@@ -183,15 +183,18 @@ const sweepRun = ({ cwd, unit, manifest }) => sweepTaken(cwd, /** @type {string}
 
 /**
  * Each phase of the cut names a scenario and a section, what it relies on
- * maybe nothing (11.5.4), and the cut holds against the spec as it stands,
- * as `cut` checks it (11.5.9).
+ * maybe nothing (11.5.4); the cut holds against the spec as it stands, as
+ * `cut` checks it (11.5.9); and no decision made at the spec since the
+ * cut's brief waits for it (spec-passes.cjs).
  * @param {Named} named
  */
-function phasesComplete({ cwd, unit, manifest }) {
+function phasesComplete({ cwd, unit, manifest, warnings }) {
   const phases = phasesOf(manifest);
+  const at = /** @type {string} */ (unit);
   // Required here, not above: cut.cjs requires this module.
   const { cutHolds } = require('./cut.cjs');
-  return phases.length > 0 && phases.every(({ scenarios, sections }) => scenarios.length > 0 && sections.length > 0) && cutHolds(cwd, /** @type {string} */ (unit), phases);
+  return phases.length > 0 && phases.every(({ scenarios, sections }) => scenarios.length > 0 && sections.length > 0) && cutHolds(cwd, at, phases)
+    && cutRequests(cwd, at, warnings).length === 0;
 }
 
 /** Every part of the spec drawn on by a phase of the cut, directly or through its area; an area with no parts, whole. @param {Named} named */

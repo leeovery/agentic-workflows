@@ -1,6 +1,6 @@
 # Writing a Brief
 
-*Reference for **[leeway-discovery](../SKILL.md)** — loaded by [approving-the-map.md](approving-the-map.md), [changing-the-map.md](changing-the-map.md) and [starting-this-work.md](starting-this-work.md) wherever a topic's brief is drafted.*
+*Reference for **[approving-the-map.md](approving-the-map.md)**, **[changing-the-map.md](changing-the-map.md)** and **[starting-this-work.md](starting-this-work.md)***
 
 ---
 

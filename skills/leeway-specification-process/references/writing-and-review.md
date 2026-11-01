@@ -35,7 +35,7 @@ A refused brief names the way on — nothing changed since the last pass, or wha
 
 Once the pass reports, `agent scan {work_unit} specification {work_unit}` takes its report in; one it lists under `refused` does not read, and another pass goes, its brief carrying the refusal. Read the report, then acknowledge it with every finding it holds, `agent ack {work_unit} specification {work_unit} {dispatch_id} --findings {F1,F2}`, or `--clean` where it found none. Take each finding by its lane:
 - **rewrite** — the writer's, whole: its next brief carries the report, and the writer judges each finding against the records.
-- **gap** — re-derive it from the record; one it holds is a gap (**Gaps**), and once raised, surface it by its label in the report, `{finding}`: `agent surface {work_unit} specification {work_unit} {dispatch_id} {finding}`.
+- **gap** — re-derive it from the record; one it holds is a gap (**Gaps**). Once raised, surface it by its label in the report, `{finding}`: `agent surface {work_unit} specification {work_unit} {dispatch_id} {finding}`, adding `--replaces {decision_id} --reason {reason}` where it was raised as that decision's replacement — no question stands for it on the ledger, so the surfacing holds the writer until the person's call lands.
 - **fact** — re-derive it from the record: a measurement or the code shows a finding on the ledger wrong. Replace that entry, `ledger replace {work_unit}.specification --replaces {entry_id} --reason was-wrong`, a finding's content with the new result on stdin — the replacement stands on the entry's topic. Then confirm each decision relying on it (`ledger hold`) or replace it, a decision of the person's through `raise --replaces`, and surface the report's finding.
 
 A gap or a fact the record shows wrong, or already answers, is declined: left unsurfaced. Once the rest are surfaced, `agent incorporate {work_unit} specification {work_unit} {dispatch_id}` closes the pass.
@@ -45,7 +45,7 @@ Then the writer goes again with what waits for it — the rewrites, and the entr
 ## Gaps
 
 A gap is a detail the build would meet that no entry decides, two entries that contradict each other, an invariant naming no check, or a why a statement needs that no record holds. It is decided at the spec, as any call is. Decide its route first:
-- **It changes a decision already made** — raise the replacement, `raise {work_unit}.specification --replaces {decision_id} --reason {reason}`, which stands on that decision's topic. A replacement answers no question: ask none.
+- **It changes a decision already made** — raise the replacement, `raise {work_unit}.specification --replaces {decision_id} --reason {reason}`, which stands on that decision's topic. A replacement answers no question: ask none. A review's finding raised so is surfaced with the decision (**A Pass's Report**), which holds the writer until the person's call lands; a gap the writer's status or the cut's names comes back in its next status while the records still leave it open.
 - **It decides something afresh** — its question goes on the ledger, `ledger ask {work_unit}.specification` with `{"text", "by": "claude|review", "who_moved_whom": "none"}` on stdin — `review` for a pass's finding — and is raised, `raise {work_unit}.specification --answers {question_id}`.
 
 Put the question and its rows as the person meets the product — what it does, or what its user meets — never by a spec section's number. Whether it reaches the person is the engine's to decide. Its answer lands at the spec, and the writer's next brief carries it.

@@ -93,10 +93,11 @@
 //                  where nothing is staged or the cut would land
 //   cut-to         where the agent writes the cut: the unit's staged cut
 //   cut-requests   the unit's current decisions made at its own level at
-//                  the spec since the cut on its manifest landed — every
-//                  one before any cut (spec-passes.cjs) — verbatim, each
-//                  with where it stands and what it replaced: what the
-//                  person asked of the cut among them
+//                  the spec since the last cut's brief that a land took —
+//                  every one before any cut (spec-passes.cjs) — verbatim,
+//                  each with where it stands and what it replaced: what
+//                  the person asked of the cut among them; the brief keeps
+//                  its own mark, a take the cut's land commits
 //
 // The sweep's records, each of the unit the brief is for (11.2.2), with the
 // product record and the names struck, above:
@@ -136,8 +137,9 @@
 //                  says it (spec-land.cjs); none recorded where none is
 //                  written or it would land
 //   review-findings the report of each pass waiting for the writer,
-//                  verbatim; the writer's brief keeps what it took, a take
-//                  the next land commits (spec-passes.cjs)
+//                  verbatim; the writer's brief keeps what it took, the
+//                  wording file it carried among it, a take the next land
+//                  commits (spec-passes.cjs)
 //   wording-changes the wording the person agreed on the review page, the
 //                  file `--wording` names verbatim, one change a line, each
 //                  naming its line (11.11); none recorded where no file is
@@ -250,7 +252,7 @@ const { inventedLines } = require('./spec-trace.cjs');
 const { specSources } = require('./spec-entry.cjs');
 const { landRefusal, unitRefusal } = require('./spec-land.cjs');
 const {
-  ownTexts, recordTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn,
+  ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -1034,7 +1036,7 @@ function drawWordingChanges({ cwd, given }) {
 }
 
 /** What the writer's brief carried, pending until the spec's land takes it. @param {Filling} filling @param {string[]} warnings */
-const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(filling), warnings);
+const takeFindings = (filling, warnings) => recordTaking(filling.cwd, unitOf(filling), warnings, filling.given.wording === undefined ? undefined : path.resolve(filling.cwd, filling.given.wording));
 
 /** @param {Filling} filling */
 const drawLandRefusal = (filling) => landRefusal(filling.cwd, unitOf(filling)) ?? NONE;
@@ -1045,7 +1047,7 @@ function drawSpecTo(filling, warnings) {
   const refused = unitRefusal(filling.cwd, unit);
   if (refused !== null) throw new Error(`brief: ${refused}`);
   const waiting = waitingGaps(filling.cwd, unit, warnings);
-  if (waiting.length > 0) throw new Error(`brief: ${unit}'s rewrite waits for the answer — ${gapsWaiting(unit, waiting)}`);
+  if (waiting.length > 0) throw new Error(`brief: ${unit}'s rewrite waits for the answer — ${gapsWaiting(waiting)}`);
   return `\`${specPath(filling.cwd, unit)}\``;
 }
 
@@ -1156,7 +1158,7 @@ const RECORDS = Object.freeze({
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },
   'cut-refusal': { of: 'unit', draw: drawCutRefusal },
   'cut-to': { of: 'unit', draw: drawCutTo },
-  'cut-requests': { of: 'unit', draw: drawCutRequests },
+  'cut-requests': { of: 'unit', draw: drawCutRequests, bind: (filling, warnings) => recordCutTaking(filling.cwd, unitOf(filling), warnings) },
   'unit-records': { of: 'unit', draw: drawUnitRecords },
   'sweep-refusal': { of: 'unit', draw: drawSweepRefusal },
   'sweep-to': { of: 'unit', draw: drawSweepTo },

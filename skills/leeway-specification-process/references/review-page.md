@@ -40,6 +40,8 @@ A tick on a line you answered is the person agreeing your last answer. Where the
   node .claude/skills/leeway-engine/scripts/engine.cjs brief spec-writer {work_unit} --wording .leeway/.cache/{work_unit}/specification/wording.md
   ```
 
+  The land that takes the brief removes the file; one written to since stays, for the next brief.
+
 - **What the product does** — the answer decides something: it lands at the spec as the person's decision, as a change asked for at ready to build does (**[ready-to-build.md](ready-to-build.md)**), and the writer rewrites from it.
 
 The page takes the person's tick off a line whose wording changed, for them to tick again: never write it back.

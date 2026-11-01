@@ -40,14 +40,14 @@ The work runs in order, each piece once the one before it holds:
 2. **Writing and review** — the writer writes the spec, `spec land` takes it, and review passes read it until one changes nothing (`statements-traced`, `review-settled`): load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written.
 3. **The cut** — once the review has settled: load **[phase-cut.md](references/phase-cut.md)** and follow its instructions as written.
 
-A land after the cut — a gap answered, a split — goes through the review's next pass; where `phases-complete` is open again, the cut no longer holds against the spec, and is made again.
+A land after the cut — a gap answered, a split — goes through the review's next pass; where `phases-complete` is open again — the cut no longer holding against the spec, or a decision made at the spec since its brief waiting for it — the cut is made again.
 
 The person meets this phase at approve the map after the sweep, at a gap the matrix sends them, and at ready to build. Between those the work runs on: say in a line where it has got to whenever you wait on an agent.
 
 ## Doors
 
 - An agent → `brief sweep|spec-writer|phase-cut {work_unit}`, the writer with the wording the person agreed `--wording {file}`; a review pass → `agent dispatch {work_unit} specification {work_unit} --kind spec-review`, then `brief spec-reviewer {work_unit} --agent {dispatch_id}`, the id the dispatch answers; then the Agent call with the agent and the pointer `brief` answers. A pass's report → `agent scan|ack|surface|incorporate {work_unit} specification {work_unit}`.
-- The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} --sweep`, `approve-map strike|unstrike {work_unit} {n}`.
+- The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} [--sweep]`, `approve-map strike|unstrike {work_unit} {n}`; the map changed at Keep shaping → discovery's `topic` verbs; a message to a started topic → `topic send {work_unit} {topic} --from {work_unit}.specification`, then `render send-report`.
 - The spec → `spec land {work_unit}`.
 - A gap → `raise {work_unit}.specification --replaces {decision_id} --reason {reason}` where it changes a decision; otherwise `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {question_id}`; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold`.
 - The cut → `cut {work_unit}`.

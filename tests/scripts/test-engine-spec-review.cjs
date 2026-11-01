@@ -12,7 +12,8 @@
 // standing in another unit, each topic's log, the canonical assets, the
 // sweep's calls, what waits for it — the entries made at the spec since the
 // last take a land committed, a gap's answer among them (11.S20) — the
-// wording the person agreed, the file `--wording` names verbatim, the lines
+// wording the person agreed, the file `--wording` names verbatim, retired by
+// the land committing its take where unchanged since the brief, the lines
 // that do not trace and what the land refuses of the spec as written; its
 // template's example read by the spec's own grammar; refused for a unit the
 // land refuses, a wording file that is none or is empty, and while a gap put
@@ -106,6 +107,20 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
 
     assert.deepStrictEqual([section(brief, AGREED), section(brief, 'Written since your last brief')], [agreed, 'None recorded.']);
     assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, AGREED), 'None recorded.');
+  });
+
+  it('the land committing a take retires the wording file it carried where unchanged since the brief; one written to since stays, holding an agreement no brief carried', () => {
+    writeSpec(spec());
+    const file = writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n');
+    issued(['spec-writer', UNIT, '--wording', file]);
+    land();
+    const retired = !fs.existsSync(file);
+    writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n');
+    issued(['spec-writer', UNIT, '--wording', file]);
+    writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n2.1.2: The card holder sees it.\n');
+    land();
+
+    assert.deepStrictEqual([retired, fs.existsSync(file)], [true, true]);
   });
 
   it('its template\'s example is a spec the land\'s grammar reads: its statements, a screen and a scenario', () => {
