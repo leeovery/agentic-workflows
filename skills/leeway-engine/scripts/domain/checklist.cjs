@@ -89,7 +89,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { messageOf } = require('../kernel/call.cjs');
 
 /** @typedef {{state: 'done'|'skipped', reason?: string, at: string}} Mark */
-/** @typedef {{items: Record<string, Mark>, closed?: string, ledger_at?: number, voided?: string, taken?: string, spec_hash?: string|null, cut_hash?: string}} Checklist */
+/** @typedef {{items: Record<string, Mark>, closed?: string, ledger_at?: number, voided?: string, taken?: string, spec_hash?: string, cut_hash?: string}} Checklist */
 
 /**
  * A checklist named: its point; where its record sits under the manifest's

@@ -6,7 +6,7 @@
 // writing `build: {position}` and committing it, the review settled on fresh
 // marks while the page is open and none written while it is not (11.S22,
 // 11.S25, 11.S26), a failed commit retried in the unit's scope; no build
-// before it — no phase started, no planning or implementation item opened
+// before it — no phase started, no planning or implementation topic started
 // (11.S13) — and no postpone after it (18.4.19); and `engine workunit
 // position <unit> auto|step`, the switch logged as a `position-switch` event
 // while the first pick is not (3.3.6, 3.3.7, E14). Every refusal writes and
@@ -56,7 +56,7 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     assert.strictEqual(refused(['topic', 'postpone', UNIT, 'refunds', '--horizon', 'next']), `postponing "refunds" is refused — ${UNIT}'s build has begun, so its map is closed: a decision that must change is settled in the build, and abandoning the work is the unit's cancel, through manage on the start menu`);
   });
 
-  it('opens no planning or implementation item before the yes, and both after it; a quick-fix\'s implementation and a unit keeping the old spec\'s items keep their door (11.8.1)', () => {
+  it('starts no planning or implementation topic before the yes, and both after it; a quick-fix\'s implementation and a unit keeping the old spec\'s items keep their door (11.8.1)', () => {
     const before = ['planning', 'implementation'].map((phase) => refused(['topic', 'start', UNIT, phase, 'cards']));
     createManifest(dir(), 'tidy', { work_type: 'quick-fix' });
     createManifest(dir(), 'legacy', { work_type: 'feature', phases: { specification: { items: { legacy: { status: 'completed' } } } } });

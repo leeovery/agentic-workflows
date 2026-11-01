@@ -183,9 +183,9 @@ function assertSpecSettled(manifest, phase, topic, verb) {
   );
 }
 
-// No build before ready to build's yes (11.8.1): a unit writing the one spec
-// opens no planning or implementation item until the yes begins its build.
-// A unit keeping the old spec's items keeps the old door (29.17).
+// No build before ready to build's yes (11.8.1): on a unit writing the one
+// spec, no planning or implementation topic is started until the yes begins
+// its build. A unit keeping the old spec's items keeps the old door (29.17).
 
 /** @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
 function assertBuildBegun(manifest, phase, topic) {

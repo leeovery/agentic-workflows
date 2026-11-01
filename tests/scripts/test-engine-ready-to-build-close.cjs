@@ -61,7 +61,7 @@ describe('the close the screen stands on (E12)', () => {
     assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--', layout.unit(UNIT, 'spec.md')]), '', 'the build reads the spec the state holds');
   });
 
-  it('refuses the screen, the yes and a close again over changes made after the close that have not landed — never naming a land — and stands again once spec.md is the landed text (11.8.1)', () => {
+  it('refuses the screen, the yes and a close again over changes made after the close that have not landed — never read as a land after the close — and stands again once spec.md is the landed text (11.8.1)', () => {
     closeReady(dir());
     const file = layout.unit(UNIT, 'spec.md');
     const landedText = readState(dir(), file);
