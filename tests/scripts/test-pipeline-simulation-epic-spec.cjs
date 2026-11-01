@@ -5,8 +5,8 @@
 // other topic postponed, the last decided going into the spec, entered at
 // the unit, the spec written from the writer's brief and landed citing what
 // was decided, its review's one pass settling it, its review page built and
-// published, its marks read back, a re-land planned for the open page,
-// and the spec cut into phases through the cut's corridor, then ready to
+// published, its marks read back, a re-land planned for the open page and
+// reviewed, and the spec cut into phases through the cut's corridor, then ready to
 // build over the open page — the pick taking the marks read back fresh, the
 // build begun and its position switched; and, with both
 // topics decided, the sweep before the spec is written — briefed and taken,
@@ -30,7 +30,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, cutTheSpec, readyToBuild,
+  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild,
 } = require('./pipeline-world.cjs');
 
 const WU = 'tessera';
@@ -48,7 +48,7 @@ describe('pipeline simulation: epic, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page, it is cut into phases, and ready to build\'s pick over the open page begins the build, its position switched after (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the writer\'s spec lands citing what was decided, the review\'s one pass settles it, its review page is built, its marks are read back, a re-land is planned for the open page and reviewed, it is cut into phases, and ready to build\'s pick over the open page begins the build, its position switched after (24.S3, 11.S1, 11.S2, 11.S3, 11.S11, 11.S5, 11.S33, 11.S26, 3.S14)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -66,11 +66,7 @@ describe('pipeline simulation: epic, the spec', () => {
     spec('It settles as alpha decided.');
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
-    const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
-    sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
-    fs.writeFileSync(pass.file, '# Spec Review — spec-review-001\n\n## Findings\n\nNone identified.\n');
-    sim.run(['agent', 'scan', wu, 'specification', wu]);
-    sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
+    assert.strictEqual(specReviewed(sim, wu).id, 'spec-review-001');
     const ready = JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu]));
     assert.strictEqual(ready.items.find((/** @type {{key: string}} */ item) => item.key === 'review-settled').state, 'done');
     const { batches } = sim.run(['spec', 'page', wu]);
@@ -85,6 +81,8 @@ describe('pipeline simulation: epic, the spec', () => {
     sim.run(['spec', 'land', wu]);
     const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
     assert.deepStrictEqual(pushed.change.reworded, ['1-1-1']);
+    // The re-land is reviewed as every land is, its pass reading what changed.
+    specReviewed(sim, wu);
     // The cut's corridor: a cut `cut` refuses goes back to the agent in a
     // fresh brief, and the one it writes again lands on the manifest.
     const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };

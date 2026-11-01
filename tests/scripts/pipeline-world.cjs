@@ -1125,6 +1125,19 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
+// The review of the spec's last land (11.7): a pass dispatched and briefed,
+// its clean report written where the dispatch said, taken in by the scan and
+// acknowledged clean.
+/** @param {Sim} sim @param {string} wu @returns {{id: string, file: string}} the pass */
+function specReviewed(sim, wu) {
+  const pass = sim.run(['agent', 'dispatch', wu, 'specification', wu, '--kind', 'spec-review']);
+  sim.run(['brief', 'spec-reviewer', wu, '--agent', pass.id]);
+  fs.writeFileSync(pass.file, `# Spec Review — ${pass.id}\n\n## Findings\n\nNone identified.\n`);
+  sim.run(['agent', 'scan', wu, 'specification', wu]);
+  sim.run(['agent', 'ack', wu, 'specification', wu, pass.id, '--clean']);
+  return pass;
+}
+
 // The cut's corridor (11.5.1): the phase cut's agent briefed from the unit's
 // spec, its cut staged where the brief says it goes, and `cut` run on it.
 /**
@@ -1181,5 +1194,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, cutTheSpec, readyToBuild,
+  Sim, worldFrom, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, specReviewed, cutTheSpec, readyToBuild,
 };

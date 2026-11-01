@@ -2,8 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's feature scenarios on the spec's side: a feature
-// discussed to its decided screen's yes, entered at its spec, the spec landed
-// and cut, then ready to build's pick beginning the build, the conversation
+// discussed to its decided screen's yes, entered at its spec, the spec
+// written from the writer's brief, landed, reviewed and cut, then ready to
+// build's pick beginning the build, the conversation
 // carrying on, and the position switched after.
 //
 // Layer: simulation. World: the project every scenario starts from
@@ -17,7 +18,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, handoff, answerGate, discussed, startUnit, specEntry, cutTheSpec, readyToBuild,
+  Sim, handoff, answerGate, discussed, startUnit, specEntry, specReviewed, cutTheSpec, readyToBuild,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: feature, the spec', () => {
@@ -25,7 +26,7 @@ describe('pipeline simulation: feature, the spec', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('feature: its spec landed and cut, ready to build\'s pick begins the build in step, the conversation carrying on; the position switched to auto after (11.8.1, E7, 3.3.6)', () => {
+  it('feature: its spec written, landed, reviewed and cut, ready to build\'s pick begins the build in step, the conversation carrying on; the position switched to auto after (11.8.1, E7, 3.3.6)', () => {
     const wu = 'tally';
     startUnit(sim, 'feature', wu, 'A tally of its own');
     handoff(sim, `/leeway-discussion-process feature ${wu}`);
@@ -33,11 +34,13 @@ describe('pipeline simulation: feature, the spec', () => {
     handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
     specEntry(sim, wu, [wu]);
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
+    sim.run(['brief', 'spec-writer', wu]);
     sim.write(`.leeway/${wu}/spec.md`, [
       '# Tally', '', '## 1. Counting', '', '### 1.1 The count', '', `1.1.1 The tally counts as decided. [${decision.id}]`, '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally, when it counts, then it counts as decided. (1.1.1)', '',
     ].join('\n'));
     sim.run(['spec', 'land', wu]);
+    specReviewed(sim, wu);
     cutTheSpec(sim, wu, [{ name: 'Counting', goal: 'The tally counts.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
     readyToBuild(sim, wu);
     const begun = sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv);
