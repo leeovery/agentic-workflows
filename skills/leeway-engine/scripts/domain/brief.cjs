@@ -38,7 +38,8 @@
 // (brief-guard.cjs).
 //
 // It refuses no session id, a role it does not know, arguments of another
-// shape, a unit, a task or a topic the project lacks, a task done or
+// shape, a unit, a task or a topic the project lacks, a unit set aside
+// where its role takes the unit alone or a topic, a task done or
 // closed, a topic set aside (5.8.17), and a record it cannot read. Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
@@ -153,10 +154,12 @@ function argumentsOf(role, args) {
   };
 }
 
-/** A unit's manifest, refused where the project lacks the unit. @param {string} root @param {string} unit */
+/** A unit's manifest, refused where the project lacks the unit or it is set aside (5.8.17). @param {string} root @param {string} unit */
 function knownUnit(root, unit) {
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`Work unit "${unit}" not found`);
+  const dead = liveness(root)(unit, null);
+  if (dead !== null) throw new Error(`brief: ${unit} is set aside — ${dead}`);
   return manifest;
 }
 

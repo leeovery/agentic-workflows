@@ -18,7 +18,7 @@ Cut this unit's spec into build phases: every phase in build order, across the w
 - **`sections`** — every section of the spec its work draws on, by address: an area `N` or a part `N.M`. Whoever writes the phase's tasks reads these and nothing else of the spec, so a part the phase builds on is named even where an earlier phase built it. Each phase names at least one.
 - **`relies_on`** — what must be done before it starts: an earlier phase by its number, or another work unit, whole, by its name. Never a later phase or this unit. It may be empty, and is for a phase that relies on nothing.
 
-Where part A relies on part B in the graph, a phase drawing on A comes after the phase that builds B, or is that phase. Phases are numbered from 1 in the order you list them.
+The phase that builds a part is the first phase naming it in `sections`. Where part A relies on part B in the graph, a phase drawing on A is the phase that builds B, or comes after it and names it in `relies_on`: the build starts a phase once what it relies on is done, whatever the order, so a reliance left out runs the two side by side. Phases are numbered from 1 in the order you list them.
 
 ## The cut
 
@@ -38,7 +38,7 @@ Write it as JSON, exactly this shape and nothing else:
 }
 ```
 
-Where a refusal is recorded below, the last cut you wrote was refused for it: write the cut again, every fault answered.
+Where a cut is already at the path below, it is the one staged, and the refusal below lists the faults `cut` refuses it for: read it first, then amend it, every fault answered.
 
 # The spec's outline
 
@@ -52,7 +52,7 @@ Where a refusal is recorded below, the last cut you wrote was refused for it: wr
 
 {{relies-on-graph}}
 
-# The refusal
+# The staged cut's refusal
 
 {{cut-refusal}}
 

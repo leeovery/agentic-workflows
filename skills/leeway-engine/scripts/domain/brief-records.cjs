@@ -79,9 +79,10 @@
 //                  wording, the statements it draws on closing it
 //   relies-on-graph each pair of the spec's parts where one relies on the
 //                  other (11.5.6): a statement or a screen of part A cites
-//                  an entry relying on one — in its current form — that a
-//                  line of part B cites, with each line and entry that
-//                  links them. A part citing nothing has no edges; nor
+//                  an entry relying on one — in its current form, or
+//                  through the unit's entries no line cites — that a line
+//                  of part B cites, with each line and chain of entries
+//                  that links them. A part citing nothing has no edges; nor
 //                  has a cite naming none of the unit's entries, which the
 //                  trace lists (spec-trace.cjs), so a link to another
 //                  unit's entry is left out
@@ -702,13 +703,39 @@ function drawSpecScenarios(filling) {
 /** The part a statement or its screen is in, `N.M`. @param {string} number */
 const partOf = (number) => number.split('.').slice(0, 2).join('.');
 
+/** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
+
+/**
+ * Each chain of reliance from the entry `id`, in current forms, through the
+ * unit's entries no line cites, to the next ones a line does: its entries in
+ * order, the cited one last. An entry met twice adds nothing.
+ * @param {UnitView} view @param {Map<string, string[]>} citedBy each cited entry's lines @param {string} id
+ * @returns {string[][]}
+ */
+function chainsFrom({ folded, entries }, citedBy, id) {
+  /** @type {string[][]} */
+  const chains = [];
+  const seen = new Set([id]);
+  const walk = (/** @type {string} */ from, /** @type {string[]} */ chain) => {
+    for (const next of factsOf(folded, from).relies_on.flatMap((on) => currentsOf(folded, on))) {
+      if (seen.has(next) || !entries.has(next)) continue;
+      seen.add(next);
+      if (citedBy.has(next)) chains.push([...chain, next]);
+      else walk(next, [...chain, next]);
+    }
+  };
+  walk(id, []);
+  return chains;
+}
+
 /**
  * The spec's parts each relying on another, in the spec's order, each with
  * the links between them.
- * @param {import('./unit-entries.cjs').UnitView} view @param {ReadSpec} spec
+ * @param {UnitView} view @param {ReadSpec} spec
  * @returns {Array<{from: string, to: string, links: string[]}>}
  */
-function reliesOnEdges({ folded, entries, short }, { sections, lines }) {
+function reliesOnEdges(view, { sections, lines }) {
+  const { folded, entries, short } = view;
   const cited = lines.filter(({ kind }) => kind === 'statement' || kind === 'screen').flatMap(({ number, cites }) => cites.flatMap((cite) => {
     try {
       const id = resolveId(cite, folded.facts.keys());
@@ -717,16 +744,21 @@ function reliesOnEdges({ folded, entries, short }, { sections, lines }) {
       return [];
     }
   }));
+  /** @type {Map<string, string[]>} */
+  const citedBy = new Map();
+  for (const { number, id } of cited) citedBy.set(id, [...(citedBy.get(id) ?? []), number]);
   /** @type {Map<string, Map<string, Set<string>>>} */
   const edges = new Map();
   for (const { number, id } of cited) {
-    const relied = factsOf(folded, id).relies_on.flatMap((on) => currentsOf(folded, on));
-    for (const other of cited.filter((line) => relied.includes(line.id) && partOf(line.number) !== partOf(number))) {
-      const from = edges.get(partOf(number)) ?? new Map();
-      edges.set(partOf(number), from);
-      const links = from.get(partOf(other.number)) ?? new Set();
-      from.set(partOf(other.number), links);
-      links.add(`${number} cites ${short(id)}, which relies on ${short(other.id)}, cited by ${other.number}`);
+    for (const chain of chainsFrom(view, citedBy, id)) {
+      const reached = chain[chain.length - 1];
+      for (const other of /** @type {string[]} */ (citedBy.get(reached)).filter((line) => partOf(line) !== partOf(number))) {
+        const from = edges.get(partOf(number)) ?? new Map();
+        edges.set(partOf(number), from);
+        const links = from.get(partOf(other)) ?? new Set();
+        from.set(partOf(other), links);
+        links.add(`${number} cites ${short(id)}, which relies on ${chain.map(short).join(', which relies on ')}, cited by ${other}`);
+      }
     }
   }
   const order = [...sections.keys()];

@@ -17,16 +17,15 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **How the work is broken up**, and **what each phase holds** — the principles the cut follows, and the cut's shape.
 - **The spec's outline** — the path of `spec.md`, then its areas, each with its parts, by address and title. Read the spec at that path for anything the outline leaves unclear.
 - **The spec's scenarios** — each by id, with the area it proves and its wording, closing on the statements it draws on.
-- **What the spec's parts rely on** — each pair of parts where a statement of one cites a ledger entry relying on one a statement of the other cites, with the lines and entries that link them. A part with no line here relies on no other.
-- **The refusal** — what the engine refused of the last cut written, or none.
-- **Where the cut goes** — the file you write.
+- **What the spec's parts rely on** — each pair of parts where a statement of one cites a ledger entry relying on one a statement of the other cites, directly or through entries no line cites, with the lines and chain of entries that link them. Where a part has no line here, the ledger records no reliance for it; a part of builder's lines can still depend on another, so read the spec for such parts.
+- **The staged cut's refusal** — the faults the engine refuses the cut already staged for, or none.
+- **Where the cut goes** — the file you write. A cut already there is the one staged: read it before you write, and amend it.
 
 ## Rules
 
 1. **The spec is settled.** Never edit it, and never cut around a line you think wrong: say so in your status.
 2. **Write the cut whole** to the brief's path with the Write tool, JSON alone, every phase in it. It is your only write.
-3. **Never run the cut yourself.** The orchestrator hands it to the engine, and a refusal comes back to you in a fresh brief.
-4. **Never decide, and never ask the person.** Another unit a phase relies on is named only where the spec says the work needs it.
+3. **Never decide, and never ask the person.** Another unit a phase relies on is named only where the spec says the work needs it.
 
 ## Your Status
 

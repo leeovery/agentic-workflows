@@ -18,12 +18,13 @@
 // agent briefed from the spec's outline, its scenarios each with its area,
 // and the graph of what its parts rely on, drawn from the entries its lines
 // cite (11.5.6, 11.S7) — a part relying on another where a line of it cites
-// an entry relying on one, in its current form, a line of the other cites;
-// none within a part, none for a part citing nothing, none to another
-// unit's entry — and where the cut goes; the cut the agent stages there
-// refused by `cut`, and the fresh brief carrying that refusal, verbatim,
-// until the cut lands on the manifest and none is recorded (11.S5); every
-// refusal of the brief storing none.
+// an entry relying on one, in its current form or through entries no line
+// cites, a line of the other cites, each link between a pair joined; none
+// within a part, none for a part citing nothing, none to another unit's
+// entry — and where the cut goes; the cut the agent stages there refused by
+// `cut`, and the fresh brief carrying that refusal, verbatim, until the cut
+// lands on the manifest and none is recorded (11.S5); every refusal of the
+// brief storing none, a cancelled unit's among them.
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
 // units, one whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1
@@ -32,8 +33,9 @@
 // phase relying on nothing, and written by hand for later ones, whose
 // starts would need each phase before them worked to its close first. And
 // for the corridor, an epic whose topics' entries rely on each other — one
-// on an entry since replaced, one on another unit's — and whose spec cites
-// them, in statements and a screen.
+// on an entry since replaced, one on another unit's that relies back on
+// it, one through an entry its spec cites nowhere — and whose spec cites them, in statements and a
+// screen.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -310,13 +312,14 @@ const corridorWorld = fixtureFrom('cut-corridor-', (dir) => {
     return write('decide', at, ['--answers', asked, ...relied.flatMap((id) => ['--relies-on', id])], { ...PERSON, text, why: `Why: ${text}` }).id;
   };
   made.cardsOld = decide(cards, 'Visa alone.');
-  made.invoice = decide(billing, 'Each charge on the invoice.');
+  made.invoice = decide(billing, 'Each charge on the invoice.', made.cardsOld);
   made.refunds = decide(refunds, 'Back to the card.', made.cardsOld, made.invoice);
   made.cards = write('replace', cards, ['--replaces', made.cardsOld, '--reason', 'changed-mind'], { ...PERSON, drops: ['Visa alone'], text: 'Visa and Mastercard.', why: 'Both are taken.' }).id;
   made.brand = write('find', cards, [], { ...MADE, text: 'The form shows the brand.', how: 'read in the code', known: 'read' }).id;
-  made.fee = decide(refunds, 'No fee.', made.refunds);
+  made.fee = decide(refunds, 'No fee.', made.refunds, made.cards);
   made.partial = decide(refunds, 'Part refunds.', made.refunds, made.brand);
-  made.form = decide(refunds, 'The refund form names the card.', made.cards);
+  made.limits = decide(refunds, 'A refund is limited to what the card took.', made.cards);
+  made.form = decide(refunds, 'The refund form names the card.', made.limits);
   writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec());
   commitAll(dir, 'spec');
 });
@@ -373,12 +376,12 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
     })}`);
   });
 
-  it('a part relies on another where a line of it cites an entry relying on one a line of the other cites, in its current form — none within a part, from a part citing nothing, or to another unit', () => {
+  it('a part relies on another where a line of it cites an entry relying on one a line of the other cites, in its current form or through entries no line cites, each link between them joined, the parts it relies on in the spec\'s order — none within a part, from a part citing nothing, or to another unit', () => {
     writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('[builder]', `[builder]\n\n1.3.2 Each charge is on the invoice. [${made.invoice}]`));
 
     assert.strictEqual(section(briefed().brief, GRAPH), [
-      `- §2.1 relies on §1.1: 2.1.1 cites ${made.refunds}, which relies on ${made.cards}, cited by 1.1.1`,
-      `- §2.2 relies on §1.1: 2.2.1-scr1 cites ${made.form}, which relies on ${made.cards}, cited by 1.1.1`,
+      `- §2.1 relies on §1.1: 2.1.1 cites ${made.refunds}, which relies on ${made.cards}, cited by 1.1.1; 2.1.2 cites ${made.fee}, which relies on ${made.cards}, cited by 1.1.1`,
+      `- §2.2 relies on §1.1: 2.2.1-scr1 cites ${made.form}, which relies on ${made.limits}, which relies on ${made.cards}, cited by 1.1.1`,
       `- §2.2 relies on §1.2: 2.2.1 cites ${made.partial}, which relies on ${made.brand}, cited by 1.2.1`,
       `- §2.2 relies on §2.1: 2.2.1 cites ${made.partial}, which relies on ${made.refunds}, cited by 2.1.1`,
     ].join('\n'));
@@ -395,18 +398,22 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
     const refusal = refusedPristine(dir, ['cut', EPIC, '--file', file]).error;
     assert.strictEqual(refusal, 'cut: scenario 2.S2 is in no phase; phase 2 relies on phase 3, which comes after it');
 
-    assert.strictEqual(section(briefed().brief, 'The refusal'), refusal);
+    assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), refusal);
 
     staged([WHOLE, PART]);
     ok(dir, ['cut', EPIC, '--file', file]);
     assert.deepStrictEqual(readManifest(dir, EPIC).cut, { phases: [WHOLE, PART] });
     assert.strictEqual(readState(dir, layout.unit(EPIC, SPEC_FILE)), shopSpec());
-    assert.strictEqual(section(briefed().brief, 'The refusal'), 'None recorded.');
+    assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), 'None recorded.');
   });
 
-  it('refuses, storing no brief, a unit the project lacks, one with no spec, a spec its grammar refuses, and arguments of another shape', () => {
+  it('refuses, storing no brief, a unit the project lacks, one cancelled, one with no spec, a spec its grammar refuses, and arguments of another shape', () => {
     const refusedBrief = (/** @type {string[]} */ args) => refusedPristine(dir, ['brief', ...args], { env: SESSION }).error;
     assert.strictEqual(refusedBrief(['phase-cut', 'ledger']), 'Work unit "ledger" not found');
+    const live = readState(dir, layout.manifest(EPIC));
+    writeState(dir, layout.manifest(EPIC), JSON.stringify({ ...JSON.parse(live), status: 'cancelled' }));
+    assert.strictEqual(refusedBrief(['phase-cut', EPIC]), `brief: ${EPIC} is set aside — ${EPIC} is cancelled`);
+    writeState(dir, layout.manifest(EPIC), live);
     assert.strictEqual(refusedBrief(['phase-cut', 'billing']), 'billing has no spec — its folder holds no spec.md');
     writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('## 2. Refunds', '## 2. Refunds\n\nRefunds are kept.'));
     assert.match(refusedBrief(['phase-cut', EPIC]), /^brief: shop's spec\.md does not read —\nline \d+ opens a note, /);
