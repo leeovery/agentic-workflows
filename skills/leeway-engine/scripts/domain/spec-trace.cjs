@@ -82,4 +82,4 @@ function inventedLines(cwd, unit, lines, warnings = []) {
   }));
 }
 
-module.exports = { inventedLines };
+module.exports = { untraced, inventedLines };

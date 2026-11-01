@@ -141,13 +141,13 @@ describe('the sections a reference cites', () => {
   });
 });
 
-/** A line as read, its fields as given and the rest a statement's with no source. @param {Partial<Line>} line @returns {Line} */
+/** A line as read but its blocks, its fields as given and the rest a statement's with no source. @param {Partial<Line>} line @returns {Omit<Line, 'parts'>} */
 const lineOf = (line) => ({
   kind: 'statement', number: '', line: 0, wording: '', bracket: null, cites: [], builder: false, of: null, drawsOn: [], ...line,
 });
 
-/** The lines of a kind a spec gives. @param {string} spec @param {Line['kind']} kind */
-const linesOf = (spec, kind) => specStatements(spec).filter((line) => line.kind === kind);
+/** The lines of a kind a spec gives, but their blocks. @param {string} spec @param {Line['kind']} kind */
+const linesOf = (spec, kind) => specStatements(spec).filter((line) => line.kind === kind).map(({ parts, ...line }) => line);
 
 describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () => {
   const LINES = text([
@@ -232,6 +232,28 @@ describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () =>
       lineOf({ kind: 'screen', number: '1.S1-scr1', line: 25, of: '1.S1', wording: 'Screen: shown.', bracket: 'Ef34Gh', cites: ['Ef34Gh'] }),
     ]);
     assert.deepStrictEqual(linesOf(LINES, 'screen').map(({ number, line, of, bracket }) => [number, line, of, bracket]), [['1.1.3-scr1', 29, '1.1.3', 'builder']]);
+  });
+
+  it('keeps each line\'s blocks as written, its number and its bracket taken off, a block left empty by the bracket dropped; and the headings in the spec\'s order, numbered or not', () => {
+    const { lines, headings } = specReading(LINES);
+    const parts = Object.fromEntries(lines.map(({ number, parts: blocks }) => [number, blocks]));
+
+    assert.deepStrictEqual([parts['1.1.1'], parts['1.1.3'], parts['1.1.3-scr1']], [
+      [{ kind: 'text', text: 'The number is checked as it is typed, as\n1.2.1 and 7.2.13 allow.' }],
+      [
+        { kind: 'text', text: 'The form shows:' }, { kind: 'text', text: '- the number;\n- the expiry.' }, { kind: 'fence', text: '```text\n1.1.9 Card number\n```' },
+        { kind: 'text', text: 'Its fields keep their order.' },
+      ],
+      [{ kind: 'text', text: 'Screen, drawn by Claude: the form, empty.' }, { kind: 'fence', text: '```text\nCard number  ____\n```' }],
+    ]);
+    assert.deepStrictEqual(specReading(text(['# P', '', '## 1. A', '', '### 1.1 B', '', '1.1.1 Shown.', '', '[builder]'])).lines[0].parts, [{ kind: 'text', text: 'Shown.' }]);
+    assert.deepStrictEqual(headings, [
+      { kind: 'area', number: '1', title: 'Cards', line: 9 },
+      { kind: 'part', number: '1.1', title: '1.1 The form', line: 11 },
+      { kind: 'part', number: '1.2', title: '1.2 The receipt', line: 39 },
+      { kind: 'scenarios', number: '1', title: 'Scenarios for §1', line: 47 },
+    ]);
+    assert.deepStrictEqual(specReading(text(['# P', '', '## 1. A', '', '### Unnumbered', ''])).headings[1], { kind: 'part', number: null, title: 'Unnumbered', line: 5 });
   });
 
   it('refuses, naming every fault at once, one per line: no title; a section the sections refuse; a note; a heading not standing alone, a second title, and one neither an area nor its scenarios; scenarios after another area; a line outside its part or its block; one numbered twice; one opening straight after another\'s source or a scenario\'s statements; a number the grammar does not read; a screen straight after a heading; a bracket of no form, or one on a scenario; a scenario drawing on a statement the spec lacks; and a fence left open', () => {

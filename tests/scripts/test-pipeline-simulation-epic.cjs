@@ -5,8 +5,8 @@
 // approved at discovery's gates; a topic's discussion, with a
 // message raised and answered through the topic's one mailbox; a topic
 // landed in discovery started from its own row; the last topic decided
-// going into the spec, entered at the unit, and the spec landed citing what
-// was decided; an arrival that backfills; and the last review handing off
+// going into the spec, entered at the unit, the spec landed citing what
+// was decided, and the marks of its review page read back; an arrival that backfills; and the last review handing off
 // to the menu. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
 // test-pipeline-simulation-backwards.cjs.
@@ -152,7 +152,7 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(enterEntry(sim, wu, 'discussion', topic).started, true);
   });
 
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, and the spec lands citing what was decided (24.S3, 11.S1, 11.S3)', () => {
+  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the spec lands citing what was decided, and the marks of its review page are read back (24.S3, 11.S1, 11.S3)', () => {
     const wu = 'ledgerly';
     mappedEpic(sim, wu, ['alpha', 'beta']);
     sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
@@ -168,6 +168,7 @@ describe('pipeline simulation: epic', () => {
     ].join('\n'));
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
+    sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
