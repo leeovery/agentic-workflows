@@ -9,8 +9,9 @@
 // topic; Claude's items marked in its own order, one skipped with its
 // reason, and the close (2.S2); the engine's own items worked out at each
 // call and never kept or marked — the person's questions on the ledger's map
-// (6.S13), mail waiting, the unit's topics settled, every statement of
-// `spec.md` traced, the cut against `spec.md`, what a phase relies on;
+// (6.S13), mail waiting, the unit's topics settled, every statement and
+// screen of `spec.md` traced, the cut against `spec.md`, what a phase
+// relies on;
 // the close refused while an item is open (6.S26), and a mark from before
 // the last close never counting toward the next; finish showing every phase
 // start's and close's skips, read from the manifest by another conversation
@@ -48,12 +49,12 @@ const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
 
 const SPEC = [
   '# Payments', '',
-  '## 1. Cards', 'A card is taken once.', '',
-  '### 1.1 The form', '1.1.1 The number is checked as it is typed. [builder]', '',
-  '### 1.2 The receipt', '1.2.1 A receipt names its charge. [builder]', '',
+  '## 1. Cards', '',
+  '### 1.1 The form', '', '1.1.1 The number is checked as it is typed. [builder]', '',
+  '### 1.2 The receipt', '', '1.2.1 A receipt names its charge. [builder]', '',
   '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when the number is typed, then it is checked. (1.1.1)', '',
-  '## 2. Refunds', 'A refund credits the card.', '',
-  '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then the card is credited.', '',
+  '## 2. Refunds', '',
+  '## 2-S. Scenarios for §2', '', '2.S1 Given a charge, when it is refunded, then its receipt names it. (1.2.1)', '',
 ].join('\n');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
@@ -366,15 +367,15 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     assert.deepStrictEqual([...seen, settled()], ['open', 'open', 'done']);
   });
 
-  it('reads every statement of spec.md traced to the ledger as done, one that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {
+  it('reads every statement and screen of spec.md traced to the ledger as done, a statement or a screen that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {
     const traced = () => itemState('statements-traced', 'ready-to-build', UNIT);
     const seen = [traced()];
-    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed.'));
-    seen.push(traced());
-    writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', 'typed. [see below]'));
-    seen.push(traced());
+    for (const said of ['typed.', 'typed. [builder]\n\nScreen: the form, drawn.', 'typed. [see below]']) {
+      writeState(dir, layout.unit(UNIT, 'spec.md'), SPEC.replace('typed. [builder]', said));
+      seen.push(traced());
+    }
 
-    assert.deepStrictEqual(seen, ['done', 'open', 'open']);
+    assert.deepStrictEqual(seen, ['done', 'open', 'open', 'open']);
   });
 
   it('reads what a phase relies on as done once an earlier phase\'s close is recorded and another unit is completed, never cancelled (12.6.3)', () => {

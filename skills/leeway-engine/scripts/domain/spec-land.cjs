@@ -13,14 +13,16 @@
 // never corrected (11.9.1); a unit `enter specification` refuses, in its
 // words (spec-entry.cjs) — a topic not yet settled, a quick-fix, a
 // cross-cutting unit; a unit with no `spec.md`; and a spec its grammar
-// cannot read (spec-sections.cjs, `specStatements`), naming every fault. A
-// statement that does not trace refuses nothing: the land answers it, with
-// why (spec-trace.cjs), for the spec's review to take up (11.4.2), and ready
-// to build's `statements-traced` stays open while one does.
+// cannot read (spec-sections.cjs, `specStatements`), naming every fault, one
+// per line; and a commit git refuses. A statement or a screen that does not
+// trace refuses nothing: the land answers it, with why (spec-trace.cjs), for
+// the spec's review to take up (11.4.2), and ready to build's
+// `statements-traced` stays open while one does.
 //
-// It answers how many statements the spec holds, each invented one, and the
-// sections changed since the last land: each area and part whose text
-// differs from the spec the state branch holds, or that it lacked — every
+// It answers how many statements the spec holds, each invented line, and
+// the sections changed since the last land: each area and part whose text
+// differs from the spec the state branch holds — an area's with its block of
+// scenarios — or that it lacked, then each the spec no longer holds; every
 // one at the first land. It runs under the writer lock (engine.cjs) and
 // commits `spec.md`, with each file it links that is on disk in a unit's or
 // the product's assets or spikes (log-links.cjs), pushed.
@@ -31,9 +33,9 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { SPEC_FILE, readSpec, specSections, specStatements } = require('./spec-sections.cjs');
+const { SPEC_FILE, readSpec, specSections, scenarioBlocks, specStatements } = require('./spec-sections.cjs');
 const { specStanding, specEntryRefusal } = require('./spec-entry.cjs');
-const { inventedStatements } = require('./spec-trace.cjs');
+const { inventedLines } = require('./spec-trace.cjs');
 const { logLinks } = require('./log-links.cjs');
 const { commitStateScoped, noteCommitOutcome } = require('./commit.cjs');
 
@@ -62,18 +64,30 @@ function unitRefusal(cwd, unit) {
   return specEntryRefusal(cwd, unit);
 }
 
+/** Each section's text by address, an area's with its block of scenarios after it. @param {string} text @returns {Map<string, string>} */
+function sectionTexts(text) {
+  const scenarios = scenarioBlocks(text);
+  return new Map([...specSections(text)].map(([address, { text: own }]) => [address, scenarios.has(address) ? `${own}\n${scenarios.get(address)}` : own]));
+}
+
 /**
- * The sections of `text` changed since `landed`, the spec the state branch
- * holds: each whose text differs or that it lacked, in the spec's order —
- * every one where it holds none, or one its sections cannot read.
+ * The sections changed since `landed`, the spec the state branch holds: each
+ * of `text`'s whose text differs or that it lacked, in the spec's order, then
+ * each of its that `text` lacks — every one of `text`'s where it holds none,
+ * or one its sections cannot read.
  * @param {string|null} landed @param {string} text @returns {string[]}
  */
 function changedSections(landed, text) {
+  /** @type {Map<string, string>} */
   let before = new Map();
   try {
-    if (landed !== null) before = specSections(landed);
+    if (landed !== null) before = sectionTexts(landed);
   } catch { /* a spec committed by another route than the land: every section changed */ }
-  return [...specSections(text).values()].filter(({ address, text: now }) => before.get(address)?.text !== now).map(({ address }) => address);
+  const now = sectionTexts(text);
+  return [
+    ...[...now].filter(([address, held]) => before.get(address) !== held).map(([address]) => address),
+    ...[...before.keys()].filter((address) => !now.has(address)),
+  ];
 }
 
 /** `fn`'s answer, its refusal the land's. @template T @param {() => T} fn @returns {T} */
@@ -94,16 +108,16 @@ function landSpec(cwd, unit) {
   const refused = unitRefusal(cwd, unit);
   if (refused !== null) refuse(refused);
   const text = refusing(() => readSpec(cwd, unit));
-  const { statements } = refusing(() => specStatements(text));
+  const lines = refusing(() => specStatements(text));
   const root = stateRoot(cwd);
   const rel = `${unit}/${SPEC_FILE}`;
   /** @type {string[]} */
   const warnings = [];
-  const invented = inventedStatements(cwd, unit, statements, warnings);
+  const invented = inventedLines(cwd, unit, lines, warnings);
   const changed = changedSections(isolatedGit(root).tryRun(['show', `HEAD:${rel}`]), text);
   const outcome = refusing(() => commitStateScoped(cwd, rel, `spec(${unit}): landed`, { kept: logLinks(root, [rel]) }));
   /** @type {Landed} */
-  const result = { unit, statements: statements.length, invented, changed, committed: outcome.committed };
+  const result = { unit, statements: lines.filter(({ kind }) => kind === 'statement').length, invented, changed, committed: outcome.committed };
   warnings.push(...outcome.warnings);
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, { ...outcome, failed: false });

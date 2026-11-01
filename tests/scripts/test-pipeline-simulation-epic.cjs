@@ -5,9 +5,9 @@
 // approved at discovery's gates; a topic's discussion, with a
 // message raised and answered through the topic's one mailbox; a topic
 // landed in discovery started from its own row; the last topic decided
-// going into the spec, entered at the unit; an arrival that backfills; the
-// spec written once every topic is decided and landed; and the last review
-// handing off to the menu. The map's own lifecycle is
+// going into the spec, entered at the unit; an arrival that backfills; and,
+// once every topic is decided, the spec landed citing what was decided, and
+// the last review handing off to the menu. The map's own lifecycle is
 // test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
 // test-pipeline-simulation-backwards.cjs.
 //
@@ -205,23 +205,18 @@ describe('pipeline simulation: epic', () => {
     assert.deepStrictEqual(toRecover(), [], 'the fresh menu finds nothing to recover');
   });
 
-  it('epic: once every topic is decided, the spec is written in its place, citing what was decided, and landed', () => {
-    const wu = 'charges';
+  it('epic: once every topic is decided, the spec lands citing what was decided; the last review hands off to the menu, which banners it and offers to complete the epic', () => {
+    const wu = 'wrapup';
     mappedEpic(sim, wu, ['alpha']);
     discussed(sim, wu, 'alpha');
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
     sim.write(`.leeway/${wu}/spec.md`, [
-      '# Charges', '', '## 1. Charges', '',
-      '### 1.1 Settling', '', `1.1.1 A charge settles as alpha decided. [${decision.id}]`, '',
-      '## 1-S. Scenarios for §1', '', '1.S1 Given a charge, when it settles, then it holds as alpha decided. (1.1.1)', '',
+      '# Wrapup', '', '## 1. Wrapping up', '',
+      '### 1.1 Settling', '', `1.1.1 It settles as alpha decided. [${decision.id}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given the epic, when it settles, then it holds as alpha decided. (1.1.1)', '',
     ].join('\n'));
-    sim.run(['spec', 'land', wu]);
-  });
-
-  it('epic: the last review hands off to the menu, which banners it and offers to complete the epic', () => {
-    const wu = 'wrapup';
-    mappedEpic(sim, wu, ['alpha']);
-    discussed(sim, wu, 'alpha');
+    const landed = sim.run(['spec', 'land', wu]);
+    assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
     sim.write(`.leeway/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');

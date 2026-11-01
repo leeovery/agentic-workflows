@@ -7,8 +7,9 @@
 // phase's fields in that order, and committed alone on the state branch, under the writer lock; each refusal of
 // 11.5.9 — a scenario or a section the spec lacks, a scenario in two phases
 // or in none, a phase relying on itself or a later one, another unit the
-// project lacks, a unit with no spec, a file of another shape — naming the
-// fault and writing nothing; a second cut replacing the whole cut until a
+// project lacks, a unit with no spec or one its lines refuse, a file of
+// another shape — naming the fault and writing nothing; a second cut
+// replacing the whole cut until a
 // phase has started — its start's checklist closed, not merely open — then
 // keeping every phase to the last started, whatever order its fields are
 // given in, and changing only those after.
@@ -38,12 +39,13 @@ const UNIT = 'payments';
 
 const SPEC = [
   '# Payments', '',
-  '## 1. Cards', 'A card is taken once.', '',
-  '### 1.1 The form', '1.S1 Given a card form, when the number is typed, then it is checked.', '',
-  '## 2. Receipts', 'A receipt names its charge.', '',
-  '## 3. Refunds', 'A refund names its charge.', '',
-  '3.S1 Given a charge, when it is refunded whole, then the card is credited.', '',
-  '3.S2 Given a charge, when part of it is refunded, then the rest stands.', '',
+  '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 A card is taken once. [builder]', '',
+  '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when the number is typed, then it is checked. (1.1.1)', '',
+  '## 2. Receipts', '', '### 2.1 The charge', '', '2.1.1 A receipt names its charge. [builder]', '',
+  '## 3. Refunds', '', '### 3.1 The charge', '', '3.1.1 A refund names its charge. [builder]', '',
+  '## 3-S. Scenarios for §3', '',
+  '3.S1 Given a charge, when it is refunded whole, then the card is credited. (3.1.1)', '',
+  '3.S2 Given a charge, when part of it is refunded, then the rest stands. (3.1.1)', '',
 ].join('\n');
 
 const world = fixtureFrom('cut-', (dir) => {
@@ -151,10 +153,12 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
     ].join('; '));
   });
 
-  it('a unit with no spec.md, a spec giving a scenario twice, and a unit the project lacks', () => {
+  it('a unit with no spec.md, a spec its lines refuse — a scenario given twice, a note — and a unit the project lacks', () => {
     assert.strictEqual(refused({ phases: [CARDS] }, 'billing'), 'cut: billing has no spec — its folder holds no spec.md');
-    writeState(dir, layout.unit(UNIT, SPEC_FILE), `${SPEC}3.S1 Given the refund again.\n`);
-    assert.strictEqual(refused({ phases: [CARDS, REFUNDS] }), 'cut: the spec gives scenario 3.S1 twice, on lines 15 and 18');
+    writeState(dir, layout.unit(UNIT, SPEC_FILE), `${SPEC}\n3.S1 Given the refund again. (3.1.1)\n`);
+    assert.strictEqual(refused({ phases: [CARDS, REFUNDS] }), 'cut: the spec gives scenario 3.S1 twice, on lines 27 and 31');
+    writeState(dir, layout.unit(UNIT, SPEC_FILE), SPEC.replace('## 2. Receipts', '## 2. Receipts\n\nA receipt is kept.'));
+    assert.strictEqual(refused({ phases: [CARDS, REFUNDS] }), 'cut: line 15 opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk');
     assert.strictEqual(refused({ phases: [CARDS] }, 'ledger'), 'cut: there is no work unit "ledger"');
   });
 

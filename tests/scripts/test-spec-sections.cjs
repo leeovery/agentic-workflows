@@ -1,25 +1,29 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's sections (leeway-engine/scripts/domain/spec-sections.cjs):
+// The spec's sections and lines (leeway-engine/scripts/domain/spec-sections.cjs):
 // how a reference cites sections — runs opened by `§` or `§§`, their numbers
 // joined by `,`, `and` or `&`, a range by `–`, `-` or `to`, each cite once in
 // the order cited, every number a run holds counted — and where a section
 // runs in a spec's text — an area, `## N. Title`, to the next heading at
 // level two or above, holding its parts; a part, `### N.M Title`, to the
-// next at level three or above; a heading in a fenced block being text —
-// the spec refused where a section is numbered twice or a part sits under
-// another area or none; and the sections a reference cites drawn from a
+// next at level three or above; a heading in a fenced block, opened and
+// closed by a line opening ```, being text — the spec refused where a
+// section is numbered twice or a part sits under another area or none; an
+// area's block of scenarios; the sections a reference cites drawn from a
 // text, a range's at its level in the spec's order, a part whose area is
-// drawn left to the area, each refusal naming the reference; the
-// scenarios a spec gives, each a line opening `N.Sk ` outside a fenced block,
-// the spec refused where it gives one twice; and a spec's lines (11.4.5,
-// 11.11.3, P2) — a statement a paragraph opening `N.M.K ` in its part, its
-// source bracket its last thing, cites, the builder's with a cite or alone,
-// or none; a scenario in its area's block, drawing on the statements it
-// closes on in parentheses; a screen the fenced block after a numbered line,
-// numbered `<line>-scr<k>`; prose and numbers in fences or inline code no
-// line — the spec refused, naming every fault at once.
+// drawn left to the area, each refusal naming the reference; and a spec's
+// lines (11.4.5, 11.11.3, P2) as its review page reads them — blocks split
+// on blank lines, a fenced block whole; a block opening `N.M.K ` or `N.Sk `
+// starting a statement or a scenario, a `Screen…:` caption after one a
+// screen of it, `<line>-scr<k>`, each owning the blocks after it to the next
+// line, screen or heading; a statement's or a screen's bracket the trailing
+// `[...]` of its last block not fenced, citing entries or the builder's; a
+// scenario closing on the statements it draws on; the introduction unread —
+// the spec refused, naming every fault at once, one per line; and its
+// scenarios read through its lines. That the reading is the page's own,
+// line for line, was proven over a whole release spec against the page's
+// model; the cases here pin each rule.
 //
 // Layer: unit. World: none — spec texts as values.
 // ---------------------------------------------------------------------------
@@ -30,7 +34,11 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { citedSections, specSections, specScenarios, specStatements, sectionsCited } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
+const {
+  citedSections, specSections, scenarioBlocks, specReading, specStatements, specScenarios, sectionsCited,
+} = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
+
+/** @typedef {import('../../skills/leeway-engine/scripts/domain/spec-sections.cjs').Line} Line */
 
 /** @param {string[]} lines */
 const text = (lines) => lines.join('\n');
@@ -39,7 +47,7 @@ const SPEC = text([
   '# Payments', '',
   '## 1. Cards', 'A card is taken once.', '',
   '### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '',
-  '~~~~', '### 1.9 Not a part', '~~~', '## 3. Still not an area', '~~~~', '',
+  '```', '### 1.9 Not a part', '## 3. Still not an area', '```', '',
   '### 1.2 The receipt', 'A receipt.', '',
   '## Open questions', 'None yet.', '',
   '## 2. Refunds', 'A refund names its charge.', '',
@@ -86,8 +94,8 @@ describe('a spec\'s sections', () => {
   it('an area runs to the next heading at its level or above, holding its parts; a part to the next at its own; a deeper heading and a fenced block stay inside', () => {
     assert.deepStrictEqual(sectionTexts(SPEC), {
       1: text(['## 1. Cards', 'A card is taken once.', '', '### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '',
-        '~~~~', '### 1.9 Not a part', '~~~', '## 3. Still not an area', '~~~~', '', '### 1.2 The receipt', 'A receipt.']),
-      1.1: text(['### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '', '~~~~', '### 1.9 Not a part', '~~~', '## 3. Still not an area', '~~~~']),
+        '```', '### 1.9 Not a part', '## 3. Still not an area', '```', '', '### 1.2 The receipt', 'A receipt.']),
+      1.1: text(['### 1.1 The form', 'The number.', '#### Its fields', 'Number and expiry.', '', '```', '### 1.9 Not a part', '## 3. Still not an area', '```']),
       1.2: text(['### 1.2 The receipt', 'A receipt.']),
       2: text(['## 2. Refunds', 'A refund names its charge.', '', '### 2.1 Partial', 'Part of a charge.', '', '### 2.2 Whole', 'All of a charge.']),
       2.1: text(['### 2.1 Partial', 'Part of a charge.']),
@@ -96,12 +104,22 @@ describe('a spec\'s sections', () => {
     });
   });
 
-  it('a section numbered twice, and a part under another area or none, are refused', () => {
+  it('a section numbered twice, and a part under another area or none, are refused — a run of tildes being no fence in a spec, as its page reads one', () => {
     assert.throws(() => specSections(text(['## 1. Cards', '## 1. Again'])), /^Error: the spec numbers §1 twice$/);
+    assert.throws(() => specSections(text(['## 1. Cards', '~~~', '## 1. Again', '~~~'])), /^Error: the spec numbers §1 twice$/);
     assert.throws(() => specSections(text(['## 1. Cards', '### 2.1 Refunds'])), /^Error: §2\.1 sits under §1$/);
     assert.throws(() => specSections(text(['## Open questions', '### 1.1 The form'])), /^Error: §1\.1 sits under no area$/);
     assert.throws(() => specSections(text(['## 1. A', '## Notes', '### 1.3 X'])), /^Error: §1\.3 sits under no area$/);
     assert.throws(() => specSections(text(['## 1. A', '# Appendix', '### 1.3 X'])), /^Error: §1\.3 sits under no area$/);
+  });
+
+  it('an area\'s block of scenarios runs from its heading, ## N-S., to the next heading at level two or above', () => {
+    const spec = text(['## 1. Cards', '', '## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not an area', '```', '', '## 2. Refunds', '', '## 2-S. Scenarios for §2', '2.S1 Given two.', '', '# Appendix']);
+
+    assert.deepStrictEqual(Object.fromEntries(scenarioBlocks(spec)), {
+      1: text(['## 1-S. Scenarios for §1', '', '1.S1 Given one.', '```', '## 2. Not an area', '```']),
+      2: text(['## 2-S. Scenarios for §2', '2.S1 Given two.']),
+    });
   });
 });
 
@@ -122,115 +140,144 @@ describe('the sections a reference cites', () => {
   });
 });
 
-describe('a spec\'s scenarios', () => {
-  it('each line opening N.Sk outside a fenced block, in the spec\'s order, wherever it sits', () => {
-    const spec = text([
-      '3.S2 Given a spec, when it opens, then this is a scenario.',
-      '## 1. Cards', 'Cards are covered by 1.S7 below.', '  1.S8 indented is text.', '1.S9 Given a card, when it is taken, then it is checked.',
-      '```', '1.S3 Given a fence, then this is text.', '```',
-      '~~~~', '1.S4 Given a fence of tildes, then this is text.', '~~~', '1.S5 Still inside, the fence closed by its own length or longer.', '~~~~',
-      '### 1.1 The form', '1.S1 Given a form, when it is sent, then a receipt shows.',
-      '1.S6', '1.Sx Given no number, then this is text.',
+/** A line as read, its fields as given and the rest a statement's with no source. @param {Partial<Line>} line @returns {Line} */
+const lineOf = (line) => ({
+  kind: 'statement', number: '', line: 0, wording: '', bracket: null, cites: [], builder: false, of: null, drawsOn: [], ...line,
+});
+
+/** The lines of a kind a spec gives. @param {string} spec @param {Line['kind']} kind */
+const linesOf = (spec, kind) => specStatements(spec).filter((line) => line.kind === kind);
+
+describe('a spec\'s lines, read as its page reads them (11.4.5, 11.11.3)', () => {
+  const LINES = text([
+    '# Payments', '',
+    'What the spec covers; 1.1.1 is prose here.', '',
+    '## Contents', '', '- §1 Cards', '',
+    '## 1. Cards', '',
+    '### 1.1 The form', '',
+    '1.1.1 The number is checked as it is typed, as', '1.2.1 and 7.2.13 allow. [Ab12Cd, Ef34Gh]', '',
+    '1.1.2 Expiry reads [MM/YY] as `month[0]`. [ Ab12Cd ,Ef34 ]', '',
+    '1.1.3 The form shows:', '', '- the number;', '- the expiry.', '', '```text', '1.1.9 Card number', '```', '',
+    'Its fields keep their order. [builder: Gh56Ij]', '',
+    'Screen, drawn by Claude: the form, empty. [builder]', '', '```text', 'Card number  ____', '```', '',
+    '1.1.4 The card\'s brand shows. [Ab12Cd].', '',
+    '`1.1.5 inline` opens no line, so this block is 1.1.4\'s.', '',
+    '### 1.2 The receipt', '',
+    '1.2.1 A receipt names its charge.', '', '```text', 'Charge 42', '```', '',
+    '## 1-S. Scenarios for §1', '',
+    '1.S1 Given a form, when the number is typed,', 'then it is checked. (1.1.1, 1.1.2)', '',
+    '1.S2 Given a receipt, then it names the charge (once).', '',
+  ]);
+
+  it('a block opening N.M.K starts a statement, owning every block after it — paragraphs, lists, fenced blocks — to the next line, screen or heading; its bracket the trailing [...] of its last block not fenced, citing entries, the builder\'s with its cite or alone, or nothing where it has none; its wording each block on one line; the introduction unread', () => {
+    assert.deepStrictEqual(linesOf(LINES, 'statement'), [
+      lineOf({ number: '1.1.1', line: 13, wording: 'The number is checked as it is typed, as 1.2.1 and 7.2.13 allow.', bracket: 'Ab12Cd, Ef34Gh', cites: ['Ab12Cd', 'Ef34Gh'] }),
+      lineOf({ number: '1.1.2', line: 16, wording: 'Expiry reads [MM/YY] as `month[0]`.', bracket: ' Ab12Cd ,Ef34 ', cites: ['Ab12Cd', 'Ef34'] }),
+      lineOf({
+        number: '1.1.3', line: 18, wording: 'The form shows:\n- the number; - the expiry.\n```text\n1.1.9 Card number\n```\nIts fields keep their order.', bracket: 'builder: Gh56Ij', cites: ['Gh56Ij'], builder: true,
+      }),
+      lineOf({ number: '1.1.4', line: 35, wording: 'The card\'s brand shows. [Ab12Cd].\n`1.1.5 inline` opens no line, so this block is 1.1.4\'s.' }),
+      lineOf({ number: '1.2.1', line: 41, wording: 'A receipt names its charge.\n```text\nCharge 42\n```' }),
     ]);
-    assert.deepStrictEqual(specScenarios(spec), ['3.S2', '1.S9', '1.S1']);
   });
 
-  it('a scenario given twice is refused, naming both its lines; one in a fenced block is no second', () => {
-    assert.throws(() => specScenarios(text(['3.S1 Given one.', '## 3. Refunds', '3.S1 Given another.'])), /^Error: the spec gives scenario 3\.S1 twice, on lines 1 and 3$/);
-    assert.deepStrictEqual(specScenarios(text(['3.S1 Given one.', '```md', '3.S1 Given an example.', '```'])), ['3.S1']);
+  it('a block opening N.Sk starts a scenario, closing on the statements it draws on in parentheses, its wording keeping them, and drawing on none where it closes on anything else', () => {
+    assert.deepStrictEqual(linesOf(LINES, 'scenario'), [
+      lineOf({ kind: 'scenario', number: '1.S1', line: 49, wording: 'Given a form, when the number is typed, then it is checked. (1.1.1, 1.1.2)', drawsOn: ['1.1.1', '1.1.2'] }),
+      lineOf({ kind: 'scenario', number: '1.S2', line: 52, wording: 'Given a receipt, then it names the charge (once).' }),
+    ]);
+  });
+
+  it('a Screen…: caption after a line starts a screen of it, <line>-scr<k>, with its own bracket and the blocks after it; a bare fenced block is its line\'s', () => {
+    const spec = text([
+      '# Payments', '', '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 The form. [builder]', '',
+      'Screen: the form, empty. [builder: Ab12Cd]', '', '```text', 'Card number  ____', '```', '',
+      'Screen: the form, filled.', '', '```text', 'Card number  4242', '```', '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given the form, then it shows. (1.1.1)', '', 'Screen: shown. [Ef34Gh]', '',
+    ]);
+
+    assert.deepStrictEqual(linesOf(spec, 'screen'), [
+      lineOf({ kind: 'screen', number: '1.1.1-scr1', line: 9, of: '1.1.1', wording: 'Screen: the form, empty.\n```text\nCard number  ____\n```', bracket: 'builder: Ab12Cd', cites: ['Ab12Cd'], builder: true }),
+      lineOf({ kind: 'screen', number: '1.1.1-scr2', line: 15, of: '1.1.1', wording: 'Screen: the form, filled.\n```text\nCard number  4242\n```' }),
+      lineOf({ kind: 'screen', number: '1.S1-scr1', line: 25, of: '1.S1', wording: 'Screen: shown.', bracket: 'Ef34Gh', cites: ['Ef34Gh'] }),
+    ]);
+    assert.deepStrictEqual(linesOf(LINES, 'screen').map(({ number, line, of, bracket }) => [number, line, of, bracket]), [['1.1.3-scr1', 29, '1.1.3', 'builder']]);
+  });
+
+  it('refuses, naming every fault at once, one per line: no title; a section the sections refuse; a note; a heading not standing alone, a second title, and one neither an area nor its scenarios; scenarios after another area; a line outside its part or its block; one numbered twice; one opening straight after another\'s source or a scenario\'s statements; a number the grammar does not read; a screen straight after a heading; a bracket of no form, or one on a scenario; a scenario drawing on a statement the spec lacks; and a fence left open', () => {
+    const spec = text([
+      'Payments', '',
+      '## 1. Cards', '',
+      'A note before any line.', '',
+      '### 1.1 The form', 'Runs on from the heading.', '',
+      '### 3.1 Elsewhere', '',
+      '### 1.2 The receipt', '',
+      '1.2.1 Typed. [builder]', '1.2.2 Straight after its source. [builder]', '',
+      '2.1.1 Another part\'s. [builder]', '',
+      '1.2.3. Near a number.', '',
+      '- 1.2.4 Listed.', '',
+      '# Appendix', '',
+      '1.2.1 Again. [see below]', '',
+      '1.S1 Not in a block. (1.2.1)', '',
+      '## 2-S. Scenarios for §2', '',
+      'Screen: straight after a heading.', '',
+      '1.S1 Again. (1.9.9) [Ab12]', '',
+      '1.S2 Given one. (1.2.1)', '1.S3 Straight after its statements. (1.2.1)', '',
+      '## Open questions', '',
+      '```text', 'never closed',
+    ]);
+
+    assert.deepStrictEqual(specReading(spec).faults, [
+      'the spec does not open with its title — its first line is # Title',
+      '§3.1 sits under §1',
+      'line 5 opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk',
+      'the heading on line 7 does not stand alone — a heading is ## or ### and its title, between blank lines',
+      'line 15 opens a numbered line straight after the source of line 14 — each line is a block of its own, after a blank line',
+      'statement 2.1.1 on line 17 sits under §1.2 — a statement N.M.K sits under ### N.M',
+      'line 19 opens "1.2.3.", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space',
+      'line 21 opens "- 1.2.4", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space',
+      'line 23 is a second title — the spec has one, # Title, its first line',
+      'the spec gives statement 1.2.1 twice, on lines 14 and 25',
+      'scenario 1.S1 on line 27 sits in no block of scenarios — a scenario N.Sk sits under ## N-S., after its area',
+      'the scenarios on line 29 are §2\'s, but follow §1 — an area\'s scenarios follow it, under ## N-S.',
+      'the screen on line 31 follows a heading — a screen follows the line it shows',
+      'scenario 1.S1 on line 33 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its area',
+      'the spec gives scenario 1.S1 twice, on lines 27 and 33',
+      'line 36 opens a numbered line straight after the source of line 35 — each line is a block of its own, after a blank line',
+      'scenario 1.S2 on line 35 sits among §2\'s scenarios — a scenario N.Sk sits under ## N-S., after its area',
+      'the heading on line 38 is neither an area, ## N. Title, nor its scenarios, ## N-S. Scenarios for §N',
+      'the fenced block opened on line 40 is never closed',
+      'line 40 opens a note, a block with no number after a heading — every requirement is a numbered line, N.M.K or N.Sk',
+      'statement 1.2.1 on line 25 ends in [see below], which is no source bracket — [id, id, …], [builder: id] or [builder]',
+      'scenario 1.S1 on line 33 ends in [Ab12] — a scenario\'s source is the statements it draws on, in parentheses',
+      'scenario 1.S1 draws on statement 1.9.9, which the spec lacks',
+    ]);
+    assert.throws(() => specStatements(spec), (err) => /** @type {Error} */ (err).message === specReading(spec).faults.join('\n'));
+  });
+
+  it('refuses a block opening with each number the grammar does not read, and reads a wrapped row opening with one as its line\'s', () => {
+    /** @param {string} block */
+    const after = (block) => text(['# Payments', '', '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 The form. [builder]', '', block]);
+    const misses = ['1.1.2.', '1.1.2:', '**1.1.2**', '- 1.1.2', '* 1.S1', '1.1.2\tTabbed.'].map((opening) => specReading(after(`${opening} More.`)).faults);
+
+    assert.deepStrictEqual(misses, ['1.1.2.', '1.1.2:', '**1.1.2**', '- 1.1.2', '* 1.S1', '1.1.2'].map((said) => [`line 9 opens "${said}", a number the spec does not read — a numbered line opens N.M.K or N.Sk and a space`]));
+    assert.deepStrictEqual(specReading(after('Held, as\n1.2.1 and 7.2.13 allow.')).faults, []);
+  });
+
+  it('refuses a spec with no area, and one with no statement, so an empty spec never reads traced', () => {
+    assert.throws(() => specStatements(text(['# Payments', '', 'Nothing numbered.'])), /^Error: the spec has no area — an area is a heading ## N\. Title\nthe spec has no statement — a statement is a block opening N\.M\.K, in its part$/);
+    assert.throws(() => specStatements(text(['# Payments', '', '## 1. Cards', '', '## 1-S. Scenarios for §1', '', '1.S1 Given a card, then it is taken.'])), /^Error: the spec has no statement — a statement is a block opening N\.M\.K, in its part$/);
   });
 });
 
-describe('a spec\'s lines (11.4.5, 11.11.3)', () => {
-  const LINES = text([
-    '# Payments', '', 'What the spec covers.', '',
-    '## 1. Cards', 'A card is taken once.', '',
-    '### 1.1 The form',
-    '1.1.1 The number is checked as it is typed,', 'digit by digit. [Ab12Cd, Ef34Gh]', '',
-    '1.1.2 Expiry reads [MM/YY] as `month[0]`. [ Ab12Cd ,Ef34 ]', '',
-    '1.1.3 A corner\'s radius. [builder: Gh56Ij]', '',
-    '#### Left open',
-    '1.1.4 The field\'s font. [builder]', '',
-    '1.1.5 The card\'s brand shows. [Ab12Cd].', '',
-    '`1.1.6 inline` is prose, and so is this paragraph.', '',
-    '### 1.2 The receipt',
-    '1.2.1 A receipt names its charge.', '',
-    '## 1-S. Scenarios for §1', '',
-    '1.S1 Given a form, when the number is typed, then it is checked. (1.1.1, 1.1.2)', '',
-    '1.S2 Given a receipt, then it names the charge (once).', '',
-    '## 2. Refunds', '',
-    '### 2.1 Whole',
-    '2.1.1 A refund credits the card. [Kl78Mn]', '',
-  ]);
-
-  it('a statement is a paragraph opening N.M.K in its part, to the next blank line, its wording before its bracket — entries cited, the builder\'s with its cite or alone — and with no bracket last it cites nothing', () => {
-    assert.deepStrictEqual(specStatements(LINES).statements, [
-      { number: '1.1.1', line: 9, wording: 'The number is checked as it is typed,\ndigit by digit.', cites: ['Ab12Cd', 'Ef34Gh'], builder: false },
-      { number: '1.1.2', line: 12, wording: 'Expiry reads [MM/YY] as `month[0]`.', cites: ['Ab12Cd', 'Ef34'], builder: false },
-      { number: '1.1.3', line: 14, wording: 'A corner\'s radius.', cites: ['Gh56Ij'], builder: true },
-      { number: '1.1.4', line: 17, wording: 'The field\'s font.', cites: [], builder: true },
-      { number: '1.1.5', line: 19, wording: 'The card\'s brand shows. [Ab12Cd].', cites: [], builder: false },
-      { number: '1.2.1', line: 24, wording: 'A receipt names its charge.', cites: [], builder: false },
-      { number: '2.1.1', line: 35, wording: 'A refund credits the card.', cites: ['Kl78Mn'], builder: false },
-    ]);
-  });
-
-  it('a scenario is a paragraph in its area\'s block, closing on the statements it draws on in parentheses, and none where it closes on anything else', () => {
-    assert.deepStrictEqual(specStatements(LINES).scenarios, [
-      { id: '1.S1', line: 28, wording: 'Given a form, when the number is typed, then it is checked.', statements: ['1.1.1', '1.1.2'] },
-      { id: '1.S2', line: 30, wording: 'Given a receipt, then it names the charge (once).', statements: [] },
-    ]);
-  });
-
-  it('a screen is each fenced block after a statement or scenario in its section, numbered by it, a paragraph between them taking nothing, and a number inside it opening no line', () => {
+describe('a spec\'s scenarios', () => {
+  it('each scenario its lines give, by id, in the spec\'s order, refused where its lines are', () => {
     const spec = text([
-      '## 1. Cards', '### 1.1 The form', '1.1.1 The form. [builder]', '', 'Screen, drawn by Claude: the form.', '',
-      '```text', '1.1.1 Card number', '```', '', '~~~', '1.S1 Not a scenario', '~~~',
-      '## 1-S. Scenarios for §1', '', '1.S1 Given the form, then it shows. (1.1.1)', '', '```text', 'shown', '```',
+      '# Payments', '', '## 1. Cards', '', '### 1.1 The form', '', '1.1.1 The form. [builder]', '', '```text', '1.S3 Given a fence, then this is text.', '```', '',
+      '## 1-S. Scenarios for §1', '', '1.S2 Given the form, then it shows. (1.1.1)', '', '1.S1 Given a card, then it is taken. (1.1.1)', '',
     ]);
-    const { statements, scenarios, screens } = specStatements(spec);
-    assert.deepStrictEqual([statements.map(({ number }) => number), scenarios.map(({ id }) => id), screens], [['1.1.1'], ['1.S1'], [
-      { number: '1.1.1-scr1', of: '1.1.1', line: 7, text: '```text\n1.1.1 Card number\n```' },
-      { number: '1.1.1-scr2', of: '1.1.1', line: 11, text: '~~~\n1.S1 Not a scenario\n~~~' },
-      { number: '1.S1-scr1', of: '1.S1', line: 18, text: '```text\nshown\n```' },
-    ]]);
-  });
 
-  it('refuses, naming every fault at once: a section the sections refuse, a line outside its part or block, one given twice, one opening inside another paragraph, a bracket of no form, a scenario drawing on a statement the spec lacks, scenarios for an area it lacks, a screen following no line, and a fence left open', () => {
-    const spec = text([
-      '```text', 'before any area', '```',
-      '## 1. Cards', '1.1.9 Under the area alone. [builder]', '',
-      '### 1.1 The form', '```text', 'after the heading', '```', '',
-      '1.1.1 Typed. [builder]', '', '2.1.1 Another part\'s. [builder]', '', '1.1.1 Again. [see below]', '',
-      'Prose runs on', '1.1.2 into a statement. [builder]', '',
-      '1.S1 Not in a block. (1.1.1)', '',
-      '## 1-S. Scenarios for §1', '', '1.1.3 In the scenarios. [builder]', '', '1.S1 Again. (1.9.9)', '',
-      '## 3-S. Scenarios for §3', '', '1.S2 Another area\'s.', '',
-      '## 1. Cards again', '', '```text', 'never closed',
-    ]);
-    assert.throws(() => specStatements(spec), (err) => {
-      assert.deepStrictEqual(/** @type {Error} */ (err).message.split('; '), [
-        'the spec numbers §1 twice',
-        'the fenced block on line 1 follows no statement or scenario in its section — a screen follows the line it shows',
-        'statement 1.1.9 on line 5 sits under no part — a statement N.M.K sits under ### N.M',
-        'the fenced block on line 8 follows no statement or scenario in its section — a screen follows the line it shows',
-        'statement 2.1.1 on line 14 sits under §1.1 — a statement N.M.K sits under ### N.M',
-        'the spec gives statement 1.1.1 twice, on lines 12 and 16',
-        'statement 1.1.1 on line 16 ends in [see below], which is no source bracket — [id, id, …], [builder: id] or [builder]',
-        'line 19 opens a numbered line inside the paragraph of line 18 — each statement and scenario is a paragraph of its own, after a blank line',
-        'scenario 1.S1 on line 21 sits in no block of scenarios — a scenario N.Sk sits under ## N-S., after its area',
-        'statement 1.1.3 on line 25 sits under no part — a statement N.M.K sits under ### N.M',
-        'the spec gives scenario 1.S1 twice, on lines 21 and 27',
-        'scenario 1.S2 on line 31 sits among §3\'s scenarios — a scenario N.Sk sits under ## N-S., after its area',
-        'the fenced block opened on line 35 is never closed',
-        'the scenarios on line 29 are §3\'s, an area the spec lacks',
-        'scenario 1.S1 draws on statement 1.9.9, which the spec lacks',
-      ]);
-      return true;
-    });
-  });
-
-  it('refuses a spec with no area', () => {
-    assert.throws(() => specStatements(text(['# Payments', '', 'Nothing numbered.'])), /^Error: the spec has no area — an area is a heading ## N\. Title$/);
+    assert.deepStrictEqual(specScenarios(spec), ['1.S2', '1.S1']);
+    assert.throws(() => specScenarios(`${spec}\n1.S2 Given it again.\n`), /^Error: the spec gives scenario 1\.S2 twice, on lines 15 and 19$/);
   });
 });
