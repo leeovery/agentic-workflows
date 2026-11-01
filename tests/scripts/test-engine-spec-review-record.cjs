@@ -130,8 +130,17 @@ function marksFile(marks, name = 'marks.json') {
   return file;
 }
 
-/** Store marks through the verb: its answer. @param {Record<string, unknown>} marks */
-const storeMarks = (marks) => ok(dir, ['spec', 'marks', UNIT, '--file', marksFile(marks)]);
+/** The review page built and its publishing recorded, which opens it. */
+function publish() {
+  ok(dir, ['spec', 'page', UNIT]);
+  ok(dir, ['spec', 'published', UNIT, 'https://claude.ai/public/artifacts/0123']);
+}
+
+/** Store marks through the verb, the page published first: its answer. @param {Record<string, unknown>} marks */
+function storeMarks(marks) {
+  publish();
+  return ok(dir, ['spec', 'marks', UNIT, '--file', marksFile(marks)]);
+}
 
 /** The record as written. */
 const record = () => JSON.parse(readState(dir, RECORD));
@@ -243,7 +252,18 @@ describe('marks refused, nothing stored', () => {
     ]);
   });
 
+  it('refuses marks from a page not published — built or not — writing nothing', () => {
+    const file = marksFile({});
+    const unbuilt = refused([UNIT, '--file', file]);
+    ok(dir, ['spec', 'page', UNIT]);
+    const built = refused([UNIT, '--file', file]);
+    const why = `spec marks: ${UNIT}'s review page is not published — publish it, record it with spec published ${UNIT} <url>, then read its marks back`;
+
+    assert.deepStrictEqual([unbuilt, built], [why, why]);
+  });
+
   it('refuses a file it cannot read as the marks, naming every fault, one per line', () => {
+    publish();
     const unparsed = path.join(dir, 'unparsed.json');
     fs.writeFileSync(unparsed, '{');
     const shapes = marksFile({
@@ -276,6 +296,7 @@ describe('marks refused, nothing stored', () => {
   });
 
   it('refuses a spec its grammar cannot read, and an argv of another shape', () => {
+    publish();
     writeState(dir, SPEC, '# Payments\n\nNothing numbered.\n');
     const file = marksFile({});
 
@@ -309,7 +330,7 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
     assert.strictEqual(trust(), before);
   });
 
-  it('11.S35: holds every line by number, a screen\'s included, in one state — approved, approved after a comment, Claude\'s tick let stand, open, changed since its tick, passed without review — and a line removed after its tick as removed, with its conversation; a tick with no fingerprint stands, and the person\'s untick holds against Claude\'s tick', () => {
+  it('11.S35: holds every line by number, a screen\'s included, in one state — approved, approved after a comment, Claude\'s tick let stand, open, changed since its tick, passed without review — and a line removed after its tick as removed, with its conversation; a tick with no fingerprint stands, and the person\'s untick holds against Claude\'s tick whatever wording it held (11.11.16)', () => {
     storeMarks({
       s1: {
         m: {
@@ -339,7 +360,7 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
         '1.1.8': { state: 'claudes-tick', conversation: [] },
         '1.S1': { state: 'claudes-tick', conversation: [] },
         '1.S2': { state: 'passed', conversation: [] },
-        '2.1.1': { state: 'claudes-tick', conversation: [] },
+        '2.1.1': { state: 'passed', conversation: [] },
         '1.1.9': { state: 'removed', conversation: [said('person', 4000, 'Gone?')] },
       },
     });
@@ -355,10 +376,11 @@ describe('the review\'s record (11.11.7, 11.11.9)', () => {
     assert.deepStrictEqual([record().lines['1.1.1'].state, record().lines['1.1.4'].state], ['approved', 'changed']);
   });
 
-  it('11.S22: writes no record where the person did not take the review — no marks stored, no page built — and one, every line passed or Claude\'s, where the page was built and nothing marked', () => {
+  it('11.S22: writes no record where the person did not take the review — a page built, never published — and one, every line passed or Claude\'s, where the page was published and nothing marked', () => {
+    ok(dir, ['spec', 'page', UNIT]);
     const none = writeSpecReview(dir, UNIT);
     const absent = fs.existsSync(statePath(dir, RECORD));
-    fs.mkdirSync(statePath(dir, layout.cache(UNIT, 'specification', 'page')), { recursive: true });
+    publish();
     writeSpecReview(dir, UNIT);
 
     assert.deepStrictEqual([none, absent], [null, false]);
@@ -384,9 +406,10 @@ describe('the review settled at ready to build\'s yes, on the marks it is handed
     assert.deepStrictEqual([fs.existsSync(statePath(dir, RECORD)), Object.keys(JSON.parse(readState(dir, MARKS)).s1.m)], [false, ['1-1-1']]);
   });
 
-  it('settles nothing while no page is open (11.S22), and refuses an open page with no marks handed in, writing nothing', () => {
+  it('settles nothing while no page is published (11.S22), and refuses an open page with no marks handed in, writing nothing', () => {
+    ok(dir, ['spec', 'page', UNIT]);
     const closed = settleReview(dir, UNIT);
-    fs.mkdirSync(statePath(dir, layout.cache(UNIT, 'specification', 'page')), { recursive: true });
+    publish();
     const before = treeSnapshot(dir);
 
     assert.deepStrictEqual(closed, { waiting: [], record: null });

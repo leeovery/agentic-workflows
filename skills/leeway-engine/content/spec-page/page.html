@@ -1,0 +1,1480 @@
+<title>%%TITLE%%</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Layout: a contents rail with each section's progress beside one reading column; every line carries its controls at its right edge, stacked, and they stay on screen while any of the line is. */
+:root {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --ink: #171a20;
+  --muted: #586070;
+  --faint: #8790a0;
+  --rule: #e0e4eb;
+  --accent: #2b4cc9;
+  --accent-bg: #e8edfc;
+  --tick: #1b7a4e;
+  --tick-bg: #e6f3eb;
+  --soft: #e0661f;
+  --note: #9a5d06;
+  --note-bg: #fbf2e1;
+  --claude: #6447bf;
+  --claude-bg: #efeafb;
+  --code-bg: #eef1f5;
+  --prev-ink: #7b8292;
+  --del-bg: #f9dcd8;
+  --add-bg: #d4efdf;
+  --font-text: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121419; --panel: #191c23; --ink: #e5e8ee; --muted: #a3aab7; --faint: #747c8b; --rule: #2a2f39;
+    --accent: #93a9ff; --accent-bg: #1d2440; --tick: #5ccc95; --tick-bg: #15281e; --soft: #ff8a4d; --note: #efb25a; --note-bg: #2b2114;
+    --claude: #b9a5ff; --claude-bg: #251d3a; --code-bg: #1f232b; --prev-ink: #848b98; --del-bg: #4d2622; --add-bg: #1c4630; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121419; --panel: #191c23; --ink: #e5e8ee; --muted: #a3aab7; --faint: #747c8b; --rule: #2a2f39;
+  --accent: #93a9ff; --accent-bg: #1d2440; --tick: #5ccc95; --tick-bg: #15281e; --soft: #ff8a4d; --note: #efb25a; --note-bg: #2b2114;
+  --claude: #b9a5ff; --claude-bg: #251d3a; --code-bg: #1f232b; --prev-ink: #848b98; --del-bg: #4d2622; --add-bg: #1c4630; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--panel); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule);
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.bar-in { display: grid; gap: 10px; max-width: 1180px; margin: 0 auto; }
+.row1, .row2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; min-width: 0; }
+.row2 { justify-content: space-between; }
+.navs { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.brand { font-weight: 600; font-size: 15px; letter-spacing: 0.01em; white-space: nowrap; }
+.prog { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 260px; }
+.meter { flex: 1 1 120px; height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; display: flex; max-width: 220px; }
+.meter i { display: block; height: 100%; }
+.meter .mt { background: var(--tick); }
+.meter .ms { background: var(--soft); }
+.meter .mc { background: var(--note); }
+.counts { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+.counts b { color: var(--ink); font-weight: 600; }
+.filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.filters button, .tool { border: 1px solid var(--rule); background: var(--panel); border-radius: 999px; padding: 4px 11px; font-size: 13px; color: var(--muted); }
+.filters button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.tool { color: var(--ink); }
+.tool.primary { border-color: var(--accent); color: var(--accent); }
+.save { font-size: 12px; color: var(--faint); min-width: 64px; }
+.save.err { color: var(--note); }
+#navbtn { display: none; }
+.live { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--claude); background: var(--claude-bg); border-radius: 6px; padding: 3px 10px; min-width: 0; }
+.live[hidden] { display: none; }
+.live .x { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spin { flex: none; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 32px; max-width: 1180px; margin: 0 auto;
+  padding-block: 24px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+nav.toc { position: sticky; top: calc(var(--bar-h, 100px) + 4px); align-self: start; max-height: calc(100vh - var(--bar-h, 100px) - 24px); overflow-y: auto; padding-right: 4px; }
+nav.toc a { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-rows: auto 3px; gap: 2px 6px; padding: 5px 6px; border-radius: 6px; color: var(--ink); font-size: 13px; }
+nav.toc a:hover { background: var(--accent-bg); text-decoration: none; }
+nav.toc a.on { background: var(--accent-bg); }
+.nn { font-family: var(--font-mono); font-size: 11.5px; color: var(--faint); padding-top: 1px; }
+.nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nc { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.nb { grid-column: 2 / 4; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; display: flex; }
+.nb i { display: block; flex: none; height: 100%; width: 0; background: var(--tick); }
+.nb i.nbs { background: var(--soft); }
+nav.toc a.has-reply .nn::after { content: "●"; color: var(--claude); font-size: 8px; margin-left: 3px; vertical-align: 2px; }
+
+main { min-width: 0; }
+.intro { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 22px; margin-bottom: 28px; font-family: var(--font-text); font-size: 15.5px; line-height: 1.55; }
+.intro h1 { font-family: var(--font-ui); font-size: 22px; margin: 0 0 10px; text-wrap: balance; }
+.intro p { margin: 0 0 10px; }
+.intro ul { margin: 0 0 10px; padding-left: 20px; }
+.intro .how { font-family: var(--font-ui); font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 12px; }
+.intro kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+.banner { border: 1px solid var(--note); background: var(--note-bg); color: var(--ink); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; }
+section.sec { margin-bottom: 40px; }
+section.sec h2 { font-size: 20px; font-weight: 600; margin: 0 0 6px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); text-wrap: balance; scroll-margin-top: calc(var(--bar-h, 100px) + 10px); }
+section.sec h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 26px 0 4px; scroll-margin-top: calc(var(--bar-h, 100px) + 10px); }
+section.sec h3.scen { color: var(--ink); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 32px; }
+.sn { font-family: var(--font-mono); color: var(--faint); font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+article.ln { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; gap: 4px 14px; padding: 10px 10px 10px 8px; border-left: 3px solid transparent; border-bottom: 1px solid var(--rule); scroll-margin-top: calc(var(--bar-h, 100px) + 16px); }
+article.ln:focus { outline: none; background: var(--accent-bg); }
+article.ln.is-tick { border-left-color: var(--tick); }
+article.ln.is-soft { border-left-color: var(--soft); }
+article.ln.is-comment { border-left-color: var(--note); background: var(--note-bg); }
+article.ln.is-comment:focus { background: var(--accent-bg); }
+article.ln.is-turn { border-left-color: var(--claude); background: var(--claude-bg); }
+article.ln.is-turn:focus { background: var(--accent-bg); }
+article.ln.is-changed { border-left-color: var(--note); }
+.num { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.num a { color: inherit; }
+.num .k { display: block; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; color: var(--claude); }
+.num .aft { display: block; font-size: 10.5px; color: var(--faint); }
+.bd { min-width: 0; font-family: var(--font-text); font-size: 16px; line-height: 1.55; }
+.bd p { margin: 0 0 6px; }
+.bd ul { margin: 2px 0 8px; padding-left: 20px; }
+.bd li { margin: 2px 0; }
+.bd code { font-family: var(--font-mono); font-size: 0.82em; background: var(--code-bg); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+.bd .src { font-family: var(--font-ui); font-size: 12px; line-height: 1.45; color: var(--faint); margin-top: 4px; }
+.bd .src a { color: var(--faint); text-decoration: underline; text-decoration-color: var(--rule); }
+.bd .cw { font-family: var(--font-ui); font-size: 12px; line-height: 1.45; color: var(--faint); margin: 2px 0 0; }
+article.scenario .bd { font-size: 15px; }
+article.scenario .num { color: var(--accent); }
+pre.scr { margin: 8px 0; padding: 12px 14px; background: var(--code-bg); border-radius: 8px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.38; }
+pre.scr code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; white-space: pre; }
+.tags { display: flex; gap: 6px; margin-bottom: 4px; }
+.tag { font-family: var(--font-ui); font-size: 11px; font-weight: 500; letter-spacing: 0.02em; border-radius: 999px; padding: 1px 8px; }
+.tc { background: var(--claude-bg); color: var(--claude); }
+.tb { background: var(--code-bg); color: var(--muted); }
+.tag.chg { border: 1px solid var(--note); background: var(--note-bg); color: var(--note); }
+.tag.new { border: 1px solid var(--accent); background: var(--accent-bg); color: var(--accent); }
+
+.prev { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.pv { color: var(--prev-ink); }
+.pv > :last-child, .cv > :last-child { margin-bottom: 0; }
+.vn { margin: 0; font-family: var(--font-ui); font-size: 12px; line-height: 1.45; color: var(--faint); }
+.pv + .vn { margin-top: -6px; }
+.vn a, .chfrom a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 2px; }
+.vn a:hover, .chfrom a:hover { color: var(--accent); text-decoration-color: currentColor; }
+.vn a.clink { font-family: var(--font-mono); font-size: 11.5px; }
+article.ln.gone .num { color: var(--faint); }
+article.ln.gone .bd { padding-right: 34px; }
+article.ln.gone .vn { margin-top: 4px; }
+.ph { display: flex; margin-bottom: -2px; }
+.htag { font-family: var(--font-ui); font-size: 10.5px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.vn + .pv { margin-top: 4px; }
+mark.sc { color: inherit; border-radius: 2px; padding: 0; }
+mark.sc.del { background: var(--del-bg); }
+mark.sc.add { background: var(--add-bg); }
+
+.act { display: flex; flex-direction: column; gap: 6px; padding-top: 1px; align-self: start; position: sticky; top: calc(var(--bar-h, 100px) + 10px); }
+.act button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); display: grid; place-items: center; color: var(--faint); }
+.act button:hover { color: var(--ink); border-color: var(--faint); }
+.act svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.act .tk[aria-pressed="true"] { background: var(--tick); border-color: var(--tick); color: var(--panel); }
+.act .tk.soft { background: var(--soft); border-color: var(--soft); color: var(--panel); }
+.act .cm[aria-pressed="true"] { background: var(--note); border-color: var(--note); color: var(--panel); }
+.act .showchg[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.act button:disabled { opacity: 0.4; cursor: default; }
+
+.note { font-family: var(--font-ui); font-size: 14px; line-height: 1.5; margin-top: 8px; display: grid; gap: 8px; }
+.note textarea { width: 100%; min-height: 84px; resize: vertical; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--note); border-radius: 8px; padding: 8px 10px; }
+.note .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.note .row button { border: 1px solid var(--rule); background: var(--panel); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
+.note .row button.go { background: var(--note); border-color: var(--note); color: var(--panel); }
+.note .row button.ok { background: var(--tick); border-color: var(--tick); color: var(--panel); }
+.note .row .hint, .note .state { color: var(--faint); font-size: 12px; }
+.note .state { display: flex; gap: 8px; align-items: center; }
+.note .state.changed { color: var(--note); font-size: 13px; }
+.note .state button { border: 1px solid var(--rule); background: var(--panel); border-radius: 6px; padding: 2px 9px; font-size: 12px; color: var(--muted); }
+.compose { display: grid; gap: 8px; }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 10px 12px; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--claude); box-shadow: 0 8px 30px rgba(0,0,0,0.18); font-size: 13px; }
+.toast[hidden] { display: none; }
+.toast button { border: 1px solid var(--rule); background: var(--panel); border-radius: 6px; padding: 3px 10px; font-size: 13px; }
+.toast button.go { border-color: var(--claude); color: var(--claude); }
+.msg { border-radius: 8px; padding: 8px 12px; border: 1px solid var(--rule); background: var(--panel); }
+.msg .who { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--note); margin-bottom: 2px; }
+.msg.reply .who { color: var(--claude); }
+.msg.reply { margin-left: 18px; }
+.msg .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.done { opacity: 0.75; }
+.msg .row { margin-top: 6px; }
+
+/* The Changes panel: beside the spec where there is room for both, over it where there is not. */
+:root { --chw: 420px; }
+.chpanel { position: fixed; top: var(--bar-h, 100px); right: 0; bottom: 0; width: min(var(--chw), 100vw); z-index: 24; display: flex; flex-direction: column;
+  background: var(--panel); border-left: 1px solid var(--rule); padding-right: env(safe-area-inset-right, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.chpanel[hidden] { display: none; }
+.chtop { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--rule); }
+.chtop h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.chtop h2:focus { outline: none; }
+.chtop button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--rule); background: var(--panel); color: var(--muted); font-size: 16px; line-height: 1; }
+.chtop button:hover { color: var(--ink); border-color: var(--faint); }
+.chlist { position: relative; flex: 1; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 48px; }
+.chb > *, .ct > * { min-width: 0; }
+.ch { border-bottom: 1px solid var(--rule); }
+.chh { display: grid; gap: 3px; width: 100%; text-align: left; border: 0; background: none; padding: 12px 16px 12px 30px; position: relative; }
+.chh::before { content: "›"; position: absolute; left: 14px; top: 9px; color: var(--faint); font-size: 16px; transition: transform 0.12s ease; }
+.chh[aria-expanded="true"]::before { transform: rotate(90deg); }
+.chh:hover { background: var(--bg); }
+.chh:focus-visible { outline-offset: -2px; }
+.chid { font-family: var(--font-mono); font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.chid b { color: var(--ink); font-weight: 600; }
+.chwhy { font-size: 14px; line-height: 1.4; color: var(--ink); }
+.chct { font-size: 12px; color: var(--muted); }
+.chfrom { margin: -8px 16px 10px 30px; font-size: 12px; line-height: 1.45; color: var(--faint); }
+.chb { display: grid; gap: 14px; padding: 2px 16px 16px 30px; }
+.chb[hidden] { display: none; }
+.cr { border-left: 2px solid var(--rule); padding-left: 10px; }
+.crh { display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); }
+.crh a { font-family: var(--font-mono); font-size: 12px; }
+.ct { display: grid; gap: 6px; margin-top: 4px; font-family: var(--font-text); font-size: 14.5px; line-height: 1.5; }
+.ct p { margin: 0 0 4px; }
+.ct ul { margin: 2px 0 4px; padding-left: 18px; }
+.ct code { font-family: var(--font-mono); font-size: 0.82em; background: var(--code-bg); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+.ct pre.scr { font-size: 11.5px; }
+@media (min-width: 900px) {
+  body.chopen .wrap { margin-left: max(0px, (100vw - var(--chw) - 1180px) / 2); margin-right: calc(var(--chw) + max(0px, (100vw - var(--chw) - 1180px) / 2)); }
+}
+@media (min-width: 900px) and (max-width: 1399px) {
+  body.chopen .wrap { grid-template-columns: minmax(0, 1fr); }
+  body.chopen nav.toc { display: none; }
+}
+@media (max-width: 899px) { .chpanel { box-shadow: 0 10px 40px rgba(0,0,0,0.22); } }
+
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  nav.toc { position: fixed; top: var(--bar-h, 100px); left: 0; bottom: 0; width: min(320px, 86vw); max-height: none; z-index: 25; background: var(--panel); border-right: 1px solid var(--rule); padding: 12px max(12px, env(safe-area-inset-left, 0px)); transform: translateX(-102%); transition: transform 0.18s ease; }
+  nav.toc.open { transform: none; box-shadow: 0 10px 40px rgba(0,0,0,0.18); }
+  #navbtn { display: inline-block; }
+}
+@media (max-width: 560px) {
+  article.ln { grid-template-columns: minmax(0, 1fr) auto; }
+  .num { grid-column: 1; grid-row: 1; }
+  .act { grid-column: 2; grid-row: 1 / 3; }
+  .bd { grid-column: 1; grid-row: 2; }
+  .num .k, .num .aft { display: inline; margin-right: 8px; }
+  article.ln.gone .bd { padding-right: 0; }
+  .prog { flex-basis: 100%; }
+  .counts { white-space: normal; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { nav.toc { transition: none; } .spin { animation: none; } .chh::before { transition: none; } }
+</style>
+
+<header class="bar">
+  <div class="bar-in">
+   <div class="row1">
+    <button type="button" class="tool" id="navbtn" aria-expanded="false" aria-controls="toc">Sections</button>
+    <span class="brand">%%TITLE%%</span>
+    <div class="prog">
+      <span class="meter" aria-hidden="true"><i class="mt" id="mt"></i><i class="ms" id="ms"></i><i class="mc" id="mc"></i></span>
+      <span class="counts" id="counts"></span>
+    </div>
+    <span class="save" id="save" aria-live="polite"></span>
+   </div>
+   <div class="row2">
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-filter="todo" aria-pressed="false">To do</button>
+      <button type="button" data-filter="comments" aria-pressed="false">Comments</button>
+      <button type="button" data-filter="replies" aria-pressed="false">Claude replied</button>
+      <button type="button" data-filter="changed" aria-pressed="false" hidden>Changed</button>
+      <button type="button" data-filter="soft" aria-pressed="false" hidden>Claude's ticks</button>
+      <button type="button" data-filter="claude" aria-pressed="false">Claude's calls</button>
+      <button type="button" data-filter="screens" aria-pressed="false">Screens</button>
+    </div>
+    <div class="navs">
+      <button type="button" class="tool" id="changesbtn" aria-expanded="false" aria-controls="changes" hidden>Changes</button>
+      <button type="button" class="tool primary" id="next" title="The earliest line waiting on you (n)">Next item ↓</button>
+    </div>
+   </div>
+   <div class="live" id="live" role="status" aria-live="polite" hidden><span class="spin" aria-hidden="true"></span><span class="x" id="livex"></span></div>
+  </div>
+</header>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<aside class="chpanel" id="changes" aria-labelledby="chtitle" hidden>
+  <div class="chtop"><h2 id="chtitle" tabindex="-1">Changes</h2><button type="button" id="chclose" aria-label="Close changes" title="Close (Esc)">×</button></div>
+  <div class="chlist" id="chlist"></div>
+</aside>
+
+<div class="wrap">
+  <nav class="toc" id="toc" aria-label="Sections"></nav>
+  <main>
+    <div class="banner" id="banner" hidden></div>
+    <div class="intro">
+      <h1 id="h1"></h1>
+      <div id="intro-md"></div>
+      <p class="how">Tick a line you agree with, or comment on it. Claude answers beneath your comment, and you can reply as many times as you like, one message per turn; tick the line once it's settled. A tick closes the conversation, and unticking opens it again. <b>Claude reads your comments when you tell it to</b>: go back to your Claude session and say you've left comments. You can edit or remove a comment until Claude answers it; after that it stays as written. A tick agrees the line as it's worded: if the wording changes afterwards, the tick comes off and the line is marked changed. Keys: <kbd>j</kbd> <kbd>k</kbd> move between lines, <kbd>t</kbd> ticks, <kbd>c</kbd> comments or replies, <kbd>n</kbd> goes to the earliest line waiting on you, <kbd>⌘</kbd><kbd>↵</kbd> sends, <kbd>Esc</kbd> closes.</p>
+    </div>
+  </main>
+</div>
+
+<script type="application/json" id="spec-data">%%DATA%%</script>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('spec-data').textContent);
+  let index = DATA.index;
+  const docs = {};
+  Object.keys(DATA).forEach(k => { if (k !== 'index') docs[k] = DATA[k]; });
+  let lines = [];
+  let byId = new Map();
+  let secs = [];
+  let ids = new Set();
+  // every line and removed line the spec holds, by id: its item, its section and its place in spec order
+  let items = new Map();
+  const raw = {};
+  const state = {};
+  const existing = new Set();
+  const histories = {};
+  const changes = new Map();
+  let addedIn = new Map();
+  // Claude's assessment of each line, by id, and as the store's documents hold them, by section
+  const assess = {};
+  const assessDocs = {};
+  let db = null;
+  let canWrite = false;
+  let filter = 'all';
+  let focused = null;
+  // the lines showing their changes, by id; each line's toggle is its own
+  const showing = new Set();
+
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---- the spec, drawn from data: the markup the page was once built as, character for character ----
+  const escText = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const escAll = s => escText(s).replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+  const lid = num => num.replace(/\./g, '-');
+  // \w, \d and \b as the spec's parser reads them: Unicode letters, numbers and underscore
+  const SECTION_REF = /§(\p{Nd}+)(?![\p{L}\p{N}_.])/gu;
+  const LINE_REF = /(?<![\p{L}\p{N}_.#-])(\p{Nd}+\.\p{Nd}+\.\p{Nd}+|\p{Nd}+\.S\p{Nd}+)(?![\p{L}\p{N}_.])/gu;
+  const isItem = l => l.trimStart().startsWith('- ');
+
+  function inline(t) {
+    return escText(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(SECTION_REF, '<a href="#s$1">§$1</a>')
+      .replace(LINE_REF, (m, n) => ids.has(lid(n)) ? '<a href="#l-' + lid(n) + '">' + n + '</a>' : n);
+  }
+
+  function renderText(b) {
+    const ls = b.split('\n');
+    if (isItem(ls[0])) {
+      const out = ['<ul>'];
+      let item = [];
+      ls.forEach(l => {
+        if (isItem(l)) {
+          if (item.length) out.push('<li>' + inline(item.join(' ')) + '</li>');
+          item = [(l.startsWith('  ') ? ' ' : '') + l.trimStart().slice(2)];
+        } else item.push(l.trim());
+      });
+      if (item.length) out.push('<li>' + inline(item.join(' ')) + '</li>');
+      return out.concat(['</ul>']).join('\n');
+    }
+    const k = ls.findIndex((l, i) => i && isItem(l));
+    if (k > 0) return '<p>' + inline(ls.slice(0, k).map(x => x.trim()).join(' ')) + '</p>\n' + renderText(ls.slice(k).join('\n'));
+    return '<p>' + inline(ls.map(l => l.trim()).join(' ')) + '</p>';
+  }
+
+  function renderFence(b) {
+    return '<pre class="scr"><code>' + escText(b.split('\n').slice(1, -1).join('\n')) + '</code></pre>';
+  }
+
+  const TICK_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
+  const COMMENT_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12v8.5H9l-3.5 3v-3H4z"/></svg>';
+  const CHANGES_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v7M6.5 7h7M6.5 15.5h7"/></svg>';
+
+  function partsHtml(parts) {
+    return parts.map(p => p[0] === 'fence' ? renderFence(p[1]) : renderText(p[1])).join('\n');
+  }
+
+  function renderLine(l, sec) {
+    let body = partsHtml(l.parts);
+    if (l.src) body += '\n<p class="src">[' + inline(l.src) + ']</p>';
+    const num = l.kind === 'screen' || l.kind === 'note'
+      ? '<span class="k">' + l.kind + '</span>' + (l.after ? '<span class="aft">after ' + l.after + '</span>' : '')
+      : l.num;
+    const tags = (l.flags.includes('claude') ? '<span class="tag tc">Claude\'s call</span>' : '') +
+      (l.flags.includes('builder') ? '<span class="tag tb">Left to the builder</span>' : '');
+    return '<article class="ln ' + l.kind + '" id="l-' + l.id + '" data-id="' + l.id + '" data-sec="' + sec + '" ' +
+      'data-flags="' + l.flags.join(' ') + '" data-h="' + l.h + '" tabindex="-1">' +
+      '<div class="num">' + num + '</div>' +
+      '<div class="bd">' + previousHtml(l.id, String(sec)) + (tags && '<div class=tags>' + tags + '</div>') + body + '<div class="note" hidden></div></div>' +
+      '<div class="act"><button type="button" class="tk" aria-label="Tick ' + l.num + '" title="Tick (t)">' + TICK_SVG + '</button>' +
+      '<button type="button" class="cm" aria-label="Comment on ' + l.num + '" title="Comment (c)">' + COMMENT_SVG + '</button>' + changesButton(l.id, String(sec)) + '</div>' +
+      '</article>';
+  }
+
+  function sectionHeading(s) { return '<h2><span class="sn">§' + s.num + '</span> ' + escAll(s.title) + '</h2>'; }
+
+  function sectionBody(s) {
+    const doc = docs['s' + s.num];
+    return (doc ? doc.items : []).map(it => {
+      if (it.k === 'h3') {
+        const m = /^(\p{Nd}+\.\p{Nd}+) (.*)/u.exec(it.t);
+        return m ? '<h3 id="h-' + m[1].replace(/\./g, '-') + '"><span class="sn">' + m[1] + '</span> ' + inline(m[2]) + '</h3>' : '<h3>' + inline(it.t) + '</h3>';
+      }
+      if (it.k === 'h2s') return '<h3 class="scen">' + inline(it.t) + '</h3>';
+      if (it.k === 'removed') return renderRemoved(it, s.num);
+      return renderLine(it, s.num);
+    }).map(x => '\n' + x).join('') + '\n';
+  }
+
+  function newSection(s) {
+    const t = document.createElement('template');
+    t.innerHTML = '<section class="sec" id="s' + s.num + '" data-sec="' + s.num + '">' + sectionHeading(s) + sectionBody(s) + '</section>';
+    return t.content.firstChild;
+  }
+
+  function introHtml() {
+    const out = [];
+    let para = [];
+    index.intro.split('\n').concat(['']).forEach(l => {
+      if (l.trim()) para.push(l);
+      else if (para.length) { out.push(renderText(para.join('\n'))); para = []; }
+    });
+    return out.join('\n');
+  }
+
+  function navHtml() {
+    return index.sections.map(s => '<a href="#s' + s.num + '" data-nav="' + s.num + '"><span class="nn">§' + s.num + '</span><span class="nt">' + escAll(s.title) + '</span>' +
+      '<span class="nc" data-count="' + s.num + '">0/' + s.count + '</span><span class="nb"><i data-bar="' + s.num + '"></i></span></a>').join('\n');
+  }
+
+  function indexLines() {
+    ids = new Set();
+    items = new Map();
+    index.sections.forEach(s => (docs['s' + s.num] || { items: [] }).items.forEach(it => {
+      if (it.k === 'line') ids.add(it.id);
+      if (it.k === 'line' || it.k === 'removed') items.set(it.id, { it: it, sec: s.num, at: items.size });
+    }));
+  }
+
+  function collect() {
+    lines = Array.from(document.querySelectorAll('article.ln:not(.gone)'));
+    byId = new Map(lines.map(el => [el.dataset.id, el]));
+    secs = Array.from(document.querySelectorAll('section.sec'));
+  }
+
+  // the heading, intro and contents from `index`; one section element per section it lists, in its order
+  function drawIndex() {
+    $('h1').innerHTML = inline(index.h1);
+    $('intro-md').innerHTML = introHtml();
+    $('toc').innerHTML = navHtml();
+    const have = new Map(secs.map(el => [Number(el.dataset.sec), el]));
+    const listed = new Set(index.sections.map(s => s.num));
+    secs.forEach(el => { if (!listed.has(Number(el.dataset.sec))) el.remove(); });
+    let after = document.querySelector('main .intro');
+    index.sections.forEach(s => {
+      let el = have.get(s.num);
+      if (el) el.querySelector('h2').outerHTML = sectionHeading(s);
+      else el = newSection(s);
+      if (after.nextElementSibling !== el) after.after(el);
+      after = el;
+    });
+  }
+
+  // ---- a line's past, above its current wording, oldest first: what added it, each previous version and the change that replaced it ----
+  function day(at, time) {
+    const d = new Date(at);
+    if (isNaN(d)) return '';
+    const o = { day: 'numeric', month: 'short' };
+    if (d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+    return d.toLocaleDateString('en-GB', o) + (time ? ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+  }
+
+  function lineLink(id) { return '<a href="#l-' + esc(id) + '" data-line="' + esc(id) + '">' + esc(lineName(id)) + '</a>'; }
+
+  function fromHtml(frm) {
+    return frm && frm.length ? 'from the conversation' + (frm.length > 1 ? 's' : '') + ' on ' + frm.map(lineLink).join(', ') : '';
+  }
+
+  const VERB = { added: 'Added', reworded: 'Reworded', removed: 'Removed' };
+  // `at` stands in for the change's own time until the change itself is in
+  function noteHtml(kind, n, at) {
+    const c = changes.get(n);
+    const bits = [VERB[kind] + ' in <a class="clink" href="#changes" data-change="' + n + '">C' + n + '</a>', day(c ? c.at : at)];
+    if (c && c.why) bits.push(esc(c.why));
+    if (c) bits.push(fromHtml(c.from));
+    return '<p class="vn">' + bits.filter(Boolean).join(' · ') + '</p>';
+  }
+
+  function indexChanges() {
+    addedIn = new Map();
+    changes.forEach(c => (c.added || []).forEach(id => addedIn.set(id, (addedIn.get(id) || []).concat([c.n]))));
+  }
+
+  function previousHtml(id, sec) {
+    const vs = (histories[sec] || {})[id] || [];
+    const added = (addedIn.get(id) || []).slice().sort((a, b) => a - b);
+    if (!vs.length && !added.length) return '';
+    const out = [];
+    if (vs.length) out.push('<div class="ph"><span class="htag">History</span></div>');
+    vs.forEach(v => {
+      while (added.length && v.c != null && added[0] < v.c) out.push(noteHtml('added', added.shift()));
+      out.push('<div class="pv">' + partsHtml(v.parts) + '</div>');
+      if (v.c != null) out.push(noteHtml(((changes.get(v.c) || {}).removed || []).includes(id) ? 'removed' : 'reworded', v.c, v.at));
+    });
+    added.forEach(n => out.push(noteHtml('added', n)));
+    return '<div class="prev">' + out.join('') + '</div>';
+  }
+
+  // Show changes stands in the line's controls, under tick and comment, on a line with earlier versions alone
+  function changesLabel(on) { return on ? 'Hide changes' : 'Show changes'; }
+
+  function changesButton(id, sec) {
+    if (!((histories[sec] || {})[id] || []).length) return '';
+    const on = showing.has(id);
+    return '<button type="button" class="showchg" data-act="changes" aria-pressed="' + on + '" aria-label="' + changesLabel(on) + '" title="' + changesLabel(on) + '">' + CHANGES_SVG + '</button>';
+  }
+
+  // a removed line keeps its place: its last wording, greyed, and the change that removed it; nothing to tick, nothing counted
+  function renderRemoved(it, sec) {
+    const num = it.kind === 'screen' || it.kind === 'note' ? '<span class="k">' + it.kind + '</span>' : it.num;
+    return '<article class="ln gone ' + it.kind + '" id="l-' + it.id + '" data-id="' + it.id + '" data-sec="' + sec + '" tabindex="-1">' +
+      '<div class="num">' + num + '</div>' +
+      '<div class="bd"><div class="pv">' + partsHtml(it.parts) + '</div>' + noteHtml('removed', it.c) + '</div></article>';
+  }
+
+  function drawRemoved(id) {
+    const el = document.getElementById('l-' + id);
+    const rec = items.get(id);
+    if (el && el.classList.contains('gone') && rec) {
+      const hidden = el.hidden;
+      el.outerHTML = renderRemoved(rec.it, rec.sec);
+      document.getElementById('l-' + id).hidden = hidden;
+    }
+  }
+
+  // the line's versions as rendered, oldest first: each previous one, then the current wording without its tags, source or conversation
+  function versionRoots(el) {
+    const bd = el.querySelector('.bd');
+    const prev = Array.from(bd.querySelectorAll(':scope > .prev > .pv')).map(v => [v]);
+    return prev.length ? prev.concat([Array.from(bd.children).filter(c => !c.matches('.prev, .tags, .src, .cw, .note'))]) : [];
+  }
+
+  // words, and each punctuation mark a token of its own, so "status," against "status;" marks only the punctuation
+  function words(roots) {
+    const out = [];
+    roots.forEach(root => {
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        for (const m of n.data.matchAll(/[\p{L}\p{N}_]+|[^\s\p{L}\p{N}_]/gu)) out.push({ node: n, s: m.index, e: m.index + m[0].length, x: m[0] });
+      }
+    });
+    return out;
+  }
+
+  // a word-level diff over the longest common run of words: what the older lost is marked del, what the newer gained add
+  function compare(a, b) {
+    let p = 0;
+    while (p < a.length && p < b.length && a[p].x === b[p].x) p++;
+    let q = 0;
+    while (q < a.length - p && q < b.length - p && a[a.length - 1 - q].x === b[b.length - 1 - q].x) q++;
+    const n = a.length - p - q, m = b.length - p - q;
+    const lost = i => { a[p + i].del = true; }, gained = j => { b[p + j].add = true; };
+    if (n * m > 4e6) {
+      for (let i = 0; i < n; i++) lost(i);
+      for (let j = 0; j < m; j++) gained(j);
+      return;
+    }
+    const L = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) L[i][j] = a[p + i].x === b[p + j].x ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    }
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[p + i].x === b[p + j].x) { i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) lost(i++);
+      else gained(j++);
+    }
+    for (; i < n; i++) lost(i);
+    for (; j < m; j++) gained(j);
+  }
+
+  // marks laid over the rendered text, so the structure under them is the structure with them off
+  function markLine(el) { markVersions(versionRoots(el)); }
+
+  function markVersions(roots) {
+    const vs = roots.map(words);
+    for (let k = 0; k + 1 < vs.length; k++) compare(vs[k], vs[k + 1]);
+    const runs = [];
+    vs.forEach(ws => ws.forEach((w, k) => {
+      const cls = w.del ? 'del' : w.add ? 'add' : '';
+      if (!cls) return;
+      const last = runs[runs.length - 1];
+      if (last && last.node === w.node && last.cls === cls && last.k === k - 1) { last.e = w.e; last.k = k; }
+      else runs.push({ node: w.node, s: w.s, e: w.e, cls: cls, k: k });
+    }));
+    // from the end of each text node back, so the offsets still to come stay where they were
+    runs.reverse().forEach(r => {
+      const range = document.createRange();
+      range.setStart(r.node, r.s);
+      range.setEnd(r.node, r.e);
+      const m = document.createElement('mark');
+      m.className = 'sc ' + r.cls;
+      range.surroundContents(m);
+    });
+  }
+
+  function unmarkLine(el) {
+    el.querySelectorAll('mark.sc').forEach(m => {
+      const parent = m.parentNode;
+      m.replaceWith(...m.childNodes);
+      parent.normalize();
+    });
+  }
+
+  function drawPrevious(el) {
+    unmarkLine(el);
+    const old = el.querySelector('.bd > .prev');
+    if (old) old.remove();
+    el.querySelector('.bd').insertAdjacentHTML('afterbegin', previousHtml(el.dataset.id, el.dataset.sec));
+    const toggle = el.querySelector('.act > .showchg');
+    if (toggle) toggle.remove();
+    el.querySelector('.act').insertAdjacentHTML('beforeend', changesButton(el.dataset.id, el.dataset.sec));
+    if (showing.has(el.dataset.id)) markLine(el);
+  }
+
+  // Show changes is the line's own, kept in the browser like the filter
+  function toggleChanges(el) {
+    const id = el.dataset.id;
+    const on = !showing.has(id);
+    if (on) showing.add(id); else showing.delete(id);
+    store.set('showing', JSON.stringify([...showing]));
+    const b = el.querySelector('.act > .showchg');
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', changesLabel(on));
+    b.title = changesLabel(on);
+    unmarkLine(el);
+    if (on) markLine(el);
+  }
+
+  function historyChanged(snap) {
+    const changed = new Set();
+    snap.docChanges().forEach(ch => {
+      const sec = ch.doc.id.slice(1);
+      const before = histories[sec] || {};
+      const after = ch.type === 'removed' ? {} : ((ch.doc.data() || {}).lines || {});
+      histories[sec] = after;
+      Object.keys(Object.assign({}, before, after)).forEach(id => {
+        if (JSON.stringify(before[id]) !== JSON.stringify(after[id])) changed.add(id);
+      });
+    });
+    if (!changed.size) return;
+    const anchor = topLine();
+    changed.forEach(id => { const el = byId.get(id); if (el) drawPrevious(el); });
+    keepAnchor(anchor);
+    refreshPanel();
+  }
+
+  function assessChanged(snap) {
+    const touched = new Set();
+    snap.docChanges().forEach(ch => {
+      const sec = ch.doc.id.slice(1);
+      const before = assessDocs[sec] || {};
+      const after = ch.type === 'removed' ? {} : ((ch.doc.data() || {}).lines || {});
+      assessDocs[sec] = after;
+      Object.keys(Object.assign({}, before, after)).forEach(id => {
+        if (JSON.stringify(before[id]) === JSON.stringify(after[id])) return;
+        touched.add(id);
+        if (after[id]) assess[id] = after[id];
+        else delete assess[id];
+      });
+    });
+    if (!touched.size) return;
+    touched.forEach(id => { settle(id); applyMark(id); });
+    recount();
+    if (filter !== 'all') applyFilter();
+  }
+
+  // a change's notes sit on every line it touched, and on every line whose past it replaced
+  function changesChanged(snap) {
+    const touched = new Set();
+    snap.docChanges().forEach(ch => {
+      const d = ch.type === 'removed' ? null : ch.doc.data();
+      const n = d ? d.n : Number(ch.doc.id.slice(1));
+      [changes.get(n), d].forEach(c => c && ['added', 'reworded', 'removed'].forEach(k => (c[k] || []).forEach(id => touched.add(id))));
+      if (d) changes.set(n, d);
+      else changes.delete(n);
+    });
+    indexChanges();
+    $('changesbtn').hidden = !changes.size;
+    const anchor = topLine();
+    touched.forEach(id => {
+      const el = byId.get(id);
+      if (el) { drawPrevious(el); applyMark(id); }
+      else drawRemoved(id);
+    });
+    keepAnchor(anchor);
+    refreshPanel();
+  }
+
+  // a tick closes the line's conversation; unticking opens it again
+  function commentable(el) {
+    const ticked = (state[el.dataset.id] || {}).s === 'tick';
+    el.querySelector('.tk').disabled = !canWrite;
+    const b = el.querySelector('.cm');
+    b.disabled = ticked || !canWrite;
+    b.title = ticked ? 'Untick to comment' : '';
+  }
+
+  function banner(text) {
+    const b = $('banner');
+    b.textContent = text;
+    b.hidden = !text;
+  }
+
+  // ---- a line's conversation: m.t maps "p<ms>" (the person) and "c<ms>" (Claude) to {by, x, at} ----
+  function thread(m) {
+    const t = (m && m.t) || {};
+    return Object.keys(t).filter(k => t[k] && t[k].x)
+      .map(k => ({ k: k, by: t[k].by || k[0], x: t[k].x }))
+      .sort((a, b) => Number(a.k.slice(1)) - Number(b.k.slice(1)));
+  }
+  function lastBy(m) { const th = thread(m); return th.length ? th[th.length - 1].by : null; }
+  function yourTurn(m) { return !!m && m.s === 'comment' && lastBy(m) === 'c'; }
+  function needsYou(m) { return !m || (!m.soft && (!m.s || !!m.changed)) || yourTurn(m); }
+
+  // an assessment holds for the wording it assessed, and for no other
+  function assessOf(id) {
+    const a = assess[id], el = byId.get(id);
+    return a && el && a.h === el.dataset.h ? a : null;
+  }
+
+  // a tick agrees the line as worded: one whose wording has changed since (its h no longer the line's) reads as no tick.
+  // Claude's soft tick shows where the person has not ticked the line, its tick not since changed, nor ever unticked it, and no conversation is open.
+  function view(id, stored) {
+    const el = byId.get(id);
+    const m = Object.assign({}, stored);
+    if (m.s === 'tick' && m.h && el && m.h !== el.dataset.h) {
+      m.s = thread(m).length ? 'comment' : '';
+      m.changed = true;
+    }
+    const a = assessOf(id);
+    const unticked = !!stored && stored.s !== 'tick' && !!stored.h;
+    if (a && a.v === 'soft' && m.s !== 'tick' && m.s !== 'comment' && !unticked && !m.changed) m.soft = true;
+    return m;
+  }
+
+  function settle(id) {
+    const m = view(id, raw[id]);
+    if (raw[id] || m.soft) state[id] = m;
+    else delete state[id];
+  }
+
+  function deepMerge(a, b) {
+    const out = Object.assign({}, a);
+    Object.keys(b).forEach(k => {
+      const v = b[k];
+      out[k] = v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' ? deepMerge(out[k], v) : v;
+    });
+    return out;
+  }
+
+  // ---- rendering a line's marks ----
+  function composer(label) {
+    return '<div class="compose"><textarea aria-label="' + label + '"></textarea>' +
+      '<div class="row"><button type="button" class="go" data-act="send">' + label + '</button>' +
+      '<button type="button" data-act="cancel">Cancel</button><span class="hint">⌘↵ sends · Esc cancels</span></div></div>';
+  }
+
+  function renderNote(el) {
+    const m = state[el.dataset.id] || {};
+    const box = el.querySelector('.note');
+    const old = box.querySelector('textarea');
+    const keep = old ? { v: old.value, f: document.activeElement === old, a: old.selectionStart, b: old.selectionEnd } : null;
+    const th = thread(m);
+    const done = m.s === 'tick';
+    const compose = el.dataset.compose || '';
+    const parts = th.map((msg, i) => {
+      if (compose === msg.k) return composer('Save');
+      const mine = msg.by === 'p';
+      // the person's message stays theirs until Claude answers it
+      const mayEdit = canWrite && mine && i === th.length - 1 && !done && !compose;
+      return '<div class="msg' + (mine ? '' : ' reply') + (done ? ' done' : '') + '"><div class="who">' + (mine ? 'You' : 'Claude') +
+        '</div><div class="txt">' + esc(msg.x) + '</div>' +
+        (mayEdit ? '<div class="row"><button type="button" data-act="edit" data-k="' + msg.k + '">Edit</button>' +
+          '<button type="button" data-act="remove" data-k="' + msg.k + '">Remove</button></div>' : '') + '</div>';
+    });
+    if (compose === 'new') parts.push(composer(th.length ? 'Send reply' : 'Save comment'));
+    else if (!compose && canWrite && th.length && !done) {
+      if (lastBy(m) === 'c') parts.push('<div class="row"><button type="button" class="go" data-act="reply">Reply</button>' +
+        '<button type="button" class="ok" data-act="tick">Tick — settled</button><span class="hint">Claude replied</span></div>');
+      else parts.push('<div class="state">Waiting for Claude: tell Claude in your session when you want answers</div>');
+    }
+    box.innerHTML = parts.join('');
+    box.hidden = parts.length === 0;
+    const ta = box.querySelector('textarea');
+    if (ta && keep) {
+      ta.value = keep.v;
+      if (keep.f) { ta.focus({ preventScroll: true }); ta.setSelectionRange(keep.a, keep.b); }
+    }
+  }
+
+  // Changed and New: state chips at the head of the line's current wording
+  function stateChip(el, cls, label, on) {
+    const chip = el.querySelector('.tag.' + cls);
+    if (on && !chip) {
+      let tags = el.querySelector('.bd > .tags');
+      if (!tags) {
+        tags = document.createElement('div');
+        tags.className = 'tags chip-only';
+        const prev = el.querySelector('.bd > .prev');
+        if (prev) prev.after(tags);
+        else el.querySelector('.bd').prepend(tags);
+      }
+      tags.insertAdjacentHTML('afterbegin', '<span class="tag ' + cls + '">' + label + '</span>');
+    } else if (!on && chip) {
+      const tags = chip.parentNode;
+      chip.remove();
+      if (tags.classList.contains('chip-only') && !tags.children.length) tags.remove();
+    }
+  }
+
+  // Claude's read of the line, beneath its source
+  function whyLine(el, a) {
+    let p = el.querySelector('.bd > .cw');
+    if (!a || !a.why) { if (p) p.remove(); return; }
+    if (!p) {
+      p = document.createElement('p');
+      p.className = 'cw';
+      el.querySelector('.bd > .note').before(p);
+    }
+    p.textContent = 'Claude: ' + a.why;
+  }
+
+  // a line a change added, which the person has not yet ticked or commented on
+  function isNew(id) {
+    const m = raw[id];
+    return addedIn.has(id) && !(m && (m.s || m.h || Object.keys(m.t || {}).length));
+  }
+
+  function applyMark(id) {
+    const el = byId.get(id);
+    if (!el) return;
+    const m = state[id] || {};
+    el.classList.toggle('is-tick', m.s === 'tick');
+    el.classList.toggle('is-comment', m.s === 'comment' && !yourTurn(m));
+    el.classList.toggle('is-turn', yourTurn(m));
+    el.classList.toggle('is-changed', !!m.changed && !yourTurn(m) && !m.soft);
+    el.classList.toggle('is-soft', !!m.soft);
+    const tk = el.querySelector('.tk');
+    tk.setAttribute('aria-pressed', m.s === 'tick' ? 'true' : 'false');
+    tk.classList.toggle('soft', !!m.soft);
+    tk.title = m.soft ? "Claude's tick: tap to approve" : 'Tick (t)';
+    whyLine(el, assessOf(id));
+    el.querySelector('.cm').setAttribute('aria-pressed', m.s === 'comment' ? 'true' : 'false');
+    stateChip(el, 'new', 'New', isNew(id));
+    stateChip(el, 'chg', 'Changed', !!m.changed);
+    commentable(el);
+    renderNote(el);
+  }
+
+  // ---- counts ----
+  function recount() {
+    let t = 0, c = 0, ch = 0, so = 0;
+    const per = {}, perS = {}, perR = {};
+    lines.forEach(el => {
+      const m = state[el.dataset.id] || {};
+      const sec = el.dataset.sec;
+      per[sec] = per[sec] || 0;
+      if (m.s === 'tick') { t++; per[sec]++; }
+      else if (m.s === 'comment') { c++; per[sec]++; }
+      else if (m.soft) { so++; perS[sec] = (perS[sec] || 0) + 1; }
+      if (yourTurn(m)) perR[sec] = (perR[sec] || 0) + 1;
+      if (m.changed) ch++;
+    });
+    document.querySelector('.filters [data-filter="changed"]').hidden = !ch && filter !== 'changed';
+    document.querySelector('.filters [data-filter="soft"]').hidden = !so && filter !== 'soft';
+    const total = index.total;
+    // Claude's ticks are counted only on a page that has assessments, so a page without them reads as it always did
+    const assessed = Object.keys(assess).length > 0;
+    $('counts').innerHTML = '<b>' + (t + so + c).toLocaleString() + '</b> of ' + total.toLocaleString() + ' marked · ' +
+      t.toLocaleString() + ' ticked · ' + (assessed ? so.toLocaleString() + ' Claude\'s ticks · ' : '') + c.toLocaleString() + ' with comments';
+    $('mt').style.width = (100 * t / total) + '%';
+    $('ms').style.width = (100 * so / total) + '%';
+    $('mc').style.width = (100 * c / total) + '%';
+    index.sections.forEach(s => {
+      const sec = String(s.num);
+      const n = per[sec] || 0, sn = perS[sec] || 0, of = s.count;
+      const cnt = document.querySelector('[data-count="' + sec + '"]');
+      const bar = document.querySelector('[data-bar="' + sec + '"]');
+      const nav = document.querySelector('nav.toc a[data-nav="' + sec + '"]');
+      if (cnt) cnt.textContent = (n + sn) + '/' + of;
+      if (bar) {
+        bar.style.width = (100 * n / of) + '%';
+        let sbar = bar.nextElementSibling;
+        if (sn && !sbar) {
+          sbar = document.createElement('i');
+          sbar.className = 'nbs';
+          bar.after(sbar);
+        }
+        if (sbar) sbar.style.width = (100 * sn / of) + '%';
+      }
+      if (nav) nav.classList.toggle('has-reply', !!perR[sec]);
+    });
+  }
+
+  // ---- filters ----
+  function matches(el) {
+    const m = state[el.dataset.id] || {};
+    const flags = el.dataset.flags;
+    switch (filter) {
+      case 'todo': return needsYou(m);
+      case 'soft': return !!m.soft;
+      case 'comments': return m.s === 'comment';
+      case 'replies': return yourTurn(m);
+      case 'changed': return !!m.changed;
+      case 'claude': return flags.indexOf('claude') >= 0 || flags.indexOf('builder') >= 0;
+      case 'screens': return flags.indexOf('screen') >= 0;
+      default: return true;
+    }
+  }
+
+  function applyFilter() {
+    document.querySelectorAll('section.sec').forEach(sec => {
+      let any = false, head = null, headAny = false;
+      Array.from(sec.children).forEach(ch => {
+        if (ch.tagName === 'H3') {
+          if (head) head.hidden = !headAny && filter !== 'all';
+          head = ch; headAny = false;
+        } else if (ch.tagName === 'ARTICLE') {
+          const v = ch.classList.contains('gone') ? filter === 'all' : matches(ch);
+          ch.hidden = !v;
+          if (v) { any = true; headAny = true; }
+        }
+      });
+      if (head) head.hidden = !headAny && filter !== 'all';
+      sec.hidden = !any;
+    });
+    document.querySelectorAll('.filters button').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === filter ? 'true' : 'false'));
+  }
+
+  // ---- writes: one at a time per section document ----
+  const queues = {};
+  let inflight = 0;
+  function saving(text, err) {
+    const s = $('save');
+    s.textContent = text;
+    s.classList.toggle('err', !!err);
+  }
+
+  function write(id, patch) {
+    const el = byId.get(id);
+    const docId = 's' + el.dataset.sec;
+    const q = queues[docId] || (queues[docId] = { busy: false, pending: null, tries: 0 });
+    q.pending = q.pending || {};
+    q.pending[id] = deepMerge(q.pending[id] || {}, patch);
+    if (!q.busy) flush(docId);
+  }
+
+  function sectionMarks(docId) {
+    const sec = docId.slice(1);
+    const out = {};
+    lines.forEach(el => {
+      if (el.dataset.sec === sec && raw[el.dataset.id]) out[el.dataset.id] = Object.assign({}, raw[el.dataset.id]);
+    });
+    return out;
+  }
+
+  async function flush(docId) {
+    const q = queues[docId];
+    if (!q.pending) { q.busy = false; return; }
+    q.busy = true;
+    const m = q.pending;
+    q.pending = null;
+    inflight++;
+    saving('Saving…');
+    const ref = db.collection('marks').doc(docId);
+    try {
+      if (existing.has(docId)) {
+        await ref.update({ m: m });
+      } else {
+        await ref.set({ m: sectionMarks(docId) });
+        existing.add(docId);
+      }
+      q.tries = 0;
+      inflight--;
+      if (!inflight) saving('Saved');
+    } catch (e) {
+      inflight--;
+      const code = e && e.code;
+      if (code === 'unavailable' && q.tries < 1) {
+        q.tries++;
+        await new Promise(r => setTimeout(r, 300 + Math.random() * 700));
+        const later = q.pending || {};
+        q.pending = deepMerge(m, later);
+      } else if (code === 'invalid_argument' && !existing.has(docId)) {
+        canWrite = false;
+        lines.forEach(commentable);
+        banner('This view can read the marks but not save them.');
+        saving('Not saved', true);
+      } else {
+        q.tries = 0;
+        saving('Not saved — ' + (code || 'error'), true);
+      }
+    }
+    flush(docId);
+  }
+
+  function mark(id, patch) {
+    if (!canWrite) return;
+    const p = Object.assign({}, patch, { at: new Date().toISOString() });
+    raw[id] = deepMerge(raw[id] || {}, p);
+    settle(id);
+    applyMark(id);
+    recount();
+    write(id, p);
+  }
+
+  // ---- actions ----
+  function toggleTick(el) {
+    const id = el.dataset.id;
+    const m = state[id] || {};
+    // an untick is the person's too: it holds this wording unticked, over Claude's tick
+    mark(id, m.s === 'tick' ? { s: thread(m).length ? 'comment' : '', h: el.dataset.h } : { s: 'tick', h: el.dataset.h });
+  }
+
+  // compose: "new" for a new message, or the key of the message being edited
+  function openCompose(el, key) {
+    if (!canWrite) return;
+    el.dataset.compose = key || 'new';
+    renderNote(el);
+    const ta = el.querySelector('.note textarea');
+    const msg = key ? thread(state[el.dataset.id]).find(x => x.k === key) : null;
+    ta.value = msg ? msg.x : '';
+    ta.focus();
+  }
+
+  // turns alternate: while the person's message waits for Claude, they rework that one rather than add another
+  function startMessage(el) {
+    const m = state[el.dataset.id] || {};
+    const th = thread(m);
+    const last = th[th.length - 1];
+    if (m.s === 'tick') return;
+    if (last && last.by === 'p') openCompose(el, last.k);
+    else openCompose(el);
+  }
+
+  function lineName(id) { return id.replace(/-(scr|note)(\d+)$/, ' $1 $2').replace(/-/g, '.'); }
+
+  function closeCompose(el, send) {
+    const id = el.dataset.id;
+    const key = el.dataset.compose;
+    const ta = el.querySelector('.note textarea');
+    const text = ta ? ta.value.trim() : '';
+    el.dataset.compose = '';
+    if (!send || (key === 'new' && !text)) applyMark(id);
+    else if (key === 'new') {
+      mark(id, { s: 'comment', t: { ['p' + Date.now()]: { by: 'p', x: text } } });
+    }
+    else if (text) mark(id, { t: { [key]: { by: 'p', x: text } } });
+    else removeMessage(el, key);
+    el.focus({ preventScroll: true });
+  }
+
+  function removeMessage(el, key) {
+    const id = el.dataset.id;
+    const m = state[id] || {};
+    const rest = thread(m).filter(x => x.k !== key).length;
+    mark(id, { s: rest || m.s !== 'comment' ? m.s || '' : '', t: { [key]: { by: 'p', x: '' } } });
+  }
+
+  document.addEventListener('click', e => {
+    const link = e.target.closest('a[data-change], a[data-line]');
+    if (link) {
+      e.preventDefault();
+      if (link.dataset.change) openChanges(Number(link.dataset.change));
+      else goToLine(link.dataset.line);
+      return;
+    }
+    const el = e.target.closest('article.ln:not(.gone)');
+    if (!el) return;
+    focused = el;
+    store.set('lastLine', el.dataset.id);
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (btn.classList.contains('tk') || act === 'tick') toggleTick(el);
+    else if (btn.classList.contains('cm')) {
+      if (el.dataset.compose) closeCompose(el, false); else startMessage(el);
+    } else if (act === 'send') closeCompose(el, true);
+    else if (act === 'cancel') closeCompose(el, false);
+    else if (act === 'reply') openCompose(el);
+    else if (act === 'edit') openCompose(el, btn.dataset.k);
+    else if (act === 'remove') removeMessage(el, btn.dataset.k);
+    else if (act === 'changes') toggleChanges(el);
+  });
+
+  function visible() { return lines.filter(el => !el.hidden && !(el.closest('section.sec') || {}).hidden); }
+
+  function focusLine(el) {
+    if (!el) return;
+    focused = el;
+    store.set('lastLine', el.dataset.id);
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
+  // the earliest line from the top still waiting on the person: never marked, changed since its tick, or answered by Claude
+  function nextItem() {
+    let el = visible().find(x => needsYou(state[x.dataset.id]));
+    if (!el) {
+      el = lines.find(x => needsYou(state[x.dataset.id]));
+      if (el) { filter = 'all'; store.set('filter', filter); applyFilter(); }
+    }
+    focusLine(el);
+  }
+  $('next').addEventListener('click', nextItem);
+
+  // ---- a notice when Claude answers, and the way back to where the person was ----
+  let backTo = null;
+  function toast(html) { $('toast').innerHTML = html; $('toast').hidden = !html; }
+  function answered(id) {
+    if (!byId.has(id)) return;
+    toast('<span>Claude answered <b>' + esc(lineName(id)) + '</b></span><button type="button" class="go" data-go="' + esc(id) + '">Go there</button>' +
+      '<button type="button" data-x aria-label="Dismiss">×</button>');
+  }
+  $('toast').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.go) {
+      backTo = focused;
+      const el = byId.get(b.dataset.go);
+      if (el.hidden || (el.closest('section.sec') || {}).hidden) { filter = 'all'; store.set('filter', filter); applyFilter(); }
+      focusLine(el);
+      toast(backTo && backTo !== el ? '<button type="button" class="go" data-back>Back to ' + esc(lineName(backTo.dataset.id)) + '</button>' +
+        '<button type="button" data-x aria-label="Dismiss">×</button>' : '');
+    } else if ('back' in b.dataset) {
+      focusLine(backTo);
+      toast('');
+    } else toast('');
+  });
+
+  // ---- the Changes panel: every change, newest first; each opens on the lines it touched, in spec order ----
+  let panelOpen = false;
+  const expanded = new Set();
+  const panel = $('changes'), chlist = $('chlist');
+  // below this width the panel covers the spec rather than sitting beside it
+  const covers = () => matchMedia('(max-width: 899px)').matches;
+
+  function setPanel(open) {
+    if (open === panelOpen) return;
+    const anchor = topLine();
+    const within = panel.contains(document.activeElement);
+    panelOpen = open;
+    panel.hidden = !open;
+    document.body.classList.toggle('chopen', open);
+    $('changesbtn').setAttribute('aria-expanded', String(open));
+    if (open) drawPanel();
+    keepAnchor(anchor);
+    if (open) $('chtitle').focus({ preventScroll: true });
+    else if (within) $('changesbtn').focus({ preventScroll: true });
+  }
+
+  // a line's versions, oldest first, each with `c`, the change that replaced it: its past, then its current or removed wording
+  function versionsOf(id) {
+    const rec = items.get(id);
+    const sec = rec ? String(rec.sec) : Object.keys(histories).find(s => histories[s][id]);
+    const seq = ((histories[sec] || {})[id] || []).slice();
+    if (rec) seq.push({ parts: rec.it.parts, c: rec.it.k === 'removed' ? rec.it.c : Infinity });
+    return seq;
+  }
+
+  function rowHtml(id, kind, n) {
+    const seq = versionsOf(id);
+    const was = seq.find(v => v.c === n);
+    const now = seq.find(v => v.c > n);
+    const text = (kind !== 'added' && was ? '<div class="pv">' + partsHtml(was.parts) + '</div>' : '') +
+      (kind !== 'removed' && now ? '<div class="cv">' + partsHtml(now.parts) + '</div>' : '');
+    return '<div class="cr" data-id="' + esc(id) + '" data-kind="' + kind + '"><div class="crh">' + lineLink(id) + '<span>' + kind + '</span></div>' +
+      '<div class="ct">' + text + '</div></div>';
+  }
+
+  function fillBody(box, c) {
+    const rows = [];
+    ['reworded', 'added', 'removed'].forEach(k => (c[k] || []).forEach(id => rows.push({ id: id, k: k })));
+    const place = id => items.has(id) ? items.get(id).at : Infinity;
+    rows.sort((a, b) => place(a.id) - place(b.id) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    box.innerHTML = rows.map(r => rowHtml(r.id, r.k, c.n)).join('');
+    box.querySelectorAll('.cr[data-kind="reworded"] .ct').forEach(ct => {
+      const pv = ct.querySelector('.pv'), cv = ct.querySelector('.cv');
+      if (pv && cv) markVersions([[pv], [cv]]);
+    });
+  }
+
+  function entryHtml(c) {
+    const open = expanded.has(c.n);
+    const counts = ['reworded', 'added', 'removed'].filter(k => (c[k] || []).length).map(k => c[k].length + ' ' + k).join(' · ');
+    const from = fromHtml(c.from);
+    return '<section class="ch" id="ch-' + c.n + '" data-n="' + c.n + '">' +
+      '<button type="button" class="chh" aria-expanded="' + open + '"><span class="chid"><b>C' + c.n + '</b> · ' + esc(day(c.at, true)) + '</span>' +
+      (c.why ? '<span class="chwhy">' + esc(c.why) + '</span>' : '') + '<span class="chct">' + counts + '</span></button>' +
+      (from ? '<p class="chfrom">' + from + '</p>' : '') +
+      '<div class="chb"' + (open ? '' : ' hidden') + '></div></section>';
+  }
+
+  function drawPanel() {
+    const top = chlist.scrollTop;
+    const all = [...changes.values()].sort((a, b) => b.n - a.n);
+    chlist.innerHTML = all.map(entryHtml).join('');
+    all.forEach(c => { if (expanded.has(c.n)) fillBody($('ch-' + c.n).querySelector('.chb'), c); });
+    chlist.scrollTop = top;
+  }
+
+  function refreshPanel() { if (panelOpen) drawPanel(); }
+
+  function openChanges(n) {
+    expanded.add(n);
+    if (panelOpen) drawPanel();
+    else setPanel(true);
+    const entry = $('ch-' + n);
+    if (!entry) return;
+    chlist.scrollTop = entry.offsetTop;
+    entry.querySelector('.chh').focus({ preventScroll: true });
+  }
+
+  // a line, wherever it is: the filter shows it if it hides it, and a panel covering the spec closes
+  function goToLine(id) {
+    const el = document.getElementById('l-' + id);
+    if (!el) return;
+    if (el.hidden || (el.closest('section.sec') || {}).hidden) { filter = 'all'; store.set('filter', filter); applyFilter(); recount(); }
+    if (panelOpen && covers()) setPanel(false);
+    if (byId.get(id)) focusLine(el);
+    else el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
+  $('changesbtn').addEventListener('click', () => setPanel(!panelOpen));
+  $('chclose').addEventListener('click', () => setPanel(false));
+  chlist.addEventListener('click', e => {
+    const head = e.target.closest('.chh');
+    if (!head) return;
+    const entry = head.closest('.ch');
+    const n = Number(entry.dataset.n);
+    const open = !expanded.has(n);
+    if (open) expanded.add(n); else expanded.delete(n);
+    head.setAttribute('aria-expanded', String(open));
+    const box = entry.querySelector('.chb');
+    if (open) fillBody(box, changes.get(n));
+    box.hidden = !open;
+  });
+
+
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && t.tagName === 'TEXTAREA') {
+      const el = t.closest('article.ln');
+      if (e.key === 'Escape') { e.preventDefault(); closeCompose(el, false); }
+      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); closeCompose(el, true); }
+      return;
+    }
+    if (e.key === 'Escape' && panelOpen) { e.preventDefault(); setPanel(false); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const vis = visible();
+    const at = focused ? vis.indexOf(focused) : -1;
+    if (e.key === 'j') { e.preventDefault(); focusLine(vis[Math.min(vis.length - 1, at + 1)]); }
+    else if (e.key === 'k') { e.preventDefault(); focusLine(vis[Math.max(0, at - 1)]); }
+    else if (e.key === 't' && focused) { e.preventDefault(); toggleTick(focused); }
+    else if (e.key === 'c' && focused) { e.preventDefault(); startMessage(focused); }
+    else if (e.key === 'n') { e.preventDefault(); nextItem(); }
+  });
+
+  document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => {
+    filter = b.dataset.filter;
+    store.set('filter', filter);
+    applyFilter();
+    recount();
+  }));
+
+  // ---- contents rail ----
+  const toc = $('toc');
+  $('navbtn').addEventListener('click', () => {
+    const open = !toc.classList.contains('open');
+    toc.classList.toggle('open', open);
+    $('navbtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  toc.addEventListener('click', e => { if (e.target.closest('a')) { toc.classList.remove('open'); $('navbtn').setAttribute('aria-expanded', 'false'); } });
+  function spy() {
+    let cur = null;
+    for (const s of secs) { if (!s.hidden && s.getBoundingClientRect().top < 140) cur = s.dataset.sec; }
+    document.querySelectorAll('nav.toc a').forEach(a => a.classList.toggle('on', a.dataset.nav === cur));
+  }
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; spy(); });
+  }, { passive: true });
+
+  // ---- the spec changing under the page: redraw only what changed, and keep the person where they were ----
+  function topLine() {
+    const top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar-h')) || 0;
+    const el = visible().find(x => x.getBoundingClientRect().bottom > top);
+    return el ? { id: el.dataset.id, y: el.getBoundingClientRect().top } : null;
+  }
+
+  function keepAnchor(anchor) {
+    if (anchor && byId.get(anchor.id)) window.scrollBy(0, byId.get(anchor.id).getBoundingClientRect().top - anchor.y);
+    spy();
+  }
+
+  function redraw(indexChanged, nums) {
+    const anchor = topLine();
+    const active = document.activeElement;
+    const activeLine = active && active.closest ? active.closest('article.ln') : null;
+    const drafts = [];
+    nums.forEach(n => $('s' + n).querySelectorAll('article.ln').forEach(a => {
+      if (!a.dataset.compose && a !== activeLine) return;
+      const ta = a.querySelector('.note textarea');
+      drafts.push({ id: a.dataset.id, compose: a.dataset.compose || '',
+        ta: ta && { v: ta.value, a: ta.selectionStart, b: ta.selectionEnd },
+        focus: a !== activeLine ? '' : active === ta ? 'ta' : 'line' });
+    }));
+    const drawn = new Set(secs);
+    if (indexChanged) drawIndex();
+    nums.forEach(n => { $('s' + n).innerHTML = sectionHeading(index.sections.find(s => s.num === n)) + sectionBody({ num: n }); });
+    collect();
+    const redrawn = new Set(nums.map(String).concat(secs.filter(el => !drawn.has(el)).map(el => el.dataset.sec)));
+    if (focused) focused = byId.get(focused.dataset.id) || null;
+    if (backTo) backTo = byId.get(backTo.dataset.id) || null;
+    drafts.forEach(d => {
+      const a = byId.get(d.id);
+      if (a) a.dataset.compose = d.compose;
+    });
+    lines.forEach(el => {
+      if (!redrawn.has(el.dataset.sec)) return;
+      settle(el.dataset.id);
+      applyMark(el.dataset.id);
+      if (showing.has(el.dataset.id)) markLine(el);
+    });
+    drafts.forEach(d => {
+      const a = byId.get(d.id);
+      if (!a) return;
+      const ta = a.querySelector('.note textarea');
+      if (ta && d.ta) { ta.value = d.ta.v; ta.setSelectionRange(d.ta.a, d.ta.b); }
+      if (d.focus === 'ta' && ta) ta.focus({ preventScroll: true });
+      else if (d.focus) a.focus({ preventScroll: true });
+    });
+    recount();
+    applyFilter();
+    keepAnchor(anchor);
+    refreshPanel();
+  }
+
+  function specChanged(snap) {
+    let idx = null;
+    const nums = new Set();
+    snap.docChanges().forEach(ch => {
+      const d = ch.type === 'removed' ? null : ch.doc.data();
+      if (!d) return;
+      if (ch.doc.id === 'index') { if (d.f !== index.f) idx = d; }
+      else if (!docs[ch.doc.id] || docs[ch.doc.id].f !== d.f) { docs[ch.doc.id] = d; nums.add(Number(ch.doc.id.slice(1))); }
+    });
+    if (!idx && !nums.size) return;
+    const before = ids;
+    const drawn = new Set(secs.map(el => Number(el.dataset.sec)));
+    if (idx) index = idx;
+    indexLines();
+    // a line added or removed changes which references in other sections link to it
+    const moved = [...before].filter(x => !ids.has(x)).concat([...ids].filter(x => !before.has(x))).map(x => x.replace(/-/g, '.'));
+    if (moved.length) index.sections.forEach(s => { if (moved.some(n => JSON.stringify((docs['s' + s.num] || {}).items || []).includes(n))) nums.add(s.num); });
+    const listed = new Set(index.sections.map(s => s.num));
+    redraw(!!idx || moved.length > 0, [...nums].filter(n => listed.has(n) && drawn.has(n)));
+  }
+
+  // ---- what Claude is doing now, as Claude writes it ----
+  const LIVE_MS = 15 * 60 * 1000;
+  let live = null, liveTimer = null;
+  function showLive() {
+    clearTimeout(liveTimer);
+    const age = live ? Date.now() - Date.parse(live.at) : NaN;
+    const on = !!(live && live.x) && age < LIVE_MS;
+    $('livex').textContent = on ? live.x : '';
+    $('live').hidden = !on;
+    if (on) liveTimer = setTimeout(showLive, Math.min(LIVE_MS - age, LIVE_MS) + 50);
+  }
+
+  // ---- start ----
+  indexLines();
+  drawIndex();
+  collect();
+  // the header's height, safe area included, for the rail and every scroll target to sit below it
+  const bar = document.querySelector('header.bar');
+  const setBar = () => document.documentElement.style.setProperty('--bar-h',
+    (bar.getBoundingClientRect().height + (parseFloat(getComputedStyle(document.body, '::before').height) || 0)) + 'px');
+  setBar();
+  if (window.ResizeObserver) new ResizeObserver(setBar).observe(bar);
+  try { JSON.parse(store.get('showing') || '[]').forEach(id => showing.add(id)); } catch (e) {}
+  const saved = store.get('filter');
+  if (saved && document.querySelector('.filters [data-filter="' + saved + '"]')) filter = saved;
+  applyFilter();
+  recount();
+  lines.forEach(commentable);
+  saving('Loading marks…');
+  if (!location.hash) {
+    const last = store.get('lastLine');
+    if (last && byId.get(last)) focusLine(byId.get(last));
+  }
+
+  (window.claude && window.claude.use ? window.claude.use('db') : Promise.resolve(null)).then(d => {
+    db = d;
+    if (!db) {
+      banner('Marks can only be saved when this page is opened on claude.ai.');
+      saving('');
+      return;
+    }
+    // the controls come on once the marks and the spec as the store holds it are both in, so no tick lands on a wording already replaced
+    let waiting = 2;
+    const arrived = () => {
+      if (--waiting) return;
+      canWrite = true;
+      lines.forEach(commentable);
+      Object.keys(state).forEach(applyMark);
+      saving('');
+    };
+    let first = true;
+    db.collection('marks').onSnapshot(snap => {
+      snap.docChanges().forEach(ch => {
+        const docId = ch.doc.id;
+        const sec = docId.slice(1);
+        if (ch.type === 'removed') {
+          existing.delete(docId);
+          lines.forEach(el => { if (el.dataset.sec === sec) { delete raw[el.dataset.id]; settle(el.dataset.id); applyMark(el.dataset.id); } });
+          return;
+        }
+        existing.add(docId);
+        const m = (ch.doc.data() || {}).m || {};
+        Object.keys(m).forEach(id => {
+          const before = thread(state[id]).filter(x => x.by === 'c').length;
+          raw[id] = m[id];
+          settle(id);
+          applyMark(id);
+          if (!first && thread(state[id]).filter(x => x.by === 'c').length > before) answered(id);
+        });
+      });
+      recount();
+      if (filter !== 'all') applyFilter();
+      if (first) {
+        first = false;
+        arrived();
+      }
+    }, err => {
+      banner('The marks stopped updating (' + (err && err.code || 'error') + '). Reload the page to reconnect.');
+      saving('Offline', true);
+    });
+    let specIn = false;
+    db.collection('spec').onSnapshot(snap => {
+      specChanged(snap);
+      if (!specIn) { specIn = true; arrived(); }
+    }, err => {
+      banner('The spec stopped updating (' + (err && err.code || 'error') + '). Reload the page to see changes.');
+      if (!specIn) { specIn = true; arrived(); }
+    });
+    db.collection('history').onSnapshot(historyChanged, () => {});
+    db.collection('changes').onSnapshot(changesChanged, () => {});
+    db.collection('assess').onSnapshot(assessChanged, () => {});
+    db.collection('live').doc('status').onSnapshot(snap => { live = snap.exists ? snap.data() : null; showLive(); }, () => { live = null; showLive(); });
+  });
+})();
+</script>
