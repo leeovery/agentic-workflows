@@ -66,9 +66,11 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/beta/brief.md`), 'utf8'), '# Brief — beta\n\nLeans toward a nightly run.\n');
     sim.run(['topic', 'order', wu, 'alpha=1', 'beta=2', 'gamma=3']);
 
-    // The map as discovery reads it: each topic in its order.
-    assert.match(sim.render(['discovery-map', wu], { expect: 'content' }),
-      /^topics \(3\):\n {2}1 alpha \[fresh\] — alpha summary\n {2}2 beta \[fresh\] — beta summary\n {2}3 gamma \[fresh\] — gamma summary$/m);
+    // The map as discovery reads it: each topic in its order, an unstarted
+    // one with its brief.
+    const map = sim.render(['discovery-map', wu], { expect: 'content' });
+    const row = (/** @type {number} */ order, /** @type {string} */ topic) => `  ${order} ${topic} [fresh] brief=${path.join(sim.dir, '.leeway', wu, 'topics', topic, 'brief.md')} — ${topic} summary`;
+    assert.ok(map.includes(['topics (3):', row(1, 'alpha'), row(2, 'beta'), row(3, 'gamma'), ''].join('\n')), map);
 
     // The map's verbs, each at the person's word with its one-line report: an
     // edit, a brief rewritten before its topic starts, and an unstarted

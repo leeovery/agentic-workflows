@@ -476,6 +476,25 @@ function itemJoin(item) {
 }
 
 /**
+ * Why `names` cannot seed new work, or null where they can: each a roadmap
+ * item, waiting — joined to no work — and named once. The one check a pull's
+ * handoff into discovery and start this work share.
+ * @param {Record<string, any>} project @param {unknown[]} names
+ * @returns {string|null}
+ */
+function roadmapSeedRefusal(project, names) {
+  const items = roadmapItems(project);
+  for (const [at, name] of names.entries()) {
+    const item = typeof name === 'string' && Object.hasOwn(items, name) ? items[name] : undefined;
+    if (item === undefined) return `the roadmap has no item ${JSON.stringify(name)} to seed the work`;
+    const join = itemJoin(item);
+    if (join !== null) return `roadmap item "${name}" is joined to work unit "${join.work_unit}" already — only a waiting item seeds new work`;
+    if (names.indexOf(name) < at) return `roadmap item "${name}" is named twice`;
+  }
+  return null;
+}
+
+/**
  * A topic's address — `{work_unit, topic}` — or null for an absent or
  * malformed one. The write side owns shape, as it does for the join.
  * @param {unknown} value
@@ -502,7 +521,7 @@ function itemPostponedFrom(item) {
 
 /**
  * @typedef {object} PostponeTarget
- * @property {string} name   the item the postpone writes — the joined item's own name, or the topic's
+ * @property {string} name   the item the postpone writes — the joined item's own name, or the name the topic goes by
  * @property {Record<string, any>|undefined} item  what already sits there
  * @property {boolean} joined  the item is joined to this topic, so the postpone re-waits it
  */
@@ -510,19 +529,21 @@ function itemPostponedFrom(item) {
 /**
  * The roadmap item a postpone would write: the one joined to `{workUnit,
  * topic}` — re-waited, whatever its name — or, when none is joined, the name
- * a birth would take with whatever already sits on it (the clash). The one
- * join the plan's lock, the gate's statement, and the verb all read.
+ * a birth would take, the one the topic goes by (8.8.20), with whatever
+ * already sits on it (the clash). The one join the plan's lock, the gate's
+ * statement, and the verb all read.
  * @param {object|null|undefined} project @param {string} workUnit @param {string} topic
+ * @param {string} goes  the name the topic goes by
  * @returns {PostponeTarget}
  */
-function postponeTarget(project, workUnit, topic) {
+function postponeTarget(project, workUnit, topic, goes) {
   const items = roadmapItems(project);
   for (const [name, item] of Object.entries(items)) {
     if (!item || typeof item !== 'object') continue;
     const join = itemJoin(item);
     if (join && join.work_unit === workUnit && join.topic === topic) return { name, item, joined: true };
   }
-  return { name: topic, item: items[topic], joined: false };
+  return { name: goes, item: items[goes], joined: false };
 }
 
 /**
@@ -530,7 +551,7 @@ function postponeTarget(project, workUnit, topic) {
  * plan's lock reads the roadmap before the epic manifest is written, and the
  * landing reads it again under the project lock, so both refusals say the
  * same thing about the same item.
- * @param {string} name  the topic the birth would take the name of
+ * @param {string} name  the name the birth would take
  * @param {Record<string, any>} item  what already sits there
  * @returns {string}
  */
@@ -614,7 +635,7 @@ function postponePlan(manifest, name, project, horizon) {
   /** @type {{reason: string}[]} */
   const locks = [];
   if (!discoveryUnitExists(manifest, name)) {
-    locks.push({ reason: `no topic "${name}" — nothing on the map and no discussion item of that name` });
+    locks.push({ reason: noTopicRefusal(manifest, name) });
     return { items: [], discards: [], locks };
   }
   const { lifecycle } = computeTopicLifecycle(manifest, name);
@@ -639,9 +660,9 @@ function postponePlan(manifest, name, project, horizon) {
   if (illegalHorizon) {
     locks.push({ reason: illegalHorizon });
   }
-  const target = postponeTarget(project, manifest.name, name);
+  const target = postponeTarget(project, manifest.name, name, goesBy(topicTitles(manifest), name));
   if (!target.joined && target.item !== undefined) {
-    locks.push({ reason: postponeClashPhrase(name, target.item) });
+    locks.push({ reason: postponeClashPhrase(target.name, target.item) });
   }
   return { items: liveUnitItems(manifest, 'discovery', name), discards: proposedGroupings(manifest, name), locks };
 }
@@ -1309,15 +1330,36 @@ function topicTitle(manifest, topic) {
 }
 
 /**
- * The key of the topic on the unit's map that goes by `said` — its key or
- * its title — or null where none does: a name the person says, resolved.
+ * The key of the unit's topic that `said` names — the one way a topic the
+ * person names reaches a verb, a render or the entry: a topic's key is its
+ * own, and the title a rename gave a started topic (8.8.17) resolves to
+ * that topic's key. Any other name comes back as said, for the caller to
+ * take as new or refuse (`noTopicRefusal`).
  * @param {object} manifest @param {string} said
- * @returns {string|null}
+ * @returns {string}
  */
-function topicKeyOf(manifest, said) {
+function topicKey(manifest, said) {
   if (itemOf(manifest, 'discovery', said)) return said;
   const titles = topicTitles(manifest);
-  return Object.keys(titles).find((key) => titles[key] === said) ?? null;
+  return Object.keys(titles).find((key) => titles[key] === said) ?? said;
+}
+
+/**
+ * Why `said` names no topic of the unit: its live topics, each by the name
+ * it goes by — the map's, and a discussion's the map never carried — or
+ * that it has none. A cancelled or postponed topic is left out, since its
+ * name takes a refusal of its own.
+ * @param {object} manifest @param {string} said
+ * @returns {string}
+ */
+function noTopicRefusal(manifest, said) {
+  const phases = /** @type {Record<string, any>} */ (manifest).phases ?? {};
+  const titles = topicTitles(manifest);
+  const keys = new Set([...Object.keys(phases.discovery?.items ?? {}), ...Object.keys(phases.discussion?.items ?? {})]);
+  const names = [...keys].filter((key) => !CLOSED_LIFECYCLES.includes(computeTopicLifecycle(manifest, key).lifecycle)).map((key) => goesBy(titles, key));
+  return names.length === 0
+    ? `no topic "${said}" — the map has no live topics`
+    : `no topic "${said}" — the map's topics are ${names.join(', ')}`;
 }
 
 /**
@@ -1480,6 +1522,7 @@ module.exports = {
   openRecords,
   roadmapItems,
   itemJoin,
+  roadmapSeedRefusal,
   topicAddress,
   itemPostponedFrom,
   postponeTarget,
@@ -1525,7 +1568,8 @@ module.exports = {
   titled,
   itemName,
   itemTitle,
-  topicKeyOf,
+  topicKey,
+  noTopicRefusal,
   mailboxFiles,
   mailboxDepth,
   mailPhases,

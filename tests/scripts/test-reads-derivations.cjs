@@ -22,7 +22,7 @@ const {
   awaitedExperiments, waits, topicWaits, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
+  postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
@@ -1101,7 +1101,7 @@ describe('reads + derivations', () => {
     it('locks, in refusal order: no such topic, already postponed, cancelled, a started specification, a live record, an illegal horizon, a roadmap clash', () => {
       const m = manifest();
       const reasons = (name, proj = null, horizon = undefined) => postponePlan(m, name, proj, horizon).locks.map((l) => l.reason);
-      assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — nothing on the map and no discussion item of that name']);
+      assert.deepStrictEqual(reasons('ghost'), ['no topic "ghost" — the map\'s topics are auth, timing, busy']);
       assert.deepStrictEqual(reasons('away'), ['"away" is already postponed — it waits on the roadmap']);
       assert.deepStrictEqual(reasons('gone'), ['"gone" is cancelled — reactivate it from the epic menu first']);
       assert.deepStrictEqual(reasons('timing'), ['postponing "timing" is refused while the specification "unified" sources its discussion — a topic past specification is past "not yet"']);
@@ -1121,9 +1121,10 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(postponePlan(manifest(), 'busy', project).locks.map((l) => l.reason),
         ['postponing "busy" is refused while an experiment is live (E2, with E2.1) — conclude or abandon it first; a laboratory cannot run under a topic that has left the epic'],
         'the joined item named "ordering" holds no clash against "busy"');
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
-      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
-      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing'), { name: 'timing', item: undefined, joined: false });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'busy', 'busy'), { name: 'ordering', item: project.roadmap.items.ordering, joined: true });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
+      assert.deepStrictEqual(postponeTarget(project, 'pay', 'timing', 'pacing'), { name: 'pacing', item: undefined, joined: false }, 'a birth takes the name the topic goes by');
+      assert.deepStrictEqual(postponeTarget(null, 'pay', 'timing', 'timing'), { name: 'timing', item: undefined, joined: false });
     });
 
     it('the clash phrase names the horizon it has, and stands without one', () => {
@@ -1164,6 +1165,24 @@ describe('reads + derivations', () => {
       assert.strictEqual(phaseStatus(items(['postponed']), 'discussion'), null);
       assert.strictEqual(phaseStatus(items(['postponed', 'completed']), 'discussion'), 'completed');
       assert.strictEqual(phaseStatus(items(['postponed', 'in-progress']), 'discussion'), 'in-progress');
+    });
+  });
+
+  describe('the topic a person names (8.8.17)', () => {
+    // A started topic renamed, its key keeping its first name.
+    const manifest = {
+      name: 'fumi',
+      work_type: 'epic',
+      phases: { discovery: { items: { 'note-model': { source: 'discovery', title: 'data-model' }, sync: { source: 'discovery' } } } },
+    };
+
+    it('a key is its own topic, a rename\'s title resolves to its key, and any other name comes back as said', () => {
+      assert.deepStrictEqual(['sync', 'data-model', 'note-model', 'ghost'].map((said) => topicKey(manifest, said)), ['sync', 'note-model', 'note-model', 'ghost']);
+    });
+
+    it('a name no topic goes by is refused naming the topics as they go by, and the map empty only when it is', () => {
+      assert.strictEqual(noTopicRefusal(manifest, 'ghost'), 'no topic "ghost" — the map\'s topics are data-model, sync');
+      assert.strictEqual(noTopicRefusal({ name: 'fumi', work_type: 'epic', phases: {} }, 'ghost'), 'no topic "ghost" — the map has no live topics');
     });
   });
 

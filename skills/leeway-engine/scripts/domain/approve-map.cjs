@@ -43,7 +43,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, readProjectManifest, writePr
 const { assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { unitInProgress, discoveryStanding } = require('./topic-standing.cjs');
-const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, topicKeyOf, topicTitle, roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
+const { computeTopicLifecycle, CLOSED_LIFECYCLES, dismissedNames, itemOf, topicKey, topicTitle, roadmapItems, itemJoin, briefFile } = require('./derivations.cjs');
 const { topicNameRefusal, draftIn, writeBrief, addBatchTo, discoveryItems, roadmapRefusal, entryTakeIn } = require('./discovery-map.cjs');
 const {
   DEFAULT_KIND, becomesTopic, validateKind, joinToTopic, ensureRoadmap, ensureHorizon, validateSummary, validateSources, requireSourcesOnDisk,
@@ -114,8 +114,8 @@ function stagedTopic(cwd, manifest, given, at) {
   const what = `topic ${at + 1}`;
   const fields = shaped(given, what, ['name'], ['summary', 'description', 'brief', 'from_roadmap']);
   const said = fields.name;
-  const key = typeof said === 'string' ? topicKeyOf(manifest, said) : null;
-  if (key !== null) {
+  const key = typeof said === 'string' ? topicKey(manifest, said) : null;
+  if (key !== null && itemOf(manifest, 'discovery', key)) {
     if (!isLive(manifest, key)) throw new Error(`${what}: "${said}" is ${computeTopicLifecycle(manifest, key).lifecycle} — it stands in no order`);
     if (Object.keys(fields).length > 1) throw new Error(`${what}: "${said}" is on the map already, so it is named alone — its summary and brief change at the person's word: topic edit, topic brief`);
     return { name: key };

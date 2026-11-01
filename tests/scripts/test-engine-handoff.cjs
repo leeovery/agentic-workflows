@@ -387,7 +387,7 @@ describe('engine handoff — refusals', () => {
   it('discovery refuses a roadmap seed that is no waiting item on the roadmap, or is named twice', () => {
     refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:ghost'], /^the roadmap has no item "ghost" to seed the work$/);
     refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already — only a waiting item seeds new work$/);
-    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:loyalty,roadmap:loyalty'], /^duplicate roadmap seed: "loyalty"$/);
+    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:loyalty,roadmap:loyalty'], /^roadmap item "loyalty" is named twice$/);
     refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:'], /^the roadmap has no item "" to seed the work$/);
   });
 

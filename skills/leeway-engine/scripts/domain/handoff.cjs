@@ -26,20 +26,17 @@ const path = require('path');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest, readProjectManifest } = require('../kernel/manifest.cjs');
 const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
-const { parseInboxPaths } = require('./inbox.cjs');
+const { parseInboxPaths, ROADMAP_SEED } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { mailPhase, topicTitles, itemName, roadmapItems, itemJoin } = require('./derivations.cjs');
+const { mailPhase, topicTitles, itemName, topicKey, roadmapSeedRefusal } = require('./derivations.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 
 const HANDOFF_ENV = 'LEEWAY_HANDOFF';
 
 /** Discovery's way in for a piece of work of no kind yet. */
 const START = 'start';
-
-/** What opens a seed naming a roadmap item. */
-const ROADMAP_SEED = 'roadmap:';
 
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
@@ -102,22 +99,6 @@ function assertWorkUnit(cwd, name, type) {
 }
 
 /**
- * Waiting roadmap items, each on the roadmap, joined to no work, and named
- * once.
- * @param {string} cwd @param {string[]} names
- */
-function assertRoadmapSeeds(cwd, names) {
-  const items = roadmapItems(readProjectManifest(cwd));
-  names.forEach((name, at) => {
-    const item = Object.hasOwn(items, name) ? items[name] : undefined;
-    if (item === undefined) throw new Error(`the roadmap has no item "${name}" to seed the work`);
-    const join = itemJoin(item);
-    if (join !== null) throw new Error(`roadmap item "${name}" is joined to work unit "${join.work_unit}" already — only a waiting item seeds new work`);
-    if (names.indexOf(name) < at) throw new Error(`duplicate roadmap seed: "${name}"`);
-  });
-}
-
-/**
  * New work's seeds, comma-joined as discovery splits them: live inbox items,
  * every one on disk, and waiting roadmap items, `roadmap:{item}` — none
  * twice, none holding the quote discovery reads them inside.
@@ -129,7 +110,9 @@ function assertSeeds(cwd, seeds) {
   const roadmap = all.filter((seed) => seed.startsWith(ROADMAP_SEED));
   const inbox = all.filter((seed) => !seed.startsWith(ROADMAP_SEED));
   if (inbox.length > 0) parseInboxPaths(cwd, inbox, { archived: false });
-  if (roadmap.length > 0) assertRoadmapSeeds(cwd, roadmap.map((seed) => seed.slice(ROADMAP_SEED.length)));
+  if (roadmap.length === 0) return;
+  const refusal = roadmapSeedRefusal(readProjectManifest(cwd), roadmap.map((seed) => seed.slice(ROADMAP_SEED.length)));
+  if (refusal !== null) throw new Error(refusal);
 }
 
 /** A place, and the most specific name in it where there is one. @param {string} place @param {string|null} [name] */
@@ -240,18 +223,19 @@ function resolveHandoff(cwd, named, args) {
 const TOPIC_HANDOFF_USAGE = 'handoff topic <work-unit> <topic>';
 
 /**
- * The handoff into a topic named by its unit and name alone: into the
- * phase its topics are talked through — a bugfix's investigation, else its
- * discussion — refused where that phase's entry would refuse the topic, or
- * the unit has no topics to name.
+ * The handoff into a topic named by its unit and its key or title alone:
+ * into the phase its topics are talked through — a bugfix's investigation,
+ * else its discussion — refused where that phase's entry would refuse the
+ * topic, or the unit has no topics to name.
  * @param {string} cwd @param {string[]} args @returns {Handoff}
  */
 function topicHandoff(cwd, args) {
   if (args.length !== 2) throw new Error(`Usage: engine ${TOPIC_HANDOFF_USAGE}`);
-  const [unit, topic] = args;
+  const [unit, said] = args;
   const manifest = unitInProgress(cwd, unit);
   const phase = mailPhase(manifest.work_type);
   if (phase === null) throw new Error(`${unit} is a ${manifest.work_type}, with no topics to open by name — it carries on from the start menu`);
+  const topic = topicKey(manifest, said);
   assertEnterable(cwd, phase, manifest, topic);
   return resolveHandoff(cwd, phaseSkill(phase), [manifest.work_type, unit, topic]);
 }

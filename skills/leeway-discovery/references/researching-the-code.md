@@ -16,7 +16,7 @@ Say in a line that you are reading the code first, and wait for its result. Once
 node .claude/skills/leeway-engine/scripts/engine.cjs brownfield record completed
 ```
 
-Open the conversation from it: what the code shows, read from the findings (`ledger product`), and the questions it left open, which are the person's to talk through. Keep the three apart as the conversation goes:
+Open the conversation from it: what the code shows, read from what discovery found of the product (`ledger product`, its `discovery` entries), and the questions it left open, which are the person's to talk through. Keep the three apart as the conversation goes:
 - **What the code shows** is on the ledger already, and every topic opened later reads it. A further fact you read in the code lands the same way.
 - **What the person says** — the intent, the history, the paths rejected, what a name means — is input, kept in the log.
 - **What stays open** goes into the log as an open question; at the session's end, what still stands is proposed as roadmap items.

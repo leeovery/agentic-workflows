@@ -82,9 +82,8 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
-const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -105,6 +104,7 @@ const { runningAgents } = require('./agent-state.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { rowStanding, answersOn, claudesCalls, handedTag, topicAddress } = require('./topic-map.cjs');
 const { decidedScreen, strikePick, waitAgents } = require('./projections/decided.cjs');
+const { filled, shaped, readPayload, stage: writeStaged, stagedAt, refusedAs } = require('./staged-payload.cjs');
 
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./topic-map.cjs').Row} Row */
@@ -150,13 +150,6 @@ function stagedFile(cwd, unit, topic) {
   return statePath(cwd, '.cache', unit, PHASE, topic, 'decided.json');
 }
 
-/** A refusal opening on the command that refused, what it carries kept. @param {string} said @param {unknown} err */
-function refusedAs(said, err) {
-  const refused = err instanceof Error ? err : new Error(messageOf(err));
-  if (!refused.message.startsWith(`${said}: `)) refused.message = `${said}: ${refused.message}`;
-  return refused;
-}
-
 /**
  * The unit's manifest, its topic's discussion in progress: refused for a
  * unit not in progress, a topic with no discussion, and one decided already
@@ -171,20 +164,6 @@ function openTopic(cwd, unit, topic) {
   if (status === 'completed') throw new Error(`${topic} is decided already — a message to it sets it back in progress`);
   if (status !== 'in-progress') throw new Error(`${topic}'s discussion is ${status}, not in progress`);
   return manifest;
-}
-
-/** A non-empty string. @param {unknown} v @returns {v is string} */
-function filled(v) {
-  return typeof v === 'string' && v.trim() !== '';
-}
-
-/** Refuses an object whose keys are not `keys`, with any of `optional`. @param {unknown} v @param {string} what @param {string[]} keys @param {string[]} [optional] */
-function shaped(v, what, keys, optional = []) {
-  const given = isObject(v) ? Object.keys(v) : null;
-  if (given === null || !keys.every((key) => given.includes(key)) || !given.every((key) => keys.includes(key) || optional.includes(key))) {
-    throw new Error(`${what} must be {${[...keys, ...optional.map((key) => `${key}?`)].join(', ')}}`);
-  }
-  return /** @type {Record<string, unknown>} */ (v);
 }
 
 /**
@@ -413,13 +392,7 @@ function stagedCandidates(cwd, manifest, topic, given, before) {
  * @returns {Staged}
  */
 function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
-  let parsed;
-  try {
-    parsed = JSON.parse(fs.readFileSync(path.resolve(cwd, file), 'utf8'));
-  } catch (err) {
-    throw new Error(`the payload ${file} cannot be read as JSON — ${messageOf(err)}`);
-  }
-  const { lines, candidates, withdraws = [] } = shaped(parsed, 'the payload', ['lines', 'candidates'], ['withdraws']);
+  const { lines, candidates, withdraws = [] } = shaped(readPayload(cwd, file), 'the payload', ['lines', 'candidates'], ['withdraws']);
   if (!Array.isArray(lines) || !Array.isArray(candidates) || !Array.isArray(withdraws)) throw new Error('the payload\'s lines, withdraws and candidates are each a list');
   const widened = lines.map((line, i) => stagedLine(shower, rows, line, i));
   widened.forEach(({ widens }, i) => {
@@ -435,9 +408,7 @@ function stage(cwd, unit, topic, file, { shower, rows, manifest, closed }) {
     withdrawals,
     candidates: stagedCandidates(cwd, manifest, topic, candidates, stagedBefore(cwd, unit, topic)),
   };
-  fs.mkdirSync(path.dirname(stagedFile(cwd, unit, topic)), { recursive: true });
-  writeJsonAtomic(stagedFile(cwd, unit, topic), staged);
-  return staged;
+  return writeStaged(stagedFile(cwd, unit, topic), staged);
 }
 
 /**
@@ -458,9 +429,7 @@ function stagedBefore(cwd, unit, topic) {
  * @returns {Staged}
  */
 function stagedFor(cwd, unit, topic, closed) {
-  const file = stagedFile(cwd, unit, topic);
-  if (!fs.existsSync(file)) throw new Error(`nothing is staged for ${topic} — render decided ${unit}.${topic} --file <payload.json> stages Claude's lines and candidates`);
-  const staged = /** @type {Staged} */ (JSON.parse(fs.readFileSync(file, 'utf8')));
+  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit, topic), `nothing is staged for ${topic} — render decided ${unit}.${topic} --file <payload.json> stages Claude's lines and candidates`));
   if (staged.closed !== closed) throw new Error(`what is staged for ${topic} was drawn for an earlier close — it is staged again with --file`);
   return staged;
 }
@@ -777,7 +746,7 @@ function decidedStrike(cwd, unit, topic, n, struck) {
   if (candidate === undefined) throw new Error(`there is no candidate ${n} — the candidates are 1 to ${staged.candidates.length}`);
   if (candidate.struck === struck) throw new Error(`"${candidate.name}" is ${struck ? 'struck already' : 'not struck'}`);
   candidate.struck = struck;
-  writeJsonAtomic(stagedFile(cwd, unit, topic), staged);
+  writeStaged(stagedFile(cwd, unit, topic), staged);
   return { unit, topic, [struck ? 'struck' : 'unstruck']: candidate.name, next: { kind: 'engine', argv: ['render', 'decided', `${unit}.${topic}`] } };
 }
 

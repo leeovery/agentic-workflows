@@ -10,7 +10,7 @@
 // lock, and the first to fail refuses it, nothing committed (6.S9); and a
 // tree with the state branch checked out is refused before any check runs
 // (4.S20). Its paths and repos are today's code commit's,
-// test-engine-commit-door.cjs's; that landing never reads the trailer as a
+// test-engine-commit-door-code.cjs's; that landing never reads the trailer as a
 // landing is test-engine-land-reads.cjs's.
 //
 // Layer: git. World: a unit with two tasks written and another unit with a

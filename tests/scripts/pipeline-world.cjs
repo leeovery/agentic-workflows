@@ -297,11 +297,17 @@ function send(sim, wu, topic, from, slug) {
   return sim.run(sendArgv(sim, wu, topic, from, slug));
 }
 
-/** An epic whose map carries the named topics, each with its brief. */
+// An epic started at its gate and its map of the named topics, each with its
+// brief, approved at its own. The yes hands off to the epic's menu, and the
+// conversation the gate mod clears for it ends, SessionEnd sweeping the
+// presence its discovery held.
+/** @param {Sim} sim @param {string} wu @param {string[]} names */
 function mappedEpic(sim, wu, names) {
-  sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
-  mapTopics(sim, wu, names.map((name) => ({ name, summary: name })));
-  sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+  startUnit(sim, 'epic', wu, 'An epic of its own');
+  const { next } = approveTheMap(sim, wu, { topics: names.map((name) => ({ name, summary: name, brief: briefDraft(sim, wu, name) })) });
+  handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+  sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
+  sim.handOver();
 }
 
 /** Topics landed on an epic's map in one batch, each with a brief drafted for it. @param {Sim} sim @param {string} wu @param {{name: string}[]} topics */
@@ -622,6 +628,21 @@ function startThisWork(sim, given) {
 /** Approve the map at its gate. @param {Sim} sim @param {string} wu @param {object} given */
 function approveTheMap(sim, wu, given) {
   return atTheGate(sim, 'approve the map', ['approve-map', wu], given);
+}
+
+// A unit started as discovery starts one (8.8.1): shaped in the product's
+// conversation, then started at start this work's gate — a feature or a
+// bugfix with its one topic's brief — and an epic carried on into its own
+// discovery. Answers the yes's answer.
+/** @param {Sim} sim @param {string} type @param {string} wu @param {string} description */
+function startUnit(sim, type, wu, description) {
+  const started = startThisWork(sim, {
+    type, name: wu, description, reason: `It is ${type} work.`,
+    shaped_by: [shapedInTheProduct(sim, wu)],
+    ...(['feature', 'bugfix'].includes(type) ? { brief: briefDraft(sim, wu, wu) } : {}),
+  });
+  if (type === 'epic') sim.run(started.next.argv);
+  return started;
 }
 
 // The start menu's new-work row builds no route — it goes to discovery with
@@ -1095,5 +1116,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

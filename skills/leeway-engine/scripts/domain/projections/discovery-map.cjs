@@ -29,6 +29,12 @@ const { section, dataSection, CONTINUE_INSTRUCTION } = require('./surfaces.cjs')
  */
 
 /**
+ * A map row as the map's screen takes it: its order, the name it goes by,
+ * and, while it is unstarted, its brief's absolute path.
+ * @typedef {DiscoveryMapRow & {order?: number|null, goes_by?: string, brief?: string}} MapScreenRow
+ */
+
+/**
  * @typedef {object} DiscoveryMapSummary
  * @property {number} total
  * @property {number} decided
@@ -80,9 +86,14 @@ function discoveryMapView(workUnit, map) {
   return head + renderTree(mapNodes(map.rows), { width: TREE_WIDTH, gap: true });
 }
 
-/** A map row as DATA names it: its order, key and lifecycle, the name it goes by where a rename gave it one, and its summary. @param {DiscoveryMapRow & {order?: number|null, goes_by?: string}} row */
-function rowData({ order, name, lifecycle, goes_by: goesBy, summary }) {
-  return `  ${order ?? '-'} ${name} [${lifecycle}]${goesBy !== undefined && goesBy !== name ? ` goes_by=${goesBy}` : ''}${summary ? ` — ${summary}` : ''}`;
+/**
+ * A map row as DATA names it: its order, key and lifecycle, the name it goes
+ * by where a rename gave it one, its brief where it carries one, and its
+ * summary.
+ * @param {MapScreenRow} row
+ */
+function rowData({ order, name, lifecycle, goes_by: goesBy, brief, summary }) {
+  return `  ${order ?? '-'} ${name} [${lifecycle}]${goesBy !== undefined && goesBy !== name ? ` goes_by=${goesBy}` : ''}${brief ? ` brief=${brief}` : ''}${summary ? ` — ${summary}` : ''}`;
 }
 
 /** The names struck from the map, as the person reads them, or nothing where none is. @param {string[]} dismissed */
@@ -93,10 +104,11 @@ function struckBlock(dismissed) {
 
 /**
  * The epic's map for Claude and for the person (`render discovery-map`):
- * DATA naming each topic in its order with its lifecycle and summary, and the
- * names struck from the map; then the map's display with those names beneath.
+ * DATA naming each topic in its order with its lifecycle and summary, an
+ * unstarted one's brief, and the names struck from the map; then the map's
+ * display with those names beneath.
  * @param {string} workUnit
- * @param {{rows: (DiscoveryMapRow & {order?: number|null, goes_by?: string})[], summary: DiscoveryMapSummary}} map
+ * @param {{rows: MapScreenRow[], summary: DiscoveryMapSummary}} map
  * @param {string[]} dismissed
  * @returns {string}
  */

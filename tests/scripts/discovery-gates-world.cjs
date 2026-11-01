@@ -24,7 +24,6 @@ const assert = require('node:assert');
 const { ok, output, fixtureFrom, cleanupFixture, statePath, writeState, layout, keywordOnlyKnowledge, commitOnState } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { SESSION } = require('./ledger-world.cjs');
-const { sectionOf } = require('./decided-world.cjs');
 
 const PRODUCT_LOG = layout.productSession('001');
 const IDEA = layout.inbox('ideas', '2026-06-01--smart-retry.md');
@@ -141,4 +140,4 @@ function failingWrites(file, fn) {
 /** The temp file an atomic write of a manifest in `folder` writes first. @param {string} folder absolute */
 const manifestTemp = (folder) => path.join(folder, `.manifest.json.${process.pid}.tmp`);
 
-module.exports = { PRODUCT_LOG, IDEA, BUG, EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp, sectionOf };
+module.exports = { PRODUCT_LOG, IDEA, BUG, EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp };

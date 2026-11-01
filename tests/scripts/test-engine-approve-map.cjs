@@ -27,9 +27,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, readManifest, readState, statePath, lastMessage, touched, head, layout } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, lastMessage, touched, head, layout } = require('./engine-harness.cjs');
 const { joinedTo } = require('./roadmap-world.cjs');
-const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp, sectionOf } = require('./discovery-gates-world.cjs');
+const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
 const { epicMenuKeys } = require('../../skills/leeway-engine/scripts/domain/projections/epic.cjs');
 const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
@@ -296,16 +296,18 @@ describe('approve the map, the yes (8.8.3, 8.8.13, 8.14.11)', () => {
 });
 
 describe('the map for Claude and the person (render discovery-map)', () => {
-  it('names each topic in its order with its lifecycle, then the names struck from the map, in DATA and on the display', () => {
+  it('names each topic in its order with its lifecycle, an unstarted one\'s brief, then the names struck from the map, in DATA and on the display', () => {
     approved(firstMap());
+    ok(dir(), ['topic', 'start', EPIC, 'discussion', 'storage-and-sync']);
+    const brief = (/** @type {string} */ topic) => statePath(dir(), layout.topic(EPIC, topic, 'brief.md'));
     const out = output(dir(), ['render', 'discovery-map', EPIC]);
     assert.strictEqual(sectionOf(out, 'DATA'), [
       `work_unit: ${EPIC}`,
-      'map: 3 topics — 0 decided, 0 in-flight, 3 fresh, 0 cancelled, 0 postponed',
+      'map: 3 topics — 0 decided, 1 in-flight, 2 fresh, 0 cancelled, 0 postponed',
       'topics (3):',
-      '  1 note-model [fresh] — What a note is',
-      '  2 storage-and-sync [fresh] — Where notes live',
-      '  3 sharing [fresh] — Sharing a note',
+      '  2 storage-and-sync [discussing] — Where notes live',
+      `  1 note-model [fresh] brief=${brief('note-model')} — What a note is`,
+      `  3 sharing [fresh] brief=${brief('sharing')} — Sharing a note`,
       'dismissed (1):',
       '  - dock-badge',
       '',

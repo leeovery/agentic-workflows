@@ -110,15 +110,6 @@ function useDecidedWorld() {
   return () => dir;
 }
 
-/** A section of a render by its marker's name. @param {string} out @param {string} name */
-function sectionOf(out, name) {
-  const at = out.indexOf(`=== ${name} (`);
-  assert.ok(at !== -1, `no ${name} section in:\n${out}`);
-  const body = out.slice(out.indexOf('\n', at) + 1);
-  const end = body.search(/^=== /m);
-  return end === -1 ? body : body.slice(0, end);
-}
-
 /**
  * The decided suites' helpers, over the project `dir()` names.
  * @param {() => string} dir
@@ -179,5 +170,5 @@ function decidedHelpers(dir) {
 }
 
 module.exports = {
-  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, sectionOf, decidedHelpers,
+  SOLO, SOLO_AT, SOLO_LOG, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers,
 };

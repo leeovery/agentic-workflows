@@ -8,7 +8,7 @@ Build and act on a set of inbox items. The caller holds the **working set** — 
 
 ## A. Render the Working Set
 
-For each item in the set, read its file and synthesise a short summary — one or two sentences: what the item is and why it matters, in product terms (do not quote it verbatim). Write the summaries as one JSON object keyed by each item's inbox path to `.workflows/.cache/working-set-summaries.json`:
+For each item in the set, read its file and synthesise a short summary — one or two sentences: what the item is and why it matters, in product terms (do not quote it verbatim). Write the summaries as one JSON object keyed by each item's inbox path to `.leeway/.cache/working-set-summaries.json`:
 
 ```json
 { "{path}": "{summary}", "{path}": "{summary}" }
@@ -17,7 +17,7 @@ For each item in the set, read its file and synthesise a short summary — one o
 Fetch the working-set snapshot — pass every held item's inbox path, in set order, plus the payload:
 
 ```bash
-node .claude/skills/leeway/scripts/gateway.cjs working-set {path} [{path} …] --summaries .workflows/.cache/working-set-summaries.json
+node .claude/skills/leeway/scripts/gateway.cjs working-set {path} [{path} …] --summaries .leeway/.cache/working-set-summaries.json
 ```
 
 The response carries demarcated sections:
@@ -196,7 +196,7 @@ Read each note in the set in full with the Read tool, then compose one entry per
 - `horizon` — `{horizon}`, the same on every entry.
 - `note` — the note's inbox path.
 
-Write the entries to `.workflows/.cache/inbox-roadmap.json` with the Write tool, in set order:
+Write the entries to `.leeway/.cache/inbox-roadmap.json` with the Write tool, in set order:
 
 ```json
 [{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]
@@ -209,7 +209,7 @@ Write the entries to `.workflows/.cache/inbox-roadmap.json` with the Write tool,
 Render the confirm — it states every item with its kind, and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. It refuses whatever the landing would refuse:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
+node .claude/skills/leeway-engine/scripts/engine.cjs render inbox-roadmap-gate --file .leeway/.cache/inbox-roadmap.json
 ```
 
 #### If the call refuses a name
@@ -261,7 +261,7 @@ The comment names what to change — an item's name or summary, or the horizon. 
 Land the file the confirm rendered — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap.json
+node .claude/skills/leeway-engine/scripts/engine.cjs roadmap add-batch --file .leeway/.cache/inbox-roadmap.json
 ```
 
 #### If the response is `ok: false`

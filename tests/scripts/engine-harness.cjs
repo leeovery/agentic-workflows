@@ -158,6 +158,15 @@ function sectionsOf(res, args) {
   return { res: parsed, sections: nl === -1 ? '' : res.stdout.slice(nl + 1) };
 }
 
+/** A section of a render by its marker's name, refused where the render has none. @param {string} out @param {string} name */
+function sectionOf(out, name) {
+  const at = out.indexOf(`=== ${name} (`);
+  assert.ok(at !== -1, `no ${name} section in:\n${out}`);
+  const body = out.slice(out.indexOf('\n', at) + 1);
+  const end = body.search(/^=== /m);
+  return end === -1 ? body : body.slice(0, end);
+}
+
 /** An answer that must be a refusal: its `{ok:false}` parsed. @param {Answer} res @param {string[]} args */
 function refusal(res, args) {
   assert.strictEqual(res.code, 1,
@@ -893,7 +902,7 @@ const { call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync,
 
 module.exports = {
   ENGINE, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
-  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, holdLock, lockAttempts, contend, killedAt,
+  call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, stateRelative, layout, createFile, writeState, readState, readManifest,

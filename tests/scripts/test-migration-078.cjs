@@ -501,7 +501,6 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         defaults: { plan_format: 'sample-format' },
         roadmap: {
           horizons: ['v1'],
-          imports: [{ path: 'assets/market.md', imported_at: '2026-01-04T10:00:00Z', origin: 'roadmap' }],
           items: {
             loyalty: { ...items.loyalty, sources: ['.product/sessions/session-001.md', '.product/assets/market.md'] },
             'points-expiry': { ...items['points-expiry'], sources: ['.product/notes/2026-01-03--points-expiry.md'] },
@@ -560,7 +559,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md).\n');
     });
 
-    it('points each roadmap item\'s sources at the new places, a unit\'s files among them, once each, and its imports at the assets (21.S15)', () => {
+    it('points each roadmap item\'s sources at the new places, a unit\'s files among them, once each (21.S15)', () => {
       const { roadmap } = JSON.parse(read('manifest.json'));
       assert.deepStrictEqual(Object.fromEntries(Object.entries(roadmap.items).map(([name, item]) => [name, item.sources])), {
         loyalty: ['.product/sessions/session-001.md', '.product/assets/market.md'],
@@ -569,7 +568,6 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         exploration: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'],
       });
       for (const source of [...roadmap.items.loyalty.sources, ...roadmap.items.alpha.sources.slice(0, 2), ...roadmap.items.exploration.sources]) assert.ok(fs.existsSync(path.join(state, source)), source);
-      assert.deepStrictEqual(roadmap.imports.map((/** @type {{path: string}} */ entry) => entry.path), ['assets/market.md']);
     });
   });
 

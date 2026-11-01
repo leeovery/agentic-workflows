@@ -22,9 +22,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, readManifest, statePath, killedAt } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
-const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, sectionOf, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, screen, staged, answer, run, reverse } = decidedHelpers(dir);

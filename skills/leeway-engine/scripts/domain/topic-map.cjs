@@ -29,7 +29,7 @@ const { readShown, answerMap } = require('./ledger-read.cjs');
 const { answerShown } = require('./ledger-since.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { topicTitles, titled } = require('./derivations.cjs');
+const { topicTitles, titled, topicKey } = require('./derivations.cjs');
 const { mapScreen } = require('./projections/map.cjs');
 
 /** @typedef {import('./projections/map.cjs').DrawnRow} DrawnRow */
@@ -184,16 +184,18 @@ function sinceRows(rows, shown) {
 
 /**
  * The unit and topic a `<unit>.<topic>` address names, checked: the unit
- * exists and the topic is one of its.
+ * exists and the topic, named by its key or its title, is one of its —
+ * answered as its key.
  * @param {string} root @param {string|undefined} address @param {string} surface
  * @returns {{unit: string, topic: string, manifest: Record<string, any>}}
  */
 function topicAddress(root, address, surface) {
-  const [unit, topic, ...rest] = (address ?? '').split('.');
-  if (!unit || !topic || rest.length > 0) throw new Error(`render ${surface}: address must be <work-unit>.<topic>, got "${address ?? ''}"`);
+  const [unit, said, ...rest] = (address ?? '').split('.');
+  if (!unit || !said || rest.length > 0) throw new Error(`render ${surface}: address must be <work-unit>.<topic>, got "${address ?? ''}"`);
   const manifest = manifestOf(root, unit);
   if (manifest === null) throw new Error(`render ${surface}: there is no work unit "${unit}"`);
-  if (!hasTopic(manifest, topic)) throw new Error(`render ${surface}: ${unit} has no topic "${topic}"`);
+  const topic = topicKey(manifest, said);
+  if (!hasTopic(manifest, topic)) throw new Error(`render ${surface}: ${unit} has no topic "${said}"`);
   return { unit, topic, manifest };
 }
 

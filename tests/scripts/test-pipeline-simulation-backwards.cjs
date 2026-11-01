@@ -20,7 +20,7 @@ const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
-const { Sim, sessionLog, discussed, arrive, handoffEntry, send, walkDeliveryPhases } = require('./pipeline-world.cjs');
+const { Sim, startUnit, discussed, arrive, handoffEntry, send, walkDeliveryPhases } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: backwards', () => {
   let sim;
@@ -29,8 +29,7 @@ describe('pipeline simulation: backwards', () => {
 
   it('backwards: a decided discussion reopens by a message, never a revisit; re-decided, the map keeps deriving', () => {
     const wu = 'revisit';
-    const log = sessionLog(sim, wu);
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Revisit flow', '--session-log-file', log]);
+    startUnit(sim, 'feature', wu, 'Revisit flow');
     discussed(sim, wu, wu);
 
     // The bridge offers no way back into the decided discussion: no revisit

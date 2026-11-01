@@ -30,7 +30,7 @@ const LIB = require(path.join(ROOT, 'skills/leeway-engine/scripts/lib.cjs'));
 const { spawnSync } = require('child_process');
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, sessionLog, handoff, answerGate, startKeys, startNew, pickRoute, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
+  Sim, startUnit, handoff, answerGate, startKeys, startNew, pickRoute, epicPick, arrive, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -164,7 +164,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     inTheProduct(sim);
     const transcript = transcriptOf(sim, sim.env.CLAUDE_CODE_SESSION_ID);
     const atProduct = carryOn(sim).text;
-    for (const part of ['leeway-discovery/SKILL.md and its framework', `Catch the log, ${logPath(sim, PRODUCT, 1)}, up from this conversation's transcript, ${transcript}`]) {
+    for (const part of ['leeway-discovery/SKILL.md and its framework', `Catch the log, ${logPath(sim, PRODUCT, 2)}, up from this conversation's transcript, ${transcript}`]) {
       assert.ok(atProduct.includes(part), `the product's note names ${part}:\n${atProduct}`);
     }
 
@@ -183,7 +183,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
     const down = sim.run(['enter', 'discovery', EPIC, '--move']);
     assert.deepStrictEqual([down.started, typeof down.committed], [true, 'string'], 'the epic\'s next session opened, the move committed');
-    assert.strictEqual(fs.readFileSync(logPath(sim, PRODUCT, 1), 'utf8').trimEnd().split('\n').at(-1),
+    assert.strictEqual(fs.readFileSync(logPath(sim, PRODUCT, 2), 'utf8').trimEnd().split('\n').at(-1),
       `→ Carried on in the discovery of "${EPIC}": [session-002.md](../../${EPIC}/discovery/session-002.md)`);
     assert.strictEqual(headersIn(sim, EPIC, 2).length, 1, 'the epic\'s log takes the conversation\'s line');
     assert.deepStrictEqual(carryOn(sim).position, { name: EPIC, phase: 'discovery', topic: EPIC });
@@ -194,8 +194,8 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
     sim.run(['enter', 'discovery', PRODUCT, '--move']);
     assert.strictEqual(fs.readFileSync(logPath(sim, EPIC, 2), 'utf8').trimEnd().split('\n').at(-1),
-      '→ Carried on in the product\'s conversation: [session-001.md](../../.product/sessions/session-001.md)');
-    assert.strictEqual(headersIn(sim, PRODUCT, 1).length, 1, 'the product\'s log already names this conversation');
+      '→ Carried on in the product\'s conversation: [session-002.md](../../.product/sessions/session-002.md)');
+    assert.strictEqual(headersIn(sim, PRODUCT, 2).length, 1, 'the product\'s log already names this conversation');
     assert.deepStrictEqual(carryOn(sim).position, { name: PRODUCT });
     assert.strictEqual(sim.conversations, conversation, 'no handoff: the same conversation throughout');
   });
@@ -279,7 +279,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
   it('a single-topic unit\'s talk moving up to the product\'s conversation, the only place above it (8.2.12, 24.S20)', () => {
     const wu = 'saved-filters';
-    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
+    startUnit(sim, 'feature', wu, 'Saved filters');
     enterEntry(sim, wu, 'discussion', wu);
     const conversation = sim.conversations;
     sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
