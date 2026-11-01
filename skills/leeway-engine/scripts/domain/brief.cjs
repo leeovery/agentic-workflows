@@ -2,14 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a brief filled and issued (6.5) — `brief <role> [<unit>
-// <task>|<unit> <topic>] [--{flag} <value> …]`, the only way the workflows
-// hand one of their own agents its brief (6.5.1). Each role names its
-// template, the agent it is dispatched as — the fix round's, the builder it
-// is sent to — and the records its brief draws on (6.5.4, 6.5.11,
+// <task>|<unit> <topic>|<unit>] [--{flag} <value> …]`, the only way the
+// workflows hand one of their own agents its brief (6.5.1). Each role names
+// its template, the agent it is dispatched as — the fix round's, the builder
+// it is sent to — and the records its brief draws on (6.5.4, 6.5.11,
 // brief-names.cjs); a role whose records include a task's takes the unit
 // and the task, one whose records include a topic's takes the unit and the
-// topic, any other neither. A role takes each flag its records name, every
-// one of them but a flag a record holds optional, once, and no other:
+// topic, one whose records include a unit's takes the unit alone, any other
+// none. A role takes each flag its records name, every one of them but a
+// flag a record holds optional, once, and no other:
 // `--base <branch>`, `--report-a <path>`, `--question <id>`, `--agent
 // <id>`, `--kind <kind>`, a read dive's `--path <file>`, the migration's
 // `--directive <id>` and `--topic <unit.phase.topic>`; a flag carries a
@@ -30,14 +31,15 @@
 // beside it, so it is never seen half written and never written over
 // another, the record first, so a brief always has its record; both go with
 // the folder (conversation.cjs). The brief's first line names it, `Brief
-// {id} — the builder's, for {unit} task {N.M}`, or `… for {unit} topic
-// {topic}`.
+// {id} — the builder's, for {unit} task {N.M}`, `… for {unit} topic
+// {topic}`, or `… for {unit}`.
 // The dispatch carries the brief's pointer, `brief:{id}`, alone, and the
 // hook before Agent and SendMessage hands the agent the stored brief
 // (brief-guard.cjs).
 //
 // It refuses no session id, a role it does not know, arguments of another
-// shape, a unit, a task or a topic the project lacks, a task done or
+// shape, a unit, a task or a topic the project lacks, a unit set aside
+// where its role takes the unit alone or a topic, a task done or
 // closed, a topic set aside (5.8.17), and a record it cannot read. Once
 // every record is drawn, what a record binds is bound — the dispatch a
 // question's brief is for, to that question (brief-records.cjs) — before
@@ -56,6 +58,7 @@ const { RECORDS } = require('./brief-records.cjs');
 const { ROLES, briefPath, issuedPath, pointerOf } = require('./brief-names.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
+const { unitClosure } = require('./topic-standing.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('./brief-records.cjs').Filling} Filling */
@@ -71,9 +74,9 @@ const TEMPLATES_DIR = path.join(__dirname, '..', '..', 'content', 'briefs');
 const SLOT = /\{\{([^{}]*)\}\}/g;
 
 /**
- * What a role's brief is filled for: a task, a topic, or neither, as its
- * records are.
- * @param {string} role @returns {'task'|'topic'|null}
+ * What a role's brief is filled for: a task, a topic, a unit, or none, as
+ * its records are.
+ * @param {string} role @returns {'task'|'topic'|'unit'|null}
  */
 function placeOfRole(role) {
   const places = ROLES[role].records.map((record) => RECORDS[record].of);
@@ -90,10 +93,13 @@ function flagsOf(role) {
   return [...flags.values()];
 }
 
+/** The positional arguments a brief for each place takes. */
+const PLACE_ARGS = Object.freeze({ task: ['<unit>', '<task>'], topic: ['<unit>', '<topic>'], unit: ['<unit>'] });
+
 /** The verb's usage, a line per role. */
 const BRIEF_USAGE = Object.keys(ROLES).map((role) => {
   const place = placeOfRole(role);
-  return [`brief ${role}`, ...(place === null ? [] : [`<unit> <${place}>`]), ...flagsOf(role).map(({ name, value, optional }) => (optional ? `[--${name} <${value}>]` : `--${name} <${value}>`))].join(' ');
+  return [`brief ${role}`, ...(place === null ? [] : PLACE_ARGS[place]), ...flagsOf(role).map(({ name, value, optional }) => (optional ? `[--${name} <${value}>]` : `--${name} <${value}>`))].join(' ');
 }).join('\n');
 
 /** @returns {never} */
@@ -119,7 +125,7 @@ function flagNamed(role, arg) {
  * and each flag it takes, given once with its value. A flag it does not
  * take is refused as such, any other shape by the usage.
  * @param {string} role @param {string[]} args
- * @returns {{ref: TaskRef|null, place: TopicPlace|null, given: Record<string, string>}}
+ * @returns {{ref: TaskRef|null, place: TopicPlace|null, unit: string|null, given: Record<string, string>}}
  */
 function argumentsOf(role, args) {
   const required = flagsOf(role).filter(({ optional }) => !optional).map(({ name }) => name);
@@ -139,13 +145,22 @@ function argumentsOf(role, args) {
     given[name] = value;
     at += 1;
   }
-  if (positional.length !== (of === null ? 0 : 2) || required.some((name) => !Object.hasOwn(given, name))) usage();
+  if (positional.length !== (of === null ? 0 : PLACE_ARGS[of].length) || required.some((name) => !Object.hasOwn(given, name))) usage();
   const [unit, named] = positional;
   return {
     ref: of === 'task' ? parseShownTask(unit, named) : null,
     place: of === 'topic' ? { unit, topic: named } : null,
+    unit: unit ?? null,
     given,
   };
+}
+
+/** A unit's manifest, refused where the project lacks the unit or it is set aside (5.8.17). @param {string} root @param {string} unit */
+function knownUnit(root, unit) {
+  const manifest = manifestOf(root, unit);
+  if (manifest === null) throw new Error(`Work unit "${unit}" not found`);
+  if (liveness(root)(unit, null) !== null) throw new Error(`brief: ${unitClosure(manifest)}`);
+  return manifest;
 }
 
 /**
@@ -155,8 +170,7 @@ function argumentsOf(role, args) {
  */
 function liveTopic(cwd, { unit, topic }) {
   const root = stateRoot(cwd);
-  const manifest = manifestOf(root, unit);
-  if (manifest === null) throw new Error(`Work unit "${unit}" not found`);
+  const manifest = knownUnit(root, unit);
   if (!hasTopic(manifest, topic)) throw new Error(`brief: ${unit} has no topic "${topic}"`);
   const dead = liveness(root)(unit, topic);
   if (dead !== null) throw new Error(`brief: ${unit}/${topic} is set aside — ${dead}`);
@@ -228,10 +242,11 @@ function storeBrief(session, id, text, issued) {
   linkWhole(briefPath(session, id), text);
 }
 
-/** What a brief's first line says it is for: its task, its topic, or nothing. @param {TaskRef|null} ref @param {TopicPlace|null} place */
-function forWhat(ref, place) {
+/** What a brief's first line says it is for: its task, its topic, its unit, or nothing. @param {TaskRef|null} ref @param {TopicPlace|null} place @param {string|null} unit */
+function forWhat(ref, place, unit) {
   if (ref !== null) return `, for ${ref.unit} task ${shownTask(ref)}`;
-  return place === null ? '' : `, for ${place.unit} topic ${place.topic}`;
+  if (place !== null) return `, for ${place.unit} topic ${place.topic}`;
+  return unit === null ? '' : `, for ${unit}`;
 }
 
 /**
@@ -247,7 +262,7 @@ function unendedTask(cwd, ref, warnings) {
 }
 
 /**
- * `brief <role> [<unit> <task>|<unit> <topic>]`: the role's brief filled from its records
+ * `brief <role> [<unit> <task>|<unit> <topic>|<unit>]`: the role's brief filled from its records
  * and stored in the calling conversation's folder. Answers its id, its
  * role, the agent it is dispatched as and the pointer the dispatch carries;
  * where reading the task committed the tracker's set-up, that commit, and
@@ -256,7 +271,7 @@ function unendedTask(cwd, ref, warnings) {
  */
 function issueBrief(cwd, [role, ...rest]) {
   if (role === undefined || !Object.hasOwn(ROLES, role)) usage();
-  const { ref, place, given } = argumentsOf(role, rest);
+  const { ref, place, unit, given } = argumentsOf(role, rest);
   const session = handedSession();
   if (session === null) throw new Error('brief: no conversation to issue it in — Claude Code hands every command it runs a session id, and this one has none');
   const { agent, whose, records } = ROLES[role];
@@ -265,14 +280,15 @@ function issueBrief(cwd, [role, ...rest]) {
   const warnings = [];
   try {
     if (place !== null) liveTopic(cwd, place);
+    else if (ref === null && unit !== null) knownUnit(stateRoot(cwd), unit);
     const { task, committed } = ref === null ? { task: null, committed: undefined } : unendedTask(cwd, ref, warnings);
     /** @type {Filling} */
-    const filling = { cwd, role, ref, task, place, given, session };
+    const filling = { cwd, role, ref, task, place, unit, given, session };
     const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
     for (const record of records) RECORDS[record].bind?.(filling, warnings);
     const id = newId();
-    storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, place)}\n\n${filled(template, drawn)}`, {
-      role, agent, unit: ref?.unit ?? place?.unit ?? null, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,
+    storeBrief(session, id, `Brief ${id} — ${whose}${forWhat(ref, place, unit)}\n\n${filled(template, drawn)}`, {
+      role, agent, unit, task: ref === null ? null : shownTask(ref), topic: place === null ? null : place.topic,
     });
     return { id, role, agent, pointer: pointerOf(id), ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
   } catch (err) {

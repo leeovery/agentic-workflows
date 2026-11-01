@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's feature scenarios: the whole pipeline from
-// discovery to a completed review; the start menu's working set of inbox
+// discovery to a completed review, its spec landed and cut into phases
+// through the cut's corridor; the start menu's working set of inbox
 // ideas seeding discovery; a discussion entered through `enter`, begun and
 // then resumed by a later conversation; review skipped at the next-phase gate, and a failed review reopening implementation; the
 // implementation loop's fix and analysis cycles surviving a resume.
@@ -24,7 +25,7 @@ const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/
 const BRIDGE = require(path.join(ROOT, 'skills/leeway-bridge/scripts/gateway.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
 const {
-  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, answerGate, decideTopic, discussed, bridgeTo, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal,
+  Sim, sessionLog, handoffEntry, enterEntry, carryOn, handoff, answerGate, decideTopic, discussed, bridgeTo, startKeys, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet, walkDeliveryPhasesToImplementation, walkDeliveryPhases, literal, cutTheSpec,
 } = require('./pipeline-world.cjs');
 
 const { shellWords } = require('./pipeline-oracle.cjs');
@@ -86,6 +87,17 @@ describe('pipeline simulation: feature', () => {
     // behind it is no revisit — it reopens by a message — so the hop asks
     // nothing.
     sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'empty' });
+    // The spec lands citing what was decided, and the cut's corridor cuts it
+    // into phases on the unit's manifest.
+    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
+    sim.write(`.leeway/${wu}/spec.md`, [
+      '# Pay', '', '## 1. Checkout', '', '### 1.1 Networks', '', `1.1.1 Checkout takes ${decision.text} [${decision.id}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given checkout, when a Visa is offered, then it is taken. (1.1.1)', '',
+    ].join('\n'));
+    assert.deepStrictEqual(sim.run(['spec', 'land', wu]).invented, []);
+    const networks = { name: 'Card networks', goal: 'Checkout takes the networks decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] };
+    assert.strictEqual(cutTheSpec(sim, wu, [networks]).phases, 1);
+    assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [networks] });
 
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
 
