@@ -16,17 +16,20 @@
 // longer there. A section's order, and the blank lines between sections,
 // change none (E4).
 //
+// The passes it reads as reported are those whose report a scan of the agent
+// store took in (agent-state.cjs), reading as a spec review's report reads
+// (spec-report.cjs); a pass refused, or abandoned in flight, is ignored
+// whole, its report never read, whenever it lands.
+//
 // What waits, one function (`outstanding`):
 // - for the writer: every current entry made at the unit's own level at the
 //   spec after the ledger's mark the last committed take kept — after the
 //   first land's, before any take, none before either — and every reported
-//   pass with a `rewrite` finding, not acknowledged clean (`ack --clean`),
-//   that take did not carry;
-// - to be surfaced: every `gap` or `fact` finding of a reported pass, not
-//   acknowledged clean, that the agent store has not surfaced — raised
-//   (11.7.2) or replaced (11.7.9) — nor declined, its pass incorporated.
-// A finding's lane is the one its report gives it, `**Lane:** …` under its
-// heading; one giving none is the writer's.
+//   pass with a `rewrite` finding that take did not carry;
+// - to be surfaced: every `gap` or `fact` finding of a reported pass that
+//   the agent store has neither surfaced — raised (11.7.2) or replaced
+//   (11.7.9) — nor declined, its pass acknowledged with it and then
+//   incorporated.
 //
 // The loop's states, and what reads them:
 // - The writer's brief draws what waits for it — the entries, and each such
@@ -68,7 +71,7 @@ const INTRODUCTION = 'introduction';
 /** What a land keeps: the print of the spec it landed, and the ledger's mark at the first land. @typedef {Print & {first_mark: string|null}} Landed */
 /** A take: the ledger's mark as the writer's brief was issued, and every pass reported by then. @typedef {{ledger_mark: string|null, passes: string[]}} Taken */
 /** @typedef {ReturnType<typeof reviewPasses>[number]} Pass */
-/** A finding of a pass's report, and the lane its report gives it. @typedef {{pass: string, id: string, lane: string}} Finding */
+/** A finding waiting to be surfaced: its pass, its id and lane, and whether its pass is acknowledged. @typedef {{pass: string, id: string, lane: string, acknowledged: boolean}} Finding */
 /** What waits: the entries' full ids and the passes, for the writer, and the findings to be surfaced, each in order. @typedef {{entries: string[], passes: Pass[], surface: Finding[]}} Outstanding */
 
 /** @param {string} text */
@@ -178,14 +181,6 @@ function lastTaken(cwd, unit) {
   return isObject(read) && Array.isArray(read.passes) ? /** @type {Taken} */ (read) : null;
 }
 
-/** A finding's heading in a report, and the lane under it. */
-const FINDING = /^### (F\d+)\b[^\n]*\n+(?:\*\*Lane:\*\*\s*(\w+))?/gm;
-
-/** Each finding of a pass's report, with the lane it gives it, the writer's where it gives none. @param {Pass} pass @returns {Finding[]} */
-function findingsOf(pass) {
-  return [...fs.readFileSync(pass.file, 'utf8').matchAll(FINDING)].map(([, id, lane]) => ({ pass: pass.id, id, lane: lane === 'gap' || lane === 'fact' ? lane : 'rewrite' }));
-}
-
 /** The passes whose report is in, in the order they were dispatched. @param {string} cwd @param {string} unit */
 const reportedPasses = (cwd, unit) => reviewPasses(cwd, unit).filter(({ reported }) => reported);
 
@@ -203,13 +198,15 @@ function recordTaking(cwd, unit, warnings) {
   keep(kept(cwd, unit, 'taking.json'), taking);
 }
 
+/** Whether a pass declined a finding: acknowledged with it, then incorporated. @param {Pass} pass @param {string} id */
+const declined = (pass, id) => pass.status === 'incorporated' && pass.acknowledged.includes(id);
+
 /**
  * What waits: for the writer, every current entry made at the unit's own
  * level at the spec after the mark the last committed take kept — the
  * first land's before any take, none before either — and every reported
  * pass with a `rewrite` finding that take did not carry; to be surfaced,
- * every `gap` or `fact` finding neither surfaced nor declined; a pass
- * acknowledged clean leaving neither.
+ * every `gap` or `fact` finding neither surfaced nor declined.
  * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {Outstanding}
  */
 function outstanding(cwd, unit, warnings) {
@@ -222,11 +219,13 @@ function outstanding(cwd, unit, warnings) {
       return made.unit === unit && made.phase === UNIT_PHASE && made.place.number > since;
     });
   });
-  const read = reportedPasses(cwd, unit).filter(({ clean }) => !clean).map((pass) => ({ pass, findings: findingsOf(pass) }));
+  const read = reportedPasses(cwd, unit);
   return {
     entries,
-    passes: read.filter(({ pass, findings }) => findings.some(({ lane }) => lane === 'rewrite') && !(taken?.passes.includes(pass.id) ?? false)).map(({ pass }) => pass),
-    surface: read.flatMap(({ pass, findings }) => (pass.status === 'incorporated' ? [] : findings.filter(({ id, lane }) => lane !== 'rewrite' && !pass.surfaced.includes(id)))),
+    passes: read.filter(({ id, findings }) => findings.some(({ lane }) => lane === 'rewrite') && !(taken?.passes.includes(id) ?? false)),
+    surface: read.flatMap((pass) => pass.findings
+      .filter(({ id, lane }) => lane !== 'rewrite' && !pass.surfaced.includes(id) && !declined(pass, id))
+      .map(({ id, lane }) => ({ pass: pass.id, id, lane, acknowledged: pass.status === 'acknowledged' }))),
   };
 }
 
@@ -270,6 +269,15 @@ function waitingGaps(cwd, unit, warnings) {
 }
 
 /**
+ * A finding's way to surfacing, its pass acknowledged first where it is not.
+ * @param {Finding} finding @param {number} at @param {Finding[]} all
+ */
+function surfacing({ pass, id, lane, acknowledged }, at, all) {
+  const first = all.findIndex((other) => other.pass === pass) === at;
+  return `${first && !acknowledged ? `${pass} acknowledged, then ` : ''}the ${lane} ${id} of ${pass} ${lane === 'gap' ? 'raised' : 'replaced'}`;
+}
+
+/**
  * What the review waits on, past a pass that reviewed the spec as it
  * stands, said as the way on; null where nothing waits: a gap waiting on
  * the person; else the findings waiting to be surfaced, and what waits for
@@ -285,7 +293,7 @@ function waitingOn(cwd, unit, warnings) {
     ...(entries.length === 0 ? [] : [`${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} made at the spec`]),
   ];
   const ways = [
-    ...(surface.length === 0 ? [] : [`the review's findings wait to be surfaced: ${surface.map(({ pass, id, lane }) => `the ${lane} ${id} of ${pass} ${lane === 'gap' ? 'raised' : 'replaced'}`).join(', ')}`]),
+    ...(surface.length === 0 ? [] : [`the review's findings wait to be surfaced: ${surface.map(surfacing).join(', ')}`]),
     ...(forWriter.length === 0 ? [] : [`the writer's brief carries what waits for it, and the spec's land takes it: ${forWriter.join(', and ')}`]),
   ];
   return ways.length === 0 ? null : ways.join('; ');

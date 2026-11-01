@@ -145,6 +145,8 @@
 //                  command that measured it, with its result
 //   product-cites  each product-wide entry of the unit the spec cites, with
 //                  the lines citing it
+//   report-refusal each pass refused since the last whose report was taken
+//                  in, with what of its report did not read (agent-state.cjs)
 //   unit-report-to where the agent writes its report: the file of the
 //                  dispatch `--agent` names in the unit's agent store, of the
 //                  kind its role is briefed for and still in flight
@@ -220,7 +222,7 @@ const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { dismissedNames, topicTitle } = require('./derivations.cjs');
 const {
-  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec,
+  UNIT_PHASE, dispatchedRows, gapReviewSince, bindQuestion, bindSpec, refusedReports,
 } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
@@ -1059,6 +1061,9 @@ function drawMeasuredFindings(filling, warnings) {
   ].join('\n')));
 }
 
+/** @param {Filling} filling */
+const drawReportRefusal = (filling) => listed(refusedReports(filling.cwd, unitOf(filling)).map((refusal) => `- ${refusal}`));
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawProductCites(filling, warnings) {
   const { folded, entries } = unitView(filling, warnings);
@@ -1125,6 +1130,7 @@ const RECORDS = Object.freeze({
   'invented-lines': { of: 'unit', draw: drawInventedLines },
   'measured-findings': { of: 'unit', draw: drawMeasuredFindings },
   'product-cites': { of: 'unit', draw: drawProductCites },
+  'report-refusal': { of: 'unit', draw: drawReportRefusal },
   'unit-report-to': { of: 'unit', flags: [AGENT], draw: drawReportTo },
 });
 

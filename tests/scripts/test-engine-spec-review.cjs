@@ -30,9 +30,15 @@
 // the spec as it stands, (c) with no gap waiting and (d) nothing waiting:
 // for the writer, the entries made at the spec and the `rewrite` findings
 // since the last take a land committed — a brief again before a land
-// carrying all of it — and to be surfaced, each `gap` or `fact` finding; an
-// entry at another unit's spec, on a topic or replaced since, or an asset
-// linked at the spec, waits for no one. A fact the review shows wrong,
+// carrying all of it — and to be surfaced, each `gap` or `fact` finding,
+// until surfaced or declined, its pass acknowledged with it and incorporated;
+// an entry at another unit's spec, on a topic or replaced since, or an asset
+// linked at the spec, waits for no one. A pass's report counts once a scan
+// takes it in, and only as it reads: one that does not is refused at the
+// scan, never reported, and the next pass's brief carries the refusal. A pass is read before any of
+// its findings is declined: never incorporated between its report and its
+// acknowledgement, which names exactly its report's findings. A pass
+// abandoned in flight is ignored whole, whenever it reports. A fact the review shows wrong,
 // replaced at the spec, stands on its topic and affects what relied on it
 // (11.S21).
 //
@@ -220,9 +226,12 @@ const WRITER = 'the writer\'s brief carries what waits for it, and the spec\'s l
 /** A pass's report written, so it is in. @param {{file: string}} pass @param {string} [report] */
 const reportIn = ({ file }, report = CLEAN) => fs.writeFileSync(file, `${report}\n`);
 
+/** The unit's store scanned, each report in taken in: the scan's answer. */
+const scan = () => ok(dir, ['agent', 'scan', UNIT, 'specification', UNIT]);
+
 /** A pass's report scanned and acknowledged: clean, or with its findings. @param {{id: string}} pass @param {string[]} [findings] */
 function acked({ id }, findings = []) {
-  ok(dir, ['agent', 'scan', UNIT, 'specification', UNIT]);
+  scan();
   ok(dir, ['agent', 'ack', UNIT, 'specification', UNIT, id, ...(findings.length === 0 ? ['--clean'] : ['--findings', findings.join(',')])]);
 }
 
@@ -250,8 +259,11 @@ function moved(text, first, second, end) {
   return `${text.slice(0, a)}${text.slice(b, c).trimEnd()}\n\n${text.slice(a, b).trimEnd()}\n\n${text.slice(c)}`.trimEnd();
 }
 
-/** A pass's report incorporated unread. @param {{id: string}} pass */
+/** A pass incorporated: abandoned in flight, or acknowledged and its findings declined. @param {{id: string}} pass */
 const unread = ({ id }) => ok(dir, ['agent', 'incorporate', UNIT, 'specification', UNIT, id]);
+
+/** An agent verb on the unit's store refused, nothing written: its error. @param {string} verb @param {string[]} rest */
+const storeRefusal = (verb, ...rest) => refusedPristine(dir, ['agent', verb, UNIT, 'specification', UNIT, ...rest]).error;
 
 /** The reviewer's brief refused for a new pass on the spec as it stands: its error. */
 const nothingToRead = () => refusedUnissued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]);
@@ -406,9 +418,10 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
       'measured-findings': `- ${made.speed}: A charge takes 300 ms.\n  Its result: 300 ms\n  Its command:\n\n  \`\`\`\n  npm run bench -- charge\n  \`\`\``,
       'product-cites': `- ${made.where} decision: Back to the card.\n  Cited by 2.1.1`,
       'unit-records': RECORDS(),
+      'report-refusal': 'None recorded.',
       'unit-report-to': `\`${pass.file}\``,
     })}`);
-    assert.deepStrictEqual(reviewPasses(dir, UNIT), [{ id: pass.id, land: landed, file: pass.file, reported: false, clean: false, status: 'in-flight', surfaced: [] }]);
+    assert.deepStrictEqual(reviewPasses(dir, UNIT), [{ id: pass.id, land: landed, file: pass.file, reported: false, findings: [], status: 'in-flight', acknowledged: [], surfaced: [] }]);
   });
 
   it('11.S11: once a pass has reported, the next reads only the two sections changed since, a bracket\'s edit among them', () => {
@@ -417,6 +430,7 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
     const first = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', first.id]);
     reportIn(first);
+    scan();
     writeSpec(spec({ charge: `1.2.1 A charge is one request, and takes 300 ms. [${made.one}]`, instant: `2.1.2 Refunds are instant. [${made.where}]` }));
     land();
     const second = dispatchReview();
@@ -429,15 +443,23 @@ describe('the spec reviewer\'s brief (11.7.1, 11.7.8, 11.7.9)', () => {
     ].join('\n\n'));
   });
 
-  it('a pass whose report is not in is passed over, and a section gone since the last pass reported is named', () => {
+  it('a pass whose report no scan has taken in is passed over, as is one abandoned in flight whose report lands after, and a section gone since the last pass reported is named', () => {
     writeSpec(spec({ more: ['### 2.2 Its charge', '', `2.2.1 A refund names its charge. [${made.where}]`, ''] }));
     land();
     const first = dispatchReview();
     issued(['spec-reviewer', UNIT, '--agent', first.id]);
     reportIn(first);
+    scan();
     writeSpec(spec({ instant: `2.1.2 Refunds are instant. [${made.where}]` }));
     land();
-    issued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]);
+    const unscanned = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', unscanned.id]);
+    const abandoned = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', abandoned.id]);
+    unread(abandoned);
+    reportIn(abandoned);
+    scan();
+    reportIn(unscanned);
     writeSpec(spec({ instant: `2.1.2 Refunds are instant, to the card. [${made.where}]` }));
     land();
     const third = dispatchReview();
@@ -623,16 +645,16 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     assert.strictEqual(reviewSettled(), 'done');
   });
 
-  it('(d): every reported pass with a rewrite finding, neither acknowledged clean nor taken, waits for the writer — one incorporated unread beside a later one acknowledged clean though its report holds a finding, and one reported after it was abandoned; the writer\'s brief carries each verbatim with the lines that do not trace, a brief again before a land settling nothing and carrying it again, a writer landing the spec unchanged settling it and one changing a section sending it to another pass', () => {
+  it('(d): every reported pass with a rewrite finding the last committed take did not carry waits for the writer — one acknowledged and incorporated beside a later clean one; the writer\'s brief carries each verbatim with the lines that do not trace, a brief again before a land settling nothing and carrying it again, a writer landing the spec unchanged settling it and one changing a section sending it to another pass', () => {
     writeSpec(spec());
     land();
     const [found, clean] = [dispatchReview(), dispatchReview()];
     issued(['spec-reviewer', UNIT, '--agent', found.id]);
     issued(['spec-reviewer', UNIT, '--agent', clean.id]);
     reportIn(found, FOUND);
-    ok(dir, ['agent', 'scan', UNIT, 'specification', UNIT]);
+    acked(found, ['F1']);
     unread(found);
-    reportIn(clean, FOUND);
+    reportIn(clean);
     acked(clean);
     const beside = [reviewSettled(), nothingToRead()];
     const { brief } = issued(['spec-writer', UNIT]);
@@ -641,19 +663,72 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     const taken = reviewSettled();
     writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
     land();
-    const changed = reviewSettled();
-    const late = dispatchReview();
-    issued(['spec-reviewer', UNIT, '--agent', late.id]);
-    unread(late);
-    reportIn(late, FOUND);
-    const reported = reviewSettled();
-    const again = section(issued(['spec-writer', UNIT]).brief, 'The review\'s findings');
-    land();
 
     assert.deepStrictEqual(beside, ['open', unchangedSince(clean, `${WRITER}the report of ${found.id}`)]);
     assert.deepStrictEqual([section(brief, 'The review\'s findings'), section(brief, 'Lines that do not trace')], [FOUND, '- 2.1.2: cites no entry']);
     assert.deepStrictEqual(unlanded, ['open', FOUND]);
-    assert.deepStrictEqual([taken, changed, reported, again, reviewSettled()], ['done', 'open', 'open', FOUND, 'done']);
+    assert.deepStrictEqual([taken, reviewSettled()], ['done', 'open']);
+  });
+
+  it('(d): a pass is read before any finding is declined — its incorporation refused once its report is in, scanned or not, until it is acknowledged, with exactly its report\'s findings, --clean refused while it holds any; the way on naming the acknowledgement first', () => {
+    writeSpec(spec());
+    land();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    reportIn(pass, LANED);
+    const unscanned = storeRefusal('incorporate', pass.id);
+    scan();
+    const refusals = [storeRefusal('incorporate', pass.id), storeRefusal('ack', pass.id, '--clean'), storeRefusal('ack', pass.id, '--findings', 'F1')];
+    const waiting = [reviewSettled(), nothingToRead()];
+    ok(dir, ['agent', 'ack', UNIT, 'specification', UNIT, pass.id, '--findings', 'F2,F1']);
+    const unread = `Agent "${pass.id}" is a spec review whose report is in, not yet acknowledged — agent ack records its findings first (agent scan takes the report in)`;
+    const exactly = `Agent "${pass.id}" is a spec review whose report holds F1, F2 — it is acknowledged with exactly its report's findings`;
+
+    assert.deepStrictEqual([unscanned, ...refusals], [unread, unread, exactly, exactly]);
+    assert.deepStrictEqual(waiting, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: ${pass.id} acknowledged, then the gap F1 of ${pass.id} raised, the fact F2 of ${pass.id} replaced`)]);
+    assert.strictEqual(nothingToRead(), unchangedSince(pass, `the review's findings wait to be surfaced: the gap F1 of ${pass.id} raised, the fact F2 of ${pass.id} replaced`));
+  });
+
+  it('(a) and (d): a pass abandoned in flight is ignored whole when its report lands after — never taken in, never the pass that reviewed the spec, its findings neither waiting nor carried', () => {
+    writeSpec(spec());
+    land();
+    cleanPass();
+    writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    land();
+    const late = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', late.id]);
+    unread(late);
+    reportIn(late, `${LANED}\n\n### F3: refunds are not instant\n\n**Lane:** rewrite\n\n2.1.2 cites nothing.`);
+    const scanned = scan();
+    const ignored = [reviewSettled(), section(issued(['spec-writer', UNIT]).brief, 'The review\'s findings')];
+    land();
+    cleanPass();
+
+    assert.deepStrictEqual([scanned.pending, scanned.refused], [[], undefined]);
+    assert.deepStrictEqual(ignored, ['open', 'None recorded.']);
+    assert.strictEqual(reviewSettled(), 'done');
+  });
+
+  it('a report that does not read is refused at the scan, with what does not read and the way on — never reported, and each pass\'s brief carries the refusal until a pass\'s report is taken in', () => {
+    writeSpec(spec());
+    land();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    reportIn(pass, LANED.replace('**Lane:** gap', '**Lane:** `gap`'));
+    const { refused } = scan();
+    const states = [reviewSettled(), reviewPasses(dir, UNIT)];
+    const next = dispatchReview();
+    const carried = section(issued(['spec-reviewer', UNIT, '--agent', next.id]).brief, 'Reports refused');
+    reportIn(next);
+    scan();
+    writeSpec(spec({ instant: '2.1.2 Refunds are instant, always.' }));
+    land();
+    const after = section(issued(['spec-reviewer', UNIT, '--agent', dispatchReview().id]).brief, 'Reports refused');
+    const fault = 'line 5: F1\'s next line is its lane, `**Lane:** rewrite`, `gap` or `fact`, the bare word';
+
+    assert.deepStrictEqual(refused, [{ id: pass.id, refusal: `${pass.id}'s report does not read as a spec review: ${fault} — it is set aside unread; dispatch another pass, and its brief carries this refusal` }]);
+    assert.deepStrictEqual(states, ['open', []]);
+    assert.deepStrictEqual([carried, after], [`- ${pass.id}: ${fault}`, 'None recorded.']);
   });
 
 });

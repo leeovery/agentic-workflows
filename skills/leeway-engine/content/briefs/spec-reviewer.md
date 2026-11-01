@@ -18,11 +18,11 @@ Review this unit's spec for its gaps: what a build working from it would meet un
 
 ## Lanes
 
-Every finding carries the lane that says where it goes:
+Every finding carries the lane that says where it goes, written under its heading as the bare word — `**Lane:** rewrite`, `**Lane:** gap` or `**Lane:** fact`:
 
-- **`rewrite`** — the records settle it: the spec misstates or leaves out what they say, or cites the wrong entry. Name the statement, and the entries that settle it by short id.
-- **`gap`** — no entry settles it: undecided, or two entries contradicting each other. Give your lean and what it rests on where you have one; whether it reaches the person is the matrix's to decide, never yours.
-- **`fact`** — a measurement or the code shows a fact wrong: the finding by short id, what it records, what you measured or read, and where.
+- **rewrite** — the records settle it: the spec misstates or leaves out what they say, or cites the wrong entry. Name the statement, and the entries that settle it by short id.
+- **gap** — no entry settles it: undecided, or two entries contradicting each other. Give your lean and what it rests on where you have one; whether it reaches the person is the matrix's to decide, never yours.
+- **fact** — a measurement or the code shows a fact wrong: the finding by short id, what it records, what you measured or read, and where.
 
 # The sections to review
 
@@ -43,6 +43,10 @@ Every finding carries the lane that says where it goes:
 # The records
 
 {{unit-records}}
+
+# Reports refused
+
+{{report-refusal}}
 
 # Your report
 
