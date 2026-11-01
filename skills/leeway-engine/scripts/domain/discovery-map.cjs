@@ -846,5 +846,5 @@ function sequenceMap(cwd, workUnit, orders) {
 module.exports = {
   sequenceMap, addItem, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief, topicNameRefusal,
   checkTopics, placeTopics, installBriefs, landedPaths, dismiss,
-  addBatchTo, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
+  addBatchTo, checkBatchEntries, draftIn, writeBrief, discoveryItems, roadmapRefusal, twinRefusal, entryTakeIn,
 };

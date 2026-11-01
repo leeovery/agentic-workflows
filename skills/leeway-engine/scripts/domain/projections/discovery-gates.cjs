@@ -12,7 +12,12 @@
 //   marking each topic that is new and each that moved (8.8.21); TO THE
 //   ROADMAP, each park with the horizon the person gave it; then the gate,
 //   whose yes puts the topics on the epic in that order and the parks on the
-//   roadmap.
+//   roadmap;
+// - approve the map after the sweep before the spec: THE MAP, each topic
+//   numbered in its order and ticked where decided; FOUND BY THE SWEEP, each
+//   candidate with its reason beneath, a struck one marked; then the gate,
+//   whose yes puts the candidates standing on the map, and its strike, with
+//   the pick of the candidate to strike where more than one stands.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
@@ -29,6 +34,13 @@ const { counted } = require('./map.cjs');
  * the order staged — marked new or moved on a re-shape — and each park by
  * its summary and the horizon the person gave it.
  * @typedef {{unit: string, topics: {title: string, mark: 'new'|'moved'|null}[], parks: {summary: string, horizon: string}[]}} MapView
+ */
+
+/**
+ * The map after the sweep: the epic, each topic by its title in its order,
+ * decided or not, and each of the sweep's candidates by its title with its
+ * reason, struck or standing.
+ * @typedef {{unit: string, topics: {title: string, decided: boolean}[], candidates: {title: string, reason: string, struck: boolean}[]}} SweptView
  */
 
 /** What answering a row runs: an engine command, by its argv after `engine`. @param {string[]} argv @returns {{next: Next}} */
@@ -97,4 +109,72 @@ function approveMapScreen({ unit, topics, parks }) {
     ], { question: 'Approve the map?' }));
 }
 
-module.exports = { startThisWorkScreen, approveMapScreen };
+/** The numbers the gate says in words. */
+const IN_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+/** THE MAP after the sweep: each topic numbered in its order, ticked where decided. @param {SweptView['topics']} topics */
+function sweptMapBlock(topics) {
+  const decided = topics.filter((topic) => topic.decided).length;
+  const tree = renderTree(topics.map(({ title, decided: done }, at) => ({ title: `${done ? '✓' : '◐'} ${at + 1}. ${title}` })), { width: TREE_WIDTH, wrapTitles: true });
+  const stands = decided === topics.length ? 'every one decided' : `${decided} decided`;
+  return `THE MAP (${counted(topics.length, 'topic')}, ${stands})\n${tree.replace(/\n+$/, '')}`;
+}
+
+/** FOUND BY THE SWEEP: each candidate with its reason beneath, a struck one marked. @param {SweptView['candidates']} candidates */
+function candidatesBlock(candidates) {
+  const tree = renderTree(candidates.map(({ title, reason, struck }) => ({
+    title: `${struck ? '⊘' : '○'} ${title}`,
+    ...(struck ? { tag: 'struck' } : {}),
+    body: [reason],
+  })), { width: TREE_WIDTH });
+  return `FOUND BY THE SWEEP (${counted(candidates.length, 'candidate')}, yours to take or strike)\n${tree.replace(/\n+$/, '')}`;
+}
+
+/** What the person's yes does with the candidates standing, said on the gate. @param {number} standing */
+function sweptYes(standing) {
+  if (standing === 0) return { lands: 'Your yes leaves the map as it is.', label: 'Approve it — no candidate becomes a topic' };
+  if (standing === 1) {
+    return { lands: 'Your yes puts the candidate on the map as a topic, and the specification waits until it is decided.', label: 'Approve it — the candidate becomes a topic' };
+  }
+  return {
+    lands: `Your yes puts the ${IN_WORDS[standing] ?? standing} candidates on the map as topics, and the specification waits until they are decided.`,
+    label: 'Approve it — the candidates become topics',
+  };
+}
+
+/**
+ * Approve the map after the sweep before the spec (8.8.4, 8.10.9): the map
+ * as it stands, each topic ticked where decided, and the sweep's candidates
+ * below it, each with its reason; then the authority gate, whose yes puts
+ * the candidates standing on the map, and its strike — at once where one
+ * candidate stands, through a pick where more do (P8). Nothing of the
+ * messages the sweep sent or the calls it left to the builder (8.S50).
+ * @param {SweptView} view
+ * @returns {string}
+ */
+function sweptMapScreen({ unit, topics, candidates }) {
+  const standing = candidates.flatMap(({ struck }, at) => (struck ? [] : [at + 1]));
+  const { lands, label } = sweptYes(standing.length);
+  const rows = [cmdOption('y', 'yes', label, runs(['approve-map', 'yes', unit]))];
+  if (standing.length === 1) rows.push(cmdOption('s', 'strike', 'Strike the candidate — it doesn\'t become a topic', runs(['approve-map', 'strike', unit, String(standing[0])])));
+  if (standing.length > 1) rows.push(cmdOption('s', 'strike', 'Strike a candidate — it doesn\'t become a topic', runs(['render', 'approve-map-strike', unit])));
+  rows.push(promptOption('Keep shaping', 'Tell me what to change'));
+  return section('DISPLAY: approve the map', CONTINUE_INSTRUCTION, `${sweptMapBlock(topics)}\n\n${candidatesBlock(candidates)}`)
+    + section('MENU: approve the map', MENU_INSTRUCTION, menu(lands, rows, { question: 'Approve the map?' }));
+}
+
+/**
+ * The pick of the sweep's candidate to strike: each standing candidate by
+ * its number on the screen, and back to the screen as it was.
+ * @param {{unit: string, candidates: {title: string, struck: boolean}[]}} view
+ * @returns {string}
+ */
+function sweptStrikePick({ unit, candidates }) {
+  const rows = candidates.flatMap(({ title, struck }, at) => (struck ? [] : [
+    cmdOption(String(at + 1), null, { head: title }, runs(['approve-map', 'strike', unit, String(at + 1)])),
+  ]));
+  rows.push(cmdOption('b', 'back', 'Back to the map — nothing struck', runs(['render', 'approve-map', unit])));
+  return section('MENU: approve the map strike', MENU_INSTRUCTION, menu('', rows, { question: 'Which candidate should not become a topic?' }));
+}
+
+module.exports = { startThisWorkScreen, approveMapScreen, sweptMapScreen, sweptStrikePick };

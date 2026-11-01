@@ -14,7 +14,8 @@
 // later land answers the sections changed since the last — an area's with
 // its scenarios, and those removed — and one with nothing changed commits
 // nothing; and each refusal — no unit, a concluded spec (11.9.1), a unit
-// `enter specification` refuses, a quick-fix, no `spec.md`, a spec its
+// `enter specification` refuses, a quick-fix, an epic whose sweep is not
+// taken (8.10.3), no `spec.md`, a spec its
 // grammar refuses, a commit git refuses, an argv of another shape — writes
 // and commits nothing, the file left as written (the grammar's own faults
 // are test-spec-sections.cjs's). The unit's entries: the current entries
@@ -26,7 +27,8 @@
 // `cards` a decision replaced, a "don't care" decision and a finding; on
 // `refunds` a question moved to `cards`; a gap decided at the spec and a
 // finding at discovery, each at the unit's level; and a feature, `billing`,
-// with two decisions, one replaced from the payments spec.
+// with two decisions, one replaced from the payments spec; payments' sweep
+// taken.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -95,6 +97,7 @@ const world = fixtureFrom('spec-land-', (dir) => {
   made.taxOld = decide(atBilling, ask(atBilling, 'Is tax shown?'), 'As a total.');
   made.tax = replace(atSpec, made.taxOld, 'Per line.');
   payments(dir, { wallets: 'in-progress', disputes: 'in-progress' }, { wallets: { postponed: true }, disputes: { cancelled: true } });
+  writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
   commitAll(dir, 'topics settled');
 });
 
@@ -222,6 +225,14 @@ describe('a land refused, spec.md left as written and nothing committed (11.9.1)
 
     assert.ok(unsettled !== null && quickFix !== null, 'enter specification refuses both');
     assert.deepStrictEqual([refused(), refused(['tidy'])], [`spec land: ${unsettled}`, `spec land: ${quickFix}`]);
+  });
+
+  it('refuses an epic of more than one live topic whose sweep is not taken, naming the way on (8.10.3)', () => {
+    writeSpec(spec(['1.1.1 Cards. [builder]']));
+    fs.rmSync(statePath(dir, layout.unit(UNIT, 'sweep-taken.json')));
+    commitAll(dir, 'sweep not taken');
+
+    assert.strictEqual(refused(), `spec land: ${UNIT}'s sweep is not taken — it runs before the spec lands: engine brief sweep ${UNIT}, then engine sweep take ${UNIT}`);
   });
 
   it('refuses a unit with no spec.md, and a spec its grammar refuses, naming its faults one per line', () => {

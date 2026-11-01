@@ -44,7 +44,8 @@
 //                  its log, and none of a topic set aside (5.8.17, 9.3.4)
 //   product-record the product record, and what discovery found of the
 //                  product, the unit and the topic, as `ledger product`
-//                  answers it for the topic, fenced as JSON
+//                  answers it for the topic — for a unit's brief, the
+//                  unit's — fenced as JSON
 //   question       the question `--question` names, by any wording, in its
 //                  current wording: its short id and its text. It is an
 //                  open question standing on the topic, and the dispatch
@@ -60,7 +61,8 @@
 //                  decision, naming it where one has (9.9.6, agent-state.cjs)
 //   dismissed      the names the person struck as candidates or removed
 //                  from the map, the unit's answer that nothing proposes
-//                  them again (8.10.11), one a line
+//                  them again (8.10.11), one a line — a unit's record,
+//                  drawn for a topic's brief and a unit's alike
 //   report-to      where the agent writes its report: the file of the
 //                  dispatch `--agent` names, of the kind its role is briefed
 //                  for and still in flight
@@ -90,6 +92,23 @@
 //                  says it, read without writing (cut.cjs); none recorded
 //                  where nothing is staged or the cut would land
 //   cut-to         where the agent writes the cut: the unit's staged cut
+//
+// The sweep's records, each of the unit the brief is for (11.2.2), with the
+// product record and the names struck, above:
+//
+//   unit-records   the unit's current entries (unit-entries.cjs), under a
+//                  heading for each live topic by its title, its key in
+//                  brackets after it, then the unit's own — those at its
+//                  level — then any made there standing on another unit's
+//                  place; each one list item, `{short id} {kind}: {text}`,
+//                  a "don't care" decision's kind `decision, don't care`
+//                  (P2), every line after its first indented; none
+//                  recorded under a heading with none
+//   sweep-refusal  what `sweep take` refuses of the unit's sweep report, as
+//                  it says it, read without writing (sweep-take.cjs); none
+//                  recorded where no report is written or it would be taken
+//   sweep-to       where the agent writes its report: the unit's sweep
+//                  report (sweep.cjs)
 //
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
@@ -157,14 +176,17 @@ const {
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { dismissedNames } = require('./derivations.cjs');
+const { dismissedNames, topicTitle } = require('./derivations.cjs');
 const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
 const {
   SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
 } = require('./spec-sections.cjs');
-const { withUnitEntries } = require('./unit-entries.cjs');
+const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
+const { specTopics } = require('./spec-standing.cjs');
+const { sweepPath } = require('./sweep.cjs');
+const { sweepRefusal } = require('./sweep-take.cjs');
 const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
@@ -396,8 +418,8 @@ function drawOtherRecords(filling, warnings) {
 
 /** @param {Filling} filling @param {string[]} warnings */
 function drawProductRecord(filling, warnings) {
-  const { unit, topic } = placeOf(filling);
-  return recordJson(ledgerRead(filling.cwd, 'product', [unit, topic], warnings));
+  const scope = filling.place === null ? [unitOf(filling)] : [filling.place.unit, filling.place.topic];
+  return recordJson(ledgerRead(filling.cwd, 'product', scope, warnings));
 }
 
 /** A question as a brief draws it: its short id and its text. @param {(id: string) => Record<string, unknown>} show @param {string} wording */
@@ -457,8 +479,7 @@ function drawGapReview(filling) {
 
 /** @param {Filling} filling */
 function drawDismissed(filling) {
-  const { unit } = placeOf(filling);
-  return listed(dismissedNames(readWorkUnitManifest(stateRoot(filling.cwd), unit)).map((name) => `- ${name}`));
+  return listed(dismissedNames(readWorkUnitManifest(stateRoot(filling.cwd), unitOf(filling))).map((name) => `- ${name}`));
 }
 
 /**
@@ -786,6 +807,54 @@ function drawCutTo(filling) {
   return `\`${stagedCutPath(filling.cwd, unitOf(filling))}\``;
 }
 
+/** The heading the unit's entries at its own level are drawn under. */
+const UNIT_OWN = 'The unit\'s own';
+
+/**
+ * Where an entry of the unit's is drawn: under its topic, the unit's own
+ * level, or the other unit's place it stands on, made here.
+ * @param {string} unit @param {import('./ledger-fold.cjs').Standing} stands
+ */
+function placeKey(unit, { unit: on, topic }) {
+  if (on !== unit) return `Made here, standing on ${on}${topic === null ? '' : `/${topic}`}`;
+  return topic === null ? UNIT_OWN : topic;
+}
+
+/**
+ * An entry as a unit's records draw it, `- {short id} {kind}: {text}`, a
+ * "don't care" decision's kind marked so, the builder's to make (P2).
+ * @param {import('./unit-entries.cjs').UnitEntry} entry
+ */
+function entryLine({ short, kind, line }) {
+  const marked = kind === 'decision' && line.given === 'dont-care' ? 'decision, don\'t care' : kind;
+  return `- ${short} ${marked}: ${indented(String(line.text))}`;
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawUnitRecords(filling, warnings) {
+  const unit = unitOf(filling);
+  const manifest = readWorkUnitManifest(stateRoot(filling.cwd), unit);
+  const headed = (/** @type {string} */ topic) => `${topicTitle(manifest, topic)} (${topic})`;
+  /** @type {Map<string, {heading: string, lines: string[]}>} */
+  const places = new Map([...specTopics(manifest), UNIT_OWN].map((key) => [key, { heading: key === UNIT_OWN ? key : headed(key), lines: [] }]));
+  for (const entry of unitEntries(filling.cwd, unit, warnings).values()) {
+    const key = placeKey(unit, entry.stands);
+    if (!places.has(key)) places.set(key, { heading: entry.stands.unit === unit ? headed(key) : key, lines: [] });
+    /** @type {{heading: string, lines: string[]}} */ (places.get(key)).lines.push(entryLine(entry));
+  }
+  return [...places.values()].map(({ heading, lines }) => `## ${heading}\n\n${listed(lines)}`).join('\n\n');
+}
+
+/** @param {Filling} filling */
+function drawSweepTo(filling) {
+  return `\`${sweepPath(filling.cwd, unitOf(filling))}\``;
+}
+
+/** @param {Filling} filling */
+function drawSweepRefusal(filling) {
+  return sweepRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -798,12 +867,12 @@ const RECORDS = Object.freeze({
   'topic-record': { of: 'topic', draw: drawTopicRecord },
   'topic-log': { of: 'topic', draw: drawTopicLog },
   'other-records': { of: 'topic', draw: drawOtherRecords },
-  'product-record': { of: 'topic', draw: drawProductRecord },
+  'product-record': { of: 'unit', draw: drawProductRecord },
   question: { of: 'topic', flags: [QUESTION, AGENT], draw: drawQuestion, bind: bindAsked },
   'pair-question': { of: 'topic', flags: [AGENT], draw: drawPairQuestion },
   'dive-kind': { of: null, flags: [{ name: 'kind', value: DIVE_KINDS.join('|') }, { name: 'path', value: 'file', optional: true }], draw: drawDiveKind },
   'gap-review': { of: 'topic', draw: drawGapReview },
-  dismissed: { of: 'topic', draw: drawDismissed },
+  dismissed: { of: 'unit', draw: drawDismissed },
   'report-to': { of: 'topic', flags: [AGENT], draw: drawReportTo },
   lens: { of: 'topic', flags: [AGENT], draw: drawLens },
   perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
@@ -818,6 +887,9 @@ const RECORDS = Object.freeze({
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },
   'cut-refusal': { of: 'unit', draw: drawCutRefusal },
   'cut-to': { of: 'unit', draw: drawCutTo },
+  'unit-records': { of: 'unit', draw: drawUnitRecords },
+  'sweep-refusal': { of: 'unit', draw: drawSweepRefusal },
+  'sweep-to': { of: 'unit', draw: drawSweepTo },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

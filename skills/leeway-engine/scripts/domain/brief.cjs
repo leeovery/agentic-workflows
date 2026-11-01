@@ -8,8 +8,9 @@
 // it is sent to — and the records its brief draws on (6.5.4, 6.5.11,
 // brief-names.cjs); a role whose records include a task's takes the unit
 // and the task, one whose records include a topic's takes the unit and the
-// topic, one whose records include a unit's takes the unit alone, any other
-// none. A role takes each flag its records name, every one of them but a
+// topic, one whose records include a unit's — and no task's or topic's —
+// takes the unit alone, any other none; a unit's record is drawn for the
+// unit of a task's or a topic's brief alike. A role takes each flag its records name, every one of them but a
 // flag a record holds optional, once, and no other:
 // `--base <branch>`, `--report-a <path>`, `--question <id>`, `--agent
 // <id>`, `--kind <kind>`, a read dive's `--path <file>`, the migration's
@@ -73,14 +74,17 @@ const TEMPLATES_DIR = path.join(__dirname, '..', '..', 'content', 'briefs');
 /** A slot, `{{record}}`. */
 const SLOT = /\{\{([^{}]*)\}\}/g;
 
+/** The places a brief is filled for, each narrower than the next: a task's and a topic's are each in a unit. */
+const PLACES = /** @type {const} */ (['task', 'topic', 'unit']);
+
 /**
- * What a role's brief is filled for: a task, a topic, a unit, or none, as
- * its records are.
+ * What a role's brief is filled for: the narrowest place its records are
+ * of — a task, a topic, a unit — or none.
  * @param {string} role @returns {'task'|'topic'|'unit'|null}
  */
 function placeOfRole(role) {
   const places = ROLES[role].records.map((record) => RECORDS[record].of);
-  return places.find((place) => place !== null) ?? null;
+  return PLACES.find((place) => places.includes(place)) ?? null;
 }
 
 /** The flags a role takes, each its records name, once. @param {string} role @returns {BriefFlag[]} */

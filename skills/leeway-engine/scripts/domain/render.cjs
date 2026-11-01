@@ -68,7 +68,7 @@ const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
 const { decidedSurface, decidedStrikeSurface, waitAgentsSurface } = require('./decided.cjs');
 const { startThisWorkSurface } = require('./start-this-work.cjs');
-const { approveMapSurface } = require('./approve-map.cjs');
+const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cjs');
 const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
@@ -5735,6 +5735,7 @@ const SURFACES = {
   'start-this-work': startThisWorkSurface,
   'approve-map': approveMapSurface,
   'discovery-map': discoveryMapSurface,
+  'approve-map-strike': approveMapStrikeSurface,
 };
 
 /**

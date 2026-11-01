@@ -4,14 +4,11 @@
 // The pipeline simulation's epic scenarios: the epic started and its map
 // approved at discovery's gates; a topic's discussion, with a
 // message raised and answered through the topic's one mailbox; a topic
-// landed in discovery started from its own row; the last topic decided
-// going into the spec, entered at the unit, the spec landed citing what was
-// decided, its review page built and published, its marks read back, a
-// re-land planned for the open page, and the spec cut into phases through the
-// cut's corridor; an arrival that backfills; and the last review handing off
-// to the menu. The map's own lifecycle is
-// test-pipeline-simulation-epic-map.cjs; a discussion walked backwards,
-// test-pipeline-simulation-backwards.cjs.
+// landed in discovery started from its own row; an arrival that backfills;
+// and the last review handing off to the menu. The map's own lifecycle is
+// test-pipeline-simulation-epic-map.cjs; the spec's side, from the sweep to
+// the cut, test-pipeline-simulation-epic-spec.cjs; a discussion walked
+// backwards, test-pipeline-simulation-backwards.cjs.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -30,7 +27,7 @@ const EPIC_GATEWAY = require(path.join(ROOT, 'skills/leeway-continue-epic/script
 const { epicMenu } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/epic.cjs'));
 const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
 const {
-  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, specEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow, cutTheSpec,
+  Sim, mapTopics, sessionLog, send, decideTopic, discussed, mappedEpic, arrive, menuEntry, enterEntry, handoff, arriveAtEpicMenu, epicPick, startNew, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, carryOn, presenceRow,
 } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic', () => {
@@ -152,44 +149,6 @@ describe('pipeline simulation: epic', () => {
     assert.strictEqual(epicPick(sim, wu, 'start_discussion', topic).text, `Invoke \`${route}\`.`);
     menuEntry(sim, wu);
     assert.strictEqual(enterEntry(sim, wu, 'discussion', topic).started, true);
-  });
-
-  it('epic: with the other topic postponed, the last decided goes into the spec, entered at the unit, the spec lands citing what was decided, its review page is built, its marks are read back, a re-land is planned for the open page, and it is cut into phases (24.S3, 11.S1, 11.S3, 11.S5, 11.S33)', () => {
-    const wu = 'ledgerly';
-    mappedEpic(sim, wu, ['alpha', 'beta']);
-    sim.run(['topic', 'postpone', wu, 'beta', '--horizon', 'next']);
-    const next = discussed(sim, wu, 'alpha').next;
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
-    handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
-    specEntry(sim, wu, ['alpha']);
-    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
-    const spec = (/** @type {string} */ statement) => sim.write(`.leeway/${wu}/spec.md`, [
-      '# Ledgerly', '', '## 1. Settling', '',
-      '### 1.1 What alpha decided', '', `1.1.1 ${statement} [${decision.id}]`, '',
-      '## 1-S. Scenarios for §1', '', '1.S1 Given the epic, when it settles, then it holds as alpha decided. (1.1.1)', '',
-    ].join('\n'));
-    spec('It settles as alpha decided.');
-    const landed = sim.run(['spec', 'land', wu]);
-    assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
-    const { batches } = sim.run(['spec', 'page', wu]);
-    sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
-    const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/read-back.json`, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Why alpha?' } } } } } })]);
-    assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
-    const store = `.leeway/.cache/${wu}/specification/store`;
-    for (const { collection, doc_id: doc, file_path: file } of batches.flatMap((/** @type {string} */ batch) => JSON.parse(fs.readFileSync(batch, 'utf8')))) {
-      sim.write(`${store}/${collection}/${doc}.json`, fs.readFileSync(file, 'utf8'));
-    }
-    spec('It settles as alpha decided, and holds.');
-    sim.run(['spec', 'land', wu]);
-    const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
-    assert.deepStrictEqual(pushed.change.reworded, ['1-1-1']);
-    // The cut's corridor: a cut `cut` refuses goes back to the agent in a
-    // fresh brief, and the one it writes again lands on the manifest.
-    const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };
-    const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases: [{ ...settle, scenarios: [] }] });
-    sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
-    assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
-    assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {

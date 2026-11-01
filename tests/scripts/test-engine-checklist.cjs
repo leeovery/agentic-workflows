@@ -9,7 +9,7 @@
 // topic; Claude's items marked in its own order, one skipped with its
 // reason, and the close (2.S2); the engine's own items worked out at each
 // call and never kept or marked — the person's questions on the ledger's map
-// (6.S13), mail waiting, the unit's topics settled, every statement and
+// (6.S13), mail waiting, the unit's topics settled, the sweep run, every statement and
 // screen of `spec.md` traced, the cut against `spec.md`, what a phase
 // relies on;
 // the close refused while an item is open (6.S26), and a mark from before
@@ -179,7 +179,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
       ],
       ready: [
         'topics-settled engine open: every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen',
-        'sweep-run claude open: the sweep between topics run, where the unit has more than one topic',
+        'sweep-run engine open: the sweep between topics run, where the unit has more than one topic',
         'replacements-checked claude open: the spec has checked each replacement against what it replaced',
         'statements-traced engine done: every statement traced',
         'review-settled claude open: the review\'s last pass changed nothing',
@@ -349,10 +349,10 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     seen.push(engines());
 
     assert.deepStrictEqual(seen, [
-      ['topics-settled open', 'statements-traced done', 'phases-complete done', 'sections-drawn open'],
-      ['topics-settled open', 'statements-traced done', 'phases-complete done', 'sections-drawn done'],
-      ['topics-settled open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
-      ['topics-settled open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete done', 'sections-drawn open'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete done', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
+      ['topics-settled open', 'sweep-run open', 'statements-traced done', 'phases-complete open', 'sections-drawn done'],
     ]);
     assert.deepStrictEqual(engineItems('ready-to-build', 'solo'), ['topics-settled open', 'statements-traced open', 'phases-complete open', 'sections-drawn open']);
   });
@@ -365,6 +365,18 @@ describe('the engine\'s own items, worked out at each call (6.4.3)', () => {
     refundsCancelled();
 
     assert.deepStrictEqual([...seen, settled()], ['open', 'open', 'done']);
+  });
+
+  it('reads the sweep run once its report is taken — open with none, open for a report in the cache alone — from the record committed, which a cleared cache leaves standing; one sweep for the spec (8.10.3, 8.S33)', () => {
+    const swept = () => itemState('sweep-run', 'ready-to-build', UNIT);
+    const seen = [swept()];
+    writeState(dir, layout.cache(UNIT, 'specification', 'sweep.json'), JSON.stringify({ candidates: [], messages: [], builder_calls: [] }));
+    seen.push(swept());
+    writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ taken: '2026-11-01T00:00:00.000Z', messages: [], candidates: [] }));
+    seen.push(swept());
+    fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
+
+    assert.deepStrictEqual([...seen, swept()], ['open', 'open', 'done', 'done']);
   });
 
   it('reads every statement and screen of spec.md traced to the ledger as done, a statement or a screen that is not as open, and a spec its grammar cannot read as open (11.4.1, 11.4.5)', () => {
@@ -420,7 +432,7 @@ describe('the close, refused while any item is open (6.4.4, 6.S26)', () => {
   it('refuses ready to build\'s close while the cut leaves a section undrawn, naming every item open', () => {
     cut(dir, [{ ...CARDS, sections: ['1.1'] }, REFUNDS]);
 
-    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sections-drawn, assets-linked');
+    assert.strictEqual(refused(['close', 'ready-to-build', UNIT]), 'checklist close: ready-to-build has items open: topics-settled, sweep-run, sections-drawn, assets-linked');
   });
 
   it('counts no mark made before the last close toward the next: a topic reopened by mail closes again on its marks made since (10.2.7)', () => {
