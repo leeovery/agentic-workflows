@@ -14,12 +14,26 @@
 // keeping every phase to the last started, whatever order its fields are
 // given in, and changing only those after.
 //
-// Layer: verb. World: a project with two units, built once and copied: one
-// whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1 and 3.S2
-// (11.S31's), and one, `billing`, with no spec. A phase's start is its
-// checklist closed on the manifest: by `checklist close` for a first phase
-// relying on nothing, and written by hand for later ones, whose starts would
-// need each phase before them worked to its close first.
+// The cut's corridor: `engine brief phase-cut <unit>`, the phase cut's
+// agent briefed from the spec's outline, its scenarios each with its area,
+// and the graph of what its parts rely on, drawn from the entries its lines
+// cite (11.5.6, 11.S7) — a part relying on another where a line of it cites
+// an entry relying on one, in its current form, a line of the other cites;
+// none within a part, none for a part citing nothing, none to another
+// unit's entry — and where the cut goes; the cut the agent stages there
+// refused by `cut`, and the fresh brief carrying that refusal, verbatim,
+// until the cut lands on the manifest and none is recorded (11.S5); every
+// refusal of the brief storing none.
+//
+// Layer: verb. Worlds, each built once and copied: a project with two
+// units, one whose `spec.md` holds areas 1 to 3 and scenarios 1.S1, 3.S1
+// and 3.S2 (11.S31's), and one, `billing`, with no spec. A phase's start is
+// its checklist closed on the manifest: by `checklist close` for a first
+// phase relying on nothing, and written by hand for later ones, whose
+// starts would need each phase before them worked to its close first. And
+// for the corridor, an epic whose topics' entries rely on each other — one
+// on an entry since replaced, one on another unit's — and whose spec cites
+// them, in statements and a screen.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -29,11 +43,16 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, refusedPristine, statePath, layout, writeState, readManifest, commitAll, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock, FROZEN_AT,
+  ok, refusedPristine, statePath, layout, writeState, readState, readManifest, commitAll, stateGit, lastMessage, fixtureFrom, cleanupFixture, lockAttempts, holdLock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
-const { SPEC_FILE } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/spec-sections.cjs'));
+const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
+const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
+const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
+const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
 
 const UNIT = 'payments';
 
@@ -64,8 +83,12 @@ const CARDS = phase('Cards', { scenarios: ['1.S1'], sections: ['1.1', '2'], reli
 const REFUNDS = phase('Refunds', { scenarios: ['3.S1', '3.S2'], sections: ['3'], relies_on: [1] });
 
 let dir = '';
-beforeEach(() => { dir = world(); });
-afterEach(() => { cleanupFixture(dir); });
+
+/** Each test of the block starting from a copy of `made`. @param {() => string} made */
+function useWorld(made) {
+  beforeEach(() => { dir = made(); });
+  afterEach(() => { cleanupFixture(dir); });
+}
 
 /** The file a cut is given in, outside the state. @param {unknown} cut */
 function cutFile(cut) {
@@ -92,6 +115,8 @@ const startThrough = (number) => withChecklists(Object.fromEntries(Array.from({ 
 const reordered = ({ relies_on: on, sections, scenarios, goal, name }) => ({ relies_on: on, sections, scenarios, goal, name });
 
 describe('a cut written (11.5.8)', () => {
+  useWorld(world);
+
   it('lands on the unit\'s manifest as given, its phases in build order, and is committed alone on the state branch', () => {
     const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const res = cut([CARDS, REFUNDS]);
@@ -124,6 +149,8 @@ describe('a cut written (11.5.8)', () => {
 });
 
 describe('the refusals (11.5.9, 11.S31), nothing written', () => {
+  useWorld(world);
+
   it('a scenario the spec lacks', () => {
     assert.strictEqual(refused({ phases: [CARDS, { ...REFUNDS, scenarios: ['3.S1', '3.S2', '3.S9'] }] }), 'cut: phase 2 places scenario 3.S9, which spec.md lacks');
   });
@@ -186,6 +213,8 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
 });
 
 describe('a second cut (E10)', () => {
+  useWorld(world);
+
   it('replaces the whole cut while no phase has started', () => {
     cut([CARDS, REFUNDS]);
     const whole = phase('Everything', { scenarios: ['1.S1', '3.S1', '3.S2'], sections: ['1', '2', '3'] });
@@ -237,5 +266,151 @@ describe('a second cut (E10)', () => {
 
     assert.deepStrictEqual(readManifest(dir, UNIT).cut, { phases: [sooner, REFUNDS] });
     assert.match(refused({ phases: [cards, REFUNDS] }), /^cut: phase 1 has started, and the cut changes phase 1 — /);
+  });
+});
+
+const EPIC = 'shop';
+const SESSION_ID = 'cut-corridor-session';
+const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
+const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
+const STAGED = layout.cache(EPIC, 'specification', 'cut.json');
+
+/** Each entry's short id by name, filled as the corridor's world is built. @type {Record<string, string>} */
+const made = {};
+
+/** The epic's spec, citing the entries its world wrote. */
+const shopSpec = () => [
+  '# Shop', '',
+  '## 1. Cards', '',
+  '### 1.1 The form', '', `1.1.1 The form takes Visa and Mastercard. [${made.cards}]`, '',
+  '### 1.2 The brand', '', `1.2.1 The form shows the card's brand. [${made.brand}]`, '',
+  '### 1.3 The corners', '', '1.3.1 The corners are rounded. [builder]', '',
+  '## 1-S. Scenarios for §1', '', '1.S1 Given a card form, when a Visa is typed, then its brand shows. (1.1.1, 1.2.1)', '',
+  '## 2. Refunds', '',
+  '### 2.1 Whole', '', `2.1.1 A refund goes back to the card. [${made.refunds}]`, '', `2.1.2 A refund costs nothing. [${made.fee}]`, '',
+  '### 2.2 Partial', '', `2.2.1 Part of a charge may be refunded. [${made.partial}]`, '',
+  `Screen: the refund form: [${made.form}]`, '', '```text', 'Refund £4 to Visa •• 4242', '```', '',
+  '## 2-S. Scenarios for §2', '',
+  '2.S1 Given a charge, when it is refunded whole, then the card is credited. (2.1.1)', '',
+  '2.S2 Given a charge, when part of it is refunded, then the rest stands. (2.2.1)', '',
+].join('\n');
+
+const corridorWorld = fixtureFrom('cut-corridor-', (dir) => {
+  const mapped = (/** @type {number} */ order) => ({ order, summary: `Topic ${order}`, source: 'discovery' });
+  createManifest(dir, EPIC, {
+    work_type: 'epic',
+    phases: { discovery: { items: { cards: mapped(1), refunds: mapped(2) } }, discussion: { items: { cards: { status: 'in-progress' }, refunds: { status: 'in-progress' } } } },
+  });
+  createManifest(dir, 'billing', { phases: { discussion: { items: { billing: { status: 'in-progress' } } } } });
+  commitAll(dir, 'init');
+  const { write } = ledgerHelpers(() => dir);
+  const [cards, refunds, billing] = [`${EPIC}.discussion.cards`, `${EPIC}.discussion.refunds`, 'billing.discussion.billing'];
+  const decide = (/** @type {string} */ at, /** @type {string} */ text, /** @type {string[]} */ ...relied) => {
+    const asked = write('ask', at, [], { ...PERSON, text: `What of ${text}?` }).id;
+    return write('decide', at, ['--answers', asked, ...relied.flatMap((id) => ['--relies-on', id])], { ...PERSON, text, why: `Why: ${text}` }).id;
+  };
+  made.cardsOld = decide(cards, 'Visa alone.');
+  made.invoice = decide(billing, 'Each charge on the invoice.');
+  made.refunds = decide(refunds, 'Back to the card.', made.cardsOld, made.invoice);
+  made.cards = write('replace', cards, ['--replaces', made.cardsOld, '--reason', 'changed-mind'], { ...PERSON, drops: ['Visa alone'], text: 'Visa and Mastercard.', why: 'Both are taken.' }).id;
+  made.brand = write('find', cards, [], { ...MADE, text: 'The form shows the brand.', how: 'read in the code', known: 'read' }).id;
+  made.fee = decide(refunds, 'No fee.', made.refunds);
+  made.partial = decide(refunds, 'Part refunds.', made.refunds, made.brand);
+  made.form = decide(refunds, 'The refund form names the card.', made.cards);
+  writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec());
+  commitAll(dir, 'spec');
+});
+
+/** A brief for the phase cut issued: its response, and the brief as stored. @param {string} [unit] */
+function briefed(unit = EPIC) {
+  const res = ok(dir, ['brief', 'phase-cut', unit], { env: SESSION });
+  return { res, brief: fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8') };
+}
+
+/** The phase cut's template, its slots filled with `drawn`. @param {Record<string, string>} drawn */
+function filledCutTemplate(drawn) {
+  return fs.readFileSync(path.join(TEMPLATES, 'phase-cut.md'), 'utf8').split('\n').map((line) => drawn[line.slice(2, -2)] ?? line).join('\n');
+}
+
+/** The section a heading opens in a brief, to the next top-level heading. @param {string} brief @param {string} heading */
+function section(brief, heading) {
+  const from = brief.indexOf(`\n# ${heading}\n\n`);
+  assert.ok(from >= 0, `no section ${heading}`);
+  const body = brief.slice(from + heading.length + 5);
+  const end = body.indexOf('\n# ');
+  return (end < 0 ? body : body.slice(0, end)).trimEnd();
+}
+
+/** The cut staged where the corridor's agent writes it: its absolute path. @param {Phase[]} phases */
+const staged = (phases) => writeState(dir, STAGED, JSON.stringify({ phases }));
+
+const GRAPH = 'What the spec\'s parts rely on';
+const WHOLE = phase('Whole refunds', { scenarios: ['1.S1', '2.S1'], sections: ['1.1', '1.2', '2.1'] });
+const PART = phase('Part refunds', { scenarios: ['2.S2'], sections: ['1.2', '2.1', '2.2'], relies_on: [1] });
+
+describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
+  useWorld(corridorWorld);
+  afterEach(() => { fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true }); });
+
+  it('briefs the phase cut for the unit from the spec\'s outline, its scenarios each with its area, the graph of what its parts rely on, and where the cut goes', () => {
+    const { res, brief } = briefed();
+
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-cut', agent: 'leeway-phase-cut', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'phase-cut', agent: 'leeway-phase-cut', unit: EPIC, task: null, topic: null });
+    assert.strictEqual(brief, `Brief ${res.id} — the phase cut's, for ${EPIC}\n\n${filledCutTemplate({
+      'spec-outline': [
+        `\`${statePath(dir, layout.unit(EPIC, SPEC_FILE))}\``, '',
+        '- §1 Cards', '  - §1.1 The form', '  - §1.2 The brand', '  - §1.3 The corners', '- §2 Refunds', '  - §2.1 Whole', '  - §2.2 Partial',
+      ].join('\n'),
+      'spec-scenarios': [
+        '- 1.S1, of §1 Cards: Given a card form, when a Visa is typed, then its brand shows. (1.1.1, 1.2.1)',
+        '- 2.S1, of §2 Refunds: Given a charge, when it is refunded whole, then the card is credited. (2.1.1)',
+        '- 2.S2, of §2 Refunds: Given a charge, when part of it is refunded, then the rest stands. (2.2.1)',
+      ].join('\n'),
+      'relies-on-graph': section(brief, GRAPH),
+      'cut-refusal': 'None recorded.',
+      'cut-to': `\`${statePath(dir, STAGED)}\``,
+    })}`);
+  });
+
+  it('a part relies on another where a line of it cites an entry relying on one a line of the other cites, in its current form — none within a part, from a part citing nothing, or to another unit', () => {
+    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('[builder]', `[builder]\n\n1.3.2 Each charge is on the invoice. [${made.invoice}]`));
+
+    assert.strictEqual(section(briefed().brief, GRAPH), [
+      `- §2.1 relies on §1.1: 2.1.1 cites ${made.refunds}, which relies on ${made.cards}, cited by 1.1.1`,
+      `- §2.2 relies on §1.1: 2.2.1-scr1 cites ${made.form}, which relies on ${made.cards}, cited by 1.1.1`,
+      `- §2.2 relies on §1.2: 2.2.1 cites ${made.partial}, which relies on ${made.brand}, cited by 1.2.1`,
+      `- §2.2 relies on §2.1: 2.2.1 cites ${made.partial}, which relies on ${made.refunds}, cited by 2.1.1`,
+    ].join('\n'));
+  });
+
+  it('a spec whose lines cite nothing has no graph', () => {
+    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace(/\[[0-9A-Za-z]+\]/g, '[builder]'));
+
+    assert.strictEqual(section(briefed().brief, GRAPH), 'None recorded.');
+  });
+
+  it('a staged cut `cut` refuses comes back verbatim in a fresh brief, until the cut lands on the manifest, spec.md holding none, and none is recorded', () => {
+    const file = staged([WHOLE, { ...PART, scenarios: [], relies_on: [3] }]);
+    const refusal = refusedPristine(dir, ['cut', EPIC, '--file', file]).error;
+    assert.strictEqual(refusal, 'cut: scenario 2.S2 is in no phase; phase 2 relies on phase 3, which comes after it');
+
+    assert.strictEqual(section(briefed().brief, 'The refusal'), refusal);
+
+    staged([WHOLE, PART]);
+    ok(dir, ['cut', EPIC, '--file', file]);
+    assert.deepStrictEqual(readManifest(dir, EPIC).cut, { phases: [WHOLE, PART] });
+    assert.strictEqual(readState(dir, layout.unit(EPIC, SPEC_FILE)), shopSpec());
+    assert.strictEqual(section(briefed().brief, 'The refusal'), 'None recorded.');
+  });
+
+  it('refuses, storing no brief, a unit the project lacks, one with no spec, a spec its grammar refuses, and arguments of another shape', () => {
+    const refusedBrief = (/** @type {string[]} */ args) => refusedPristine(dir, ['brief', ...args], { env: SESSION }).error;
+    assert.strictEqual(refusedBrief(['phase-cut', 'ledger']), 'Work unit "ledger" not found');
+    assert.strictEqual(refusedBrief(['phase-cut', 'billing']), 'billing has no spec — its folder holds no spec.md');
+    writeState(dir, layout.unit(EPIC, SPEC_FILE), shopSpec().replace('## 2. Refunds', '## 2. Refunds\n\nRefunds are kept.'));
+    assert.match(refusedBrief(['phase-cut', EPIC]), /^brief: shop's spec\.md does not read —\nline \d+ opens a note, /);
+    for (const args of [['phase-cut'], ['phase-cut', EPIC, 'refunds']]) assert.match(refusedBrief(args), /^Usage: /);
+    assert.ok(!fs.existsSync(path.dirname(briefPath(SESSION_ID, 'x'))));
   });
 });

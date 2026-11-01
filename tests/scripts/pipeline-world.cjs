@@ -1102,6 +1102,19 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['commit', wu, '-m', `review(${wu}): complete review phase`, '--topic', `review/${topic}`]);
 }
 
+// The cut's corridor (11.5.1): the phase cut's agent briefed from the unit's
+// spec, its cut staged where the brief says it goes, and `cut` run on it.
+/**
+ * @param {Sim} sim @param {string} wu
+ * @param {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}[]} phases
+ * @returns {Record<string, any>} the cut's answer
+ */
+function cutTheSpec(sim, wu, phases) {
+  assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'leeway-phase-cut');
+  const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases });
+  return sim.run(['cut', wu, '--file', staged]);
+}
+
 // The task writer's calls for one phase (12.5.2–12.5.4): the phase written
 // into the tracker, then each task from its file, one call per task, then
 // the links between them. A task's `after` names the tasks it waits on, as
@@ -1133,5 +1146,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks, cutTheSpec,
 };

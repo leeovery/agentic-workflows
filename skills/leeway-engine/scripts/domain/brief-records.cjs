@@ -69,6 +69,27 @@
 //                  dispatch's set, verbatim, in the order they were
 //                  dispatched
 //
+// The phase cut's records, each of the unit the brief is for, read from its
+// `spec.md` by the spec's one grammar (spec-sections.cjs) and from the
+// unit's entries (unit-entries.cjs):
+//
+//   spec-outline   the spec's path, then its areas, each with its parts, by
+//                  address and title, in the spec's order
+//   spec-scenarios each scenario by id, with the area it proves and its
+//                  wording, the statements it draws on closing it
+//   relies-on-graph each pair of the spec's parts where one relies on the
+//                  other (11.5.6): a statement or a screen of part A cites
+//                  an entry relying on one — in its current form — that a
+//                  line of part B cites, with each line and entry that
+//                  links them. A part citing nothing has no edges; nor
+//                  has a cite naming none of the unit's entries, which the
+//                  trace lists (spec-trace.cjs), so a link to another
+//                  unit's entry is left out
+//   cut-refusal    what `cut` refuses of the cut staged for the unit, as it
+//                  says it, read without writing (cut.cjs); none recorded
+//                  where nothing is staged or the cut would land
+//   cut-to         where the agent writes the cut: the unit's staged cut
+//
 // The plain-search helper's one record is the conversation's (22.6.10):
 //
 //   knowledge-query the conversation's last `knowledge query`, as it kept
@@ -116,8 +137,9 @@
 // or another than its pair; a dive of no kind, a read naming no file, another
 // kind naming one; a conversation that has run no knowledge query; a
 // directive the migrations lack, a migrated topic its unit lacks, a composed
-// record missing or empty. Nothing else of the project reaches a brief — its
-// CLAUDE.md and its skills reach the agent without it (6.5.5).
+// record missing or empty; a unit with no spec, or one its grammar refuses.
+// Nothing else of the project reaches a brief — its CLAUDE.md and its skills
+// reach the agent without it (6.5.5).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -128,7 +150,9 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { linters } = require('./environment.cjs');
 const { readShown, readLedgerVerb } = require('./ledger-read.cjs');
-const { recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands } = require('./ledger-fold.cjs');
+const {
+  recordOf, standingOf, factsOf, wordingOf, inPlace, questionStands, currentsOf,
+} = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { manifestOf, liveTopics } = require('./ledger-units.cjs');
 const { topicLog } = require('./topic-log.cjs');
@@ -136,7 +160,12 @@ const { dismissedNames } = require('./derivations.cjs');
 const { dispatchedRows, gapReviewSince, bindQuestion } = require('./agent-state.cjs');
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
-const { readCitedSections, headingLevels } = require('./spec-sections.cjs');
+const {
+  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
+} = require('./spec-sections.cjs');
+const { withUnitEntries } = require('./unit-entries.cjs');
+const { stagedCutPath, stagedCutRefusal } = require('./cut.cjs');
+const { messageOf } = require('../kernel/call.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
 const { taskName } = require('./task-id.cjs');
 const { taskBranch } = require('./landing-names.cjs');
@@ -155,9 +184,11 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
 /**
  * What a brief is filled for: the project; its role; the task where its
  * role takes one, as the tracker holds it, or the topic where it takes
- * one; each flag given, by its name; and the conversation it is issued in.
+ * one; the unit of either, or the unit alone where its role takes that;
+ * each flag given, by its name; and the conversation it is issued in.
  * @typedef {{
- *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, place: TopicPlace|null, given: Readonly<Record<string, string>>, session: string,
+ *   cwd: string, role: string, ref: TaskRef|null, task: TaskDetail|null, place: TopicPlace|null, unit: string|null, given: Readonly<Record<string, string>>,
+ *   session: string,
  * }} Filling
  */
 
@@ -168,11 +199,11 @@ const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = re
  */
 
 /**
- * A record: whether it is a task's, a topic's or neither's, the flags it
- * takes, its drawn form, and what it binds once every record of the brief
- * is drawn; what a read said on the way pushed to `warnings`.
+ * A record: whether it is a task's, a topic's, a unit's or none's, the
+ * flags it takes, its drawn form, and what it binds once every record of
+ * the brief is drawn; what a read said on the way pushed to `warnings`.
  * @typedef {{
- *   of: 'task'|'topic'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ *   of: 'task'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
  * }} BriefRecord
  */
 
@@ -613,6 +644,116 @@ function clearBeside(filling, rel) {
   fs.rmSync(path.join(root, rel(unit, topic)), { force: true });
 }
 
+/** The unit a unit's record is drawn for. @param {Filling} filling @returns {string} */
+function unitOf({ unit }) {
+  if (unit === null) throw new Error('brief-records: a unit\'s record is drawn for a unit');
+  return unit;
+}
+
+/** @typedef {import('./spec-sections.cjs').Line} Line */
+/** @typedef {import('./spec-sections.cjs').Section} Section */
+
+/** A unit's spec as read: its path, its sections by address, and its lines. @typedef {{file: string, sections: Map<string, Section>, lines: Line[]}} ReadSpec */
+
+/** The spec each fill read. @type {WeakMap<Filling, ReadSpec>} */
+const READ_SPECS = new WeakMap();
+
+/**
+ * The unit's spec, read once a fill; refused where the unit has none or its
+ * grammar refuses it.
+ * @param {Filling} filling @returns {ReadSpec}
+ */
+function unitSpec(filling) {
+  const known = READ_SPECS.get(filling);
+  if (known !== undefined) return known;
+  const unit = unitOf(filling);
+  const text = readSpec(filling.cwd, unit);
+  /** @type {Line[]} */
+  let lines;
+  try {
+    lines = specStatements(text);
+  } catch (err) {
+    throw new Error(`brief: ${unit}'s ${SPEC_FILE} does not read —\n${messageOf(err)}`);
+  }
+  const spec = { file: specPath(filling.cwd, unit), sections: specSections(text), lines };
+  READ_SPECS.set(filling, spec);
+  return spec;
+}
+
+/** A section's title, its heading's marks and number aside. @param {Section} section */
+const titleOf = ({ text }) => text.split('\n')[0].replace(/^#+ +[0-9.]+ +/, '');
+
+/** @param {Filling} filling */
+function drawSpecOutline(filling) {
+  const { file, sections } = unitSpec(filling);
+  const outline = [...sections.values()].map((section) => `${section.level === 2 ? '' : '  '}- §${section.address} ${titleOf(section)}`);
+  return [`\`${file}\``, '', ...outline].join('\n');
+}
+
+/** @param {Filling} filling */
+function drawSpecScenarios(filling) {
+  const { sections, lines } = unitSpec(filling);
+  return listed(lines.filter(({ kind }) => kind === 'scenario').map(({ number, wording }) => {
+    const area = /** @type {Section} */ (sections.get(number.split('.')[0]));
+    return `- ${number}, of §${area.address} ${titleOf(area)}: ${indented(wording)}`;
+  }));
+}
+
+/** The part a statement or its screen is in, `N.M`. @param {string} number */
+const partOf = (number) => number.split('.').slice(0, 2).join('.');
+
+/**
+ * The spec's parts each relying on another, in the spec's order, each with
+ * the links between them.
+ * @param {import('./unit-entries.cjs').UnitView} view @param {ReadSpec} spec
+ * @returns {Array<{from: string, to: string, links: string[]}>}
+ */
+function reliesOnEdges({ folded, entries, short }, { sections, lines }) {
+  const cited = lines.filter(({ kind }) => kind === 'statement' || kind === 'screen').flatMap(({ number, cites }) => cites.flatMap((cite) => {
+    try {
+      const id = resolveId(cite, folded.facts.keys());
+      return entries.has(id) ? [{ number, id }] : [];
+    } catch {
+      return [];
+    }
+  }));
+  /** @type {Map<string, Map<string, Set<string>>>} */
+  const edges = new Map();
+  for (const { number, id } of cited) {
+    const relied = factsOf(folded, id).relies_on.flatMap((on) => currentsOf(folded, on));
+    for (const other of cited.filter((line) => relied.includes(line.id) && partOf(line.number) !== partOf(number))) {
+      const from = edges.get(partOf(number)) ?? new Map();
+      edges.set(partOf(number), from);
+      const links = from.get(partOf(other.number)) ?? new Set();
+      from.set(partOf(other.number), links);
+      links.add(`${number} cites ${short(id)}, which relies on ${short(other.id)}, cited by ${other.number}`);
+    }
+  }
+  const order = [...sections.keys()];
+  const inOrder = (/** @type {Iterable<string>} */ parts) => [...parts].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  return inOrder(edges.keys()).flatMap((from) => {
+    const to = /** @type {Map<string, Set<string>>} */ (edges.get(from));
+    return inOrder(to.keys()).map((part) => ({ from, to: part, links: [.../** @type {Set<string>} */ (to.get(part))] }));
+  });
+}
+
+/** @param {Filling} filling @param {string[]} warnings */
+function drawReliesOnGraph(filling, warnings) {
+  const spec = unitSpec(filling);
+  const edges = withUnitEntries(filling.cwd, unitOf(filling), warnings, (view) => reliesOnEdges(view, spec));
+  return listed(edges.map(({ from, to, links }) => `- §${from} relies on §${to}: ${links.join('; ')}`));
+}
+
+/** @param {Filling} filling */
+function drawCutRefusal(filling) {
+  return stagedCutRefusal(filling.cwd, unitOf(filling)) ?? NONE;
+}
+
+/** @param {Filling} filling */
+function drawCutTo(filling) {
+  return `\`${stagedCutPath(filling.cwd, unitOf(filling))}\``;
+}
+
 /** Every record, by the slot that draws it. @type {Readonly<Record<string, BriefRecord>>} */
 const RECORDS = Object.freeze({
   task: { of: 'task', draw: drawTask },
@@ -640,6 +781,11 @@ const RECORDS = Object.freeze({
   'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
   'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
   'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
+  'spec-outline': { of: 'unit', draw: drawSpecOutline },
+  'spec-scenarios': { of: 'unit', draw: drawSpecScenarios },
+  'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },
+  'cut-refusal': { of: 'unit', draw: drawCutRefusal },
+  'cut-to': { of: 'unit', draw: drawCutTo },
 });
 
 module.exports = { RECORDS, DIVE_KINDS };

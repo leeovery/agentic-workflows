@@ -22,6 +22,11 @@
 // every phase to the last started as it stands, changing only those after.
 // It runs under the writer lock (engine.cjs), and commits the unit's
 // manifest alone to the state branch, pushed.
+//
+// The cut's corridor stages the file in the unit's specification cache,
+// `.cache/{unit}/specification/cut.json`, where the cut's agent writes it;
+// what the cut would refuse of it, read without writing, is the refusal a
+// fresh brief carries back to the agent (brief-records.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -29,7 +34,7 @@ const path = require('path');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
@@ -176,6 +181,42 @@ function startedFaults(manifest, phases) {
   return [`phase ${started} has started, and the cut ${how} phase ${changed + 1} — a cut keeps every phase to ${started} as it stands and changes only those after`];
 }
 
+/** Where the cut's corridor stages the cut for a unit. @param {string} cwd @param {string} unit */
+function stagedCutPath(cwd, unit) {
+  return statePath(cwd, '.cache', unit, 'specification', 'cut.json');
+}
+
+/**
+ * The cut in `file`, checked against the unit's spec and the cut on its
+ * manifest, and that manifest. Refuses, naming every fault.
+ * @param {string} cwd @param {string} unit @param {string} file absolute
+ * @returns {{cut: Phase[], manifest: Record<string, any>}}
+ */
+function checkedCut(cwd, unit, file) {
+  const spec = specOf(cwd, unit);
+  const cut = phasesIn(file);
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  const faults = [...specFaults(cut, spec), ...reliesFaults(cut, stateRoot(cwd), unit), ...startedFaults(manifest, cut)];
+  if (faults.length > 0) refuse(faults);
+  return { cut, manifest };
+}
+
+/**
+ * What `cut` would refuse of the cut staged for the unit, as it says it;
+ * null where nothing is staged or the cut would land.
+ * @param {string} cwd @param {string} unit @returns {string|null}
+ */
+function stagedCutRefusal(cwd, unit) {
+  const file = stagedCutPath(cwd, unit);
+  if (!fs.existsSync(file)) return null;
+  try {
+    checkedCut(cwd, unit, file);
+    return null;
+  } catch (err) {
+    return messageOf(err);
+  }
+}
+
 /**
  * Write the phase cut in `file` onto the unit's manifest, after every check,
  * and commit it.
@@ -183,14 +224,9 @@ function startedFaults(manifest, phases) {
  * @returns {{unit: string, phases: number, committed: string|null, warnings?: string[], note?: string}}
  */
 function writeCut(cwd, unit, file) {
-  const root = stateRoot(cwd);
-  if (workUnitNameRefusal(unit) !== null || manifestOf(root, unit) === null) throw new Error(`cut: there is no work unit "${unit}"`);
+  if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) throw new Error(`cut: there is no work unit "${unit}"`);
   const phases = withWorkUnitLock(cwd, unit, () => {
-    const spec = specOf(cwd, unit);
-    const cut = phasesIn(path.resolve(cwd, file));
-    const manifest = loadWorkUnitManifest(cwd, unit);
-    const faults = [...specFaults(cut, spec), ...reliesFaults(cut, root, unit), ...startedFaults(manifest, cut)];
-    if (faults.length > 0) refuse(faults);
+    const { cut, manifest } = checkedCut(cwd, unit, path.resolve(cwd, file));
     manifest.cut = { phases: cut };
     saveWorkUnitManifest(cwd, unit, manifest);
     return cut.length;
@@ -205,4 +241,4 @@ function writeCut(cwd, unit, file) {
   return result;
 }
 
-module.exports = { CUT_USAGE, writeCut };
+module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal };
