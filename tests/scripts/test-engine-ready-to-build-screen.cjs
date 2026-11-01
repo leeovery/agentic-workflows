@@ -25,7 +25,7 @@ const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } =
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
 const { NB, unwrap } = require('./render-surfaces-world.cjs');
-const { UNIT, SESSION, SPEC_AT, READ_BACK, write, answered, written, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
+const { UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, write, answered, written, cut, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(closed);
 const { screen, rowKeys, pick, refused, publish, readBack } = readyHelpers(dir);
@@ -134,6 +134,7 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
     const elsewhere = answered(dir(), `${UNIT}.discussion.cards`, 'Is a card saved?', { ...MADE, text: 'Never.' });
     write(dir(), 'replace', `${UNIT}.discussion.cards`, ['--replaces', elsewhere, '--reason', 'changed-mind'], { by: 'person', drops: ['never saved'], text: 'When asked.', why: 'The person wants it so.' });
     written(dir(), readState(dir(), layout.unit(UNIT, 'spec.md')).replace('\n## 2-S.', `\n2.1.3 A refund is partial when the person asks. [${changed}]\n\n## 2-S.`));
+    cut(dir(), [CARDS, REFUNDS]);
     closeReady(dir());
     const first = screen();
 

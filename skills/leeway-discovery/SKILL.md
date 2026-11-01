@@ -77,10 +77,6 @@ Until the type is read, describe the work in plain words — "several connected 
 
 The epic as a whole: what it covers, how its topics fit, their order, a topic's subject seen from outside that topic's frame, spikes across it. A new topic gets what bears on it as its brief; a started topic, as a message (**A Message to a Topic**). Talk that settles toward one topic may earn the suggestion to start it from the epic's menu; the conversation never moves into a topic.
 
-### A Brief
-
-A topic's brief is written as it lands on the map, and the discussion that decides the topic opens from it. Draft it in the conversation's cache from everything explored about the topic: the person's leans, the paths rejected and why, the open questions, the detail explored, and what a spike showed, each point linking the part of the log it came from. Write each link as the log's path from the state root with its anchor — `.product/sessions/session-NNN.md#{anchor}` in the product's conversation, `{home}/discovery/session-NNN.md#{anchor}` in an epic's — never relative to the draft, which lands unchanged in its topic's folder. Nothing in it is a decision, and it is not the list of what the person will be asked.
-
 ### What Already Waits
 
 As new work takes shape, match it against the waiting roadmap items and the live inbox, `.leeway/.inbox/{ideas,bugs,quickfixes}/`, by name and theme. A match earns one question offering to take the item in as a seed; a miss earns silence.

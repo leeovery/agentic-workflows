@@ -322,6 +322,14 @@ function stagedOrNone(cwd, unit) {
   return fs.existsSync(file) ? /** @type {Staged} */ (stagedAt(file, nothingStaged(unit))) : null;
 }
 
+/**
+ * Whether the map after the sweep is staged for the unit — the sweep's
+ * candidates, or Claude's map restaged over them at Keep shaping — which
+ * `render approve-map <unit>` reads back as staged.
+ * @param {string} cwd @param {string} unit
+ */
+const sweptStaged = (cwd, unit) => stagedOrNone(cwd, unit)?.candidates !== undefined;
+
 /** The candidates standing, none of them struck. @param {StagedCandidate[]} candidates */
 const standing = (candidates) => candidates.filter(({ struck }) => !struck);
 
@@ -659,4 +667,4 @@ function runApproveMapVerb(cwd, [verb, ...args]) {
   throw new Error(`Usage: ${APPROVE_MAP_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }
 
-module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept };
+module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept, sweptStaged };

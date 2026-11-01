@@ -31,8 +31,9 @@
 // `spec page <unit>` writes the page and the store's first writes to
 // `.cache/{unit}/specification/page/`. `spec published <unit> <url>` records
 // that Claude published it, which opens the page (spec-review.cjs: its
-// numbers held, its marks read back, from then on); a page built and never
-// published is not open. `spec push <unit> --store <dir> [--reason <line>]
+// numbers held, its marks read back, from then on), and answers the file
+// Claude reads its marks back to; a page built and never published is not
+// open. `spec push <unit> --store <dir> [--reason <line>]
 // [--from <ids>]`, after a re-land, plans the writes that bring the change
 // to the open page without republishing (11.11.17), into the page's next
 // `push-<k>/`, and answers the page's address: one numbered change, its
@@ -64,7 +65,7 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { fingerprint, specPage } = require('./spec-page-model.cjs');
-const { pageDir, pageRefusal, publishedFile, publishedPage } = require('./spec-review.cjs');
+const { pageDir, pageRefusal, publishedFile, publishedPage, readBackFile } = require('./spec-review.cjs');
 
 const PAGE_USAGE = 'spec page <work-unit>';
 const PUBLISHED_USAGE = 'spec published <work-unit> <url>';
@@ -410,7 +411,8 @@ function buildPage(cwd, unit) {
 
 /**
  * Record that Claude published the unit's page, which opens it: its address
- * and when, beside the page and outside it.
+ * and when, beside the page and outside it. Answers them, with the file
+ * Claude reads the page's marks back to.
  * @param {string} cwd @param {string} unit @param {string} url
  */
 function recordPublished(cwd, unit, url) {
@@ -421,7 +423,7 @@ function recordPublished(cwd, unit, url) {
     if (!/^https?:\/\/\S+$/.test(url)) throw new Error(`${url} is no page's address — give the artifact's URL`);
     const published = { url, at: now() };
     writeJsonAtomic(publishedFile(cwd, unit), published);
-    return { unit, ...published };
+    return { unit, ...published, read_back: readBackFile(cwd, unit) };
   } catch (err) {
     throw new Error(`spec published: ${messageOf(err)}`);
   }

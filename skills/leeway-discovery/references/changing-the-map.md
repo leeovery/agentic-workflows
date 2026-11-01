@@ -7,7 +7,7 @@
 A change the person asks for in their own words is made as they asked and reported in one line, with no confirm; only a cancel confirms. A change you would make yourself — a topic split, merged or reordered beyond what they asked — goes onto approve the map, never straight to the map. Each verb names a topic by its name or the title a rename gave it, commits itself and answers its one-line report: emit its DISPLAY section verbatim per its marker. A refusal names the way on: say it in a line.
 
 - **The map** — `render discovery-map {home}`: emit its DISPLAY section verbatim per its marker. Its DATA names each unstarted topic's brief, and the topics struck from the map.
-- **A new topic** — its brief drafted under `.leeway/.cache/{home}/discovery/{home}/` as the skill's **A Brief** says; `--from-roadmap {item}` where it takes a waiting roadmap item in, and `--re-add` where the person asked for a struck name back:
+- **A new topic** — its brief drafted under `.leeway/.cache/{home}/discovery/{home}/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written; `--from-roadmap {item}` where it takes a waiting roadmap item in, and `--re-add` where the person asked for a struck name back:
 
   ```bash
   node .claude/skills/leeway-engine/scripts/engine.cjs topic add {home} {name} --summary "{summary}" --brief {draft} [--description "{description}"] [--from-roadmap {item}] [--re-add]

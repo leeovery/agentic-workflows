@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the phase cut (11.5) — `cut <unit> --file <cut.json>`, the one
-// writer of the cut on a unit's manifest (11.5.8), from where everything that
-// shows or follows the cut reads it (11.5.10). The file holds the cut as the
+// Domain ring: the phase cut (11.5) — `cut <unit> [--file <cut.json>]`, the
+// one writer of the cut on a unit's manifest (11.5.8), from where everything
+// that shows or follows the cut reads it (11.5.10). The file holds the cut as the
 // manifest keeps it, `{phases: [{name, goal, scenarios, sections,
 // relies_on}]}`: the phases in build order, numbered from 1 by it (11.5.2);
 // each phase's scenarios by id, `N.Sk`, and the sections it draws on by
@@ -16,7 +16,9 @@
 // `spec.md`, or one its lines refuse (spec-sections.cjs); a file of another
 // shape; a scenario or a section the spec lacks; a scenario placed in two
 // phases or in none; a phase relying on itself or one after it, its own
-// unit, or another unit the project lacks.
+// unit, or another unit the project lacks. The same checks of the cut on
+// the manifest, against the spec as it stands, hold ready to build's
+// phases-complete (`cutHolds`, checklist.cjs).
 // A second cut replaces the whole cut until a phase has started — its
 // start's checklist closed (6.4.8, 6.4.12) — and once one has, it keeps
 // every phase to the last started as it stands, changing only those after.
@@ -24,9 +26,12 @@
 // manifest alone to the state branch, pushed.
 //
 // The cut's corridor stages the file in the unit's specification cache,
-// `.cache/{unit}/specification/cut.json`, where the cut's agent writes it;
-// what the cut would refuse of it, read without writing, is the refusal a
-// fresh brief carries back to the agent (brief-records.cjs).
+// `.cache/{unit}/specification/cut.json`, where the cut's agent writes it,
+// and the file a cut given none takes; what the cut would refuse of it, read
+// without writing, is the refusal a fresh brief carries back to the agent
+// (brief-records.cjs). A cut landed keeps the ledger's mark beside it
+// (spec-passes.cjs), so the agent's next brief carries the decisions made
+// at the spec since — what the person asked of the cut among them.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -40,10 +45,12 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { readSpec, specSections, specScenarios, SPEC_FILE } = require('./spec-sections.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseStarted } = require('./checklist.cjs');
+const { recordCut } = require('./spec-passes.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
+/** What a phase places and draws on, which the spec and the project hold it to. @typedef {Pick<Phase, 'scenarios'|'sections'|'relies_on'>} Placing */
 
-const CUT_USAGE = 'cut <work-unit> --file <cut.json>';
+const CUT_USAGE = 'cut <work-unit> [--file <cut.json>]';
 
 /** What each of a phase's fields holds, and how a fault in it is named. */
 const FIELDS = Object.freeze({
@@ -123,7 +130,7 @@ function specOf(cwd, unit) {
  * The faults of the cut against the spec: each scenario or section a phase
  * names that the spec lacks, and each scenario of the spec placed in two
  * phases or in none, in the spec's order.
- * @param {Phase[]} phases @param {Spec} spec
+ * @param {Placing[]} phases @param {Spec} spec
  */
 function specFaults(phases, { scenarios, sections }) {
   const lacking = phases.flatMap(({ scenarios: placed, sections: drawn }, at) => [
@@ -141,7 +148,7 @@ function specFaults(phases, { scenarios, sections }) {
 /**
  * The faults in what each phase relies on: an earlier phase by its number,
  * another unit the project holds by its name.
- * @param {Phase[]} phases @param {string} root @param {string} unit
+ * @param {Placing[]} phases @param {string} root @param {string} unit
  */
 function reliesFaults(phases, root, unit) {
   return phases.flatMap(({ relies_on: on }, at) => on.flatMap((relied) => {
@@ -187,6 +194,27 @@ function stagedCutPath(cwd, unit) {
 }
 
 /**
+ * The faults of `phases` against the unit's spec and the project, as `cut`
+ * names them.
+ * @param {string} cwd @param {string} unit @param {Placing[]} phases @param {Spec} spec
+ */
+const againstSpec = (cwd, unit, phases, spec) => [...specFaults(phases, spec), ...reliesFaults(phases, stateRoot(cwd), unit)];
+
+/**
+ * Whether `phases` — the cut on the unit's manifest — still holds against
+ * its spec as it stands: what `cut` checks of a cut, read without writing,
+ * so a land since that adds or drops a scenario or a section opens it.
+ * @param {string} cwd @param {string} unit @param {Placing[]} phases
+ */
+function cutHolds(cwd, unit, phases) {
+  try {
+    return againstSpec(cwd, unit, phases, specOf(cwd, unit)).length === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The cut in `file`, checked against the unit's spec and the cut on its
  * manifest, and that manifest. Refuses, naming every fault.
  * @param {string} cwd @param {string} unit @param {string} file absolute
@@ -196,7 +224,7 @@ function checkedCut(cwd, unit, file) {
   const spec = specOf(cwd, unit);
   const cut = phasesIn(file);
   const manifest = loadWorkUnitManifest(cwd, unit);
-  const faults = [...specFaults(cut, spec), ...reliesFaults(cut, stateRoot(cwd), unit), ...startedFaults(manifest, cut)];
+  const faults = [...againstSpec(cwd, unit, cut, spec), ...startedFaults(manifest, cut)];
   if (faults.length > 0) refuse(faults);
   return { cut, manifest };
 }
@@ -218,21 +246,24 @@ function stagedCutRefusal(cwd, unit) {
 }
 
 /**
- * Write the phase cut in `file` onto the unit's manifest, after every check,
- * and commit it.
- * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd
+ * Write the phase cut in `file` — the cut staged for the unit where none is
+ * given — onto the unit's manifest, after every check, and commit it.
+ * @param {string} cwd @param {string} unit @param {string} [file] absolute or from cwd
  * @returns {{unit: string, phases: number, committed: string|null, warnings?: string[], note?: string}}
  */
 function writeCut(cwd, unit, file) {
   if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) throw new Error(`cut: there is no work unit "${unit}"`);
+  const staged = stagedCutPath(cwd, unit);
+  if (file === undefined && !fs.existsSync(staged)) throw new Error(`cut: nothing is staged for ${unit} — the cut's agent writes it at ${staged}`);
   const phases = withWorkUnitLock(cwd, unit, () => {
-    const { cut, manifest } = checkedCut(cwd, unit, path.resolve(cwd, file));
+    const { cut, manifest } = checkedCut(cwd, unit, file === undefined ? staged : path.resolve(cwd, file));
     manifest.cut = { phases: cut };
     saveWorkUnitManifest(cwd, unit, manifest);
     return cut.length;
   });
   /** @type {string[]} */
   const warnings = [];
+  recordCut(cwd, unit, warnings);
   const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `cut(${unit}): ${phases === 1 ? '1 phase' : `${phases} phases`}`, warnings);
   /** @type {{unit: string, phases: number, committed: string|null, warnings?: string[], note?: string}} */
   const result = { unit, phases, committed: outcome.committed };
@@ -241,4 +272,4 @@ function writeCut(cwd, unit, file) {
   return result;
 }
 
-module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal };
+module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal, cutHolds };

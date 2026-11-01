@@ -14,7 +14,9 @@
 // its findings is declined: never incorporated between its report and its
 // acknowledgement, which names exactly the findings its report was taken in
 // with; each `gap` or `fact` finding then waits to be surfaced until raised
-// or declined. A pass in flight holds the review — running, waited for, the
+// or declined — a gap raised as the replacement of a decision surfaced
+// alone, with the decision, a replacement's reason and the ledger's mark,
+// which the writer is held on (test-engine-spec-review-settled.cjs). A pass in flight holds the review — running, waited for, the
 // way on naming its way out where its agent returned without its report;
 // lost with the process that dispatched it, abandoned; its report on disk,
 // taken in by a scan — and a pass abandoned in flight is ignored whole,
@@ -33,7 +35,7 @@ const path = require('path');
 const { ok } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, MADE, AT_SPEC, LANED, OWNER, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
+  UNIT, MADE, AT_SPEC, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
 } = require('./spec-review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
@@ -158,6 +160,31 @@ describe('a pass of the spec\'s review in the store (11.7.1, 11.7.2, 11.7.6)', (
     assert.deepStrictEqual(surfacing, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: the gap F1 of ${pass.id} raised, the fact F2 of ${pass.id} replaced`)]);
     assert.deepStrictEqual(raised, ['open', unchangedSince(pass, `the review's findings wait to be surfaced: the fact F2 of ${pass.id} replaced`)]);
     assert.strictEqual(reviewSettled(), 'done');
+  });
+
+  it('a gap raised as the replacement of a decision is surfaced with it, one finding at a time, its reason one a replacement gives and the decision one the ledger holds — kept on the pass with the ledger\'s mark', () => {
+    writeSpec(spec());
+    land();
+    const pass = dispatchReview();
+    issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+    reportIn(pass, LANED);
+    acked(pass, ['F1', 'F2']);
+    const replacing = ['--replaces', made.where, '--reason', 'changed-mind'];
+
+    assert.deepStrictEqual([
+      storeRefusal('surface', pass.id, 'F1,F2', ...replacing),
+      storeRefusal('surface', pass.id, 'F1', '--replaces', made.where, '--reason', 'second-thoughts'),
+      storeRefusal('surface', pass.id, 'F1', '--replaces', 'zzzzzzzz', '--reason', 'changed-mind'),
+    ], [
+      '--replaces surfaces one finding, raised as the replacement of that decision',
+      'Invalid reason: "second-thoughts" — a replacement\'s reason is one of new-fact, other-topic, changed-mind, was-wrong',
+      'no ledger entry\'s id begins "zzzzzzzz"',
+    ]);
+    assert.match(storeRefusal('surface', pass.id, 'F1', '--replaces', made.where), /^Usage: engine agent surface /);
+    ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', ...replacing]);
+    const [{ raised }] = reportedPasses(dir(), UNIT);
+    assert.deepStrictEqual(raised.map(({ finding, replaces, reason }) => [finding, replaces.startsWith(made.where), reason]), [['F1', true, 'changed-mind']]);
+    assert.match(String(raised[0].mark), /^[0-9A-Za-z]+$/);
   });
 
   it('a pass in flight holds the review though a later pass reviewed the spec as it stands and reported clean — one running, waited for; one lost with the process that dispatched it, abandoned; one whose report is on disk, taken in by a scan — and a dispatch whose brief was refused holds nothing', () => {

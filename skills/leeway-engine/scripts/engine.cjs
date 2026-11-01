@@ -322,7 +322,7 @@ ${APPROVE_MAP_USAGE.replace(/^/gm, '  ')}
   agent dispatch <work-unit> <phase> <topic> --kind <kind> [--label <slug> …] [--set <NNN>] [--final]
   agent scan     <work-unit> <phase> <topic>
   agent ack      <work-unit> <phase> <topic> <id> (--findings <F1,F2,…> | --clean)
-  agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…]
+  agent surface  <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason>]
   agent incorporate <work-unit> <phase> <topic> <id>
   commit <work-unit> -m <message> [--plan <topic> | --discovery | --imports | --state | --topic <phase>/<topic> [--sweep]]
   commit --paths <file> … -m <message> --task <work-unit> <N.M>
@@ -1325,7 +1325,8 @@ function runBrief(call, argv) {
 function runCut(call, argv) {
   const { opts, positional } = parseArgs(argv);
   try {
-    if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${CUT_USAGE}`);
+    const given = Object.keys(opts).join();
+    if (positional.length !== 1 || !['', 'file'].includes(given) || (given === 'file' && !opts.file)) throw new Error(`Usage: engine ${CUT_USAGE}`);
     respond(call, writeCut(call.cwd, positional[0], opts.file));
   } catch (err) {
     failJson(call, err);
@@ -1722,10 +1723,10 @@ function runAgent(call, argv) {
       return;
     }
     if (command === 'surface') {
-      if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5) {
-        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…]');
+      if (!workUnit || !phase || !topic || !id || !finding || positional.length !== 5 || (opts.replaces === undefined) !== (opts.reason === undefined)) {
+        throw new Error('Usage: engine agent surface <work-unit> <phase> <topic> <id> <finding>[,<finding>…] [--replaces <decision> --reason <reason>]');
       }
-      answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding));
+      answer(agentState.surfaceFinding(cwd, workUnit, phase, topic, id, finding, opts.replaces === undefined ? undefined : { decision: opts.replaces, reason: opts.reason }));
       return;
     }
     throw new Error('Usage: engine agent <dispatch|scan|ack|surface|incorporate> <work-unit> <phase> <topic> …');

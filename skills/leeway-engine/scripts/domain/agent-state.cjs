@@ -45,7 +45,10 @@
 // finding is declined only where its pass was acknowledged with it and then
 // incorporated. A row incorporated while in flight with no report is closed
 // unread: a report landing after is never taken in, since only a row in
-// flight is.
+// flight is. A gap finding raised as the replacement of a decision is
+// surfaced with that decision, the reason and the ledger's mark, `raised` on
+// its row: no question stands for it on the ledger, so the spec's loop
+// (spec-passes.cjs) holds the writer on it until the person's call lands.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -57,6 +60,8 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { callerIdentity, ownerAlive, ownsRow, startTimeReader } = require('../kernel/process.cjs');
 const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
 const { markOf, lineOf, movesSince, lastDecisionLine } = require('./ledger-moves.cjs');
+const { resolveId } = require('./ledger-ids.cjs');
+const { REASONS } = require('./ledger-events.cjs');
 const { pairProblem } = require('./lenses.cjs');
 const { readReport } = require('./spec-report.cjs');
 
@@ -138,7 +143,7 @@ function loadState(cwd, workUnit, phase, topic) {
   if (!parsed.agents || typeof parsed.agents !== 'object') parsed.agents = {};
   for (const [id, row] of Object.entries(parsed.agents)) {
     if (!row || typeof row !== 'object' || Array.isArray(row) || !AGENT_STATUSES.includes(row.status)
-      || ['findings', 'surfaced', 'report_findings'].some((list) => list in row && !Array.isArray(row[list]))) {
+      || ['findings', 'surfaced', 'report_findings', 'raised'].some((list) => list in row && !Array.isArray(row[list]))) {
       throw new Error(`Corrupt agent state at ${file}: row "${id}" is not a valid agent row`);
     }
   }
@@ -251,6 +256,19 @@ function anchorReviewRow(dir) {
 /** The ledger's facts as they stand, what a landing its check finished said let go. @param {string} cwd */
 function ledgerFacts(cwd) {
   return foldLedger(stateRoot(cwd), ID_FACTS, []);
+}
+
+/**
+ * A replacement raised, as its surfacing keeps it: the decision by its full
+ * id, the reason, and the ledger's mark. Refuses a reason a replacement
+ * never gives, and an id no entry, or several, begin.
+ * @param {string} cwd @param {{decision: string, reason: string}} replacing
+ * @returns {{replaces: string, reason: string, mark: string|null}}
+ */
+function raisedAs(cwd, { decision, reason }) {
+  if (!REASONS.includes(reason)) throw new Error(`Invalid reason: "${reason}" — a replacement's reason is one of ${REASONS.join(', ')}`);
+  const facts = ledgerFacts(cwd);
+  return { replaces: resolveId(decision, facts.keys()), reason, mark: markOf(facts) };
 }
 
 /**
@@ -686,10 +704,14 @@ function requireReportFindings(row, findings) {
  * screen lands in one call. Every id is validated before any is recorded, so
  * a bad entry fails the batch whole. When the last unsurfaced finding is
  * raised the row incorporates automatically — the response's `status` says so.
+ * One finding raised as the replacement of a decision is surfaced with it,
+ * `replacing`: the decision by a prefix of its id and the reason, kept with
+ * the ledger's mark.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {string} id @param {string} finding
+ * @param {{decision: string, reason: string}} [replacing]
  */
-function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
+function surfaceFinding(cwd, workUnit, phase, topic, id, finding, replacing) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
@@ -700,6 +722,8 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   if (new Set(batch).size !== batch.length) {
     throw new Error('Invalid findings: duplicate ids');
   }
+  if (replacing !== undefined && batch.length > 1) throw new Error('--replaces surfaces one finding, raised as the replacement of that decision');
+  const raised = replacing === undefined ? null : raisedAs(cwd, replacing);
   return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
@@ -715,6 +739,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
       }
     }
     row.surfaced.push(...batch);
+    if (raised !== null) row.raised = [...(Array.isArray(row.raised) ? row.raised : []), { finding: batch[0], ...raised }];
     if (unsurfaced(row).length === 0) row.status = 'incorporated';
     saveState(cwd, workUnit, phase, topic, state);
     return { work_unit: workUnit, phase, topic, ...publicRow(row) };
@@ -860,7 +885,7 @@ const specReviewRows = (cwd, workUnit) => derivationRows(agentDir(cwd, workUnit,
  * acknowledged with and surfaced. A pass refused, or closed in flight, is
  * never taken in. Read as a derivation reads, tolerant of the store.
  * @param {string} cwd @param {string} workUnit
- * @returns {{id: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[]}[]}
+ * @returns {{id: string, land: Landed, file: string, findings: ReportFinding[], status: string, acknowledged: string[], surfaced: string[], raised: {finding: string, replaces: string, reason: string, mark: string|null}[]}[]}
  */
 function reportedPasses(cwd, workUnit) {
   const dir = agentDir(cwd, workUnit, UNIT_PHASE, workUnit);
@@ -874,6 +899,7 @@ function reportedPasses(cwd, workUnit) {
       status: row.status,
       acknowledged: Array.isArray(row.findings) ? row.findings : [],
       surfaced: Array.isArray(row.surfaced) ? row.surfaced : [],
+      raised: Array.isArray(row.raised) ? row.raised : [],
     }));
 }
 

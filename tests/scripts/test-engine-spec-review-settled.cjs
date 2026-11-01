@@ -5,7 +5,10 @@
 // ready to build's `review-settled`, domain/checklist.cjs): the review
 // settles (a) once the latest reported pass reviewed the spec as it stands —
 // blank lines between sections, or a section moved, changing nothing (E4) —
-// (c) with no gap waiting and (d) nothing waiting for the writer: the
+// (c) with no gap waiting — a question asked at the spec still open, or a
+// review's gap raised as the replacement of a decision still current and
+// unkept, the writer held on it naming the raise that asks again from a new
+// conversation — and (d) nothing waiting for the writer: the
 // entries made at the spec and the `rewrite` findings since the last take a
 // land committed, a brief again before a land carrying all of it; an entry
 // at another unit's spec, on a topic or replaced since, or an asset linked
@@ -21,16 +24,16 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { ok, statePath, writeState, layout } = require('./engine-harness.cjs');
-const { ledgerHelpers } = require('./ledger-world.cjs');
+const { ok, okSectionsAsync, statePath, writeState, layout } = require('./engine-harness.cjs');
+const { ledgerHelpers, leaningCall } = require('./ledger-world.cjs');
 const {
-  UNIT, SPEC, SESSION, PERSON, MADE, AT_SPEC, CARDS, FOUND, WRITER, made, useSpecReviewWorld, specReviewHelpers, section, spaced, unchangedSince,
+  UNIT, SPEC, SESSION, PERSON, MADE, AT_SPEC, CARDS, FOUND, LANED, WRITER, made, useSpecReviewWorld, specReviewHelpers, section, spaced, unchangedSince,
 } = require('./spec-review-world.cjs');
 
 const dir = useSpecReviewWorld();
 const { write } = ledgerHelpers(dir);
 const {
-  spec, writeSpec, land, issued, dispatchReview, reportIn, acked, cleanPass, reviewSettled, unread, nothingToRead,
+  spec, writeSpec, land, issued, refusedUnissued, dispatchReview, reportIn, acked, cleanPass, reviewSettled, unread, nothingToRead,
 } = specReviewHelpers(dir);
 
 /** `text` with the section `first` opens moved after the one `second` opens, to the next heading at its level or above. @param {string} text @param {string} first @param {string} second @param {string} end */
@@ -115,11 +118,51 @@ describe('review-settled (6.4.7, 11.7.6, 11.S11, E3)', () => {
     const next = section(issued(['spec-writer', UNIT]).brief, 'Written since your last brief');
     land();
 
-    assert.deepStrictEqual(waiting, ['open', unchangedSince(first, `the gap ${gap}, asked at the spec, waits on the person, and the writer's brief follows the answer`)]);
+    assert.deepStrictEqual(waiting, ['open', unchangedSince(first, `the gap ${gap}, asked at the spec, waits on the person — engine raise ${UNIT}.specification --answers ${gap} puts it to them again, in this conversation or a new one; the writer's brief follows the answer`)]);
     assert.deepStrictEqual(answered, ['open', unchangedSince(first, `${WRITER}1 entry made at the spec`)]);
     assert.strictEqual(taken, `- ${answer} decision, the unit's own: Never.`);
     assert.deepStrictEqual([pending, settled], [['open', taken], 'done']);
     assert.deepStrictEqual([writing, next, reviewSettled()], ['open', [`- ${asked} question, the unit's own: Is a refund ever partial?`, `- ${own} decision, the unit's own: Never.`].join('\n'), 'done']);
+  });
+
+  describe('(c): a review\'s gap raised as the replacement of a decision, surfaced with it, holds the writer, naming the raise that asks again, until the person\'s call lands from a new conversation', () => {
+    const resumed = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'spec-review-settled-resumed' });
+
+    /** The gap raised as the replacement of `made.where` and surfaced with it: the writer's refusal. */
+    function raisedReplacement() {
+      writeSpec(spec());
+      land();
+      const pass = dispatchReview();
+      issued(['spec-reviewer', UNIT, '--agent', pass.id]);
+      reportIn(pass, LANED);
+      acked(pass, ['F1', 'F2']);
+      ok(dir(), ['agent', 'surface', UNIT, 'specification', UNIT, pass.id, 'F1', '--replaces', made.where, '--reason', 'changed-mind']);
+      return refusedUnissued(['spec-writer', UNIT]);
+    }
+
+    /** The replacement raised again in a new conversation, the person picking `key`. @param {string} key */
+    async function answeredAgain(key) {
+      const { res } = await okSectionsAsync(dir(), ['raise', AT_SPEC, '--replaces', made.where, '--reason', 'changed-mind'], { env: resumed, stdin: JSON.stringify(leaningCall('To the bank account.', 'As a voucher.')) });
+      ok(dir(), ['raise', 'answer', res.raise, '--pick', key], { env: resumed, stdin: JSON.stringify({ why: 'The person said why.' }) });
+    }
+
+    const held = () => `brief: ${UNIT}'s rewrite waits for the answer — the replacement of ${made.where}, raised at the spec, waits on the person — engine raise ${UNIT}.specification --replaces ${made.where} --reason changed-mind puts it to them again, in this conversation or a new one`;
+
+    it('released by the replacement landed', async () => {
+      const refused = raisedReplacement();
+      await answeredAgain('1');
+
+      assert.strictEqual(refused, held());
+      assert.strictEqual(issued(['spec-writer', UNIT]).res.role, 'spec-writer');
+    });
+
+    it('released by the person keeping the decision', async () => {
+      const refused = raisedReplacement();
+      await answeredAgain('keep');
+
+      assert.strictEqual(refused, held());
+      assert.strictEqual(issued(['spec-writer', UNIT]).res.role, 'spec-writer');
+    });
   });
 
   it('(d): only a current entry made at the spec waits — the writer shown what the way on counts, each with where it stands, never an entry replaced since or an asset linked', () => {

@@ -5,7 +5,11 @@
 // `readyClose`; ready-to-build.cjs): the landed spec alone, the close, the
 // screen and the yes refused while spec.md holds changes that have not
 // landed (11.8.1); ready to build's checklist closed, voided by a land or a
-// cut after it (E12); and an engine item failing since the close — the
+// cut after it (E12); phases-complete open while the cut no longer holds
+// against the spec landed since (11.5.9), and while a decision made at the
+// spec since the cut's brief waits for the cut — one made while its agent
+// works among them; and an engine item failing since
+// the close — the
 // split, a decided topic postponed while the spec is written, its lines then
 // invented (11.S18). Every refusal writes and commits nothing.
 //
@@ -18,11 +22,14 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, refuses, sectionOf, statePath, layout, writeState, readState, readManifest, stateGit } = require('./engine-harness.cjs');
-const { UNIT, SESSION, CARDS, REFUNDS, cut, reviewPass, landReviewed, closeReady, landed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
+const { ok, output, refuses, sectionOf, statePath, layout, writeState, readState, readManifest, stateGit } = require('./engine-harness.cjs');
+const { UNIT, SESSION, SPEC_AT, CARDS, REFUNDS, answered, cut, reviewPass, landReviewed, closeReady, landed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(landed);
 const { screen, refused, yes } = readyHelpers(dir);
+
+/** Where ready to build's phases-complete stands. */
+const phasesComplete = () => JSON.parse(output(dir(), ['checklist', 'show', 'ready-to-build', UNIT])).items.find((/** @type {{key: string}} */ item) => item.key === 'phases-complete').state;
 
 describe('the close the screen stands on (E12)', () => {
   it('refuses until ready to build\'s checklist is closed, writing nothing', () => {
@@ -87,6 +94,45 @@ describe('the close the screen stands on (E12)', () => {
     cut(dir(), [{ ...CARDS, goal: 'Cards, sooner.' }, REFUNDS]);
 
     assert.strictEqual(refused(['ready-to-build', 'yes', UNIT, '--position', 'auto']), `ready-to-build yes: ready-to-build was closed before ${UNIT}'s spec was cut again — a cut after the close voids it, so its items are worked afresh and it is closed again`);
+  });
+
+  it('holds phases-complete open while the cut no longer holds against the spec landed since — a re-land adding a scenario no phase places — until the cut places it (11.5.9)', () => {
+    closeReady(dir());
+    const file = layout.unit(UNIT, 'spec.md');
+    writeState(dir(), file, `${readState(dir(), file)}\n2.S2 Given a refund, when it is asked for twice, then the second is refused. (2.1.1)\n`);
+    landReviewed(dir());
+    for (const item of ['replacements-checked', 'invariants-checked']) ok(dir(), ['checklist', 'done', 'ready-to-build', UNIT, item]);
+
+    assert.deepStrictEqual([phasesComplete(), refuses(dir(), ['checklist', 'close', 'ready-to-build', UNIT]).error], ['open', `checklist close: ready-to-build has items open: phases-complete`]);
+    cut(dir(), [CARDS, { ...REFUNDS, scenarios: ['2.S1', '2.S2'] }]);
+    assert.strictEqual(phasesComplete(), 'done');
+    closeReady(dir());
+    assert.match(screen(), /=== MENU: ready to build /);
+  });
+
+  it('holds phases-complete open while a decision made at the spec since the cut waits for it — a change to the cut alone, the spec landed unchanged, refused at the screen after the close as on a resume — until the cut\'s brief takes it and its cut lands', () => {
+    closeReady(dir());
+    answered(dir(), SPEC_AT, 'Which phase is built first?', { by: 'person', who_moved_whom: 'none', given: 'own', text: 'Refunds before cards.' });
+    ok(dir(), ['brief', 'spec-writer', UNIT], { env: SESSION });
+    ok(dir(), ['spec', 'land', UNIT]);
+
+    assert.deepStrictEqual([phasesComplete(), refused(['render', 'ready-to-build', UNIT])], ['open', 'render ready-to-build: ready-to-build has items open since its close: phases-complete — they are worked, and it is closed again']);
+    ok(dir(), ['brief', 'phase-cut', UNIT], { env: SESSION });
+    cut(dir(), [{ ...REFUNDS, relies_on: [] }, { ...CARDS, relies_on: [] }]);
+    assert.strictEqual(phasesComplete(), 'done');
+    closeReady(dir());
+    assert.match(screen(), /=== MENU: ready to build /);
+  });
+
+  it('a decision made while the cut\'s agent works, after its brief and before its land, still waits for the cut: the mark is the brief\'s, which the land commits', () => {
+    ok(dir(), ['brief', 'phase-cut', UNIT], { env: SESSION });
+    answered(dir(), SPEC_AT, 'Do refunds come first?', { by: 'person', who_moved_whom: 'none', given: 'own', text: 'They do.' });
+    cut(dir(), [CARDS, REFUNDS]);
+    const waiting = phasesComplete();
+    ok(dir(), ['brief', 'phase-cut', UNIT], { env: SESSION });
+    cut(dir(), [CARDS, REFUNDS]);
+
+    assert.deepStrictEqual([waiting, phasesComplete()], ['open', 'done']);
   });
 
   it('refuses while an item the engine checks fails since the close: a decided topic postponed for a split leaves the lines citing it invented, so the spec is written again (11.10.3, 11.S18)', () => {

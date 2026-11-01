@@ -11,10 +11,14 @@
 // topic's entries under its title, then the unit's own, then those it made
 // standing in another unit, each topic's log, the canonical assets, the
 // sweep's calls, what waits for it — the entries made at the spec since the
-// last take a land committed, a gap's answer among them (11.S20) — the lines
+// last take a land committed, a gap's answer among them (11.S20) — the
+// wording the person agreed, the file `--wording` names verbatim, retired by
+// the land committing its take where unchanged since the brief, the lines
 // that do not trace and what the land refuses of the spec as written; its
 // template's example read by the spec's own grammar; refused for a unit the
-// land refuses, and while a gap put to the person is open. The land keeps
+// land refuses, a wording file that is none or is empty, and while a gap put
+// to the person is open, naming the raise that puts it to them again from a
+// new conversation. The land keeps
 // the print of what it landed — each section's own text hashed, the title
 // and introduction one of them — a section's changing alone with it, and
 // blank lines between sections changing none (E4). The reviewer's brief, for
@@ -43,7 +47,7 @@ const path = require('path');
 const {
   ok, refusedPristine, statePath, readState, layout, writeState, commitAll,
 } = require('./engine-harness.cjs');
-const { ledgerHelpers } = require('./ledger-world.cjs');
+const { ledgerHelpers, answeredRaise } = require('./ledger-world.cjs');
 const {
   UNIT, SPEC, SESSION_ID, PERSON, MADE, AT_SPEC, CARDS, STORE, TEMPLATES, made, payments, useSpecReviewWorld, specReviewHelpers, RECORDS, filledTemplate, section, spaced,
 } = require('./spec-review-world.cjs');
@@ -54,6 +58,8 @@ const { specStatements } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'
 const { specEntryRefusal } = require(path.join(SCRIPTS, 'domain/spec-entry.cjs'));
 
 const LANDED = layout.cache(UNIT, 'specification', 'landed.json');
+const WORDING = layout.cache(UNIT, 'specification', 'wording.md');
+const AGREED = 'The wording agreed';
 
 const dir = useSpecReviewWorld();
 const { write, full, entries: ledgerLines } = ledgerHelpers(dir);
@@ -78,6 +84,7 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
       'builder-calls': 'None recorded.',
       'changed-entries': 'None recorded.',
       'review-findings': 'None recorded.',
+      'wording-changes': 'None recorded.',
       'invented-lines': 'None recorded.',
       'land-refusal': 'None recorded.',
     })}`);
@@ -91,6 +98,29 @@ describe('the spec writer\'s brief (11.1.5, 11.3.2, 11.S2)', () => {
     }));
 
     assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, 'The builder\'s calls'), '- The retry interval.\n  Why: The person would leave it.');
+  });
+
+  it('the wording the person agreed on the review page: the file `--wording` names, verbatim, nothing written since — none recorded without it', () => {
+    const agreed = ['2.1.1: A refund reaches the card the moment it is asked for.', '2.1.2: The card holder sees the refund on their statement.'].join('\n');
+    const file = writeState(dir(), WORDING, `${agreed}\n`);
+    const { brief } = issued(['spec-writer', UNIT, '--wording', file]);
+
+    assert.deepStrictEqual([section(brief, AGREED), section(brief, 'Written since your last brief')], [agreed, 'None recorded.']);
+    assert.strictEqual(section(issued(['spec-writer', UNIT]).brief, AGREED), 'None recorded.');
+  });
+
+  it('the land committing a take retires the wording file it carried where unchanged since the brief; one written to since stays, holding an agreement no brief carried', () => {
+    writeSpec(spec());
+    const file = writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n');
+    issued(['spec-writer', UNIT, '--wording', file]);
+    land();
+    const retired = !fs.existsSync(file);
+    writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n');
+    issued(['spec-writer', UNIT, '--wording', file]);
+    writeState(dir(), WORDING, '2.1.1: A refund reaches the card at once.\n2.1.2: The card holder sees it.\n');
+    land();
+
+    assert.deepStrictEqual([retired, fs.existsSync(file)], [true, true]);
   });
 
   it('its template\'s example is a spec the land\'s grammar reads: its statements, a screen and a scenario', () => {
@@ -155,12 +185,23 @@ describe('the spec writer\'s brief refused, nothing stored', () => {
     ]);
   });
 
-  it('a rewrite while a gap put to the person waits, until it is answered', () => {
+  it('a wording file that is none, or is empty', () => {
+    const missing = statePath(dir(), WORDING);
+    const none = refusedUnissued(['spec-writer', UNIT, '--wording', missing]);
+    writeState(dir(), WORDING, '\n');
+
+    assert.deepStrictEqual([none, refusedUnissued(['spec-writer', UNIT, '--wording', missing])], [
+      `brief: --wording names no file — ${missing}`,
+      `brief: --wording names an empty file — ${missing}`,
+    ]);
+  });
+
+  it('a rewrite while a gap put to the person waits, naming the raise that puts it to them again — which a new conversation draws, and whose answer lets the rewrite on', async () => {
     const asked = write('ask', AT_SPEC, [], { ...MADE, text: 'Is a refund ever split?' }).id;
     const waiting = refusedUnissued(['spec-writer', UNIT]);
-    write('decide', AT_SPEC, ['--answers', asked], { ...PERSON, text: 'Never.', why: 'The bank matches one refund to one charge.' });
+    await answeredRaise(dir(), AT_SPEC, asked, { lean: 'Never.', other: 'When the bank allows it.', key: '1', env: { CLAUDE_CODE_SESSION_ID: 'spec-review-resumed' } });
 
-    assert.strictEqual(waiting, `brief: ${UNIT}'s spec waits on the person — the gap ${asked}, asked at the spec, is open, and its rewrite waits for the answer`);
+    assert.strictEqual(waiting, `brief: ${UNIT}'s rewrite waits for the answer — the gap ${asked}, asked at the spec, waits on the person — engine raise ${UNIT}.specification --answers ${asked} puts it to them again, in this conversation or a new one`);
     assert.strictEqual(issued(['spec-writer', UNIT]).res.role, 'spec-writer');
   });
 });

@@ -1,28 +1,24 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The pipeline simulation's epic scenarios on the spec's side: with the
+// The pipeline simulation's epic scenario on the spec's side: with the
 // other topic postponed, the last decided going into the spec, entered at
-// the unit, the spec written from the writer's brief and landed citing what
-// was decided, its review's one pass settling it, the spec cut into phases
-// through the cut's corridor and ready to build closed, its review row
-// building the page, published, its marks read back, the wording agreed
-// re-landed onto the open page — the close voided and the review reopened
-// until a pass on the re-land and the checklist closed again — then the pick
-// taking the marks read back fresh, the build begun and its position
-// switched; and, with both
-// topics decided, the sweep before the spec is written — briefed and taken,
-// its message reopening a decided topic and its candidates taken or struck
-// at approve the map, whose yes hands back to the menu; or the empty sweep,
-// after which the spec lands.
+// the unit, its checklist saying where it stands, the spec written from the
+// writer's brief and landed citing what was decided, its review's one pass
+// settling it, the spec cut into phases through the cut's corridor, the cut
+// staged taken with no file named, and ready to build closed, its review
+// row building the page, published, its marks read back to the file the
+// publishing names, the wording agreed briefed to the writer and re-landed
+// onto the open page — the close voided and the review reopened until a
+// pass on the re-land and the checklist closed again — the marks read back
+// and stored before the screen is drawn, then the pick taking them read
+// back fresh, the build begun and its position switched. The sweep before
+// the spec is test-pipeline-simulation-epic-sweep.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
-// (pipeline-world.cjs), a copy per scenario, and for the sweep an epic,
-// `tessera`, its topics `alpha` and `beta` each discussed to its decided
-// screen's yes, handed on to the spec — built once through the verbs and
-// copied (`worldFrom`); each replays the engine calls the skill prose
-// makes, in prose order, and the oracle (pipeline-oracle.cjs) audits the
-// whole state after every mutation.
+// (pipeline-world.cjs), a copy per scenario; it replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -32,18 +28,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worldFrom, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild,
+  Sim, discussed, mappedEpic, arrive, specEntry, handoff, answerGate, specReviewed, cutTheSpec, readyToBuild,
 } = require('./pipeline-world.cjs');
-
-const WU = 'tessera';
-
-// The epic both of whose topics are decided, handed on to its spec.
-const bothDecided = worldFrom('pipeline-sim-tessera-', (sim) => {
-  mappedEpic(sim, WU, ['alpha', 'beta']);
-  discussed(sim, WU, 'alpha');
-  const { next } = discussed(sim, WU, 'beta');
-  handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
-});
 
 describe('pipeline simulation: epic, the spec', () => {
   let sim;
@@ -58,6 +44,9 @@ describe('pipeline simulation: epic, the spec', () => {
     assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
     handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
     specEntry(sim, wu, ['alpha']);
+    const ready = () => Object.fromEntries(JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items.map((/** @type {{key: string, state: string}} */ item) => [item.key, item.state]));
+    const entered = ready();
+    assert.deepStrictEqual([entered['topics-settled'], entered['statements-traced'], entered['sweep-run']], ['done', 'open', undefined], 'one live topic owes no sweep, so the writer goes first');
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
     const spec = (/** @type {string} */ statement) => sim.write(`.leeway/${wu}/spec.md`, [
       '# Ledgerly', '', '## 1. Settling', '',
@@ -69,14 +58,12 @@ describe('pipeline simulation: epic, the spec', () => {
     const landed = sim.run(['spec', 'land', wu]);
     assert.deepStrictEqual([landed.statements, landed.invented], [1, []]);
     assert.strictEqual(specReviewed(sim, wu).id, 'spec-review-001');
-    /** Where ready to build's review-settled stands. */
-    const reviewSettled = () => JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items.find((/** @type {{key: string}} */ item) => item.key === 'review-settled').state;
-    assert.strictEqual(reviewSettled(), 'done');
+    assert.strictEqual(ready()['review-settled'], 'done');
     // The cut's corridor: a cut `cut` refuses goes back to the agent in a
     // fresh brief, and the one it writes again lands on the manifest.
     const settle = { name: 'Settling', goal: 'The epic settles as alpha decided.', scenarios: ['1.S1'], sections: ['1.1'], relies_on: [] };
-    const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases: [{ ...settle, scenarios: [] }] });
-    sim.refuses(['cut', wu, '--file', staged], /^cut: scenario 1\.S1 is in no phase$/);
+    sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases: [{ ...settle, scenarios: [] }] });
+    sim.refuses(['cut', wu], /^cut: scenario 1\.S1 is in no phase$/);
     assert.strictEqual(cutTheSpec(sim, wu, [settle]).phases, 1);
     assert.deepStrictEqual(sim.manifest(wu).cut, { phases: [settle] });
     // Ready to build, closed, offers the review page; its row builds it.
@@ -84,16 +71,22 @@ describe('pipeline simulation: epic, the spec', () => {
     const review = answerGate(sim, 'ready to build', '--pick', 'r');
     assert.deepStrictEqual(review.next, { kind: 'engine', argv: ['spec', 'page', wu] });
     const { batches } = sim.run(review.next.argv);
-    sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
-    // The person comments; Claude answers beneath the line and the wording
-    // agreed lands, the open page brought up to it.
-    const readBack = `.leeway/.cache/${wu}/specification/read-back.json`;
-    const marks = sim.run(['spec', 'marks', wu, '--file', sim.write(readBack, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' } } } } } })]);
+    const { read_back: readBack } = sim.run(['spec', 'published', wu, 'https://claude.ai/public/artifacts/ledgerly']);
+    /** The page's marks, read back to the file the publishing named. @param {Record<string, unknown>} marks */
+    const readBackAs = (marks) => fs.writeFileSync(readBack, JSON.stringify(marks));
+    // The person comments; Claude answers beneath the line, and the wording
+    // agreed goes to the writer, never the ledger, and lands, the open page
+    // brought up to it.
+    readBackAs({ s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' } } } } } });
+    const marks = sim.run(['spec', 'marks', wu, '--file', readBack]);
     assert.deepStrictEqual(marks.waiting.map(({ number }) => number), ['1.1.1']);
     const store = `.leeway/.cache/${wu}/specification/store`;
     for (const { collection, doc_id: doc, file_path: file } of batches.flatMap((/** @type {string} */ batch) => JSON.parse(fs.readFileSync(batch, 'utf8')))) {
       sim.write(`${store}/${collection}/${doc}.json`, fs.readFileSync(file, 'utf8'));
     }
+    const wording = `.leeway/.cache/${wu}/specification/wording.md`;
+    sim.write(wording, '1.1.1: It settles as alpha decided, and holds.\n');
+    sim.run(['brief', 'spec-writer', wu, '--wording', wording]);
     spec('It settles as alpha decided, and holds.');
     sim.run(['spec', 'land', wu]);
     const pushed = sim.run(['spec', 'push', wu, '--reason', 'Alpha holds once settled.', '--store', path.join(sim.dir, store), '--from', '1.1.1']);
@@ -101,62 +94,23 @@ describe('pipeline simulation: epic, the spec', () => {
     // The re-land after the close voids it and reopens the review: a pass on
     // the re-land, and the checklist worked afresh and closed again.
     sim.refuses(['render', 'ready-to-build', wu], /a land after the close voids it/);
-    assert.strictEqual(reviewSettled(), 'open');
+    assert.strictEqual(ready()['review-settled'], 'open');
     specReviewed(sim, wu);
+    // The page open, its marks are read back and stored before the screen is
+    // drawn — the comment answered, none waits — and the pick hands on them
+    // read back fresh; the yes records the review and begins the build,
+    // handing to the epic's menu.
+    const answered = { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' }, c3000: { by: 'c', x: 'It holds now.' } } } } } };
+    readBackAs(answered);
+    assert.deepStrictEqual(sim.run(['spec', 'marks', wu, '--file', readBack]).waiting, []);
     readyToBuild(sim, wu, ['--page']);
-    // The pick hands on the marks read back fresh — the comment answered —
-    // and the yes records the review and begins the build, handing to the
-    // epic's menu.
-    sim.write(readBack, { s1: { m: { '1-1-1': { s: 'comment', t: { p1000: { by: 'p', x: 'Say it holds?' }, c3000: { by: 'c', x: 'It holds now.' } } } } } });
+    readBackAs(answered);
     const picked = answerGate(sim, 'ready to build', '--pick', 'a');
-    assert.deepStrictEqual(picked.next.argv.slice(-2), ['--marks', path.join(sim.dir, readBack)]);
+    assert.deepStrictEqual(picked.next.argv.slice(-2), ['--marks', readBack]);
     const begun = sim.run(picked.next.argv);
     assert.deepStrictEqual([begun.record, begun.next], [`${wu}/spec-review.json`, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }]);
     handoff(sim, `/leeway-continue-epic ${wu}`);
     arrive(sim, wu);
     sim.run(['workunit', 'position', wu, 'step']);
-  });
-});
-
-describe('pipeline simulation: epic, the sweep before the spec', () => {
-  let sim;
-  beforeEach(() => { sim = new Sim(bothDecided); });
-  afterEach(() => { sim.destroy(); });
-
-  it('epic: at the spec, before it is written, the sweep is briefed and taken — its message reopening a decided topic, its candidates coming to approve the map, one struck — whose yes hands back to the menu (8.10.3, 8.10.9, 8.S50)', () => {
-    specEntry(sim, WU, ['alpha', 'beta']);
-    sim.run(['brief', 'sweep', WU]);
-    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, {
-      candidates: [
-        { name: 'gamma', reason: 'Alpha and beta each lean on an export neither owns.', brief: '# Gamma\n\nThe export both lean on.\n' },
-        { name: 'delta', reason: 'Nothing decides who cleans up.', brief: '# Delta\n\nThe clean-up.\n' },
-      ],
-      messages: [{ topic: 'beta', text: 'Alpha settled the order\n\nBeta takes it in.' }],
-      builder_calls: [{ call: 'The export file name.', why: 'The person would leave it.' }],
-    });
-    const taken = sim.run(['sweep', 'take', WU]);
-    assert.deepStrictEqual(taken.next, { kind: 'engine', argv: ['render', 'approve-map', WU, '--sweep'] });
-    sim.render(taken.next.argv.slice(1), { expect: 'content' });
-    sim.render(answerGate(sim, 'approve the map', '--pick', 's').next.argv.slice(1), { expect: 'content' });
-    sim.render(sim.run(answerGate(sim, 'approve the map strike', '--pick', '2').next.argv).next.argv.slice(1), { expect: 'content' });
-    const yes = sim.run(answerGate(sim, 'approve the map', '--pick', 'y').next.argv);
-    assert.deepStrictEqual(yes.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [WU] });
-    handoff(sim, `/leeway-continue-epic ${WU}`);
-    arrive(sim, WU);
-  });
-
-  it('epic: the empty sweep taken, the spec carries on and lands (8.10.3, 11.S3)', () => {
-    specEntry(sim, WU, ['alpha', 'beta']);
-    sim.run(['brief', 'sweep', WU]);
-    sim.write(`.leeway/.cache/${WU}/specification/sweep.json`, { candidates: [], messages: [], builder_calls: [] });
-    assert.deepStrictEqual(sim.run(['sweep', 'take', WU]).next, { kind: 'continue' });
-    const [alpha] = JSON.parse(sim.read(['ledger', 'record', WU, 'alpha'])).decisions;
-    const [beta] = JSON.parse(sim.read(['ledger', 'record', WU, 'beta'])).decisions;
-    sim.write(`.leeway/${WU}/spec.md`, [
-      '# Tessera', '', '## 1. Settling', '',
-      '### 1.1 What was decided', '', `1.1.1 It settles as alpha decided. [${alpha.id}]`, '', `1.1.2 It holds as beta decided. [${beta.id}]`, '',
-      '## 1-S. Scenarios for §1', '', '1.S1 Given the epic, when it settles, then it holds as decided. (1.1.1, 1.1.2)', '',
-    ].join('\n'));
-    sim.run(['spec', 'land', WU]);
   });
 });

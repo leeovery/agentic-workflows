@@ -4,299 +4,78 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/leeway-engine/scripts/engine.cjs *)
 ---
 
-# Specification Process
+# Specification
 
-Act as **expert technical architect** and **specification builder**. Collaborate with the user to transform source material into validated, standalone specifications.
+The work unit's one spec, `spec.md`: the document its build reads and the person reviews line by line, written by area from the ledger's records, every statement citing the entries it comes from; then the phase cut, and ready to build. You orchestrate: named agents sweep the records, write the spec, review it and cut it, each from a brief the engine issues, and never from this conversation. What they find goes to the ledger, the writer or the person, and you bring the person to ready to build. Nothing here decides the product afresh: a gap the spec meets is decided as any call is, and lands on the ledger.
 
-Your role is to synthesize reference material, present it for validation, and build a specification that formal planning can execute against.
+## Arguments
 
-## Purpose in the Workflow
-
-Follows discussion (or investigation for bugfix). Transform prior-phase source material — discussions, investigation findings — into a specification that's **standalone and approved**.
-
-**Stay in your lane**: Validate and refine source material into a standalone specification. Don't jump to planning, phases, tasks, or code. The specification is the "line in the sand" — everything after this has hard dependencies on it.
-
-### What This Skill Needs
-
-Positional arguments:
-- `$0` — **work_type**: `epic`, `feature`, `bugfix`, or `cross-cutting`.
-- `$1` — **work_unit**: the work unit name.
-- `$2` — **topic**: the specification's topic. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
-
-The source material is the specification item's `sources` — an epic grouping's discussions, a feature's or cross-cutting unit's discussion, a bugfix's investigation — beside the specifications this one incorporates, all read at session setup.
-
-**If source material seems incomplete or unclear:**
-
-In your own words, say what in the source material is incomplete or unclear, and ask whether to proceed as-is or whether there is additional material to review.
-
-**STOP.** Wait for user response.
-
-**Multiple sources:** When the specification has several sources, extract exhaustively from ALL of them. Content may be scattered across sources — a decision in one discussion may have constraints or details in another. The specification consolidates everything into a single standalone document.
-
----
+- `$0` — **work_type**: `epic`, `feature` or `bugfix`.
+- `$1` — **work_unit**.
 
 ## Instructions
 
 Load **[framework.md](../leeway-shared/references/framework.md)** and follow its instructions as written.
 
----
+## Done When
 
-## Resuming After Context Refresh
+The person has picked the build's position at ready to build: the engine then holds the spec concluded, its phase cut on the unit's manifest, and the build begun in that position.
 
-Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
+## Entering
 
-1. **Re-read this skill file completely, then re-load [framework.md](../leeway-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
-2. **Read all tracking and state files** for the current topic — the specification file, review tracking files, or any working documents this skill creates. These are your source of truth for progress. Hold the source material again as **[session-setup.md](references/session-setup.md)** holds it — the sources, the grouping's tensions, the incorporated specifications — without its gate-mode reset.
-3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Check `finding_gate_mode` and `construction_gate_mode`** via `engine manifest` (`node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode` and `... construction_gate_mode`) — if either is `auto`, the user previously opted in during this session. Preserve that value.
-5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
+Every engine call is `node .claude/skills/leeway-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
 
-Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs enter specification {work_unit}
+```
 
----
+A refusal names the way on: say it in a line. Otherwise read what the DATA names: each `record`, by running its call, the unit's own among them; each `topic log` and `asset`; and those the spec has once it is under way — the `spec`, the `cut` by its call, and while the person's review page is open, its `review page` and the `read back` file its marks go to. Close each `lost` agent with `agent incorporate`; each `landed` report is a review pass's: load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written, from **A Pass's Report**. An `approve the map` call is the sweep's candidates waiting on the person: load **[the-sweep.md](references/the-sweep.md)** and follow its instructions as written, from **Approve the Map**.
 
-## Hard Rules
+Then fetch `checklist show ready-to-build {work_unit}`: its open items say where the spec stands, and **The Spec** takes it on from there. In your own words, say in a line what comes first.
 
-1. **STOP AND WAIT** for explicit approval before any write to the specification. Present content, wait for the user to explicitly approve (`y/yes` or equivalent), then log. No exceptions.
-2. **Log verbatim** — when approved, write exactly what was presented. No silent modifications.
-3. **Commit frequently** — commit at natural breaks and before any context refresh. Context refresh = lost work. Commits go through the scoped helper, action-scoped to this topic — the specification directory and the work-unit manifest, never a sibling session's files:
-   ```bash
-   node .claude/skills/leeway-engine/scripts/engine.cjs commit {work_unit} -m "{message}" --topic specification/{topic}
-   ```
+## The Spec
 
----
+The work runs in order, each piece once the one before it holds:
+1. **The sweep** — where `sweep-run` is open, an epic of more than one live topic is swept once before the spec is written: load **[the-sweep.md](references/the-sweep.md)** and follow its instructions as written.
+2. **Writing and review** — the writer writes the spec, `spec land` takes it, and review passes read it until one changes nothing (`statements-traced`, `review-settled`): load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written.
+3. **The cut** — once the review has settled: load **[phase-cut.md](references/phase-cut.md)** and follow its instructions as written.
+
+A land after the cut — a gap answered, a split — goes through the review's next pass; where `phases-complete` is open again — the cut no longer holding against the spec, or a decision made at the spec since its brief waiting for it — the cut is made again.
+
+The person meets this phase at approve the map after the sweep, at a gap the matrix sends them, and at ready to build. Between those the work runs on: say in a line where it has got to whenever you wait on an agent.
+
+## Doors
+
+- An agent → `brief sweep|spec-writer|phase-cut {work_unit}`, the writer with the wording the person agreed `--wording {file}`; a review pass → `agent dispatch {work_unit} specification {work_unit} --kind spec-review`, then `brief spec-reviewer {work_unit} --agent {dispatch_id}`, the id the dispatch answers; then the Agent call with the agent and the pointer `brief` answers. A pass's report → `agent scan|ack|surface|incorporate {work_unit} specification {work_unit}`.
+- The sweep's report → `sweep take {work_unit}`; its candidates → `render approve-map {work_unit} [--sweep]`, `approve-map strike|unstrike {work_unit} {n}`; the map changed at Keep shaping → discovery's `topic` verbs; a message to a started topic → `topic send {work_unit} {topic} --from {work_unit}.specification`, then `render send-report`.
+- The spec → `spec land {work_unit}`.
+- A gap → `raise {work_unit}.specification --replaces {decision_id} --reason {reason}` where it changes a decision; otherwise `ledger ask {work_unit}.specification`, then `raise {work_unit}.specification --answers {question_id}`; the person's own decision → `ledger decide|replace {work_unit}.specification`; a fact shown wrong → `ledger replace {work_unit}.specification --reason was-wrong`; what relied on it → `ledger affected {work_unit} {topic}`, `ledger hold`.
+- The cut → `cut {work_unit}`.
+- The review page → `spec page|published|marks|push {work_unit}`.
+- The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`.
+- The split → `render horizon-pick|postpone-gate {work_unit}.discovery.{topic}`, then `topic postpone` as the confirm's yes runs it, and `render topic-receipt`.
+- A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
+
+## Closing
+
+Once the cut has landed, ready to build closes on its checklist; `checklist show ready-to-build {work_unit}` lists its items, and the engine checks most of them. Yours:
+- `replacements-checked` — each replacement made at the spec holds up against what it replaced, its why says why, and every entry that relied on what it replaced has been confirmed (`ledger hold`) or replaced.
+- `invariants-checked` — each invariant in the spec names the hard check that enforces it, or says no check can. One that does neither is a gap (**[writing-and-review.md](references/writing-and-review.md)**).
+
+Mark each as it holds, `checklist done ready-to-build {work_unit} {item}`, or skip it with its reason, `checklist skip ready-to-build {work_unit} {item} --reason "{reason}"`. Close it, `checklist close ready-to-build {work_unit}`, then load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written.
 
 ## Backlogging
 
-The user says to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back" — and the words take this door whatever else is in flight. Never a topic: a topic takes the postponing door. Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
+The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". Load **[backlogging.md](../leeway-shared/references/backlogging.md)** with work_unit = `{work_unit}`, topic = `{work_unit}`, phase = `specification`.
 
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+## Splitting the Epic
 
----
+An epic's outline or the read across its topics grows unwieldy, or the person asks to split it. Load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written, from **The Split**.
 
-## Postponing the Topic
+## A Change at Ready to Build
 
-The user pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2", "take this whole topic back to the roadmap" — this one, or one on the map by name; `{name}` is that topic. The request is taken as said — never argued, and never checked back with a question first: load **[postponing-the-topic.md](../leeway-shared/references/postponing-the-topic.md)** with work_unit = `{work_unit}`, name = `{name}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
+The person asks at ready to build for a change to the outline or the phase cut. Load **[ready-to-build.md](references/ready-to-build.md)** and follow its instructions as written, from **A Change Asked For**.
 
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
+## Comments on the Review Page
 
----
-
-## Cancelling the Topic
-
-The user calls the topic off — they say to cancel, or the conversation agrees it is not worth pursuing. Never is not yet: a topic wanted later takes the postponing door. The call-off is taken as said — never argued, and never checked back with a question first: load **[cancelling-the-topic.md](../leeway-shared/references/cancelling-the-topic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `specification`, from any point in the phase.
-
-→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — never fall through to Step 0.
-
----
-
-## Step 0: Phase Start
-
-### Step 0.1: Entry Gate
-
-Check the source-material prerequisite — the engine derives the verdict from manifest state (work-type-aware: the discussion for feature and cross-cutting, the investigation for bugfix; for an epic, at least one completed discussion and none of this specification's own sources still open — back in progress, or opened by the gap exit and parked):
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic}
-```
-
-#### If the response is empty
-
-Source material is ready.
-
-→ Proceed to **Step 0.2**.
-
-#### If the response carried `DISPLAY: entry blocker`
-
-Emit both sections verbatim per their markers — the red blocker line, then its guidance.
-
-**STOP.** Do not proceed — terminal condition.
-
-### Step 0.2: Resume Detection
-
-Record where this session is working — the call also labels the tmux session where the user opted in:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs session label {work_unit} specification {topic}
-```
-
-Read the phase status, storing it as `phase_status`:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} status
-```
-
-#### If `phase_status` is empty or `proposed`
-
-A first start — an epic's grouping lands its specification `proposed`, and initialization starts it.
-
-→ Proceed to **Step 1**.
-
-#### If `phase_status` is `in-progress` or `completed`
-
-Where `phase_status` is `completed`, reopen it — resuming is not starting:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs topic reopen {work_unit} specification {topic}
-```
-
-Render the phase note — `Reopening` for a specification just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render phase-note {work_unit}.specification.{topic} --verb {Reopening|Resuming}
-```
-
-Load **[reconcile-advisory.md](../leeway-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `specification`.
-
-**If no file exists at `.workflows/{work_unit}/specification/{topic}/specification.md`:**
-
-A restart that never reached initialization — the earlier session's file is already gone.
-
-→ Proceed to **Step 1**.
-
-**Otherwise:**
-
-Load **[resume-detection.md](../leeway-shared/references/resume-detection.md)** with artifact = `specification`, file = `.workflows/{work_unit}/specification/{topic}/specification.md`, continue_step = `Step 2`, restart_targets = `the specification file and all review tracking files (review-*-tracking-c*.md) in .workflows/{work_unit}/specification/{topic}/`, restart_resets = `every sources.{name}.status row under {work_unit}.specification.{topic} to pending via engine manifest set — initialization never overwrites an existing row, so without this reset the fresh file would never get its content re-extracted — and the tracking subtree and review_baseline_words deleted where present (engine manifest delete {work_unit}.specification.{topic} tracking, then the same for review_baseline_words — an absent field's delete errors and is skipped) to match the deleted tracking files`, commit = `spec({work_unit}): restart specification`.
-
-→ On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
-
-#### If `phase_status` is `cancelled`, `superseded`, or `promoted`
-
-Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render entry-gate {work_unit}.specification.{topic} --own
-```
-
-**STOP.** Do not proceed — terminal condition.
-
----
-
-## Step 1: Initialize Specification
-
-Load **[initialize-specification.md](references/initialize-specification.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 2**.
-
----
-
-## Step 2: Session Setup
-
-Load **[session-setup.md](references/session-setup.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 3**.
-
----
-
-## Step 3: Load Specification Principles
-
-Load **[specification-principles.md](references/specification-principles.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Spec Construction
-
-Read the sources map:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
-```
-
-#### If no source row reads `pending`
-
-Set `constructed` = `false`.
-
-→ Proceed to **Step 5**.
-
-#### Otherwise
-
-Set `constructed` = `true`.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Spec Construction`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Building the specification. Topics from your source material will be extracted and presented one at a time. Nothing gets written without your explicit approval.
-```
-
-Load **[spec-construction.md](references/spec-construction.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
-
----
-
-## Step 5: Document Dependencies
-
-#### If work_type is not `epic`
-
-→ Proceed to **Step 6**.
-
-#### If `constructed` is `false` and the specification carries a `## Dependencies` section
-
-→ Proceed to **Step 6**.
-
-#### Otherwise
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Document Dependencies`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Recording cross-topic dependencies — for epics, specifications may depend on each other.
-```
-
-Load **[dependencies.md](references/dependencies.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Specification Review
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Specification Review`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reviewing the specification. Agents will measure its claims against the codebase and analyse it against source material for gaps and inconsistencies. Settled findings come as a batch, each carrying the call and what it rests on; genuine choices stop for your call, and any finding can be talked through — adjusted, challenged, or declined.
-```
-
-Load **[spec-review.md](references/spec-review.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 7**.
-
----
-
-## Step 7: Compliance Self-Check
-
-Load **[compliance-check.md](../leeway-shared/references/compliance-check.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 8**.
-
----
-
-## Step 8: Assess Cross-Cutting & Conclude
-
-Fetch the step's opening and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/leeway-engine/scripts/engine.cjs render step-opening {work_unit}.specification.{topic} --step conclude
-```
-
-Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.
-
+The person says they have left comments on the review page, or asks about one. Load **[review-page.md](references/review-page.md)** and follow its instructions as written, from **Reading the Marks**.

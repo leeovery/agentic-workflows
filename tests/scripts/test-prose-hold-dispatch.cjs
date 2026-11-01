@@ -48,7 +48,7 @@ function fireAsync(payload) {
 }
 
 /** A walker's dispatch, in the shape Claude Code hands a PreToolUse hook. */
-function dispatch({ id = 'toolu_01', agent = 'leeway-specification-review-input', prompt, tool = 'Agent', type = 'prose-walker', ...rest } = {}) {
+function dispatch({ id = 'toolu_01', agent = 'leeway-spec-reviewer', prompt, tool = 'Agent', type = 'prose-walker', ...rest } = {}) {
   return {
     hook_event_name: 'PreToolUse',
     tool_name: tool,
@@ -57,7 +57,7 @@ function dispatch({ id = 'toolu_01', agent = 'leeway-specification-review-input'
     tool_use_id: id,
     tool_input: {
       subagent_type: agent,
-      description: 'Input review cycle 1',
+      description: 'Spec review pass 1',
       prompt: prompt === undefined ? `Work in ${world}.\nSource material: .workflows/pay/discussion/pay.md` : prompt,
       run_in_background: true,
     },
@@ -139,7 +139,7 @@ describe('the hold — a walker\'s dispatch', () => {
     fire(payload);
     assert.deepEqual(records(), [{ tool_use_id: 'toolu_01', tool_name: 'Agent', tool_input: payload.tool_input }]);
     const log = fs.readFileSync(path.join(world, worlds.ACTION_LOG), 'utf8');
-    assert.equal(log, 'PreToolUse\tAgent\tleeway-specification-review-input — Input review cycle 1\theld\ttoolu_01\n');
+    assert.equal(log, 'PreToolUse\tAgent\tleeway-spec-reviewer — Spec review pass 1\theld\ttoolu_01\n');
   });
 
   it('resolves the world from the walker\'s transcript, by agent id, when the payload names none', () => {

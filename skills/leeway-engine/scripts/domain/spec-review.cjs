@@ -33,7 +33,10 @@
 // published`, spec-page.cjs), the artifact's address and when kept at
 // `.cache/{unit}/specification/published.json`, beside the page Claude built
 // and outside it, so a page built again never closes it; marks are stored
-// only from a page published. While it is, a number never changes
+// only from a page published, which Claude reads back to
+// `.cache/{unit}/specification/read-back.json` — the file `spec published`,
+// the spec's entry and its recovery note name (`openPage`), and ready to
+// build's picks take. While it is, a number never changes
 // (11.11.3). Every number it holds is kept with its last wording in
 // `.cache/{unit}/specification/held.json`, which each land adds to: the
 // numbers of the spec the state branch holds and of the stored marks with
@@ -118,6 +121,9 @@ const heldFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'held.json');
 /** Where the unit's page's publishing is recorded. @param {string} cwd @param {string} unit */
 const publishedFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'published.json');
 
+/** Where Claude reads the unit's open page's marks back to, for the engine to take. @param {string} cwd @param {string} unit */
+const readBackFile = (cwd, unit) => path.join(pageCache(cwd, unit), 'read-back.json');
+
 /** Whether the unit's review page is open: its publishing recorded. @param {string} cwd @param {string} unit */
 function pageOpen(cwd, unit) {
   return fs.existsSync(publishedFile(cwd, unit));
@@ -125,6 +131,16 @@ function pageOpen(cwd, unit) {
 
 /** The unit's page as published: its address and when, or null where it is not. @param {string} cwd @param {string} unit @returns {{url: string, at: string}|null} */
 const publishedPage = (cwd, unit) => cached(publishedFile(cwd, unit), null);
+
+/**
+ * What a conversation needs to reach the unit's open page: its address, and
+ * the file its marks are read back to; null where it is not open.
+ * @param {string} cwd @param {string} unit @returns {{url: string, readBack: string}|null}
+ */
+function openPage(cwd, unit) {
+  const published = publishedPage(cwd, unit);
+  return published === null ? null : { url: published.url, readBack: readBackFile(cwd, unit) };
+}
 
 /** A line's number from its id: dashes back to dots, a screen's tail kept. @param {string} id */
 function numberOf(id) {
@@ -411,5 +427,5 @@ function holdNumbers(cwd, unit, landed, lines) {
 }
 
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
+  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, readBackFile, openPage, pageOpen, pageRefusal, storeMarks, reviewStates, commentsWaiting, writeSpecReview, settleReview, heldNumberFaults, holdNumbers,
 };

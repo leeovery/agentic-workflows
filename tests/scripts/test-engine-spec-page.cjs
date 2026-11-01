@@ -7,7 +7,8 @@
 // each screen after its line, each area's count, Claude's tick on each line
 // as the page's model draws it, and the page declaring `db` alone (11.11.2,
 // 11.11.3, 11.11.5, 11.11.13, 11.11.15, 11.S23, 11.S32); `engine spec
-// published <unit> <url>`, which opens the page; `engine spec push <unit>
+// published <unit> <url>`, which opens the page and answers where its marks
+// are read back to; `engine spec push <unit>
 // --store [--reason] [--from]`, planning what a re-land changed for the open
 // page against the store's listing — one numbered change with its reason
 // and the lines that led to it, earlier wordings kept oldest first, a
@@ -265,9 +266,11 @@ describe('spec page: refusals', () => {
 });
 
 describe('spec published: the page opened once Claude records its publishing', () => {
-  it('records the address and when, beside the page, and answers both', () => {
+  it('records the address and when, beside the page, and answers both, with the file Claude reads its marks back to', () => {
     build();
-    assert.deepStrictEqual(frozen(['spec', 'published', UNIT, URL]), { ok: true, unit: UNIT, url: URL, at: AT });
+    assert.deepStrictEqual(frozen(['spec', 'published', UNIT, URL]), {
+      ok: true, unit: UNIT, url: URL, at: AT, read_back: statePath(dir, layout.cache(UNIT, 'specification', 'read-back.json')),
+    });
     assert.deepStrictEqual(json(statePath(dir, layout.cache(UNIT, 'specification', 'published.json'))), { url: URL, at: AT });
   });
 

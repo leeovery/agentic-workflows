@@ -21,7 +21,12 @@
 // at once for one candidate and through a pick for several (P8), and its
 // undoing; Claude's map restaged after the take keeping the candidates; the
 // yes landing the candidates standing as topics with their briefs and the
-// struck names as the person's answer; each refusal writing nothing.
+// struck names as the person's answer; the sweep's step held until approve
+// the map answers every candidate — sweep-run open, the entry naming it, the
+// land and the writer's brief refused naming it, as is the sweep's brief once
+// taken — through a resume that lost the staged map, the entry naming the
+// map staged from the sweep, and once Keep shaping restages it, the map read
+// back; each refusal writing nothing.
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its topics
 // `note-model` and `storage-and-sync` decided, each with a question and its
@@ -469,6 +474,32 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.strictEqual(refused(['approve-map', 'yes', UNIT]), 'approve-map yes: the sweep\'s candidates: "backing-up-notes" would stand beside the waiting roadmap item of its name — take it in with "from_roadmap": "backing-up-notes", or name the topic apart');
     ok(dir, ['approve-map', 'strike', UNIT, '1']);
     assert.deepStrictEqual(ok(dir, ['approve-map', 'yes', UNIT]).struck, ['backing-up-notes']);
+  });
+});
+
+describe('the sweep\'s step, held until approve the map answers its candidates (8.10.9)', () => {
+  it('resumed with the candidates unanswered and the staged map gone with the cache: sweep-run open, the entry naming approve the map staged from the sweep, the land and the writer\'s and the sweep\'s briefs refused naming it; once Keep shaping restages the map, the entry names it read back, and its yes — one candidate taken, one struck — answers both', () => {
+    report({ candidates: [BACKUPS, EXPORT] });
+    take();
+    fs.rmSync(statePath(dir, layout.cache(UNIT)), { recursive: true, force: true });
+    const sweepRun = () => JSON.parse(output(dir, ['checklist', 'show', 'ready-to-build', UNIT], { env: SESSION })).items.find((/** @type {{key: string}} */ item) => item.key === 'sweep-run').state;
+    const entered = () => output(dir, ['enter', 'specification', UNIT], { env: SESSION });
+    const approve = `${UNIT}'s sweep found calls waiting on the person — backing-up-notes, exporting-notes — taken or struck at approve the map: engine render approve-map ${UNIT} --sweep`;
+    const taken = `brief: ${UNIT}'s sweep is taken already — one sweep for the spec (8.10.3)`;
+
+    assert.strictEqual(sweepRun(), 'open');
+    assert.ok(entered().includes(`approve the map: \`node .claude/skills/leeway-engine/scripts/engine.cjs render approve-map ${UNIT} --sweep\``));
+    assert.deepStrictEqual([refused(['spec', 'land', UNIT]), refused(['brief', 'spec-writer', UNIT]), refused(['brief', 'sweep', UNIT])], [`spec land: ${approve}`, `brief: ${approve}`, `${taken}; ${approve}`]);
+
+    swept();
+    const shaped = { topics: [{ name: 'storage-and-sync' }, { name: 'note-model' }] };
+    output(dir, ['render', 'approve-map', UNIT, '--file', scratch(JSON.stringify(shaped), 'json')], { env: SESSION });
+    assert.ok(entered().includes(`approve the map: \`node .claude/skills/leeway-engine/scripts/engine.cjs render approve-map ${UNIT}\`\n`), 'the map Keep shaping staged is read back, never staged again from the sweep');
+    assert.match(sectionOf(output(dir, ['render', 'approve-map', UNIT], { env: SESSION }), 'DISPLAY: approve the map'), /^ {2}├─ ✓ 1\. Storage And Sync\n {2}└─ ✓ 2\. Note Model\n/m);
+    ok(dir, ['approve-map', 'strike', UNIT, '2']);
+    ok(dir, ['approve-map', 'yes', UNIT]);
+
+    assert.deepStrictEqual([sweepRun(), refused(['brief', 'sweep', UNIT])], ['done', taken]);
   });
 });
 

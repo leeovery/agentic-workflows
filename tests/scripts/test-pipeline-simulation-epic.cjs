@@ -6,8 +6,9 @@
 // message raised and answered through the topic's one mailbox; a topic
 // landed in discovery started from its own row; an arrival that backfills;
 // and the last review handing off to the menu. The map's own lifecycle is
-// test-pipeline-simulation-epic-map.cjs; the spec's side, from the sweep to
-// the cut, test-pipeline-simulation-epic-spec.cjs; a discussion walked
+// test-pipeline-simulation-epic-map.cjs; the sweep before the spec,
+// test-pipeline-simulation-epic-sweep.cjs; the spec's side, from its entry
+// to ready to build, test-pipeline-simulation-epic-spec.cjs; a discussion walked
 // backwards, test-pipeline-simulation-backwards.cjs.
 //
 // Layer: simulation. World: the project every scenario starts from

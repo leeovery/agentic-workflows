@@ -29,15 +29,20 @@
 // it took in the unit's state, `{unit}/sweep-taken.json`, committed: when,
 // each message sent by topic and path, and the candidates whole, which the
 // map after the sweep is drawn from (approve-map.cjs). One sweep for the
-// spec: the record standing is the sweep run — ready to build's sweep-run
-// (checklist.cjs) and spec land's refusal read it, never the cache. The
-// sweep is owed by an epic with more than one live topic (`sweepApplies`).
+// spec: the record standing is the sweep run, never the cache. A candidate
+// waits on the person until approve the map answers it — taken onto the
+// map or struck from it, each on the unit's manifest (`candidatesWaiting`).
+// The sweep's step is done once it is taken and no candidate waits: ready to
+// build's sweep-run (checklist.cjs), and the spec's land and the writer's
+// brief, refused until then (`sweepWait`), read it. The sweep is owed by an
+// epic with more than one live topic (`sweepApplies`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
+const { dismissedNames } = require('./derivations.cjs');
 
 /** @typedef {{name: string, reason: string, brief: string, from_roadmap?: string}} SweepCandidate */
 /** @typedef {{topic: string, text: string, sent?: string}} SweepMessage */
@@ -155,4 +160,29 @@ function sweepApplies(manifest) {
   return manifest.work_type === 'epic' && liveTopics(manifest.name, manifest).length > 1;
 }
 
-module.exports = { takenRel, sweepPath, readSweep, builderCalls, takenPath, readTaken, sweepTaken, sweepApplies };
+/**
+ * The names of the sweep's candidates waiting on the person: neither on the
+ * unit's map, taken there, nor struck from it — none before the sweep is taken.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string[]}
+ */
+function candidatesWaiting(cwd, manifest) {
+  const taken = readTaken(cwd, manifest.name);
+  if (taken === null) return [];
+  const items = manifest.phases?.discovery?.items ?? {};
+  const struck = new Set(dismissedNames(manifest));
+  return taken.candidates.map(({ name }) => name).filter((name) => !Object.hasOwn(items, name) && !struck.has(name));
+}
+
+/**
+ * What the spec waits on of the sweep, as the way on, or null: an owed sweep
+ * not taken, or its candidates waiting on approve the map.
+ * @param {string} cwd @param {Record<string, any>} manifest @returns {string|null}
+ */
+function sweepWait(cwd, manifest) {
+  const unit = manifest.name;
+  if (sweepApplies(manifest) && !sweepTaken(cwd, unit)) return `${unit}'s sweep is not taken — it runs before the spec lands: engine brief sweep ${unit}, then engine sweep take ${unit}`;
+  const waiting = candidatesWaiting(cwd, manifest);
+  return waiting.length === 0 ? null : `${unit}'s sweep found calls waiting on the person — ${waiting.join(', ')} — taken or struck at approve the map: engine render approve-map ${unit} --sweep`;
+}
+
+module.exports = { takenRel, sweepPath, readSweep, builderCalls, takenPath, readTaken, sweepTaken, sweepApplies, candidatesWaiting, sweepWait };

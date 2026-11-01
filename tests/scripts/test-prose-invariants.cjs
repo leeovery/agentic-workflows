@@ -828,11 +828,11 @@ describe('undeclared prose — the case list against what the walk opened', () =
   it('names prose the walk opened that the case never declared', () => {
     const rows = [
       rd('./.claude/skills/leeway-specification-process/SKILL.md'),
-      rd('./.claude/skills/leeway-specification-process/references/session-setup.md'),
+      rd('./.claude/skills/leeway-specification-process/references/the-sweep.md'),
     ];
     assert.deepEqual(
       invariants.undeclaredProse(rows, ['skills/leeway-specification-process/SKILL.md']),
-      ['skills/leeway-specification-process/references/session-setup.md'],
+      ['skills/leeway-specification-process/references/the-sweep.md'],
     );
   });
 
