@@ -9,13 +9,14 @@
 // - add: a topic, its brief installed at `topics/{topic}/brief.md` from
 //   Claude's draft in the cache, which it consumes (8.7.6); `writeBrief` is
 //   the one write of a brief, which start this work's and approve the map's
-//   yeses share. Refused: a name that is not a lowercase slug (8.8.18), one on
-//   the map, one struck from it unless the person asks for it back
-//   (8.10.11), and the twin of a waiting roadmap item, unless the topic takes
-//   that item in, the item then leaving the roadmap and the topic's source
-//   naming it (8.1.6). add-batch is the same for several, in one
-//   transaction; the decided gate lands its candidates by the same checks,
-//   inside its own (decided.cjs).
+//   yeses share. Refused, first, an epic past its spec, whose map is closed
+//   (18.4.19, spec-standing.cjs), whoever lands the topic; then a name that
+//   is not a lowercase slug (8.8.18), one on the map, one struck from it
+//   unless the person asks for it back (8.10.11), and the twin of a waiting
+//   roadmap item, unless the topic takes that item in, the item then leaving
+//   the roadmap and the topic's source naming it (8.1.6). add-batch is the
+//   same for several, in one transaction; the decided gate lands its
+//   candidates by the same checks, inside its own (decided.cjs).
 // - edit: a topic's summary or description, at any lifecycle.
 // - rename: an unstarted topic moves whole — its key, its folder and its
 //   place in the order, a roadmap item it took in following it; one that has
@@ -52,6 +53,7 @@ const { stateRoot, statePath, cacheScratch } = require('../kernel/state-root.cjs
 const { namesTopic } = require('./ledger-fold.cjs');
 const { takeInRefusal, waitingTwin, joinTakenIn, reaimJoins, revertJoins } = require('./roadmap.cjs');
 const { moveWaitingToInbox } = require('./mail.cjs');
+const { pastSpecRefusal } = require('./spec-standing.cjs');
 
 /**
  * @typedef {object} MapChange  what a `topic` verb did, for its response and its one-line report
@@ -274,6 +276,7 @@ function addItem(cwd, workUnit, name, { source = 'discovery', summary, descripti
   const priorRef = prior === undefined ? undefined : validatePrior(prior);
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    assertMapOpen(cwd, manifest, null);
     const [readded] = addBatchTo(manifest, [{ name, summary: summary ?? '', ...(description === undefined ? {} : { description }), re_add: reAdd }], null,
       { source, reAdd: 'add it back only at the person\'s ask — re-run with --force-dismissed' });
     const item = mapItem(manifest, name);
@@ -338,6 +341,17 @@ function checkBatchEntries(entries, said, fieldName = batchField) {
     const twice = named.find((v, i) => named.indexOf(v) !== i);
     if (twice !== undefined) throw new Error(`${said}: "${twice}" appears more than once in the batch`);
   }
+}
+
+/**
+ * Refuses a landing on an epic past its spec, whose map is closed — checked
+ * before anything else a landing checks — in the words of `said` (none for a
+ * caller landing one topic).
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string|null} said
+ */
+function assertMapOpen(cwd, manifest, said) {
+  const closed = pastSpecRefusal(cwd, manifest, 'newWork');
+  if (closed !== null) throw new Error(said === null ? closed : `${said}: ${closed}`);
 }
 
 /**
@@ -463,6 +477,7 @@ function batchDrafts(cwd, entries, { said, fieldName = batchField }) {
  * @returns {Draft[]}
  */
 function checkTopics(cwd, workUnit, manifest, entries, opts) {
+  assertMapOpen(cwd, manifest, opts.said);
   const drafts = batchDrafts(cwd, entries, opts);
   checkRoadmap(readProjectManifest(cwd), workUnit, entries, opts.said, opts.takeIn ?? entryTakeIn);
   addBatchTo(structuredClone(manifest), entries, opts.said, { source: opts.source, reAdd: opts.reAddHint });
@@ -478,6 +493,7 @@ function checkTopics(cwd, workUnit, manifest, entries, opts) {
  * @param {string} cwd @param {string} workUnit @param {Record<string, any>} manifest @param {BatchEntry[]} entries @param {LandOpts} opts
  */
 function placeTopics(cwd, workUnit, manifest, entries, { said, takeIn = entryTakeIn, source = 'discovery', reAddHint }) {
+  assertMapOpen(cwd, manifest, said);
   checkRoadmap(readProjectManifest(cwd), workUnit, entries, said, takeIn);
   const readded = addBatchTo(manifest, entries, said, { source, reAdd: reAddHint });
   const takes = entries.flatMap((e) => (e.from_roadmap === undefined ? [] : [{ item: e.from_roadmap, topic: e.name }]));

@@ -70,7 +70,11 @@
 //   answer, marks the topic decided, and records that the yes took the
 //   close. Each withdrawal lands as the lines do, after them. The staged
 //   payload goes. It
-//   answers what comes next: an epic's menu, else today's specification
+//   answers what comes next, over the manifest as the yes saved it, so a
+//   topic it added counts and one set aside meanwhile does not: an epic
+//   whose every live topic is now decided goes into its spec, at the unit,
+//   any other epic to its menu, where the person picks the next topic
+//   (24.1.2, 8.8.13); a unit of one topic into today's specification
 //   (9.7.6 waits on 29.15).
 // - `decided strike <n>` strikes the n-th candidate, numbered as the screen
 //   shows them, in the staged payload alone, and answers the screen again
@@ -96,6 +100,7 @@ const { landRaised, checkRaised } = require('./ledger-write.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
+const { topicsSettled } = require('./spec-standing.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
 const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
@@ -576,15 +581,17 @@ function waitAgentsSurface(cwd, { dotpath }) {
 }
 
 /**
- * What comes after a topic is decided: an epic's menu; else, until a
- * feature's decided is its ready to build (29.15), today's specification.
- * @param {Record<string, any>} manifest @param {string} unit
+ * What comes after a topic is decided: an epic's spec once its every live
+ * topic is decided, else its menu; else, until a feature's decided is its
+ * ready to build (29.15), today's specification.
+ * @param {Record<string, any>} manifest as the yes saved it @param {string} unit
  * @returns {import('./projections/surfaces.cjs').Next}
  */
 function nextAfter(manifest, unit) {
-  return manifest.work_type === 'epic'
-    ? { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit, PHASE, 'completed'] }
-    : { kind: 'handoff', skill: 'leeway-specification-process', args: [manifest.work_type, unit] };
+  if (manifest.work_type !== 'epic') return { kind: 'handoff', skill: 'leeway-specification-process', args: [manifest.work_type, unit] };
+  return topicsSettled(manifest)
+    ? { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', unit] }
+    : { kind: 'handoff', skill: 'leeway-continue-epic', args: [unit, PHASE, 'completed'] };
 }
 
 /**

@@ -310,8 +310,8 @@ describe('a specification sharing the renamed topic\'s key goes by its own name 
   /** The line a hand into `skill` at the topic shows. @param {string} skill */
   const handLine = (skill) => output(dir, ['handoff', skill, 'epic', UNIT, KEY]).split('\n').find((line) => line.startsWith('→ '));
 
-  it('the hand into it names it by its key, the hand into the topic\'s discussion by the title', () => {
-    assert.deepStrictEqual([handLine('leeway-specification-process'), handLine('leeway-discussion-process')], [`→ Specification · ${KEY}`, `→ Discussion · ${NAME}`]);
+  it('the hand into the spec names the unit it is entered at, the hand into the topic\'s discussion by the title', () => {
+    assert.deepStrictEqual([handLine('leeway-specification-process'), handLine('leeway-discussion-process')], [`→ Specification · ${UNIT}`, `→ Discussion · ${NAME}`]);
   });
 
   it('a message it sends names it by its own name', () => {

@@ -70,8 +70,8 @@ describe('pipeline simulation: workunit', () => {
       /MENU: pivot continuation/, 'the manage flow can fetch the continuation menu post-pivot');
 
     // The pivoted epic's map and phases still derive; the topic is decided
-    // as any epic topic is, and the yes hands back to the epic menu.
-    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu, 'discussion', 'completed'] });
+    // as any epic topic is, and, the epic's last, the yes goes into its spec.
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
   });
 
   it('absorption: a feature folds into an epic as a new topic and disappears', () => {

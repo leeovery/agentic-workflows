@@ -19,8 +19,10 @@
 // the log does not name the conversation yet, or another conversation has
 // written since (24.S10, 9.S67); so does
 // discovery's, at an epic its map and its open log, at the product's
-// conversation its open log (24.S19, 8.S67); every other phase's sends
-// Claude to its skill's own steps.
+// conversation its open log (24.S19, 8.S67); and specification's, at the
+// unit, each live topic's record and log, the files linked canonical, then
+// the spec once written and its cut, a concluded spec carrying nothing on;
+// every other phase's sends Claude to its skill's own steps.
 //
 
 require('./hermetic-env.cjs');
@@ -37,7 +39,7 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/leeway-engine
 
 // The phases whose note carries the recovery whole, their skills keeping no
 // steps of their own for it.
-const WHOLE = ['discussion', 'discovery'];
+const WHOLE = ['discussion', 'discovery', 'specification'];
 
 let dir; // a workflows project
 let config; // this test's system config directory
@@ -463,6 +465,44 @@ describe('conversation position', () => {
     }), 'the log\'s last line naming another, this conversation\'s is owed again');
   });
 
+  it('a specification carries its recovery whole, at the unit: each live topic\'s record and its log, the files linked canonical, then the spec once written and the cut once cut, and no log of its own (24.2.6)', () => {
+    install('leeway-specification-process');
+    workUnit('pay', 'epic', {
+      discovery: { items: { ledger: { order: 1 }, refunds: { order: 2, cancelled: true } } },
+      discussion: { items: { ledger: { status: 'completed' }, refunds: { status: 'cancelled' } } },
+    });
+    const log = write('.leeway/pay/topics/ledger/log.md');
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const asked = harness.ok(dir, ['ledger', 'ask', 'pay.discussion.ledger'], { env: env(), stdin: JSON.stringify({ ...made, text: 'What does the ledger hold?' }) }).id;
+    const decided = harness.ok(dir, ['ledger', 'decide', 'pay.discussion.ledger', '--answers', asked], { env: env(), stdin: JSON.stringify({ ...made, text: 'Entries.', why: 'Because.' }) }).id;
+    const asset = write('.leeway/pay/assets/flow.png');
+    ok(['asset', 'add', 'pay', 'pay/assets/flow.png', '--entry', decided, '--status', 'canonical']);
+    ok(['session', 'label', 'pay', 'specification', 'pay']);
+    const engine = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+    const specNote = (/** @type {string[]} */ calls, /** @type {string[]} */ files) => [
+      'The conversation was just compacted. This conversation is working in the specification of the epic "pay". Before anything else, re-read these in full, running each engine call:',
+      `- ${abs('.claude/skills/leeway-specification-process/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`${engine} ${call}\``),
+      ...files.map((file) => `- ${abs(file)}`),
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+    const unwritten = reads();
+    const spec = write('.leeway/pay/spec.md');
+    const manifest = JSON.parse(fs.readFileSync(abs('.leeway/pay/manifest.json'), 'utf8'));
+    workUnit('pay', 'epic', manifest.phases, { cut: { phases: [] } });
+    const written = reads();
+
+    assert.deepStrictEqual([unwritten.place, unwritten.files, unwritten.text], ['pay › specification', [abs(log), abs(asset)], specNote(['ledger record pay ledger'], [log, asset])]);
+    assert.deepStrictEqual([written.files, written.text], [[abs(log), abs(asset), abs(spec)], specNote(['ledger record pay ledger', 'manifest get pay cut'], [log, asset, spec])]);
+  });
+
+  it('a spec concluded, its build begun, carries nothing on', () => {
+    install('leeway-specification-process');
+    workUnit('pay', 'epic', {}, { build: { position: 'auto' } });
+    ok(['session', 'label', 'pay', 'specification', 'pay']);
+    assert.deepStrictEqual([reads().skill, reads().text], [null, 'This conversation was working in the specification of the epic "pay", but its spec is concluded, so there is nothing to carry on from.']);
+  });
+
   it('names the work unit by its work type, the topic collapsed where it is the work unit', () => {
     workUnit('auth', 'feature');
     install('leeway-discussion-process');
@@ -528,24 +568,24 @@ describe('conversation position', () => {
   });
 
   it('names only what this project has — a missing document is left out', () => {
-    install('leeway-specification-process');
-    ok(['session', 'label', 'pay', 'specification', 'ledger']);
+    install('leeway-review-process');
+    ok(['session', 'label', 'pay', 'review', 'ledger']);
     assert.deepStrictEqual(reads().files, []);
-    assert.strictEqual(reads().text, note('the specification of "ledger" in the epic "pay"', 'leeway-specification-process', []));
-    write('.leeway/pay/specification/ledger/specification.md');
-    assert.deepStrictEqual(reads().files, [abs('.leeway/pay/specification/ledger/specification.md')]);
+    assert.strictEqual(reads().text, note('the review of "ledger" in the epic "pay"', 'leeway-review-process', []));
+    write('.leeway/pay/review/ledger/report.md');
+    assert.deepStrictEqual(reads().files, [abs('.leeway/pay/review/ledger/report.md')]);
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {
-    write('.leeway/pay/specification/ledger/specification.md');
-    ok(['session', 'label', 'pay', 'specification', 'ledger']);
+    write('.leeway/pay/review/ledger/report.md');
+    ok(['session', 'label', 'pay', 'review', 'ledger']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
-      position: { name: 'pay', phase: 'specification', topic: 'ledger' },
-      place: 'pay › specification › ledger',
+      position: { name: 'pay', phase: 'review', topic: 'ledger' },
+      place: 'pay › review › ledger',
       skill: null,
       files: [],
-      text: 'This conversation was working in the specification of "ledger" in the epic "pay", but this project has no leeway-specification-process skill, so there is nothing to carry on from.',
+      text: 'This conversation was working in the review of "ledger" in the epic "pay", but this project has no leeway-review-process skill, so there is nothing to carry on from.',
     });
   });
 
@@ -553,7 +593,6 @@ describe('conversation position', () => {
     workUnit('fix', 'quick-fix');
     const cases = [
       ['investigation', 'ledger', ['.leeway/pay/investigation/ledger.md']],
-      ['specification', 'ledger', ['.leeway/pay/specification/ledger/specification.md']],
       ['planning', 'ledger', ['.leeway/pay/planning/ledger/planning.md', '.leeway/pay/planning/ledger/phase-2-tasks.md', '.leeway/pay/planning/ledger/phase-10-tasks.md']],
       ['review', 'ledger', ['.leeway/pay/review/ledger/report.md']],
     ];

@@ -399,6 +399,23 @@ function enterEntry(sim, wu, phase, topic) {
   return res;
 }
 
+// The spec's entry, at the work unit: handed off as above, the spec skill's
+// first engine call is its entry, which starts nothing and records the unit
+// as its place, so a compaction there carries on in the spec's skill,
+// re-reading each live topic's record.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics the unit's live topics */
+function specEntry(sim, wu, topics) {
+  sim.handOver();
+  const res = sim.run(['enter', 'specification', wu]);
+  assert.strictEqual(res.entered, true, 'no other session holds the spec, so the entry asks nothing');
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'specification', topic: wu }, 'the entry records the unit as its place');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'specification')), 'SKILL.md'),
+    'a compaction there carries on in the spec\'s skill');
+  for (const topic of topics) assert.ok(here.text.includes(`ledger record ${wu} ${topic}\``), `a compaction there re-reads ${topic}'s record`);
+  return res;
+}
+
 // A move into work, as the prose makes it through handing-off.md: the route —
 // the skill's slash command and its arguments — passes to the engine as it
 // stands, which checks it against the handoff table and names where the work
@@ -1116,5 +1133,5 @@ function literal(text) {
 }
 
 module.exports = {
-  Sim, sessionLog, handoffEntry, enterEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
+  Sim, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, pullFromRoadmap, decideTopic, discussed, askedOn, linearMenu, linearPick, backToStart, startNew, walkDeliveryPhases, arrive, bridgeTo, send, mappedEpic, menuEntry, arriveAtEpicMenu, epicPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, startKeys, workTheSet, walkDeliveryPhasesToImplementation, pickRoute, walkToLiveImplementation, writePhaseTasks,
 };

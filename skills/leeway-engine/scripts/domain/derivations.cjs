@@ -12,13 +12,30 @@ const path = require('path');
 const { fileExists, filesChecksum, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { RECORDS_DIR } = require('../kernel/knowledge/files.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
+/**
+ * Whether the unit's build has begun: ready to build's yes recorded on its
+ * manifest as `build`, which concludes its spec (P7).
+ * @param {Record<string, any>} manifest
+ */
+function buildBegun(manifest) {
+  return isObject(manifest.build);
+}
+
+/**
+ * A phase's status over its live items. The one spec a unit writes keeps no
+ * items: it reads completed once its build has begun, and none before —
+ * whether its `spec.md` is written is the state's to say (spec-standing.cjs).
+ * A unit whose building began under the old spec keeps that spec's items.
+ * @param {Record<string, any>} manifest @param {string} phase
+ * @returns {string|null}
+ */
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
-  if (p.items && typeof p.items === 'object') {
-    const keys = Object.keys(p.items);
-    if (keys.length === 0) return null;
+  const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
+  if (keys.length > 0) {
     // Non-live statuses drop out of aggregation: cancelled/superseded/proposed,
     // promoted and postponed alike — a promoted spec continues in its
     // cross-cutting unit and a postponed topic waits on the roadmap, and
@@ -37,7 +54,7 @@ function phaseStatus(manifest, phase) {
     if (statuses.some(s => s === 'in-progress')) return 'in-progress';
     return statuses[0];
   }
-  return null;
+  return phase === 'specification' && buildBegun(manifest) ? 'completed' : null;
 }
 
 function phaseItems(manifest, phase) {
@@ -913,7 +930,11 @@ function computeNextPhase(manifest) {
     if (wt === 'cross-cutting') {
       return { next_phase: 'done', phase_label: 'pipeline complete' };
     }
-    return { next_phase: 'planning', phase_label: 'ready for planning' };
+    // The one spec a unit writes leads into its build (E6); a unit whose
+    // building began under the old spec keeps that spec's items, and its plan.
+    return phaseItems(manifest, 'specification').length === 0
+      ? { next_phase: 'implementation', phase_label: 'ready for implementation' }
+      : { next_phase: 'planning', phase_label: 'ready for planning' };
   }
   if (ps('specification') === 'in-progress') {
     return {
@@ -994,9 +1015,11 @@ function computeUnitPhaseState(manifest, pipeline) {
  * The last phase, in the given pipeline order, with at least one completed
  * item — or null when nothing has completed. Single-topic phases carry one
  * item, so "an item completed" and "the phase aggregate is completed" coincide;
- * epics keep the per-item reading (one topic completing a phase is enough). The
- * one spelling every closed-unit surface reads (start dashboard, single-topic
- * detail, epic gateway) — each passes the pipeline its display walks.
+ * epics keep the per-item reading (one topic completing a phase is enough). A
+ * phase keeping no items, the one spec, completes as `phaseStatus` reads it.
+ * The one spelling every closed-unit surface reads (start dashboard,
+ * single-topic detail, epic gateway) — each passes the pipeline its display
+ * walks.
  * @param {object} manifest
  * @param {string[]} pipeline  phases to scan, in order
  * @returns {string|null}
@@ -1005,7 +1028,8 @@ function lastCompletedPhase(manifest, pipeline) {
   let last = null;
   for (const phase of pipeline) {
     const items = phaseItems(manifest, phase);
-    if (items.length > 0 && items.some((i) => i.status === 'completed')) last = phase;
+    const completed = items.length > 0 ? items.some((i) => i.status === 'completed') : phaseStatus(manifest, phase) === 'completed';
+    if (completed) last = phase;
   }
   return last;
 }
@@ -1494,6 +1518,7 @@ function buildDiscoveryMap(manifest, stateDir) {
 module.exports = {
   phaseData,
   phaseItems,
+  buildBegun,
   phaseStatus,
   sourceRows,
   sourceRow,

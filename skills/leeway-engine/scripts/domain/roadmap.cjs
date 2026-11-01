@@ -53,6 +53,7 @@ const { earlierReads } = require('./earlier-record.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
 const { STATE_DIR_NAME, statePath } = require('../kernel/state-root.cjs');
+const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 /** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
@@ -1091,7 +1092,8 @@ function returnPostponed(cwd, name, into, topic) {
  * cleared, every stash returned, each restored `completed` artifact
  * re-indexed. A postponed item landing in any other epic creates as usual,
  * the new row carrying `prior` so its conversation reads the earlier record
- * in full.
+ * in full. Either is refused, before anything is written, into an epic past
+ * its spec, whose map is closed (18.4.19).
  * @param {string} cwd @param {string} name
  * @param {{into?: string, forceDismissed?: boolean}} [opts]
  * @returns {RoadmapOpResult}
@@ -1121,6 +1123,7 @@ function pullForwardItem(cwd, name, { into, forceDismissed = false } = {}) {
   if (unit.status !== 'in-progress') {
     throw new Error(`work unit "${into}" is ${unit.status} — items pull into active work only`);
   }
+  assertBeforeSpec(cwd, unit, 'pull');
 
   const from = itemPostponedFrom(preItem);
   const mapItems = (unit.phases && unit.phases.discovery && unit.phases.discovery.items) || {};

@@ -14,7 +14,9 @@
 // (supersession is batch-oriented: spec completion supersedes several
 // sources, then commits once). cancel/reactivate are the epic transactions,
 // topic-level over one unit per stage: manifest write, knowledge-base sync,
-// scoped git commit.
+// scoped git commit. Past the unit's spec no topic is reopened, nor a map
+// topic cancelled or reactivated (4.11.2, 18.4.19, spec-standing.cjs); a
+// topic is postponed until ready to build's yes (P3).
 //
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
@@ -42,7 +44,8 @@ const { closeInFlight } = require('./agent-state.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
-const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
+const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES } = require('../kernel/manifest-schema.cjs');
+const { assertBeforeSpec } = require('./spec-standing.cjs');
 
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
@@ -546,6 +549,7 @@ function reopenTopic(cwd, workUnit, phase, topic) {
   }
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (TOPIC_PHASES.includes(phase)) assertBeforeSpec(cwd, manifest, 'change');
     const item = phaseItem(manifest, phase, topic);
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
@@ -965,6 +969,7 @@ function cancelTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('cancel', phase);
   const { mail, topic, ...taken } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (stage === 'discovery') assertBeforeSpec(cwd, manifest, 'cancel');
     const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? cancelDiscoveryUnit(manifest, topic)
@@ -1097,6 +1102,7 @@ function reactivateTopic(cwd, workUnit, phase, said) {
   const stage = assertUnitStage('reactivate', phase);
   const { topic, ...returned } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
+    if (stage === 'discovery') assertBeforeSpec(cwd, manifest, 'change');
     const topic = stage === 'discovery' ? topicKey(manifest, said) : said;
     const outcome = stage === 'discovery'
       ? reactivateDiscoveryUnit(manifest, topic)

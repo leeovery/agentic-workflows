@@ -22,11 +22,13 @@
 // close (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on
 // the topic's map (the ledger's fold); mail waiting in the topic's
-// `topics/{topic}/mail/`; each phase of the cut naming its scenarios and
-// its sections, what it relies on maybe nothing; every part of `spec.md`
-// drawn on by a phase, directly or through its area, an area with no parts
-// whole; what a phase relies on done — an earlier phase's close recorded,
-// another unit completed; and a directive's check passing (directives.cjs).
+// `topics/{topic}/mail/`; the unit's topics settled, one live at least and
+// every live one decided (spec-standing.cjs); each phase of the cut naming
+// its scenarios and its sections, what it relies on maybe nothing; every
+// part of `spec.md` drawn on by a phase, directly or through its area, an
+// area with no parts whole; what a phase relies on done — an earlier phase's
+// close recorded, another unit completed; and a directive's check passing
+// (directives.cjs).
 // An item applies only where the unit has its step: the sweep between
 // topics where it has more than one live topic.
 //
@@ -37,12 +39,13 @@
 // or a question opened on it — asked there, or moved to it — after the
 // close voids it, as the yes taking it does, so the topic is worked afresh
 // and closed again before its gate shows again, every engine item holding
-// still. A decision changed since voids nothing. A skip shows on the screen of the next
-// authority gate over its work (6.4.5): decided's, ready to build's and
-// finish's each their own, and finish's every phase start's and close's too,
-// as each record keeps them. An engine item is never marked or skipped, so
-// a directive's check must pass (6.4.5); the directive's close records the
-// directive in the migrations record, the one way it is recorded.
+// still. A decision changed since voids nothing. A skip shows on the screen
+// of the next authority gate over its work (6.4.5): decided's, ready to
+// build's and finish's each their own, and finish's every phase start's and
+// close's too, as each record keeps them. An engine item is never marked or
+// skipped, so a directive's check must pass (6.4.5); the directive's close
+// records the directive in the migrations record, the one way it is
+// recorded.
 //
 // `show` reads and takes no lock. `done`, `skip` and `close` write under the
 // writer lock (engine.cjs) and commit the manifest they wrote alone, pushed;
@@ -55,6 +58,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { hasTopic, manifestOf, liveness, finishedUnits, liveTopics } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, mapOf } = require('./ledger-fold.cjs');
 const { readSpec, specSections } = require('./spec-sections.cjs');
+const { topicsSettled } = require('./spec-standing.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
 const { directiveOf, checkDirective, recordDirective } = require('./directives.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -142,6 +146,9 @@ function ledgerPast(root, unit, topic, after, warnings) {
 function mailboxEmpty({ cwd, unit, topic }) {
   return mailboxDepth(stateRoot(cwd), /** @type {string} */ (unit), /** @type {string} */ (topic)) === 0;
 }
+
+/** The unit's topics settled, as its spec's entry reads them (11.2.1). @param {Named} named */
+const settled = ({ manifest }) => topicsSettled(manifest);
 
 /** Each phase of the cut names a scenario and a section; what it relies on may be nothing (11.5.4). @param {Named} named */
 function phasesComplete({ manifest }) {
@@ -231,7 +238,7 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>'],
     place: onUnit(() => ({ path: ['ready-to-build'] })),
     items: [
-      { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen' },
+      { key: 'topics-settled', text: 'every topic decided, cancelled or postponed, a feature\'s one topic being decided by this same screen', check: settled },
       { key: 'sweep-run', text: 'the sweep between topics run, where the unit has more than one topic', applies: moreThanOneTopic },
       { key: 'replacements-checked', text: 'the spec has checked each replacement against what it replaced' },
       { key: 'statements-traced', text: 'every statement traced' },

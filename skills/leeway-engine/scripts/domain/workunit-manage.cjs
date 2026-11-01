@@ -3,14 +3,16 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the manage detail — one work unit's lifecycle-action
 // availability, computed for the manage action menu. Which actions the menu
-// offers is manifest state (work type, phase presence, implementation
-// completion, in-progress epics for absorption), so it is derived here, in one
-// place, never re-derived by the session. Pure over the project's
+// offers is the unit's state (work type, phase presence, whether it is past
+// its spec, implementation completion, in-progress epics before their spec
+// for absorption), so it is derived here, in one place, never re-derived by
+// the session. Pure over the project's
 // state: same files, same answer.
 // ---------------------------------------------------------------------------
 
 const { loadManifest, loadActiveManifests } = require('./reads.cjs');
 const { phaseItems } = require('./derivations.cjs');
+const { pastItsSpec } = require('./spec-standing.cjs');
 
 /**
  * @typedef {object} PlanningTopic
@@ -25,9 +27,9 @@ const { phaseItems } = require('./derivations.cjs');
  * @property {string} status
  * @property {boolean} implementation_completed  any implementation item completed → `done` offered
  * @property {boolean} has_plan                  planning phase present → `view-plan` offered
- * @property {boolean} has_spec                  specification phase present (absorb guard)
+ * @property {boolean} has_spec                  past its spec, written or concluded (absorb guard)
  * @property {boolean} has_discussion            discussion phase present (absorb guard)
- * @property {string[]} available_epics          in-progress epic names — absorb targets
+ * @property {string[]} available_epics          in-progress epic names before their spec — absorb targets
  * @property {boolean} absorb_available          feature, no spec, has discussion, ≥1 epic target
  * @property {PlanningTopic[]} planning_topics   the view-plan topic choices (epics)
  */
@@ -48,10 +50,10 @@ function manageDetail(cwd, workUnit) {
   if (!manifest) return null;
 
   const workType = manifest.work_type || 'feature';
-  const hasSpec = phasePresent(manifest, 'specification');
+  const hasSpec = pastItsSpec(cwd, manifest);
   const hasDiscussion = phasePresent(manifest, 'discussion');
   const availableEpics = loadActiveManifests(cwd)
-    .filter((m) => m.work_type === 'epic' && m.name !== workUnit)
+    .filter((m) => m.work_type === 'epic' && m.name !== workUnit && !pastItsSpec(cwd, m))
     .map((m) => m.name);
 
   return {

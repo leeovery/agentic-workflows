@@ -14,7 +14,7 @@ const {
   loadProjectManifest,
 } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const {
-  phaseStatus, phaseItems, phaseData, computeNextPhase,
+  phaseStatus, phaseItems, phaseData, computeNextPhase, lastCompletedPhase,
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
@@ -319,6 +319,27 @@ describe('reads + derivations', () => {
     it('returns null for no phases', () => {
       assert.strictEqual(phaseStatus({}, 'discussion'), null);
     });
+
+    it('reads the one spec a unit writes, which keeps no items, completed once its build has begun and none before (P7); a unit with the old spec\'s items reads them', () => {
+      const built = { build: { position: 'auto' } };
+      assert.deepStrictEqual([
+        phaseStatus({ phases: {} }, 'specification'),
+        phaseStatus({ phases: {}, ...built }, 'specification'),
+        phaseStatus({ phases: { specification: { items: {} } }, ...built }, 'specification'),
+        phaseStatus({ phases: {}, ...built }, 'planning'),
+        phaseStatus({ phases: { specification: { items: { a: { status: 'in-progress' } } } } }, 'specification'),
+      ], [null, 'completed', 'completed', null, 'in-progress']);
+    });
+  });
+
+  describe('lastCompletedPhase', () => {
+    it('reads the one spec completed once its build has begun, the unit cancelled after ready to build\'s yes past its discussion', () => {
+      const decided = { discussion: { items: { pay: { status: 'completed' } } } };
+      assert.deepStrictEqual([
+        lastCompletedPhase({ phases: decided }, ['discussion', 'specification', 'implementation']),
+        lastCompletedPhase({ phases: decided, build: { position: 'auto' } }, ['discussion', 'specification', 'implementation']),
+      ], ['discussion', 'specification']);
+    });
   });
 
   describe('phaseItems', () => {
@@ -402,9 +423,14 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.next_phase, 'implementation');
     });
 
-    it('returns planning when spec completed', () => {
+    it('returns planning when the old spec\'s item completed — a unit whose building began under it keeps its plan', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { specification: { items: { test: { status: 'completed' } } } } });
       assert.strictEqual(r.next_phase, 'planning');
+    });
+
+    it('returns implementation once ready to build\'s yes began the build, whatever the work type that writes a spec (E6)', () => {
+      const built = (/** @type {string} */ type) => computeNextPhase({ name: 'test', work_type: type, phases: {}, build: { position: 'step' } });
+      assert.deepStrictEqual(['feature', 'epic', 'bugfix'].map(built), ['feature', 'epic', 'bugfix'].map(() => ({ next_phase: 'implementation', phase_label: 'ready for implementation' })));
     });
 
     it('returns specification when discussion completed', () => {

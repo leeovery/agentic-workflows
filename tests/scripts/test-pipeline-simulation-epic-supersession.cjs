@@ -61,13 +61,11 @@ describe('pipeline simulation: epic supersession', () => {
     // Grouping: alpha and beta unify into one spec; sources gate, then the
     // per-topic spec items are superseded by the unified one. The menu's
     // specification row carries no route and never meets the soft gate —
-    // the menu runs the grouping itself, and the handoff refuses an epic's
-    // specification without its topic. It reads the scenario, asks before
+    // the menu runs the grouping itself. It reads the scenario, asks before
     // the analysis, and the map's provenance recovery has its own two stops
     // (summary-backfill B and D).
     assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
     sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'analyze_discussions'], /unknown --action "analyze_discussions"/);
-    sim.refuses(['handoff', '/leeway-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
     assert.match(sim.render(['analysis-proceed-gate', wu], { expect: 'content' }),
       /^=== DISPLAY: analysis prompt [^\n]*\n> Your discussions will be analyzed for natural groupings[\s\S]*Proceed with analysis\?/);

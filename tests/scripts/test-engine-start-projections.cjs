@@ -896,19 +896,6 @@ describe('start projections: manage unit', () => {
     ].join('\n'));
   });
 
-  it('spec-or-beyond feature loses absorb even with a target epic', () => {
-    createManifest(dir, 'auth-flow', {
-      phases: {
-        discussion: { items: { 'auth-flow': { status: 'completed' } } },
-        specification: { items: { 'auth-flow': { status: 'in-progress' } } },
-      },
-    });
-    createManifest(dir, 'v1', { work_type: 'epic' });
-    const v = manageUnitView(manageDetail(dir, 'auth-flow'));
-    assert.ok(!v.menu.includes('absorb'));
-    assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
-  });
-
   it('completed implementation offers done; a plan offers view-plan', () => {
     createManifest(dir, 'hotfix', {
       work_type: 'quick-fix',
