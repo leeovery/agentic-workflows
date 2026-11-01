@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the phase cut (11.5) — `cut <unit> --file <cut.json>`, the one
-// writer of the cut on a unit's manifest (11.5.8), from where everything that
-// shows or follows the cut reads it (11.5.10). The file holds the cut as the
+// Domain ring: the phase cut (11.5) — `cut <unit> [--file <cut.json>]`, the
+// one writer of the cut on a unit's manifest (11.5.8), from where everything
+// that shows or follows the cut reads it (11.5.10). The file holds the cut as the
 // manifest keeps it, `{phases: [{name, goal, scenarios, sections,
 // relies_on}]}`: the phases in build order, numbered from 1 by it (11.5.2);
 // each phase's scenarios by id, `N.Sk`, and the sections it draws on by
@@ -24,9 +24,10 @@
 // manifest alone to the state branch, pushed.
 //
 // The cut's corridor stages the file in the unit's specification cache,
-// `.cache/{unit}/specification/cut.json`, where the cut's agent writes it;
-// what the cut would refuse of it, read without writing, is the refusal a
-// fresh brief carries back to the agent (brief-records.cjs).
+// `.cache/{unit}/specification/cut.json`, where the cut's agent writes it,
+// and the file a cut given none takes; what the cut would refuse of it, read
+// without writing, is the refusal a fresh brief carries back to the agent
+// (brief-records.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -43,7 +44,7 @@ const { phaseStarted } = require('./checklist.cjs');
 
 /** @typedef {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}} Phase */
 
-const CUT_USAGE = 'cut <work-unit> --file <cut.json>';
+const CUT_USAGE = 'cut <work-unit> [--file <cut.json>]';
 
 /** What each of a phase's fields holds, and how a fault in it is named. */
 const FIELDS = Object.freeze({
@@ -218,15 +219,17 @@ function stagedCutRefusal(cwd, unit) {
 }
 
 /**
- * Write the phase cut in `file` onto the unit's manifest, after every check,
- * and commit it.
- * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd
+ * Write the phase cut in `file` — the cut staged for the unit where none is
+ * given — onto the unit's manifest, after every check, and commit it.
+ * @param {string} cwd @param {string} unit @param {string} [file] absolute or from cwd
  * @returns {{unit: string, phases: number, committed: string|null, warnings?: string[], note?: string}}
  */
 function writeCut(cwd, unit, file) {
   if (workUnitNameRefusal(unit) !== null || manifestOf(stateRoot(cwd), unit) === null) throw new Error(`cut: there is no work unit "${unit}"`);
+  const staged = stagedCutPath(cwd, unit);
+  if (file === undefined && !fs.existsSync(staged)) throw new Error(`cut: nothing is staged for ${unit} — the cut's agent writes it at ${staged}`);
   const phases = withWorkUnitLock(cwd, unit, () => {
-    const { cut, manifest } = checkedCut(cwd, unit, path.resolve(cwd, file));
+    const { cut, manifest } = checkedCut(cwd, unit, file === undefined ? staged : path.resolve(cwd, file));
     manifest.cut = { phases: cut };
     saveWorkUnitManifest(cwd, unit, manifest);
     return cut.length;

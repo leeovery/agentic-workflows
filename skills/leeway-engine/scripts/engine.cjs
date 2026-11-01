@@ -1325,7 +1325,8 @@ function runBrief(call, argv) {
 function runCut(call, argv) {
   const { opts, positional } = parseArgs(argv);
   try {
-    if (positional.length !== 1 || Object.keys(opts).join() !== 'file' || !opts.file) throw new Error(`Usage: engine ${CUT_USAGE}`);
+    const given = Object.keys(opts).join();
+    if (positional.length !== 1 || !['', 'file'].includes(given) || (given === 'file' && !opts.file)) throw new Error(`Usage: engine ${CUT_USAGE}`);
     respond(call, writeCut(call.cwd, positional[0], opts.file));
   } catch (err) {
     failJson(call, err);

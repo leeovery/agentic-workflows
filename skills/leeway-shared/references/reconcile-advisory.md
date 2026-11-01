@@ -38,7 +38,7 @@ Read `.workflows/{work_unit}/investigation/{topic}.md` in full, then clear the f
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest delete {work_unit}.{downstream_phase}.{topic} reconcile_needed
 ```
 
-The reopen also flipped the spec's source row to `stale`; the specification session reconciles it (**[../../leeway-specification-process/references/reconcile-stale-sources.md](../../leeway-specification-process/references/reconcile-stale-sources.md)**, with `{source phase}` = `investigation`) at its setup or conclusion — sign-off waits on it.
+The reopen also flipped the spec's source row to `stale`; the specification session reconciles it at its setup or conclusion — sign-off waits on it.
 
 → Return to caller.
 
@@ -50,7 +50,7 @@ A discussion this specification extracted was re-decided after extraction. The s
 node .claude/skills/leeway-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
 ```
 
-Surface the advisory. The `stale` rows themselves stay — the session reconciles them per **[reconcile-stale-sources.md](../../leeway-specification-process/references/reconcile-stale-sources.md)**, and only re-incorporation clears a row.
+Surface the advisory. The `stale` rows themselves stay — the specification session reconciles them, and only re-incorporation clears a row.
 
 > *Output the next fenced block as a text code block (```text fence):*
 

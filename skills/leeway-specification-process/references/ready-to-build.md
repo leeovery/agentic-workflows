@@ -1,0 +1,39 @@
+# Ready to Build
+
+*Reference for **[leeway-specification-process](../SKILL.md)***
+
+---
+
+The spec's gate: the outline and the phase cut, the build's position, and the person's review of the spec on a page. The review is theirs to take or skip — all of it, the parts they care about, or none — and skipping it is as good a way through: never press it.
+
+## The Screen
+
+Pass `--page` where this session can publish a page: the Artifact tool is among its tools. While the review page is open, its marks are read back first: load **[review-page.md](review-page.md)** and follow its instructions as written, where this conversation has not loaded it already. Then draw the screen, emitting its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render ready-to-build {work_unit} [--page]
+```
+
+A refusal names what to fix — an item open again since a land or a cut among them: work it, close the checklist again, and draw the screen again.
+
+Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`; follow its `next`. A `next` that takes the page's marks — a position's while the page is open, or the review's — names the file they are read back to: read them back fresh into it before running it.
+- **A position** runs the yes. It refuses while a comment on the page waits for you, listing each: answer each beneath its line, then draw the screen again. Its own `next` for an epic hands off to the epic's menu: follow it. A feature's or a bugfix's is `continue`, and the unit's menu opens in this conversation: invoke `/leeway-continue-linear {work_unit}`.
+- **The review** builds the page, or once it is open reads the comments left on it, as review-page.md says.
+
+## A Change Asked For
+
+A Comment asking for a change to the outline or the phase cut is the person's decision. It lands at the spec: its question, `ledger ask {work_unit}.specification`, then the person's answer, `ledger decide {work_unit}.specification --answers {id}` with `{"text", "why", "rules_out", "by": "person", "given": "own", "who_moved_whom": "none"}` on stdin — or `ledger replace` where it changes a decision already made, which stands on that decision's topic. Then the writer goes again, its land goes through the review's next pass (**[writing-and-review.md](writing-and-review.md)**), the cut is made again (**[phase-cut.md](phase-cut.md)**), and the checklist is closed again before the screen is drawn again.
+
+## The Split
+
+An epic's size is never capped by a number: splitting it is a judgement. Raise it whenever the outline the person would approve grows unwieldy, or the read across its topics for seams nobody linked does. The ledger's links show where it splits cleanly: groups of topics linked within, with little between. The question goes on the ledger and through `raise`, as a gap's does: its rows the split you lean on, by the topics that would move, and the epic kept whole.
+
+A split moves whole decided topics, with their records, to a next epic on the roadmap; the ledger keeps every link working. Part of a topic never moves here: a topic too large to build whole is split in discovery, before it is decided.
+
+When the person takes the split, postpone each topic that moves, on the horizon they name. Where they named one, fetch the confirm, `render postpone-gate {work_unit}.discovery.{topic} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{topic}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`, then fetch the receipt and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/leeway-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb postpone
+```
+
+The lines that cited the moved topics' entries no longer trace: the writer goes again, its land goes through the review's next pass, the cut is made again, and the checklist is closed again. The split is open until the person picks the build's position.

@@ -15,8 +15,9 @@
 // starting nothing and committing nothing. What it reads: each live topic's
 // record and log — a bugfix's its investigation — and the files the unit's
 // current entries link as canonical (11.6.3); once the spec is written, the
-// spec and the cut; and the agents the spec was left with, landed or lost
-// (9.7.8). And the spec's standing, none, written or concluded (P7). The
+// spec and the cut, and while the review page is open, its address and the
+// file its marks are read back to; and the agents the spec was left with,
+// landed or lost (9.7.8). And the spec's standing, none, written or concluded (P7). The
 // settled rule as topics-settled reads it is test-engine-checklist.cjs's,
 // the move after a topic is decided test-engine-decided-yes.cjs's, every
 // door past the spec test-engine-past-spec.cjs's, and the recovery note
@@ -241,6 +242,21 @@ describe('what the spec reads at its entry', () => {
       `cut: \`${ENGINE} manifest get ready cut\``,
       `landed: ${landed.file}`,
       `lost: ${lost.id}`,
+    ]));
+  });
+
+  it('while the review page is open, its address and the file its marks are read back to', () => {
+    writeState(dir, layout.unit('ready', 'spec.md'), '# Ready\n');
+    const url = 'https://claude.ai/public/artifacts/ready';
+    writeState(dir, layout.cache('ready', 'specification', 'published.json'), JSON.stringify({ url, at: '2026-11-01T00:00:00.000Z' }));
+
+    assert.strictEqual(enter('ready').sections, data([
+      record('ready', 'alpha'), record('ready', 'beta'),
+      `topic log: ${at(layout.doc('ready', 'discussion', 'alpha'))}`,
+      `asset: ${at(layout.assets('ready', 'design.png'))}`,
+      `spec: ${at(layout.unit('ready', 'spec.md'))}`,
+      `review page: ${url}`,
+      `read back: ${at(layout.cache('ready', 'specification', 'read-back.json'))}`,
     ]));
   });
 });

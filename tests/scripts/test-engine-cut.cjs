@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The phase cut (leeway-engine/scripts/domain/cut.cjs): `engine cut <unit>
-// --file <cut.json>`. The cut written onto the unit's manifest as the file
+// [--file <cut.json>]`. The cut written onto the unit's manifest as the file
 // gives it, `{phases: [{name, goal, scenarios, sections, relies_on}]}`, each
 // phase's fields in that order, and committed alone on the state branch, under the writer lock; each refusal of
 // 11.5.9 — a scenario or a section the spec lacks, a scenario in two phases
@@ -21,9 +21,11 @@
 // an entry relying on one, in its current form or through entries no line
 // cites, a line of the other cites, each link between a pair joined; none
 // within a part, none for a part citing nothing, none to another unit's
-// entry — and where the cut goes; the cut the agent stages there refused by
-// `cut`, and the fresh brief carrying that refusal, verbatim, until the cut
-// lands on the manifest and none is recorded (11.S5); every refusal of the
+// entry — and where the cut goes; the cut the agent stages there, which a
+// cut given no file takes, refused by `cut`, and the fresh brief carrying
+// that refusal, verbatim, until the cut lands on the manifest and none is
+// recorded (11.S5); nothing staged refused, naming where the agent writes
+// it; every refusal of the
 // brief storing none, a cancelled unit's among them.
 //
 // Layer: verb. Worlds, each built once and copied: a project with two
@@ -207,8 +209,8 @@ describe('the refusals (11.5.9, 11.S31), nothing written', () => {
   });
 
   it('the usage, for arguments of another shape', () => {
-    const usage = 'Usage: engine cut <work-unit> --file <cut.json>';
-    for (const args of [['cut', UNIT], ['cut', '--file', 'cut.json'], ['cut', UNIT, 'billing', '--file', 'cut.json'], ['cut', UNIT, '--file', 'cut.json', '--force', 'yes']]) {
+    const usage = 'Usage: engine cut <work-unit> [--file <cut.json>]';
+    for (const args of [['cut'], ['cut', UNIT, '--file'], ['cut', '--file', 'cut.json'], ['cut', UNIT, 'billing', '--file', 'cut.json'], ['cut', UNIT, '--file', 'cut.json', '--force', 'yes']]) {
       assert.strictEqual(refusedPristine(dir, args).error, usage);
     }
   });
@@ -394,17 +396,21 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
   });
 
   it('a staged cut `cut` refuses comes back verbatim in a fresh brief, until the cut lands on the manifest, spec.md holding none, and none is recorded', () => {
-    const file = staged([WHOLE, { ...PART, scenarios: [], relies_on: [3] }]);
-    const refusal = refusedPristine(dir, ['cut', EPIC, '--file', file]).error;
+    staged([WHOLE, { ...PART, scenarios: [], relies_on: [3] }]);
+    const refusal = refusedPristine(dir, ['cut', EPIC]).error;
     assert.strictEqual(refusal, 'cut: scenario 2.S2 is in no phase; phase 2 relies on phase 3, which comes after it');
 
     assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), refusal);
 
     staged([WHOLE, PART]);
-    ok(dir, ['cut', EPIC, '--file', file]);
+    ok(dir, ['cut', EPIC]);
     assert.deepStrictEqual(readManifest(dir, EPIC).cut, { phases: [WHOLE, PART] });
     assert.strictEqual(readState(dir, layout.unit(EPIC, SPEC_FILE)), shopSpec());
     assert.strictEqual(section(briefed().brief, 'The staged cut\'s refusal'), 'None recorded.');
+  });
+
+  it('a cut given no file with nothing staged refuses, naming where the cut\'s agent writes it, and writes nothing', () => {
+    assert.strictEqual(refusedPristine(dir, ['cut', EPIC]).error, `cut: nothing is staged for ${EPIC} — the cut's agent writes it at ${statePath(dir, STAGED)}`);
   });
 
   it('refuses, storing no brief, a unit the project lacks, one cancelled, one with no spec, a spec its grammar refuses, and arguments of another shape', () => {

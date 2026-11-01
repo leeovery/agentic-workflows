@@ -1139,7 +1139,8 @@ function specReviewed(sim, wu) {
 }
 
 // The cut's corridor (11.5.1): the phase cut's agent briefed from the unit's
-// spec, its cut staged where the brief says it goes, and `cut` run on it.
+// spec, its cut staged where the brief says it goes, and `cut` taking it, as
+// the skill runs it, naming no file.
 /**
  * @param {Sim} sim @param {string} wu
  * @param {{name: string, goal: string, scenarios: string[], sections: string[], relies_on: Array<number|string>}[]} phases
@@ -1147,8 +1148,8 @@ function specReviewed(sim, wu) {
  */
 function cutTheSpec(sim, wu, phases) {
   assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'leeway-phase-cut');
-  const staged = sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases });
-  return sim.run(['cut', wu, '--file', staged]);
+  sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases });
+  return sim.run(['cut', wu]);
 }
 
 // Ready to build as the prose reaches it (11.8): its checklist worked —

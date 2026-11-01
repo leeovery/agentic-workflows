@@ -248,8 +248,10 @@ function dropPosition(sessionId) {
 // product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
 // where none is open; specification's, at the unit whatever topic its place
 // names, what its entry reads to carry it on — each live topic's record and
-// log, the canonical assets, then the spec once written and the cut once cut
-// (spec-entry.cjs), the spec keeping no log. Every other phase's note sends
+// log, the canonical assets, then the spec once written and the cut once cut,
+// and while the person's review page is open, its address and where its
+// marks are read back to (spec-entry.cjs), the spec keeping no log. Every
+// other phase's note sends
 // Claude to its skill's own steps.
 // ---------------------------------------------------------------------------
 
@@ -359,7 +361,7 @@ function productSessionLog(cwd) {
  * topic's documents, whether or not they exist — neither at a work unit's
  * menu; and, for a phase whose note carries its recovery whole, the engine
  * calls it re-reads and the log its conversation keeps, where it keeps one.
- * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null}}} Work
+ * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null, lines?: string[]}}} Work
  */
 
 /**
@@ -401,8 +403,9 @@ function workAt(cwd, position, manifest) {
       // Required here, as the ledger read it makes requires this module; a
       // compaction's note has no reader for what that read says.
       const { specSources } = require('./spec-entry.cjs');
-      const { records, logs, assets, spec, cut } = specSources(cwd, manifest, []);
-      return { skill, documents: [...logs, ...assets, ...spec], whole: { calls: [...records, ...cut], log: null } };
+      const { records, logs, assets, spec, cut, page } = specSources(cwd, manifest, []);
+      const open = page === null ? [] : [`The review page is open at ${page.url}; its marks are read back into ${page.readBack}.`];
+      return { skill, documents: [...logs, ...assets, ...spec], whole: { calls: [...records, ...cut], log: null, lines: open } };
     }
     case 'experiment':
       return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
@@ -509,17 +512,19 @@ function logLines(log, sessionId) {
 
 /**
  * The note for a phase that carries its recovery whole: the skill and its
- * framework re-read, then its engine calls and its documents; its log, where
- * it keeps one, caught up (`logLines`); and the conversation carried on.
+ * framework re-read, then its engine calls and its documents; what else the
+ * phase holds open, a line each; its log, where it keeps one, caught up
+ * (`logLines`); and the conversation carried on.
  * @param {string} where @param {string} skill absolute @param {string[]} calls @param {string[]} files absolute
- * @param {string|null} log absolute @param {string} sessionId
+ * @param {string|null} log absolute @param {string} sessionId @param {string[]} [lines]
  */
-function wholeNote(where, skill, calls, files, log, sessionId) {
+function wholeNote(where, skill, calls, files, log, sessionId, lines = []) {
   return [
     `${COMPACTED} This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
     `- ${skill} and its framework`,
     ...calls.map((c) => `- \`${c}\``),
     ...files.map((f) => `- ${f}`),
+    ...lines,
     ...(log === null ? [] : logLines(log, sessionId)),
     'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
   ].join('\n');
@@ -565,7 +570,7 @@ function positionReads(cwd, sessionId) {
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f));
   const text = work.whole === undefined
     ? carryOnText(where, work.skill, skill, files)
-    : wholeNote(where, skill, work.whole.calls, files, work.whole.log, sessionId);
+    : wholeNote(where, skill, work.whole.calls, files, work.whole.log, sessionId, work.whole.lines);
   return { session_id: sessionId, position, place, skill, files, text };
 }
 
